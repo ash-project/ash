@@ -1243,6 +1243,28 @@ defmodule Ash.Test.Changeset.ChangesetTest do
              ] =
                Ash.Changeset.for_create(Category, :with_name_validation, %{"name" => ""}).errors
     end
+
+    test "it fails when the requested create action doesn't exist on the resource" do
+      assert_raise(ArgumentError, ~r/no such create action/i, fn ->
+        Ash.Changeset.for_create(Category, :bananas, %{}, [])
+      end)
+    end
+
+    test "it fails when the requested update action doesn't exist on the resource" do
+      category = Ash.create!(Category, action: :create)
+
+      assert_raise(ArgumentError, ~r/no such update action/i, fn ->
+        Ash.Changeset.for_update(category, :bananas, %{}, [])
+      end)
+    end
+
+    test "it fails when the requested destroy action doesn't exist on the resource" do
+      category = Ash.create!(Category, action: :create)
+
+      assert_raise(ArgumentError, ~r/no such destroy action/i, fn ->
+        Ash.Changeset.for_destroy(category, :bananas, %{}, [])
+      end)
+    end
   end
 
   describe "update_change/3" do

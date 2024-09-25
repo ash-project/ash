@@ -572,7 +572,7 @@ defmodule Ash.Query do
         end
       end
     else
-      add_error(query, :action, "No such action #{inspect(action_name)}")
+      raise_no_action(query.resource, action_name)
     end
   end
 
@@ -611,6 +611,27 @@ defmodule Ash.Query do
     else
       query
     end
+  end
+
+  defp raise_no_action(resource, action_name) do
+    available_actions =
+      resource
+      |> Ash.Resource.Info.actions()
+      |> Enum.filter(&(&1.type == :read))
+      |> Enum.map_join("\n", &"    - `#{inspect(&1.name)}")
+
+    raise ArgumentError,
+      message: """
+      No such read action on resource #{inspect(resource)}: #{String.slice(inspect(action_name), 0..50)}
+
+      Example Call:
+
+        Ash.Query.for_read(query_or_resource, :action_name, input, options)
+
+      Available read actions:
+
+      #{available_actions}
+      """
   end
 
   defp require_arguments(query, action) do

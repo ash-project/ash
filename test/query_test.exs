@@ -97,4 +97,12 @@ defmodule Ash.Test.QueryTest do
              |> Ash.read_one!()
     end
   end
+
+  describe "action validation" do
+    test "it fails when the action requested doesn't exist on the resource" do
+      assert_raise(ArgumentError, ~r/no such read action/i, fn ->
+        Ash.Query.for_read(User, :bananas)
+      end)
+    end
+  end
 end
