@@ -13,6 +13,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             authorize_query_with: :filter,
             authorize?: nil,
             batch_size: nil,
+            context: nil,
             description: nil,
             domain: nil,
             initial: nil,
@@ -55,6 +56,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
           authorize_query_with: :filter | :error,
           authorize?: boolean | nil,
           batch_size: nil | pos_integer(),
+          context: nil | Ash.Reactor.Dsl.Context.t(),
           description: String.t() | nil,
           domain: Ash.Domain.t(),
           initial: Reactor.Template.t(),
@@ -118,12 +120,13 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
       identifier: :name,
       imports: [Reactor.Dsl.Argument],
       entities: [
+        context: [Ash.Reactor.Dsl.Context.__entity__()],
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
         load: [Ash.Reactor.Dsl.ActionLoad.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()]
       ],
-      singleton_entity_keys: [:actor, :tenant, :load],
+      singleton_entity_keys: [:actor, :context, :load, :tenant],
       recursive_as: :steps,
       schema:
         [

@@ -48,6 +48,7 @@ Declares a step that will call a generic action on a resource.
 
 ### Nested DSLs
  * [actor](#reactor-action-actor)
+ * [context](#reactor-action-context)
  * [inputs](#reactor-action-inputs)
  * [tenant](#reactor-action-tenant)
  * [wait_for](#reactor-action-wait_for)
@@ -104,6 +105,37 @@ Specifies the action actor
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.action.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-action-context-context){: #reactor-action-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-action-context-transform){: #reactor-action-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
 
 ## reactor.action.inputs
 ```elixir
@@ -428,6 +460,7 @@ Caveats/differences from `Ash.bulk_create/4`:
 
 
 ### Nested DSLs
+ * [context](#reactor-bulk_create-context)
  * [actor](#reactor-bulk_create-actor)
  * [load](#reactor-bulk_create-load)
  * [tenant](#reactor-bulk_create-tenant)
@@ -487,6 +520,37 @@ end
 | [`undo_action`](#reactor-bulk_create-undo_action){: #reactor-bulk_create-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
 | [`undo`](#reactor-bulk_create-undo){: #reactor-bulk_create-undo } | `:always \| :never \| :outside_transaction` | `:never` | How to handle undoing this action |
 
+
+## reactor.bulk_create.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-bulk_create-context-context){: #reactor-bulk_create-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_create-context-transform){: #reactor-bulk_create-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
 
 ## reactor.bulk_create.actor
 ```elixir
@@ -655,6 +719,7 @@ Caveats/differences from `Ash.bulk_update/4`:
 
 ### Nested DSLs
  * [actor](#reactor-bulk_update-actor)
+ * [context](#reactor-bulk_update-context)
  * [inputs](#reactor-bulk_update-inputs)
  * [tenant](#reactor-bulk_update-tenant)
  * [wait_for](#reactor-bulk_update-wait_for)
@@ -750,6 +815,37 @@ Specifies the action actor
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.bulk_update.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-bulk_update-context-context){: #reactor-bulk_update-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_update-context-transform){: #reactor-bulk_update-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
 
 ## reactor.bulk_update.inputs
 ```elixir
@@ -1039,6 +1135,7 @@ Declares a step that will call a create action on a resource.
 
 ### Nested DSLs
  * [actor](#reactor-create-actor)
+ * [context](#reactor-create-context)
  * [inputs](#reactor-create-inputs)
  * [load](#reactor-create-load)
  * [tenant](#reactor-create-tenant)
@@ -1112,6 +1209,37 @@ Specifies the action actor
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.create.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-create-context-context){: #reactor-create-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-create-context-transform){: #reactor-create-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
 
 ## reactor.create.inputs
 ```elixir
@@ -1285,6 +1413,7 @@ Declares a step that will call a destroy action on a resource.
 
 ### Nested DSLs
  * [actor](#reactor-destroy-actor)
+ * [context](#reactor-destroy-context)
  * [inputs](#reactor-destroy-inputs)
  * [load](#reactor-destroy-load)
  * [tenant](#reactor-destroy-tenant)
@@ -1354,6 +1483,37 @@ Specifies the action actor
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.destroy.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-destroy-context-context){: #reactor-destroy-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-destroy-context-transform){: #reactor-destroy-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
 
 ## reactor.destroy.inputs
 ```elixir
@@ -1517,6 +1677,7 @@ Declares a step that will load additional data on a resource.
 
 ### Nested DSLs
  * [actor](#reactor-load-actor)
+ * [context](#reactor-load-context)
  * [tenant](#reactor-load-tenant)
  * [wait_for](#reactor-load-wait_for)
 
@@ -1574,6 +1735,37 @@ Specifies the action actor
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.load.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-load-context-context){: #reactor-load-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-load-context-transform){: #reactor-load-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
 
 ## reactor.load.tenant
 ```elixir
@@ -1660,6 +1852,7 @@ Declares a step that will call a read action on a resource returning a single re
 
 ### Nested DSLs
  * [actor](#reactor-read_one-actor)
+ * [context](#reactor-read_one-context)
  * [inputs](#reactor-read_one-inputs)
  * [load](#reactor-read_one-load)
  * [tenant](#reactor-read_one-tenant)
@@ -1724,6 +1917,37 @@ Specifies the action actor
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.read_one.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-read_one-context-context){: #reactor-read_one-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-read_one-context-transform){: #reactor-read_one-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
 
 ## reactor.read_one.inputs
 ```elixir
@@ -1887,6 +2111,7 @@ Declares a step that will call a read action on a resource.
 
 ### Nested DSLs
  * [actor](#reactor-read-actor)
+ * [context](#reactor-read-context)
  * [inputs](#reactor-read-inputs)
  * [load](#reactor-read-load)
  * [tenant](#reactor-read-tenant)
@@ -1955,6 +2180,37 @@ Specifies the action actor
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.read.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-read-context-context){: #reactor-read-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-read-context-transform){: #reactor-read-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
 
 ## reactor.read.inputs
 ```elixir
@@ -2200,6 +2456,7 @@ Declares a step that will call an update action on a resource.
 
 ### Nested DSLs
  * [actor](#reactor-update-actor)
+ * [context](#reactor-update-context)
  * [inputs](#reactor-update-inputs)
  * [load](#reactor-update-load)
  * [tenant](#reactor-update-tenant)
@@ -2271,6 +2528,37 @@ Specifies the action actor
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.update.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-update-context-context){: #reactor-update-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-update-context-transform){: #reactor-update-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
 
 ## reactor.update.inputs
 ```elixir

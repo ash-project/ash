@@ -28,6 +28,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkCreate do
         |> maybe_append(bulk_create.actor)
         |> maybe_append(bulk_create.tenant)
         |> maybe_append(bulk_create.load)
+        |> maybe_append(bulk_create.context)
         |> Enum.concat(bulk_create.wait_for)
 
       action_options =

@@ -17,6 +17,8 @@ defmodule Ash.Test.ReactorActionTest do
         argument :excitement_level, :integer, default: 3, allow_nil?: false
 
         run fn input, _context ->
+          assert input.context.wat == 17
+
           level = Ash.ActionInput.get_argument(input, :excitement_level)
           ooo = Enum.map(1..level, fn _ -> "o" end)
           {:ok, Enum.join(["W"] ++ ooo ++ ["t"])}
@@ -37,6 +39,7 @@ defmodule Ash.Test.ReactorActionTest do
 
     action :celebrate, Ash.Test.ReactorActionTest.Wooter, :celebrate do
       inputs(%{excitement_level: input(:excitement_level)})
+      context(value(%{wat: 17}))
     end
   end
 

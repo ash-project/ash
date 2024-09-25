@@ -9,6 +9,7 @@ defmodule Ash.Reactor.Dsl.Action do
             actor: [],
             async?: true,
             authorize?: nil,
+            context: nil,
             description: nil,
             domain: nil,
             inputs: [],
@@ -28,6 +29,7 @@ defmodule Ash.Reactor.Dsl.Action do
           actor: nil | Ash.Reactor.Dsl.Actor.t(),
           async?: boolean,
           authorize?: boolean | nil,
+          context: nil | Ash.Reactor.Dsl.Context.t(),
           description: String.t() | nil,
           domain: Ash.Domain.t(),
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
@@ -56,11 +58,12 @@ defmodule Ash.Reactor.Dsl.Action do
       imports: [Reactor.Dsl.Argument],
       entities: [
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
+        context: [Ash.Reactor.Dsl.Context.__entity__()],
         inputs: [Ash.Reactor.Dsl.Inputs.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()]
       ],
-      singleton_entity_keys: [:actor, :tenant],
+      singleton_entity_keys: [:actor, :context, :tenant],
       recursive_as: :steps,
       schema: __shared_action_option_schema__()
     }

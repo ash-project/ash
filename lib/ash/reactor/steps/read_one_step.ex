@@ -23,6 +23,7 @@ defmodule Ash.Reactor.ReadOneStep do
       |> maybe_set_kw(:authorize?, options[:authorize?])
       |> maybe_set_kw(:load, arguments[:load])
       |> maybe_set_kw(:not_found_error?, options[:fail_on_not_found?])
+      |> maybe_set_kw(:context, arguments[:context])
 
     options[:resource]
     |> Query.for_read(options[:action], arguments[:input], query_options)

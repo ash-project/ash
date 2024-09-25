@@ -29,6 +29,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkUpdate do
         |> maybe_append(bulk_update.actor)
         |> maybe_append(bulk_update.tenant)
         |> maybe_append(bulk_update.load)
+        |> maybe_append(bulk_update.context)
         |> Enum.concat(bulk_update.wait_for)
         |> Enum.concat([initial, notification_metadata])
 

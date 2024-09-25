@@ -13,6 +13,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Read do
         |> maybe_append(read.actor)
         |> maybe_append(read.tenant)
         |> maybe_append(read.load)
+        |> maybe_append(read.context)
         |> Enum.concat(read.wait_for)
 
       action_options =

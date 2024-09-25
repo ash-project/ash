@@ -16,6 +16,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Load do
         ]
         |> maybe_append(load.actor)
         |> maybe_append(load.tenant)
+        |> maybe_append(load.context)
         |> Enum.concat(load.wait_for)
 
       load_options =

@@ -16,6 +16,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Action do
         arguments
         |> maybe_append(action.actor)
         |> maybe_append(action.tenant)
+        |> maybe_append(action.context)
         |> Enum.concat(action.wait_for)
 
       action_options =
