@@ -5347,7 +5347,7 @@ defmodule Ash.Changeset do
   Adds an around_action hook to the changeset.
 
   Your function will get the changeset, and a callback that must be called with a changeset (that may be modified).
-  The callback will return `{:ok, result, instructions}` or `{:error, error}`. You can modify these values, but the
+  The callback will return `{:ok, result, changeset, instructions}` or `{:error, error}`. You can modify these values, but the
   return value must be one of those types. Instructions contains the notifications in its `notifications` key, i.e
   `%{notifications: [%Ash.Resource.Notification{}, ...]}`.
 
