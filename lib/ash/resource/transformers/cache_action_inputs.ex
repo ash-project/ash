@@ -58,7 +58,7 @@ defmodule Ash.Resource.Transformers.CacheActionInputs do
             case changes do
               [] ->
                 dsl_state
-                |> Transformer.persist({:action_select, action.name}, nil)
+                |> Transformer.persist({:action_select, action.name}, [])
 
               _ ->
                 attributes =
