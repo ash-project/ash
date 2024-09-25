@@ -70,7 +70,7 @@ defmodule Ash.Resource.Transformers.CacheActionInputs do
 
               select =
                 attributes
-                |> Enum.filter(&(&1.select_by_default? || &1.primary_key))
+                |> Enum.filter(&(&1.select_by_default? || &1.primary_key?))
                 |> Enum.map(& &1.name)
                 |> case do
                   [] ->
