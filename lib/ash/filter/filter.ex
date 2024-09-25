@@ -3304,7 +3304,7 @@ defmodule Ash.Filter do
               function.arguments
               |> List.wrap()
               |> Enum.reduce_while({:ok, []}, fn arg, {:ok, acc} ->
-                case Ash.Expr.eval(arg) do
+                case Ash.Expr.eval(arg, unknown_on_unknown_refs?: true) do
                   {:ok, value} ->
                     {:cont, {:ok, [value | acc]}}
 

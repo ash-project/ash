@@ -5,7 +5,7 @@ defmodule Ash.Resource.Igniter do
   ## Important Details
 
   This interrogates *the source code* of a resource, not its ultimate compiled state.
-  What this means, is that things like `defines_attribute?` will not return `true` if
+  What this means, is that things like `defines_attribute` will not return `true` if
   the attribute is added by an extension. Only if it appears literally in the source code
   of the resource or one of its `Spark.Dsl.Fragment`s.
   """
@@ -201,6 +201,33 @@ defmodule Ash.Resource.Igniter do
     end
   end
 
+  @doc "Returns true if the given resource defines an identity with the provided name"
+  @spec defines_identity(Igniter.t(), Ash.Resource.t(), atom()) :: {Igniter.t(), true | false}
+  def defines_identity(igniter, resource, name) do
+    Spark.Igniter.find(igniter, resource, fn _, zipper ->
+      with {:ok, zipper} <- enter_section(zipper, :identities),
+           {:ok, _zipper} <-
+             move_to_one_of_function_call_in_current_scope(
+               zipper,
+               [:identity],
+               [2, 3],
+               &Igniter.Code.Function.argument_equals?(&1, 0, name)
+             ) do
+        {:ok, true}
+      else
+        _ ->
+          :error
+      end
+    end)
+    |> case do
+      {:ok, igniter, _module, _value} ->
+        {igniter, true}
+
+      {:error, igniter} ->
+        {igniter, false}
+    end
+  end
+
   @doc "Returns true if the given resource defines an action with the provided name"
   @spec defines_action(Igniter.t(), Ash.Resource.t(), atom()) :: {Igniter.t(), true | false}
   def defines_action(igniter, resource, name) do
@@ -292,7 +319,7 @@ defmodule Ash.Resource.Igniter do
     end
   end
 
-  @doc "Adds the given code block to the resource's `attributes` block"
+  @doc "Adds the given code block to the resource's `attributes` block if there is no existing attribute with the given name"
   def add_new_attribute(igniter, resource, name, attribute) do
     {igniter, defines?} = defines_attribute(igniter, resource, name)
 
@@ -301,6 +328,22 @@ defmodule Ash.Resource.Igniter do
     else
       add_attribute(igniter, resource, attribute)
     end
+  end
+
+  @doc "Adds the given code block to the resource's `identities` block if there is no existing identity with the given name"
+  def add_new_identity(igniter, resource, name, identity) do
+    {igniter, defines?} = defines_identity(igniter, resource, name)
+
+    if defines? do
+      igniter
+    else
+      add_identity(igniter, resource, identity)
+    end
+  end
+
+  @doc "Adds the given code block to the resource's `identities` block"
+  def add_identity(igniter, resource, identity) do
+    add_block(igniter, resource, :identities, identity)
   end
 
   @doc "Adds the given code block to the resource's `attributes` block"

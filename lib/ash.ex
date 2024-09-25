@@ -1007,7 +1007,7 @@ defmodule Ash do
         end
 
       {:ok, nil} ->
-         {:ok, nil}
+        {:ok, nil}
 
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}
