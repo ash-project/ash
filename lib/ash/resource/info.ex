@@ -643,7 +643,7 @@ defmodule Ash.Resource.Info do
     Extension.get_persisted(resource, {:action_inputs, action}) || MapSet.new()
   end
 
-  @doc "Returns the list of attributes that must be selected for an action invocation, or nil if the changeset select should be used"
+  @doc "Returns the list of attributes that must be selected for an action invocation"
   @spec action_select(Ash.Resource.t(), action :: atom() | Ash.Resource.Actions.action()) ::
           list(atom) | nil
   def action_select(resource, %{name: name}) do
