@@ -1645,8 +1645,11 @@ defmodule Ash.Changeset do
       if attribute.primary_key? do
         changeset
       else
+        allow_nil? =
+          attribute.allow_nil? && attribute.name not in changeset.action.require_attributes
+
         value =
-          if attribute.allow_nil? || not Ash.Expr.can_return_nil?(value) do
+          if allow_nil? || not Ash.Expr.can_return_nil?(value) do
             value
           else
             expr(
@@ -1667,6 +1670,31 @@ defmodule Ash.Changeset do
 
         %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
       end
+    end)
+    |> then(fn changeset ->
+      Enum.reduce(changeset.action.require_attributes, changeset, fn attribute_name, changeset ->
+        if Keyword.has_key?(changeset.atomics, attribute_name) do
+          changeset
+        else
+          expr =
+            expr(
+              if is_nil(^atomic_ref(attribute_name)) do
+                error(
+                  ^Ash.Error.Changes.Required,
+                  %{
+                    field: ^attribute_name,
+                    type: ^:attribute,
+                    resource: ^changeset.resource
+                  }
+                )
+              else
+                ^atomic_ref(attribute_name)
+              end
+            )
+
+          %{changeset | atomics: Keyword.put(changeset.atomics, attribute_name, expr)}
+        end
+      end)
     end)
     |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
   end

@@ -431,7 +431,7 @@ defmodule Ash.Actions.Update do
                     true
                   )
                   |> Ash.Changeset.require_values(
-                    :update,
+                    :create,
                     false,
                     changeset.action.require_attributes
                   )

@@ -74,6 +74,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       update :set_nilable do
         accept [:nilable]
+        require_atomic? false
         require_attributes [:nilable]
       end
 
@@ -437,13 +438,15 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it requires providing the attribute" do
       profile =
         Profile
-        |> Ash.Changeset.for_create(:create, %{nilable: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{bio: "foobar"})
         |> Ash.create!()
 
-      assert_raise Ash.Error.Invalid, ~r/bio is required/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/nilable is required/, fn ->
+        Logger.configure(level: :debug)
+
         profile
         |> Ash.Changeset.for_update(:set_nilable, %{})
-        |> Ash.update!()
+        |> Ash.update!(atomic_upgrade?: false)
       end
     end
   end
