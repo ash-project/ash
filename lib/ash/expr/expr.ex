@@ -26,6 +26,7 @@ defmodule Ash.Expr do
       opts[:context]
       |> Kernel.||(%{})
       |> Map.put_new(:resource, opts[:resource])
+      |> Map.put(:eval?, true)
 
     expression
     |> Ash.Filter.hydrate_refs(context)

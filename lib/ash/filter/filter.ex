@@ -2729,11 +2729,10 @@ defmodule Ash.Filter do
              refs <- list_refs(args),
              :ok <- validate_refs(refs, context.root_resource, {function, nested_statement}),
              {:ok, function} <- Function.new(function_module, args) do
-          if is_nil(context.resource) ||
-               Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
+          if can_filter_expr?(context, function) do
             {:ok, BooleanExpression.optimized_new(:and, expression, function)}
           else
-            {:error, "data layer does not support the function #{inspect(function)}"}
+            {:error, "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the function #{inspect(function)}"}
           end
         end
     end
@@ -2985,6 +2984,26 @@ defmodule Ash.Filter do
     end
   end
 
+  defp can_filter_expr?(context, expr) do
+    cond do
+      context[:eval?] || is_nil(context.resource) ->
+        true
+
+      data_layer = context[:data_layer] ->
+        data_layer.can?(context.resource, {:filter_expr, expr})
+
+      true ->
+        Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, expr})
+    end
+    |> case do
+      false ->
+        IO.inspect(context)
+        false
+      true ->
+        true
+    end
+  end
+
   defp each_related(_resource, []), do: []
 
   defp each_related(resource, [item | rest]) do
@@ -3111,11 +3130,10 @@ defmodule Ash.Filter do
       if is_boolean(operator) do
         {:ok, operator}
       else
-        if is_nil(context.resource) ||
-             Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
+        if can_filter_expr?(context, operator) do
           {:ok, operator}
         else
-          {:error, "data layer does not support the operator #{inspect(operator)}"}
+          {:error, "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the operator #{inspect(operator)}"}
         end
       end
     else
@@ -3297,8 +3315,7 @@ defmodule Ash.Filter do
           if Ash.Expr.expr?(function) && !match?(%{__predicate__?: _}, function) do
             hydrate_refs(function, context)
           else
-            if is_nil(context.resource) ||
-                 Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
+            if can_filter_expr?(context, function) do
               {:ok, function}
             else
               function.arguments
@@ -3309,8 +3326,7 @@ defmodule Ash.Filter do
                     {:cont, {:ok, [value | acc]}}
 
                   _ ->
-                    {:halt,
-                     {:error, "data layer does not support the function #{inspect(function)}"}}
+                    {:halt, {:error, "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the function #{inspect(function)}"}}
                 end
               end)
               |> case do
@@ -3322,7 +3338,7 @@ defmodule Ash.Filter do
                       {:ok, result}
 
                     _ ->
-                      {:error, "data layer does not support the function #{inspect(function)}"}
+                      {:error, "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the function #{inspect(function)}"}
                   end
 
                 {:error, error} ->
@@ -3997,15 +4013,11 @@ defmodule Ash.Filter do
                        refs <- list_refs(args),
                        :ok <- validate_refs(refs, context.root_resource, {key, [left, value]}),
                        {:ok, function} <- Function.new(function_module, args) do
-                    if is_nil(context.resource) ||
-                         Ash.DataLayer.data_layer_can?(
-                           context.resource,
-                           {:filter_expr, function}
-                         ) do
+                    if can_filter_expr?(context, function) do
                       {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, function)}}
                     else
-                      {:halt,
-                       {:error, "data layer does not support the function #{inspect(function)}"}}
+                      {:halt, {:error, "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the function #{inspect(function)}"}}
+
                     end
                   end
               end
@@ -4041,15 +4053,11 @@ defmodule Ash.Filter do
                 if is_boolean(operator) do
                   {:cont, {:ok, operator}}
                 else
-                  if is_nil(context.resource) ||
-                       Ash.DataLayer.data_layer_can?(
-                         context.resource,
-                         {:filter_expr, operator}
-                       ) do
+                  if can_filter_expr?(context, operator) do
+
                     {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
                   else
-                    {:halt,
-                     {:error, "data layer does not support the operator #{inspect(operator)}"}}
+                    {:halt, {:error, "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the operator #{inspect(operator)}"}}
                   end
                 end
               else

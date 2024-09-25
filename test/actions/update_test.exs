@@ -72,6 +72,11 @@ defmodule Ash.Test.Actions.UpdateTest do
         end
       end
 
+      update :set_nilable do
+        accept [:nilable]
+        require_attributes [:nilable]
+      end
+
       update :set_private_attribute_to_nil do
         accept []
         change set_attribute(:non_nil_private, nil)
@@ -87,6 +92,7 @@ defmodule Ash.Test.Actions.UpdateTest do
       uuid_primary_key :id
       attribute :bio, :string, allow_nil?: false, public?: true
       attribute :non_nil_private, :string, allow_nil?: false, default: "non_nil", public?: true
+      attribute :nilable, :string, public?: true
       attribute :private, :string, default: "non_nil", public?: true
     end
 
@@ -424,6 +430,21 @@ defmodule Ash.Test.Actions.UpdateTest do
                post
                |> Ash.Changeset.for_update(:update, %{title: "bar", contents: "foo"})
                |> Ash.update!()
+    end
+  end
+
+  describe "require_attributes" do
+    test "it requires providing the attribute" do
+      profile =
+        Profile
+        |> Ash.Changeset.for_create(:create, %{nilable: "foobar"})
+        |> Ash.create!()
+
+      assert_raise Ash.Error.Invalid, ~r/bio is required/, fn ->
+        profile
+        |> Ash.Changeset.for_update(:set_nilable, %{})
+        |> Ash.update!()
+      end
     end
   end
 

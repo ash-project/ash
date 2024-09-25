@@ -911,7 +911,7 @@ defmodule Ash.Actions.Read.Calculations do
 
           _ ->
             if can_expression_calculation? do
-              if all_referenced_calcs_support_expressions?(calculation, expression, ash_query) do
+              if should_be_in_expression?(calculation, expression, ash_query) do
                 {[calculation | in_query], at_runtime, ash_query}
               else
                 {in_query, [calculation | at_runtime], ash_query}
@@ -1015,7 +1015,7 @@ defmodule Ash.Actions.Read.Calculations do
     end
   end
 
-  defp all_referenced_calcs_support_expressions?(calculation, expression \\ nil, ash_query) do
+  defp should_be_in_expression?(calculation, expression \\ nil, ash_query) do
     expression =
       expression ||
         calculation.opts
@@ -1033,7 +1033,7 @@ defmodule Ash.Actions.Read.Calculations do
           ash_query.domain
         )
 
-    case Map.fetch(calculation.context, :all_referenced_calcs_support_expressions?) do
+    case Map.fetch(calculation.context, :should_be_in_expression?) do
       {:ok, value} ->
         value
 
@@ -1049,10 +1049,7 @@ defmodule Ash.Actions.Read.Calculations do
             end)
 
           {:error, _error} ->
-            true
-
-          :error ->
-            true
+            false
         end
     end
   end
@@ -1074,11 +1071,11 @@ defmodule Ash.Actions.Read.Calculations do
     else
       has_expression? = calculation.module.has_expression?()
 
-      if has_expression? && all_referenced_calcs_support_expressions?(calculation, query) do
+      if has_expression? && should_be_in_expression?(calculation, query) do
         Map.update!(query, :calculations, fn calculations ->
           Map.update!(calculations, calculation.name, fn calc ->
             Map.update!(calc, :context, fn context ->
-              Map.put(context, :all_referenced_calcs_support_expressions?, true)
+              Map.put(context, :should_be_in_expression?, true)
             end)
           end)
         end)
@@ -1088,7 +1085,7 @@ defmodule Ash.Actions.Read.Calculations do
             Map.update!(query, :calculations, fn calculations ->
               Map.update!(calculations, calculation.name, fn calc ->
                 Map.update!(calc, :context, fn context ->
-                  Map.put(context, :all_referenced_calcs_support_expressions?, false)
+                  Map.put(context, :should_be_in_expression?, false)
                 end)
               end)
             end)

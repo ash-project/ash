@@ -39,7 +39,8 @@ defmodule Ash.Resource.Calculation.Expression do
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, values} ->
       case Ash.Filter.hydrate_refs(expression, %{
              resource: resource,
-             public?: false
+             public?: false,
+             eval?: true
            }) do
         {:ok, expression} ->
           case Ash.Expr.eval_hydrated(expression,
@@ -97,12 +98,22 @@ defmodule Ash.Resource.Calculation.Expression do
            resource: query.resource,
            calculations: query.calculations,
            aggregates: query.aggregates,
-           public?: false
+           public?: false,
+           eval?: true
          }) do
       {:ok, expression} ->
         expression
         |> Ash.Filter.list_refs()
-        |> Enum.map(& &1.attribute)
+        |> Enum.map(fn
+          %{attribute: %Ash.Query.Aggregate{} = agg} ->
+            agg
+
+          %{attribute: %Ash.Query.Calculation{} = calc} ->
+            calc
+
+          %{attribute: %{name: name}} ->
+            name
+        end)
         |> Enum.concat(Ash.Filter.used_aggregates(expression))
         |> Enum.uniq()
 
