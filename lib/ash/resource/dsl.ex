@@ -473,7 +473,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a validation for creates and updates.
 
-    See `Ash.Resource.Change` for more.
+    See `Ash.Resource.Validation.Builtins` or `Ash.Resource.Validation` for more.
     """,
     examples: [
       "validate {Mod, [foo: :bar]}",
@@ -491,7 +491,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a validation to be applied to the changeset.
 
-    See `Ash.Resource.Validation` for more.
+    See `Ash.Resource.Validation.Builtins` or `Ash.Resource.Validation` for more.
     """,
     examples: [
       "validate changing(:email)"
