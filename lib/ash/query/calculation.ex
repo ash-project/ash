@@ -121,6 +121,20 @@ defmodule Ash.Query.Calculation do
   defimpl Inspect do
     import Inspect.Algebra
 
+    def inspect(%{context: context, calc_name: calc_name}, inspect_opts)
+        when not is_nil(calc_name) do
+      if context.arguments == %{} do
+        to_string(calc_name)
+      else
+        concat([
+          to_string(calc_name),
+          "(",
+          to_doc(Map.to_list(context.arguments), inspect_opts),
+          ")"
+        ])
+      end
+    end
+
     def inspect(%{module: module, opts: calculation_opts, context: context}, _opts) do
       if context.arguments == %{} do
         module.describe(calculation_opts)

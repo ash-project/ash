@@ -10,8 +10,14 @@ defmodule Ash.Query.Ref do
     def inspect(ref, _opts) do
       name =
         case ref.attribute do
-          %{name: name} -> name
-          name -> name
+          %mod{} when mod in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
+            ref.attribute
+
+          %{name: name} ->
+            name
+
+          name ->
+            name
         end
 
       name =
