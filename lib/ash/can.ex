@@ -713,6 +713,7 @@ defmodule Ash.Can do
           else
             query
             |> Ash.Query.do_filter(or: pkey_values)
+            |> Ash.Query.select([])
             |> Ash.Query.data_layer_query()
             |> case do
               {:ok, data_layer_query} ->
@@ -769,6 +770,7 @@ defmodule Ash.Can do
           query
           |> Ash.Query.do_filter(pkey_value)
           |> Ash.Query.set_tenant(tenant)
+          |> Ash.Query.select([])
           |> Ash.Query.data_layer_query()
           |> case do
             {:ok, data_layer_query} ->

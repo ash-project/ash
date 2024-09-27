@@ -1491,73 +1491,8 @@ defmodule Ash.Query do
       )
       |> Ash.Actions.Helpers.validate_calculation_load!(module)
       |> Enum.concat(resource_calculation_load)
-      |> reify_calculations(query)
 
     %{calculation | required_loads: loads}
-  end
-
-  @doc false
-  def reify_calculations(loads, query) do
-    loads
-    |> List.wrap()
-    |> Enum.map(fn
-      {load, {args, further}} ->
-        if resource_calculation = Ash.Resource.Info.calculation(query.resource, load) do
-          case resource_calc_to_calc(query, load, resource_calculation, args) do
-            {:error, _} ->
-              {load, {args, further}}
-
-            {:ok, calc} ->
-              {calc, further}
-          end
-        else
-          if relationship = Ash.Resource.Info.relationship(query.resource, load) do
-            related_query = new(relationship.destination)
-            {{load, reify_calculations(args, related_query)}, further}
-          else
-            {load, {args, further}}
-          end
-        end
-
-      {load, args} ->
-        if resource_calculation = Ash.Resource.Info.calculation(query.resource, load) do
-          case resource_calc_to_calc(query, load, resource_calculation, args) do
-            {:error, _} ->
-              {load, args}
-
-            {:ok, calc} ->
-              calc
-          end
-        else
-          if relationship = Ash.Resource.Info.relationship(query.resource, load) do
-            related_query = new(relationship.destination)
-            {load, reify_calculations(args, related_query)}
-          else
-            {load, args}
-          end
-        end
-
-      load ->
-        if resource_calculation = Ash.Resource.Info.calculation(query.resource, load) do
-          case resource_calc_to_calc(query, load, resource_calculation) do
-            {:error, _} ->
-              load
-
-            {:ok, calc} ->
-              calc
-          end
-        else
-          if relationship = Ash.Resource.Info.relationship(query.resource, load) do
-            {load, relationship.destination |> new() |> set_tenant(query.tenant)}
-          else
-            load
-          end
-        end
-    end)
-    |> case do
-      [%Ash.Query{} = query] -> query
-      other -> other
-    end
   end
 
   defp fetch_key(map, key) when is_map(map) do
@@ -2504,7 +2439,6 @@ defmodule Ash.Query do
           )
           |> Ash.Actions.Helpers.validate_calculation_load!(module)
           |> Enum.concat(List.wrap(calculation.required_loads))
-          |> reify_calculations(query)
 
         calculation = %{calculation | required_loads: loads}
         %{query | calculations: Map.put(query.calculations, name, calculation)}
