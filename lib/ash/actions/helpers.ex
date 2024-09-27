@@ -807,7 +807,11 @@ defmodule Ash.Actions.Helpers do
     |> Ash.Resource.Info.attributes()
     |> Enum.flat_map(fn attribute ->
       if is_nil(select) do
-        !attribute.select_by_default?
+        if attribute.select_by_default? do
+          []
+        else
+          [attribute.name]
+        end
       else
         if attribute.always_select? || attribute.primary_key? || attribute.name in select do
           []
