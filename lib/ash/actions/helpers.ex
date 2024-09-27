@@ -805,23 +805,15 @@ defmodule Ash.Actions.Helpers do
   defp select_mask(%{select: select, resource: resource}) do
     resource
     |> Ash.Resource.Info.attributes()
-    |> Enum.flat_map(fn attribute ->
+    |> Enum.reject(fn attribute ->
       if is_nil(select) do
-        if attribute.select_by_default? do
-          []
-        else
-          [attribute.name]
-        end
+        attribute.select_by_default?
       else
-        if attribute.always_select? || attribute.primary_key? || attribute.name in select do
-          []
-        else
-          [attribute.name]
-        end
+        attribute.always_select? || attribute.primary_key? || attribute.name in select
       end
     end)
-    |> Map.new(fn key ->
-      {key, %Ash.NotLoaded{field: key, type: :attribute}}
+    |> Map.new(fn attribute ->
+      {attribute.name, %Ash.NotLoaded{field: attribute.name, type: :attribute}}
     end)
   end
 end
