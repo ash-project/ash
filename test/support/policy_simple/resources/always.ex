@@ -29,6 +29,7 @@ defmodule Ash.Test.Support.PolicySimple.Always do
     end
 
     policy always() do
+      access_type :strict
       forbid_if always()
     end
   end

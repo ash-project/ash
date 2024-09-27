@@ -19,6 +19,7 @@ defmodule Ash.Error.Forbidden.Policy do
       context_description: nil,
       policies: [],
       resource: nil,
+      solver_statement: nil,
       domain: nil,
       action: nil,
       changeset_doesnt_match_filter: false
@@ -101,6 +102,7 @@ defmodule Ash.Error.Forbidden.Policy do
                   domain: error.domain,
                   resource: error.resource,
                   actor: error.actor,
+                  solver_statement: error.solver_statement,
                   must_pass_strict_check?: must_pass_strict_check?,
                   subject: error.subject,
                   context_description: error.context_description,
@@ -193,6 +195,11 @@ defmodule Ash.Error.Forbidden.Policy do
           "  Actor: #{inspect(actor)}"
       end
 
+    solver_statement =
+      if opts[:solver_statement] && opts[:solver_statement] not in [nil, false, true] do
+        Ash.Policy.Policy.debug_expr(opts[:solver_statement], "SAT Solver statement")
+      end
+
     policy_explanation =
       policies
       |> Kernel.||([])
@@ -206,7 +213,7 @@ defmodule Ash.Error.Forbidden.Policy do
                 if opts[:domain] && opts[:resource] do
                   policy_breakdown_title ++
                     [
-                      "No policies defined on `#{inspect(opts[:domain])}` or `#{inspect(opts[:resource])}`.\nFor safety, at least one policy must apply to all requests.\n"
+                      "No policies defined on `#{inspect(opts[:domain])}` or `#{inspect(opts[:resource])}` that applied.\nFor safety, at least one policy must apply to all requests.\n"
                     ]
                 else
                   policy_breakdown_title ++
@@ -255,7 +262,7 @@ defmodule Ash.Error.Forbidden.Policy do
         ""
       end
 
-    [must_pass_strict_check?, filter, policy_explanation]
+    [must_pass_strict_check?, filter, policy_explanation, List.wrap(solver_statement)]
     |> Enum.filter(& &1)
     |> Enum.intersperse("\n")
   end

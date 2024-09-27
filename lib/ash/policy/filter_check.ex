@@ -52,6 +52,8 @@ defmodule Ash.Policy.FilterCheck do
 
       def requires_original_data?(_, _), do: false
 
+      def eager_evaluate?, do: false
+
       def strict_check_context(opts) do
         []
       end

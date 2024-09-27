@@ -13,6 +13,7 @@ defmodule Ash.Policy.Authorizer do
     :check_scenarios,
     :subject,
     :for_fields,
+    :solver_statement,
     context: %{},
     policies: [],
     facts: %{true => true, false => false},
@@ -28,6 +29,7 @@ defmodule Ash.Policy.Authorizer do
           subject: Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t(),
           context: map,
           data: term,
+          solver_statement: term,
           action: Ash.Resource.Actions.Action.t(),
           domain: Ash.Domain.t(),
           scenarios: [map],
@@ -482,6 +484,7 @@ defmodule Ash.Policy.Authorizer do
   def exception({:changeset_doesnt_match_filter, filter}, state) do
     Ash.Error.Forbidden.Policy.exception(
       scenarios: Map.get(state, :scenarios),
+      solver_statement: Map.get(state, :solver_statement),
       facts: Map.get(state, :facts),
       policies: Map.get(state, :policies),
       subject: Map.get(state, :subject),
@@ -498,6 +501,7 @@ defmodule Ash.Policy.Authorizer do
     Ash.Error.Forbidden.Policy.exception(
       scenarios: Map.get(state, :scenarios),
       facts: Map.get(state, :facts),
+      solver_statement: Map.get(state, :solver_statement),
       domain: Map.get(state, :domain),
       subject: Map.get(state, :subject),
       policies: Map.get(state, :policies),
@@ -512,6 +516,7 @@ defmodule Ash.Policy.Authorizer do
     Ash.Error.Forbidden.Policy.exception(
       scenarios: Map.get(state, :scenarios),
       domain: Map.get(state, :domain),
+      solver_statement: Map.get(state, :solver_statement),
       facts: Map.get(state, :facts),
       subject: Map.get(state, :subject),
       policies: Map.get(state, :policies),
@@ -625,18 +630,14 @@ defmodule Ash.Policy.Authorizer do
     |> strict_check_result()
     |> case do
       {:authorized, authorizer} ->
-        authorizer = strict_check_all_facts(authorizer)
-
         log_successful_policy_breakdown(authorizer)
         {:authorized, authorizer}
 
       {:filter, authorizer, filter} ->
-        authorizer = strict_check_all_facts(authorizer)
         log_successful_policy_breakdown(authorizer, filter)
         {:filter, authorizer, filter}
 
       {:filter_and_continue, filter, authorizer} ->
-        authorizer = strict_check_all_facts(authorizer)
         log_successful_policy_breakdown(authorizer, filter)
         {:filter, authorizer, filter}
 
@@ -1517,56 +1518,67 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp strict_check_result(authorizer, opts \\ []) do
-    case Checker.strict_check_scenarios(%{authorizer | for_fields: opts[:for_fields]}) do
-      {:ok, true, authorizer} ->
-        {:authorized, authorizer}
+    %{authorizer | for_fields: opts[:for_fields]}
+    |> Checker.strict_check_scenarios()
+    |> handle_strict_check_result(opts)
+  end
 
-      {:ok, none, authorizer} when none in [false, []] ->
+  defp handle_strict_check_result({:ok, true, authorizer}, _opts), do: {:authorized, authorizer}
+
+  defp handle_strict_check_result({:ok, none, authorizer}, opts) when none in [false, []] do
+    handle_strict_check_result({:error, authorizer, :unsatisfiable}, opts)
+  end
+
+  defp handle_strict_check_result({:ok, scenarios, authorizer}, _opts) do
+    case Checker.find_real_scenarios(scenarios, authorizer.facts) do
+      [] ->
+        maybe_strict_filter(authorizer, scenarios)
+
+      _real_scenarios ->
+        {:authorized, authorizer}
+    end
+  end
+
+  defp handle_strict_check_result({:error, authorizer, :unsatisfiable}, opts) do
+    if authorizer.action.type == :action || Enum.empty?(authorizer.policies || []) do
+      {:error,
+       Ash.Error.Forbidden.Policy.exception(
+         facts: authorizer.facts,
+         domain: Map.get(authorizer, :domain),
+         solver_statement: Map.get(authorizer, :solver_statement),
+         policies: authorizer.policies,
+         subject: authorizer.subject,
+         context_description: opts[:context_description],
+         for_fields: opts[:for_fields],
+         resource: Map.get(authorizer, :resource),
+         action: Map.get(authorizer, :action),
+         actor: Map.get(authorizer, :actor),
+         scenarios: []
+       )}
+    else
+      if forbidden_due_to_strict_policy?(authorizer) do
         {:error,
          Ash.Error.Forbidden.Policy.exception(
            facts: authorizer.facts,
            domain: Map.get(authorizer, :domain),
+           solver_statement: Map.get(authorizer, :solver_statement),
            policies: authorizer.policies,
            subject: authorizer.subject,
            context_description: opts[:context_description],
            for_fields: opts[:for_fields],
            resource: Map.get(authorizer, :resource),
-           actor: Map.get(authorizer, :actor),
            action: Map.get(authorizer, :action),
+           actor: Map.get(authorizer, :actor),
            scenarios: []
          )}
-
-      {:ok, scenarios, authorizer} ->
-        case Checker.find_real_scenarios(scenarios, authorizer.facts) do
-          [] ->
-            maybe_strict_filter(authorizer, scenarios)
-
-          _real_scenarios ->
-            {:authorized, authorizer}
-        end
-
-      {:error, authorizer, :unsatisfiable} ->
-        if forbidden_due_to_strict_policy?(authorizer) do
-          {:error,
-           Ash.Error.Forbidden.Policy.exception(
-             facts: authorizer.facts,
-             domain: Map.get(authorizer, :domain),
-             policies: authorizer.policies,
-             subject: authorizer.subject,
-             context_description: opts[:context_description],
-             for_fields: opts[:for_fields],
-             resource: Map.get(authorizer, :resource),
-             action: Map.get(authorizer, :action),
-             actor: Map.get(authorizer, :actor),
-             scenarios: []
-           )}
-        else
-          {:filter, authorizer, false}
-        end
-
-      {:error, _authorizer, exception} ->
-        {:error, Ash.Error.to_ash_error(exception)}
+      else
+        {:filter, authorizer, false}
+      end
     end
+  end
+
+  defp handle_strict_check_result({:error, _authorizer, exception}, _opts) do
+    {:error, Ash.Error.to_ash_error(exception)}
   end
 
   defp maybe_strict_filter(authorizer, scenarios) do
@@ -1585,14 +1597,25 @@ defmodule Ash.Policy.Authorizer do
          authorizer.action.type != :read do
       true
     else
-      authorizer.policies
-      |> Enum.any?(fn policy ->
-        policy.access_type == :strict and
-          Enum.all?(policy.condition || [], fn {check_module, check_opts} ->
-            Policy.fetch_fact(authorizer.facts, {check_module, check_opts}) == {:ok, true}
-          end) and
-          policy_fails_statically?(authorizer, policy)
-      end)
+      if Enum.any?(authorizer.policies, fn policy ->
+           Enum.all?(policy.condition || [], fn {check_module, check_opts} ->
+             Policy.fetch_fact(authorizer.facts, {check_module, check_opts}) in [
+               {:ok, true},
+               :unknown
+             ]
+           end)
+         end) do
+        authorizer.policies
+        |> Enum.any?(fn policy ->
+          policy.access_type == :strict and
+            Enum.all?(policy.condition || [], fn {check_module, check_opts} ->
+              Policy.fetch_fact(authorizer.facts, {check_module, check_opts}) == {:ok, true}
+            end) and
+            policy_fails_statically?(authorizer, policy)
+        end)
+      else
+        true
+      end
     end
   end
 

@@ -123,11 +123,18 @@ defmodule Ash.Query.Calculation do
 
     def inspect(%{context: context, calc_name: calc_name}, inspect_opts)
         when not is_nil(calc_name) do
+      calc_name =
+        if is_atom(calc_name) or is_binary(calc_name) do
+          to_string(calc_name)
+        else
+          to_doc(calc_name, inspect_opts)
+        end
+
       if context.arguments == %{} do
-        to_string(calc_name)
+        calc_name
       else
         concat([
-          to_string(calc_name),
+          calc_name,
           "(",
           to_doc(Map.to_list(context.arguments), inspect_opts),
           ")"

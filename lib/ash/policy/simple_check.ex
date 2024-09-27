@@ -30,8 +30,11 @@ defmodule Ash.Policy.SimpleCheck do
       end
 
       def prefer_expanded_description?, do: false
+      def eager_evaluate?, do: true
 
-      defoverridable requires_original_data?: 2, prefer_expanded_description?: 0
+      defoverridable requires_original_data?: 2,
+                     prefer_expanded_description?: 0,
+                     eager_evaluate?: 0
     end
   end
 end

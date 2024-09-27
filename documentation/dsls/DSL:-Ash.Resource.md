@@ -1100,7 +1100,7 @@ validate validation
 
 Declares a validation to be applied to the changeset.
 
-See `Ash.Resource.Validation` for more.
+See `Ash.Resource.Validation.Builtins` or `Ash.Resource.Validation` for more.
 
 
 
@@ -1585,7 +1585,7 @@ validate validation
 
 Declares a validation to be applied to the changeset.
 
-See `Ash.Resource.Validation` for more.
+See `Ash.Resource.Validation.Builtins` or `Ash.Resource.Validation` for more.
 
 
 
@@ -1829,7 +1829,7 @@ validate validation
 
 Declares a validation to be applied to the changeset.
 
-See `Ash.Resource.Validation` for more.
+See `Ash.Resource.Validation.Builtins` or `Ash.Resource.Validation` for more.
 
 
 
@@ -2351,7 +2351,7 @@ validate validation
 
 Declares a validation for creates and updates.
 
-See `Ash.Resource.Change` for more.
+See `Ash.Resource.Validation.Builtins` or `Ash.Resource.Validation` for more.
 
 
 

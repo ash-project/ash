@@ -1180,6 +1180,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  %{title2: "updated value", authorize?: false},
                  strategy: :atomic,
                  authorize?: true,
+                 authorize_with: :error,
                  actor: %{foo: :bar},
                  resource: Post,
                  return_records?: true,

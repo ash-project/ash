@@ -1,6 +1,17 @@
 defmodule Ash.Policy.SatSolver do
   @moduledoc false
-  def solve(expression, mapper \\ nil) do
+  def solve(expression, mapper \\ nil)
+  def solve(false, _), do: {:error, :unsatisfiable}
+
+  def solve(true, mapper) do
+    if mapper do
+      {:ok, Enum.map([%{}], fn scenario -> mapper.(scenario, %{}) end)}
+    else
+      {:ok, [%{}]}
+    end
+  end
+
+  def solve(expression, mapper) do
     {cnf, bindings} = Ash.SatSolver.to_cnf(expression)
 
     cnf

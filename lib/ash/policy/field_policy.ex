@@ -6,6 +6,7 @@ defmodule Ash.Policy.FieldPolicy do
     :policies,
     :description,
     :__identifier__,
+    access_type: :filter,
     bypass?: false
   ]
 

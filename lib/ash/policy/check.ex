@@ -69,6 +69,7 @@ defmodule Ash.Policy.Check do
   `:simple` checks can use `Ash.Policy.SimpleCheck` for simplicity
   """
   @callback type() :: check_type()
+  @callback eager_evaluate?() :: boolean()
   @optional_callbacks check: 4, auto_filter: 3, expand_description: 3
 
   def defines_check?(module) do
@@ -89,8 +90,12 @@ defmodule Ash.Policy.Check do
       def type, do: :manual
       def requires_original_data?(_, _), do: false
       def prefer_expanded_description?, do: false
+      def eager_evaluate?, do: false
 
-      defoverridable type: 0, requires_original_data?: 2, prefer_expanded_description?: 0
+      defoverridable type: 0,
+                     requires_original_data?: 2,
+                     prefer_expanded_description?: 0,
+                     eager_evaluate?: 0
     end
   end
 end

@@ -4,58 +4,37 @@ defmodule Ash.Policy.Checker do
   alias Ash.Policy.{Check, FieldPolicy, Policy}
 
   def strict_check_all_facts(%{policies: policies} = authorizer) do
-    Enum.reduce_while(policies, {:ok, authorizer, authorizer.facts}, fn policy,
-                                                                        {:ok, authorizer, facts} ->
-      case do_strict_check_all_facts(policy, authorizer, facts) do
-        {:ok, authorizer, facts} ->
-          {:cont, {:ok, authorizer, facts}}
-
-        {:error, error} ->
-          {:halt, {:error, error}}
-      end
+    Enum.reduce(policies, authorizer, fn policy, authorizer ->
+      do_strict_check_all_facts(policy, authorizer)
     end)
   end
 
-  defp do_strict_check_all_facts(%policy_struct{} = policy, authorizer, facts)
+  defp do_strict_check_all_facts(%policy_struct{} = policy, authorizer)
        when policy_struct in [Policy, FieldPolicy] do
     policy.condition
     |> List.wrap()
-    |> Enum.reduce_while({:ok, authorizer, facts}, fn {check_module, opts},
-                                                      {:ok, authorizer, facts} ->
-      case do_strict_check_all_facts(
-             %Check{check_module: check_module, check_opts: opts},
-             authorizer,
-             facts
-           ) do
-        {:ok, authorizer, facts} ->
-          {:cont, {:ok, authorizer, facts}}
-
-        {:error, error} ->
-          {:halt, {:error, error}}
-      end
+    |> Enum.reduce(authorizer, fn {check_module, opts}, authorizer ->
+      do_strict_check_all_facts(%Check{check_module: check_module, check_opts: opts}, authorizer)
     end)
-    |> case do
-      {:ok, authorizer, facts} ->
-        strict_check_all_policies(policy.policies, authorizer, facts)
-
-      {:error, error} ->
-        {:error, error}
-    end
+    |> then(&strict_check_all_policies(policy.policies, &1))
   end
 
-  defp do_strict_check_all_facts(%Ash.Policy.Check{} = check, authorizer, facts) do
+  defp do_strict_check_all_facts(%Ash.Policy.Check{} = check, authorizer) do
     check_module = check.check_module
     opts = check.check_opts
 
-    {:ok, authorizer, Map.put_new(facts, {check_module, opts}, :unknown)}
+    case Ash.Policy.Policy.fetch_or_strict_check_fact(authorizer, {check_module, opts}) do
+      {:ok, _, authorizer} ->
+        authorizer
+
+      {:error, authorizer} ->
+        authorizer
+    end
   end
 
-  defp strict_check_all_policies(policies, authorizer, facts) do
-    Enum.reduce_while(policies, {:ok, authorizer, facts}, fn policy, {:ok, authorizer, facts} ->
-      case do_strict_check_all_facts(policy, authorizer, facts) do
-        {:ok, authorizer, facts} -> {:cont, {:ok, authorizer, facts}}
-        {:error, error} -> {:halt, {:error, error}}
-      end
+  defp strict_check_all_policies(policies, authorizer) do
+    Enum.reduce(policies, authorizer, fn policy, authorizer ->
+      do_strict_check_all_facts(policy, authorizer)
     end)
   end
 
