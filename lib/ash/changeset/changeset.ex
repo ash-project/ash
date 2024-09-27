@@ -466,17 +466,26 @@ defmodule Ash.Changeset do
   end
 
   def set_action_select(changeset) do
-    required =
-      Ash.Resource.Info.action_select(changeset.resource, changeset.action.name) || []
+    if Ash.DataLayer.data_layer_can?(changeset.resource, :action_select) do
+      required =
+        Ash.Resource.Info.action_select(changeset.resource, changeset.action.name) || []
 
-    select =
-      changeset.select ||
-        MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource))
+      select =
+        changeset.select ||
+          MapSet.to_list(
+            Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource)
+          )
 
-    %{
-      changeset
-      | action_select: Enum.uniq(List.wrap(required) |> Enum.concat(select))
-    }
+      %{
+        changeset
+        | action_select: Enum.uniq(List.wrap(required) |> Enum.concat(select))
+      }
+    else
+      %{
+        changeset
+        | action_select: MapSet.to_list(Ash.Resource.Info.attribute_names(changeset.resource))
+      }
+    end
   end
 
   @doc """

@@ -398,12 +398,13 @@ defmodule Ash.Actions.Read.Calculations do
     if calculation.load do
       Enum.zip_with([records, values], fn
         [record, %Ash.NotLoaded{}] ->
-          raise """
-          Invalid return from calculation, expected a value, got `%Ash.NotLoaded{}`
+          raise Ash.Error.Framework.AssumptionFailed,
+            message: """
+            Invalid return from calculation, expected a value, got `%Ash.NotLoaded{}`
 
-          Calculation: #{inspect(calculation.name)}
-          Record: #{inspect(record)}
-          """
+            Calculation: #{inspect(calculation.name)}
+            Record: #{inspect(record)}
+            """
 
         [record, value] ->
           Map.put(record, calculation.load, value)
@@ -411,12 +412,13 @@ defmodule Ash.Actions.Read.Calculations do
     else
       Enum.zip_with([records, values], fn
         [record, %Ash.NotLoaded{}] ->
-          raise """
-          Invalid return from calculation, expected a value, got `%Ash.NotLoaded{}`
+          raise Ash.Error.Framework.AssumptionFailed,
+            message: """
+            Invalid return from calculation, expected a value, got `%Ash.NotLoaded{}`
 
-          Calculation: #{inspect(calculation.name)}
-          Record: #{inspect(record)}
-          """
+            Calculation: #{inspect(calculation.name)}
+            Record: #{inspect(record)}
+            """
 
         [record, value] ->
           Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))

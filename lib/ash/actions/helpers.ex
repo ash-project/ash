@@ -778,12 +778,36 @@ defmodule Ash.Actions.Helpers do
     result
   end
 
-  def select(%resource{} = result, %{resource: resource, select: select}) do
+  def select(%resource{} = result, %{select: select, resource: resource} = query) do
+    select_mask = select_mask(query)
+
+    result
+    |> Map.merge(select_mask)
+    |> Ash.Resource.put_metadata(:selected, select)
+  end
+
+  def select(:ok, _query), do: :ok
+
+  def select(results, %{select: select} = query) do
+    if Enumerable.impl_for(results) do
+      select_mask = select_mask(query)
+
+      Enum.map(results, fn result ->
+        result
+        |> Map.merge(select_mask)
+        |> Ash.Resource.put_metadata(:selected, select)
+      end)
+    else
+      results
+    end
+  end
+
+  defp select_mask(%{select: select, resource: resource}) do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.flat_map(fn attribute ->
       if is_nil(select) do
-        attribute.select_by_default?
+        !attribute.select_by_default?
       else
         if attribute.always_select? || attribute.primary_key? || attribute.name in select do
           []
@@ -792,20 +816,8 @@ defmodule Ash.Actions.Helpers do
         end
       end
     end)
-    |> Enum.reduce(result, fn key, record ->
-      record
-      |> Map.put(key, %Ash.NotLoaded{field: key, type: :attribute})
+    |> Map.new(fn key ->
+      {key, %Ash.NotLoaded{field: key, type: :attribute}}
     end)
-    |> Ash.Resource.put_metadata(:selected, select)
-  end
-
-  def select(:ok, _query), do: :ok
-
-  def select(results, query) do
-    if Enumerable.impl_for(results) do
-      Enum.map(results, &select(&1, query))
-    else
-      results
-    end
   end
 end

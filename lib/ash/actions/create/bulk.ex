@@ -139,18 +139,22 @@ defmodule Ash.Actions.Create.Bulk do
       |> Enum.reject(&(&1.allow_nil? || &1.generated? || &1.name in belongs_to_attrs))
 
     action_select =
-      Enum.uniq(
-        Enum.concat(
-          Ash.Resource.Info.action_select(
-            resource,
-            action
-          ),
-          List.wrap(
-            opts[:select] ||
-              MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(resource))
+      if Ash.DataLayer.data_layer_can?(resource, :action_select) do
+        Enum.uniq(
+          Enum.concat(
+            Ash.Resource.Info.action_select(
+              resource,
+              action
+            ),
+            List.wrap(
+              opts[:select] ||
+                MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(resource))
+            )
           )
         )
-      )
+      else
+        MapSet.to_list(Ash.Resource.Info.attribute_names(resource))
+      end
 
     changeset_stream =
       inputs

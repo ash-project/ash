@@ -493,17 +493,21 @@ defmodule Ash.Actions.Update.Bulk do
       hooks_and_calcs_for_update_query(atomic_changeset, context, query, opts)
 
     action_select =
-      Enum.uniq(
-        Enum.concat(
-          Ash.Resource.Info.action_select(atomic_changeset.resource, atomic_changeset.action),
-          List.wrap(
-            opts[:select] ||
-              MapSet.to_list(
-                Ash.Resource.Info.selected_by_default_attribute_names(atomic_changeset.resource)
-              )
+      if Ash.DataLayer.data_layer_can?(atomic_changeset.resource, :action_select) do
+        Enum.uniq(
+          Enum.concat(
+            Ash.Resource.Info.action_select(atomic_changeset.resource, atomic_changeset.action),
+            List.wrap(
+              opts[:select] ||
+                MapSet.to_list(
+                  Ash.Resource.Info.selected_by_default_attribute_names(atomic_changeset.resource)
+                )
+            )
           )
         )
-      )
+      else
+        MapSet.to_list(Ash.Resource.Info.attribute_names(atomic_changeset.resource))
+      end
 
     update_query_opts =
       opts

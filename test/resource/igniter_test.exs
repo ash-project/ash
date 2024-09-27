@@ -14,7 +14,7 @@ defmodule Ash.Resource.IgniterTest do
       attribute :name, :string, allow_nil?: true
       """)
       |> assert_has_patch("lib/my_app/user.ex", """
-      + | attribute :name, :string, allow_nil?: true
+      + | attribute(:name, :string, allow_nil?: true)
       """)
     end
 
