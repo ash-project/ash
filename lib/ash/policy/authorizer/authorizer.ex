@@ -658,16 +658,10 @@ defmodule Ash.Policy.Authorizer do
         authorizer,
         context
       ) do
-    case Ash.Policy.Info.field_policies(resource) do
-      [] ->
-        {:ok, filter}
+    {expr, _acc} =
+      replace_refs(expression, authorizer_acc(authorizer, resource, context))
 
-      _ ->
-        {expr, _acc} =
-          replace_refs(expression, authorizer_acc(authorizer, resource, context))
-
-        {:ok, %{filter | expression: expr}}
-    end
+    {:ok, %{filter | expression: expr}}
   end
 
   def alter_filter(filter, _, _), do: {:ok, filter}
@@ -872,24 +866,31 @@ defmodule Ash.Policy.Authorizer do
   defp do_replace_ref(
          %{
            attribute: %struct{name: name},
-           relationship_path: relationship_path,
-           resource: resource
+           relationship_path: relationship_path
          } = ref,
-         %{stack: [{parent, _path, _action, domain} | _]} = acc
+         %{stack: [{parent, _path, action, domain} | _]} = acc
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
+    resource = Ash.Resource.Info.related(parent, relationship_path)
+
     action =
-      Map.get(Ash.Resource.Info.relationship(parent, relationship_path) || %{}, :relationship) ||
-        Ash.Resource.Info.primary_action!(resource, :read)
+      case relationship_path do
+        [] ->
+          action
 
-    expression_for_ref(resource, name, action, domain, ref, acc)
-  end
+        path ->
+          case Map.get(
+                 Ash.Resource.Info.relationship(parent, path) || %{},
+                 :read_action
+               ) do
+            nil ->
+              Ash.Resource.Info.primary_action!(resource, :read)
 
-  defp do_replace_ref(
-         %{attribute: %struct{name: name}} = ref,
-         %{stack: [{resource, _path, action, domain} | _]} = acc
-       )
-       when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
+            read_action ->
+              Ash.Resource.Info.action(resource, read_action)
+          end
+      end
+
     expression_for_ref(resource, name, action, domain, ref, acc)
   end
 
@@ -918,24 +919,16 @@ defmodule Ash.Policy.Authorizer do
   defp expression_for_ref(resource, field, action, domain, ref, acc) do
     case field_condition(resource, field, action, domain, acc) do
       {:none, acc} ->
-        {%{ref | input?: false}, acc}
+        {ref, acc}
 
       {:expr, expr, acc} ->
-        expr =
-          Ash.Expr.expr(
-            if ^expr do
-              ^%{ref | input?: false}
-            else
-              nil
-            end
-          )
-
         {expr, acc}
     end
   end
 
   defp field_condition(resource, field, action, domain, acc) do
-    if Ash.Policy.Authorizer in Ash.Resource.Info.authorizers(resource) do
+    if Ash.Policy.Authorizer in Ash.Resource.Info.authorizers(resource) &&
+         !Enum.empty?(Ash.Policy.Info.field_policies(resource)) do
       {authorizer, acc} =
         case Map.fetch(acc.authorizers, {resource, action}) do
           {:ok, authorizer} ->

@@ -997,12 +997,19 @@ defmodule Ash.Filter do
           )
           |> case do
             {:ok, true, authorized_related_query} ->
+              related_filter =
+                if is_nil(authorized_related_query.filter) do
+                  %Ash.Filter{expression: true, resource: related_query.resource}
+                else
+                  authorized_related_query.filter
+                end
+
               {:cont,
                {:ok,
                 Map.put(
                   filters,
                   {last_relationship.source, last_relationship.name, related_query.action.name},
-                  authorized_related_query.filter
+                  related_filter
                 )}}
 
             {:ok, false, _error} ->
@@ -1011,7 +1018,7 @@ defmodule Ash.Filter do
                 Map.put(
                   filters,
                   {last_relationship.source, last_relationship.name, related_query.action.name},
-                  false
+                  %Ash.Filter{expression: false, resource: related_query.resource}
                 )}}
 
             {:error, error} ->

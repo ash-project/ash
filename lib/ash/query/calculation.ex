@@ -96,8 +96,6 @@ defmodule Ash.Query.Calculation do
       calc_name =
         if :calc_name in opts.__set__ do
           opts.calc_name
-        else
-          name
         end
 
       {:ok,
