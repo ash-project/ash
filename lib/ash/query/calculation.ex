@@ -117,7 +117,7 @@ defmodule Ash.Query.Calculation do
   end
 
   @from_resource_schema [
-    arguments: [
+    args: [
       type: :map,
       doc: "Arguments to pass to the calculation",
       default: %{}
