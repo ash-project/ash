@@ -180,8 +180,8 @@ defmodule Ash.Query.Calculation do
 
     %{calculation: {module, calc_opts}} = resource_calculation
 
-      with {:ok, opts} <- FromResourceOpts.validate(opts),
-      {:ok, args} <-
+    with {:ok, opts} <- FromResourceOpts.validate(opts),
+         {:ok, args} <-
            Ash.Query.validate_calculation_arguments(resource_calculation, opts.args || %{}),
          {:ok, calculation} <-
            new(
