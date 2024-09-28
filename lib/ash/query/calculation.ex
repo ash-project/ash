@@ -178,11 +178,10 @@ defmodule Ash.Query.Calculation do
                   "No calculation called #{inspect(name)} found on #{inspect(resource)}"
       end
 
-    opts = FromResourceOpts.validate(opts)
-
     %{calculation: {module, calc_opts}} = resource_calculation
 
-    with {:ok, args} <-
+      with {:ok, opts} <- FromResourceOpts.validate(opts),
+      {:ok, args} <-
            Ash.Query.validate_calculation_arguments(resource_calculation, opts.args || %{}),
          {:ok, calculation} <-
            new(
