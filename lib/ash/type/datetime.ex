@@ -90,13 +90,14 @@ defmodule Ash.Type.DateTime do
   def cast_input(value, constraints) do
     case Ecto.Type.cast(storage_type(constraints), value) do
       :error ->
-         case Ash.Type.cast_input(:date, value, []) do
-            {:ok, date} ->
-              cast_input(date, constraints)
+        case Ash.Type.cast_input(:date, value, []) do
+          {:ok, date} ->
+            cast_input(date, constraints)
 
-            _ ->
-              {:error, "Could not cast input to datetime"}
-          end
+          _ ->
+            {:error, "Could not cast input to datetime"}
+        end
+
       {:ok, value} ->
         {:ok, value}
     end

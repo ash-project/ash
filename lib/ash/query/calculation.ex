@@ -116,6 +116,94 @@ defmodule Ash.Query.Calculation do
     end
   end
 
+  @from_resource_schema [
+    arguments: [
+      type: :map,
+      doc: "Arguments to pass to the calculation",
+      default: %{}
+    ],
+    source_context: [
+      type: :map,
+      doc: "Context from the source query or changeset.",
+      default: %{}
+    ]
+  ]
+
+  from_resource_schema = @from_resource_schema
+
+  defmodule FromResourceOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: from_resource_schema
+  end
+
+  @doc """
+  Creates a new query calculation from a resource calculation, raising any errors.
+
+  See `from_resource_calculation/3` for more.
+  """
+  def from_resource_calculation!(
+        resource,
+        name,
+        opts \\ []
+      ) do
+    case from_resource_calculation(resource, name, opts) do
+      {:ok, calculation} ->
+        calculation
+
+      {:error, error} ->
+        raise Ash.Error.to_ash_error(error)
+    end
+  end
+
+  @doc """
+  Creates a new query calculation from a resource calculation.
+
+  ## Options
+
+  #{Spark.Options.docs(@from_resource_schema)}
+  """
+  def from_resource_calculation(
+        resource,
+        name,
+        opts \\ []
+      ) do
+    resource_calculation =
+      case name do
+        %Ash.Resource.Calculation{} = calc ->
+          calc
+
+        name ->
+          Ash.Resource.Info.calculation(resource, name) ||
+            raise ArgumentError,
+                  "No calculation called #{inspect(name)} found on #{inspect(resource)}"
+      end
+
+    opts = FromResourceOpts.validate(opts)
+
+    %{calculation: {module, calc_opts}} = resource_calculation
+
+    with {:ok, args} <-
+           Ash.Query.validate_calculation_arguments(resource_calculation, opts.args || %{}),
+         {:ok, calculation} <-
+           new(
+             name,
+             module,
+             calc_opts,
+             resource_calculation.type,
+             resource_calculation.constraints,
+             arguments: args,
+             async?: resource_calculation.async?,
+             filterable?: resource_calculation.filterable?,
+             sortable?: resource_calculation.sortable?,
+             sensitive?: resource_calculation.sensitive?,
+             load: resource_calculation.load,
+             source_context: opts.source_context || %{},
+             calc_name: resource_calculation.name
+           ) do
+      {:ok, calculation}
+    end
+  end
+
   defimpl Inspect do
     import Inspect.Algebra
 

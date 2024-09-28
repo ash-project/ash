@@ -1515,27 +1515,15 @@ defmodule Ash.Query do
         {:ok, key} -> {key, nil}
       end
 
-    with %{calculation: {module, opts}} <- resource_calculation,
-         {:ok, args} <- validate_calculation_arguments(resource_calculation, args),
-         {:ok, calculation} <-
-           Calculation.new(
-             name,
-             module,
-             opts,
-             resource_calculation.type,
-             resource_calculation.constraints,
-             arguments: args,
-             async?: resource_calculation.async?,
-             filterable?: resource_calculation.filterable?,
-             sortable?: resource_calculation.sortable?,
-             sensitive?: resource_calculation.sensitive?,
-             load: resource_calculation.load,
-             source_context: query.context
+    with {:ok, calculation} <-
+           Ash.Query.Calculation.from_resource_calculation!(query.resource, name,
+             source_context: query.context,
+             args: args
            ) do
       {:ok,
        select_and_load_calc(
          resource_calculation,
-         %{calculation | load: load, calc_name: resource_calculation.name},
+         %{calculation | load: load},
          query
        )}
     end
