@@ -182,24 +182,22 @@ defmodule Ash.Query.Calculation do
 
     with {:ok, opts} <- FromResourceOpts.validate(opts),
          {:ok, args} <-
-           Ash.Query.validate_calculation_arguments(resource_calculation, opts.args || %{}),
-         {:ok, calculation} <-
-           new(
-             name,
-             module,
-             calc_opts,
-             resource_calculation.type,
-             resource_calculation.constraints,
-             arguments: args,
-             async?: resource_calculation.async?,
-             filterable?: resource_calculation.filterable?,
-             sortable?: resource_calculation.sortable?,
-             sensitive?: resource_calculation.sensitive?,
-             load: resource_calculation.load,
-             source_context: opts.source_context || %{},
-             calc_name: resource_calculation.name
-           ) do
-      {:ok, calculation}
+           Ash.Query.validate_calculation_arguments(resource_calculation, opts.args) do
+      new(
+        name,
+        module,
+        calc_opts,
+        resource_calculation.type,
+        resource_calculation.constraints,
+        arguments: args,
+        async?: resource_calculation.async?,
+        filterable?: resource_calculation.filterable?,
+        sortable?: resource_calculation.sortable?,
+        sensitive?: resource_calculation.sensitive?,
+        load: resource_calculation.load,
+        source_context: opts.source_context,
+        calc_name: resource_calculation.name
+      )
     end
   end
 

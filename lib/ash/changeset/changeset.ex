@@ -64,6 +64,7 @@ defmodule Ash.Changeset do
     attributes: %{},
     before_action: [],
     before_transaction: [],
+    no_atomic_constraints: [],
     context: %{},
     context_changes: %{},
     defaults: [],
@@ -634,6 +635,7 @@ defmodule Ash.Changeset do
         |> Map.put(:context, opts[:context] || %{})
         |> Map.put(:params, params)
         |> Map.put(:action, action)
+        |> Map.put(:no_atomic_constraints, opts[:no_atomic_constraints] || [])
         |> Map.put(:action_type, action.type)
         |> Map.put(:atomics, opts[:atomics] || [])
         |> Ash.Changeset.set_tenant(opts[:tenant])
@@ -972,6 +974,15 @@ defmodule Ash.Changeset do
     end)
   end
 
+  defp apply_atomic_update(changeset, key, {:atomic, value}) do
+    %{
+      changeset
+      | atomics: Keyword.put(changeset.atomics, key, value),
+        no_atomic_constraints: [key | changeset.no_atomic_constraints]
+    }
+    |> record_atomic_update_for_atomic_upgrade(key, value)
+  end
+
   defp apply_atomic_update(changeset, key, value) do
     attribute = Ash.Resource.Info.attribute(changeset.resource, key)
 
@@ -1089,17 +1100,7 @@ defmodule Ash.Changeset do
             {:cont, %{changeset | arguments: Map.put(changeset.arguments, key, value)}}
 
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
-            case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
-              {:atomic, atomic} ->
-                atomic = set_error_field(atomic, attribute.name)
-                {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
-
-              {:error, error} ->
-                {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
-
-              {:not_atomic, reason} ->
-                {:halt, {:not_atomic, reason}}
-            end
+            {:cont, atomic_update(changeset, attribute.name, {:atomic, value})}
 
           match?("_" <> _, key) ->
             {:cont, changeset}
@@ -1132,16 +1133,7 @@ defmodule Ash.Changeset do
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
             cond do
               attribute.name in action.accept ->
-                case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
-                  {:atomic, atomic} ->
-                    {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
-
-                  {:error, error} ->
-                    {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
-
-                  {:not_atomic, reason} ->
-                    {:halt, {:not_atomic, reason}}
-                end
+                {:cont, atomic_update(changeset, attribute.name, value)}
 
               :* in List.wrap(opts[:skip_unknown_inputs]) ->
                 {:cont, changeset}
@@ -1616,11 +1608,17 @@ defmodule Ash.Changeset do
   """
   @spec atomic_update(t(), atom(), {:atomic, Ash.Expr.t()} | Ash.Expr.t()) :: t()
   def atomic_update(changeset, key, {:atomic, value}) do
-    %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+    %{
+      changeset
+      | atomics: Keyword.put(changeset.atomics, key, value),
+        no_atomic_constraints: [key | changeset.no_atomic_constraints]
+    }
   end
 
   def atomic_update(changeset, key, value) do
-    attribute = Ash.Resource.Info.attribute(changeset.resource, key)
+    attribute =
+      Ash.Resource.Info.attribute(changeset.resource, key) ||
+        raise "Unknown attribute `#{inspect(changeset.resource)}.#{inspect(key)}`"
 
     value =
       Ash.Expr.walk_template(value, fn
@@ -2547,19 +2545,35 @@ defmodule Ash.Changeset do
     Enum.reduce(changeset.atomics, %{changeset | atomics: []}, fn {key, value}, changeset ->
       attribute = Ash.Resource.Info.attribute(changeset.resource, key)
 
-      case Ash.Type.apply_atomic_constraints(attribute.type, value, attribute.constraints) do
-        {:ok, value} ->
-          value =
-            if attribute.primary_key? do
-              value
-            else
-              set_error_field(value, attribute.name)
-            end
+      if key in changeset.no_atomic_constraints do
+        value =
+          if attribute.primary_key? do
+            value
+          else
+            set_error_field(value, attribute.name)
+          end
 
-          %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+        %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+      else
+        case Ash.Type.apply_atomic_constraints(attribute.type, value, attribute.constraints) do
+          {:ok, ^value} ->
+            %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
 
-        {:error, error} ->
-          add_error(changeset, error)
+          {:ok, value} ->
+            value = expr(type(^value, ^attribute.type, ^attribute.constraints))
+
+            value =
+              if attribute.primary_key? do
+                value
+              else
+                set_error_field(value, attribute.name)
+              end
+
+            %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+
+          {:error, error} ->
+            add_error(changeset, error)
+        end
       end
     end)
   end

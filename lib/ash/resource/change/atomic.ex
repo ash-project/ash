@@ -4,7 +4,11 @@ defmodule Ash.Resource.Change.Atomic do
 
   @impl true
   def change(changeset, opts, _) do
-    Ash.Changeset.atomic_update(changeset, opts[:attribute], opts[:expr])
+    if opts[:cast_atomic?] do
+      Ash.Changeset.atomic_update(changeset, opts[:attribute], opts[:expr])
+    else
+      Ash.Changeset.atomic_update(changeset, opts[:attribute], {:atomic, opts[:expr]})
+    end
   end
 
   @impl true
