@@ -1658,9 +1658,14 @@ defmodule Ash.Policy.Authorizer do
     }
   end
 
-  def expr_check(expr) when is_function(expr) do
+  def expr_check({_, _} = tuple) do
     {:error,
-     "Inline function checks expect a function with arity 2. Got #{Function.info(expr)[:arity]}"}
+     """
+     Cannot have an expression check that returns a two-element tuple, as this
+     can be ambiguous with the usage of a check module and check options.
+
+     Got: #{inspect(tuple)}
+     """}
   end
 
   def expr_check(expr) do

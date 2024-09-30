@@ -146,6 +146,16 @@ defmodule Ash.Test.Actions.LoadTest do
       ]
   end
 
+  defmodule PostsWithACalc do
+    use Ash.Resource.Calculation
+
+    def load(_, _, _), do: [posts: :category_length]
+
+    def calculate(records, _, _) do
+      Enum.map(records, & &1.posts)
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
@@ -177,6 +187,10 @@ defmodule Ash.Test.Actions.LoadTest do
       end
 
       calculate :campaign_upcase, :string, Ash.Test.Actions.LoadTest.UpcaseName
+
+      calculate :posts_calc, :struct, PostsWithACalc do
+        constraints instance_of: Ash.Test.Actions.LoadTest.Post
+      end
     end
 
     aggregates do
@@ -308,6 +322,10 @@ defmodule Ash.Test.Actions.LoadTest do
         action(:read)
         get_by([:id])
       end
+    end
+
+    calculations do
+      calculate :category_length, :string, expr(string_length(category))
     end
 
     relationships do
@@ -1162,6 +1180,32 @@ defmodule Ash.Test.Actions.LoadTest do
 
     assert_raise Ash.Error.Invalid, ~r/:invalid_key is not a valid load/, fn ->
       Post.get_by_id!(post.id, load: [:invalid_key])
+    end
+  end
+
+  describe "loading through calculations" do
+    test "it can merge loads at a relationship path" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(
+          :create,
+          %{name: "zerg", bio: %{first_name: "donald", last_name: "duck"}},
+          authorize?: false
+        )
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "author post",
+          contents: "post content",
+          author_id: author.id
+        })
+        |> Ash.create!()
+
+      Post
+      |> Ash.Query.load(author: [posts_calc: {%{}, :author}])
+      |> Ash.read!()
     end
   end
 
