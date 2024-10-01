@@ -2,6 +2,59 @@
 
 <!-- changelog -->
 
+## [v03.4.22](https://github.com/ash-project/ash/compare/v3.4.21...v03.4.22) (2024-10-01)
+
+
+
+
+### Features:
+
+* Ash.Reactor: Add the ability to specify action context in steps. (#1477)
+
+### Bug Fixes:
+
+* properly merge query calculations when one side is empty
+
+* handle expression calculations that reference fields in input sorting
+
+* better error message on missing `instance_of` constraint on load-through
+
+* select minimal data in authorization queries
+
+* remove expensive calculation reification step that is no longer necessary
+
+* properly apply field policies to all filter expressions
+
+* Ash.Query: calling `for_read/2..4` should raise an `ArgumentError` when the specified action doesn't exist. (#1479)
+
+* detect non-changing but setting attributes to honor `require_attributes` on update
+
+* set right defaults for `action_select` (#1476)
+
+* don't resolve references when falling back to elixir handling for expressions
+
+### Improvements:
+
+* disallow 2-tuple expression checks, to resolve ambiguity
+
+* properly handle bypasses of atomic constraint casting
+
+* add `Ash.Query.Calculation.from_resource_calculation`
+
+* handle iso8601 dates in datetime cast
+
+* add data layer capability for action select
+
+* rewrite and drastically simplify policy -> solver expression logic
+
+* inspect calculations in queries more fluidly
+
+* fallback to runtime calculations when expressions aren't supported
+
+* ensure that action_select sets attributes to `%Ash.NotLoaded{}`
+
+* add_identity for `Ash.Resource.Igniter`
+
 ## [v3.4.21](https://github.com/ash-project/ash/compare/v3.4.20...v3.4.21) (2024-09-24)
 
 
