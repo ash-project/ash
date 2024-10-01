@@ -435,6 +435,11 @@ defmodule Ash.Test.CalculationTest do
           default_limit(10)
         end
       end
+
+      read :start_conversations do
+        argument :with, :string
+        prepare build(load: [said_hello_to: {%{first_name: arg(:with)}, [:full_name]}])
+      end
     end
 
     attributes do
@@ -673,6 +678,12 @@ defmodule Ash.Test.CalculationTest do
       calculate :dummy_calc2, :string, DummyCalc2 do
         public?(true)
       end
+
+      calculate :said_hello_to, :struct, Ash.Test.CalculationTest.SaidHelloTo do
+        public? true
+        argument :first_name, :string
+        constraints instance_of: __MODULE__
+      end
     end
 
     aggregates do
@@ -705,6 +716,20 @@ defmodule Ash.Test.CalculationTest do
         destination_attribute_on_join_resource(:target_id)
         source_attribute_on_join_resource(:source_id)
       end
+    end
+
+    code_interface do
+      define :start_conversations, args: [:with]
+    end
+  end
+
+  defmodule SaidHelloTo do
+    use Ash.Resource.Calculation
+
+    def calculate(records, _opts, context) do
+      Enum.map(records, fn _record ->
+        %User{first_name: context.arguments[:first_name]}
+      end)
     end
   end
 
@@ -1630,5 +1655,19 @@ defmodule Ash.Test.CalculationTest do
 
     Ash.load!(warranty, [user_first_name: [assert_strict?: true]], reuse_values?: true)
     refute_received(:product_read)
+  end
+
+  test "calculations with arguments can be loaded through both in preparations and with load statements" do
+    first_result =
+      User.start_conversations!("Rebecca",
+        load: [said_hello_to: {%{first_name: "Rebecca"}, [:full_name_with_select]}]
+      )
+      |> hd()
+
+    # Loaded in a preparation in the action
+    assert first_result.said_hello_to.full_name == "Rebecca "
+
+    # Loaded with the additional load statement
+    assert first_result.said_hello_to.full_name_with_select == "Rebecca "
   end
 end
