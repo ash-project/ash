@@ -203,9 +203,7 @@ defmodule Ash.Type.Struct do
   def merge_load(left, right, constraints, context) do
     instance_of = constraints[:instance_of]
 
-    if !instance_of do
-      {:error, "Structs must have an `instance_of` constraint to be loaded through"}
-    else
+    if instance_of do
       left = Ash.Query.load(instance_of, left)
       right = Ash.Query.load(instance_of, right)
 
@@ -214,6 +212,8 @@ defmodule Ash.Type.Struct do
       else
         {:error, Ash.Error.to_ash_error(left.errors)}
       end
+    else
+      {:error, "Structs must have an `instance_of` constraint to be loaded through"}
     end
   end
 
