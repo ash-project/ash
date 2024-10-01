@@ -1658,6 +1658,11 @@ defmodule Ash.Policy.Authorizer do
     }
   end
 
+  def expr_check({template_var, _} = expr)
+      when template_var in [:_actor, :_arg, :_ref, :_parent, :_atomic_ref, :_context] do
+    {:ok, {Ash.Policy.Check.Expression, expr: expr}}
+  end
+
   def expr_check({_, _} = tuple) do
     {:error,
      """

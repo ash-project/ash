@@ -179,6 +179,11 @@ defmodule Ash.Resource.Validation.Builtins do
   @doc """
   Validates the presence of a list of attributes or arguments.
 
+  Keep in mind that some types cast certain values to `nil`, and validations are
+  applied after all inputs have been cast. For example, a `:string` type attribute
+  with the default constraints will cast `""` as `nil`, meaning an input of
+  `""` would fail the `present` validation.
+
   If no options are provided, validates that they are all present.
 
   ## Options
