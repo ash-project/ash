@@ -4,77 +4,71 @@
 
 ## [v03.4.22](https://github.com/ash-project/ash/compare/v3.4.21...v03.4.22) (2024-10-01)
 
-
-
-
 ### Features:
 
-* Ash.Reactor: Add the ability to specify action context in steps. (#1477)
+- [`Ash.Reactor`] Add the ability to specify action context in steps. (#1477)
 
 ### Bug Fixes:
 
-* properly merge query calculations when one side is empty
+- [`Ash.Query`] properly merge query calculations when one side is empty
 
-* handle expression calculations that reference fields in input sorting
+- [`Ash.Query`] remove expensive calculation reification step that is no longer necessary
 
-* better error message on missing `instance_of` constraint on load-through
+- [`Ash.Sort`] handle expression calculations that reference fields in input sorting
 
-* select minimal data in authorization queries
+- [`Ash.Sort`] properly apply field policies to all filter expressions
 
-* remove expensive calculation reification step that is no longer necessary
+- [`Ash.Type.Struct`] better error message on missing `instance_of` constraint on load-through
 
-* properly apply field policies to all filter expressions
+- [authorization] select minimal data in authorization queries
 
-* Ash.Query: calling `for_read/2..4` should raise an `ArgumentError` when the specified action doesn't exist. (#1479)
+- [`Ash.Query`] calling `for_read/2..4` should raise an `ArgumentError` when the specified action doesn't exist. (#1479)
 
-* detect non-changing but setting attributes to honor `require_attributes` on update
+- [`Ash.Changeset`] detect non-changing but setting attributes to honor `require_attributes` on update
 
-* set right defaults for `action_select` (#1476)
+- [`Ash.Changeset`] set right defaults for `action_select` (#1476)
 
-* don't resolve references when falling back to elixir handling for expressions
+- [`Ash.Expr`] don't resolve references when falling back to elixir handling for expressions
 
 ### Improvements:
 
-* disallow 2-tuple expression checks, to resolve ambiguity
+- [`Ash.Policy.Authorizer`] disallow 2-tuple expression checks, to resolve ambiguity
 
-* properly handle bypasses of atomic constraint casting
+- [`Ash.Policy.Authorizer`] rewrite and drastically simplify policy -> solver expression logic
 
-* add `Ash.Query.Calculation.from_resource_calculation`
+- [`Ash.Changeset`] properly handle bypasses of atomic constraint casting
 
-* handle iso8601 dates in datetime cast
+- [`Ash.Changeset`] ensure that action_select sets attributes to `%Ash.NotLoaded{}`
 
-* add data layer capability for action select
+- [`Ash.Query.Calculation`] add `Ash.Query.Calculation.from_resource_calculation`
 
-* rewrite and drastically simplify policy -> solver expression logic
+- [`Ash.Query.Calculation`] fallback to runtime calculations when expressions aren't supported
 
-* inspect calculations in queries more fluidly
+- [`Ash.Type.DateTime`] handle iso8601 dates in datetime cast
 
-* fallback to runtime calculations when expressions aren't supported
+- [`Ash.DataLayer`] add data layer capability for action select
 
-* ensure that action_select sets attributes to `%Ash.NotLoaded{}`
+- [`Ash.Query.Calculation`] inspect calculations in queries more fluidly
 
-* add_identity for `Ash.Resource.Igniter`
+- [`Ash.Resource.Igniter`] add_identity for `Ash.Resource.Igniter`
 
 ## [v3.4.21](https://github.com/ash-project/ash/compare/v3.4.20...v3.4.21) (2024-09-24)
 
-
-
-
 ### Bug Fixes:
 
-* handle `nil` result in `Ash.first`
+- [`Ash`] handle `nil` result in `Ash.first`
 
-* add checks for `around_transaction` and `around_action` in bulk (#1474)
+- [bulk actions] add checks for `around_transaction` and `around_action` in bulk (#1474)
 
-* include distinct from queries in aggregate query
+- [`Ash.Query.Aggregate`] include distinct from queries in aggregate query
 
-* reselect required attributes unless `reuse_values?` is `true`
+- [read actions] reselect required attributes unless `reuse_values?` is `true`
 
-* properly return `{:not_atomic` while applying atomic changes
+- [`Ash.Changeset`] properly return `{:not_atomic` while applying atomic changes
 
 ### Improvements:
 
-* proper error on unsupported aggregates
+- [`Ash.Query.Aggregate`] proper error on unsupported aggregates
 
 ## [v3.4.20](https://github.com/ash-project/ash/compare/v3.4.19...v3.4.20) (2024-09-23)
 
