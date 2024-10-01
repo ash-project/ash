@@ -1427,11 +1427,11 @@ defmodule Ash.Query do
             {resource_calculation.name, resource_calculation.name}
         end
 
-      with {:ok, calculation} <-
-             Calculation.from_resource_calculation(query.resource, resource_calculation,
+             case Calculation.from_resource_calculation(query.resource, resource_calculation,
                args: Map.new(args),
                source_context: query.context
              ) do
+          {:ok, calculation} ->
         calculation =
           select_and_load_calc(
             resource_calculation,
@@ -1446,7 +1446,6 @@ defmodule Ash.Query do
         else
           query
         end
-      else
         {:error, error} ->
           add_error(query, :load, error)
       end
