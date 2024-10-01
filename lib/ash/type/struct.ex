@@ -204,6 +204,7 @@ defmodule Ash.Type.Struct do
     instance_of = constraints[:instance_of]
 
     if instance_of do
+      # instance_of_query = Ash.Query.new(instance_of)
       left = Ash.Query.load(instance_of, left)
       right = Ash.Query.load(instance_of, right)
 

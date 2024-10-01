@@ -1329,7 +1329,7 @@ defmodule Ash.Query do
   def load(query, load_statement, opts \\ [])
 
   def load(query, %Ash.Query{} = new, _opts) do
-    merge_load(query, new)
+    query |> new() |> merge_load(new)
   end
 
   def load(query, fields, opts) when not is_list(fields) do
@@ -3125,6 +3125,8 @@ defmodule Ash.Query do
     end)
   end
 
+  defp merge_load([], %Ash.Query{} = right), do: right
+  defp merge_load(%Ash.Query{} = left, []), do: left
   defp merge_load([], right), do: sanitize_loads(right)
   defp merge_load(left, []), do: sanitize_loads(left)
 
