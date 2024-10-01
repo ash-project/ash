@@ -305,18 +305,10 @@ defmodule Ash.Query.Aggregate do
 
               field when is_atom(field) ->
                 case Ash.Resource.Info.field(related, field) do
-                  %Ash.Resource.Calculation{calculation: {module, calc_opts}} = calc ->
-                    {:ok, calc} =
-                      Ash.Query.Calculation.new(
-                        field,
-                        module,
-                        calc_opts,
-                        calc.type,
-                        calc.constraints,
-                        arguments: opts.arguments || %{},
-                        sensitive?: opts.sensitive?,
-                        sortable?: opts.sortable?,
-                        filterable?: opts.filterable?
+                  %Ash.Resource.Calculation{} = calc ->
+                    calc =
+                      Ash.Query.Calculation.from_resource_calculation!(related, calc,
+                        args: opts.arguments || %{}
                       )
 
                     %{calc | load: field}

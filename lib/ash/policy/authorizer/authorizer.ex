@@ -720,8 +720,91 @@ defmodule Ash.Policy.Authorizer do
 
     type = get_type(authorizer.resource, field)
 
-    field =
+    {path, field, actual_field, action, domain} =
       case {field_name, field} do
+        {nil,
+         %Ash.Query.Calculation{module: Ash.Resource.Calculation.Expression, opts: opts} = calc} ->
+          field_and_path =
+            case opts[:expr] do
+              %Ash.Query.Function.Type{arguments: [%Ash.Query.Ref{} = ref | _]} ->
+                {ref.relationship_path, ref.attribute.name}
+
+              %Ash.Query.Function.Type{arguments: [{:_ref, path, field} | _]} ->
+                {path, field}
+
+              %Ash.Query.Call{name: :type, args: [%Ash.Query.Ref{} = ref | _]} ->
+                {ref.relationship_path, ref.attribute}
+
+              %Ash.Query.Call{name: :type, args: [{:_ref, path, field} | _]} ->
+                {path, field}
+
+              %Ash.Query.Ref{} = ref ->
+                {ref.relationship_path, ref.attribute}
+
+              {:_ref, path, field} ->
+                {path, field}
+
+              _ ->
+                nil
+            end
+
+          case field_and_path do
+            {path, %Ash.Query.Calculation{calc_name: calc_name}} when not is_nil(calc_name) ->
+              {path, calc_name}
+
+            {path, %Ash.Query.Aggregate{agg_name: agg_name}} when not is_nil(agg_name) ->
+              {path, agg_name}
+
+            {_, %Ash.Query.Calculation{}} ->
+              nil
+
+            {_, %Ash.Query.Aggregate{}} ->
+              nil
+
+            {path, %{name: name}} when not is_nil(name) ->
+              {path, name}
+
+            {path, field} when is_atom(field) and not is_nil(field) ->
+              {path, field}
+
+            _ ->
+              nil
+          end
+          |> then(fn
+            nil ->
+              raise Ash.Error.Framework.AssumptionFailed,
+                message: """
+                It should not be possible to provide a non-resource calculation as user input.
+                In the future it will be, and that will need to be addressed here.
+                This error message is to prevent forgetting to address that reality.
+
+                Got:
+
+                  #{inspect(calc)}
+                """
+
+            {path, field} ->
+              relationship = Ash.Resource.Info.relationship(authorizer.resource, path)
+
+              domain =
+                Ash.Domain.Info.related_domain(
+                  relationship.destination,
+                  relationship,
+                  relationship.domain || authorizer.domain
+                )
+
+              action =
+                case relationship.read_action do
+                  nil ->
+                    Ash.Resource.Info.primary_action!(relationship.destination, :read)
+
+                  read_action ->
+                    Ash.Resource.Info.action(relationship.destination, read_action)
+                end
+
+              {path, field, calc, action, domain}
+          end)
+
         {nil, %Ash.Query.Calculation{} = calculation} ->
           raise Ash.Error.Framework.AssumptionFailed,
             message: """
@@ -735,23 +818,26 @@ defmodule Ash.Policy.Authorizer do
             """
 
         {_other, field} ->
-          field
+          {[], field, field, context.query.action, context.query.domain}
       end
+
+    resource =
+      Ash.Resource.Info.related(authorizer.resource, path)
 
     if field_name do
       case field_condition(
-             authorizer.resource,
-             field_name,
-             context.query.action,
-             context.query.domain,
+             resource,
+             field,
+             action,
+             domain,
              acc
            ) do
         {:none, acc} ->
-          {{field, data}, acc}
+          {{actual_field, data}, acc}
 
         {:expr, expr, acc} ->
           field =
-            case field do
+            case actual_field do
               %Ash.Query.Calculation{} = calculation ->
                 %Ash.Query.Ref{
                   attribute: calculation,
@@ -782,7 +868,7 @@ defmodule Ash.Policy.Authorizer do
           {{expr, data}, acc}
       end
     else
-      {{field, data}, acc}
+      {{actual_field, data}, acc}
     end
   end
 

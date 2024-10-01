@@ -404,8 +404,10 @@ defmodule Ash.DataLayer.Ets do
          records <- Sort.runtime_sort(records, sort, domain: domain),
          records <- Enum.drop(records, offset || []),
          records <- do_limit(records, limit),
-         {:ok, records} <- do_add_aggregates(records, domain, resource, aggregates),
-         {:ok, records} <- do_add_calculations(records, resource, calculations, domain) do
+         {:ok, records} <-
+           do_add_aggregates(records, domain, resource, aggregates),
+         {:ok, records} <-
+           do_add_calculations(records, resource, calculations, domain) do
       {:ok, records}
     else
       {:error, error} ->

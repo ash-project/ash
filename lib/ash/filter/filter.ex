@@ -2145,19 +2145,7 @@ defmodule Ash.Filter do
   end
 
   defp field_to_ref(resource, %Ash.Resource.Calculation{} = calc) do
-    {module, opts} = calc.calculation
-
-    case Calculation.new(
-           calc.name,
-           module,
-           opts,
-           calc.type,
-           calc.constraints,
-           async?: calc.async?,
-           filterable?: calc.filterable?,
-           sortable?: calc.sortable?,
-           sensitive?: calc.sensitive?
-         ) do
+    case Calculation.from_resource_calculation(resource, calc) do
       {:ok, calc} ->
         calc = %{calc | load: calc.name}
         field_to_ref(resource, calc)
@@ -2695,24 +2683,13 @@ defmodule Ash.Filter do
             add_expression_part({function, [args]}, context, expression)
 
           resource_calculation when tuple_size(args) == 2 ->
-            {module, opts} = resource_calculation.calculation
             {args, nested_statement} = args
 
             with {:ok, args} <-
                    Ash.Query.validate_calculation_arguments(resource_calculation, args || %{}),
                  {:ok, calculation} <-
-                   Calculation.new(
-                     resource_calculation.name,
-                     module,
-                     opts,
-                     resource_calculation.type,
-                     resource_calculation.constraints,
-                     arguments: args,
-                     async?: resource_calculation.async?,
-                     filterable?: resource_calculation.filterable?,
-                     sortable?: resource_calculation.sortable?,
-                     sensitive?: resource_calculation.sensitive?,
-                     load: resource_calculation.load
+                   Calculation.from_resource_calculation(context.resource, resource_calculation,
+                     args: args
                    ) do
               calculation = %{calculation | load: calculation.name}
 
@@ -2851,8 +2828,6 @@ defmodule Ash.Filter do
         end
 
       resource_calculation = calculation(context, field) ->
-        {module, opts} = resource_calculation.calculation
-
         {input, nested_statement} =
           case nested_statement do
             %{"input" => input} ->
@@ -2872,18 +2847,10 @@ defmodule Ash.Filter do
                  !context[:input?]
                ),
              {:ok, calculation} <-
-               Calculation.new(
-                 resource_calculation.name,
-                 module,
-                 opts,
-                 resource_calculation.type,
-                 resource_calculation.constraints,
-                 arguments: args,
-                 async?: resource_calculation.async?,
-                 filterable?: resource_calculation.filterable?,
-                 sortable?: resource_calculation.sortable?,
-                 sensitive?: resource_calculation.sensitive?,
-                 load: resource_calculation.load
+               Calculation.from_resource_calculation(
+                 context.resource,
+                 resource_calculation,
+                 args: args
                ) do
           calculation = %{calculation | load: calculation.name}
 
@@ -3229,26 +3196,14 @@ defmodule Ash.Filter do
 
     cond do
       resource_calculation ->
-        {module, opts} = resource_calculation.calculation
-
         with {:ok, args} <-
                Ash.Query.validate_calculation_arguments(
                  resource_calculation,
                  Map.new(Enum.at(args, 0) || [])
                ),
              {:ok, calculation} <-
-               Calculation.new(
-                 resource_calculation.name,
-                 module,
-                 opts,
-                 resource_calculation.type,
-                 resource_calculation.constraints,
-                 arguments: args,
-                 async?: resource_calculation.async?,
-                 filterable?: resource_calculation.filterable?,
-                 sortable?: resource_calculation.sortable?,
-                 sensitive?: resource_calculation.sensitive?,
-                 load: resource_calculation.load
+               Calculation.from_resource_calculation(context.resource, resource_calculation,
+                 args: args
                ) do
           {:ok,
            %Ref{
@@ -3524,28 +3479,12 @@ defmodule Ash.Filter do
             {:ok, %{ref | attribute: attribute, resource: related}}
 
           resource_calculation = calculation(context, attribute) ->
-            {module, opts} = resource_calculation.calculation
+            case Calculation.from_resource_calculation(context.resource, resource_calculation) do
+              {:ok, calculation} ->
+                calculation = %{calculation | load: calculation.name}
 
-            with {:ok, args} <-
-                   Ash.Query.validate_calculation_arguments(resource_calculation, %{}),
-                 {:ok, calculation} <-
-                   Calculation.new(
-                     resource_calculation.name,
-                     module,
-                     opts,
-                     resource_calculation.type,
-                     resource_calculation.constraints,
-                     arguments: args,
-                     async?: resource_calculation.async?,
-                     filterable?: resource_calculation.filterable?,
-                     sortable?: resource_calculation.sortable?,
-                     sensitive?: resource_calculation.sensitive?,
-                     load: resource_calculation.load
-                   ) do
-              calculation = %{calculation | load: calculation.name}
+                {:ok, %{ref | attribute: calculation, resource: related}}
 
-              {:ok, %{ref | attribute: calculation, resource: related}}
-            else
               {:error, error} ->
                 {:error, error}
             end

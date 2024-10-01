@@ -11,15 +11,24 @@ defmodule Ash.Resource.Calculation.Expression do
         context.source_context
       )
 
-    if context.type do
-      {:ok, expr} =
-        Ash.Query.Function.Type.new([
-          expr,
-          context.type,
-          context.constraints || []
-        ])
+    if type = context.type do
+      case expr do
+        %Ash.Query.Function.Type{arguments: [_, ^type | _]} ->
+          expr
 
-      expr
+        %Ash.Query.Call{name: :type, args: [_, ^type | _]} ->
+          expr
+
+        _ ->
+          {:ok, expr} =
+            Ash.Query.Function.Type.new([
+              expr,
+              context.type,
+              context.constraints || []
+            ])
+
+          expr
+      end
     else
       expr
     end

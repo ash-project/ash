@@ -1106,19 +1106,8 @@ defmodule Ash.Actions.Read do
     end)
     |> Enum.reduce_while({:ok, []}, fn
       {%Ash.Resource.Calculation{} = resource_calculation, direction}, {:ok, sort} ->
-        {module, opts} = resource_calculation.calculation
-
-        case Ash.Query.Calculation.new(
-               resource_calculation.name,
-               module,
-               opts,
-               resource_calculation.type,
-               resource_calculation.constraints,
-               async?: resource_calculation.async?,
-               filterable?: resource_calculation.filterable?,
-               sortable?: resource_calculation.sortable?,
-               sensitive?: resource_calculation.sensitive?,
-               load: resource_calculation.load
+        case Ash.Query.Calculation.from_resource_calculation(query.resource, resource_calculation,
+               source_context: query.context
              ) do
           {:ok, calc} ->
             case hydrate_calculations(query, [calc]) do
@@ -1594,6 +1583,9 @@ defmodule Ash.Actions.Read do
               %Ash.Query.Function.Type{} = expr ->
                 expr
 
+              %Ash.Query.Call{name: :type} = expr ->
+                expr
+
               expr ->
                 {:ok, expr} = Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
                 expr
@@ -1646,6 +1638,9 @@ defmodule Ash.Actions.Read do
             expr =
               case calc.module.expression(calc.opts, calc.context) do
                 %Ash.Query.Function.Type{} = expr ->
+                  expr
+
+                %Ash.Query.Call{name: :type} = expr ->
                   expr
 
                 expr ->
@@ -3003,6 +2998,9 @@ defmodule Ash.Actions.Read do
           %Ash.Query.Function.Type{} = expr ->
             expr
 
+          %Ash.Query.Call{name: :type} = expr ->
+            expr
+
           expr ->
             {:ok, expr} = Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
             expr
@@ -3083,19 +3081,10 @@ defmodule Ash.Actions.Read do
 
     case Ash.Resource.Info.field(related_resource, aggregate.field) do
       %Ash.Resource.Calculation{} = resource_calculation ->
-        {module, opts} = resource_calculation.calculation
-
-        case Ash.Query.Calculation.new(
-               resource_calculation.name,
-               module,
-               opts,
-               resource_calculation.type,
-               resource_calculation.constraints,
-               async?: resource_calculation.async?,
-               filterable?: resource_calculation.filterable?,
-               sortable?: resource_calculation.sortable?,
-               sensitive?: resource_calculation.sensitive?,
-               load: resource_calculation.load
+        case Ash.Query.Calculation.from_resource_calculation(
+               aggregate.resource,
+               resource_calculation,
+               source_context: aggregate.context[:source_context] || %{}
              ) do
           {:ok, calculation} ->
             aggregate_field_with_related_filters(

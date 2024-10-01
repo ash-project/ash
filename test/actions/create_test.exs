@@ -146,6 +146,10 @@ defmodule Ash.Test.Actions.CreateTest do
         change {DuplicateName, []}
       end
 
+      create :create_with_no_accepts do
+        accept [:bio]
+      end
+
       create :manual_create do
         manual fn _, _ ->
           {:ok,
@@ -160,6 +164,7 @@ defmodule Ash.Test.Actions.CreateTest do
       uuid_primary_key :id
       attribute(:name, :string, public?: true)
       attribute(:bio, :string, public?: true)
+      attribute(:private_name, :string)
     end
 
     relationships do

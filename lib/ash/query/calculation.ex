@@ -167,15 +167,18 @@ defmodule Ash.Query.Calculation do
         name,
         opts \\ []
       ) do
-    resource_calculation =
+    {name, resource_calculation} =
       case name do
         %Ash.Resource.Calculation{} = calc ->
-          calc
+          {calc.name, calc}
 
         name ->
-          Ash.Resource.Info.calculation(resource, name) ||
-            raise ArgumentError,
-                  "No calculation called #{inspect(name)} found on #{inspect(resource)}"
+          {name,
+           Ash.Resource.Info.calculation(resource, name) ||
+             raise(
+               ArgumentError,
+               "No calculation called #{inspect(name)} found on #{inspect(resource)}"
+             )}
       end
 
     %{calculation: {module, calc_opts}} = resource_calculation

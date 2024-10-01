@@ -1427,28 +1427,15 @@ defmodule Ash.Query do
             {resource_calculation.name, resource_calculation.name}
         end
 
-      {module, opts} = resource_calculation.calculation
-
-      with {:ok, args} <- validate_calculation_arguments(resource_calculation, args),
-           {:ok, calculation} <-
-             Calculation.new(
-               name,
-               module,
-               opts,
-               resource_calculation.type,
-               resource_calculation.constraints,
-               arguments: args,
-               async?: resource_calculation.async?,
-               filterable?: resource_calculation.filterable?,
-               sortable?: resource_calculation.sortable?,
-               sensitive?: resource_calculation.sensitive?,
-               load: resource_calculation.load,
+      with {:ok, calculation} <-
+             Calculation.from_resource_calculation(query.resource, resource_calculation,
+               args: Map.new(args),
                source_context: query.context
              ) do
         calculation =
           select_and_load_calc(
             resource_calculation,
-            %{calculation | load: load, calc_name: resource_calculation.name},
+            %{calculation | load: load, name: name, calc_name: resource_calculation.name},
             query
           )
 
@@ -1516,14 +1503,14 @@ defmodule Ash.Query do
       end
 
     with {:ok, calculation} <-
-           Ash.Query.Calculation.from_resource_calculation!(query.resource, name,
+           Ash.Query.Calculation.from_resource_calculation!(query.resource, resource_calculation,
              source_context: query.context,
-             args: args
+             args: Map.new(args)
            ) do
       {:ok,
        select_and_load_calc(
          resource_calculation,
-         %{calculation | load: load},
+         %{calculation | load: load, name: name},
          query
        )}
     end

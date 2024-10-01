@@ -44,17 +44,14 @@ defmodule Ash.Actions.Sort do
             {sorts, [UnsortableField.exception(resource: resource, field: name) | errors]}
 
           calc ->
-            {module, opts} = calc.calculation
+            {module, _opts} = calc.calculation
 
             if module.has_expression?() do
               if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
                 calculation_sort(
+                  resource,
                   field,
                   calc,
-                  module,
-                  opts,
-                  calc.type,
-                  calc.constraints,
                   order,
                   sorts,
                   errors,
@@ -181,17 +178,14 @@ defmodule Ash.Actions.Sort do
 
           calc = Ash.Resource.Info.calculation(resource, field) ->
             if calc.sortable? do
-              {module, opts} = calc.calculation
+              {module, _} = calc.calculation
 
               if module.has_expression?() do
                 if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
                   calculation_sort(
+                    resource,
                     field,
                     calc,
-                    module,
-                    opts,
-                    calc.type,
-                    calc.constraints,
                     order,
                     sorts,
                     errors,
@@ -333,12 +327,9 @@ defmodule Ash.Actions.Sort do
   end
 
   defp calculation_sort(
+         resource,
          field,
          calc,
-         module,
-         opts,
-         type,
-         constraints,
          order,
          sorts,
          errors,
@@ -359,25 +350,14 @@ defmodule Ash.Actions.Sort do
           {other, %{}}
       end
 
-    with {:ok, input} <- Ash.Query.validate_calculation_arguments(calc, calc_context),
-         {:ok, calc} <-
-           Ash.Query.Calculation.new(
-             field,
-             module,
-             opts,
-             type,
-             constraints,
-             arguments: input,
-             async?: calc.async?,
-             filterable?: calc.filterable?,
-             sortable?: calc.sortable?,
-             sensitive?: calc.sensitive?,
-             load: calc.load,
-             source_context: context || %{}
-           ) do
-      calc = Map.put(calc, :load, field)
-      {sorts ++ [{calc, order}], errors}
-    else
+    case Ash.Query.Calculation.from_resource_calculation(resource, calc,
+           source_context: context || %{},
+           args: calc_context
+         ) do
+      {:ok, calc} ->
+        calc = Map.put(calc, :load, field)
+        {sorts ++ [{calc, order}], errors}
+
       {:error, error} ->
         {sorts, [error | errors]}
     end

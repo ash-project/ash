@@ -1342,48 +1342,36 @@ defmodule Ash.Actions.Read.Calculations do
               {resource_calculation.name, resource_calculation.name}
           end
 
-        {module, opts} = resource_calculation.calculation
+        case Ash.Query.Calculation.from_resource_calculation(query.resource, resource_calculation,
+               args: Map.new(args),
+               source_context: query.context
+             ) do
+          {:ok, calculation} ->
+            calculation = %{calculation | load: load, name: name}
 
-        with {:ok, args} <-
-               Ash.Query.validate_calculation_arguments(resource_calculation, args),
-             {:ok, calculation} <-
-               Ash.Query.Calculation.new(
-                 name,
-                 module,
-                 opts,
-                 resource_calculation.type,
-                 resource_calculation.constraints,
-                 arguments: args,
-                 async?: resource_calculation.async?,
-                 filterable?: resource_calculation.filterable?,
-                 sortable?: resource_calculation.sortable?,
-                 sensitive?: resource_calculation.sensitive?,
-                 load: resource_calculation.load,
-                 source_context: query.context
-               ) do
-          calculation =
-            Ash.Query.select_and_load_calc(
-              resource_calculation,
-              %{calculation | load: load, calc_name: resource_calculation.name},
-              query
+            calculation =
+              Ash.Query.select_and_load_calc(
+                resource_calculation,
+                %{calculation | load: load, calc_name: resource_calculation.name},
+                query
+              )
+
+            load_single_calculation_dependency(
+              {calculation, load_through},
+              query,
+              domain,
+              calc_name,
+              calc_load,
+              calc_path,
+              strict_loads?,
+              relationship_path,
+              can_expression_calculation?,
+              checked_calculations,
+              initial_data,
+              reuse_values?,
+              authorize?
             )
 
-          load_single_calculation_dependency(
-            {calculation, load_through},
-            query,
-            domain,
-            calc_name,
-            calc_load,
-            calc_path,
-            strict_loads?,
-            relationship_path,
-            can_expression_calculation?,
-            checked_calculations,
-            initial_data,
-            reuse_values?,
-            authorize?
-          )
-        else
           {:error, error} ->
             Ash.Query.add_error(query, :load, error)
         end

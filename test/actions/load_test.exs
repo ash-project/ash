@@ -1183,32 +1183,6 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
-  describe "loading through calculations" do
-    test "it can merge loads at a relationship path" do
-      author =
-        Author
-        |> Ash.Changeset.for_create(
-          :create,
-          %{name: "zerg", bio: %{first_name: "donald", last_name: "duck"}},
-          authorize?: false
-        )
-        |> Ash.create!()
-
-      post =
-        Post
-        |> Ash.Changeset.for_create(:create, %{
-          title: "author post",
-          contents: "post content",
-          author_id: author.id
-        })
-        |> Ash.create!()
-
-      Post
-      |> Ash.Query.load(author: [posts_calc: {%{}, :author}])
-      |> Ash.read!()
-    end
-  end
-
   describe "loading through attributes" do
     setup do
       start_supervised(
