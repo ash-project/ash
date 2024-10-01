@@ -67,4 +67,4 @@ When to run authorization for a given request.
 
 - `:by_default` sets `authorize?: true` if the `authorize?` option was not set (so it can be set to `false`). This is the default.
 - `:always` forces `authorize?: true` on all requests to the domain.
-- `:when_requested` sets `authorize?: true` whenever an actor is set or `authorize?: true` is explicitly passed. This is the default behavior.
+- `:when_requested` sets `authorize?: true` whenever an actor is set or `authorize?: true` is explicitly passed.
