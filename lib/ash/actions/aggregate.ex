@@ -84,7 +84,8 @@ defmodule Ash.Actions.Aggregate do
                      distinct: query.distinct,
                      domain: query.domain,
                      tenant: query.tenant,
-                     to_tenant: query.to_tenant
+                     to_tenant: query.to_tenant,
+                     context: query.context
                    }),
                  {:ok, result} <-
                    Ash.DataLayer.run_aggregate_query(
