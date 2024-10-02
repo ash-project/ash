@@ -364,6 +364,7 @@ defmodule Ash.Actions.Read do
 
   defp load_relationships(data, query, opts) do
     lazy? = !!opts[:lazy?]
+    reuse_values? = !!opts[:reuse_values?]
 
     context =
       %{
@@ -384,7 +385,8 @@ defmodule Ash.Actions.Read do
             Ash.Actions.Read.Relationships.load(
               data,
               query,
-              lazy?
+              lazy?,
+              reuse_values?
             )
           end
 
@@ -392,7 +394,8 @@ defmodule Ash.Actions.Read do
           Ash.Actions.Read.Relationships.load(
             data,
             query,
-            lazy?
+            lazy?,
+            reuse_values?
           )
       end
     end

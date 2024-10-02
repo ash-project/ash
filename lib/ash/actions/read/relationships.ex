@@ -18,10 +18,10 @@ defmodule Ash.Actions.Read.Relationships do
     {:ok, records}
   end
 
-  def load(records, query, lazy?) do
+  def load(records, query, lazy?, reuse_values?) do
     query.load
     |> with_related_queries(query, records, lazy?)
-    |> fetch_related_records(records)
+    |> fetch_related_records(records, reuse_values?)
     |> attach_related_records(records)
   end
 
@@ -39,9 +39,9 @@ defmodule Ash.Actions.Read.Relationships do
     end)
   end
 
-  defp fetch_related_records(batch, records, acc \\ [])
+  defp fetch_related_records(batch, records, reuse_values?, acc \\ [])
 
-  defp fetch_related_records([], _records, acc) do
+  defp fetch_related_records([], _records, _reuse_values?, acc) do
     Enum.map(acc, fn
       {a, b, %Task{} = task} ->
         {a, b, Task.await(task, :infinity)}
@@ -54,12 +54,12 @@ defmodule Ash.Actions.Read.Relationships do
     end)
   end
 
-  defp fetch_related_records([first | rest], records, acc) do
+  defp fetch_related_records([first | rest], records, reuse_values?, acc) do
     result =
       case first do
         {relationship, {:lazy, query}} ->
           {relationship, {:lazy, query},
-           lazy_related_records(records, relationship, query, Enum.empty?(rest))}
+           lazy_related_records(records, relationship, query, Enum.empty?(rest), reuse_values?)}
 
         {relationship, %{valid?: true} = related_query} ->
           do_fetch_related_records(records, relationship, related_query, Enum.empty?(rest))
@@ -68,10 +68,10 @@ defmodule Ash.Actions.Read.Relationships do
           {relationship, related_query, {:error, errors}}
       end
 
-    fetch_related_records(rest, records, [result | acc])
+    fetch_related_records(rest, records, reuse_values?, [result | acc])
   end
 
-  defp lazy_related_records(records, relationship, related_query, last?) do
+  defp lazy_related_records(records, relationship, related_query, last?, reuse_values?) do
     primary_key = Ash.Resource.Info.primary_key(relationship.source)
 
     related_records_with_lazy_join_source =
@@ -101,6 +101,8 @@ defmodule Ash.Actions.Read.Relationships do
       fn ->
         Ash.load(related_records_with_lazy_join_source, related_query,
           lazy?: true,
+          reuse_values?:
+            reuse_values? || related_query.context[:private][:reuse_values?] || false,
           domain: related_query.domain,
           actor: related_query.context.private[:actor],
           tenant: related_query.tenant,

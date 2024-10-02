@@ -4280,8 +4280,11 @@ defmodule Ash.Changeset do
     ],
     meta: [
       type: :any,
-      doc:
-        "Freeform data that will be retained along with the options, which can be used to track/manage the changes that are added to the `relationships` key."
+      doc: """
+      Freeform data that will be retained along with the options, which can be used to track/manage the changes
+      that are added to the `relationships` key. Use the `meta[:order]` option to specify the order in which multiple
+      calls to `manage_relationship` should be executed.
+      """
     ],
     ignore?: [
       type: :any,

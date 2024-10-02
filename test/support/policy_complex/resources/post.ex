@@ -1,5 +1,6 @@
 defmodule Ash.Test.Support.PolicyComplex.Post do
   @moduledoc false
+
   use Ash.Resource,
     domain: Ash.Test.Support.PolicyComplex.Domain,
     data_layer: Ash.DataLayer.Ets,
@@ -44,6 +45,7 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
     end
 
     create :create do
+      primary? true
       accept [:text]
       change relate_actor(:author)
     end

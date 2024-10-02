@@ -1386,7 +1386,7 @@ defmodule Ash.Actions.Read.Calculations do
             nil ->
               related_query =
                 relationship.destination
-                |> Ash.Query.set_context(%{private: %{lazy?: true}})
+                |> Ash.Query.set_context(%{private: %{lazy?: true, reuse_values?: reuse_values?}})
                 |> Ash.Query.select([])
                 |> merge_query_load(
                   further,
@@ -1814,7 +1814,9 @@ defmodule Ash.Actions.Read.Calculations do
     Ash.Resource.loaded?(initial_data, relationship_path ++ [calculation], type: :request)
   end
 
-  defp loaded_and_reusable?(_initial_data, _relationship_path, _calculation, _false), do: false
+  defp loaded_and_reusable?(_initial_data, _relationship_path, _calculation, false) do
+    false
+  end
 
   defp add_calculation_dependency(query, source, dest) do
     %{
