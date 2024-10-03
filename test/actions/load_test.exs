@@ -730,6 +730,29 @@ defmodule Ash.Test.Actions.LoadTest do
       Ash.load!(author, [:posts, :latest_post], lazy?: true)
     end
 
+    @tag :regression
+    test "you can lazy load through empty relationships without errors" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post1"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post2"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      Author
+      |> Ash.Query.load([:posts])
+      |> Ash.read!(authorize?: true)
+      |> Ash.load!([posts: :author], lazy?: true)
+    end
+
     test "loading something already loaded still loads it unless lazy?: true" do
       author =
         Author

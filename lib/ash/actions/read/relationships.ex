@@ -3,18 +3,18 @@ defmodule Ash.Actions.Read.Relationships do
   require Ash.Query
   import Ash.Expr
 
-  def load([], _query, _lazy?) do
+  def load([], _query, _lazy?, _reuse_values?) do
     {:ok, []}
   end
 
-  def load(record, query, lazy?) when not is_list(record) do
-    case load([record], query, lazy?) do
+  def load(record, query, lazy?, reuse_values?) when not is_list(record) do
+    case load([record], query, lazy?, reuse_values?) do
       {:ok, [record]} -> {:ok, record}
       {:error, error} -> {:error, error}
     end
   end
 
-  def load(records, %{load: load}, _lazy?) when load in [%{}, [], nil] do
+  def load(records, %{load: load}, _lazy?, _reuse_values?) when load in [%{}, [], nil] do
     {:ok, records}
   end
 

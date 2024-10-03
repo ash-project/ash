@@ -1427,25 +1427,26 @@ defmodule Ash.Query do
             {resource_calculation.name, resource_calculation.name}
         end
 
-             case Calculation.from_resource_calculation(query.resource, resource_calculation,
-               args: Map.new(args),
-               source_context: query.context
-             ) do
-          {:ok, calculation} ->
-        calculation =
-          select_and_load_calc(
-            resource_calculation,
-            %{calculation | load: load, name: name, calc_name: resource_calculation.name},
+      case Calculation.from_resource_calculation(query.resource, resource_calculation,
+             args: Map.new(args),
+             source_context: query.context
+           ) do
+        {:ok, calculation} ->
+          calculation =
+            select_and_load_calc(
+              resource_calculation,
+              %{calculation | load: load, name: name, calc_name: resource_calculation.name},
+              query
+            )
+
+          query = Map.update!(query, :calculations, &Map.put(&1, name, calculation))
+
+          if load_through do
+            load_through(query, :calculation, name, load_through)
+          else
             query
-          )
+          end
 
-        query = Map.update!(query, :calculations, &Map.put(&1, name, calculation))
-
-        if load_through do
-          load_through(query, :calculation, name, load_through)
-        else
-          query
-        end
         {:error, error} ->
           add_error(query, :load, error)
       end
