@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.4.23](https://github.com/ash-project/ash/compare/v3.4.22...v3.4.23) (2024-10-03)
+
+
+
+
+### Bug Fixes:
+
+* don't rewrite calculation dependencies through not loaded/forbidden fields
+
+* honor `reuse_values?` when lazy loading relationships
+
 ## [v03.4.22](https://github.com/ash-project/ash/compare/v3.4.21...v03.4.22) (2024-10-01)
 
 ### Features:
