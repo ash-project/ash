@@ -541,6 +541,8 @@ defmodule Ash.Actions.Read.Calculations do
   def rewrite([], records), do: records
   def rewrite(_rewrites, nil), do: nil
   def rewrite(_rewrites, []), do: []
+  def rewrite(_, %Ash.NotLoaded{} = not_loaded), do: not_loaded
+  def rewrite(_, %Ash.ForbiddenField{} = forbidden), do: forbidden
 
   def rewrite(rewrites, %struct{results: results} = page)
       when struct in [Ash.Page.Keyset, Ash.Page.Offset] do
