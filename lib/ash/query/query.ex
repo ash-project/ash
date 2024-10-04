@@ -1060,7 +1060,9 @@ defmodule Ash.Query do
     else
       to_select = Ash.Resource.Info.selected_by_default_attribute_names(query.resource)
 
-      Ash.Query.select(query, to_select)
+      query
+      |> Ash.Query.select(to_select)
+      |> Ash.Query.select(List.wrap(fields))
     end
   end
 
