@@ -206,7 +206,7 @@ defmodule Ash.Actions.Aggregate do
           query
 
         opts ->
-          Ash.Query.Aggregate.build_query(query, opts)
+          Ash.Query.Aggregate.build_query(query, nil, opts)
       end
 
     Keyword.put(agg_opts, :query, query)

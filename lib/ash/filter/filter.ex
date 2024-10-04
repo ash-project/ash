@@ -2108,7 +2108,9 @@ defmodule Ash.Filter do
 
     with %{valid?: true} = aggregate_query <- Ash.Query.for_read(related, read_action),
          %{valid?: true} = aggregate_query <-
-           Ash.Query.Aggregate.build_query(aggregate_query,
+           Ash.Query.Aggregate.build_query(
+             aggregate_query,
+             resource,
              filter: aggregate.filter,
              sort: aggregate.sort
            ) do
@@ -2784,7 +2786,9 @@ defmodule Ash.Filter do
 
         with %{valid?: true} = aggregate_query <- Ash.Query.for_read(related, read_action),
              %{valid?: true} = aggregate_query <-
-               Ash.Query.Aggregate.build_query(aggregate_query,
+               Ash.Query.Aggregate.build_query(
+                 aggregate_query,
+                 context.resource,
                  filter: aggregate.filter,
                  sort: aggregate.sort
                ),
@@ -3495,7 +3499,9 @@ defmodule Ash.Filter do
             with %{valid?: true} = aggregate_query <-
                    Ash.Query.new(agg_related),
                  %{valid?: true} = aggregate_query <-
-                   Ash.Query.Aggregate.build_query(aggregate_query,
+                   Ash.Query.Aggregate.build_query(
+                     aggregate_query,
+                     context.resource,
                      filter: aggregate.filter,
                      sort: aggregate.sort
                    ),
@@ -3640,7 +3646,13 @@ defmodule Ash.Filter do
 
   def do_hydrate_refs(%Ash.Query.Parent{expr: expr} = this, context) do
     if !Map.has_key?(context, :parent_stack) || context.parent_stack in [[], nil] do
-      {:ok, this}
+      case do_hydrate_refs(expr, context) do
+        {:ok, expr} ->
+          {:ok, %{this | expr: expr}}
+
+        other ->
+          other
+      end
     else
       context =
         %{

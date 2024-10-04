@@ -2309,7 +2309,7 @@ defmodule Ash.Query do
 
             related
             |> for_read(read_action)
-            |> Ash.Query.Aggregate.build_query(options)
+            |> Ash.Query.Aggregate.build_query(query.resource, options)
 
           %Ash.Query{} = query ->
             query

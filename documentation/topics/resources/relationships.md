@@ -287,21 +287,23 @@ has_many :higher_priority_tickets, __MODULE__ do
 end
 ```
 
-This can also be very useful when combined with multitenancy. Specifically, if you have a tenant resource like `Organization`,
+This can also be useful when combined with schema-based multitenancy. Specifically, if you have a tenant resource like `Organization`,
 you can use `no_attributes?` to do things like `has_many :employees, Employee, no_attributes?: true`, which lets you avoid having an
 unnecessary `organization_id` field on `Employee`. The same works in reverse: `has_one :organization, Organization, no_attributes?: true`
 allows relating the employee to their organization.
 
+You can also use `no_attributes? true` with attribute-based multitenancy in the same situation described above, to avoid an unnecessary second
+filter. If both resources have attribute multitenancy configured, they will already be filtered by `organization_id` by virtue of having
+set the tenant.
 
 > ### Caveats for using `no_attributes?` {: .warning}
 >
->  1. You can still manage relationships from one to the other, but "relate" and "unrelate" will have no effect, because there are no fields to change.
->  2. Loading the relationship on a list of resources will not behave as expected in all circumstances involving multitenancy. For example, if you get a list of `Organization` and then try to load `employees`, you would need to set a single tenant on the load query, meaning you'll get all organizations back with the set of employees from one tenant. This could eventually be solved, but for now it is considered an edge case.
-
+> 1.  You can still manage relationships from one to the other, but "relate" and "unrelate" will have no effect, because there are no fields to change.
+> 2.  Loading the relationship on a list of resources will not behave as expected in all circumstances involving multitenancy. For example, if you get a list of `Organization` and then try to load `employees`, you would need to set a single tenant on the load query, meaning you'll get all organizations back with the set of employees from one tenant. This could eventually be solved, but for now it is considered an edge case.
 
 ## Manual Relationships
 
-Manual relationships allow you to express complex or non-typical relationships between resources in a standard way. Individual data layers may interact with manual relationships in their own way, so see their corresponding guides. In general, you should try to use manual relationships sparingly, as you can do *a lot* with filters on relationships, and the `no_attributes?` flag.
+Manual relationships allow you to express complex or non-typical relationships between resources in a standard way. Individual data layers may interact with manual relationships in their own way, so see their corresponding guides. In general, you should try to use manual relationships sparingly, as you can do _a lot_ with filters on relationships, and the `no_attributes?` flag.
 
 ### Example
 
@@ -362,7 +364,7 @@ end
 ### Query when loading with strict?: true
 
 When using `Ash.Query.load` or `Ash.load` with the `strict?: true` option, the query
-that is provided to the load callback might be configured with a select-statement that doesn't 
+that is provided to the load callback might be configured with a select-statement that doesn't
 load the attributes you want to group matching results by. If your codebase utilizes the strict
 loading functionality, it is therefore recommended to use `Ash.Query.ensure_selected` on the
 query to ensure the required attributes are indeed fetched.

@@ -2867,7 +2867,9 @@ defmodule Ash.Actions.Read do
     with %{valid?: true} = aggregate_query <-
            Ash.Query.for_read(related_resource, read_action),
          %{valid?: true} = aggregate_query <-
-           Ash.Query.Aggregate.build_query(aggregate_query,
+           Ash.Query.Aggregate.build_query(
+             aggregate_query,
+             resource,
              filter: resource_aggregate.filter,
              sort: resource_aggregate.sort
            ),
@@ -3116,7 +3118,9 @@ defmodule Ash.Actions.Read do
         with %{valid?: true} = aggregate_query <-
                Ash.Query.for_read(agg_related_resource, read_action),
              %{valid?: true} = aggregate_query <-
-               Ash.Query.Aggregate.build_query(aggregate_query,
+               Ash.Query.Aggregate.build_query(
+                 aggregate_query,
+                 related_resource,
                  filter: resource_aggregate.filter,
                  sort: resource_aggregate.sort
                ),

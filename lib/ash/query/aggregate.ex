@@ -193,7 +193,7 @@ defmodule Ash.Query.Aggregate do
       query =
         case opts.query || Ash.Query.new(related) do
           %Ash.Query{} = query -> query
-          build_opts -> build_query(related, build_opts)
+          build_opts -> build_query(related, resource, build_opts)
         end
 
       Enum.reduce_while(opts.join_filters, {:ok, %{}}, fn {path, filter}, {:ok, acc} ->
@@ -329,7 +329,7 @@ defmodule Ash.Query.Aggregate do
                :ok <- validate_path(resource, List.wrap(relationship)),
                {:ok, type, constraints} <-
                  get_type(kind, type, attribute_type, attribute_constraints, constraints),
-               %{valid?: true} = query <- build_query(related, query) do
+               %{valid?: true} = query <- build_query(related, resource, query) do
             {:ok,
              %__MODULE__{
                name: name,
@@ -503,9 +503,9 @@ defmodule Ash.Query.Aggregate do
   def default_value(:custom), do: nil
 
   @doc false
-  def build_query(resource, nil), do: Ash.Query.new(resource)
+  def build_query(resource, _parent, nil), do: Ash.Query.new(resource)
 
-  def build_query(resource, build_opts) when is_list(build_opts) do
+  def build_query(resource, parent, build_opts) when is_list(build_opts) do
     cond do
       build_opts[:limit] ->
         Ash.Query.add_error(resource, "Cannot set limit on aggregate query")
@@ -514,9 +514,13 @@ defmodule Ash.Query.Aggregate do
         Ash.Query.add_error(resource, "Cannot set offset on aggregate query")
 
       true ->
+        {filter, build_opts} = Keyword.pop(build_opts, :filter)
+
         case Ash.Query.build(resource, build_opts) do
           %{valid?: true} = query ->
-            build_query(resource, query)
+            resource
+            |> build_query(parent, query)
+            |> Ash.Query.do_filter(filter, parent_stack: [parent])
 
           %{valid?: false} = query ->
             query
@@ -524,7 +528,7 @@ defmodule Ash.Query.Aggregate do
     end
   end
 
-  def build_query(_resource, %Ash.Query{} = query) do
+  def build_query(_resource, _parent, %Ash.Query{} = query) do
     cond do
       query.limit ->
         Ash.Query.add_error(query, "Cannot set limit on aggregate query")

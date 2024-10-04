@@ -1241,7 +1241,6 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  # credo:disable-for-next-line Credo.Check.Refactor.Nesting
   defp handle_update(
          source_record,
          current_value,
@@ -1441,7 +1440,6 @@ defmodule Ash.Actions.ManagedRelationships do
                 )
                 |> Ash.Changeset.set_context(join_relationship.context)
                 |> Ash.update(return_notifications?: true)
-                # credo:disable-for-next-line Credo.Check.Refactor.Nesting
                 |> case do
                   {:ok, _updated_join, join_update_notifications} ->
                     {:ok, [updated | current_value],
@@ -1631,7 +1629,6 @@ defmodule Ash.Actions.ManagedRelationships do
                     )
                     |> Ash.Changeset.set_context(relationship.context)
                     |> Ash.destroy(return_notifications?: true)
-                    # credo:disable-for-next-line Credo.Check.Refactor.Nesting
                     |> case do
                       {:ok, destroy_destination_notifications} ->
                         {:cont,
