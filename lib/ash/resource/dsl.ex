@@ -1350,10 +1350,10 @@ defmodule Ash.Resource.Dsl do
     Takes a module that must adopt the `Ash.Resource.Calculation` behaviour. See that module
     for more information.
 
-    To ensure that the necessary fields are selected:
+    To ensure that the necessary fields are loaded:
 
-    1.) Specifying the `select` option on a calculation in the resource.
-    2.) Define a `select/2` callback in the calculation module
+    1.) Specifying the `load` option on a calculation in the resource.
+    2.) Define a `load/3` callback in the calculation module
     3.) Set `always_select?` on the attribute in question
 
     See the [calculations guide](/documentation/topics/resources/calculations.md) for more.
@@ -1361,7 +1361,7 @@ defmodule Ash.Resource.Dsl do
     examples: [
       {
         "`Ash.Resource.Calculation` implementation example:",
-        "calculate :full_name, :string, {MyApp.FullName, keys: [:first_name, :last_name]}, select: [:first_name, :last_name]"
+        "calculate :full_name, :string, {MyApp.FullName, keys: [:first_name, :last_name]}, load: [:first_name, :last_name]"
       },
       {
         "`expr/1` example:",
