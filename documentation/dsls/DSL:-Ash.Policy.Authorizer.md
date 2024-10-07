@@ -176,7 +176,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-policy-authorize_if-check){: #policies-policy-authorize_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-policy-authorize_if-check){: #policies-policy-authorize_if-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -216,7 +216,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-policy-forbid_if-check){: #policies-policy-forbid_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-policy-forbid_if-check){: #policies-policy-forbid_if-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -256,7 +256,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-policy-authorize_unless-check){: #policies-policy-authorize_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-policy-authorize_unless-check){: #policies-policy-authorize_unless-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -296,7 +296,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-policy-forbid_unless-check){: #policies-policy-forbid_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-policy-forbid_unless-check){: #policies-policy-forbid_unless-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -458,7 +458,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-policy_group-policy-authorize_if-check){: #policies-policy_group-policy-authorize_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-policy_group-policy-authorize_if-check){: #policies-policy_group-policy-authorize_if-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -498,7 +498,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-policy_group-policy-forbid_if-check){: #policies-policy_group-policy-forbid_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-policy_group-policy-forbid_if-check){: #policies-policy_group-policy-forbid_if-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -538,7 +538,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-policy_group-policy-authorize_unless-check){: #policies-policy_group-policy-authorize_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-policy_group-policy-authorize_unless-check){: #policies-policy_group-policy-authorize_unless-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -578,7 +578,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-policy_group-policy-forbid_unless-check){: #policies-policy_group-policy-forbid_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-policy_group-policy-forbid_unless-check){: #policies-policy_group-policy-forbid_unless-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -662,7 +662,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-bypass-authorize_if-check){: #policies-bypass-authorize_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-bypass-authorize_if-check){: #policies-bypass-authorize_if-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -702,7 +702,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-bypass-forbid_if-check){: #policies-bypass-forbid_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-bypass-forbid_if-check){: #policies-bypass-forbid_if-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -742,7 +742,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-bypass-authorize_unless-check){: #policies-bypass-authorize_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-bypass-authorize_unless-check){: #policies-bypass-authorize_unless-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -782,7 +782,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#policies-bypass-forbid_unless-check){: #policies-bypass-forbid_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#policies-bypass-forbid_unless-check){: #policies-bypass-forbid_unless-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -942,7 +942,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#field_policies-field_policy_bypass-authorize_if-check){: #field_policies-field_policy_bypass-authorize_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#field_policies-field_policy_bypass-authorize_if-check){: #field_policies-field_policy_bypass-authorize_if-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -982,7 +982,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#field_policies-field_policy_bypass-forbid_if-check){: #field_policies-field_policy_bypass-forbid_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#field_policies-field_policy_bypass-forbid_if-check){: #field_policies-field_policy_bypass-forbid_if-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1022,7 +1022,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#field_policies-field_policy_bypass-authorize_unless-check){: #field_policies-field_policy_bypass-authorize_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#field_policies-field_policy_bypass-authorize_unless-check){: #field_policies-field_policy_bypass-authorize_unless-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1062,7 +1062,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#field_policies-field_policy_bypass-forbid_unless-check){: #field_policies-field_policy_bypass-forbid_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#field_policies-field_policy_bypass-forbid_unless-check){: #field_policies-field_policy_bypass-forbid_unless-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1141,7 +1141,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#field_policies-field_policy-authorize_if-check){: #field_policies-field_policy-authorize_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#field_policies-field_policy-authorize_if-check){: #field_policies-field_policy-authorize_if-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1181,7 +1181,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#field_policies-field_policy-forbid_if-check){: #field_policies-field_policy-forbid_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#field_policies-field_policy-forbid_if-check){: #field_policies-field_policy-forbid_if-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1221,7 +1221,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#field_policies-field_policy-authorize_unless-check){: #field_policies-field_policy-authorize_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#field_policies-field_policy-authorize_unless-check){: #field_policies-field_policy-authorize_unless-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1261,7 +1261,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`check`](#field_policies-field_policy-forbid_unless-check){: #field_policies-field_policy-forbid_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+| [`check`](#field_policies-field_policy-forbid_unless-check){: #field_policies-field_policy-forbid_unless-check .spark-required} | `any \| module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
 ### Options
 
 | Name | Type | Default | Docs |
