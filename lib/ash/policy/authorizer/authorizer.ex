@@ -50,6 +50,7 @@ defmodule Ash.Policy.Authorizer do
       type:
         {:or,
          [
+           {:custom, __MODULE__, :template_var, []},
            {:spark_behaviour, Ash.Policy.Check, Ash.Policy.Check.Builtins},
            {:custom, __MODULE__, :expr_check, []}
          ]},
@@ -1744,22 +1745,14 @@ defmodule Ash.Policy.Authorizer do
     }
   end
 
-  def expr_check({template_var, _} = expr)
+  def expr_check(expr) do
+    {:ok, {Ash.Policy.Check.Expression, expr: expr}}
+  end
+
+  def template_var({template_var, _} = expr)
       when template_var in [:_actor, :_arg, :_ref, :_parent, :_atomic_ref, :_context] do
     {:ok, {Ash.Policy.Check.Expression, expr: expr}}
   end
 
-  def expr_check({_, _} = tuple) do
-    {:error,
-     """
-     Cannot have an expression check that returns a two-element tuple, as this
-     can be ambiguous with the usage of a check module and check options.
-
-     Got: #{inspect(tuple)}
-     """}
-  end
-
-  def expr_check(expr) do
-    {:ok, {Ash.Policy.Check.Expression, expr: expr}}
-  end
+  def template_var(_), do: {:error, "not a template var"}
 end

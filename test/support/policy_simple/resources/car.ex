@@ -5,6 +5,19 @@ defmodule Ash.Test.Support.PolicySimple.Car do
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer]
 
+  defmodule Raising do
+    @moduledoc false
+    use Ash.Policy.SimpleCheck
+
+    @impl true
+    def describe(_), do: "should not be reachable"
+
+    @impl true
+    def match?(_, _, _) do
+      raise "this should not be reachable"
+    end
+  end
+
   ets do
     private?(true)
   end
@@ -47,6 +60,15 @@ defmodule Ash.Test.Support.PolicySimple.Car do
       policy [expr(active != true)] do
         forbid_if always()
       end
+    end
+
+    # this policy is testing the short circuiting evaluation of conditions
+    policy [action_type(:read), never(), Raising] do
+      authorize_if Raising
+    end
+
+    policy [action_type(:read), always()] do
+      authorize_if always()
     end
   end
 
