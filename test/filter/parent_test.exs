@@ -20,6 +20,7 @@ defmodule Ash.Test.Filter.ParentTest do
     attributes do
       uuid_primary_key :id
       attribute(:name, :string, public?: true)
+      attribute(:native_languages, {:array, :string}, public?: true)
     end
 
     relationships do
@@ -48,6 +49,7 @@ defmodule Ash.Test.Filter.ParentTest do
       attribute(:title, :string, public?: true)
       attribute(:contents, :string, public?: true)
       attribute(:points, :integer, public?: true)
+      attribute(:language, :string, public?: true)
     end
 
     relationships do
@@ -78,6 +80,23 @@ defmodule Ash.Test.Filter.ParentTest do
     assert [] =
              User
              |> Ash.Query.filter(exists(posts, title == parent(name <> "foo")))
+             |> Ash.read!()
+  end
+
+  test "in/2 can use `parent` to refer to the root record" do
+    author =
+      User
+      |> Ash.Changeset.for_create(:create, %{native_languages: ["en", "ko"]})
+      |> Ash.create!()
+
+    Post
+    |> Ash.Changeset.for_create(:create, %{language: "en"})
+    |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+    |> Ash.create!()
+
+    assert [_] =
+             User
+             |> Ash.Query.filter(exists(posts, language in parent(native_languages)))
              |> Ash.read!()
   end
 end
