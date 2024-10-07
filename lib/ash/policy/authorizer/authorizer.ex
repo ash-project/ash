@@ -528,24 +528,30 @@ defmodule Ash.Policy.Authorizer do
     )
   end
 
-  def install(igniter, module, type, _path, _argv) do
+  def install(igniter, module, type, _path, argv) do
+    yes = "--yes" in argv or "-y" in argv
+
     igniter =
       with nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :picosat_elixir),
            nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :simple_sat) do
         solver =
-          Owl.IO.select(
-            [
-              {:picosat_elixir, "~> 0.2"},
-              {:simple_sat, "~> 0.1"}
-            ],
-            label:
-              "Ash.Policy.Authorizer requires a sat solver. Which would you like to use? If on windows, use `simple_sat`, otherwise, use `picosat_elixir`.",
-            render_as: &to_string(elem(&1, 0))
-          )
+          if yes do
+            {:picosat_elixir, "~> 0.2"}
+          else
+            Owl.IO.select(
+              [
+                {:picosat_elixir, "~> 0.2"},
+                {:simple_sat, "~> 0.1"}
+              ],
+              label:
+                "Ash.Policy.Authorizer requires a sat solver. Which would you like to use? If on windows, use `simple_sat`, otherwise, use `picosat_elixir`.",
+              render_as: &to_string(elem(&1, 0))
+            )
+          end
 
         igniter
-        |> Igniter.Project.Deps.add_dep(solver)
-        |> Igniter.apply_and_fetch_dependencies()
+        |> Igniter.Project.Deps.add_dep(solver, yes?: yes)
+        |> Igniter.apply_and_fetch_dependencies(yes: yes)
       else
         _ ->
           igniter
