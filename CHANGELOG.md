@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.4.25](https://github.com/ash-project/ash/compare/v3.4.24...v3.4.25) (2024-10-07)
+
+
+
+
+### Bug Fixes:
+
+* honor --yes or -y option when adding a satsolver
+
+* don't error on type casting against expressions
+
 ## [v3.4.24](https://github.com/ash-project/ash/compare/v3.4.23...v3.4.24) (2024-10-07)
 
 
