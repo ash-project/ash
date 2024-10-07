@@ -2,6 +2,21 @@
 
 <!-- changelog -->
 
+## [v3.4.24](https://github.com/ash-project/ash/compare/v3.4.23...v3.4.24) (2024-10-07)
+
+
+
+
+### Bug Fixes:
+
+* short-circuit policy condition evaluation when checking all conditions
+
+* properly hydrate aggregate calculations & fields
+
+### Improvements:
+
+* re-introduce removed behavior to short circuit policy conditions
+
 ## [v3.4.23](https://github.com/ash-project/ash/compare/v3.4.22...v3.4.23) (2024-10-03)
 
 
