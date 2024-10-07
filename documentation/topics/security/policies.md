@@ -362,7 +362,7 @@ end
 > We cannot allow references to the data being created in create policies, because we do not yet know what the result of the action will be.
 > For updates and destroys, referencing the data always references the data _prior_ to the action being run, and so it is deterministic.
 
-If a policy that applies to creates, would reuslt in a filter, you will get a `Ash.Error.Forbidden.CannotFilterCreates` at runtime explaining
+If a policy that applies to creates, would result in a filter, you will get a `Ash.Error.Forbidden.CannotFilterCreates` at runtime explaining
 that you must change your check. Typically this means writing a custom `Ash.Policy.SimpleCheck` instead.
 
 Ash also comes with a set of built-in helpers for writing inline checks - see `Ash.Policy.Check.Builtins` for more information.
@@ -455,10 +455,10 @@ In results, forbidden fields will be replaced with a special value: `%Ash.Forbid
 
 When these fields are referred to in filters, they will be replaced with an expression that evaluates to `nil`. To support this behavior, only simple and filter checks are allowed in field policies.
 
-### Handeling private fields in internal functions
+### Handling private fields in internal functions
 
 When calling internal functions like `Ash.read!/1`, private fields will by default always be shown.
-Even if field policies applies to the resource. You can change the default behaviour by setting the
+Even if field policies apply to the resource. You can change the default behaviour by setting the
 `private_fields` option on field policies.
 
 ```elixir
