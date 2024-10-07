@@ -12,7 +12,7 @@ defmodule Ash.Resource.Igniter do
 
   @doc "List all resource modules found in the project"
   def list_resources(igniter) do
-    Igniter.Code.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
+    Igniter.Project.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
       zipper
       |> Igniter.Code.Module.move_to_use(resource_mods(igniter))
       |> case do
@@ -29,7 +29,7 @@ defmodule Ash.Resource.Igniter do
   @spec domain(Igniter.t(), Ash.Resource.t()) ::
           {:ok, Igniter.t(), Ash.Domain.t()} | {:error, Igniter.t()}
   def domain(igniter, resource) do
-    case Igniter.Code.Module.find_module(igniter, resource) do
+    case Igniter.Project.Module.find_module(igniter, resource) do
       {:ok, {igniter, _source, zipper}} ->
         with {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper),
              {:ok, zipper} <-
@@ -58,7 +58,7 @@ defmodule Ash.Resource.Igniter do
 
   @doc "Adds the given code block to the block of the resource specified"
   def add_block(igniter, resource, block, chunk) do
-    Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
+    Igniter.Project.Module.find_and_update_module!(igniter, resource, fn zipper ->
       with {:ok, zipper} <-
              Igniter.Code.Function.move_to_function_call_in_current_scope(
                zipper,
@@ -82,7 +82,7 @@ defmodule Ash.Resource.Igniter do
 
   @doc "Adds a bypass to the top of the resource's `policies` block"
   def add_bypass(igniter, resource, condition, body) do
-    Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
+    Igniter.Project.Module.find_and_update_module!(igniter, resource, fn zipper ->
       with {:ok, zipper} <-
              Igniter.Code.Function.move_to_function_call_in_current_scope(
                zipper,
@@ -120,7 +120,7 @@ defmodule Ash.Resource.Igniter do
 
   @doc "Adds a policy to the bottom of the resource's `policies` block"
   def add_policy(igniter, resource, condition, body) do
-    Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
+    Igniter.Project.Module.find_and_update_module!(igniter, resource, fn zipper ->
       with {:ok, zipper} <-
              Igniter.Code.Function.move_to_function_call_in_current_scope(
                zipper,

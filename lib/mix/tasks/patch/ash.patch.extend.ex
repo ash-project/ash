@@ -61,7 +61,7 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
     Enum.reduce(opts[:subjects], igniter, fn subject, igniter ->
       subject = Igniter.Code.Module.parse(subject)
 
-      case Igniter.Code.Module.find_module(igniter, subject) do
+      case Igniter.Project.Module.find_module(igniter, subject) do
         {:error, igniter} ->
           Igniter.add_issue(igniter, "Could not find module to extend: #{subject}")
 
@@ -230,7 +230,7 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
   end
 
   defp remove_domain_option(igniter, module) do
-    Igniter.Code.Module.find_and_update_module!(igniter, module, fn zipper ->
+    Igniter.Project.Module.find_and_update_module!(igniter, module, fn zipper ->
       with {:ok, zipper} <- Igniter.Code.Module.move_to_use(zipper, Ash.Resource),
            {:ok, zipper} <-
              Igniter.Code.Function.update_nth_argument(zipper, 1, fn values_zipper ->

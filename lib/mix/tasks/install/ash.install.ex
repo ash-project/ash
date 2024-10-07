@@ -81,12 +81,12 @@ defmodule Mix.Tasks.Ash.Install do
   end
 
   defp generate_example(igniter, argv) do
-    domain_module_name = Igniter.Code.Module.module_name(igniter, "Support")
-    ticket_resource = Igniter.Code.Module.module_name(igniter, "Support.Ticket")
-    representative_resource = Igniter.Code.Module.module_name(igniter, "Support.Representative")
+    domain_module_name = Igniter.Project.Module.module_name(igniter, "Support")
+    ticket_resource = Igniter.Project.Module.module_name(igniter, "Support.Ticket")
+    representative_resource = Igniter.Project.Module.module_name(igniter, "Support.Representative")
 
     ticket_status_module_name =
-      Igniter.Code.Module.module_name(igniter, "Support.Ticket.Types.Status")
+      Igniter.Project.Module.module_name(igniter, "Support.Ticket.Types.Status")
 
     igniter
     |> Igniter.compose_task("ash.gen.domain", [inspect(domain_module_name)])
