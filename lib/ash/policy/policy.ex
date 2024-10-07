@@ -53,10 +53,11 @@ defmodule Ash.Policy.Policy do
 
   defp strict_check_all_conditions(authorizer) do
     Enum.reduce(authorizer.policies || [], authorizer, fn policy, authorizer ->
-      Enum.reduce(policy.condition || [], authorizer, fn condition, authorizer ->
+      Enum.reduce_while(policy.condition || [], authorizer, fn condition, authorizer ->
         case fetch_or_strict_check_fact(authorizer, condition) do
-          {:ok, _, authorizer} -> authorizer
-          {:error, authorizer} -> authorizer
+          {:ok, true, authorizer} -> {:cont, authorizer}
+          {:ok, _, authorizer} -> {:halt, authorizer}
+          {:error, authorizer} -> {:halt, authorizer}
         end
       end)
     end)
