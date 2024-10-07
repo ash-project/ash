@@ -155,7 +155,7 @@ defmodule Ash.Resource.Change do
             ) ::
               boolean
 
-  @callback atomic(Ash.Changeset.t(), Keyword.t(), Context.t()) ::
+  @callback atomic(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: Context.t()) ::
               {:ok, Ash.Changeset.t()}
               | {:atomic, %{optional(atom()) => Ash.Expr.t() | {:atomic, Ash.Expr.t()}}}
               | {:atomic, Ash.Changeset.t(), %{optional(atom()) => Ash.Expr.t()}}
