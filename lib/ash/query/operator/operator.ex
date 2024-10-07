@@ -203,22 +203,30 @@ defmodule Ash.Query.Operator do
   end
 
   defp try_cast(%Ref{attribute: %{type: type, constraints: constraints}} = left, right, :same) do
-    case Ash.Query.Type.try_cast(right, type, constraints) do
-      {:ok, new_right} ->
-        {:ok, left, new_right}
+    if Ash.Expr.expr?(right) do
+      {:ok, left, right}
+    else
+      case Ash.Query.Type.try_cast(right, type, constraints) do
+        {:ok, new_right} ->
+          {:ok, left, new_right}
 
-      _ ->
-        nil
+        _ ->
+          nil
+      end
     end
   end
 
   defp try_cast(left, %Ref{attribute: %{type: type, constraints: constraints}} = right, :same) do
-    case Ash.Query.Type.try_cast(left, type, constraints) do
-      {:ok, new_left} ->
-        {:ok, new_left, right}
+    if Ash.Expr.expr?(right) do
+      {:ok, left, right}
+    else
+      case Ash.Query.Type.try_cast(left, type, constraints) do
+        {:ok, new_left} ->
+          {:ok, new_left, right}
 
-      _ ->
-        nil
+        _ ->
+          nil
+      end
     end
   end
 
@@ -226,21 +234,25 @@ defmodule Ash.Query.Operator do
          :any,
          {:array, :same}
        ]) do
-    case right do
-      %Ref{attribute: %{type: {:array, _type}}} ->
-        {:ok, left, right}
+    if Ash.Expr.expr?(right) do
+      {:ok, left, right}
+    else
+      case right do
+        %Ref{attribute: %{type: {:array, _type}}} ->
+          {:ok, left, right}
 
-      %Ref{} ->
-        nil
+        %Ref{} ->
+          nil
 
-      right ->
-        case Ash.Query.Type.try_cast(right, {:array, type}, items: constraints) do
-          {:ok, new_right} ->
-            {:ok, left, new_right}
+        right ->
+          case Ash.Query.Type.try_cast(right, {:array, type}, items: constraints) do
+            {:ok, new_right} ->
+              {:ok, left, new_right}
 
-          _ ->
-            nil
-        end
+            _ ->
+              nil
+          end
+      end
     end
   end
 
@@ -249,12 +261,16 @@ defmodule Ash.Query.Operator do
          %Ref{attribute: %{type: {:array, type}, constraints: constraints}} = right,
          [:any, {:array, :same}]
        ) do
-    case Ash.Query.Type.try_cast(left, type, constraints) do
-      {:ok, new_left} ->
-        {:ok, new_left, right}
+    if Ash.Expr.expr?(right) do
+      {:ok, left, right}
+    else
+      case Ash.Query.Type.try_cast(left, type, constraints) do
+        {:ok, new_left} ->
+          {:ok, new_left, right}
 
-      _ ->
-        nil
+        _ ->
+          nil
+      end
     end
   end
 

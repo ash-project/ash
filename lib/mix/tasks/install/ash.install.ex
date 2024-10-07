@@ -83,7 +83,9 @@ defmodule Mix.Tasks.Ash.Install do
   defp generate_example(igniter, argv) do
     domain_module_name = Igniter.Project.Module.module_name(igniter, "Support")
     ticket_resource = Igniter.Project.Module.module_name(igniter, "Support.Ticket")
-    representative_resource = Igniter.Project.Module.module_name(igniter, "Support.Representative")
+
+    representative_resource =
+      Igniter.Project.Module.module_name(igniter, "Support.Representative")
 
     ticket_status_module_name =
       Igniter.Project.Module.module_name(igniter, "Support.Ticket.Types.Status")
