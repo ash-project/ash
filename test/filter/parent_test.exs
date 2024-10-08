@@ -141,20 +141,19 @@ defmodule Ash.Test.Filter.ParentTest do
   test "parent can refer belongs_to relationship in query filter" do
     author =
       User
-      |> Ash.Changeset.for_create(:create, %{name: "best"})
+      |> Ash.Changeset.for_create(:create, %{name: "best", native_languages: ["english"]})
       |> Ash.create!()
 
     post =
       Post
-      |> Ash.Changeset.for_create(:create, %{title: "best"})
+      |> Ash.Changeset.for_create(:create, %{title: "best", language: "english"})
       |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Ash.create!()
 
-    comment =
-      Comment
-      |> Ash.Changeset.for_create(:create, %{contents: "best"})
-      |> Ash.Changeset.manage_relationship(:post, post, type: :append_and_remove)
-      |> Ash.create!()
+    Comment
+    |> Ash.Changeset.for_create(:create, %{contents: "best", language: "english"})
+    |> Ash.Changeset.manage_relationship(:post, post, type: :append_and_remove)
+    |> Ash.create!()
 
     assert [_] =
              Post
@@ -179,7 +178,7 @@ defmodule Ash.Test.Filter.ParentTest do
       |> Ash.Changeset.for_create(:create, %{contents: "best"})
       |> Ash.Changeset.manage_relationship(:post, post, type: :append_and_remove)
       |> Ash.create!()
-      |> Ash.load!([:post_author])
+      |> Ash.load!(:post_author)
 
     assert comment.post_author.id == author.id
   end

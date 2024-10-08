@@ -27,6 +27,58 @@ defmodule Ash.Filter.Runtime do
   def filter_matches(_domain, records, nil, _opts), do: {:ok, records}
 
   def filter_matches(domain, records, filter, opts) do
+    {records, parent} = load_records_and_parent(records, domain, opts[:parent], filter, opts)
+
+    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
+      case matches(record, filter, Keyword.put(opts, :parent, parent)) do
+        {:ok, falsey} when falsey in [false, nil] ->
+          {:cont, {:ok, records}}
+
+        {:ok, _} ->
+          {:cont, {:ok, [record | records]}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, records} ->
+        {:ok, Enum.reverse(records)}
+
+      other ->
+        other
+    end
+  end
+
+  defp load_parent(nil, _, _, _), do: nil
+  defp load_parent([], _, _, _), do: []
+
+  defp load_parent([parent | rest], domain, filter, opts) do
+    filter =
+      filter
+      |> Ash.Filter.flat_map(fn
+        %Ash.Query.Parent{expr: expr} ->
+          [expr]
+
+        _ ->
+          []
+      end)
+
+    {parent, rest} =
+      load_records_and_parent(
+        parent,
+        domain,
+        rest,
+        filter,
+        Keyword.put(opts, :parent_loaded?, true)
+      )
+
+    [parent | rest]
+  end
+
+  defp load_parent(value, domain, filter, opts), do: load_parent([value], domain, filter, opts)
+
+  defp load_records_and_parent(records, domain, parent, filter, opts) do
     resource =
       case records do
         %resource{} ->
@@ -62,27 +114,14 @@ defmodule Ash.Filter.Runtime do
           )
       end
 
-    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
-      matches = matches(record, filter, Keyword.put(opts, :parent_loaded?, true))
-
-      case matches do
-        {:ok, falsey} when falsey in [false, nil] ->
-          {:cont, {:ok, records}}
-
-        {:ok, _} ->
-          {:cont, {:ok, [record | records]}}
-
-        {:error, error} ->
-          {:halt, {:error, error}}
+    parent =
+      if opts[:parent_loaded?] do
+        parent
+      else
+        load_parent(parent, domain, filter, opts)
       end
-    end)
-    |> case do
-      {:ok, records} ->
-        {:ok, Enum.reverse(records)}
 
-      other ->
-        other
-    end
+    {records, parent}
   end
 
   defp matches(record, expression, opts) do
@@ -459,7 +498,7 @@ defmodule Ash.Filter.Runtime do
          _resource,
          unknown_on_unknown_refs?
        )
-       when is_nil(parent) do
+       when is_nil(parent) or parent == [] do
     if unknown_on_unknown_refs? do
       :unknown
     else
@@ -1282,9 +1321,17 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp parent_stack(nil), do: []
-  defp parent_stack(%resource{}), do: [resource]
-  defp parent_stack(value) when is_list(value), do: value
+  defp parent_stack(parent) do
+    parent
+    |> List.wrap()
+    |> Enum.map(fn
+      %resource{} ->
+        resource
+
+      resource ->
+        resource
+    end)
+  end
 
   defp evaluate(
          %{__function__?: true} = func,

@@ -199,7 +199,9 @@ defmodule Ash.Actions.Read.Relationships do
         tracer: query.context[:private][:tracer]
       )
       |> Ash.Query.sort(relationship.sort)
-      |> Ash.Query.do_filter(relationship.filter)
+      |> Ash.Query.do_filter(relationship.filter,
+        parent_stack: List.wrap(query.context[:parent_stack]) ++ [query.resource]
+      )
       |> Ash.Query.set_context(relationship.context)
       |> Ash.Query.set_context(%{private: %{loading_relationship?: true}})
       |> hydrate_refs(query.context[:private][:actor], relationship.source)
