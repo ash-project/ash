@@ -423,7 +423,7 @@ defmodule Ash.Actions.Read do
                ),
              sort:
                add_calc_context_to_sort(
-                 query.sort,
+                 query,
                  opts[:actor],
                  opts[:authorize?],
                  query.tenant,
@@ -1207,7 +1207,7 @@ defmodule Ash.Actions.Read do
                    resource:
                      Ash.Resource.Info.related(query.resource, aggregate.relationship_path),
                    public?: false,
-                   parent_stack: parent_stack_from_context(query)
+                   parent_stack: parent_stack_from_context(query.context)
                  }) do
               {:ok, expression} ->
                 new_field = %{
@@ -1629,10 +1629,11 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  def add_calc_context_to_sort(empty, _, _, _, _, _, _) when empty in [[], nil], do: empty
+  def add_calc_context_to_sort(%{sort: empty}, _, _, _, _, _, _) when empty in [[], nil],
+    do: empty
 
-  def add_calc_context_to_sort(sort, actor, authorize?, tenant, tracer, resource, domain) do
-    Enum.map(sort, fn
+  def add_calc_context_to_sort(query, actor, authorize?, tenant, tracer, resource, domain) do
+    Enum.map(query.sort, fn
       {%Ash.Query.Calculation{} = calc, order} ->
         calc = add_calc_context(calc, actor, authorize?, tenant, tracer, domain)
 
@@ -1656,7 +1657,8 @@ defmodule Ash.Actions.Read do
                 expr,
                 %{
                   resource: resource,
-                  public?: false
+                  public?: false,
+                  parent_stack: parent_stack_from_context(query.context)
                 }
               )
 
@@ -2020,7 +2022,7 @@ defmodule Ash.Actions.Read do
           end),
         sort:
           add_calc_context_to_sort(
-            query.sort,
+            query,
             actor,
             authorize?,
             tenant,
@@ -2729,7 +2731,7 @@ defmodule Ash.Actions.Read do
         case Ash.Filter.hydrate_refs(expression, %{
                resource: query.resource,
                public?: false,
-               parent_stack: parent_stack_from_context(query)
+               parent_stack: parent_stack_from_context(query.context)
              }) do
           {:ok, expression} ->
             {:cont, {:ok, [{calculation, expression} | calculations]}}
@@ -2745,16 +2747,16 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  defp parent_stack_from_context(%{
-         context: %{
+  defp parent_stack_from_context(
+         %{
            data_layer: %{lateral_join_source: {_, [{%{resource: resource}, _, _, _} | _]}}
-         }
-       }) do
-    [resource]
+         } = context
+       ) do
+    [resource] ++ List.wrap(context[:parent_stack])
   end
 
-  defp parent_stack_from_context(_query) do
-    []
+  defp parent_stack_from_context(context) do
+    List.wrap(context[:parent_stack])
   end
 
   defp authorize_calculation_expressions(
