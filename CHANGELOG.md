@@ -2,6 +2,19 @@
 
 <!-- changelog -->
 
+## [v3.4.26](https://github.com/ash-project/ash/compare/v3.4.25...v3.4.26) (2024-10-08)
+
+
+
+
+### Bug Fixes:
+
+* properly hydrate sort with parent context
+
+* handle nested parent references in runtime expression logic
+
+* set parent stack when hydrating references in related queries
+
 ## [v3.4.25](https://github.com/ash-project/ash/compare/v3.4.24...v3.4.25) (2024-10-07)
 
 
