@@ -46,6 +46,7 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
 
   @impl Igniter.Mix.Task
   def igniter(igniter, argv) do
+    Mix.Task.run("compile")
     {%{subject: subject, extensions: extensions}, argv} = positional_args!(argv)
 
     opts =
