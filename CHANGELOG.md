@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.28](https://github.com/ash-project/ash/compare/v3.4.27...v3.4.28) (2024-10-10)
+
+
+
+
+### Improvements:
+
+* support lazy evaluation of skipped upsert records
+
 ## [v3.4.27](https://github.com/ash-project/ash/compare/v3.4.26...v3.4.27) (2024-10-10)
 
 
