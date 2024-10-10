@@ -543,8 +543,12 @@ defmodule Ash.Policy.Authorizer do
                 {:picosat_elixir, "~> 0.2"},
                 {:simple_sat, "~> 0.1"}
               ],
-              label:
-                "Ash.Policy.Authorizer requires a sat solver. Which would you like to use? If on windows, use `simple_sat`, otherwise, use `picosat_elixir`.",
+              label: """
+              Ash.Policy.Authorizer requires a SAT solver. Which would you like to use?
+
+              * `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
+              * `:simple_sat` - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
+              """,
               render_as: &to_string(elem(&1, 0))
             )
           end
