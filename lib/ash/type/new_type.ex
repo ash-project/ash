@@ -377,6 +377,10 @@ defmodule Ash.Type.NewType do
 
       defoverridable storage_type: 1,
                      cast_input: 2,
+                     cast_stored: 2,
+                     cast_stored_array: 2,
+                     dump_to_native: 2,
+                     dump_to_native_array: 2,
                      type_constraints: 2
     end
   end
