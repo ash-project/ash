@@ -209,7 +209,12 @@ defmodule Ash.DataLayer do
               list(atom),
               Ash.Resource.Identity.t() | nil
             ) ::
-              {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
+              {:ok,
+               Ash.Resource.record()
+               | {:upsert_skipped, Ash.Query.t(),
+                  (-> {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term})}}
+              | {:error, term}
+              | {:error, :no_rollback, term}
   @callback update(Ash.Resource.t(), Ash.Changeset.t()) ::
               {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
 
@@ -534,7 +539,13 @@ defmodule Ash.DataLayer do
           list(atom),
           identity :: Ash.Resource.Identity.t() | nil
         ) ::
-          {:ok, Ash.Resource.record()} | {:error, term}
+          {:ok,
+           Ash.Resource.record()
+           | {:upsert_skipped, Ash.Query.t(),
+              (-> {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term})}}
+          | {:error, term}
+          | {:error, :no_rollback, term}
+
   def upsert(resource, changeset, keys, identity \\ nil) do
     changeset = %{changeset | tenant: changeset.to_tenant}
     data_layer = Ash.DataLayer.data_layer(resource)

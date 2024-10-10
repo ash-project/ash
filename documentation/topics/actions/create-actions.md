@@ -105,7 +105,42 @@ Ash.create!(changeset, upsert?: true, upsert_identity: :unique_email)
 
 > ### Upserts do not use an update action {: .warning}
 >
-> While an upsert is conceptually a "create or update" operation, it does not result in an update action being called. The data layer contains the upsert implementation. This means that if you have things like global changes that are only run on update, they will not be run on upserts that result in an update. Additionally, notifications for updates will not be emitted from upserts.
+> While an upsert is conceptually a "create or update" operation, it does not result in an update action being called.
+> The data layer contains the upsert implementation. This means that if you have things like global changes that are only run on update,
+> they will not be run on upserts that result in an update. Additionally, notifications for updates will not be emitted from upserts.
+> Most importantly, there are no _read_ or _update_ policies applied! You must take care that an upsert can only target records that
+> the user has permission to update.
+
+#### Targeting Upserts
+
+Lets imagine that you want a user to upsert an article by its slug, but only if it is their article:
+
+If your action looked like this:
+
+```elixir
+create :upsert_article_by_slug do
+  upsert? true
+  accept [:slug, :title, :body]
+  upsert_identity :unique_slug
+end
+```
+
+and there was a different user's article with the same slug, the upsert would fail.
+
+What we must do instead is use a `filter` change to further scope the upsert:
+
+```elixir
+create :upsert_article_by_slug do
+  upsert? true
+  accept [:slug, :title, :body]
+  upsert_identity :unique_slug
+
+  change filter(expr(user_id == ^actor(:id)))
+end
+```
+
+With this in place, the user can upsert against their _own_ article's slugs, but if someone else has an article with that slug,
+they will get an error about slug being taken.
 
 ### Atomic Updates
 

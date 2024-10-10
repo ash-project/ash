@@ -1263,6 +1263,9 @@ defmodule Ash.Actions.Create.Bulk do
                     end
 
                   case result do
+                    {:ok, {:upsert_skipped, _query, _callback}} ->
+                      []
+
                     {:ok, %{__metadata__: %{upsert_skipped: true}}} ->
                       []
 

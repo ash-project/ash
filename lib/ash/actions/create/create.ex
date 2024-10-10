@@ -364,6 +364,17 @@ defmodule Ash.Actions.Create do
                               )
                           )
                           |> case do
+                            {:ok, {:upsert_skipped, _query, callback}} ->
+                              if opts[:return_skipped_upsert?] do
+                                callback.()
+                              else
+                                {:error,
+                                 Ash.Error.Changes.StaleRecord.exception(
+                                   resource: changeset.resource,
+                                   filter: changeset.filter
+                                 )}
+                              end
+
                             {:ok, %{__metadata__: %{upsert_skipped: true}}} = result ->
                               if opts[:return_skipped_upsert?] do
                                 result
