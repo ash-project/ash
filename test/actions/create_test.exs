@@ -616,12 +616,40 @@ defmodule Ash.Test.Actions.CreateTest do
                })
                |> Ash.create!(
                  upsert?: true,
+                 return_skipped_upsert?: true,
                  upsert_identity: :unique_title,
                  upsert_fields: [:contents, :updated_at],
                  upsert_condition: expr(contents != upsert_conflict(:contents))
                )
 
       assert Ash.Resource.get_metadata(post, :upsert_skipped)
+    end
+
+    test "skips upsert when condition doesn't match, returning error unless asked for" do
+      Post
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.change_attributes(%{
+        title: "foo",
+        contents: "bar",
+        tag: "before"
+      })
+      |> Ash.create!()
+
+      assert_raise Ash.Error.Invalid, ~r/Stale/, fn ->
+        Post
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attributes(%{
+          title: "foo",
+          contents: "bar",
+          tag: "after"
+        })
+        |> Ash.create!(
+          upsert?: true,
+          upsert_identity: :unique_title,
+          upsert_fields: [:contents, :updated_at],
+          upsert_condition: expr(contents != upsert_conflict(:contents))
+        )
+      end
     end
 
     test "timestamps will match each other" do

@@ -284,6 +284,12 @@ defmodule Ash do
                           doc:
                             "If a conflict is found based on the primary key, the record is updated in the database (requires upsert support)"
                         ],
+                        return_skipped_upsert?: [
+                          type: :boolean,
+                          default: false,
+                          doc:
+                            "If `true`, and a record was *not* upserted because its filter prevented the upsert, the original record (which was *not* upserted) will be returned."
+                        ],
                         upsert_identity: [
                           type: :atom,
                           doc:
@@ -577,6 +583,10 @@ defmodule Ash do
                                default: false,
                                doc:
                                  "If a conflict is found based on the primary key, the record is updated in the database (requires upsert support)"
+                             ],
+                             return_skipped_upsert?: [
+                               type: :boolean,
+                               hide: true
                              ],
                              upsert_identity: [
                                type: :atom,

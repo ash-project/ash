@@ -363,6 +363,21 @@ defmodule Ash.Actions.Create do
                                 opts[:upsert_identity] || changeset.action.upsert_identity
                               )
                           )
+                          |> case do
+                            {:ok, %{__metadata__: %{upsert_skipped: true}}} = result ->
+                              if opts[:return_skipped_upsert?] do
+                                result
+                              else
+                                {:error,
+                                 Ash.Error.Changes.StaleRecord.exception(
+                                   resource: changeset.resource,
+                                   filter: changeset.filter
+                                 )}
+                              end
+
+                            other ->
+                              other
+                          end
                           |> Helpers.rollback_if_in_transaction(
                             changeset.resource,
                             changeset
