@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.27](https://github.com/ash-project/ash/compare/v3.4.26...v3.4.27) (2024-10-10)
+
+
+
+
+### Improvements:
+
+* StaleRecordError on skipped upsert
+
 ## [v3.4.26](https://github.com/ash-project/ash/compare/v3.4.25...v3.4.26) (2024-10-08)
 
 
