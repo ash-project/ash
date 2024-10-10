@@ -967,7 +967,7 @@ defmodule Ash.SatSolver do
       if is_nil(fact) do
         raise Ash.Error.Framework.AssumptionFailed.exception(
                 message: """
-                A fact from the sat solver had no corresponding bound fact:
+                A fact from the SAT solver had no corresponding bound fact:
 
                 Bindings:
                   #{inspect(bindings)}

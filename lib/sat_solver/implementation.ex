@@ -45,7 +45,7 @@ cond do
 
           This typically means that you need to run `mix deps.compile ash --force`
 
-          If that doesn't work, please ensure that one of the following dependencies is present in your application to use sat solver features:
+          If that doesn't work, please ensure that one of the following dependencies is present in your application to use SAT solver features:
 
           * `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
           * `:simple_sat` - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
@@ -55,7 +55,7 @@ cond do
         raise """
         No SAT solver available.
 
-        Please add one of the following dependencies to your application to use sat solver features:
+        Please add one of the following dependencies to your application to use SAT solver features:
 
         * `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
         * `:simple_sat` - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
