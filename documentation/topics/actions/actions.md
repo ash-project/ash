@@ -98,7 +98,7 @@ end
 
 # in the resource
 
-actions do 
+actions do
   defaults [:read, ...]
 end
 ```
@@ -112,7 +112,7 @@ code_interface do
   define :top, args: [:user_id]
 end
 
-actions do 
+actions do
   read :top do
     argument :user_id, :uuid do
       allow_nil? false
@@ -135,3 +135,44 @@ Ticket
 ```
 
 That is the best of both worlds! These same lessons transfer to changeset based actions as well.
+
+## Private Inputs
+
+The concept of a "private input" can be somewhat paradoxical, but it can be used by actions that require something provided by the "system",
+as well as something provided by the caller. For example, you may want an `ip_address` input that can't be set by the user. For this,
+you have two options.
+
+### Private Options
+
+```elixir
+create :create do
+  argument :ip_address, :string, allow_nil?: false
+
+  ...
+end
+```
+
+```elixir
+Ash.Changeset.for_create(Resource, :create, %{}, private_arguments: %{ip_address: "<ip_address>"})
+```
+
+### Context
+
+You can also provide things to the action via `context`. Context is a map that is a free form map provided to the action.
+Context is occasionally used by callers to provide additional information that the action may or may not use.
+
+Context is _deep merged_ with any existing context, and also contains a `private` key that is reserved for use by Ash internals.
+You should not remove or manipulate the `private` context key in any way.
+
+```elixir
+create :create do
+  ...
+  change fn changeset, _ ->
+    changeset.context # %{ip_address: "<ip_address>"}
+  end
+end
+```
+
+```elixir
+Ash.Changeset.for_create(Resource, :create, %{}, context: %{ip_address: "<ip_address>"})
+```
