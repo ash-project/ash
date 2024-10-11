@@ -1,5 +1,27 @@
 # Notifiers
 
+## What are notifiers for?
+
+Notifiers allow you to tap into create, update and destroy actions on a resource. Notifiers are called after
+the current transaction is committed, which solves a lot of problems that can happen from performing a certain
+kind of side effect in your action code.
+
+A common example of one such issue is using Phoenix PubSub to notifyanother part of your app (often a LiveView or
+phoenix channel) of a change. If you send a message to another process while your transaction is still open, and
+that process tries to look up a record you just created, it won't find it yet, because your transaction is still open!
+
+Notifiers are a solution for a certain kind of side effect, what we call "at most once" effects. An example is
+sending an event to an analytics system, or our pusbub example above. It is "okay" if the event is fired and some
+error in that process prevents it from being sent.
+
+### When you really need an event to happen
+
+In these cases you are looking for something other than a notifier. For example, you may want to look into integrating
+https://hexdocs.pm/oban into your application, allowing you to commit a "job" in the same transaction as your changes, to be processed later.
+
+Alternatively, you could look into using `Reactor`, which is designed for writing "sagas" and has first-class support
+for Ash via the `AshReactor` extension.
+
 ## Built-in Notifiers
 
 Ash comes with a builtin pub_sub notifier: `Ash.Notifier.PubSub`. See the module documentation for more.
