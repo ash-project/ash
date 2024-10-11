@@ -22,6 +22,34 @@ https://hexdocs.pm/oban into your application, allowing you to commit a "job" in
 Alternatively, you could look into using `Reactor`, which is designed for writing "sagas" and has first-class support
 for Ash via the `AshReactor` extension.
 
+### Including a notifier in a resource
+
+If the notifier is also an extension, include it in the `notifiers` key:
+
+```elixir
+defmodule MyResource do
+  use Ash.Resource,
+    notifiers: [ExampleNotifier]
+end
+```
+
+Configuring a notifier for a specific action or actions can be a great way to avoid complexity in the implementation of a notifier. It allows you to avoid doing things like pattern matching on the action, and treat it more like a change module, that does its work whenever it is called.
+
+```elixir
+create :create do
+  notifiers [ExampleNotifier]
+end
+```
+
+When your notifier is not an extension, and you want it to run on all actions, include it this way to avoid unnecessary compile time dependencies:
+
+```elixir
+defmodule MyResource do
+  use Ash.Resource,
+    simple_notifiers: [ExampleNotifier]
+end
+```
+
 ## Built-in Notifiers
 
 Ash comes with a builtin pub_sub notifier: `Ash.Notifier.PubSub`. See the module documentation for more.
@@ -49,34 +77,6 @@ defmodule ExampleNotifier do
       Logger.info("A non-logged in user created a #{resource}")
     end
   end
-end
-```
-
-### Including a notifier in a resource
-
-If the notifier is also an extension, include it in the `notifiers` key:
-
-```elixir
-defmodule MyResource do
-  use Ash.Resource,
-    notifiers: [ExampleNotifier]
-end
-```
-
-Configuring a notifier for a specific action or actions can be a great way to avoid complexity in the implementation of a notifier. It allows you to avoid doing things like pattern matching on the action, and treat it more like a change module, that does its work whenever it is called.
-
-```elixir
-create :create do
-  notifiers [ExampleNotifier]
-end
-```
-
-When your notifier is not an extension, and you want it to run on all actions, include it this way to avoid unnecessary compile time dependencies:
-
-```elixir
-defmodule MyResource do
-  use Ash.Resource,
-    simple_notifiers: [ExampleNotifier]
 end
 ```
 
