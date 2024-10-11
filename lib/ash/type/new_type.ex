@@ -179,7 +179,7 @@ defmodule Ash.Type.NewType do
         )
       end
 
-      if function_exported?(subtype_of, :cast_stored_array, 3) do
+      if function_exported?(subtype_of, :cast_stored_array, 2) do
         @impl Ash.Type
         def cast_stored_array(value, constraints) do
           unquote(subtype_of).cast_stored_array(
@@ -187,6 +187,8 @@ defmodule Ash.Type.NewType do
             constraints
           )
         end
+
+        defoverridable cast_stored_array: 2
       end
 
       if function_exported?(subtype_of, :include_source, 2) do
@@ -247,6 +249,8 @@ defmodule Ash.Type.NewType do
             constraints
           )
         end
+
+        defoverridable dump_to_native_array: 2
       end
 
       @impl Ash.Type
@@ -378,9 +382,7 @@ defmodule Ash.Type.NewType do
       defoverridable storage_type: 1,
                      cast_input: 2,
                      cast_stored: 2,
-                     cast_stored_array: 2,
                      dump_to_native: 2,
-                     dump_to_native_array: 2,
                      type_constraints: 2
     end
   end
