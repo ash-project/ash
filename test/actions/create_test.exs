@@ -282,6 +282,13 @@ defmodule Ash.Test.Actions.CreateTest do
         require_attributes [:tag]
       end
 
+      create :create_with_private_argument do
+        argument :private_name, :string, allow_nil?: false
+        accept [:title]
+
+        change set_attribute(:private_name, arg(:private_name))
+      end
+
       create :create_with_nested_array_argument do
         argument :array_of_names, {:array, {:array, :string}}
       end
@@ -313,6 +320,7 @@ defmodule Ash.Test.Actions.CreateTest do
       attribute(:list_attribute, {:array, :integer}, public?: true)
       attribute(:date, :date, public?: true)
       attribute(:binary, :binary, public?: true)
+      attribute(:private_name, :string)
 
       attribute(:required_with_default, :string,
         allow_nil?: false,
@@ -566,6 +574,15 @@ defmodule Ash.Test.Actions.CreateTest do
                  date: Date.utc_today(),
                  binary: <<0, 1, 2, 3, 4, 5>>
                })
+               |> Ash.create!()
+    end
+
+    test "allows setting private arguments" do
+      assert %Post{title: "title", private_name: "private"} =
+               Post
+               |> Ash.Changeset.for_create(:create_with_private_argument, %{title: "title"},
+                 private_arguments: %{private_name: "private"}
+               )
                |> Ash.create!()
     end
 

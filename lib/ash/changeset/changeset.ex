@@ -1262,6 +1262,11 @@ defmodule Ash.Changeset do
     context: [
       type: :map,
       doc: "Context to set on the query, changeset, or input"
+    ],
+    private_arguments: [
+      type: :map,
+      doc: "Private argument values to set before validations and changes.",
+      default: %{}
     ]
   ]
 
@@ -1429,6 +1434,7 @@ defmodule Ash.Changeset do
 
   * `:actor` - set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)
   * `:tenant` - set the tenant on the changeset
+  * `:private_arguments` - set private arguments on the changeset before validations and changes are run
 
   Anything that is modified prior to `for_destroy/4` is validated against the rules of the action, while *anything after it is not*.
 
@@ -1521,6 +1527,11 @@ defmodule Ash.Changeset do
               end
 
               Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
+
+              changeset =
+                Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
+                  Ash.Changeset.set_argument(changeset, k, v)
+                end)
 
               changeset
               |> Map.put(:action, action)
@@ -1824,6 +1835,11 @@ defmodule Ash.Changeset do
             end
 
             Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
+
+            changeset =
+              Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
+                Ash.Changeset.set_argument(changeset, k, v)
+              end)
 
             changeset =
               changeset

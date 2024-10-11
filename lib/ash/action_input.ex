@@ -35,9 +35,55 @@ defmodule Ash.ActionInput do
     %__MODULE__{resource: resource, domain: domain}
   end
 
+  @for_action_opts [
+    domain: [
+      type: {:spark, Ash.Domain},
+      doc: "The domain to use for the action. The resource's domain is used by default."
+    ],
+    context: [
+      type: :map,
+      doc: "Context to set on the action input.",
+      default: %{}
+    ],
+    authorize?: [
+      type: {:or, [:boolean, {:literal, nil}]},
+      doc:
+        "Whether or not to run authorization on the action. Default behavior of this option is controlled by the domain."
+    ],
+    tenant: [
+      type: :any,
+      doc: "The tenant to use for the action."
+    ],
+    actor: [
+      type: :any,
+      doc: "The actor performing the action"
+    ],
+    skip_unknown_inputs: [
+      type: {:wrap_list, :atom},
+      doc: "A list of unknow inputs to skip. Use `:*` to skip all unknown inputs."
+    ],
+    private_arguments: [
+      type: :map,
+      default: %{},
+      doc: "A list of private arguments to be set before the action is invoked."
+    ]
+  ]
+
+  for_action_opts = @for_action_opts
+
+  defmodule Opts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: for_action_opts
+  end
+
   @doc """
   Creates a new input for a generic action
+
+  ## Options
+
+  #{Opts.docs()}
   """
+  @doc spark_opts: [{4, @for_action_opts}]
   @spec for_action(
           resource_or_input :: Ash.Resource.t() | t(),
           action :: atom,
@@ -45,32 +91,45 @@ defmodule Ash.ActionInput do
           opts :: Keyword.t()
         ) :: t()
   def for_action(resource_or_input, action, params, opts \\ []) do
-    input =
-      case resource_or_input do
-        resource when is_atom(resource) ->
-          action = Ash.Resource.Info.action(resource, action)
-          %__MODULE__{resource: resource, action: action}
+    case Opts.validate(opts) do
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
 
-        input ->
-          action = Ash.Resource.Info.action(input.resource, action)
-          %{input | action: action}
-      end
+      {:ok, opts} ->
+        opts = Opts.to_options(opts)
 
-    domain =
-      input.domain || opts[:domain] || Ash.Resource.Info.domain(input.resource) ||
-        Ash.Actions.Helpers.maybe_embedded_domain(input.resource) ||
-        raise ArgumentError,
-          message:
-            "Could not determine domain for action. Provide the `domain` option or configure a domain in the resource directly."
+        input =
+          case resource_or_input do
+            resource when is_atom(resource) ->
+              action = Ash.Resource.Info.action(resource, action)
+              %__MODULE__{resource: resource, action: action}
 
-    input = %{input | domain: domain}
+            input ->
+              action = Ash.Resource.Info.action(input.resource, action)
+              %{input | action: action}
+          end
 
-    {input, _opts} = Ash.Actions.Helpers.set_context_and_get_opts(input.domain, input, opts)
+        domain =
+          input.domain || opts[:domain] || Ash.Resource.Info.domain(input.resource) ||
+            Ash.Actions.Helpers.maybe_embedded_domain(input.resource) ||
+            raise ArgumentError,
+              message:
+                "Could not determine domain for action. Provide the `domain` option or configure a domain in the resource directly."
 
-    input
-    |> cast_params(params, opts)
-    |> set_defaults()
-    |> require_arguments()
+        input = %{input | domain: domain}
+
+        {input, _opts} = Ash.Actions.Helpers.set_context_and_get_opts(input.domain, input, opts)
+
+        input =
+          Enum.reduce(opts[:private_arguments] || %{}, input, fn {k, v}, input ->
+            Ash.ActionInput.set_argument(input, k, v)
+          end)
+
+        input
+        |> cast_params(params, opts)
+        |> set_defaults()
+        |> require_arguments()
+    end
   end
 
   @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
