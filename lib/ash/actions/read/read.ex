@@ -563,7 +563,7 @@ defmodule Ash.Actions.Read do
           {:ok, results, count, calculations_at_runtime, calculations_in_query, query}
         else
           {%{valid?: false} = query, before_notifications} ->
-            notify_callback.(before_notifications)
+            notify_callback.(query, before_notifications)
             {{:error, query}, query}
 
           {{:error, %Ash.Query{} = query}, query} ->
