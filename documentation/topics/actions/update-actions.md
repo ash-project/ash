@@ -103,7 +103,7 @@ Atomic updates are a special case of update actions that can be done completely 
 > ```elixir
 > update :increment_score do
 >   change fn changeset, _ ->
->     Ash.Changeset.set_attribute(changeset, :score, changeset.data.score + 1)
+>     Ash.Changeset.change_attribute(changeset, :score, changeset.data.score + 1)
 >   end
 > end
 > ```
