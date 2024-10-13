@@ -694,6 +694,18 @@ defmodule Ash.Changeset do
         {:atomic, atomic} ->
           {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
 
+        {:ok, value} ->
+          allow_nil? =
+            attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
+
+          if is_nil(value) and !allow_nil? do
+            {:cont, add_required_attribute_error(changeset, attribute)}
+          else
+            {:cont,
+             %{changeset | attributes: Map.put(changeset.attributes, attribute.name, value)}
+             |> store_casted_attribute(attribute.name, value, true)}
+          end
+
         {:error, error} ->
           {:cont,
            add_invalid_errors(attribute.update_default, :attribute, changeset, attribute, error)}
@@ -1010,6 +1022,20 @@ defmodule Ash.Changeset do
       {:not_atomic, message} ->
         {:not_atomic,
          "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"}
+
+      {:ok, value} ->
+        allow_nil? =
+          attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
+
+        if is_nil(value) and !allow_nil? do
+          add_required_attribute_error(changeset, attribute)
+        else
+          %{changeset | attributes: Map.put(changeset.attributes, attribute.name, value)}
+          |> store_casted_attribute(attribute.name, value, true)
+        end
+
+      {:error, error} ->
+        {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
     end
   end
 
@@ -1651,6 +1677,17 @@ defmodule Ash.Changeset do
 
         %{changeset | atomics: Keyword.put(changeset.atomics, attribute.name, value)}
         |> record_atomic_update_for_atomic_upgrade(attribute.name, value)
+
+      {:ok, value} ->
+        allow_nil? =
+          attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
+
+        if is_nil(value) and !allow_nil? do
+          add_required_attribute_error(changeset, attribute)
+        else
+          %{changeset | attributes: Map.put(changeset.attributes, attribute.name, value)}
+          |> store_casted_attribute(attribute.name, value, true)
+        end
 
       {:not_atomic, message} ->
         add_error(
@@ -5583,7 +5620,11 @@ defmodule Ash.Changeset do
   def clear_change(changeset, field) do
     cond do
       attr = Ash.Resource.Info.attribute(changeset.resource, field) ->
-        %{changeset | attributes: Map.delete(changeset.attributes, attr.name), atomics: Keyword.delete(changeset.atomics, attr.name)}
+        %{
+          changeset
+          | attributes: Map.delete(changeset.attributes, attr.name),
+            atomics: Keyword.delete(changeset.atomics, attr.name)
+        }
 
       rel = Ash.Resource.Info.relationship(changeset.resource, field) ->
         %{changeset | relationships: Map.delete(changeset.relationships, rel.name)}

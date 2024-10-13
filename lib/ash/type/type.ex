@@ -1004,24 +1004,39 @@ defmodule Ash.Type do
   end
 
   @spec cast_atomic(t(), term, constraints()) ::
-          {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
+          {:atomic, Ash.Expr.t()}
+          | {:ok, term}
+          | {:error, Ash.Error.t()}
+          | {:not_atomic, String.t()}
   def cast_atomic({:array, {:array, _}}, _term, _constraints),
     do: {:not_atomic, "cannot currently atomically update doubly nested arrays"}
 
   def cast_atomic({:array, type}, term, constraints) do
     type = get_type(type)
 
-    with {:ok, value} <- maybe_cast_input({:array, type}, term, constraints) do
-      type.cast_atomic_array(value, item_constraints(constraints))
+    if type.handle_change_array?() || type.prepare_change_array?() || Ash.Expr.expr?(term) do
+      with {:ok, value} <- maybe_cast_input({:array, type}, term, constraints) do
+        type.cast_atomic_array(value, item_constraints(constraints))
+      end
+    else
+      with {:ok, v} <- cast_input({:array, type}, term, constraints) do
+        apply_constraints({:array, type}, v, constraints)
+      end
     end
   end
 
   def cast_atomic(type, term, constraints) do
     type = get_type(type)
 
-    with {:ok, value} <-
-           maybe_cast_input(type, term, constraints) do
-      type.cast_atomic(value, constraints)
+    if type.handle_change?() || type.prepare_change?() || Ash.Expr.expr?(term) do
+      with {:ok, value} <-
+             maybe_cast_input(type, term, constraints) do
+        type.cast_atomic(value, constraints)
+      end
+    else
+      with {:ok, v} <- Ash.Type.cast_input(type, term, constraints) do
+        apply_constraints(type, v, constraints)
+      end
     end
   end
 
@@ -1423,12 +1438,6 @@ defmodule Ash.Type do
       def composite_types(_constraints), do: []
 
       @impl true
-      def handle_change(_old_value, new_value, _constraints), do: {:ok, new_value}
-
-      @impl true
-      def prepare_change(_old_value, new_value, _constraints), do: {:ok, new_value}
-
-      @impl true
       def include_source(constraints, _), do: constraints
 
       @impl true
@@ -1655,11 +1664,9 @@ defmodule Ash.Type do
                      array_constraints: 0,
                      apply_constraints: 2,
                      cast_stored_array: 2,
-                     handle_change: 3,
                      loaded?: 4,
                      composite?: 1,
                      composite_types: 1,
-                     prepare_change: 3,
                      cast_in_query?: 1
     end
   end
@@ -1924,6 +1931,24 @@ defmodule Ash.Type do
 
         @impl true
         def prepare_change_array?, do: false
+      end
+
+      if Module.defines?(__MODULE__, {:handle_change, 3}) do
+        def handle_change?, do: true
+      else
+        @impl true
+        def handle_change(_old_value, new_value, _constraints), do: {:ok, new_value}
+
+        def handle_change?, do: false
+      end
+
+      if Module.defines?(__MODULE__, {:prepare_change, 3}) do
+        def prepare_change?, do: true
+      else
+        @impl true
+        def prepare_change(_old_value, new_value, _constraints), do: {:ok, new_value}
+
+        def prepare_change?, do: false
       end
 
       cond do
