@@ -4,71 +4,53 @@
 
 ## [v3.4.28](https://github.com/ash-project/ash/compare/v3.4.27...v3.4.28) (2024-10-10)
 
-
-
-
 ### Improvements:
 
-* support lazy evaluation of skipped upsert records
+- [upserts] support lazy evaluation of skipped upsert records
 
 ## [v3.4.27](https://github.com/ash-project/ash/compare/v3.4.26...v3.4.27) (2024-10-10)
 
-
-
-
 ### Improvements:
 
-* StaleRecordError on skipped upsert
+- [upserts] emit StaleRecordError on skipped upsert
 
 ## [v3.4.26](https://github.com/ash-project/ash/compare/v3.4.25...v3.4.26) (2024-10-08)
 
-
-
-
 ### Bug Fixes:
 
-* properly hydrate sort with parent context
+- [query building] properly hydrate sort with parent context
 
-* handle nested parent references in runtime expression logic
+- [query building] handle nested parent references in runtime expression logic
 
-* set parent stack when hydrating references in related queries
+- [query building] set parent stack when hydrating references in related queries
 
 ## [v3.4.25](https://github.com/ash-project/ash/compare/v3.4.24...v3.4.25) (2024-10-07)
 
-
-
-
 ### Bug Fixes:
 
-* honor --yes or -y option when adding a satsolver
+- [igniter] honor --yes or -y option when adding a satsolver
 
-* don't error on type casting against expressions
+- [query building] don't error on type casting against expressions
 
 ## [v3.4.24](https://github.com/ash-project/ash/compare/v3.4.23...v3.4.24) (2024-10-07)
 
-
-
-
 ### Bug Fixes:
 
-* short-circuit policy condition evaluation when checking all conditions
+- [policies] short-circuit policy condition evaluation when checking all conditions
 
-* properly hydrate aggregate calculations & fields
+- [query building] properly hydrate aggregate calculations & fields
 
 ### Improvements:
 
-* re-introduce removed behavior to short circuit policy conditions
+- [policies] re-introduce removed behavior to short circuit policy conditions
 
 ## [v3.4.23](https://github.com/ash-project/ash/compare/v3.4.22...v3.4.23) (2024-10-03)
 
-
-
-
 ### Bug Fixes:
 
-* don't rewrite calculation dependencies through not loaded/forbidden fields
+- [loading data] don't rewrite calculation dependencies through not loaded/forbidden fields
 
-* honor `reuse_values?` when lazy loading relationships
+- [loading data] honor `reuse_values?` when lazy loading relationships
 
 ## [v03.4.22](https://github.com/ash-project/ash/compare/v3.4.21...v03.4.22) (2024-10-01)
 
