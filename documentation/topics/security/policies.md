@@ -54,32 +54,16 @@ There are four check types, all of which do what they sound like they do:
 
 If a single check does not explicitly authorize or forbid the whole policy, then the flow moves to the next check. For example, if an `authorize_if` check does NOT return true, this _does not mean the whole policy is forbidden_ - it means that further checking is required.
 
-### Alternative Ways To Write a Policy
+### Policy with `condition` inside `do` block
 
-#### Policy with keyword list
+A condition or a list of conditions can also be moved inside the `policy` block.
 
-```elixir
-policies do
-  policy always(), authorize_if: always()
-end
-```
-
-#### Policy with `condition` inside `do` block
+This way can make a really long list of conditions easier to read.
 
 ```elixir
 policies do
   policy do
     condition(always())
-    authorize_if always()
-  end
-end
-```
-
-#### Policy with multiple conditions
-
-```elixir
-policies do
-  policy [condition1, condition2, condition3] do
     authorize_if always()
   end
 end
