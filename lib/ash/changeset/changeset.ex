@@ -5583,7 +5583,7 @@ defmodule Ash.Changeset do
   def clear_change(changeset, field) do
     cond do
       attr = Ash.Resource.Info.attribute(changeset.resource, field) ->
-        %{changeset | attributes: Map.delete(changeset.attributes, attr.name)}
+        %{changeset | attributes: Map.delete(changeset.attributes, attr.name), atomics: Keyword.delete(changeset.atomics, attr.name)}
 
       rel = Ash.Resource.Info.relationship(changeset.resource, field) ->
         %{changeset | relationships: Map.delete(changeset.relationships, rel.name)}
