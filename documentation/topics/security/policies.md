@@ -22,7 +22,7 @@ Then you can start defining policies for your resource.
 
 Each policy defined in a resource has two parts -
 
-- a condition or a list of conditions, such as `action_type(:read)` or `actor_attribute_equals(:admin, true)` or `always()`. If this condition is true for a given action request, then the policy will be applied to the request.
+- a condition or a list of conditions, such as `action_type(:read)`, `[action_type(:read), actor_attribute_equals(:admin, true)]` or `always()`. If the condition, or all conditions if given a list are true for a given action request, then the policy will be applied to the request.
 - a set of policy checks, each of which will be evaluated individually if a policy applies to a request.
 
 If more than one policy applies to any given request (eg. an admin actor calls a read action) then **all applicable policies must pass** for the action to be performed.
