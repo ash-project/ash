@@ -54,6 +54,27 @@ There are four check types, all of which do what they sound like they do:
 
 If a single check does not explicitly authorize or forbid the whole policy, then the flow moves to the next check. For example, if an `authorize_if` check does NOT return true, this _does not mean the whole policy is forbidden_ - it means that further checking is required.
 
+### Alternative Ways To Write a Policy
+
+#### Policy with keyword list
+
+```elixir
+policies do
+  policy always(), authorize_if: always()
+end
+```
+
+#### Policy with `condition` inside `do` block
+
+```elixir
+policies do
+  policy do
+    condition always()
+    authorize_if always()
+  end
+end
+```
+
 ### How a Decision is Reached
 
 **Not every check in a policy must pass!** This is described above, but is very important so another example is provided here. Checks go from top to bottom, are evaluated independently of each other, and _the first one that reaches a decision_ determines the overall _policy result_. For example:
