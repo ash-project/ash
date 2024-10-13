@@ -63,7 +63,7 @@ This way can make a really long list of conditions easier to read.
 ```elixir
 policies do
   policy do
-    condition(always())
+    condition always()
     authorize_if always()
   end
 end
