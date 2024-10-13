@@ -1680,7 +1680,11 @@ defmodule Ash.Changeset do
 
       {:ok, value} ->
         allow_nil? =
-          attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
+          if is_nil(changeset.action) do
+            true
+          else
+            attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
+          end
 
         if is_nil(value) and !allow_nil? do
           add_required_attribute_error(changeset, attribute)
@@ -1707,8 +1711,7 @@ defmodule Ash.Changeset do
         changeset
       else
         allow_nil? =
-          attribute.allow_nil? and
-            (is_nil(changeset.action) || attribute.name not in changeset.action.require_attributes)
+          attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
 
         value =
           if allow_nil? || not Ash.Expr.can_return_nil?(value) do
