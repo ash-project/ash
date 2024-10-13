@@ -22,7 +22,7 @@ Then you can start defining policies for your resource.
 
 Each policy defined in a resource has two parts -
 
-- a condition, such as `action_type(:read)` or `actor_attribute_equals(:admin, true)` or `always()`. If this condition is true for a given action request, then the policy will be applied to the request.
+- a condition or a list of conditions, such as `action_type(:read)` or `actor_attribute_equals(:admin, true)` or `always()`. If this condition is true for a given action request, then the policy will be applied to the request.
 - a set of policy checks, each of which will be evaluated individually if a policy applies to a request.
 
 If more than one policy applies to any given request (eg. an admin actor calls a read action) then **all applicable policies must pass** for the action to be performed.
@@ -70,6 +70,16 @@ end
 policies do
   policy do
     condition always()
+    authorize_if always()
+  end
+end
+```
+
+#### Policy with multiple conditions
+
+```elixir
+policies do
+  policy [condition1, condition2, condition3] do
     authorize_if always()
   end
 end
