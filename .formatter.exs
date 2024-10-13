@@ -52,6 +52,7 @@ spark_locals_without_parens = [
   count: 2,
   count: 3,
   countable: 1,
+  condition: 1,
   create: 1,
   create: 2,
   create_timestamp: 1,
