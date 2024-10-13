@@ -2,6 +2,29 @@
 
 <!-- changelog -->
 
+## [v3.4.29](https://github.com/ash-project/ash/compare/v3.4.28...v3.4.29) (2024-10-13)
+
+
+
+
+### Bug Fixes:
+
+* clear change from atomics as well
+
+* update spark for spark.formatter fixes
+
+* properly invoke notify callback in read actions
+
+### Improvements:
+
+* better ergonomics for atomic updates
+
+* add `private_arguments` option
+
+* validate `Ash.ActionInput.for_action` opts
+
+* allow additional callbacks in `Ash.Type.NewType`
+
 ## [v3.4.28](https://github.com/ash-project/ash/compare/v3.4.27...v3.4.28) (2024-10-10)
 
 ### Improvements:
