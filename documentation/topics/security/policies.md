@@ -69,7 +69,7 @@ end
 ```elixir
 policies do
   policy do
-    condition always()
+    condition(always())
     authorize_if always()
   end
 end
