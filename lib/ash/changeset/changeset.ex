@@ -1595,7 +1595,7 @@ defmodule Ash.Changeset do
   If you were to instead do this using `atomic_update`, you would get the correct result:
 
   ```elixir
-  Ash.Changeset.atomic_update(changeset, :score, [expr(score + 1)])
+  Ash.Changeset.atomic_update(changeset, :score, expr(score + 1))
   ```
 
   There are drawbacks/things to consider, however. The first is that atomic update results
