@@ -51,11 +51,9 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
 
     opts =
       [
-        subjects: subject,
-        extensions: extensions
+        subjects: String.split(subject, ",", trim: true),
+        extensions: String.split(Enum.join(extensions, ","), ",", trim: true)
       ]
-      |> Ash.Igniter.csv_option(:extensions)
-      |> Ash.Igniter.csv_option(:subjects)
 
     extensions = opts[:extensions]
 

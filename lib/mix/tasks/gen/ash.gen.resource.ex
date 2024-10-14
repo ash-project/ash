@@ -42,14 +42,14 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       positional: [:resource],
       example: @example,
       schema: [
-        attribute: :keep,
-        relationship: :keep,
-        default_actions: :keep,
+        attribute: :csv,
+        relationship: :csv,
+        default_actions: :csv,
         uuid_primary_key: :string,
         uuid_v7_primary_key: :string,
         integer_primary_key: :string,
         domain: :string,
-        extend: :keep,
+        extend: :csv,
         base: :string,
         timestamps: :boolean
       ],
@@ -90,12 +90,11 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
     options =
       options
-      |> Ash.Igniter.csv_option(:default_actions, fn values ->
-        Enum.sort_by(values, &(&1 in ["create", "update"]))
-      end)
-      |> Ash.Igniter.csv_option(:attribute)
-      |> Ash.Igniter.csv_option(:relationship)
-      |> Ash.Igniter.csv_option(:extend)
+      |> Keyword.update(
+        :default_actions,
+        [],
+        fn defaults -> Enum.sort_by(defaults, &(&1 in ["create", "update"])) end
+      )
       |> Keyword.put_new(:base, "Ash.Resource")
 
     base =

@@ -26,19 +26,4 @@ defmodule Ash.Igniter do
       Igniter.add_task(igniter, "ash.codegen", [name])
     end
   end
-
-  def csv_option(options, key, modifier \\ & &1) do
-    values = Keyword.get_values(options, key)
-
-    values =
-      values
-      |> List.wrap()
-      |> Enum.join(",")
-      |> String.split(",", trim: true)
-      |> then(modifier)
-
-    options
-    |> Keyword.delete(key)
-    |> Keyword.put(key, values)
-  end
 end
