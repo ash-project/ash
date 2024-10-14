@@ -58,7 +58,7 @@ If a single check does not explicitly authorize or forbid the whole policy, then
 
 A condition or a list of conditions can also be moved inside the `policy` block.
 
-This way can make a really long list of conditions easier to read.
+This can make a really long list of conditions easier to read.
 
 ```elixir
 policies do
