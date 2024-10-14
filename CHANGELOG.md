@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.31](https://github.com/ash-project/ash/compare/v3.4.30...v3.4.31) (2024-10-14)
+
+
+
+
+### Bug Fixes:
+
+* allow strings in generic action skip_unknown_inputs
+
 ## [v3.4.30](https://github.com/ash-project/ash/compare/v3.4.29...v3.4.30) (2024-10-14)
 
 
