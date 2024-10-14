@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.30](https://github.com/ash-project/ash/compare/v3.4.29...v3.4.30) (2024-10-14)
+
+
+
+
+### Bug Fixes:
+
+* add `tracer` option to generic action opts
+
 ## [v3.4.29](https://github.com/ash-project/ash/compare/v3.4.28...v3.4.29) (2024-10-13)
 
 
