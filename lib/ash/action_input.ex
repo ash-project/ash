@@ -62,6 +62,10 @@ defmodule Ash.ActionInput do
       type: {:wrap_list, :atom},
       doc: "A list of unknow inputs to skip. Use `:*` to skip all unknown inputs."
     ],
+    tracer: [
+      type: :any,
+      doc: "A tracer or list of tracers to trace action execution."
+    ],
     private_arguments: [
       type: :map,
       default: %{},
