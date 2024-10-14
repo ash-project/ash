@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.32](https://github.com/ash-project/ash/compare/v3.4.31...v3.4.32) (2024-10-14)
+
+
+
+
+### Improvements:
+
+* use new `:csv` option type from igniter
+
 ## [v3.4.31](https://github.com/ash-project/ash/compare/v3.4.30...v3.4.31) (2024-10-14)
 
 
