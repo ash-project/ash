@@ -59,7 +59,7 @@ defmodule Ash.ActionInput do
       doc: "The actor performing the action"
     ],
     skip_unknown_inputs: [
-      type: {:wrap_list, :atom},
+      type: {:wrap_list, {:or, [:atom, :string]}},
       doc: "A list of unknow inputs to skip. Use `:*` to skip all unknown inputs."
     ],
     tracer: [
