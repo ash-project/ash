@@ -101,6 +101,7 @@ defmodule Ash.DataLayer do
           | {:sort, Ash.Type.t()}
           | :upsert
           | :composite_primary_key
+          | :inhibit_transaction_validation
 
   @type lateral_join_link ::
           {Ash.Resource.t(), atom, atom, Ash.Resource.Relationships.relationship()}

@@ -216,6 +216,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :boolean_filter), do: true
   def can?(_, :distinct), do: true
   def can?(_, :transact), do: false
+  def can?(_, :inhibit_transaction_validation), do: true
   def can?(_, {:filter_expr, _}), do: true
 
   case Application.compile_env(:ash, :no_join_mnesia_ets) || false do

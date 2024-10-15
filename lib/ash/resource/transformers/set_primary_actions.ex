@@ -66,6 +66,8 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
         )
       )
 
+    can_transact? = Ash.DataLayer.data_layer_can?(dsl_state, :transact)
+
     dsl_state
     |> Transformer.get_option([:actions], :defaults)
     |> Kernel.||(default_defaults)
@@ -120,12 +122,14 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
             [
               require_atomic?: false,
               primary?: primary?,
-              accept: accept
+              accept: accept,
+              transaction?: can_transact?
             ]
           else
             [
               primary?: primary?,
-              accept: accept
+              accept: accept,
+              transaction?: can_transact?
             ]
           end
 

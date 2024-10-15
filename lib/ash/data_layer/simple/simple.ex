@@ -25,6 +25,7 @@ defmodule Ash.DataLayer.Simple do
   def can?(_, :nested_expressions), do: true
   def can?(_, {:filter_expr, _}), do: true
   def can?(_, :multitenancy), do: true
+  def can?(_, :inhibit_transaction_validation), do: true
   def can?(_, _), do: false
 
   defmodule Query do
