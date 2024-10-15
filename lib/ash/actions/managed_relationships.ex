@@ -268,18 +268,43 @@ defmodule Ash.Actions.ManagedRelationships do
                 end
 
               _value ->
-                if opts[:on_match] == :destroy do
-                  changeset =
-                    maybe_force_change_attribute(
-                      changeset,
-                      relationship,
-                      :source_attribute,
-                      nil
-                    )
+                on_match =
+                  if is_tuple(opts[:on_match]) do
+                    elem(opts[:on_match], 0)
+                  else
+                    opts[:on_match]
+                  end
 
-                  {:cont, {changeset, instructions}}
-                else
-                  {:cont, {changeset, instructions}}
+                case on_match do
+                  :destroy ->
+                    changeset =
+                      maybe_force_change_attribute(
+                        changeset,
+                        relationship,
+                        :source_attribute,
+                        nil
+                      )
+
+                    {:cont, {changeset, instructions}}
+
+                  :unrelate ->
+                    changeset =
+                      maybe_force_change_attribute(
+                        changeset,
+                        relationship,
+                        :source_attribute,
+                        nil
+                      )
+                      |> Ash.Changeset.set_context(%{
+                        private: %{
+                          belongs_to_manage_unrelated: %{relationship.name => %{index => true}}
+                        }
+                      })
+
+                    {:cont, {changeset, instructions}}
+
+                  _ ->
+                    {:cont, {changeset, instructions}}
                 end
             end
 
@@ -705,7 +730,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
     inputs
     |> Enum.reduce_while(
-      {:ok, original_value, [], []},
+      {:ok, List.wrap(original_value), [], []},
       fn input, {:ok, current_value, all_notifications, all_used} ->
         case handle_input(
                record,
@@ -814,6 +839,7 @@ defmodule Ash.Actions.ManagedRelationships do
              changeset,
              actor,
              index,
+             pkeys,
              opts
            ) do
         {:ok, current_value, notifications, used} ->
@@ -823,11 +849,31 @@ defmodule Ash.Actions.ManagedRelationships do
           {:error, error}
       end
     else
-      handle_update(record, current_value, relationship, match, input, changeset, actor, opts)
+      handle_update(
+        record,
+        current_value,
+        relationship,
+        match,
+        input,
+        changeset,
+        actor,
+        pkeys,
+        opts
+      )
     end
   end
 
-  defp handle_create(record, current_value, relationship, input, changeset, actor, index, opts) do
+  defp handle_create(
+         record,
+         current_value,
+         relationship,
+         input,
+         changeset,
+         actor,
+         index,
+         pkeys,
+         opts
+       ) do
     case opts[:on_lookup] do
       :ignore ->
         do_handle_create(
@@ -888,7 +934,8 @@ defmodule Ash.Actions.ManagedRelationships do
                       actor,
                       key,
                       record,
-                      changeset
+                      changeset,
+                      pkeys
                     )
 
                   {:ok, _} ->
@@ -948,7 +995,8 @@ defmodule Ash.Actions.ManagedRelationships do
          actor,
          key,
          record,
-         changeset
+         changeset,
+         pkeys
        ) do
     case relationship.type do
       :many_to_many ->
@@ -1007,6 +1055,7 @@ defmodule Ash.Actions.ManagedRelationships do
                        input,
                        changeset,
                        actor,
+                       pkeys,
                        opts
                      ) do
                   {:ok, new_value, update_notifications, used} ->
@@ -1249,6 +1298,7 @@ defmodule Ash.Actions.ManagedRelationships do
          input,
          changeset,
          actor,
+         pkeys,
          opts
        ) do
     domain = domain(changeset, relationship)
@@ -1299,7 +1349,14 @@ defmodule Ash.Actions.ManagedRelationships do
                relationship
              ) do
           {:ok, notifications} ->
-            {:ok, current_value, notifications, [match]}
+            new_value =
+              Enum.reject(current_value, fn other ->
+                Enum.any?(pkeys, fn pkey ->
+                  matches?(other, match, pkey, relationship)
+                end)
+              end)
+
+            {:ok, new_value, notifications, [match]}
 
           {:error, error} ->
             {:error, error}
@@ -1690,7 +1747,9 @@ defmodule Ash.Actions.ManagedRelationships do
                    relationship
                  ) do
               {:ok, notifications} ->
-                {:cont, {:ok, current_value, notifications}}
+                new_value = Enum.reject(current_value, &matches?(&1, record, pkey, relationship))
+
+                {:cont, {:ok, new_value, notifications}}
 
               {:error, error} ->
                 {:halt, {:error, error}}
