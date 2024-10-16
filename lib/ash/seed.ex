@@ -151,6 +151,8 @@ defmodule Ash.Seed do
   Ash.Seed.upsert!(%User{email: 'test@gmail.com', name: 'Test'}, [:email])
   ```
   """
+  def upsert!(_, identity \\ nil)
+
   def upsert!(%{__meta__: %{state: :loaded}} = input, _identities) do
     input
   end
@@ -178,7 +180,7 @@ defmodule Ash.Seed do
           Map.put(acc, key, value)
       end)
 
-    upsert!(
+    upsert_with_opts!(
       resource,
       input,
       identities
@@ -192,22 +194,22 @@ defmodule Ash.Seed do
   @doc """
   Usage is the same as `seed!/2`, but it will update the record if it already exists based on the identities.
   """
-  def upsert!(resource, input, identities, opts \\ [])
+  def upsert_with_opts!(resource, input, identities \\ nil, opts \\ [])
 
-  def upsert!(resource, input, identities, opts) when is_list(input) do
+  def upsert_with_opts!(resource, input, identities, opts) when is_list(input) do
     # TODO: This should be implemented with bulk data layer callbacks
-    Enum.map(input, &upsert!(resource, &1, identities, opts))
+    Enum.map(input, &upsert_with_opts!(resource, &1, identities, opts))
   end
 
-  def upsert!(resource, %resource{} = input, identities, _opts) do
+  def upsert_with_opts!(resource, %resource{} = input, identities, _opts) do
     upsert!(input, identities)
   end
 
-  def upsert!(resource, %other{}, _identities, _opts) do
+  def upsert_with_opts!(resource, %other{}, _identities, _opts) do
     raise "Cannot upsert #{inspect(resource)} with an input of type #{inspect(other)}"
   end
 
-  def upsert!(%resource{} = record, input, identities, opts) when is_map(input) do
+  def upsert_with_opts!(%resource{} = record, input, identities, opts) when is_map(input) do
     attrs =
       resource
       |> Ash.Resource.Info.attributes()
@@ -243,7 +245,7 @@ defmodule Ash.Seed do
     end
   end
 
-  def upsert!(resource, input, identities, opts) when is_map(input) do
+  def upsert_with_opts!(resource, input, identities, opts) when is_map(input) do
     attr_input =
       input
       |> Map.new(fn {key, value} ->
