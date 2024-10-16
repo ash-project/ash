@@ -42,14 +42,14 @@ defmodule Ash.Test.Resource.DomainTest do
   test "cannot define a code interface to a non-existing action" do
     assert_raise Spark.Error.DslError, ~r/refers to a non-existent action/, fn ->
       defmodule Baz do
-        use Ash.Resource, domain: TestDomain
+        use Ash.Resource, domain: BazDomain
 
         attributes do
           uuid_primary_key :id
         end
       end
 
-      defmodule TestDomain do
+      defmodule BazDomain do
         use Ash.Domain
 
         resources do
@@ -64,7 +64,7 @@ defmodule Ash.Test.Resource.DomainTest do
   test "cannot define a code interface with invalid arguments" do
     assert_raise Spark.Error.DslError, ~r/Cannot accept the args `\[:bar\]` because they are not arguments or attributes supported by the `:hello` action/, fn ->
       defmodule FooBar do
-        use Ash.Resource, domain: TestDomain
+        use Ash.Resource, domain: FooBarDomain
 
         attributes do
           uuid_primary_key :id
@@ -81,12 +81,12 @@ defmodule Ash.Test.Resource.DomainTest do
         end
       end
 
-      defmodule TestDomain do
+      defmodule FooBarDomain do
         use Ash.Domain
 
         resources do
           resource FooBar do
-            define :hello, args: [:bar]
+            define :hello, args: [:name, :bar]
           end
         end
       end

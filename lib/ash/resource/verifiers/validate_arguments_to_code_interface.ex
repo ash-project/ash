@@ -33,8 +33,7 @@ defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
       ) do
     interface_name = interface.action || interface.name
 
-    interface_args =
-      MapSet.new(interface.args || [])
+    interface_args = MapSet.new(interface.args || [])
 
     attribute_names = MapSet.new(attributes, & &1.name)
     action_arguments = MapSet.new(action.arguments, & &1.name)
@@ -53,7 +52,7 @@ defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
           not_input: []
         },
         fn interface_arg, errors ->
-         interface_arg = to_non_optional_arg(interface_arg)
+          interface_arg = to_non_optional_arg(interface_arg)
 
           cond do
             is_attribute?(attribute_names, interface_arg) &&

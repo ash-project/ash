@@ -4,7 +4,7 @@ defmodule Ash.Domain.Verifiers.ValidateArgumentsToCodeInterface do
   and reject arguments that are not action attributes/arguments
   """
   use Spark.Dsl.Verifier
-  
+
   alias Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface
 
   @impl true
