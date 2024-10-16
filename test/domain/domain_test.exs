@@ -62,35 +62,37 @@ defmodule Ash.Test.Resource.DomainTest do
   end
 
   test "cannot define a code interface with invalid arguments" do
-    assert_raise Spark.Error.DslError, ~r/Cannot accept the args `\[:bar\]` because they are not arguments or attributes supported by the `:hello` action/, fn ->
-      defmodule FooBar do
-        use Ash.Resource, domain: FooBarDomain
+    assert_raise Spark.Error.DslError,
+                 ~r/Cannot accept the args `\[:bar\]` because they are not arguments or attributes supported by the `:hello` action/,
+                 fn ->
+                   defmodule FooBar do
+                     use Ash.Resource, domain: FooBarDomain
 
-        attributes do
-          uuid_primary_key :id
-        end
+                     attributes do
+                       uuid_primary_key :id
+                     end
 
-        actions do
-          action :hello, :string do
-            argument :name, :string, allow_nil?: false
+                     actions do
+                       action :hello, :string do
+                         argument :name, :string, allow_nil?: false
 
-            run(fn input, _context ->
-              {:ok, "Hello #{input.arguments.name}"}
-            end)
-          end
-        end
-      end
+                         run(fn input, _context ->
+                           {:ok, "Hello #{input.arguments.name}"}
+                         end)
+                       end
+                     end
+                   end
 
-      defmodule FooBarDomain do
-        use Ash.Domain
+                   defmodule FooBarDomain do
+                     use Ash.Domain
 
-        resources do
-          resource FooBar do
-            define :hello, args: [:name, :bar]
-          end
-        end
-      end
-    end
+                     resources do
+                       resource FooBar do
+                         define :hello, args: [:name, :bar]
+                       end
+                     end
+                   end
+                 end
   end
 
   test "a resource defined with a domain can be used with functions in `Ash`" do
