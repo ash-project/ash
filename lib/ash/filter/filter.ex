@@ -1177,6 +1177,11 @@ defmodule Ash.Filter do
   end
 
   def map(expression, func) do
+    if expression != func.(expression) do
+      IO.inspect(expression, label: "expression")
+      IO.inspect(func.(expression), label: "func.(expression)")
+    end
+
     do_map(func.(expression), func)
   end
 
@@ -1188,20 +1193,23 @@ defmodule Ash.Filter do
       value when is_tuple(value) ->
         value
         |> Tuple.to_list()
-        |> map(func)
+        |> do_map(func)
         |> List.to_tuple()
 
       value when is_list(value) ->
-        Enum.map(value, &map(&1, func))
+        Enum.map(value, &do_map(&1, func))
+
+      %MapSet{} = value ->
+        MapSet.new(value, &do_map(&1, func))
 
       %MapSet{} = value ->
         MapSet.new(value, &map(&1, func))
 
       %BooleanExpression{left: left, right: right} = expr ->
-        %{expr | left: map(left, func), right: map(right, func)}
+        %{expr | left: do_map(left, func), right: do_map(right, func)}
 
       %Not{expression: not_expr} = expr ->
-        %{expr | expression: map(not_expr, func)}
+        %{expr | expression: do_map(not_expr, func)}
 
       %Ash.Query.Parent{} = this ->
         # you have to map over the internals of this yourself
@@ -1211,8 +1219,8 @@ defmodule Ash.Filter do
           custom_expression ->
         %{
           custom_expression
-          | expression: map(expression, func),
-            simple_expression: map(simple_expression, func)
+          | expression: do_map(expression, func),
+            simple_expression: do_map(simple_expression, func)
         }
 
       %Ash.Query.Exists{} = expr ->
@@ -1220,10 +1228,10 @@ defmodule Ash.Filter do
         func.(expr)
 
       %Ash.Query.Call{args: args} = op ->
-        %{op | args: map(args, func)}
+        %{op | args: do_map(args, func)}
 
       %{__operator__?: true, left: left, right: right} = op ->
-        %{op | left: map(left, func), right: map(right, func)}
+        %{op | left: do_map(left, func), right: do_map(right, func)}
 
       %{__function__?: true, arguments: arguments} = function ->
         %{
@@ -1231,10 +1239,10 @@ defmodule Ash.Filter do
           | arguments:
               Enum.map(arguments, fn
                 {key, arg} when is_atom(key) ->
-                  {key, map(arg, func)}
+                  {key, do_map(arg, func)}
 
                 arg ->
-                  map(arg, func)
+                  do_map(arg, func)
               end)
         }
 
@@ -1245,7 +1253,7 @@ defmodule Ash.Filter do
       value when is_map(value) ->
         value
         |> Map.to_list()
-        |> map(func)
+        |> do_map(func)
         |> Map.new()
 
       other ->
