@@ -13,7 +13,6 @@ defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
     dsl
     |> Ash.Resource.Info.interfaces()
     |> Enum.each(fn interface ->
-
       action = Ash.Resource.Info.action(dsl, interface.action || interface.name)
 
       attributes = Verifier.get_entities(dsl, [:attributes])
@@ -54,6 +53,8 @@ defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
           not_input: []
         },
         fn interface_arg, errors ->
+         interface_arg = to_non_optional_arg(interface_arg)
+
           cond do
             is_attribute?(attribute_names, interface_arg) &&
               not is_argument?(action_arguments, interface_arg) &&
@@ -102,6 +103,10 @@ defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
         path: []
     end
   end
+
+  defp to_non_optional_arg({:optional, interface_arg}), do: interface_arg
+
+  defp to_non_optional_arg(interface_arg), do: interface_arg
 
   defp is_attribute?(action_attributes, interface_arg) do
     MapSet.member?(action_attributes, interface_arg)
