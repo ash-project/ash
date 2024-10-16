@@ -170,7 +170,8 @@ defmodule Ash.Domain.Dsl do
 
   @verifiers [
     Ash.Domain.Verifiers.EnsureNoEmbeds,
-    Ash.Domain.Verifiers.ValidateRelatedResourceInclusion
+    Ash.Domain.Verifiers.ValidateRelatedResourceInclusion,
+    Ash.Domain.Verifiers.ValidateArgumentsToCodeInterface
   ]
 
   @moduledoc false
