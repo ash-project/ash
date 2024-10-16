@@ -91,6 +91,7 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 - `today/0` | Evaluates to the current date when the expression is evaluated
 - `ago/2` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in `Ash.Type.DurationName`
 - `from_now/2` | Same as `ago` but adds instead of subtracting
+- `datetime_to_date/1` | Convert a datetime into a date
 - `datetime_add/3` | add an interval to a datetime, i.e `datetime_add(^datetime, 10, :hour)`
 - `date/3` | add an interval to a date, i.e `datetime_add(^date, 3, :day)`
 
