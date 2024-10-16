@@ -143,6 +143,140 @@ defmodule Ash.Seed do
     end
   end
 
+  @doc """
+  Performs an upsert operation on the data layer of a resource with the provided input and identities.
+  The usage is the same as `seed!/1`, but it will update the record if it already exists.
+
+  ```elixir
+  Ash.Seed.upsert!(%User{email: 'test@gmail.com', name: 'Test'}, identity: :email)
+  ```
+  """
+  def upsert!(_, opts \\ [])
+
+  def upsert!(%{__meta__: %{state: :loaded}} = input, _otps) do
+    input
+  end
+
+  def upsert!(%resource{} = input, opts) do
+    keys =
+      Ash.Resource.Info.attributes(resource)
+      |> Enum.concat(Ash.Resource.Info.relationships(resource))
+      |> Enum.map(& &1.name)
+
+    input =
+      input
+      |> Map.take(keys)
+      |> Enum.reduce(%{}, fn
+        {_, %Ash.NotLoaded{}}, acc ->
+          acc
+
+        {_, nil}, acc ->
+          acc
+
+        {key, :__keep_nil__}, acc ->
+          Map.put(acc, key, nil)
+
+        {key, value}, acc ->
+          Map.put(acc, key, value)
+      end)
+
+    upsert!(
+      resource,
+      input,
+      opts
+    )
+  end
+
+  def upsert!(records, opts) when is_list(records) do
+    Enum.map(records, &upsert!(&1, opts))
+  end
+
+  def upsert!(resource, input) when is_atom(resource) and is_map(input) do
+    upsert!(resource, input, [])
+  end
+
+  @doc """
+  Usage is the same as `seed!/2`, but it will update the record if it already exists based on the identities.
+  """
+  def upsert!(resource, input, opts)
+
+  def upsert!(resource, input, opts) when is_list(input) do
+    # TODO: This should be implemented with bulk data layer callbacks
+    Enum.map(input, &upsert!(resource, &1, opts))
+  end
+
+  def upsert!(resource, %resource{} = input, opts) do
+    upsert!(input, opts)
+  end
+
+  def upsert!(resource, %other{}, _opts) do
+    raise "Cannot upsert #{inspect(resource)} with an input of type #{inspect(other)}"
+  end
+
+  def upsert!(%resource{} = record, input, opts) when is_map(input) do
+    attrs =
+      resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.map(& &1.name)
+      |> Enum.reject(&is_nil(Map.get(record, &1)))
+
+    attr_input =
+      record
+      |> Map.take(attrs)
+      |> Map.new(fn {key, value} ->
+        if value == :__keep_nil__ do
+          {key, nil}
+        else
+          {key, value}
+        end
+      end)
+
+    resource
+    |> Ash.Changeset.new()
+    |> change_attributes(attr_input)
+    |> change_attributes(input)
+    |> change_relationships(input)
+    |> Ash.Changeset.set_defaults(:create, true)
+    |> Ash.Changeset.set_tenant(opts[:tenant])
+    |> maybe_set_attribute_tenant()
+    |> upsert_via_data_layer(opts[:identity])
+    |> case do
+      {:ok, result, _, _} ->
+        result
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
+    end
+  end
+
+  def upsert!(resource, input, opts) when is_map(input) do
+    attr_input =
+      input
+      |> Map.new(fn {key, value} ->
+        if value == :__keep_nil__ do
+          {key, nil}
+        else
+          {key, value}
+        end
+      end)
+
+    resource
+    |> Ash.Changeset.new()
+    |> change_attributes(attr_input)
+    |> change_relationships(input)
+    |> Ash.Changeset.set_defaults(:create, true)
+    |> Ash.Changeset.set_tenant(opts[:tenant])
+    |> maybe_set_attribute_tenant()
+    |> upsert_via_data_layer(opts[:identity])
+    |> case do
+      {:ok, result, _, _} ->
+        result
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
+    end
+  end
+
   def update!(record, input) when is_map(input) do
     record
     |> Ash.Changeset.new()
@@ -167,6 +301,22 @@ defmodule Ash.Seed do
   defp create_via_data_layer(changeset) do
     Ash.Changeset.with_hooks(changeset, fn changeset ->
       Ash.DataLayer.create(changeset.resource, Ash.Changeset.set_action_select(changeset))
+    end)
+  end
+
+  defp upsert_via_data_layer(changeset, nil) do
+    fields = Ash.Resource.Info.primary_key(changeset.resource)
+
+    Ash.Changeset.with_hooks(changeset, fn changeset ->
+      Ash.DataLayer.upsert(changeset.resource, Ash.Changeset.set_action_select(changeset), fields)
+    end)
+  end
+
+  defp upsert_via_data_layer(changeset, identity) do
+    fields = Ash.Resource.Info.identity(changeset.resource, identity).keys
+
+    Ash.Changeset.with_hooks(changeset, fn changeset ->
+      Ash.DataLayer.upsert(changeset.resource, Ash.Changeset.set_action_select(changeset), fields)
     end)
   end
 

@@ -154,6 +154,10 @@ defmodule Ash.Test.SeedTest do
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
     end
+
+    identities do
+      identity :title, [:title], pre_check_with: Domain
+    end
   end
 
   defmodule PostCategory do
@@ -368,6 +372,38 @@ defmodule Ash.Test.SeedTest do
 
       assert {:error, %{errors: [%Ash.Error.Query.NotFound{}]}} =
                Ash.get(AttributeUser, user_id, tenant: "random")
+    end
+  end
+
+  describe "upsert!/2" do
+    test "it creates a single record with resource and input" do
+      assert %Post{id: id, title: "upsert", contents: "upsert"} =
+               upsert!(Post, %{title: "upsert", contents: "upsert"})
+
+      assert post = Ash.get!(Post, id)
+      assert post.title == "upsert"
+      assert post.contents == "upsert"
+    end
+
+    test "it creates a single record with a struct" do
+      assert %Post{id: id, title: "upsert", contents: "upsert"} =
+               upsert!(%Post{title: "upsert", contents: "upsert"})
+
+      assert post = Ash.get!(Post, id)
+      assert post.title == "upsert"
+      assert post.contents == "upsert"
+    end
+
+    test "it updates when record is already present" do
+      assert %Post{id: old_id, title: "upsert", contents: "upsert"} =
+               upsert!(%Post{title: "upsert", contents: "upsert"})
+
+      assert %Post{id: _id, title: "upsert", contents: "new"} =
+               upsert!(%Post{title: "upsert", contents: "new"}, identity: :title)
+
+      assert post = Ash.get!(Post, old_id)
+      assert post.title == "upsert"
+      assert post.contents == "new"
     end
   end
 end
