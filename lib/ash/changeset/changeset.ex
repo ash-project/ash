@@ -652,6 +652,8 @@ defmodule Ash.Changeset do
       with :ok <- verify_notifiers_support_atomic(resource, action),
            %Ash.Changeset{} = changeset <-
              atomic_params(changeset, action, params, opts),
+           %Ash.Changeset{} = changeset <- set_argument_defaults(changeset, action),
+           %Ash.Changeset{} = changeset <- require_arguments(changeset, action),
            %Ash.Changeset{} = changeset <- atomic_changes(changeset, action),
            %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
            %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
