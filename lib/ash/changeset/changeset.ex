@@ -658,7 +658,11 @@ defmodule Ash.Changeset do
            %Ash.Changeset{} = changeset <-
              hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?])),
            %Ash.Changeset{} = changeset <- apply_atomic_constraints(changeset, opts[:actor]) do
-        changeset
+        %{
+          changeset
+          | atomics: Keyword.merge(Map.to_list(changeset.attributes), changeset.atomics),
+            attributes: %{}
+        }
       else
         {:not_atomic, reason} ->
           {:not_atomic, reason}
@@ -702,7 +706,11 @@ defmodule Ash.Changeset do
             {:cont, add_required_attribute_error(changeset, attribute)}
           else
             {:cont,
-             %{changeset | attributes: Map.put(changeset.attributes, attribute.name, value)}
+             %{
+               changeset
+               | attributes: Map.put(changeset.attributes, attribute.name, value),
+                 atomics: Keyword.delete(changeset.atomics, attribute.name)
+             }
              |> store_casted_attribute(attribute.name, value, true)}
           end
 
@@ -1689,7 +1697,11 @@ defmodule Ash.Changeset do
         if is_nil(value) and !allow_nil? do
           add_required_attribute_error(changeset, attribute)
         else
-          %{changeset | attributes: Map.put(changeset.attributes, attribute.name, value)}
+          %{
+            changeset
+            | attributes: Map.put(changeset.attributes, attribute.name, value),
+              atomics: Keyword.delete(changeset.atomics, attribute.name)
+          }
           |> store_casted_attribute(attribute.name, value, true)
         end
 
@@ -5126,12 +5138,14 @@ defmodule Ash.Changeset do
              {{:ok, casted}, _} <-
                {Ash.Type.apply_constraints(attribute.type, casted, constraints), casted} do
           data_value =
-            case changeset.data do
-              %Ash.Changeset.OriginalDataNotAvailable{} ->
-                nil
+            if changeset.action_type != :create do
+              case changeset.data do
+                %Ash.Changeset.OriginalDataNotAvailable{} ->
+                  nil
 
-              data ->
-                Map.get(data, attribute.name)
+                data ->
+                  Map.get(data, attribute.name)
+              end
             end
 
           changeset = remove_default(changeset, attribute.name)
@@ -5256,12 +5270,14 @@ defmodule Ash.Changeset do
              {:ok, casted} <-
                Ash.Type.apply_constraints(attribute.type, casted, constraints) do
           data_value =
-            case changeset.data do
-              %Ash.Changeset.OriginalDataNotAvailable{} ->
-                nil
+            if changeset.action_type != :create do
+              case changeset.data do
+                %Ash.Changeset.OriginalDataNotAvailable{} ->
+                  nil
 
-              data ->
-                Map.get(data, attribute.name)
+                data ->
+                  Map.get(data, attribute.name)
+              end
             end
 
           changeset = remove_default(changeset, attribute.name)
