@@ -243,6 +243,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
 
     provided_input_names =
       entity.inputs
+      |> Enum.filter(&is_nil(&1.transform))
       |> Enum.flat_map(&Map.keys(&1.template))
       |> MapSet.new()
 
