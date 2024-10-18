@@ -2,6 +2,7 @@ defmodule Ash.Actions.Update.Bulk do
   @moduledoc false
 
   require Ash.Query
+  import Ash.Expr
 
   @spec run(Ash.Domain.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
           Ash.BulkResult.t()
@@ -105,7 +106,9 @@ defmodule Ash.Actions.Update.Bulk do
 
           _ ->
             query =
-              Ash.Query.do_filter(query, opts[:filter])
+              query
+              |> Ash.Query.do_filter(opts[:filter])
+              |> handle_attribute_multitenancy()
 
             read_opts =
               opts
@@ -528,6 +531,7 @@ defmodule Ash.Actions.Update.Bulk do
          %Ash.Changeset{valid?: true} = atomic_changeset <-
            Ash.Changeset.handle_allow_nil_atomics(atomic_changeset, opts[:actor]),
          atomic_changeset <- sort_atomic_changes(atomic_changeset),
+         query <- handle_attribute_multitenancy(query),
          {:ok, data_layer_query} <-
            Ash.Query.data_layer_query(query) do
       case Ash.DataLayer.update_query(
@@ -1484,6 +1488,22 @@ defmodule Ash.Actions.Update.Bulk do
       end,
       fn _ -> :ok end
     )
+  end
+
+  defp handle_attribute_multitenancy(query) do
+    if query.tenant && Ash.Resource.Info.multitenancy_strategy(query.resource) == :attribute do
+      multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(query.resource)
+
+      if multitenancy_attribute do
+        {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(query.resource)
+        attribute_value = apply(m, f, [query.to_tenant | a])
+        Ash.Query.filter(query, ^ref(multitenancy_attribute) == ^attribute_value)
+      else
+        query
+      end
+    else
+      query
+    end
   end
 
   defp notification_stream(ref) do
