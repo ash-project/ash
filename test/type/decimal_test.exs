@@ -66,4 +66,8 @@ defmodule Ash.Test.Type.DecimalTest do
                |> Ash.create()
     end
   end
+
+  test "treat two decimals same when value is same" do
+    assert Ash.Type.Decimal.equal?(Decimal.new("1.0"), Decimal.new("1.00"))
+  end
 end
