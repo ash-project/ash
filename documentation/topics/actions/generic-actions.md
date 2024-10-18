@@ -21,7 +21,7 @@ A generic action declares its arguments, return type, and implementation, as ill
 > ```elixir
 > action :schedule_job do
 >   argument :job_name, :string, allow_nil?: false
->   run fn input ->
+>   run fn input, _ ->
 >     # Schedule the job
 >     :ok
 >   end
