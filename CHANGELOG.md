@@ -2,6 +2,37 @@
 
 <!-- changelog -->
 
+## [v3.4.33](https://github.com/ash-project/ash/compare/v3.4.32...v3.4.33) (2024-10-18)
+
+
+
+
+### Bug Fixes:
+
+* apply attribute multitenancy on bulk update queries
+
+* use Decimal.eq? in Ash.Type.Decimal (#1532)
+
+* Reactor: Don't validate `inputs` keys when being transformed. (#1527)
+
+* set argument defaults in fully atomic changesets
+
+* ensure that default values & attribute changes are included in attribute changes
+
+* properly unrelate belongs_to relationships
+
+* ensure unrelated records are removed from the current records list
+
+### Improvements:
+
+* update docs for spark changes
+
+* Conditionally enable transactions on default actions. (#1525)
+
+* ash seed upsert! function (#1522)
+
+* Add compile-time checks for `code_interface` arguments in Resource and Domain (#1523)
+
 ## [v3.4.32](https://github.com/ash-project/ash/compare/v3.4.31...v3.4.32) (2024-10-14)
 
 
