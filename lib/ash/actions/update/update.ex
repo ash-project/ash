@@ -164,6 +164,7 @@ defmodule Ash.Actions.Update do
                    strategy: [:atomic, :stream],
                    resource: atomic_changeset.resource,
                    read_action: atomic_upgrade_read.name,
+                   tenant: atomic_changeset.tenant,
                    authorize_query?: false,
                    return_records?: true,
                    atomic_changeset: atomic_changeset,
