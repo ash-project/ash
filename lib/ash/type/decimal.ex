@@ -226,6 +226,11 @@ defmodule Ash.Type.Decimal do
   @doc false
   def new(%Decimal{} = v), do: v
   def new(v), do: Decimal.new(v)
+
+  @impl true
+  def equal?(left, right) do
+    Decimal.eq?(left, right)
+  end
 end
 
 import Ash.Type.Comparable
