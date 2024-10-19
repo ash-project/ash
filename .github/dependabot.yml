@@ -3,8 +3,9 @@ updates:
   - package-ecosystem: mix
     directory: "/"
     schedule:
-      interval: weekly
-      day: thursday
+      interval: daily
+      # interval: weekly
+      # day: thursday
     groups:
       production-dependencies:
         dependency-type: production

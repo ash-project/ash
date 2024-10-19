@@ -37,6 +37,9 @@ on:
       sat-solver:
         type: string
         default: "Picosat"
+      igniter-upgrade:
+        type: boolean
+        default: true
 env:
   PG_VERSION: ${{inputs.postgres-version}}
 jobs:
@@ -171,6 +174,27 @@ jobs:
         with:
           mix-env: test
           task: deps.unlock --check-unused
+  igniter-upgrade:
+    name: mix igniter.upgrade
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dependabot metadata
+        id: dependabot-metadata
+        uses: dependabot/fetch-metadata@4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - name: mix upgrade
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
+        run: mix igniter.upgrade ${{steps.dependabot-metadata.outputs.dependency-names}} --git-ci
+      - name: Commit Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
+        with:
+          commit_message: Apply Igniter Upgrades
+          commit_user_name: Igniter
+          commit_user_email: igniter@ash-hq.org
+          commit_author: Igniter Upgrade Bot <igniter@ash-hq.org>
   test:
     name: mix test
     runs-on: ubuntu-latest
