@@ -1366,6 +1366,19 @@ defmodule Ash.Resource.Dsl do
       {
         "`expr/1` example:",
         "calculate :full_name, :string, expr(first_name <> \" \" <> last_name)"
+      },
+      {
+        "Example with options:",
+        "calculate :full_name, :string, expr(first_name <> \" \" <> last_name), allow_nil?: false"
+      },
+      {
+        "Example with options in `do` block:",
+        """
+        calculate :full_name, :string, expr(first_name <> \" \" <> last_name) do
+          allow_nil? false
+          public? true
+        end
+        """
       }
     ],
     target: Ash.Resource.Calculation,
