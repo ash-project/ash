@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Ash.Gen.Domain do
   @impl Igniter.Mix.Task
   def igniter(igniter, argv) do
     {%{domain: domain}, argv} = positional_args!(argv)
-    domain = Igniter.Code.Module.parse(domain)
+    domain = Igniter.Project.Module.parse(domain)
 
     app_name = Igniter.Project.Application.app_name(igniter)
     {exists?, igniter} = Igniter.Project.Module.module_exists(igniter, domain)

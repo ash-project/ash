@@ -35,7 +35,7 @@ defmodule Mix.Tasks.Ash.Gen.Enum do
   def igniter(igniter, argv) do
     {%{module_name: module_name, types: types}, argv} = positional_args!(argv)
 
-    enum = Igniter.Code.Module.parse(module_name)
+    enum = Igniter.Project.Module.parse(module_name)
     file_name = Igniter.Project.Module.proper_location(igniter, enum)
 
     opts = options!(argv)

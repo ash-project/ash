@@ -364,7 +364,8 @@ defmodule Ash.MixProject do
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Code Generators
-      {:igniter, "~> 0.3 and >= 0.3.61"},
+      # {:igniter, "~> 0.3 and >= 0.3.61"},
+      {:igniter, path: "../igniter", override: true},
 
       # IO Utilities
       {:owl, "~> 0.11"},

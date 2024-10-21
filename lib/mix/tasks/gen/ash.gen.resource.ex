@@ -82,7 +82,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   @impl Igniter.Mix.Task
   def igniter(igniter, argv) do
     {%{resource: resource}, argv} = positional_args!(argv)
-    resource = Igniter.Code.Module.parse(resource)
+    resource = Igniter.Project.Module.parse(resource)
     app_name = Igniter.Project.Application.app_name(igniter)
 
     options = options!(argv)
@@ -96,7 +96,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
           |> Module.concat()
 
         domain ->
-          Igniter.Code.Module.parse(domain)
+          Igniter.Project.Module.parse(domain)
       end
 
     options =
@@ -113,7 +113,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         "Ash.Resource"
       else
         base =
-          Igniter.Code.Module.parse(options[:base])
+          Igniter.Project.Module.parse(options[:base])
 
         unless base in List.wrap(Application.get_env(app_name, :base_resources)) do
           raise """

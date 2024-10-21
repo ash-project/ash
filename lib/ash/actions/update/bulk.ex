@@ -530,6 +530,11 @@ defmodule Ash.Actions.Update.Bulk do
            add_changeset_filters(query, atomic_changeset),
          %Ash.Changeset{valid?: true} = atomic_changeset <-
            Ash.Changeset.handle_allow_nil_atomics(atomic_changeset, opts[:actor]),
+         atomic_changeset <- %{
+           atomic_changeset
+           | atomics:
+               Keyword.merge(Keyword.new(atomic_changeset.attributes), atomic_changeset.atomics)
+         },
          atomic_changeset <- sort_atomic_changes(atomic_changeset),
          query <- handle_attribute_multitenancy(query),
          {:ok, data_layer_query} <-

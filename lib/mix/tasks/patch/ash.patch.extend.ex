@@ -58,7 +58,7 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
     extensions = opts[:extensions]
 
     Enum.reduce(opts[:subjects], igniter, fn subject, igniter ->
-      subject = Igniter.Code.Module.parse(subject)
+      subject = Igniter.Project.Module.parse(subject)
 
       case Igniter.Project.Module.find_module(igniter, subject) do
         {:error, igniter} ->
