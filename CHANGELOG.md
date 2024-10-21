@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.34](https://github.com/ash-project/ash/compare/v3.4.33...v3.4.34) (2024-10-21)
+
+
+
+
+### Bug Fixes:
+
+* properly accept options for `ash.gen.resource` in installer
+
 ## [v3.4.33](https://github.com/ash-project/ash/compare/v3.4.32...v3.4.33) (2024-10-18)
 
 
