@@ -36,7 +36,7 @@ defmodule Mix.Tasks.Ash.Install do
   @impl Igniter.Mix.Task
   def info(_argv, _source) do
     %Igniter.Mix.Task.Info{
-      composes: ["spark.install"]
+      composes: ["spark.install", "ash.gen.resource"]
     }
   end
 
