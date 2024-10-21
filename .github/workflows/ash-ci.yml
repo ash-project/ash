@@ -184,9 +184,12 @@ jobs:
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
-      - name: mix upgrade
-        if: github.event.pull_request.user.login == 'dependabot[bot]'
-        run: mix igniter.upgrade ${{steps.dependabot-metadata.outputs.dependency-names}} --git-ci
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        if: ${{inputs.postgres && inputs.ash_postgres}}
+        with:
+          mix-env: test
+          task: igniter.upgrade --git-ci
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v5
         if: github.event.pull_request.user.login == 'dependabot[bot]'
