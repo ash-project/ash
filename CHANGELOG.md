@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.4.35](https://github.com/ash-project/ash/compare/v3.4.34...v3.4.35) (2024-10-22)
+
+
+
+
+### Bug Fixes:
+
+* allow optional code interface args for fields with defaults
+
+* don't rewrite all attributes to atomics
+
+* write all attributes to atomics list before dispatching to data layer on update query
+
+* remove multichar aliases from `mix ash.gen.resource`
+
+* check nil before calling Decimal.eq? in Type.Decimal.equal? (#1538)
+
 ## [v3.4.34](https://github.com/ash-project/ash/compare/v3.4.33...v3.4.34) (2024-10-21)
 
 
