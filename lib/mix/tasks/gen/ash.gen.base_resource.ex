@@ -13,7 +13,7 @@ defmodule Mix.Tasks.Ash.Gen.BaseResource do
 
   @impl Igniter.Mix.Task
   def igniter(igniter, [base_resource | _argv]) do
-    base_resource = Igniter.Project.Module.parse(base_resource)
+    base_resource = Igniter.Code.Module.parse(base_resource)
     base_resource_file = Igniter.Project.Module.proper_location(igniter, base_resource)
 
     glob = Path.join([base_resource_file, "..", "**", "*.ex"])
