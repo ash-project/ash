@@ -14,6 +14,7 @@ jobs:
     uses: ash-project/ash/.github/workflows/ash-ci.yml@main
     secrets:
       HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+      GH_PAT: ${{ secrets.GH_PAT }}
     with:
       sat-solver: ${{ matrix.sat_solver }}
       igniter-upgrade: ${{matrix.sat_solver == 'SimpleSat'}}
