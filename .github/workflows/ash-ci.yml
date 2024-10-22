@@ -4,8 +4,6 @@ on:
     secrets:
       HEX_API_KEY:
         required: false
-      GH_PAT:
-        required: false
     inputs:
       spark-formatter:
         type: boolean
@@ -201,7 +199,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
-          token: ${{ secrets.GH_PAT }}
       - uses: team-alembic/staple-actions/actions/mix-task@main
         with:
           task: igniter.upgrade --git-ci --yes
