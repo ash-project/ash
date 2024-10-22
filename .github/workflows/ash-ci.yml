@@ -177,6 +177,7 @@ jobs:
   igniter-upgrade:
     name: mix igniter.upgrade
     runs-on: ubuntu-latest
+    if: ${{inputs.igniter-upgrade}}
     steps:
       - name: Dependabot metadata
         id: dependabot-metadata
@@ -186,9 +187,7 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-task@main
-        if: ${{inputs.postgres && inputs.ash_postgres}}
         with:
-          mix-env: test
           task: igniter.upgrade --git-ci
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v5
