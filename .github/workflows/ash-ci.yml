@@ -192,6 +192,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          ref: ${{ github.head_ref }}
       - uses: team-alembic/staple-actions/actions/mix-task@main
         with:
           task: igniter.upgrade --git-ci --yes
