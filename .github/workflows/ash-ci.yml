@@ -201,9 +201,6 @@ jobs:
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         with:
           commit_message: Apply Igniter Upgrades
-          commit_user_name: Igniter
-          commit_user_email: igniter@ash-hq.org
-          commit_author: Igniter Upgrade Bot <igniter@ash-hq.org>
   test:
     name: mix test
     runs-on: ubuntu-latest
