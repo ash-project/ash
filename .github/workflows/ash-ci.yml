@@ -197,12 +197,11 @@ jobs:
         id: dependabot-metadata
         uses: dependabot/fetch-metadata@v2
         if: github.event.pull_request.user.login == 'dependabot[bot]'
-        with:
-          token: ${{ secrets.GH_PAT }}
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
+          token: ${{ secrets.GH_PAT }}
       - uses: team-alembic/staple-actions/actions/mix-task@main
         with:
           task: igniter.upgrade --git-ci --yes
