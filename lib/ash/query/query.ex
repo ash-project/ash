@@ -10,6 +10,8 @@ defmodule Ash.Query do
   Examples:
 
   ```elixir
+  require Ash.Query
+
   MyApp.Post
   |> Ash.Query.filter(likes > 10)
   |> Ash.Query.sort([:title])
