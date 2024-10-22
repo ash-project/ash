@@ -41,6 +41,9 @@ defmodule Ash.CodeInterface do
       !(field.name in Map.get(action, :accept, [])) ->
         :ok
 
+      action.type == :create and not is_nil(Map.get(field, :default)) ->
+        :ok
+
       true ->
         raise "Code interface for #{action.name} has optional argument #{key} but it is not optional"
     end

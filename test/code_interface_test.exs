@@ -111,6 +111,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
       attribute :first_name, :string do
         public?(true)
+        allow_nil? false
         default "fred"
       end
 
