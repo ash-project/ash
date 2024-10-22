@@ -190,7 +190,7 @@ jobs:
           fetch-depth: 0
       - uses: team-alembic/staple-actions/actions/mix-task@main
         with:
-          task: igniter.upgrade --git-ci
+          task: igniter.upgrade --git-ci --yes
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v5
         if: github.event.pull_request.user.login == 'dependabot[bot]'
