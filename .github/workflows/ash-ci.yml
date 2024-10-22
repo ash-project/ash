@@ -220,7 +220,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         with:
-          commit_message: Apply Igniter Upgrades
+          commit_message: "[dependabot skip] Apply Igniter Upgrades"
           commit_user_name: dependabot[bot]
   test:
     name: mix test
