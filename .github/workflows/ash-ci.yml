@@ -208,7 +208,7 @@ jobs:
         uses: dependabot/fetch-metadata@v2
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          token: ${{ secrets.GH_PAT }}
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
