@@ -46,8 +46,6 @@ jobs:
   deps:
     name: mix deps.get
     runs-on: ubuntu-latest
-    needs:
-      - igniter-upgrade
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-deps-get@main
@@ -55,8 +53,6 @@ jobs:
   auditor:
     name: audit
     runs-on: ubuntu-latest
-    needs:
-      - igniter-upgrade
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-hex-audit@main
@@ -68,7 +64,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - deps
-      - igniter-upgrade
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/install-elixir@main
@@ -80,7 +75,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-test
-      - igniter-upgrade
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-docs@main
@@ -95,7 +89,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-test
-      - igniter-upgrade
     if: github.ref == 'refs/heads/main'
     permissions:
       pages: write
@@ -113,7 +106,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-test
-      - igniter-upgrade
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-format@main
@@ -125,7 +117,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-test
-      - igniter-upgrade
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-task@main
@@ -139,7 +130,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-test
-      - igniter-upgrade
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-task@main
@@ -152,7 +142,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-test
-      - igniter-upgrade
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-task@main
@@ -175,7 +164,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-test
-      - igniter-upgrade
     if: ${{inputs.codegen}}
     steps:
       - uses: actions/checkout@v3
@@ -227,7 +215,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-test
-      - igniter-upgrade
     services:
       postgres:
         image: postgres:${{inputs.postgres-version}}
@@ -300,7 +287,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-test
-      - igniter-upgrade
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-dialyzer@main
@@ -312,7 +298,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-test
-      - igniter-upgrade
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-compile@main
