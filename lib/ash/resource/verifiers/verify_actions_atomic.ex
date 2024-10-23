@@ -96,18 +96,18 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
 
         action.accept
         |> Enum.map(&Ash.Resource.Info.attribute(dsl, &1))
-        |> Enum.filter(fn %{type: type, constraints: constraints} ->
+        |> Enum.filter(fn %{type: type} ->
           case type do
             {:array, {:array, _}} ->
               true
 
             {:array, type} when is_atom(type) ->
               Code.ensure_compiled!(type)
-              not_atomic?(type, constraints)
+              not_atomic?(type, action)
 
             type when is_atom(type) ->
               Code.ensure_compiled!(type)
-              not_atomic?(type, constraints)
+              not_atomic?(type, action)
 
             _ ->
               false
@@ -146,12 +146,12 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
     Ash.DataLayer.can?(:destroy_query, resource)
   end
 
-  defp not_atomic?(Ash.Type.Union, _), do: true
-
   defp not_atomic?(type, %{type: :update}) when is_atom(type) do
     type = Ash.Type.get_type(type)
     Code.ensure_compiled!(type)
-    not function_exported?(type, :cast_atomic, 2)
+
+    type == Ash.Type.Union ||
+      not function_exported?(type, :cast_atomic, 2)
   end
 
   defp not_atomic?(_, _), do: false

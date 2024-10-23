@@ -266,6 +266,8 @@ defmodule Ash.Type.NewType do
         def generator(constraints) do
           unquote(subtype_of).generator(constraints)
         end
+
+        defoverridable generator: 1
       end
 
       if function_exported?(subtype_of, :handle_change, 3) do
@@ -277,6 +279,8 @@ defmodule Ash.Type.NewType do
             constraints
           )
         end
+
+        defoverridable handle_change: 3
       end
 
       if function_exported?(subtype_of, :handle_change_array, 3) do
@@ -288,6 +292,8 @@ defmodule Ash.Type.NewType do
             constraints
           )
         end
+
+        defoverridable handle_change_array: 3
       end
 
       if function_exported?(subtype_of, :prepare_change, 3) do
@@ -299,6 +305,8 @@ defmodule Ash.Type.NewType do
             constraints
           )
         end
+
+        defoverridable prepare_change: 3
       end
 
       if function_exported?(subtype_of, :prepare_change_array, 3) do
@@ -310,6 +318,8 @@ defmodule Ash.Type.NewType do
             constraints
           )
         end
+
+        defoverridable prepare_change_array: 3
       end
 
       @impl Ash.Type

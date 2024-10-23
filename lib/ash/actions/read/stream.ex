@@ -11,6 +11,7 @@ defmodule Ash.Actions.Read.Stream do
         Ash.Query.for_read(
           query,
           Ash.Resource.Info.primary_action!(query.resource, :read).name,
+          %{},
           opts
         )
       end

@@ -655,8 +655,6 @@ defmodule Ash.Changeset do
            %Ash.Changeset{} = changeset <- set_argument_defaults(changeset, action),
            %Ash.Changeset{} = changeset <- require_arguments(changeset, action),
            %Ash.Changeset{} = changeset <- atomic_changes(changeset, action),
-           # %Ash.Changeset{} = changeset <- attributes_as_atomics(changeset),
-           # _ <- IO.inspect(changeset.atomics),
            %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
            %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
            %Ash.Changeset{} = changeset <-
