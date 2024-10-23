@@ -612,7 +612,8 @@ defmodule Ash.Actions.Create.Bulk do
       batch,
       domain,
       resource,
-      must_return_records_for_changes?
+      must_return_records_for_changes?,
+      action
     )
     |> Stream.concat(must_be_simple_results)
     |> then(fn stream ->
@@ -1376,7 +1377,8 @@ defmodule Ash.Actions.Create.Bulk do
          changesets,
          domain,
          resource,
-         must_return_records_for_changes?
+         must_return_records_for_changes?,
+         action
        ) do
     results =
       Enum.flat_map(batch, fn result ->
@@ -1433,6 +1435,7 @@ defmodule Ash.Actions.Create.Bulk do
       case Ash.load(
              records,
              select,
+             context: %{private: %{just_created_by_action: action.name}},
              reuse_values?: true,
              domain: domain,
              tenant: opts[:tenant],
@@ -1444,6 +1447,7 @@ defmodule Ash.Actions.Create.Bulk do
           Ash.load(
             records,
             List.wrap(opts[:load]),
+            context: %{private: %{just_created_by_action: action.name}},
             domain: domain,
             tenant: opts[:tenant],
             reuse_values?: true,

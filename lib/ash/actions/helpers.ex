@@ -577,6 +577,7 @@ defmodule Ash.Actions.Helpers do
       query =
         changeset.resource
         |> Ash.Query.load(changeset.load)
+        |> Ash.Query.set_context(changeset.context)
         |> select_selected(result)
 
       case Ash.load(result, query, Keyword.put(opts, :domain, domain)) do
@@ -596,6 +597,7 @@ defmodule Ash.Actions.Helpers do
       query =
         changeset.resource
         |> Ash.Query.load(changeset.load)
+        |> Ash.Query.set_context(changeset.context)
         |> select_selected(result)
 
       case Ash.load(result, query, Keyword.put(opts, :domain, domain)) do

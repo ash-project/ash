@@ -12,6 +12,8 @@ defmodule Ash.Test.Support.PolicyField.User do
   actions do
     default_accept :*
     defaults [:read, :destroy, create: :*, update: :*]
+
+    create :special_create
   end
 
   attributes do
@@ -25,6 +27,11 @@ defmodule Ash.Test.Support.PolicyField.User do
     attribute :points, :integer do
       public?(true)
       # only you can see your own points
+    end
+
+    attribute :see_if_just_created, :string do
+      public? true
+      default "was just created with special create"
     end
 
     attribute :top_secret, :string do
@@ -57,6 +64,10 @@ defmodule Ash.Test.Support.PolicyField.User do
 
     field_policy_bypass :* do
       authorize_if actor_attribute_equals(:role, :admin)
+    end
+
+    field_policy :see_if_just_created do
+      authorize_if just_created_with_action(:special_create)
     end
 
     field_policy :role do

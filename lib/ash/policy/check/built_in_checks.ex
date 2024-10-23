@@ -56,6 +56,11 @@ defmodule Ash.Policy.Check.Builtins do
     {Ash.Policy.Check.ActionType, type: List.wrap(action_type)}
   end
 
+  @spec just_created_with_action(atom()) :: Ash.Policy.Check.ref()
+  def just_created_with_action(action_name) do
+    {Ash.Policy.Check.ContextEquals, key: [:private, :just_created_by_action], value: action_name}
+  end
+
   @doc """
   This check is true when the action name matches the provided action name or names.
 

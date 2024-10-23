@@ -464,7 +464,11 @@ defmodule Ash.Actions.Create do
     case result do
       {:ok, created, changeset, instructions} ->
         {:ok, created, instructions}
-        |> Helpers.load(changeset, domain,
+        |> Helpers.load(
+          Ash.Changeset.set_context(changeset, %{
+            private: %{just_created_by_action: changeset.action.name}
+          }),
+          domain,
           actor: opts[:actor],
           reuse_values?: true,
           authorize?: opts[:authorize?],

@@ -55,10 +55,31 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     ]
   end
 
+  describe "just_created_by_action" do
+    test "allows reading fields" do
+      user =
+        User
+        |> Ash.Changeset.for_create(:special_create)
+        |> Ash.Changeset.load(:see_if_just_created)
+        |> Ash.create!()
+
+      assert user.see_if_just_created == "was just created with special create"
+
+      user =
+        User
+        |> Ash.Changeset.for_create(:create)
+        |> Ash.Changeset.load(:see_if_just_created)
+        |> Ash.create!()
+
+      assert %Ash.ForbiddenField{} = user.see_if_just_created
+    end
+  end
+
   describe "introspection" do
     test "introspection returns field policies" do
       assert [
                %Ash.Policy.FieldPolicy{bypass?: true},
+               %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
