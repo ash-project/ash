@@ -236,7 +236,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
           page: [
             type: :keyword_list,
             doc:
-              "Pagination options, see [the pagination docs for more](read-actions.md#pagination).",
+              "Pagination options, see the read actions guide for more..",
             required: false,
             default: []
           ],

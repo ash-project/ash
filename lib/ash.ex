@@ -69,8 +69,7 @@ defmodule Ash do
   @read_opts_schema Spark.Options.merge(
                       [
                         page: [
-                          doc:
-                            "Pagination options, see [the pagination docs for more](read-actions.md#pagination).",
+                          doc: "Pagination options, see the read actions guide for more.",
                           type: {:custom, Ash.Page, :page_opts, []}
                         ],
                         load: [
