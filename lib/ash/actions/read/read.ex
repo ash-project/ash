@@ -132,14 +132,18 @@ defmodule Ash.Actions.Read do
     action = get_action(query.resource, query.action || action)
 
     query =
-      for_read(
-        query,
-        action,
-        actor: opts[:actor],
-        authorize?: opts[:authorize?],
-        timeout: opts[:timeout],
-        tenant: opts[:tenant]
-      )
+      if action.type == :read do
+        for_read(
+          query,
+          action,
+          actor: opts[:actor],
+          authorize?: opts[:authorize?],
+          timeout: opts[:timeout],
+          tenant: opts[:tenant]
+        )
+      else
+        query
+      end
 
     initial_query = query
 
@@ -148,7 +152,7 @@ defmodule Ash.Actions.Read do
     query = %{
       query
       | timeout:
-          opts[:timeout] || query.timeout || query.action.timeout ||
+          opts[:timeout] || query.timeout || (query.action && query.action.timeout) ||
             Ash.Domain.Info.timeout(query.domain)
     }
 
@@ -2420,6 +2424,9 @@ defmodule Ash.Actions.Read do
 
   def page_opts(action, page_opts, relationship?) do
     cond do
+      action.type != :read ->
+        nil
+
       action.pagination == false ->
         nil
 

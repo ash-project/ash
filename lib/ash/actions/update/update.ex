@@ -571,6 +571,7 @@ defmodule Ash.Actions.Update do
         |> Helpers.load(changeset, domain,
           actor: opts[:actor],
           reuse_values?: true,
+          action: Ash.Resource.Info.primary_action(changeset.resource, :read) || changeset.action,
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]
         )

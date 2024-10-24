@@ -2139,6 +2139,8 @@ defmodule Ash.Actions.Destroy.Bulk do
            reuse_values?: true,
            domain: domain,
            tenant: opts[:tenant],
+           action:
+             Ash.Resource.Info.primary_action(changeset.resource, :read) || changeset.action,
            actor: opts[:actor],
            authorize?: opts[:authorize?],
            tracer: opts[:tracer]
@@ -2149,6 +2151,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           List.wrap(changeset.load),
           reuse_values?: true,
           tenant: opts[:tenant],
+          action: Ash.Resource.Info.primary_action(changeset.resource, :read) || changeset.action,
           domain: domain,
           actor: opts[:actor],
           authorize?: opts[:authorize?],

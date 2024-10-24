@@ -6,6 +6,24 @@ defmodule Ash.Test.Actions.LoadTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  defmodule ExampleWithNoPrimaryRead do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:create]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    calculations do
+      calculate :id_calc, :uuid, expr(id)
+    end
+  end
+
   defmodule Campaign do
     @moduledoc false
     use Ash.Resource,
@@ -1926,5 +1944,15 @@ defmodule Ash.Test.Actions.LoadTest do
       assert post.title == loaded_post.title
       assert post.contents == loaded_post.contents
     end
+  end
+
+  test "you can load data on create with no default read action" do
+    record =
+      ExampleWithNoPrimaryRead
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.Changeset.load(:id_calc)
+      |> Ash.create!()
+
+    assert record.id == record.id_calc
   end
 end

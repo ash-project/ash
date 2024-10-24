@@ -470,6 +470,7 @@ defmodule Ash.Actions.Create do
           }),
           domain,
           actor: opts[:actor],
+          action: Ash.Resource.Info.primary_action(changeset.resource, :read) || changeset.action,
           reuse_values?: true,
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]

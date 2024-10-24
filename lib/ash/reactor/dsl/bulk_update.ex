@@ -235,8 +235,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
           ],
           page: [
             type: :keyword_list,
-            doc:
-              "Pagination options, see `Ash.read/2` for more.",
+            doc: "Pagination options, see `Ash.read/2` for more.",
             required: false,
             default: []
           ],
