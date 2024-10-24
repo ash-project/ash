@@ -1019,7 +1019,13 @@ defmodule Ash.Policy.Authorizer do
         {ref, acc}
 
       {:expr, expr, acc} ->
-        {expr, acc}
+        {Ash.Expr.expr(
+           if ^expr do
+             ^ref
+           else
+             nil
+           end
+         ), acc}
     end
   end
 
