@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.4.36](https://github.com/ash-project/ash/compare/v3.4.35...v3.4.36) (2024-10-24)
+
+
+
+
+### Bug Fixes:
+
+* properly replace fields with their replacement, not just their rules
+
+* ensure opts are passed through to constructed query in stream
+
+### Improvements:
+
+* add context indicating which action was just used to create a record
+
+* add `just_created_with_action/1` check
+
 ## [v3.4.35](https://github.com/ash-project/ash/compare/v3.4.34...v3.4.35) (2024-10-22)
 
 
