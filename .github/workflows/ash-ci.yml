@@ -185,7 +185,7 @@ jobs:
   igniter-upgrade:
     name: mix igniter.upgrade
     runs-on: ubuntu-latest
-    if: ${{inputs.igniter-upgrade}}
+    if: ${{inputs.igniter-upgrade}} && github.event.pull_request.user.login == 'dependabot[bot]'
     permissions:
       # Give the default GITHUB_TOKEN write permission to commit and push the
       # added or changed files to the repository.
@@ -194,7 +194,6 @@ jobs:
       - name: Dependabot metadata
         id: dependabot-metadata
         uses: dependabot/fetch-metadata@v2
-        if: github.event.pull_request.user.login == 'dependabot[bot]'
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -204,7 +203,6 @@ jobs:
           task: igniter.upgrade --git-ci --yes
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@v5
-        if: github.event.pull_request.user.login == 'dependabot[bot]'
         with:
           commit_message: "[dependabot skip] Apply Igniter Upgrades"
           commit_user_name: dependabot[bot]
