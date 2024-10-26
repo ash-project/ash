@@ -89,6 +89,25 @@ defmodule Ash.Notifier.PubSub do
   You configure a module that defines a `broadcast/3` function, and then add some "publications"
   which configure under what conditions an event should be sent and what the topic should be.
 
+  ## Example
+
+  ```elixir
+  defmodule MyApp.User do
+    use Ash.Resource,
+      # ...
+      notifiers: [Ash.Notifier.PubSub]
+
+    # ...
+
+    pub_sub do
+      module(MyAppWeb.Endpoint)
+
+      prefix("user")
+      publish(:update, ["updated", :_pkey])
+    end
+  end
+  ```
+
   ## Debugging PubSub
 
   It can be quite frustrating when setting up pub_sub when everything appears to be set up properly, but
