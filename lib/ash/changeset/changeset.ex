@@ -5267,48 +5267,12 @@ defmodule Ash.Changeset do
              {:ok, casted} <- handle_change(changeset, attribute, casted, constraints),
              {:ok, casted} <-
                Ash.Type.apply_constraints(attribute.type, casted, constraints) do
-          data_value =
-            if changeset.action_type != :create do
-              case changeset.data do
-                %Ash.Changeset.OriginalDataNotAvailable{} ->
-                  nil
-
-                data ->
-                  Map.get(data, attribute.name)
-              end
-            end
-
-          changeset = remove_default(changeset, attribute.name)
-
-          cond do
-            changeset.action_type == :create ->
-              %{
-                changeset
-                | attributes: Map.put(changeset.attributes, attribute.name, casted)
-              }
-              |> record_attribute_change_for_atomic_upgrade(attribute.name, casted)
-
-            is_nil(data_value) and is_nil(casted) ->
-              %{
-                changeset
-                | attributes: Map.delete(changeset.attributes, attribute.name)
-              }
-              |> record_attribute_change_for_atomic_upgrade(attribute.name, casted)
-
-            Ash.Type.equal?(attribute.type, casted, data_value) ->
-              %{
-                changeset
-                | attributes: Map.delete(changeset.attributes, attribute.name)
-              }
-              |> record_attribute_change_for_atomic_upgrade(attribute.name, casted)
-
-            true ->
-              %{
-                changeset
-                | attributes: Map.put(changeset.attributes, attribute.name, casted)
-              }
-              |> record_attribute_change_for_atomic_upgrade(attribute.name, casted)
-          end
+          %{
+            changeset
+            | attributes: Map.put(changeset.attributes, attribute.name, casted)
+          }
+          |> remove_default(attribute.name)
+          |> record_attribute_change_for_atomic_upgrade(attribute.name, casted)
         else
           :error ->
             add_invalid_errors(value, :attribute, changeset, attribute)
