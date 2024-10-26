@@ -102,7 +102,7 @@ defmodule Ash.Notifier.PubSub do
     pub_sub do
       module MyAppWeb.Endpoint
 
-      prefix("user")
+      prefix "user"
       publish(:update, ["updated", :_pkey])
     end
   end
