@@ -281,6 +281,7 @@ defmodule Ash.DataLayer do
   @callback rollback(Ash.Resource.t(), term) :: no_return
   @callback calculate(Ash.Resource.t(), list(Ash.Expr.t()), context :: map) ::
               {:ok, term} | {:error, term}
+  @callback prefer_transaction?(Ash.Resource.t()) :: boolean
   @callback can?(Ash.Resource.t() | Spark.Dsl.t(), feature()) :: boolean
   @callback set_context(Ash.Resource.t(), data_layer_query(), map) ::
               {:ok, data_layer_query()} | {:error, term}
@@ -297,6 +298,7 @@ defmodule Ash.DataLayer do
                       create: 2,
                       update: 2,
                       set_context: 3,
+                      prefer_transaction?: 1,
                       calculate: 3,
                       destroy: 2,
                       filter: 3,
@@ -355,6 +357,19 @@ defmodule Ash.DataLayer do
           {:ok, list(term)} | {:error, Ash.Error.t()}
   def calculate(resource, exprs, context) do
     data_layer(resource).calculate(resource, exprs, context)
+  end
+
+  @spec prefer_transaction?(Ash.Resource.t()) :: boolean
+  def prefer_transaction?(resource) do
+    data_layer = data_layer(resource)
+
+    if function_exported?(data_layer, :prefer_transaction?, 1) do
+      data_layer.prefer_transaction?(resource)
+    else
+      # default to false in 4.0
+      # also change in postgres data layer to default to false
+      true
+    end
   end
 
   @doc "Wraps the execution of the function in a transaction with the resource's data_layer"

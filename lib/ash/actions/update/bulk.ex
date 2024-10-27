@@ -244,7 +244,11 @@ defmodule Ash.Actions.Update.Bulk do
                 :bulk_destroy
             end
 
-          if (has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action)) &&
+          prefer_transaction? =
+            has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) ||
+              Ash.DataLayer.prefer_transaction?(atomic_changeset.resource)
+
+          if prefer_transaction? &&
                Keyword.get(opts, :transaction, true) do
             Ash.DataLayer.transaction(
               List.wrap(atomic_changeset.resource) ++ atomic_changeset.action.touches_resources,

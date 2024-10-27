@@ -3356,7 +3356,16 @@ defmodule Ash.Changeset do
   end
 
   def with_hooks(changeset, func, opts) do
-    if opts[:transaction?] && Ash.DataLayer.data_layer_can?(changeset.resource, :transact) do
+    prefer_transaction? =
+      if Enum.empty?(changeset.before_action) && Enum.empty?(changeset.after_action) &&
+           Enum.empty?(changeset.around_action) do
+        Ash.DataLayer.prefer_transaction?(changeset.resource)
+      else
+        true
+      end
+
+    if prefer_transaction? && opts[:transaction?] &&
+         Ash.DataLayer.data_layer_can?(changeset.resource, :transact) do
       transaction_hooks(changeset, fn changeset ->
         resources =
           changeset.resource
