@@ -174,6 +174,13 @@ The basic building blocks of an Ash application are Ash resources. They are tied
 
 ### Creating our first resource
 
+> ### Generators {: .info}
+>
+> We have CLI commands that will do this for you, for example `mix ash.gen.resource`
+> In this getting started guide, we will create the resources by hand. This is primarily
+> because there are not actually very many steps, and we want you to be familiar with
+> each moving piece. For more on the generators, run `mix help ash.gen.resource`.
+
 Let's start by creating our first resource along with our first domain. We will create the following files:
 
 - The domain `Helpdesk.Support`, in `lib/helpdesk/support.ex`
@@ -665,13 +672,17 @@ Where Ash shines however, is all of the tools that can work _with_ your resource
 
 #### Persist your data
 
-See [The AshPostgres getting started guide](https://hexdocs.pm/ash_postgres) to see how to back your resources with Postgres. This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
+See [The AshPostgres getting started guide](https://hexdocs.pm/ash_postgres) to see how to back your resources with Postgres.
+This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
 
 #### Add a web API
 
 Check out [AshJsonApi](https://hexdocs.pm/ash_json_api) and [AshGraphql](https://hexdocs.pm/ash_graphql) extensions to build APIs around your resource
 
 #### Authorize access and work with users
+
+See [AshAuthentication](https://hexdocs.pm/ash_authentication) for setting up users and allowing them to
+log in. It supports password, magic link, oauth (google, github, apple etc.) out of the box!
 
 See the [Policies guide](/documentation/topics/security/policies.md) for information on how to authorize access to your resources using actors and policies.
 

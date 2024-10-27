@@ -282,6 +282,7 @@ defmodule Ash.DataLayer do
   @callback calculate(Ash.Resource.t(), list(Ash.Expr.t()), context :: map) ::
               {:ok, term} | {:error, term}
   @callback prefer_transaction?(Ash.Resource.t()) :: boolean
+  @callback prefer_transaction_for_atomic_updates?(Ash.Resource.t()) :: boolean
   @callback can?(Ash.Resource.t() | Spark.Dsl.t(), feature()) :: boolean
   @callback set_context(Ash.Resource.t(), data_layer_query(), map) ::
               {:ok, data_layer_query()} | {:error, term}
@@ -299,6 +300,7 @@ defmodule Ash.DataLayer do
                       update: 2,
                       set_context: 3,
                       prefer_transaction?: 1,
+                      prefer_transaction_for_atomic_updates?: 1,
                       calculate: 3,
                       destroy: 2,
                       filter: 3,
@@ -365,6 +367,19 @@ defmodule Ash.DataLayer do
 
     if function_exported?(data_layer, :prefer_transaction?, 1) do
       data_layer.prefer_transaction?(resource)
+    else
+      # default to false in 4.0
+      # also change in postgres data layer to default to false
+      true
+    end
+  end
+
+  @spec prefer_transaction_for_atomic_updates?(Ash.Resource.t()) :: boolean
+  def prefer_transaction_for_atomic_updates?(resource) do
+    data_layer = data_layer(resource)
+
+    if function_exported?(data_layer, :prefer_transaction_for_atomic_updates?, 1) do
+      data_layer.prefer_transaction_for_atomic_updates?(resource)
     else
       # default to false in 4.0
       # also change in postgres data layer to default to false

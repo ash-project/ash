@@ -544,10 +544,14 @@ defmodule Ash.Policy.Authorizer do
                 {:simple_sat, "~> 0.1"}
               ],
               label: """
-              Ash.Policy.Authorizer requires a SAT solver. Which would you like to use?
+              Ash.Policy.Authorizer requires a SAT solver (Boolean Satisfiability Solver). This solver is used to
+              check policy requirements to answer questions like "Is this user allowed to do this action?" and
+              "What filter must be applied to this query to show only the allowed records a user can see?".
+
+              Which SAT solver would you like to use?
 
               1. `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
-              2. `:simple_sat` - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
+              2. `:simple_sat` (only if necessary) - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
               """,
               render_as: &to_string(elem(&1, 0))
             )

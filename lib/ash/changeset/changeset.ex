@@ -1299,6 +1299,12 @@ defmodule Ash.Changeset do
       type: :map,
       doc: "Private argument values to set before validations and changes.",
       default: %{}
+    ],
+    return_skipped_upsert?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "If `true`, and a record was *not* upserted because its filter prevented the upsert, the original record (which was *not* upserted) will be returned."
     ]
   ]
 
@@ -1398,6 +1404,8 @@ defmodule Ash.Changeset do
     |> set_context(%{
       private: %{
         upsert?: opts[:upsert?] || (action && action.upsert?) || false,
+        return_skipped_upsert?:
+          opts[:return_skipped_upsert?] || (action && action.return_skipped_upsert?) || false,
         upsert_identity: opts[:upsert_identity] || (action && action.upsert_identity),
         upsert_fields:
           expand_upsert_fields(

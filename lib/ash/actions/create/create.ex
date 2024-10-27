@@ -99,6 +99,13 @@ defmodule Ash.Actions.Create do
       end
 
     opts =
+      if get_in(changeset.context, [:private, :return_skipped_upsert?]) do
+        Keyword.put(opts, :return_skipped_upsert?, true)
+      else
+        opts
+      end
+
+    opts =
       Keyword.put(opts, :upsert_identity, upsert_identity)
 
     changeset =
