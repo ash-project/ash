@@ -21,10 +21,10 @@ Ash can be installed into a project using `igniter`. Some examples of how this c
   mix igniter.new my_project --install ash,ash_postgres
   ```
 
-- Create a new phoenix project with Ash & AshPostgres installed
+- Create a new phoenix project with Ash, AshPostgres and Phoenix installed
 
   ```
-  mix igniter.new my_project --install ash,ash_postgres --with phx.new
+  mix igniter.new my_project --install ash,ash_postgres,ash_phoenix --with phx.new
   ```
 
   > ### install hex archives {: .info}

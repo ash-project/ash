@@ -1,5 +1,18 @@
 # Get Started
 
+This guide will walk you through an example project so you can learn the different parts of Ash.
+
+If you just want to start a new project from scratch with Ash, Phoenix and Postgres use:
+
+```elixir
+mix archive.install hex igniter_new
+mix archive.install hex phx_new
+mix igniter.new my_app --with phx.new --install ash,ash_postgres,ash_phoenix
+```
+
+More info at [Generators](documentation/topics/development/generators.md).
+
+
 > ### Learn with Livebook {: .tip}
 >
 > We have a basic step by step tutorial in Livebook that introduces you to Ash. No prior Ash knowledge is required.
