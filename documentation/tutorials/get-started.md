@@ -65,7 +65,7 @@ If you already know that you want to use Phoenix and Ash together, you can use
 mix archive.install hex phx_new
 
 # use the `--with` flag to generate the project with phx.new and add Ash
-mix igniter.new helpdesk --install ash --with phx.new && cd helpdesk
+mix igniter.new helpdesk --install ash,ash_phoenix --with phx.new && cd helpdesk
 ```
 
 It is a good idea to make it a git repository and commit the initial project. You'll be able to see what changes we made, and can save your changes once we're done.
@@ -100,7 +100,7 @@ Open the project in your text editor, and we'll get started.
 > mix archive.install hex phx_new
 >
 > mix igniter.new helpdesk \
->   --install ash,ash_postgres \
+>   --install ash,ash_postgres,ash_phoenix \
 >   --with phx.new \
 >   --extend postgres \
 >   --example
