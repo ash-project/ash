@@ -2,6 +2,29 @@
 
 <!-- changelog -->
 
+## [v3.4.37](https://github.com/ash-project/ash/compare/v3.4.36...v3.4.37) (2024-10-30)
+
+
+
+
+### Bug Fixes:
+
+* handle nil union changing to nil
+
+* enforce multitenancy on bulk creation
+
+* force_change_attribute should not care what the old value is
+
+### Improvements:
+
+* allow specifying `return_skipped_upsert?` as an option to changeset
+
+* add `prefer_transaction_for_atomic_updates?` data layer callback
+
+* support `prefer_transaction?` on DataLayer
+
+* allow data loading when no primary read action exists
+
 ## [v3.4.36](https://github.com/ash-project/ash/compare/v3.4.35...v3.4.36) (2024-10-24)
 
 
