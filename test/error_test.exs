@@ -153,8 +153,9 @@ defmodule Ash.Test.ErrorTest do
 
       error_message = Ash.Error.Unknown.message(error_class)
 
-      assert error_message =~ "Bread Crumbs: some higher context > some context"
-      assert error_message =~ "Bread Crumbs: some higher context > some other context"
+      assert error_message =~ "  > some higher context"
+      assert error_message =~ "  > some context"
+      assert error_message =~ "  > some other context"
     end
 
     test "error message still renders when there's no error context" do
