@@ -90,7 +90,7 @@ defmodule Ash.Domain do
   @impl Spark.Dsl
   def handle_before_compile(_) do
     quote do
-      if Keyword.get(@opts, :backards_compatible_interface?, true) do
+      if Keyword.get(@opts, :backards_compatible_interface?, false) do
         use Ash.Domain.Interface
       end
 
