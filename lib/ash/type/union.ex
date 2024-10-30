@@ -696,6 +696,9 @@ defmodule Ash.Type.Union do
   end
 
   @impl true
+  def handle_change(nil, nil, constraints),
+    do: {:ok, nil}
+
   def handle_change(nil, %Ash.Union{type: type_name, value: new_value}, constraints),
     do: do_handle_change(type_name, nil, new_value, constraints)
 

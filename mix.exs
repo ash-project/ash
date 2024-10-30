@@ -355,7 +355,8 @@ defmodule Ash.MixProject do
       # Used for Ash.PlugHelpers
       {:plug, ">= 0.0.0", optional: true},
       # Used for aggregatable and standardized exceptions
-      {:splode, "~> 0.2"},
+      # {:splode, "~> 0.2"},
+      {:splode, "~> 0.2.5"},
       # Testing Utilities
       {:stream_data, "~> 1.0"},
 
