@@ -150,6 +150,12 @@ defmodule Ash.Test.Actions.CreateTest do
         accept [:bio]
       end
 
+      create :testing do
+        change fn changeset, _ ->
+          raise "Uh oh!"
+        end
+      end
+
       create :manual_create do
         manual fn _, _ ->
           {:ok,

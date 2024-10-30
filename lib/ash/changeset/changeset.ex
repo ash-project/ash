@@ -1531,71 +1531,82 @@ defmodule Ash.Changeset do
 
     if changeset.valid? do
       if action do
-        if action.soft? do
-          do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
-        else
-          {changeset, opts} =
-            Ash.Actions.Helpers.set_context_and_get_opts(
-              domain,
-              changeset,
-              opts
-            )
+        try do
+          if action.soft? do
+            do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
+          else
+            {changeset, opts} =
+              Ash.Actions.Helpers.set_context_and_get_opts(
+                domain,
+                changeset,
+                opts
+              )
 
-          name =
-            fn ->
-              "changeset:" <>
-                Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
-            end
-
-          Ash.Tracer.span :changeset,
-                          name,
-                          opts[:tracer] do
-            Ash.Tracer.telemetry_span [:ash, :changeset], fn ->
-              %{
-                resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
-              }
-            end do
-              metadata = fn ->
-                %{
-                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-                  resource: changeset.resource,
-                  actor: opts[:actor],
-                  tenant: opts[:tenant],
-                  action: action.name,
-                  authorize?: opts[:authorize?]
-                }
+            name =
+              fn ->
+                "changeset:" <>
+                  Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
               end
 
-              Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
+            Ash.Tracer.span :changeset,
+                            name,
+                            opts[:tracer] do
+              Ash.Tracer.telemetry_span [:ash, :changeset], fn ->
+                %{
+                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
+                }
+              end do
+                metadata = fn ->
+                  %{
+                    resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                    resource: changeset.resource,
+                    actor: opts[:actor],
+                    tenant: opts[:tenant],
+                    action: action.name,
+                    authorize?: opts[:authorize?]
+                  }
+                end
 
-              changeset =
-                Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
-                  Ash.Changeset.set_argument(changeset, k, v)
-                end)
+                Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
 
-              changeset
-              |> Map.put(:action, action)
-              |> handle_errors(action.error_handler)
-              |> set_actor(opts)
-              |> set_authorize(opts)
-              |> set_tracer(opts)
-              |> set_tenant(opts[:tenant] || changeset.tenant)
-              |> cast_params(action, params, opts)
-              |> set_argument_defaults(action)
-              |> require_arguments(action)
-              |> validate_attributes_accepted(action)
-              |> run_action_changes(
-                action,
-                opts[:actor],
-                opts[:authorize?],
-                opts[:tracer],
-                metadata
-              )
-              |> add_validations(opts[:tracer], metadata, opts[:actor])
-              |> mark_validated(action.name)
-              |> Map.put(:__validated_for_action__, action.name)
+                changeset =
+                  Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
+                    Ash.Changeset.set_argument(changeset, k, v)
+                  end)
+
+                changeset
+                |> Map.put(:action, action)
+                |> handle_errors(action.error_handler)
+                |> set_actor(opts)
+                |> set_authorize(opts)
+                |> set_tracer(opts)
+                |> set_tenant(opts[:tenant] || changeset.tenant)
+                |> cast_params(action, params, opts)
+                |> set_argument_defaults(action)
+                |> require_arguments(action)
+                |> validate_attributes_accepted(action)
+                |> run_action_changes(
+                  action,
+                  opts[:actor],
+                  opts[:authorize?],
+                  opts[:tracer],
+                  metadata
+                )
+                |> add_validations(opts[:tracer], metadata, opts[:actor])
+                |> mark_validated(action.name)
+                |> Map.put(:__validated_for_action__, action.name)
+              end
             end
           end
+        rescue
+          e ->
+            reraise Ash.Error.to_error_class(e,
+                      stacktrace: __STACKTRACE__,
+                      bread_crumbs: [
+                        "building changeset for #{inspect(changeset.resource)}.#{action.name}"
+                      ]
+                    ),
+                    __STACKTRACE__
         end
       else
         raise_no_action(changeset.resource, action_or_name, :destroy)
@@ -1874,54 +1885,67 @@ defmodule Ash.Changeset do
             "changeset:" <> Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
           end
 
-        Ash.Tracer.span :changeset,
-                        name,
-                        opts[:tracer] do
-          Ash.Tracer.telemetry_span [:ash, :changeset], fn ->
-            %{
-              resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
-            }
-          end do
-            metadata = fn ->
+        try do
+          Ash.Tracer.span :changeset,
+                          name,
+                          opts[:tracer] do
+            Ash.Tracer.telemetry_span [:ash, :changeset], fn ->
               %{
-                resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-                resource: changeset.resource,
-                actor: opts[:actor],
-                tenant: opts[:tenant],
-                action: action.name,
-                authorize?: opts[:authorize?]
+                resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
               }
-            end
+            end do
+              metadata = fn ->
+                %{
+                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                  resource: changeset.resource,
+                  actor: opts[:actor],
+                  tenant: opts[:tenant],
+                  action: action.name,
+                  authorize?: opts[:authorize?]
+                }
+              end
 
-            Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
+              Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
 
-            changeset =
-              Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
-                Ash.Changeset.set_argument(changeset, k, v)
-              end)
+              changeset =
+                Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
+                  Ash.Changeset.set_argument(changeset, k, v)
+                end)
 
-            changeset =
-              changeset
-              |> prepare_changeset_for_action(action, opts)
-              |> handle_params(action, params, opts)
-              |> run_action_changes(
-                action,
-                opts[:actor],
-                opts[:authorize?],
-                opts[:tracer],
-                metadata
-              )
-              |> add_validations(opts[:tracer], metadata, opts[:actor])
-              |> mark_validated(action.name)
-              |> eager_validate_identities()
-              |> Map.put(:__validated_for_action__, action.name)
+              changeset =
+                changeset
+                |> prepare_changeset_for_action(action, opts)
+                |> handle_params(action, params, opts)
+                |> run_action_changes(
+                  action,
+                  opts[:actor],
+                  opts[:authorize?],
+                  opts[:tracer],
+                  metadata
+                )
+                |> add_validations(opts[:tracer], metadata, opts[:actor])
+                |> mark_validated(action.name)
+                |> eager_validate_identities()
+                |> Map.put(:__validated_for_action__, action.name)
 
-            if Keyword.get(opts, :require?, true) do
-              require_values(changeset, action.type)
-            else
-              changeset
+              if Keyword.get(opts, :require?, true) do
+                require_values(changeset, action.type)
+              else
+                changeset
+              end
             end
           end
+        rescue
+          e ->
+            IO.inspect("HERE!!")
+
+            reraise Ash.Error.to_error_class(e,
+                      stacktrace: __STACKTRACE__,
+                      bread_crumbs: [
+                        "building changeset for #{inspect(changeset.resource)}.#{action.name}"
+                      ]
+                    ),
+                    __STACKTRACE__
         end
       else
         raise_no_action(changeset.resource, action_or_name, changeset.action_type)
@@ -2405,7 +2429,13 @@ defmodule Ash.Changeset do
 
   defp run_action_changes(changeset, %{changes: changes}, actor, authorize?, tracer, metadata) do
     changeset = set_phase(changeset, :validate)
-    changes = changes ++ Ash.Resource.Info.changes(changeset.resource, changeset.action_type)
+
+    changes =
+      Enum.map(changes, &{:action, &1}) ++
+        Enum.map(
+          Ash.Resource.Info.changes(changeset.resource, changeset.action_type),
+          &{:global, &1}
+        )
 
     context = %{
       actor: actor,
@@ -2414,11 +2444,52 @@ defmodule Ash.Changeset do
       tracer: tracer
     }
 
-    Enum.reduce(changes, changeset, fn
-      %{only_when_valid?: true}, %{valid?: false} = changeset ->
+    changes
+    |> Enum.reduce(changeset, fn {location, change_or_validation}, changeset ->
+      try do
+        run_change_or_validation(
+          change_or_validation,
+          changeset,
+          context,
+          tracer,
+          metadata,
+          actor
+        )
+      rescue
+        e ->
+          bread_crumb =
+            case change_or_validation do
+              %{validation: {Ash.Resource.Validation.Function, opts}} ->
+                "#{location} validation #{inspect(opts[:fun])}"
+
+              %{validation: other} ->
+                "#{location} validation #{inspect(other)}"
+
+              %{change: {Ash.Resource.Change.Function, opts}} ->
+                "#{location} change #{inspect(opts[:fun])}"
+
+              %{change: other} ->
+                "#{location} change #{inspect(other)}"
+            end
+
+          reraise Ash.Error.to_error_class(e,
+                    stacktrace: __STACKTRACE__,
+                    bread_crumbs: [
+                      bread_crumb
+                    ]
+                  ),
+                  __STACKTRACE__
+      end
+    end)
+    |> clear_phase()
+  end
+
+  defp run_change_or_validation(change_or_validation, changeset, context, tracer, metadata, actor) do
+    case {change_or_validation, changeset} do
+      {%{only_when_valid?: true}, %{valid?: false} = changeset} ->
         changeset
 
-      %{always_atomic?: true, change: {module, _}} = change, changeset ->
+      {%{always_atomic?: true, change: {module, _}} = change, changeset} ->
         if changeset.action.type == :create do
           Ash.Changeset.add_error(
             changeset,
@@ -2441,7 +2512,7 @@ defmodule Ash.Changeset do
           end
         end
 
-      %{always_atomic?: true, validation: {module, _}} = change, changeset ->
+      {%{always_atomic?: true, validation: {module, _}} = change, changeset} ->
         if changeset.action.type == :create do
           Ash.Changeset.add_error(
             changeset,
@@ -2464,7 +2535,7 @@ defmodule Ash.Changeset do
           end
         end
 
-      %{change: {module, opts}, where: where} = change, changeset ->
+      {%{change: {module, opts}, where: where} = change, changeset} ->
         if module.has_change?() do
           if Enum.all?(where || [], fn {module, opts} ->
                Ash.Tracer.span :validation,
@@ -2547,10 +2618,9 @@ defmodule Ash.Changeset do
           end
         end
 
-      %{validation: _} = validation, changeset ->
+      {%{validation: _} = validation, changeset} ->
         validate(changeset, validation, tracer, metadata, actor)
-    end)
-    |> clear_phase()
+    end
   end
 
   @doc false
