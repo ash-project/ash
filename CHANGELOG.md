@@ -4,150 +4,113 @@
 
 ## [v3.4.37](https://github.com/ash-project/ash/compare/v3.4.36...v3.4.37) (2024-10-30)
 
-
-
-
 ### Bug Fixes:
 
-* handle nil union changing to nil
+- [`Ash.Type.Union`] handle nil union changing to nil
 
-* enforce multitenancy on bulk creation
+- [multitenancy] enforce multitenancy on bulk creation
 
-* force_change_attribute should not care what the old value is
+- [`Ash.Changeset`] force_change_attribute no longer cares what the old value is
 
 ### Improvements:
 
-* allow specifying `return_skipped_upsert?` as an option to changeset
+- [`Ash.Changeset`] allow specifying `return_skipped_upsert?` as an option to changeset
 
-* add `prefer_transaction_for_atomic_updates?` data layer callback
+- [`Ash.DataLayer`] add `prefer_transaction_for_atomic_updates?` data layer callback
 
-* support `prefer_transaction?` on DataLayer
+- [`Ash.DataLayer`] support `prefer_transaction?` on DataLayer
 
-* allow data loading when no primary read action exists
+- [loading data] allow data loading when no primary read action exists
 
 ## [v3.4.36](https://github.com/ash-project/ash/compare/v3.4.35...v3.4.36) (2024-10-24)
 
-
-
-
 ### Bug Fixes:
 
-* properly replace fields with their replacement, not just their rules
-
-* ensure opts are passed through to constructed query in stream
+- [`Ash.stream!`] ensure opts are passed through to constructed query in stream
 
 ### Improvements:
 
-* add context indicating which action was just used to create a record
-
-* add `just_created_with_action/1` check
+- [`Ash.Policy.Check.Builtins`] add `just_created_with_action/1` check
 
 ## [v3.4.35](https://github.com/ash-project/ash/compare/v3.4.34...v3.4.35) (2024-10-22)
 
-
-
-
 ### Bug Fixes:
 
-* allow optional code interface args for fields with defaults
+- [code interfaces] allow optional code interface args for fields with defaults
 
-* don't rewrite all attributes to atomics
+- [atomic updates] write all attributes to atomics list before dispatching to data layer on update query
 
-* write all attributes to atomics list before dispatching to data layer on update query
+- [`mix ash.gen.resource`] remove multichar aliases from `mix ash.gen.resource`
 
-* remove multichar aliases from `mix ash.gen.resource`
-
-* check nil before calling Decimal.eq? in Type.Decimal.equal? (#1538)
+- [`Ash.Type.Decimal`] check nil before calling Decimal.eq? in Type.Decimal.equal? (#1538)
 
 ## [v3.4.34](https://github.com/ash-project/ash/compare/v3.4.33...v3.4.34) (2024-10-21)
 
-
-
-
 ### Bug Fixes:
 
-* properly accept options for `ash.gen.resource` in installer
+- [`mix ash.gen.resource`] properly accept options for `ash.gen.resource` in installer
 
 ## [v3.4.33](https://github.com/ash-project/ash/compare/v3.4.32...v3.4.33) (2024-10-18)
 
-
-
-
 ### Bug Fixes:
 
-* apply attribute multitenancy on bulk update queries
+- [bulk updates] apply attribute multitenancy on bulk update queries
 
-* use Decimal.eq? in Ash.Type.Decimal (#1532)
+- [`Ash.Type.Decimal`] use Decimal.eq? in Ash.Type.Decimal (#1532)
 
-* Reactor: Don't validate `inputs` keys when being transformed. (#1527)
+- [`Ash.Reactor`]: Don't validate `inputs` keys when being transformed. (#1527)
 
-* set argument defaults in fully atomic changesets
+- [atomic updates] set argument defaults in fully atomic changesets
 
-* ensure that default values & attribute changes are included in attribute changes
+- [`Ash.Changeset`] ensure that default values are included in attribute changes
 
-* properly unrelate belongs_to relationships
+- [manage_relationship] properly unrelate belongs_to relationships
 
-* ensure unrelated records are removed from the current records list
+- [manage_relationship] ensure unrelated records are removed from the current records list
 
 ### Improvements:
 
-* update docs for spark changes
+- [`Ash.Resource`] Conditionally enable transactions on default actions. (#1525)
 
-* Conditionally enable transactions on default actions. (#1525)
+- [`Ash.Seed`] ash seed upsert! function (#1522)
 
-* ash seed upsert! function (#1522)
-
-* Add compile-time checks for `code_interface` arguments in Resource and Domain (#1523)
+- [code interfaces] Add compile-time checks for `code_interface` arguments in Resource and Domain (#1523)
 
 ## [v3.4.32](https://github.com/ash-project/ash/compare/v3.4.31...v3.4.32) (2024-10-14)
 
-
-
-
 ### Improvements:
 
-* use new `:csv` option type from igniter
+- [`mix ash.gen.resource`] use new `:csv` option type from igniter
 
 ## [v3.4.31](https://github.com/ash-project/ash/compare/v3.4.30...v3.4.31) (2024-10-14)
 
-
-
-
 ### Bug Fixes:
 
-* allow strings in generic action skip_unknown_inputs
+- [all actions] allow strings in generic action skip_unknown_inputs
 
 ## [v3.4.30](https://github.com/ash-project/ash/compare/v3.4.29...v3.4.30) (2024-10-14)
 
-
-
-
 ### Bug Fixes:
 
-* add `tracer` option to generic action opts
+- [all actions] add `tracer` option to generic action opts
 
 ## [v3.4.29](https://github.com/ash-project/ash/compare/v3.4.28...v3.4.29) (2024-10-13)
 
-
-
-
 ### Bug Fixes:
 
-* clear change from atomics as well
+- [`Ash.Changeset`] clear change from atomics as well
 
-* update spark for spark.formatter fixes
-
-* properly invoke notify callback in read actions
+- [read actions] properly invoke notify callback in read actions
 
 ### Improvements:
 
-* better ergonomics for atomic updates
+- [`Ash.Changeset`] better ergonomics for atomic updates
 
-* add `private_arguments` option
+- [changeset, action inputs, queries] add `private_arguments` option
 
-* validate `Ash.ActionInput.for_action` opts
+- [`Ash.ActionInput`] validate `Ash.ActionInput.for_action` opts
 
-* allow additional callbacks in `Ash.Type.NewType`
+- [`Ash.Type.NewType`] allow additional callbacks in `Ash.Type.NewType`
 
 ## [v3.4.28](https://github.com/ash-project/ash/compare/v3.4.27...v3.4.28) (2024-10-10)
 
