@@ -10,6 +10,12 @@ defmodule Ash.Test.ErrorTest do
     def message(_), do: "WHAT"
   end
 
+  defmodule InvalidError do
+    use Splode.Error, fields: [], class: :invalid
+
+    def message(_), do: "WHAT"
+  end
+
   defmodule SpecialError do
     @moduledoc "Used when a flow has been halted for some reason"
     use Splode.Error, fields: [], class: :special
@@ -69,7 +75,7 @@ defmodule Ash.Test.ErrorTest do
 
     test "returns chosen error if the value argument is a list of errors" do
       err1 = Ash.Error.Unknown.UnknownError.exception(error: :an_error, splode: Ash.Error)
-      err2 = Ash.Error.Invalid.exception(errors: [:more, :errors])
+      err2 = InvalidError.exception([])
 
       result = Ash.Error.to_error_class([err1, err2], [])
 
@@ -77,7 +83,7 @@ defmodule Ash.Test.ErrorTest do
       assert match?(%Ash.Error.Invalid{}, result)
 
       # the parent error's errors field gets prepended to the list of other errors
-      assert same_elements?(result.errors, [:more, :errors, err1])
+      assert same_elements?(result.errors, [err1, err2])
     end
 
     test "has a context field populated when there is a single error" do
@@ -235,7 +241,7 @@ defmodule Ash.Test.ErrorTest do
   defp clean(list) when is_list(list), do: Enum.map(list, &clean/1)
 
   defp clean(%{stacktrace: _} = value) do
-    %{value | stacktrace: nil}
+    %{value | stacktrace: nil, splode: nil}
   end
 
   defp clean(other), do: other

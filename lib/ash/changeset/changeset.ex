@@ -5267,12 +5267,6 @@ defmodule Ash.Changeset do
 
         add_error(changeset, error)
 
-      attribute when is_nil(value) ->
-        changeset = remove_default(changeset, attribute.name)
-
-        %{changeset | attributes: Map.put(changeset.attributes, attribute.name, nil)}
-        |> record_attribute_change_for_atomic_upgrade(attribute.name, nil)
-
       attribute ->
         with value <- Ash.Type.Helpers.handle_indexed_maps(attribute.type, value),
              constraints <-
