@@ -144,6 +144,7 @@ defmodule Ash.Domain.Interface do
         Ash.read!(query, opts)
       end
 
+      @deprecated "Use `Ash.read/2` instead"
       def read(query, opts \\ [])
 
       def read(query, opts) do

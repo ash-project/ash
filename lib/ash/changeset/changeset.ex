@@ -3437,7 +3437,7 @@ defmodule Ash.Changeset do
     # Later before starting the transaction we do the same but only checking
     # the actual hooks
     prefer_transaction? =
-      if Enum.empty?(changeset.before_transaction) && Enum.empty?(changeset.around_transaction) &&
+      if !(changeset.action && changeset.action.manual) && Enum.empty?(changeset.before_transaction) && Enum.empty?(changeset.around_transaction) &&
            Enum.empty?(changeset.before_action) && Enum.empty?(changeset.after_action) &&
            Enum.empty?(changeset.around_action) do
         data_layer_prefers_transaction?
@@ -3465,7 +3465,7 @@ defmodule Ash.Changeset do
         resources = Enum.reject(resources, &Ash.DataLayer.in_transaction?/1)
 
         do_transaction? =
-          data_layer_prefers_transaction? ||
+          data_layer_prefers_transaction? || (changeset.action && changeset.action.manual) ||
             !(Enum.empty?(changeset.before_action) && Enum.empty?(changeset.after_action) &&
                 Enum.empty?(changeset.around_action))
 
