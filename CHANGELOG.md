@@ -9,19 +9,15 @@
 
 ### Bug Fixes:
 
-* start transactions for manual actions
+* [`Ash.Changeset`] detect transaction hooks added by around_transaction and before_transaction & manual actions
 
-* mark `domain.read` as deprecated
-
-* detect transaction hooks added by around_transaction and before_transaction
-
-* don't special case `nil` change on `force_change_attribute`
+* [`Ash.Changeset`] don't special case `nil` change on `force_change_attribute`
 
 ### Improvements:
 
-* default backwards compatible interface to false for domains
+* [`Ash.Domain`] default backwards compatible interface to false for domains
 
-* more and better bread crumbs for changesets & create actions
+* [`Ash.Changeset`, create actions] more and better bread crumbs for changesets & create actions
 
 ## [v3.4.37](https://github.com/ash-project/ash/compare/v3.4.36...v3.4.37) (2024-10-30)
 
