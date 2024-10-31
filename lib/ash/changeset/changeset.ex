@@ -1722,6 +1722,9 @@ defmodule Ash.Changeset do
           |> store_casted_attribute(attribute.name, value, true)
         end
 
+      {:error, error} ->
+        add_invalid_errors(value, :attribute, changeset, attribute, error)
+
       {:not_atomic, message} ->
         add_error(
           changeset,
