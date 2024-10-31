@@ -1147,7 +1147,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   test "calculations must specify required fields by default" do
-    assert_raise Ash.Error.Framework.AssumptionFailed,
+    assert_raise Ash.Error.Framework,
                  ~r/Invalid return from calculation, expected a value, got \`%Ash.NotLoaded{}\`/,
                  fn ->
                    User

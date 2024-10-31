@@ -192,6 +192,12 @@ defmodule Ash.Type.Keyword do
             {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
         end
 
+      {:error, error} when is_binary(error) ->
+        {:error, [[message: error, field: field]]}
+
+      {:error, error} ->
+        {:error, [error]}
+
       :error ->
         {:error, [[message: "invalid value", field: field]]}
     end

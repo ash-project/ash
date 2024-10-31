@@ -80,6 +80,12 @@ defmodule Ash.Actions.Read do
         run_around_transaction_hooks(query, fn query ->
           case do_run(query, action, opts) do
             {:error, error} ->
+              error =
+                Ash.Error.to_error_class(
+                  error,
+                  bread_crumbs: "Error returned from: #{inspect(query.resource)}.#{action.name}"
+                )
+
               if opts[:tracer] do
                 stacktrace =
                   case error do
@@ -106,6 +112,16 @@ defmodule Ash.Actions.Read do
         end)
       end
     end
+  rescue
+    e ->
+      reraise Ash.Error.to_error_class(e,
+                query: query,
+                stacktrace: __STACKTRACE__,
+                bread_crumbs: [
+                  "Exception raised in: #{inspect(query.resource)}.#{action.name}"
+                ]
+              ),
+              __STACKTRACE__
   end
 
   defp run_around_transaction_hooks(%{around_transaction: []} = query, func),

@@ -317,6 +317,21 @@ defmodule Ash.Actions.Update.Bulk do
           end
         end
     end
+  rescue
+    e ->
+      action_name =
+        case action do
+          %{name: name} -> name
+          name -> name
+        end
+
+      reraise Ash.Error.to_error_class(e,
+                stacktrace: __STACKTRACE__,
+                bread_crumbs: [
+                  "Exception raised in bulk update: #{inspect(opts[:resource])}.#{action_name}"
+                ]
+              ),
+              __STACKTRACE__
   end
 
   def run(domain, stream, action, input, opts, not_atomic_reason) do
@@ -464,6 +479,21 @@ defmodule Ash.Actions.Update.Bulk do
       |> do_run(stream, action, input, opts, metadata_key, context_key, not_atomic_reason)
       |> handle_bulk_result(metadata_key, opts)
     end
+  rescue
+    e ->
+      action_name =
+        case action do
+          %{name: name} -> name
+          name -> name
+        end
+
+      reraise Ash.Error.to_error_class(e,
+                stacktrace: __STACKTRACE__,
+                bread_crumbs: [
+                  "Exception raised in bulk update: #{inspect(opts[:resource])}.#{action_name}"
+                ]
+              ),
+              __STACKTRACE__
   end
 
   defp do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts) do

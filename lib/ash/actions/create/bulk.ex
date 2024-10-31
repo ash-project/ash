@@ -221,6 +221,15 @@ defmodule Ash.Actions.Create.Bulk do
 
         {errors, error_count} = Process.get({:bulk_create_errors, ref}) || {[], 0}
 
+        errors =
+          Enum.map(errors, fn error ->
+            Ash.Error.to_ash_error(error,
+              bread_crumbs: [
+                "Exception raised in bulk create: #{inspect(resource)}.#{action.name}"
+              ]
+            )
+          end)
+
         bulk_result = %Ash.BulkResult{
           records: records,
           errors: errors,
@@ -264,6 +273,15 @@ defmodule Ash.Actions.Create.Bulk do
         Process.delete({:bulk_create_notifications, ref})
       end
     end
+  rescue
+    e ->
+      reraise Ash.Error.to_error_class(e,
+                stacktrace: __STACKTRACE__,
+                bread_crumbs: [
+                  "Exception raised in bulk create: #{inspect(resource)}.#{action.name}"
+                ]
+              ),
+              __STACKTRACE__
   end
 
   defp pre_template_all_changes(action, resource, :create, base, actor) do

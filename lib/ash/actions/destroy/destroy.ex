@@ -56,6 +56,12 @@ defmodule Ash.Actions.Destroy do
                                 metadata do
         case do_run(domain, changeset, action, opts) do
           {:error, error} ->
+            error =
+              Ash.Error.to_error_class(
+                error,
+                bread_crumbs: "Error returned from: #{inspect(changeset.resource)}.#{action.name}"
+              )
+
             if opts[:tracer] do
               stacktrace =
                 case error do
@@ -83,7 +89,13 @@ defmodule Ash.Actions.Destroy do
     end
   rescue
     e ->
-      reraise Ash.Error.to_error_class(e, changeset: changeset, stacktrace: __STACKTRACE__),
+      reraise Ash.Error.to_error_class(e,
+                changeset: changeset,
+                stacktrace: __STACKTRACE__,
+                bread_crumbs: [
+                  "Exception raised in: #{inspect(changeset.resource)}.#{action.name}"
+                ]
+              ),
               __STACKTRACE__
   end
 
