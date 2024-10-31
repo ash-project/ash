@@ -34,7 +34,8 @@ defmodule Ash.Resource.Calculation.LoadRelationship do
       raise "Must provide the `domain` option to load #{inspect(__MODULE__)}"
     end
 
-    load_opts = Ash.Context.to_opts(context, Keyword.put(opts[:opts] || [], :domain, opts[:domain]))
+    load_opts =
+      Ash.Context.to_opts(context, Keyword.put(opts[:opts] || [], :domain, opts[:domain]))
 
     Ash.load(results, [{relationship.name, query}], load_opts)
     |> case do

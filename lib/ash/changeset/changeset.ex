@@ -3432,10 +3432,15 @@ defmodule Ash.Changeset do
   end
 
   def with_hooks(changeset, func, opts) do
+    data_layer_prefers_transaction? = Ash.DataLayer.prefer_transaction?(changeset.resource)
+    # We check if *all* hooks that *could* add transaction hooks are empty
+    # Later before starting the transaction we do the same but only checking
+    # the actual hooks
     prefer_transaction? =
-      if Enum.empty?(changeset.before_action) && Enum.empty?(changeset.after_action) &&
+      if Enum.empty?(changeset.before_transaction) && Enum.empty?(changeset.around_transaction) &&
+           Enum.empty?(changeset.before_action) && Enum.empty?(changeset.after_action) &&
            Enum.empty?(changeset.around_action) do
-        Ash.DataLayer.prefer_transaction?(changeset.resource)
+        data_layer_prefers_transaction?
       else
         true
       end
@@ -3459,46 +3464,55 @@ defmodule Ash.Changeset do
 
         resources = Enum.reject(resources, &Ash.DataLayer.in_transaction?/1)
 
-        try do
-          resources
-          |> Ash.DataLayer.transaction(
-            fn ->
-              case run_around_actions(changeset, func) do
-                {:error, error} ->
-                  if opts[:rollback_on_error?] do
-                    Ash.DataLayer.rollback(
-                      changeset.resource,
-                      error
-                    )
-                  else
-                    {:error, error}
-                  end
+        do_transaction? =
+          data_layer_prefers_transaction? ||
+            !(Enum.empty?(changeset.before_action) && Enum.empty?(changeset.after_action) &&
+                Enum.empty?(changeset.around_action))
 
-                other ->
-                  other
-              end
-            end,
-            changeset.timeout || :infinity,
-            Map.put(
-              opts[:transaction_metadata],
-              :data_layer_context,
-              changeset.context[:data_layer] || %{}
+        if do_transaction? do
+          try do
+            resources
+            |> Ash.DataLayer.transaction(
+              fn ->
+                case run_around_actions(changeset, func) do
+                  {:error, error} ->
+                    if opts[:rollback_on_error?] do
+                      Ash.DataLayer.rollback(
+                        changeset.resource,
+                        error
+                      )
+                    else
+                      {:error, error}
+                    end
+
+                  other ->
+                    other
+                end
+              end,
+              changeset.timeout || :infinity,
+              Map.put(
+                opts[:transaction_metadata],
+                :data_layer_context,
+                changeset.context[:data_layer] || %{}
+              )
             )
-          )
-          |> case do
-            {:ok, {:ok, value, changeset, instructions}} ->
-              {:ok, value, changeset, Map.put(instructions, :gather_notifications?, notify?)}
+            |> case do
+              {:ok, {:ok, value, changeset, instructions}} ->
+                {:ok, value, changeset, Map.put(instructions, :gather_notifications?, notify?)}
 
-            {:ok, {:error, error}} ->
-              {:error, error}
+              {:ok, {:error, error}} ->
+                {:error, error}
 
-            {:error, error} ->
-              {:error, error}
+              {:error, error} ->
+                {:error, error}
+            end
+          after
+            if notify? do
+              Process.delete(:ash_started_transaction?)
+            end
           end
-        after
-          if notify? do
-            Process.delete(:ash_started_transaction?)
-          end
+        else
+          run_around_actions(changeset, func)
         end
       end)
     else
