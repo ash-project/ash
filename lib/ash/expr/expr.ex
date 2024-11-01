@@ -917,7 +917,7 @@ defmodule Ash.Expr do
       typeset == :same ||
         length(typeset) == length(values)
     end)
-    |> Enum.find_value({Enum.map(values, fn _ -> nil end), nil}, fn {typeset, returns} ->
+    |> Enum.map(fn {typeset, returns} ->
       basis =
         cond do
           !returns ->
@@ -1072,7 +1072,7 @@ defmodule Ash.Expr do
 
         %{basis: nil, must_adopt_basis: [], types: types} ->
           if returns not in [:same, :any, {:array, :same}, {:array, :any}] do
-            {Enum.reverse(types), returns}
+            {Enum.reverse(types), returns, 0}
           end
 
         %{basis: nil, must_adopt_basis: _} ->
@@ -1098,9 +1098,60 @@ defmodule Ash.Expr do
              fn {index, function_of_basis}, types ->
                List.replace_at(types, index, function_of_basis.(basis))
              end
-           ), returns}
+           ), returns, Enum.count(basis_adopters)}
       end
     end)
+    |> Enum.filter(& &1)
+    |> select_matches(length(values))
+  end
+
+  defp select_matches([], value_count) do
+    {Enum.map(1..value_count, fn _ -> nil end), nil}
+  end
+
+  defp select_matches(results, value_count) do
+    case Enum.find(results, fn
+           {_type, _returns, 0} ->
+             true
+
+           _ ->
+             false
+         end) do
+      {type, returns, 0} ->
+        {type, returns}
+
+      _ ->
+        results =
+          Enum.map(results, fn {types, {type, constraints}, _} ->
+            types =
+              Enum.map(types, fn {type, constraints} ->
+                {Ash.Type.get_type(type), constraints}
+              end)
+
+            {types, {Ash.Type.get_type(type), constraints}}
+          end)
+
+        arg_types =
+          1..value_count
+          |> Enum.map(fn i ->
+            possible_types =
+              Enum.map(results, fn {types, _} ->
+                Enum.at(types, i - 1)
+              end)
+
+            if Enum.uniq(possible_types) == possible_types do
+              Enum.at(possible_types, 0)
+            end
+          end)
+
+        all_returns = Enum.map(results, &elem(&1, 1))
+
+        if Enum.uniq(all_returns) == all_returns do
+          {arg_types, Enum.at(all_returns, 0)}
+        else
+          {arg_types, nil}
+        end
+    end
   end
 
   def determine_type(value) do

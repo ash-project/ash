@@ -11,12 +11,17 @@ defmodule Mix.Tasks.Ash.Gen.BaseResource do
   @shortdoc "Generates a base resource. This is a module that you can use instead of `Ash.Resource`, for consistency."
   use Igniter.Mix.Task
 
-  @impl Igniter.Mix.Task
-  def igniter(igniter, [base_resource | _argv]) do
-    base_resource = Igniter.Project.Module.parse(base_resource)
-    base_resource_file = Igniter.Project.Module.proper_location(igniter, base_resource)
+  @impl true
+  def info(_argv, _parent) do
+    %Igniter.Mix.Task.Info{
+      positional: [:resource]
+    }
+  end
 
-    glob = Path.join([base_resource_file, "..", "**", "*.ex"])
+  @impl Igniter.Mix.Task
+  def igniter(igniter) do
+    base_resource = igniter.args.positional.resource
+    base_resource = Igniter.Project.Module.parse(base_resource)
 
     app_name = Igniter.Project.Application.app_name(igniter)
 
@@ -25,12 +30,10 @@ defmodule Mix.Tasks.Ash.Gen.BaseResource do
     # replace what it uses with the new base resource
 
     igniter
-    |> Igniter.create_new_file(base_resource_file, """
-    defmodule #{inspect(base_resource)} do
-      defmacro __using__(opts) do
-        quote do
-          use Ash.Resource, unquote(opts)
-        end
+    |> Igniter.Project.Module.create_module(base_resource, """
+    defmacro __using__(opts) do
+      quote do
+        use Ash.Resource, unquote(opts)
       end
     end
     """)
@@ -46,7 +49,7 @@ defmodule Mix.Tasks.Ash.Gen.BaseResource do
         )
       end
     )
-    |> Igniter.update_glob(glob, fn zipper ->
+    |> Igniter.update_all_elixir_files(fn zipper ->
       with {:ok, zipper} <- Igniter.Code.Module.move_to_module_using(zipper, Ash.Resource),
            {:ok, zipper} <-
              Igniter.Code.Function.move_to_function_call_in_current_scope(

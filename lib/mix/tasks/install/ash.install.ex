@@ -41,7 +41,7 @@ defmodule Mix.Tasks.Ash.Install do
   end
 
   @impl Igniter.Mix.Task
-  def igniter(igniter, argv) do
+  def igniter(igniter) do
     igniter
     |> Igniter.compose_task("spark.install")
     |> Igniter.Project.Formatter.import_dep(:ash)
@@ -72,8 +72,8 @@ defmodule Mix.Tasks.Ash.Install do
       false
     )
     |> then(fn igniter ->
-      if "--example" in argv do
-        generate_example(igniter, argv)
+      if "--example" in igniter.args.argv_flags do
+        generate_example(igniter, igniter.args.argv_flags)
       else
         igniter
       end

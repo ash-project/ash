@@ -45,9 +45,10 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
   end
 
   @impl Igniter.Mix.Task
-  def igniter(igniter, argv) do
+  def igniter(igniter) do
     Mix.Task.run("compile")
-    {%{subject: subject, extensions: extensions}, argv} = positional_args!(argv)
+    subject = igniter.args.positional.subject
+    extensions = igniter.args.positional.extensions
 
     opts =
       [
@@ -70,7 +71,13 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
               {igniter, patchers, _install} =
                 Enum.reduce(extensions, {igniter, [], []}, fn extension,
                                                               {igniter, patchers, install} ->
-                  case patcher(kind_of_thing, subject, extension, source.path, argv) do
+                  case patcher(
+                         kind_of_thing,
+                         subject,
+                         extension,
+                         source.path,
+                         igniter.args.argv_flags
+                       ) do
                     {fun, new_install} when is_function(fun, 1) ->
                       {igniter, [fun | patchers], install ++ new_install}
 

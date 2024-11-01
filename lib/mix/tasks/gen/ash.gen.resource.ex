@@ -80,12 +80,13 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   end
 
   @impl Igniter.Mix.Task
-  def igniter(igniter, argv) do
-    {%{resource: resource}, argv} = positional_args!(argv)
-    resource = Igniter.Project.Module.parse(resource)
-    app_name = Igniter.Project.Application.app_name(igniter)
+  def igniter(igniter) do
+    arguments = igniter.args.positional
+    options = igniter.args.options
+    argv = igniter.args.argv_flags
 
-    options = options!(argv)
+    resource = Igniter.Project.Module.parse(arguments.resource)
+    app_name = Igniter.Project.Application.app_name(igniter)
 
     domain =
       case options[:domain] do

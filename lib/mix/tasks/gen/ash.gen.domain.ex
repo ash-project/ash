@@ -22,14 +22,13 @@ defmodule Mix.Tasks.Ash.Gen.Domain do
   end
 
   @impl Igniter.Mix.Task
-  def igniter(igniter, argv) do
-    {%{domain: domain}, argv} = positional_args!(argv)
-    domain = Igniter.Project.Module.parse(domain)
+  def igniter(igniter) do
+    domain = Igniter.Project.Module.parse(igniter.args.positional.domain)
 
     app_name = Igniter.Project.Application.app_name(igniter)
     {exists?, igniter} = Igniter.Project.Module.module_exists(igniter, domain)
 
-    if "--ignore-if-exists" in argv && exists? do
+    if "--ignore-if-exists" in igniter.args.argv_flags && exists? do
       igniter
     else
       igniter
