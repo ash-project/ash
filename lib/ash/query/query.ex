@@ -236,9 +236,13 @@ defmodule Ash.Query do
     quote do
       query = unquote(query)
 
-      if !is_atom(query) && query.__validated_for_action__ &&
-           !query.context[:private][:in_before_action?] do
-        IO.warn("""
+      if !is_atom(query) && query.__validated_for_action__ do
+        {:current_stacktrace, stacktrace} =
+          Process.info(self(), :current_stacktrace)
+
+        require Logger
+
+        Logger.warning("""
         Query has already been validated for action #{inspect(query.__validated_for_action__)}.
 
         For safety, we prevent any changes after that point because they will bypass validations or other action logic.
@@ -248,6 +252,8 @@ defmodule Ash.Query do
           |> Ash.Query.new()
           |> Ash.Query.#{unquote(function)}(...)
           |> Ash.Query.for_read(...)
+
+        #{Exception.format_stacktrace(stacktrace)}
         """)
       end
     end

@@ -19,7 +19,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
           false ->
             changeset
             |> Ash.Changeset.manage_relationship(:reviewer, nil, type: :append_and_remove)
-            |> Ash.Changeset.change_attribute(:review_by_date, nil)
+            |> Ash.Changeset.force_change_attribute(:review_by_date, nil)
         end
       end)
     end
