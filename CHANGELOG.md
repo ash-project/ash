@@ -2,22 +2,35 @@
 
 <!-- changelog -->
 
-## [v3.4.38](https://github.com/ash-project/ash/compare/v3.4.37...v3.4.38) (2024-10-31)
-
-
-
+## [v3.4.39](https://github.com/ash-project/ash/compare/v3.4.38...v3.4.39) (2024-11-01)
 
 ### Bug Fixes:
 
-* [`Ash.Changeset`] detect transaction hooks added by around_transaction and before_transaction & manual actions
+- [`Ash.Changeset`] emit warnings about already validated actions in before_action hooks too
 
-* [`Ash.Changeset`] don't special case `nil` change on `force_change_attribute`
+- [`Ash.Changeset`] add missing case clause for `Changeset.atomic_update` type cast (#1569)
+
+- [`Ash.Type.Map`] handle case of invalid map/keyword key when type casting
+
+- [`Ash.Type.Keyword`] handle case of invalid map/keyword key when type casting
 
 ### Improvements:
 
-* [`Ash.Domain`] default backwards compatible interface to false for domains
+- [error messages] more better error bread crumbs
 
-* [`Ash.Changeset`, create actions] more and better bread crumbs for changesets & create actions
+## [v3.4.38](https://github.com/ash-project/ash/compare/v3.4.37...v3.4.38) (2024-10-31)
+
+### Bug Fixes:
+
+- [`Ash.Changeset`] detect transaction hooks added by around_transaction and before_transaction & manual actions
+
+- [`Ash.Changeset`] don't special case `nil` change on `force_change_attribute`
+
+### Improvements:
+
+- [`Ash.Domain`] default backwards compatible interface to false for domains
+
+- [`Ash.Changeset`, create actions] more and better bread crumbs for changesets & create actions
 
 ## [v3.4.37](https://github.com/ash-project/ash/compare/v3.4.36...v3.4.37) (2024-10-30)
 
