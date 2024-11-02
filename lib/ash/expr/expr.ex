@@ -757,9 +757,26 @@ defmodule Ash.Expr do
   end
 
   def do_expr(
+        {:&, _,
+         [
+           {:/, _,
+            [
+              {{:., _, [{mod, _, context}, _]}, _, []},
+              _
+            ]}
+         ]} = expr,
+        _
+      )
+      when is_atom(mod) and is_atom(context) do
+    expr
+  end
+
+
+  def do_expr(
         {:&, _, _} = expr,
         _
       ) do
+    IO.inspect(expr)
     raise """
     The only kind of anonymous functions allowed in expressions are in the format `&Module.function/arity`.
 

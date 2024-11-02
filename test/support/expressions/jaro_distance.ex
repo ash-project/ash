@@ -11,8 +11,12 @@ defmodule Ash.Test.Expressions.JaroDistance do
              Ash.DataLayer.Ets,
              Ash.DataLayer.Simple
            ] do
-    {:ok, expr(fragment(&String.jaro_distance/2, ^left, ^right))}
+    {:ok, expr(fragment(&__MODULE__.jaro_distance/2, ^left, ^right))}
   end
 
   def expression(_data_layer, _args), do: :unknown
+
+  def jaro_distance(left, right) do
+    String.jaro_distance(left, right)
+  end
 end
