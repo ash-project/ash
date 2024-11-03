@@ -25,6 +25,14 @@ defmodule Ash.Resource.Attribute do
   defmodule Helpers do
     @moduledoc "Helpers for building attributes"
 
+    @doc """
+    Defines create and update timestamp attributes.
+
+    Shorthand for `d:Ash.Resource.Dsl.attributes.create_timestamp` and
+    `d:Ash.Resource.Dsl.attributes.update_timestamp` with the attribute names
+    `:inserted_at` and `:updated_at` respectively.  Any options passed to this
+    helper are passed to both timestamp macros.
+    """
     defmacro timestamps(opts \\ []) do
       quote do
         create_timestamp :inserted_at, unquote(opts)
