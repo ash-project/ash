@@ -124,7 +124,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Examples
 
-      validate string_length(:slug, exactly: 8)
+      validate string_length(:slug, exact: 8)
       validate string_length(:password, min: 6)
       validate string_length(:secret, min: 4, max: 12)
   """
