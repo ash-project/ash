@@ -691,7 +691,13 @@ defmodule Ash.Actions.Destroy.Bulk do
             status: :error,
             error_count: 1,
             notifications: [],
-            errors: [Ash.Error.to_error_class(error)]
+            errors: [
+              Ash.Error.to_error_class(error,
+                bread_crumbs: [
+                  "Returned from bulk query destroy: #{inspect(atomic_changeset.resource)}.#{atomic_changeset.action.name}"
+                ]
+              )
+            ]
           }
 
         {:error,
@@ -712,7 +718,13 @@ defmodule Ash.Actions.Destroy.Bulk do
               status: :error,
               error_count: 1,
               notifications: [],
-              errors: [Ash.Error.to_error_class(error)]
+              errors: [
+                Ash.Error.to_error_class(error,
+                  bread_crumbs: [
+                    "Returned from bulk query destroy: #{inspect(atomic_changeset.resource)}.#{atomic_changeset.action.name}"
+                  ]
+                )
+              ]
             }
           end
 
@@ -721,7 +733,13 @@ defmodule Ash.Actions.Destroy.Bulk do
             status: :error,
             error_count: 1,
             notifications: [],
-            errors: [Ash.Error.to_error_class(error)]
+            errors: [
+              Ash.Error.to_error_class(error,
+                bread_crumbs: [
+                  "Returned from bulk query destroy: #{inspect(atomic_changeset.resource)}.#{atomic_changeset.action.name}"
+                ]
+              )
+            ]
           }
 
         {:error, error} ->
@@ -732,7 +750,13 @@ defmodule Ash.Actions.Destroy.Bulk do
               status: :error,
               error_count: 1,
               notifications: [],
-              errors: [Ash.Error.to_error_class(error)]
+              errors: [
+                Ash.Error.to_error_class(error,
+                  bread_crumbs: [
+                    "Returned from bulk query destroy: #{inspect(atomic_changeset.resource)}.#{atomic_changeset.action.name}"
+                  ]
+                )
+              ]
             }
           end
       end
@@ -777,7 +801,13 @@ defmodule Ash.Actions.Destroy.Bulk do
         %Ash.BulkResult{
           status: :error,
           error_count: 1,
-          errors: [Ash.Error.to_error_class(error)]
+          errors: [
+            Ash.Error.to_error_class(error,
+              bread_crumbs: [
+                "Returned from bulk query destroy: #{inspect(atomic_changeset.resource)}.#{atomic_changeset.action.name}"
+              ]
+            )
+          ]
         }
     end
   end
@@ -989,7 +1019,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         end)
       end
     )
-    |> run_batches(ref, opts)
+    |> run_batches(ref, atomic_changeset.resource, atomic_changeset.action.name, opts)
   end
 
   defp do_stream_batches(domain, stream, action, input, opts) do
@@ -1048,10 +1078,10 @@ defmodule Ash.Actions.Destroy.Bulk do
         end
       end
     )
-    |> run_batches(ref, opts)
+    |> run_batches(ref, resource, action.name, opts)
   end
 
-  defp run_batches(changeset_stream, ref, opts) do
+  defp run_batches(changeset_stream, ref, resource, action_name, opts) do
     if opts[:return_stream?] do
       Stream.concat(changeset_stream)
     else
@@ -1084,6 +1114,16 @@ defmodule Ash.Actions.Destroy.Bulk do
           end
 
         {errors, error_count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
+
+        errors =
+          Enum.map(
+            errors,
+            &Ash.Error.to_ash_error(&1,
+              bread_crumbs: [
+                "Returned from bulk destroy: #{inspect(resource)}.#{action_name}"
+              ]
+            )
+          )
 
         bulk_result = %Ash.BulkResult{
           records: records,
