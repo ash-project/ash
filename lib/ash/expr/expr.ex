@@ -776,7 +776,6 @@ defmodule Ash.Expr do
         {:&, _, _} = expr,
         _
       ) do
-    IO.inspect(expr)
     raise """
     The only kind of anonymous functions allowed in expressions are in the format `&Module.function/arity`.
 

@@ -48,80 +48,82 @@ defmodule Ash.Actions.Read do
 
     action = get_action(query.resource, action || query.action)
 
-    tracer =
-      if opts[:initial_data] do
-        nil
-      else
-        opts[:tracer]
+    try do
+      tracer =
+        if opts[:initial_data] do
+          nil
+        else
+          opts[:tracer]
+        end
+
+      Ash.Tracer.span :action,
+                      fn ->
+                        Ash.Domain.Info.span_name(query.domain, query.resource, action.name)
+                      end,
+                      tracer do
+        metadata = fn ->
+          %{
+            domain: query.domain,
+            resource: query.resource,
+            resource_short_name: Ash.Resource.Info.short_name(query.resource),
+            actor: opts[:actor],
+            tenant: opts[:tenant],
+            action: action.name,
+            authorize?: opts[:authorize?]
+          }
+        end
+
+        Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(query.domain), :read],
+                                  metadata,
+                                  skip?: !!opts[:initial_data] do
+          Ash.Tracer.set_metadata(tracer, :action, metadata)
+
+          run_around_transaction_hooks(query, fn query ->
+            case do_run(query, action, opts) do
+              {:error, error} ->
+                error =
+                  Ash.Error.to_error_class(
+                    error,
+                    bread_crumbs: "Error returned from: #{inspect(query.resource)}.#{action.name}"
+                  )
+
+                if opts[:tracer] do
+                  stacktrace =
+                    case error do
+                      %{stacktrace: %{stacktrace: stacktrace}} ->
+                        stacktrace || []
+
+                      _ ->
+                        {:current_stacktrace, stacktrace} =
+                          Process.info(self(), :current_stacktrace)
+
+                        stacktrace
+                    end
+
+                  Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
+                    stacktrace: stacktrace
+                  )
+                end
+
+                {:error, error}
+
+              other ->
+                other
+            end
+          end)
+        end
       end
-
-    Ash.Tracer.span :action,
-                    fn ->
-                      Ash.Domain.Info.span_name(query.domain, query.resource, action.name)
-                    end,
-                    tracer do
-      metadata = fn ->
-        %{
-          domain: query.domain,
-          resource: query.resource,
-          resource_short_name: Ash.Resource.Info.short_name(query.resource),
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          action: action.name,
-          authorize?: opts[:authorize?]
-        }
-      end
-
-      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(query.domain), :read],
-                                metadata,
-                                skip?: !!opts[:initial_data] do
-        Ash.Tracer.set_metadata(tracer, :action, metadata)
-
-        run_around_transaction_hooks(query, fn query ->
-          case do_run(query, action, opts) do
-            {:error, error} ->
-              error =
-                Ash.Error.to_error_class(
-                  error,
-                  bread_crumbs: "Error returned from: #{inspect(query.resource)}.#{action.name}"
-                )
-
-              if opts[:tracer] do
-                stacktrace =
-                  case error do
-                    %{stacktrace: %{stacktrace: stacktrace}} ->
-                      stacktrace || []
-
-                    _ ->
-                      {:current_stacktrace, stacktrace} =
-                        Process.info(self(), :current_stacktrace)
-
-                      stacktrace
-                  end
-
-                Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
-                  stacktrace: stacktrace
-                )
-              end
-
-              {:error, error}
-
-            other ->
-              other
-          end
-        end)
-      end
+    rescue
+      e ->
+        reraise Ash.Error.to_error_class(e,
+                  query: query,
+                  stacktrace: __STACKTRACE__,
+                  bread_crumbs: [
+                    "Exception raised in: #{inspect(query.resource)}.#{action.name}"
+                  ]
+                ),
+                __STACKTRACE__
     end
-  rescue
-    e ->
-      reraise Ash.Error.to_error_class(e,
-                query: query,
-                stacktrace: __STACKTRACE__,
-                bread_crumbs: [
-                  "Exception raised in: #{inspect(query.resource)}.#{action.name}"
-                ]
-              ),
-              __STACKTRACE__
   end
 
   defp run_around_transaction_hooks(%{around_transaction: []} = query, func),
