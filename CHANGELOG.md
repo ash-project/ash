@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.4.40](https://github.com/ash-project/ash/compare/v3.4.39...v3.4.40) (2024-11-04)
+
+
+
+
+### Bug Fixes:
+
+* properly detect `Ash.CustomExpression` as an expr
+
+* don't call `.name` on a potentially `nil` action
+
+* accept fragments pointing at non-aliases
+
+* smarter type detection, preferring more concrete types
+
+### Improvements:
+
+* upgrade igniter to 0.4
+
 ## [v3.4.39](https://github.com/ash-project/ash/compare/v3.4.38...v3.4.39) (2024-11-01)
 
 ### Bug Fixes:
