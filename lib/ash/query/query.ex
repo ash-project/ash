@@ -2674,7 +2674,6 @@ defmodule Ash.Query do
 
       case filter do
         {:ok, filter} ->
-
           case Ash.Filter.hydrate_refs(
                  filter,
                  %{
