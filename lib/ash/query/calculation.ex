@@ -63,6 +63,10 @@ defmodule Ash.Query.Calculation do
       type: :any,
       doc: "The tenant performing the calculation."
     ],
+    authorize?: [
+      type: :boolean,
+      doc: "Whether or not authorization is being performed"
+    ],
     tracer: [
       type: :any,
       doc: "The tracer or tracers used in the calculation."
@@ -98,10 +102,18 @@ defmodule Ash.Query.Calculation do
       ) do
     with {:ok, opts} <- Opts.validate(opts),
          {:ok, calc_opts} <- module.init(calc_opts) do
+      authorize? =
+        if :authorize? in opts.__set__ do
+          opts.authorize?
+        else
+          opts.source_context[:private][:authorize?]
+        end
+
       context = %Ash.Resource.Calculation.Context{
         arguments: opts.arguments,
         type: type,
         constraints: constraints,
+        authorize?: authorize?,
         actor: opts.actor || opts.source_context[:private][:actor],
         tenant: opts.tenant || opts.source_context[:private][:tenant],
         tracer: opts.tracer || opts.source_context[:private][:tracer],
