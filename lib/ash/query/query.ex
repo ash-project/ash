@@ -1513,7 +1513,7 @@ defmodule Ash.Query do
       end
 
     with {:ok, calculation} <-
-           Ash.Query.Calculation.from_resource_calculation!(query.resource, resource_calculation,
+           Ash.Query.Calculation.from_resource_calculation(query.resource, resource_calculation,
              source_context: query.context,
              args: Map.new(args)
            ) do

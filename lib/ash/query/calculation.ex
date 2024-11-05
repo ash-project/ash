@@ -55,6 +55,18 @@ defmodule Ash.Query.Calculation do
       hide: true,
       doc: "A resource calculation this calculation maps to."
     ],
+    actor: [
+      type: :any,
+      doc: "The actor performing the calculation."
+    ],
+    tenant: [
+      type: :any,
+      doc: "The tenant performing the calculation."
+    ],
+    tracer: [
+      type: :any,
+      doc: "The tracer or tracers used in the calculation."
+    ],
     source_context: [
       type: :map,
       doc: "Context from the source query or changeset.",
@@ -90,6 +102,9 @@ defmodule Ash.Query.Calculation do
         arguments: opts.arguments,
         type: type,
         constraints: constraints,
+        actor: opts.actor || opts.source_context[:private][:actor],
+        tenant: opts.tenant || opts.source_context[:private][:tenant],
+        tracer: opts.tracer || opts.source_context[:private][:tracer],
         source_context: opts.source_context
       }
 
