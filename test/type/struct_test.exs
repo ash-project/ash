@@ -7,6 +7,15 @@ defmodule Type.StructTest do
     defstruct [:foo, :bar]
   end
 
+  defmodule Embedded do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :name, :string, allow_nil?: false
+      attribute :title, :string, allow_nil?: false
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -40,6 +49,13 @@ defmodule Type.StructTest do
                     ]
       end
     end
+  end
+
+  test "an embedded resource can be used" do
+    assert {:ok, %Embedded{name: "fred", title: "title"}} =
+             Ash.Type.apply_constraints(Ash.Type.Struct, %{"name" => "fred", :title => "title"},
+               instance_of: Embedded
+             )
   end
 
   test "it handles valid maps" do

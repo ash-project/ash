@@ -273,17 +273,16 @@ defmodule Ash.Type.Struct do
               if Enum.all?(keys, &is_atom/1) do
                 {:ok, struct(struct, value)}
               else
-                {:ok,
-                 Map.delete(struct.__struct__, :__struct__)
-                 |> Enum.reduce({:ok, struct(struct)}, fn {key, _value}, {:ok, acc} ->
-                   case Map.fetch(value, to_string(key)) do
-                     {:ok, val} ->
-                       {:ok, Map.put(acc, key, val)}
-
-                     :error ->
-                       {:ok, acc}
-                   end
-                 end)}
+                Map.delete(struct.__struct__(), :__struct__)
+                |> Enum.reduce({:ok, struct(struct)}, fn {key, _value}, {:ok, acc} ->
+                  with :error <- Map.fetch(value, key),
+                       :error <- Map.fetch(value, to_string(key)) do
+                    {:ok, acc}
+                  else
+                    {:ok, val} ->
+                      {:ok, Map.put(acc, key, val)}
+                  end
+                end)
               end
             end
         end
