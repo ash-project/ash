@@ -775,7 +775,7 @@ defmodule Ash.Actions.Read.Calculations do
       {name, []} ->
         relationship = Ash.Resource.Info.relationship(ash_query.resource, name)
 
-        if calculation.module.strict_loads? do
+        if calculation.module.strict_loads?() do
           []
         else
           query = Ash.Query.new(relationship.destination)
