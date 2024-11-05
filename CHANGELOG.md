@@ -2,6 +2,21 @@
 
 <!-- changelog -->
 
+## [v3.4.41](https://github.com/ash-project/ash/compare/v3.4.40...v3.4.41) (2024-11-05)
+
+
+
+
+### Bug Fixes:
+
+* don't double wrap casted struct instances in `{:ok, {:ok, ...}}`
+
+* support mixed key types in input maps for structs
+
+### Improvements:
+
+* more error context
+
 ## [v3.4.40](https://github.com/ash-project/ash/compare/v3.4.39...v3.4.40) (2024-11-04)
 
 
