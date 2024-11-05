@@ -4,37 +4,23 @@
 
 ## [v3.4.41](https://github.com/ash-project/ash/compare/v3.4.40...v3.4.41) (2024-11-05)
 
-
-
-
 ### Bug Fixes:
 
-* don't double wrap casted struct instances in `{:ok, {:ok, ...}}`
+- [`Ash.Type.Struct`] don't double wrap casted struct instances in `{:ok, {:ok, ...}}`
 
-* support mixed key types in input maps for structs
-
-### Improvements:
-
-* more error context
+- [`Ash.Type.Struct`] support mixed key types in input maps for structs
 
 ## [v3.4.40](https://github.com/ash-project/ash/compare/v3.4.39...v3.4.40) (2024-11-04)
 
-
-
-
 ### Bug Fixes:
 
-* properly detect `Ash.CustomExpression` as an expr
+- [`Ash.Actions.Read`] don't call `.name` on a potentially `nil` action
 
-* don't call `.name` on a potentially `nil` action
+- [`Ash.Expr`] properly detect `Ash.CustomExpression` as an expr
 
-* accept fragments pointing at non-aliases
+- [`Ash.Expr`] accept fragments pointing at non-aliases
 
-* smarter type detection, preferring more concrete types
-
-### Improvements:
-
-* upgrade igniter to 0.4
+- [`Ash.Expr`] smarter type detection, preferring more concrete types
 
 ## [v3.4.39](https://github.com/ash-project/ash/compare/v3.4.38...v3.4.39) (2024-11-01)
 
