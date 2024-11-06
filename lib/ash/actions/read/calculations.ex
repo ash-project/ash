@@ -1527,7 +1527,7 @@ defmodule Ash.Actions.Read.Calculations do
           {Ash.Resource.Calculation.LoadRelationship,
            relationship: relationship.name,
            query: further,
-           opts: [authorize?: false],
+           opts: Keyword.put(Ash.Context.to_opts(query.context.private), :authorize?, false),
            domain: relationship.domain || domain},
           %{},
           constraints
