@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.4.42](https://github.com/ash-project/ash/compare/v3.4.41...v3.4.42) (2024-11-07)
+
+
+
+
+### Bug Fixes:
+
+* Allow multi-line descriptions to be rendered in Livebook without error (#1590)
+
+* properly handle `changing_attributes` check with `from` in create (#1584)
+
+* pass actor through from source_context when loading
+
+### Improvements:
+
+* support map w/ keys `_union_type` and `_union_value` for union inputs
+
 ## [v3.4.41](https://github.com/ash-project/ash/compare/v3.4.40...v3.4.41) (2024-11-05)
 
 ### Bug Fixes:
