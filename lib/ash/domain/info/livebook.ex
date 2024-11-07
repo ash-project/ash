@@ -93,7 +93,7 @@ defmodule Ash.Domain.Info.Livebook do
   end
 
   def attr_section(attr) do
-    "| **#{attr.name}** | #{class_short_type(attr.type)} | #{attr.description} |"
+    "| **#{attr.name}** | #{class_short_type(attr.type)} | #{format_description(attr.description)} |"
   end
 
   def action_header do
@@ -104,7 +104,7 @@ defmodule Ash.Domain.Info.Livebook do
   end
 
   def action_section(resource, action) do
-    "| **#{action.name}** | _#{action.type}_ | <ul>#{action_input_section(resource, action)}</ul> | #{action.description} |"
+    "| **#{action.name}** | _#{action.type}_ | <ul>#{action_input_section(resource, action)}</ul> | #{format_description(action.description)} |"
   end
 
   def action_input_section(resource, action) do
@@ -127,7 +127,15 @@ defmodule Ash.Domain.Info.Livebook do
             description
         end
 
-      "<li><b>#{input.name}</b> <i>#{class_short_type(input.type)}</i> #{description}</li>"
+      "<li><b>#{input.name}</b> <i>#{class_short_type(input.type)}</i> #{format_description(description)}</li>"
     end
+  end
+
+  defp format_description(nil), do: ""
+
+  defp format_description(string) do
+    string
+    |> String.trim()
+    |> String.replace("\n", "<br />")
   end
 end
