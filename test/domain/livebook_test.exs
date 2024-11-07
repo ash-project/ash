@@ -74,7 +74,7 @@ defmodule Ash.Test.Domain.Info.LivebookTest do
              | **id** | UUID | PK |
              | **first_name** | String | User's first name |
              | **last_name** | String | User's last name |
-             | **email** | String | User's email address |
+             | **email** | String | User's email address.<br />This doesn't have any validation on it. |
              | **approved** | Boolean | Is the user approved? |
              | **org_id** | UUID |  |
 
@@ -86,7 +86,7 @@ defmodule Ash.Test.Domain.Info.LivebookTest do
              | **read** | _read_ | <ul></ul> |  |
              | **for_org** | _read_ | <ul><li><b>org</b> <i>UUID</i> </li></ul> |  |
              | **by_name** | _read_ | <ul><li><b>name</b> <i>String</i> </li></ul> |  |
-             | **create** | _create_ | <ul><li><b>org</b> <i>UUID</i> </li><li><b>first_name</b> <i>String</i> attribute</li><li><b>last_name</b> <i>String</i> attribute</li><li><b>email</b> <i>String</i> attribute</li></ul> |  |
+             | **create** | _create_ | <ul><li><b>org</b> <i>UUID</i> </li><li><b>first_name</b> <i>String</i> attribute</li><li><b>last_name</b> <i>String</i> attribute</li><li><b>email</b> <i>String</i> attribute</li></ul> | Creating is serious business.<br />For serious people. |
              | **update** | _update_ | <ul><li><b>first_name</b> <i>String</i> attribute</li><li><b>last_name</b> <i>String</i> attribute</li><li><b>email</b> <i>String</i> attribute</li></ul> |  |
              | **approve** | _update_ | <ul></ul> |  |
              | **unapprove** | _update_ | <ul></ul> |  |

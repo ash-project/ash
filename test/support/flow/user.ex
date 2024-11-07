@@ -23,6 +23,11 @@ defmodule Ash.Test.Flow.User do
     end
 
     create :create do
+      description """
+      Creating is serious business.
+      For serious people.
+      """
+
       argument :org, :uuid, allow_nil?: false
       change manage_relationship(:org, type: :append_and_remove)
     end
@@ -50,7 +55,13 @@ defmodule Ash.Test.Flow.User do
     uuid_primary_key :id, description: "PK"
     attribute :first_name, :string, description: "User's first name", public?: true
     attribute :last_name, :string, description: "User's last name", public?: true
-    attribute :email, :string, description: "User's email address", public?: true
+
+    attribute :email, :string,
+      description: """
+      User's email address.
+      This doesn't have any validation on it.
+      """,
+      public?: true
 
     attribute :approved, :boolean do
       description "Is the user approved?"
