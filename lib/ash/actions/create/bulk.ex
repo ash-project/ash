@@ -472,6 +472,17 @@ defmodule Ash.Actions.Create.Bulk do
               })
             ]
 
+          {:ok, result, notifications} ->
+            Process.put({:any_success?, ref}, true)
+
+            store_notification(ref, notifications, opts)
+
+            [
+              Ash.Resource.set_metadata(result, %{
+                bulk_create_index: changeset.context.bulk_create.index
+              })
+            ]
+
           {:error, error} ->
             store_error(ref, error, opts)
             []
@@ -498,6 +509,7 @@ defmodule Ash.Actions.Create.Bulk do
         Ash.DataLayer.transaction(
           List.wrap(resource) ++ action.touches_resources,
           fn ->
+            # TODO: check the difference bewteen ref handeling here and in bulk_update
             tmp_ref = make_ref()
 
             result =
