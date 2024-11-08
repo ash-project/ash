@@ -1385,6 +1385,24 @@ defmodule Ash.Actions.Destroy.Bulk do
               })
             ]
 
+          {:ok, notifications} ->
+            Process.put({:any_success?, ref}, true)
+
+            store_notification(ref, notifications, opts)
+
+            []
+
+          {:ok, result, notifications} ->
+            Process.put({:any_success?, ref}, true)
+
+            store_notification(ref, notifications, opts)
+
+            [
+              Ash.Resource.set_metadata(result, %{
+                bulk_destroy_index: changeset.context.bulk_destroy.index
+              })
+            ]
+
           {:error, error} ->
             store_error(ref, error, opts)
             []
