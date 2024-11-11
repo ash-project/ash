@@ -1529,7 +1529,7 @@ defmodule Ash.Actions.Read.Calculations do
            query: further,
            opts:
              Keyword.put(
-               Ash.Context.to_opts(Map.get(query.context, :private)),
+               Ash.Context.to_opts(Map.get(query.context, :private, %{})),
                :authorize?,
                false
              ),
