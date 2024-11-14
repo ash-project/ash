@@ -94,7 +94,7 @@ defmodule Ash.Type do
 
   Simple example of a float custom type
 
-  ```Elixir
+  ```elixir
   defmodule GenTracker.AshFloat do
     use Ash.Type
 
@@ -128,7 +128,7 @@ defmodule Ash.Type do
 
   You can define short `:atom_names` for your custom types by adding them to your Ash configuration:
 
-  ```Elixir
+  ```elixir
   config :ash, :custom_types, [ash_float: GenTracker.AshFloat]
   ```
 
@@ -154,13 +154,15 @@ defmodule Ash.Type do
   With the above implemented, your composite type can be used in expressions, for example:
 
   ```elixir
-  Ash.Query.filter(expr(coordinates[:x] == 1))k
+  Ash.Query.filter(expr(coordinates[:x] == 1))
   ```
 
   And you can also *construct* composite types in expressions, for example:
 
   ```elixir
-  calculate :coordinates, :composite_point, expr(composite_type(%{x: some_value, y: some_other_value}, Point))
+  calculate :coordinates, :composite_point, expr(
+    composite_type(%{x: some_value, y: some_other_value}, Point)
+  )
   ```
 
   ## Constraints
