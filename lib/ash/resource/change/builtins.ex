@@ -424,7 +424,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   See `Ash.Changeset.before_action/3` for more information.
 
-  Provide the option `append?: true` to place the hook after all other hooks instead of before.
+  Provide the option `prepend?: true` to place the hook before all other hooks instead of after.
 
   ## Example
 
@@ -442,7 +442,7 @@ defmodule Ash.Resource.Change.Builtins do
       unquote(function)
 
       {Ash.Resource.Change.BeforeAction,
-       callback: unquote(value), append?: unquote(Keyword.get(opts, :append?, false))}
+       callback: unquote(value), prepend?: unquote(Keyword.get(opts, :prepend?, false))}
     end
   end
 
@@ -451,7 +451,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   See `Ash.Changeset.before_transaction/3` for more information.
 
-  Provide the option `append?: true` to place the hook after all other hooks instead of before.
+  Provide the option `prepend?: true` to place the hook before all other hooks instead of after.
 
   ## Example
 
@@ -469,7 +469,7 @@ defmodule Ash.Resource.Change.Builtins do
       unquote(function)
 
       {Ash.Resource.Change.BeforeTransaction,
-       callback: unquote(value), append?: unquote(Keyword.get(opts, :append?, false))}
+       callback: unquote(value), prepend?: unquote(Keyword.get(opts, :prepend?, false))}
     end
   end
 end

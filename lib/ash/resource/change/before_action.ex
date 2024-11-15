@@ -10,7 +10,7 @@ defmodule Ash.Resource.Change.BeforeAction do
       fn changeset ->
         opts[:callback].(changeset, context)
       end,
-      append?: opts[:append?]
+      prepend?: opts[:prepend?]
     )
   end
 end
