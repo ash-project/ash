@@ -352,9 +352,9 @@ defmodule Ash.Notifier.PubSub do
          previous_values?,
          trail
        ) do
-    if notification.changeset.tenant do
+    if notification.changeset.to_tenant do
       all_combinations_of_values(rest, notification, action_type, previous_values?, [
-        notification.changeset.tenant | trail
+        notification.changeset.to_tenant | trail
       ])
     else
       []
