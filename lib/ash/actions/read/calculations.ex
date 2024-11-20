@@ -1524,11 +1524,19 @@ defmodule Ash.Actions.Read.Calculations do
         |> Ash.Query.calculate(
           new_calc_name,
           type,
-          {Ash.Resource.Calculation.LoadRelationship,
-           relationship: relationship.name,
-           query: further,
-           opts: [authorize?: false],
-           domain: relationship.domain || domain},
+          {
+            Ash.Resource.Calculation.LoadRelationship,
+            relationship: relationship.name,
+            query: further,
+            opts:
+              Keyword.put(
+                # TODO: check if there is a betterw way to get the necessary context
+                Ash.Context.to_opts(Map.get(query.context, :private, %{})),
+                :authorize?,
+                false
+              ),
+            domain: relationship.domain || domain
+          },
           %{},
           constraints
         )
