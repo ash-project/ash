@@ -1679,6 +1679,17 @@ defmodule Ash.Actions.Update.Bulk do
               })
             ]
 
+          {:ok, result, notifications} ->
+            Process.put({:any_success?, ref}, true)
+
+            store_notification(ref, notifications, opts)
+
+            [
+              Ash.Resource.set_metadata(result, %{
+                metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
+              })
+            ]
+
           {:error, error} ->
             store_error(ref, error, opts)
             []
