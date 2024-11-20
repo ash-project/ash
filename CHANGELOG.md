@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.4.43](https://github.com/ash-project/ash/compare/v3.4.42...v3.4.43) (2024-11-20)
+
+
+
+
+### Bug Fixes:
+
+* use private context of query to populate context (#1586)
+
+* store notifications from simple results (#1591)
+
 ## [v3.4.42](https://github.com/ash-project/ash/compare/v3.4.41...v3.4.42) (2024-11-07)
 
 
