@@ -143,6 +143,11 @@ defmodule Ash.Query.Aggregate do
       doc: "Whether or not references to this aggregate will be considered sensitive",
       default: false
     ],
+    tenant: [
+      type: :any,
+      doc: "The tenant to use for the aggregate, if applicable.",
+      default: nil
+    ],
     authorize?: [
       type: :boolean,
       default: true,
@@ -219,6 +224,7 @@ defmodule Ash.Query.Aggregate do
           uniq? = opts.uniq?
           read_action = opts.read_action
           authorize? = opts.authorize?
+          context = if(opts.tenant, do: %{tenant: opts.tenant}, else: %{})
           include_nil? = opts.include_nil?
 
           if kind == :custom && !type do
@@ -348,6 +354,7 @@ defmodule Ash.Query.Aggregate do
                filterable?: filterable?,
                sortable?: sortable?,
                sensitive?: sensitive?,
+               context: context,
                authorize?: authorize?,
                read_action: read_action,
                join_filters: Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end)
