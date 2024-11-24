@@ -7,7 +7,23 @@ defmodule Ash.Page.Offset do
   """
   defstruct [:results, :limit, :offset, :count, :rerun, :more?]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{
+          results: [Ash.Resource.t()],
+          limit: integer(),
+          count: integer(),
+          offset: integer(),
+          more?: boolean(),
+          rerun: {Ash.Query.t(), Keyword.t()}
+        }
+
+  @type page_opts_type :: :non_neg_integer | :pos_integer | :any | :boolean
+  @type page_opts_opts :: [type: page_opts_type(), doc: String.t()]
+  @type page_opts :: [
+          offset: page_opts_opts(),
+          limit: page_opts_opts(),
+          filter: page_opts_opts(),
+          count: page_opts_opts()
+        ]
 
   @page_opts [
     offset: [
@@ -42,10 +58,15 @@ defmodule Ash.Page.Offset do
   end
 
   @doc false
+  @spec page_opts() :: page_opts()
   def page_opts do
     @page_opts
   end
 
+  @doc """
+  Creates a new `Ash.Page.Offset.t()`.
+  """
+  @spec new([Ash.Resource.t()], non_neg_integer(), Ash.Query.t(), boolean(), Keyword.t()) :: t()
   def new(results, count, original_query, more?, opts) do
     %__MODULE__{
       results: results,
