@@ -11,13 +11,17 @@ defmodule Ash.CiString do
 
   defstruct [:string, casted?: false, case: nil]
 
+  @type casing :: nil | :lower | :upper
+
   @type t :: %__MODULE__{
           string: String.t(),
           casted?: boolean(),
-          case: nil | :lower | :upper
+          case: casing()
         }
+  @type string_type :: t() | String.t()
 
   @doc "Creates a case insensitive string"
+  @spec sigil_i(string_type() | nil, charlist()) :: t()
   def sigil_i(value, mods) do
     cond do
       ?l in mods ->
@@ -53,6 +57,10 @@ defmodule Ash.CiString do
     end
   end
 
+  @doc """
+  Returns a Ash.CiString from a String, or `nil` if the value is `nil`.
+  """
+  @spec new(string_type() | nil, casing()) :: t() | nil
   def new(value, casing \\ nil)
 
   def new(nil, _), do: nil
@@ -74,6 +82,10 @@ defmodule Ash.CiString do
     end
   end
 
+  @doc """
+  Converts a `Ash.CiString` into a normal Elixir String.
+  """
+  @spec value(t()) :: String.t()
   def value(%Ash.CiString{string: value, casted?: false, case: :lower}) do
     value && String.downcase(value)
   end
@@ -86,6 +98,11 @@ defmodule Ash.CiString do
     value
   end
 
+  @doc """
+  Compares an Elixir String or Ash.CiString. It will return `:eq` if equal, `:lt`, if
+  the string is ordered alphabetically before the second string, and `:gt` if after.
+  """
+  @spec compare(string_type(), string_type()) :: :gt | :lt | :eq
   def compare(left, right) do
     do_compare(to_comparable_string(left), to_comparable_string(right))
   end
@@ -95,6 +112,7 @@ defmodule Ash.CiString do
   defp do_compare(_, _), do: :gt
 
   @doc "Returns the downcased value, only downcasing if it hasn't already been done"
+  @spec to_comparable_string(string_type() | nil) :: String.t() | nil
   def to_comparable_string(value) when is_binary(value) do
     String.downcase(value)
   end
