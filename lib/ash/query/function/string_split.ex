@@ -88,9 +88,11 @@ defmodule Ash.Query.Function.StringSplit do
 
     if case_insensitive? do
       {:known,
-       Ash.CiString.new(
-         String.split(String.downcase(value), String.downcase(delimiter), split_opts)
-       )}
+       value
+       |> String.downcase()
+       |> String.split(String.downcase(delimiter), split_opts)
+       |> Enum.join()
+       |> Ash.CiString.new()}
     else
       {:known, String.split(value, delimiter, split_opts)}
     end

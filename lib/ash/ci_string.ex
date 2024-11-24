@@ -11,7 +11,7 @@ defmodule Ash.CiString do
 
   defstruct [:string, casted?: false, case: nil]
 
-  @type casing :: nil | :lower | :update
+  @type casing :: nil | :lower | :upper
 
   @type t :: %__MODULE__{
           string: String.t(),
