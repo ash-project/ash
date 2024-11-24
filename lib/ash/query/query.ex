@@ -1943,7 +1943,12 @@ defmodule Ash.Query do
       message
       |> Ash.Type.Helpers.error_to_exception_opts(argument)
       |> Enum.reduce(query, fn opts, query ->
-        add_error(query, InvalidArgument.exception(Keyword.put(opts, :value, value)))
+        add_error(query, InvalidArgument.exception(
+              value: value,
+              field: Keyword.get(opts, :field),
+              message: Keyword.get(opts, :message),
+              vars: opts
+	    ))
       end)
     end)
   end
