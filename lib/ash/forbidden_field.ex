@@ -4,7 +4,7 @@ defmodule Ash.ForbiddenField do
   @type t :: %__MODULE__{
           field: atom(),
           original_value: term(),
-          field: field_type()
+          type: field_type()
         }
   @derive {Inspect, only: [:field, :type]}
   # original_value is unfortunately required for embedded attributes, although hidden
