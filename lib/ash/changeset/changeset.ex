@@ -3061,17 +3061,13 @@ defmodule Ash.Changeset do
            module.has_validate?()
          end) do
       if validation.before_action? do
-        before_action(
-          changeset,
-          fn changeset ->
-            if validation.only_when_valid? and not changeset.valid? do
-              changeset
-            else
-              do_validation(changeset, validation, tracer, metadata, actor)
-            end
-          end,
-          append?: true
-        )
+        before_action(changeset, fn changeset ->
+          if validation.only_when_valid? and not changeset.valid? do
+            changeset
+          else
+            do_validation(changeset, validation, tracer, metadata, actor)
+          end
+        end)
       else
         if validation.only_when_valid? and not changeset.valid? do
           changeset
@@ -5552,11 +5548,11 @@ defmodule Ash.Changeset do
   |> Ash.Changeset.before_action(fn changeset ->
     IO.puts("first before")
     changeset
-  end, append?: true)
+  end)
   |> Ash.Changeset.before_action(fn changeset ->
     IO.puts("second before")
     changeset
-  end, append?: true)
+  end)
   |> Ash.Changeset.after_action(fn changeset, result ->
     IO.puts("first after")
     {:ok, result}
@@ -5626,11 +5622,11 @@ defmodule Ash.Changeset do
   |> Ash.Changeset.before_transaction(fn changeset ->
     IO.puts("first before")
     changeset
-  end, append?: true)
+  end)
   |> Ash.Changeset.before_transaction(fn changeset ->
     IO.puts("second before")
     changeset
-  end, append?: true)
+  end)
   |> Ash.Changeset.after_transaction(fn changeset, result ->
     IO.puts("first after")
     result
