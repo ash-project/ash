@@ -66,7 +66,8 @@ defmodule Ash.Page.Offset do
   @doc """
   Creates a new `Ash.Page.Offset.t()`.
   """
-  @spec new([Ash.Resource.t()], non_neg_integer(), Ash.Query.t(), boolean(), Keyword.t()) :: t()
+  @spec new([Ash.Resource.record()], non_neg_integer(), Ash.Query.t(), boolean(), Keyword.t()) ::
+          t()
   def new(results, count, original_query, more?, opts) do
     %__MODULE__{
       results: results,
