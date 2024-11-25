@@ -7,7 +7,25 @@ defmodule Ash.Page.Keyset do
   """
   defstruct [:results, :count, :before, :after, :limit, :rerun, :more?]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{
+          results: [Ash.Resource.record()],
+          count: non_neg_integer(),
+          before: binary() | nil,
+          after: binary() | nil,
+          limit: pos_integer(),
+          more?: boolean(),
+          rerun: {Ash.Query.t(), Keyword.t()}
+        }
+
+  @type page_opts_type :: :non_neg_integer | :pos_integer | :any | :boolean
+  @type page_opts_opts :: [type: page_opts_type(), doc: String.t()]
+  @type page_opts :: [
+          before: page_opts_opts(),
+          after: page_opts_opts(),
+          limit: page_opts_opts(),
+          filter: page_opts_opts(),
+          count: page_opts_opts()
+        ]
 
   @page_opts [
     before: [
@@ -41,10 +59,22 @@ defmodule Ash.Page.Keyset do
   end
 
   @doc false
+  @spec page_opts() :: page_opts()
   def page_opts do
     @page_opts
   end
 
+  @doc """
+  Creates a new `Ash.Page.Keyset.t`.
+  """
+  @spec new(
+          [Ash.Resource.record()],
+          non_neg_integer(),
+          term(),
+          Ash.Query.t(),
+          boolean(),
+          Keyword.t()
+        ) :: t()
   def new(results, count, _sort, original_query, more?, opts) do
     %__MODULE__{
       results: results,
@@ -57,6 +87,10 @@ defmodule Ash.Page.Keyset do
     }
   end
 
+  @doc """
+  Appends keyset info to results.
+  """
+  @spec data_with_keyset([Ash.Resource.record()], term(), term()) :: [Ash.Resource.record()]
   def data_with_keyset(results, _resource, sort) when is_list(results) do
     Enum.map(results, fn result ->
       Map.update!(
@@ -67,6 +101,11 @@ defmodule Ash.Page.Keyset do
     end)
   end
 
+  @doc """
+  Creates filters on the query using the query for the Keyset.
+  """
+  @spec filter(Ash.Query.t(), [term()], term(), :after | :before) ::
+          {:ok, Keyword.t()} | {:error, term()}
   def filter(%{resource: resource} = query, values, sort, after_or_before)
       when after_or_before in [:after, :before] do
     with {:ok, decoded} <- decode_values(values, after_or_before),
