@@ -217,7 +217,15 @@ defmodule Ash.Query.Aggregate do
           constraints = opts.constraints
           implementation = opts.implementation
           uniq? = opts.uniq?
-          read_action = opts.read_action
+
+          read_action =
+            if :read_action in opts.__set__ do
+              opts.read_action
+            else
+              relationship = Ash.Resource.Info.relationship(resource, relationship)
+              relationship.read_action
+            end
+
           authorize? = opts.authorize?
           include_nil? = opts.include_nil?
 
