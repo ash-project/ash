@@ -6,7 +6,7 @@ Notifiers allow you to tap into create, update and destroy actions on a resource
 the current transaction is committed, which solves a lot of problems that can happen from performing a certain
 kind of side effect in your action code.
 
-A common example of one such issue is using Phoenix PubSub to notifyanother part of your app (often a LiveView or
+A common example of one such issue is using Phoenix PubSub to notify another part of your app (often a LiveView or
 phoenix channel) of a change. If you send a message to another process while your transaction is still open, and
 that process tries to look up a record you just created, it won't find it yet, because your transaction is still open!
 
