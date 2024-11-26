@@ -223,7 +223,10 @@ defmodule Ash.Query.Aggregate do
               opts.read_action
             else
               relationship = Ash.Resource.Info.relationship(resource, relationship)
-              relationship.read_action
+
+              if relationship do
+                relationship.read_action
+              end
             end
 
           authorize? = opts.authorize?
