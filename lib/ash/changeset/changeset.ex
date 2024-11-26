@@ -900,7 +900,7 @@ defmodule Ash.Changeset do
           {:atomic, _fields, condition_expr, error_expr}, changeset ->
             condition_expr =
               if where_condition do
-                expr(^where_condition and ^condition_expr)
+                expr(not ^where_condition and ^condition_expr)
               else
                 condition_expr
               end
