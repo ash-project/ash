@@ -900,7 +900,7 @@ defmodule Ash.Changeset do
           {:atomic, _fields, condition_expr, error_expr}, changeset ->
             condition_expr =
               if where_condition do
-                expr(not ^where_condition and ^condition_expr)
+                expr(not (^negate_where_condition(where_condition)) and ^condition_expr)
               else
                 condition_expr
               end
@@ -925,6 +925,19 @@ defmodule Ash.Changeset do
         {:not_atomic, error}
     end
   end
+
+  defp negate_where_condition(%Ash.Query.BooleanExpression{left: left, op: op, right: right}) do
+    Ash.Query.BooleanExpression.new(
+      case op do
+        :and -> :or
+        :or -> :and
+      end,
+      negate_where_condition(left),
+      negate_where_condition(right)
+    )
+  end
+
+  defp negate_where_condition(where_condition), do: where_condition
 
   defp rewrite_atomics(changeset, expr) do
     Ash.Expr.walk_template(expr, fn
