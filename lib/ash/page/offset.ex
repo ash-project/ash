@@ -8,7 +8,7 @@ defmodule Ash.Page.Offset do
   defstruct [:results, :limit, :offset, :count, :rerun, :more?]
 
   @type t :: %__MODULE__{
-          results: [Ash.Resource.t()],
+          results: [Ash.Resource.record()],
           limit: integer(),
           count: integer(),
           offset: integer(),
