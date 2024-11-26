@@ -32,6 +32,7 @@ defmodule Ash.Vector do
   @doc """
   Creates a new vector from its binary representation
   """
+  @spec from_binary(binary()) :: t()
   def from_binary(binary) when is_binary(binary) do
     %Ash.Vector{data: binary}
   end
@@ -39,6 +40,7 @@ defmodule Ash.Vector do
   @doc """
   Converts the vector to its binary representation
   """
+  @spec to_binary(t()) :: binary()
   def to_binary(vector) when is_struct(vector, Ash.Vector) do
     vector.data
   end
@@ -46,6 +48,7 @@ defmodule Ash.Vector do
   @doc """
   Converts the vector to a list
   """
+  @spec to_list(t()) :: list()
   def to_list(vector) when is_struct(vector, Ash.Vector) do
     <<dim::unsigned-16, 0::unsigned-16, bin::binary-size(dim)-unit(32)>> = vector.data
     for <<v::float-32 <- bin>>, do: v

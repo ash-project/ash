@@ -57,6 +57,7 @@ defmodule Ash.Generator do
   A map of custom `StreamData` generators can be provided to add to or overwrite the generated input,
   for example: `Ash.Generator.for_seed(Post, %{text: StreamData.constant("Post")})`
   """
+  @spec seed_input(Ash.Resource.t(), map()) :: StreamData.t(map())
   def seed_input(resource, generators \\ %{}) do
     relationships = Ash.Resource.Info.relationships(resource)
 
