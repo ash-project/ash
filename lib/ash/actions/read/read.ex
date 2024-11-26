@@ -247,6 +247,32 @@ defmodule Ash.Actions.Read do
         query.domain
       )
 
+    calculations_at_runtime =
+      Enum.map(
+        calculations_at_runtime,
+        &add_calc_context(
+          &1,
+          opts[:actor],
+          opts[:authorize?],
+          query.tenant,
+          opts[:tracer],
+          query.domain
+        )
+      )
+
+    calculations_in_query =
+      Enum.map(
+        calculations_in_query,
+        &add_calc_context(
+          &1,
+          opts[:actor],
+          opts[:authorize?],
+          query.tenant,
+          opts[:tracer],
+          query.domain
+        )
+      )
+
     source_fields =
       if !opts[:initial_data] do
         source_fields(query)

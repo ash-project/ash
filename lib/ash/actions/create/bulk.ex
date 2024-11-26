@@ -509,7 +509,6 @@ defmodule Ash.Actions.Create.Bulk do
         Ash.DataLayer.transaction(
           List.wrap(resource) ++ action.touches_resources,
           fn ->
-            # TODO: check the difference bewteen ref handeling here and in bulk_update
             tmp_ref = make_ref()
 
             result =
@@ -521,7 +520,7 @@ defmodule Ash.Actions.Create.Bulk do
                 opts,
                 all_changes,
                 data_layer_can_bulk?,
-                ref,
+                tmp_ref,
                 changes,
                 must_return_records_for_changes?,
                 must_be_simple_results,
@@ -533,6 +532,9 @@ defmodule Ash.Actions.Create.Bulk do
               Process.delete({:bulk_create_errors, tmp_ref}) || {[], 0}
 
             store_error(ref, new_errors, new_error_count)
+
+            notifications = Process.get({:bulk_update_notifications, tmp_ref}) || []
+            store_notification(ref, notifications, opts)
 
             result
           end,
