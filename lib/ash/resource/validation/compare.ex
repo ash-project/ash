@@ -7,10 +7,20 @@ defmodule Ash.Resource.Validation.Compare do
   import Ash.Expr
 
   @opt_schema [
+    equal_to: [
+      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
+      required: false,
+      doc: "The value that the attribute should be equal to"
+    ],
+    not_equal_to: [
+      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
+      required: false,
+      doc: "The value that the attribute should not be equal to"
+    ],
     greater_than: [
       type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
       required: false,
-      doc: "The value that the attribute should be greater than."
+      doc: "The value that the attribute should be greater than"
     ],
     greater_than_or_equal_to: [
       type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
@@ -66,12 +76,22 @@ defmodule Ash.Resource.Validation.Compare do
       {:ok, value} when not is_nil(value) ->
         opts
         |> Keyword.take([
+          :equal_to,
+          :not_equal_to,
           :greater_than,
           :less_than,
           :greater_than_or_equal_to,
           :less_than_or_equal_to
         ])
         |> Enum.find_value(fn
+          {:equal_to, attribute} ->
+            if !Comp.equal?(value, attribute_value(changeset, attribute)),
+              do: invalid_attribute_error(opts, value)
+
+          {:not_equal_to, attribute} ->
+            if !Comp.not_equal?(value, attribute_value(changeset, attribute)),
+              do: invalid_attribute_error(opts, value)
+
           {:greater_than, attribute} ->
             if !Comp.greater_than?(value, attribute_value(changeset, attribute)),
               do: invalid_attribute_error(opts, value)
@@ -101,12 +121,38 @@ defmodule Ash.Resource.Validation.Compare do
     else
       opts
       |> Keyword.take([
+        :equal_to,
+        :not_equal_to,
         :greater_than,
         :less_than,
         :greater_than_or_equal_to,
         :less_than_or_equal_to
       ])
       |> Enum.map(fn
+        {:equal_to, value} ->
+          {:atomic, [opts[:attribute]],
+           expr(^atomic_ref(opts[:attribute]) == ^atomic_value(value)),
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^opts[:attribute],
+               value: ^atomic_ref(opts[:attribute]),
+               message: ^(context.message || "must equal %{equal_to}"),
+               vars: %{field: ^opts[:attribute], equal_to: ^atomic_value(value)}
+             })
+           )}
+
+        {:not_equal_to, value} ->
+          {:atomic, [opts[:attribute]],
+           expr(^atomic_ref(opts[:attribute]) != ^atomic_value(value)),
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^opts[:attribute],
+               value: ^atomic_ref(opts[:attribute]),
+               message: ^(context.message || "must not equal %{not_equal_to}"),
+               vars: %{field: ^opts[:attribute], not_equal_to: ^atomic_value(value)}
+             })
+           )}
+
         {:greater_than, value} ->
           {:atomic, [opts[:attribute]],
            expr(^atomic_ref(opts[:attribute]) <= ^atomic_value(value)),
@@ -170,6 +216,8 @@ defmodule Ash.Resource.Validation.Compare do
             fun when is_function(fun, 0) -> fun.()
             v -> v
           end,
+        equal_to: opts[:equal_to],
+        not_equal_to: opts[:not_equal_to],
         greater_than: opts[:greater_than],
         less_than: opts[:less_than],
         greater_than_or_equal_to: opts[:greater_than_or_equal_to],
@@ -211,6 +259,8 @@ defmodule Ash.Resource.Validation.Compare do
   defp message(opts) do
     opts
     |> Keyword.take([
+      :equal_to,
+      :not_equal_to,
       :greater_than,
       :less_than,
       :greater_than_or_equal_to,
@@ -218,6 +268,12 @@ defmodule Ash.Resource.Validation.Compare do
     ])
     |> Enum.map_join(" and ", fn {key, _value} ->
       case key do
+        :equal_to ->
+          "must equal %{equal_to}"
+
+        :not_equal_to ->
+          "must not equal %{not_equal_to}"
+
         :greater_than ->
           "must be greater than %{greater_than}"
 
