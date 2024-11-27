@@ -2457,7 +2457,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp run_count_query(query, data_layer_query) do
-    case Ash.Query.Aggregate.new(query.resource, :count, :count) do
+    case Ash.Query.Aggregate.new(query.resource, :count, :count, tenant: query.tenant) do
       {:ok, aggregate} ->
         Ash.DataLayer.run_aggregate_query(data_layer_query, [aggregate], query.resource)
 
