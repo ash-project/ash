@@ -2,7 +2,11 @@ defmodule Ash.Error.Invalid do
   @moduledoc "The top level invalid error"
   use Splode.ErrorClass, fields: [:changeset, :query, :action_input], class: :invalid
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{
+          changeset: Ash.Changeset.t() | nil,
+          query: Ash.Query.t() | nil,
+          action_input: Ash.ActionInput.t() | nil
+        }
 
   defimpl Inspect do
     import Inspect.Algebra

@@ -2,7 +2,11 @@ defmodule Ash.Error.Forbidden do
   @moduledoc "Used when authorization for an action fails"
   use Splode.ErrorClass, fields: [:changeset, :query, :action_input], class: :forbidden
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{
+          changeset: Ash.Changeset.t() | nil,
+          query: Ash.Query.t() | nil,
+          action_input: Ash.ActionInput.t() | nil
+        }
   defimpl Inspect do
     import Inspect.Algebra
 
