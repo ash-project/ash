@@ -1,8 +1,28 @@
 defmodule Ash.Can do
-  @moduledoc false
+  @moduledoc """
+  Contains the Ash.can function logic.
+  """
 
   require Ash.Query
 
+  @type subject ::
+          Ash.Query.t()
+          | Ash.Changeset.t()
+          | Ash.ActionInput.t()
+          | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
+          | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map}
+          | {Ash.Resource.record(), atom | Ash.Resource.Actions.action()}
+          | {Ash.Resource.record(), atom | Ash.Resource.Actions.action(), input :: map}
+
+  @doc """
+  Returns whether an actor can perform an action, query, or changeset.
+
+  You should prefer to use `Ash.can?/3` over this module, directly.
+
+  Can raise an exception if return_forbidden_error is truthy in opts or there's an error.
+  """
+  @spec can?(subject(), Ash.Domain.t(), Ash.Resource.record(), Keyword.t()) ::
+          boolean() | no_return()
   def can?(action_or_query_or_changeset, domain, actor, opts \\ []) do
     opts =
       opts
@@ -31,6 +51,20 @@ defmodule Ash.Can do
     end
   end
 
+  @doc """
+  Returns a an ok tuple if the actor can perform the action, query, or changeset,
+  an error tuple if an error happens, and a ok tuple with maybe if maybe is set to true
+  or not set.
+
+  You should prefer to use `Ash.can/3` over this module, directly.
+
+  Note: `is_maybe` is set to `true`, if not set.
+  """
+  @spec can(subject(), Ash.Domain.t(), Ash.Resource.record(), Keyword.t()) ::
+          {:ok, boolean() | :maybe}
+          | {:ok, boolean(), term()}
+          | {:ok, boolean(), Ash.Changeset.t(), Ash.Query.t()}
+          | {:error, Ash.Error.t()}
   def can(action_or_query_or_changeset, domain, actor, opts \\ []) do
     opts = Keyword.put_new(opts, :maybe_is, :maybe)
     opts = Keyword.put_new(opts, :run_queries?, true)
