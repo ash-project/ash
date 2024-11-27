@@ -195,4 +195,20 @@ defmodule Ash.Test.Policy.ComplexTest do
 
     assert [] = Ash.read!(Bio, actor: me, authorize?: true)
   end
+
+  test "it calls runtime checks when policy access_type == :runtime", %{
+    me: me,
+    comment_by_me_on_my_post: comment_by_me_on_my_post
+  } do
+    comment_id = comment_by_me_on_my_post.id
+
+    assert [_] =
+             Comment
+             |> Ash.Query.for_read(:read_with_runtime_check, %{}, actor: me)
+             |> Ash.Query.filter(id == ^comment_id)
+             |> Ash.read!()
+
+    # the runtime check should execute this telemetry event which indicates it was called
+    assert_received {:telemetry, [:ash, :test, :runtime_check_executed], %{}, %{items: [_]}}
+  end
 end
