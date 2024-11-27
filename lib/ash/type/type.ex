@@ -308,8 +308,8 @@ defmodule Ash.Type do
         }
 
   @typep rewrite_data ::
-          {type :: :calc | :agg, rewriting_name :: atom, rewriting_load :: atom}
-          | {:rel, rewriting_name :: atom}
+           {type :: :calc | :agg, rewriting_name :: atom, rewriting_load :: atom}
+           | {:rel, rewriting_name :: atom}
   @typep rewrite :: {{list(atom), rewrite_data, atom, atom}, source :: term}
 
   @typedoc "The context that is provided to the `c:merge_load/4` callback."
