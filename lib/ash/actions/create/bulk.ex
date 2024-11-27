@@ -509,34 +509,21 @@ defmodule Ash.Actions.Create.Bulk do
         Ash.DataLayer.transaction(
           List.wrap(resource) ++ action.touches_resources,
           fn ->
-            tmp_ref = make_ref()
-
-            result =
-              do_handle_batch(
-                batch,
-                domain,
-                resource,
-                action,
-                opts,
-                all_changes,
-                data_layer_can_bulk?,
-                tmp_ref,
-                changes,
-                must_return_records_for_changes?,
-                must_be_simple_results,
-                attrs_to_require,
-                action_select
-              )
-
-            {new_errors, new_error_count} =
-              Process.delete({:bulk_create_errors, tmp_ref}) || {[], 0}
-
-            store_error(ref, new_errors, opts, new_error_count)
-
-            notifications = Process.get({:bulk_update_notifications, tmp_ref}) || []
-            store_notification(ref, notifications, opts)
-
-            result
+            do_handle_batch(
+              batch,
+              domain,
+              resource,
+              action,
+              opts,
+              all_changes,
+              data_layer_can_bulk?,
+              ref,
+              changes,
+              must_return_records_for_changes?,
+              must_be_simple_results,
+              attrs_to_require,
+              action_select
+            )
           end,
           opts[:timeout],
           %{
