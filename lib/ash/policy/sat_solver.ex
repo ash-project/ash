@@ -132,6 +132,6 @@ defmodule Ash.Policy.SatSolver do
   end
 
   defp solve_expression(expression) do
-    Ash.SatSolver.solve_expression(expression)
+    Ash.SatSolver.Implementation.solve_expression(expression)
   end
 end

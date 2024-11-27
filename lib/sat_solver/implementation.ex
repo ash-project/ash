@@ -2,30 +2,38 @@ cond do
   Application.compile_env(:ash, :sat_testing) ->
     defmodule Ash.SatSolver.Implementation do
       @moduledoc false
+
+      @doc false
       def solve_expression(cnf) do
         Module.concat([System.get_env("SAT_SOLVER") || "Picosat"]).solve(cnf)
       end
 
+      @doc false
       def check!, do: :ok
     end
 
   Code.ensure_loaded?(Picosat) ->
     defmodule Ash.SatSolver.Implementation do
       @moduledoc false
+
+      @doc false
       def solve_expression(cnf) do
         Picosat.solve(cnf)
       end
 
+      @doc false
       def check!, do: :ok
     end
 
   Code.ensure_loaded?(SimpleSat) ->
     defmodule Ash.SatSolver.Implementation do
       @moduledoc false
+      @doc false
       def solve_expression(cnf) do
         SimpleSat.solve(cnf)
       end
 
+      @doc false
       def check!, do: :ok
     end
 
@@ -38,6 +46,7 @@ cond do
         :ok
       end
 
+      @doc false
       def check! do
         if Code.ensure_loaded?(Picosat) || Code.ensure_loaded?(SimpleSat) do
           raise """
