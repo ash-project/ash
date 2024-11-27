@@ -987,6 +987,7 @@ defmodule Ash.Filter do
             }
           })
           |> Ash.Query.select([])
+          |> Map.put(:filter, nil)
           |> Ash.can(actor,
             run_queries?: false,
             pre_flight?: false,

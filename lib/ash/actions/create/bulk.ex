@@ -531,7 +531,7 @@ defmodule Ash.Actions.Create.Bulk do
             {new_errors, new_error_count} =
               Process.delete({:bulk_create_errors, tmp_ref}) || {[], 0}
 
-            store_error(ref, new_errors, new_error_count)
+            store_error(ref, new_errors, opts, new_error_count)
 
             notifications = Process.get({:bulk_update_notifications, tmp_ref}) || []
             store_notification(ref, notifications, opts)
@@ -958,9 +958,10 @@ defmodule Ash.Actions.Create.Bulk do
     end)
   end
 
-  defp store_error(_ref, empty, _opts) when empty in [[], nil], do: :ok
+  defp store_error(ref, empty, opts, error_count \\ nil)
+  defp store_error(_ref, empty, _opts, _error_count) when empty in [[], nil], do: :ok
 
-  defp store_error(ref, error, opts) do
+  defp store_error(ref, error, opts, error_count) do
     if opts[:stop_on_error?] && !opts[:return_stream?] do
       throw({:error, Ash.Error.to_error_class(error), 0})
     else
@@ -974,11 +975,11 @@ defmodule Ash.Actions.Create.Bulk do
 
         Process.put(
           {:bulk_create_errors, ref},
-          {new_errors ++ errors, count + Enum.count(new_errors)}
+          {new_errors ++ errors, count + (error_count || Enum.count(new_errors))}
         )
       else
         {errors, count} = Process.get({:bulk_create_errors, ref}) || {[], 0}
-        Process.put({:bulk_create_errors, ref}, {errors, count + 1})
+        Process.put({:bulk_create_errors, ref}, {errors, count + (error_count || 1)})
       end
     end
   end
