@@ -1,9 +1,7 @@
 defmodule Mix.Mermaid do
   @moduledoc false
 
-  @doc """
-  Generate the option string for a mermaid config file if it exists.
-  """
+  @doc false
   def config do
     if File.exists?("mermaidConfig.json") do
       "--configFile #{Path.expand("mermaidConfig.json")}"
@@ -11,6 +9,7 @@ defmodule Mix.Mermaid do
   end
 
   # sobelow_skip ["Traversal"]
+  @doc false
   def generate_diagram(source, suffix, "plain", markdown, message) do
     file = Mix.Mermaid.file(source, suffix, "mmd")
 
@@ -49,9 +48,8 @@ defmodule Mix.Mermaid do
     """)
   end
 
-  @doc """
-  Generate a diagram filename next to the source file.
-  """
+  # Generate a diagram filename next to the source file.
+  @doc false
   def file(source, suffix, extension) do
     filename =
       source
@@ -64,11 +62,10 @@ defmodule Mix.Mermaid do
     |> Path.join(filename)
   end
 
-  @doc """
-  Generate a Mermaid diagram using the CLI.
+  # Generate a Mermaid diagram using the CLI.
 
-  For more info see https://github.com/mermaid-js/mermaid-cli
-  """
+  # For more info see https://github.com/mermaid-js/mermaid-cli
+  @doc false
   def create_diagram(file, markdown) do
     "sh"
     |> System.cmd([

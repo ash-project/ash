@@ -13,7 +13,11 @@ defmodule Ash.SatSolver do
 
   @dialyzer {:nowarn_function, overlap?: 2}
 
-  @typep boolean_expr :: {:and, boolean_expr, boolean_expr} | {:or, boolean_expr, boolean_expr} | {:not, boolean_expr} | Ash.Expr.t()
+  @typep boolean_expr ::
+           {:and, boolean_expr, boolean_expr}
+           | {:or, boolean_expr, boolean_expr}
+           | {:not, boolean_expr}
+           | Ash.Expr.t()
 
   @doc """
   Creates tuples of a boolean statement.
@@ -79,7 +83,8 @@ defmodule Ash.SatSolver do
   end
 
   @doc "Calls `transform/2` and solves the expression"
-  @spec transform_and_solve(Ash.Resource.t(), Ash.Expr.t()) :: {:ok, [integer()]} | {:error, :unsatisfiable}
+  @spec transform_and_solve(Ash.Resource.t(), Ash.Expr.t()) ::
+          {:ok, [integer()]} | {:error, :unsatisfiable}
   def transform_and_solve(resource, expression) do
     resource
     |> transform(expression)
@@ -1070,9 +1075,9 @@ defmodule Ash.SatSolver do
   end
 
   defp split_in_expressions(
-        %Ash.Query.Operator.In{right: right} = sub_expr,
-        %Ash.Query.Operator.Eq{right: value} = non_equal_overlap
-      ) do
+         %Ash.Query.Operator.In{right: right} = sub_expr,
+         %Ash.Query.Operator.Eq{right: value} = non_equal_overlap
+       ) do
     if overlap?(non_equal_overlap, sub_expr) do
       Ash.Query.BooleanExpression.new(
         :or,
@@ -1085,9 +1090,9 @@ defmodule Ash.SatSolver do
   end
 
   defp split_in_expressions(
-        %Ash.Query.Operator.In{} = sub_expr,
-        %Ash.Query.Operator.In{right: right} = non_equal_overlap
-      ) do
+         %Ash.Query.Operator.In{} = sub_expr,
+         %Ash.Query.Operator.In{right: right} = non_equal_overlap
+       ) do
     if overlap?(sub_expr, non_equal_overlap) do
       diff = MapSet.difference(sub_expr.right, right)
 
@@ -1118,14 +1123,14 @@ defmodule Ash.SatSolver do
     do: %{not_expr | expression: split_in_expressions(expression, non_equal_overlap)}
 
   defp split_in_expressions(
-        %BooleanExpression{left: left, right: right} = expr,
-        non_equal_overlap
-      ),
-      do: %{
-        expr
-        | left: split_in_expressions(left, non_equal_overlap),
-          right: split_in_expressions(right, non_equal_overlap)
-      }
+         %BooleanExpression{left: left, right: right} = expr,
+         non_equal_overlap
+       ),
+       do: %{
+         expr
+         | left: split_in_expressions(left, non_equal_overlap),
+           right: split_in_expressions(right, non_equal_overlap)
+       }
 
   defp split_in_expressions(other, _), do: other
 

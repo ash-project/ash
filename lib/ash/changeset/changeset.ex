@@ -297,7 +297,7 @@ defmodule Ash.Changeset do
               | {:message, String.t()}
               | {:value, any()}
             ]
-          | %{:__struct__ => atom(), required(atom()) => any()}
+          | Ash.Error.t()
 
   alias Ash.Error.{
     Changes.InvalidArgument,

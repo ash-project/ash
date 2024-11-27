@@ -281,11 +281,24 @@ defmodule Ash.Type do
   ```
   """
 
+  @typedoc "A keyword list of constraints for a type"
   @type constraints :: Keyword.t()
-  @type constraint_error :: String.t() | {String.t(), Keyword.t()}
-  @type t :: atom | {:array, atom}
-  @type error :: :error | {:error, String.t() | Keyword.t()}
+  @typedoc "A valid Ash.Type"
+  @type t :: module() | {:array, atom}
+  @typedoc "An error value that can be returned from various callbacks"
+  @type error ::
+          :error
+          | {:error,
+             String.t()
+             | [
+                 {:field, atom()}
+                 | {:fields, [atom()]}
+                 | {:message, String.t()}
+                 | {:value, any()}
+               ]
+             | Ash.Error.t()}
 
+  @typedoc "The context that is provided to the `c:load/4` callback."
   @type load_context :: %{
           domain: Ash.Domain.t(),
           actor: term() | nil,
@@ -294,6 +307,12 @@ defmodule Ash.Type do
           authorize?: boolean | nil
         }
 
+  @typep rewrite_data ::
+          {type :: :calc | :agg, rewriting_name :: atom, rewriting_load :: atom}
+          | {:rel, rewriting_name :: atom}
+  @typep rewrite :: {{list(atom), rewrite_data, atom, atom}, source :: term}
+
+  @typedoc "The context that is provided to the `c:merge_load/4` callback."
   @type merge_load_context :: %{
           domain: Ash.Domain.t(),
           calc_name: term(),
@@ -306,8 +325,19 @@ defmodule Ash.Type do
           authorize?: boolean
         }
 
+  @doc """
+  The storage type, which should be known by a data layer supporting this type.
+
+  Use `c:storage_type/1`, as this will be deprecated in the future.
+  """
   @callback storage_type() :: Ecto.Type.t()
+
+  @doc """
+  The storage type, which should be known by a data layer supporting this type.
+  """
   @callback storage_type(constraints) :: Ecto.Type.t()
+
+  @doc "Add the source changeset to the constraints, in cases where it is needed for type casting logic"
   @callback include_source(constraints, Ash.Changeset.t()) :: constraints
 
   @doc """
@@ -330,30 +360,84 @@ defmodule Ash.Type do
   You generally won't need this, but it can be an escape hatch for certain cases.
   """
   @callback init(constraints) :: {:ok, constraints} | {:error, Ash.Error.t()}
+
+  @doc "Whether or not data layers that build queries should attempt to type cast values of this type while doing so."
   @callback cast_in_query?(constraints) :: boolean
-  @callback can_load?(constraints) :: boolean
+
+  @doc "The underlying Ecto.Type."
   @callback ecto_type() :: Ecto.Type.t()
+
+  @doc "Attempt to cast unknown, potentially user-provided input, into a valid instance of the type."
   @callback cast_input(term, constraints) ::
-              {:ok, term} | error()
+              {:ok, term} | Ash.Error.t()
+
+  @doc "Whether or not the value a valid instance of the type."
   @callback matches_type?(term, constraints) :: boolean()
+
+  @doc """
+  Attempt to cast a list of unknown, potentially user-provided inputs, into a list of valid instances of type.
+
+  This callback allows to define types that are "collection-aware", i.e an integer that is unique whenever
+  it appears in a list.
+
+  If not defined, `c:cast_input/2` is called for each item.
+  """
   @callback cast_input_array(list(term), constraints) :: {:ok, list(term)} | error()
+
+  @doc "Attempt to load a stored value from the data layer into a valid instance of the type."
   @callback cast_stored(term, constraints) :: {:ok, term} | error()
+
+  @doc """
+  Attempt to load a list of stored values from the data layer into a list of valid instances of the type.
+
+  If not defined, `c:cast_stored/2` is called for each item.
+  """
   @callback cast_stored_array(list(term), constraints) ::
               {:ok, list(term)} | error()
+
+  @doc "Transform a valid instance of the type into a format that the data layer can store."
   @callback dump_to_native(term, constraints) :: {:ok, term} | error()
+
+  @doc """
+  Transform a list of valid instance of the type into a format that the data layer can store.
+
+  If not defined, `c:dump_to_native/2` is called for each item.
+  """
   @callback dump_to_native_array(list(term), constraints) :: {:ok, term} | error()
+
+  @doc "Transform a valid instance of the type into a format that can be JSON encoded."
   @callback dump_to_embedded(term, constraints) :: {:ok, term} | :error
+
+  @doc """
+  Transform a list of valid instances of the type into a format that can be JSON encoded.
+
+  If not defined, `c:dump_to_embedded/2` is called for each item.
+  """
   @callback dump_to_embedded_array(list(term), constraints) :: {:ok, term} | error()
+
+  @doc "React to a changing value. This could be used, for example, to have a type like `:strictly_increasing_integer`."
   @callback handle_change(old_term :: term, new_term :: term, constraints) ::
               {:ok, term} | error()
-  @callback composite?(constraints) :: boolean
-  @callback composite_types(constraints) ::
-              list({name, type, constraints} | {name, storage_key, type, constraints})
-            when name: atom, type: t, storage_key: atom
+
+  @doc """
+  React to a changing list of values. This could be used, for example, to have a type like `:unique_integer`, which when used in a list all items must be unique.
+
+  If not defined, `c:handle_change/3` is called for each item with a `nil` old value.
+  """
   @callback handle_change_array(old_term :: list(term), new_term :: list(term), constraints) ::
               {:ok, term} | error()
+
+  @doc """
+  Prepare a change, given the old value and the new uncasted value.
+  """
   @callback prepare_change(old_term :: term, new_uncasted_term :: term, constraints) ::
               {:ok, term} | error()
+
+  @doc """
+  Prepare a changing list of values, given the old value and the new uncasted value.
+
+  If not defined, `c:prepare_change/3` is called for each item with a `nil` old value.
+  """
   @callback prepare_change_array(
               old_term :: list(term),
               new_uncasted_term :: list(term),
@@ -361,31 +445,127 @@ defmodule Ash.Type do
             ) ::
               {:ok, term} | error()
 
+  @doc "Whether or not a custom `c:prepare_change_array/3` has been defined by the type. Defined automatically."
+  @callback prepare_change_array?() :: boolean()
+
+  @doc "Whether or not a custom `c:handle_change_array/3` has been defined by the type. Defined automatically."
+  @callback handle_change_array?() :: boolean()
+
+  @doc "Returns a `Spark.Options` spec for the constraints supported by the type."
   @callback constraints() :: constraints()
+
+  @doc "Returns a `Spark.Options` spec for the additional constraints supported when used in a list."
   @callback array_constraints() :: constraints()
+
+  @doc "Called after casting, to apply additional constraints to the value."
   @callback apply_constraints(term, constraints) ::
               {:ok, new_value :: term}
               | :ok
-              | {:error, constraint_error() | list(constraint_error)}
+              | error()
+
+  @doc """
+  Called after casting a list of values, to apply additional constraints to the value.
+
+  If not defined, `c:apply_constraints/2` is called for each item.
+  """
   @callback apply_constraints_array(list(term), constraints) ::
               {:ok, new_values :: list(term)}
               | :ok
-              | {:error, constraint_error() | list(constraint_error)}
-  @callback describe(constraints()) :: String.t() | nil
-  @callback equal?(term, term) :: boolean
-  @callback embedded?() :: boolean
-  @callback generator(constraints) :: Enumerable.t()
-  @callback simple_equality?() :: boolean
+              | error()
+
+  @doc """
+  Casts a value within an expression.
+
+  For instance, if you had a type like `:non_neg_integer`, you might do:
+
+  ```elixir
+  def cast_atomic(value, _constraints)  do
+    expr(
+      if ^value < 0 do
+        error(Ash.Error.Changes.InvalidChanges, %{message: "must be positive", value: ^value})
+      else
+        value
+      end
+    )
+  end
+  ```
+
+  """
   @callback cast_atomic(new_value :: Ash.Expr.t(), constraints) ::
               {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
+
+  @doc "Casts a list of values within an expression. See `c:cast_atomic/2` for more."
   @callback cast_atomic_array(new_value :: Ash.Expr.t(), constraints) ::
               {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
+
+  @doc "Applies type constraints within an expression."
   @callback apply_atomic_constraints(new_value :: Ash.Expr.t(), constraints) ::
               :ok | {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
+
+  @doc "Applies type constraints to a list of values within an expression. See `c:apply_atomic_constraints/2` for more."
   @callback apply_atomic_constraints_array(new_value :: Ash.Expr.t(), constraints) ::
               :ok | {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
 
+  @doc """
+  Return true if the type is a composite type, meaning it is made up of one or more values. How this works is up to the data layer.
+
+  For example, `AshMoney` provides a type that is composite with a "currency" and an "amount".
+  """
+  @callback composite?(constraints) :: boolean
+
+  @doc """
+  Information about each member of the composite type, if it is a composite type
+
+  An example given the `AshMoney` example listed above:
+
+  `[{:currency, :string, []}, {:amount, :decimal, []}]`
+  """
+  @callback composite_types(constraints) ::
+              list({name, type, constraints} | {name, storage_key, type, constraints})
+            when name: atom, type: t, storage_key: atom
+
+  @doc "Describes a type given its constraints. Can be used to generate docs, for example."
+  @callback describe(constraints()) :: String.t() | nil
+
+  @doc """
+  Determine if two valid instances of the type are equal.
+
+  *Do not define this* if `==` is sufficient for your type. See `c:simple_equality?/0` for more.
+  """
+  @callback equal?(term, term) :: boolean
+
+  @doc """
+  Whether or not `==` can be used to compare instances of the type.
+
+  This is defined automatically to return `false` if `c:equal?/2` is defined.
+
+  Types that cannot be compared using `==` incur significant runtime costs when used in certain ways.
+  For example, if a resource's primary key cannot be compared with `==`, we cannot do things like key
+  a list of records by their primary key. Implementing `c:equal?/2` will cause various code paths to be considerably
+  slower, so only do it when necessary.
+  """
+  @callback simple_equality?() :: boolean
+
+  @doc "Whether or not the type is an embedded resource. This is defined by embedded resources, you should not define this."
+  @callback embedded?() :: boolean
+
+  @doc """
+  An Enumerable that produces valid instances of the type.
+
+  This can be used for property testing, or generating valid inputs for seeding.
+  Typically you would use `StreamData` for this.
+  """
+  @callback generator(constraints) :: Enumerable.t()
+
+  @doc "Whether or not an `c:apply_constraints_array/2` callback has been defined. This is defined automatically."
   @callback custom_apply_constraints_array?() :: boolean
+
+  @doc """
+  Applies a load statement through a list of values.
+
+  This allows types to support load statements, like `Ash.Type.Union`, embedded resources,
+  or the `Ash.Type.Struct` when it is an `instance_of` a resource.
+  """
   @callback load(
               values :: list(term),
               load :: Keyword.t(),
@@ -394,6 +574,9 @@ defmodule Ash.Type do
             ) ::
               {:ok, list(term)} | {:error, Ash.Error.t()}
 
+  @doc """
+  Checks if the given path has been loaded on the type.
+  """
   @callback loaded?(
               value :: term,
               path_to_load :: list(atom),
@@ -401,6 +584,9 @@ defmodule Ash.Type do
               opts :: Keyword.t()
             ) :: boolean
 
+  @doc """
+  Merges a load statement with an existing load statement for the type.
+  """
   @callback merge_load(
               left :: term,
               right :: term,
@@ -409,10 +595,13 @@ defmodule Ash.Type do
             ) ::
               {:ok, term} | {:error, error} | :error
 
-  @type rewrite_data ::
-          {type :: :calc | :agg, rewriting_name :: atom, rewriting_load :: atom}
-          | {:rel, rewriting_name :: atom}
-  @type rewrite :: {{list(atom), rewrite_data, atom, atom}, source :: term}
+  @doc """
+  Gets any "rewrites" necessary to apply a given load statement.
+
+  This is a low level tool used when types can contain instances of resources. You generally
+  should not need to know how this works. See `Ash.Type.Union` and `Ash.Type.Struct` for examples
+  if you are trying to write a similar type.
+  """
 
   @callback get_rewrites(
               merged_load :: term,
@@ -420,9 +609,18 @@ defmodule Ash.Type do
               path :: list(atom),
               constraints :: Keyword.t()
             ) :: [rewrite]
+
+  @doc """
+  Apply any "rewrites" necessary to provide the results of a load statement to calculations that depended on a given load.
+
+  This is a low level tool used when types can contain instances of resources. You generally
+  should not need to know how this works. See `Ash.Type.Union` and `Ash.Type.Struct` for examples
+  if you are trying to write a similar type.
+  """
   @callback rewrite(value :: term, [rewrite], constraints :: Keyword.t()) :: value :: term
-  @callback prepare_change_array?() :: boolean()
-  @callback handle_change_array?() :: boolean()
+
+  @doc "Whether or not `c:load/4` can be used. Defined automatically"
+  @callback can_load?(constraints) :: boolean
 
   @optional_callbacks [
     init: 1,
