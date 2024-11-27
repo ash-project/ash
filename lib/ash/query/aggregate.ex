@@ -235,7 +235,6 @@ defmodule Ash.Query.Aggregate do
             end
 
           authorize? = opts.authorize?
-          context = if(opts.tenant, do: %{tenant: opts.tenant}, else: %{})
           include_nil? = opts.include_nil?
 
           if kind == :custom && !type do
@@ -347,6 +346,13 @@ defmodule Ash.Query.Aggregate do
                {:ok, type, constraints} <-
                  get_type(kind, type, attribute_type, attribute_constraints, constraints),
                %{valid?: true} = query <- build_query(related, resource, query) do
+            query =
+              if opts.tenant do
+                Ash.Query.set_tenant(query, opts.tenant)
+              else
+                query
+              end
+
             {:ok,
              %__MODULE__{
                name: name,
