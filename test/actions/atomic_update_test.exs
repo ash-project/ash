@@ -177,7 +177,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       Author
       |> Ash.Changeset.for_create(:create, %{name: "Ted Theodore Logan", score: 0})
       |> Ash.create!()
-      |> Ash.Changeset.for_update(:with_conditional_validation, attrs, always_atomic?: true)
+      |> Ash.Changeset.for_update(:with_conditional_validation, attrs)
       |> Ash.update()
     end
 
