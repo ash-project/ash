@@ -76,6 +76,10 @@ defmodule Ash.Test.Actions.ReadTest do
         prepare(build(load: [:author1, :author2]))
       end
 
+      read :read_with_unknown_intpus do
+        skip_unknown_inputs :*
+      end
+
       read :get_by_id do
         get_by(:id)
       end
@@ -703,6 +707,33 @@ defmodule Ash.Test.Actions.ReadTest do
                  uuid: Ash.UUID.generate()
                })
                |> Ash.read_one()
+    end
+  end
+
+  describe "skip_unknown_inputs" do
+    test "with opts from action" do
+      assert {:ok, []} =
+               Post
+               |> Ash.Query.for_read(:read_with_unknown_intpus, %{unknown: "input"})
+               |> Ash.read()
+    end
+
+    test "with opts from query" do
+      # opts from query override opts from action
+      assert {:error,
+              %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.NoSuchInput{input: :unknown}]}} =
+               Post
+               |> Ash.Query.for_read(:read_with_unknown_intpus, %{unknown: "input"},
+                 skip_unknown_inputs: []
+               )
+               |> Ash.read()
+
+      assert {:ok, []} =
+               Post
+               |> Ash.Query.for_read(:read_with_unknown_intpus, %{unknown: "input"},
+                 skip_unknown_inputs: [:unknown]
+               )
+               |> Ash.read()
     end
   end
 end
