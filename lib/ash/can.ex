@@ -5,7 +5,7 @@ defmodule Ash.Can do
 
   require Ash.Query
 
-  @type query_or_changeset_or_action ::
+  @type subject ::
           Ash.Query.t()
           | Ash.Changeset.t()
           | Ash.ActionInput.t()
@@ -21,7 +21,7 @@ defmodule Ash.Can do
 
   Can raise an exception if return_forbidden_error is truthy in opts or there's an error.
   """
-  @spec can?(query_or_changeset_or_action(), Ash.Domain.t(), Ash.Resource.record(), Keyword.t()) ::
+  @spec can?(subject(), Ash.Domain.t(), Ash.Resource.record(), Keyword.t()) ::
           boolean() | no_return()
   def can?(action_or_query_or_changeset, domain, actor, opts \\ []) do
     opts =
@@ -60,7 +60,7 @@ defmodule Ash.Can do
 
   Note: `is_maybe` is set to `true`, if not set.
   """
-  @spec can(query_or_changeset_or_action(), Ash.Domain.t(), Ash.Resource.record(), Keyword.t()) ::
+  @spec can(subject(), Ash.Domain.t(), Ash.Resource.record(), Keyword.t()) ::
           {:ok, boolean() | :maybe}
           | {:ok, boolean(), term()}
           | {:ok, boolean(), Ash.Changeset.t(), Ash.Query.t()}

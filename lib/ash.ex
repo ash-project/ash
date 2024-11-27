@@ -1238,9 +1238,7 @@ defmodule Ash do
 
   #{Spark.Options.docs(@can_question_mark_opts)}
   """
-  @spec can?(Ash.Can.query_or_changeset_or_action(), actor(), Keyword.t()) ::
-          boolean() | no_return()
-
+  @spec can?(Ash.Can.subject(), actor(), Keyword.t()) :: boolean() | no_return()
   @doc spark_opts: [{2, @can_question_mark_opts}]
   def can?(action_or_query_or_changeset, actor, opts \\ []) do
     domain = Ash.Helpers.domain!(action_or_query_or_changeset, opts)
@@ -1295,7 +1293,7 @@ defmodule Ash do
 
   #{Spark.Options.docs(@can_opts)}
   """
-  @spec can(Ash.Can.query_or_changeset_or_action(), actor(), Keyword.t()) ::
+  @spec can(Ash.Can.subject(), actor(), Keyword.t()) ::
           {:ok, boolean | :maybe}
           | {:ok, true, Ash.Changeset.t() | Ash.Query.t()}
           | {:ok, true, Ash.Changeset.t(), Ash.Query.t()}
@@ -1709,7 +1707,7 @@ defmodule Ash do
   end
 
   @type record_or_records :: Ash.Resource.record() | [Ash.Resource.record()]
-  @type actor :: Ash.Resource.record()
+  @type actor :: any()
 
   @doc """
   Load fields or relationships on already fetched records. See `load/3` for more information.
