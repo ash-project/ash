@@ -53,7 +53,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
   def validate(changeset, opts, _context) do
     value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
 
-    if value != opts[:value] do
+    if Comp.not_equal?(value, opts[:value]) do
       {:error,
        [field: opts[:attribute], value: value]
        |> with_description(opts)
