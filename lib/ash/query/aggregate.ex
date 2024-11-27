@@ -371,7 +371,6 @@ defmodule Ash.Query.Aggregate do
                filterable?: filterable?,
                sortable?: sortable?,
                sensitive?: sensitive?,
-               context: context,
                authorize?: authorize?,
                read_action: read_action,
                join_filters: Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end)
