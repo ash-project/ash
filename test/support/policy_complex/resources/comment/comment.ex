@@ -21,6 +21,7 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
     end
 
     policy action(:read_with_runtime_check) do
+      access_type :runtime
       authorize_if Ash.Test.Support.PolicyComplex.Comment.Checks.RuntimeCheck
     end
   end

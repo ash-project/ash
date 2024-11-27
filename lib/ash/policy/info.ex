@@ -155,7 +155,7 @@ defmodule Ash.Policy.Info do
     )
   end
 
-  def policies(domain, resource) do
+  def policies(domain \\ nil, resource) do
     if domain do
       do_policies(domain) ++ do_policies(resource)
     else

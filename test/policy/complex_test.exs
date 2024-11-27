@@ -208,7 +208,24 @@ defmodule Ash.Test.Policy.ComplexTest do
              |> Ash.Query.filter(id == ^comment_id)
              |> Ash.read!()
 
-    # the runtime check should execute this telemetry event which indicates it was called
-    assert_received {:telemetry, [:ash, :test, :runtime_check_executed], %{}, %{items: [_]}}
+    assert_received {:runtime_check_executed, [_]}
+  end
+
+  test "it calls runtime checks when policy access_type == :runtime, removing records that don't match",
+       %{
+         me: me,
+         comment_by_me_on_my_post: comment_by_me_on_my_post
+       } do
+    comment_id = comment_by_me_on_my_post.id
+
+    Process.put(:fail_runtime_check, true)
+
+    assert [] =
+             Comment
+             |> Ash.Query.for_read(:read_with_runtime_check, %{}, actor: me)
+             |> Ash.Query.filter(id == ^comment_id)
+             |> Ash.read!()
+
+    assert_received {:runtime_check_executed, [_]}
   end
 end

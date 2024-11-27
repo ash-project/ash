@@ -11,8 +11,12 @@ defmodule Ash.Test.Support.PolicyComplex.Comment.Checks.RuntimeCheck do
   end
 
   def check(_, items, _, _) do
-    :telemetry.execute([:ash, :test, :runtime_check_executed], %{}, %{items: items})
+    send(self(), {:runtime_check_executed, items})
 
-    items
+    if Process.get(:fail_runtime_check) do
+      []
+    else
+      items
+    end
   end
 end

@@ -331,7 +331,8 @@ defmodule Ash.Policy.FilterCheck do
         authorizer.resource
         |> Ash.Query.filter(^filter)
         |> Ash.Query.filter(^auto_filter(actor, authorizer, opts))
-        |> Ash.read(domain: authorizer.domain)
+        |> Ash.Query.set_context(%{private: %{internal?: true}})
+        |> Ash.Actions.Read.unpaginated_read(nil, authorize?: false, domain: authorizer.domain)
         |> case do
           {:ok, authorized_data} ->
             authorized_pkeys = Enum.map(authorized_data, &Map.take(&1, pkey))

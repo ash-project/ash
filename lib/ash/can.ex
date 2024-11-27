@@ -588,10 +588,18 @@ defmodule Ash.Can do
                           context = Map.merge(context, %{data: results, query: query})
 
                           case authorizer.check(authorizer_state, context) do
-                            :authorized -> {:ok, results}
-                            {:error, :forbidden, error} -> {:error, error}
-                            {:error, error} -> {:error, error}
-                            {:data, data} -> {:ok, data}
+                            :authorized ->
+                              {:ok, results}
+
+                            {:error, :forbidden, authorizer_state} ->
+                              {:error,
+                               Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}
+
+                            {:error, error} ->
+                              {:error, error}
+
+                            {:data, data} ->
+                              {:ok, data}
                           end
                         end
                       )
@@ -648,9 +656,18 @@ defmodule Ash.Can do
                         context = Map.merge(context, %{data: results, query: query})
 
                         case authorizer.check(authorizer_state, context) do
-                          :authorized -> {:ok, results}
-                          {:error, error} -> {:error, error}
-                          {:data, data} -> {:ok, data}
+                          :authorized ->
+                            {:ok, results}
+
+                          {:error, :forbidden, authorizer_state} ->
+                            {:error,
+                             Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}
+
+                          {:error, error} ->
+                            {:error, error}
+
+                          {:data, data} ->
+                            {:ok, data}
                         end
                       end)
 

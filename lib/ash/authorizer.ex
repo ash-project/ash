@@ -31,7 +31,10 @@ defmodule Ash.Authorizer do
               {:ok, list(Ash.Resource.record())} | {:error, Ash.Error.t()}
   @callback check_context(state) :: [atom]
   @callback check(state, context) ::
-              :authorized | {:data, list(Ash.Resource.record())} | {:error, term}
+              :authorized
+              | {:data, list(Ash.Resource.record())}
+              | {:error, :forbidden, state}
+              | {:error, Ash.Error.t()}
   @callback exception(atom, state) :: no_return
 
   @optional_callbacks [exception: 2, add_calculations: 3, alter_results: 3, alter_filter: 3]
