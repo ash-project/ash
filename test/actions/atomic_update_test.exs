@@ -15,6 +15,15 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     end
   end
 
+  # Forces `where` conditions to be evaluated atomically.
+  defmodule AtomicOnlyValidation do
+    use Ash.Resource.Validation
+
+    def atomic(_, _, _) do
+      :ok
+    end
+  end
+
   defmodule NotAtomic do
     use Ash.Resource.Change
 
@@ -44,6 +53,21 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
 
         validate attribute_equals(:name, "fred")
         validate compare(:score, greater_than_or_equal_to: 0, less_than_or_equal_to: 10)
+      end
+
+      update :with_conditional_validation do
+        accept([:bio, :name, :score])
+
+        validate present(:bio) do
+          where [
+            AtomicOnlyValidation,
+            attribute_equals(:name, "Bill S. Preston, Esq."),
+            changing(:score),
+            compare(:score, greater_than_or_equal_to: 0, less_than_or_equal_to: 10)
+          ]
+
+          message "If your name is Bill S. Preston, Esq. and you're providing a new score between 0 and 10, you most provide a bio!"
+        end
       end
 
       update :with_around_action do
@@ -146,6 +170,38 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       |> Ash.create!()
 
     assert Author.increment_score!(author, authorize?: true).score == 1
+  end
+
+  test "validations are properly negated when used as `where` conditions" do
+    with_conditional_validation_fn = fn attrs ->
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "Ted Theodore Logan", score: 0})
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:with_conditional_validation, attrs, always_atomic?: true)
+      |> Ash.update()
+    end
+
+    trigger_condition_attrs = %{name: "Bill S. Preston, Esq.", score: 5}
+
+    # Validation to check bio is triggered due to `where` conditions.
+    assert {:error, %{errors: [%{message: msg}]}} =
+             with_conditional_validation_fn.(trigger_condition_attrs)
+
+    assert msg =~ ~r/you most provide a bio!\Z/
+
+    # Bio is present and validations passed.
+    bio = "Founding member of the Wyld Stallyns."
+
+    assert {:ok, %{bio: ^bio, name: "Bill S. Preston, Esq.", score: 5}} =
+             trigger_condition_attrs
+             |> Map.put(:bio, bio)
+             |> with_conditional_validation_fn.()
+
+    # Score is too high and conditions aren't met so bio isn't required.
+    assert {:ok, %{bio: nil, name: "Bill S. Preston, Esq.", score: 9_000}} =
+             trigger_condition_attrs
+             |> Map.put(:score, 9_000)
+             |> with_conditional_validation_fn.()
   end
 
   describe "increment/1" do
