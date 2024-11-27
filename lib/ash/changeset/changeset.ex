@@ -1094,48 +1094,56 @@ defmodule Ash.Changeset do
   end
 
   @doc false
+  # Returns either an appropriate expression for an atomic condition or a value
+  # indicated that the condition cannot be handled atomically.
+  #
+  # Validation logic matches on failure. So, for example, `present(:field)` is
+  # going to _match_ when `:field` is `nil`. However, when applying this logic
+  # to a `where` condition, the opposite is desired. The end result is kinda
+  # ugly because it can end up reading like "not is not equal to" but
+  # ultimately produces the correct results.
+  @spec atomic_condition([{module(), keyword()}], Ash.Changeset.t(), map()) ::
+          {:atomic, Ash.Expr.t() | boolean()} | {:not_atomic, String.t()}
   def atomic_condition(where, changeset, context) do
     Enum.reduce_while(where, {:atomic, true}, fn {module, validation_opts},
-                                                 {:atomic, condition} ->
+                                                 {:atomic, condition_expr} ->
       case module.atomic(
              changeset,
              validation_opts,
              struct(Ash.Resource.Validation.Context, context)
            ) do
         :ok ->
-          {:cont, {:atomic, condition}}
-
-        {:error, _} ->
-          {:cont, {:atomic, false}}
-
-        [{:atomic, _, expr, _as_error} | rest] ->
-          exprs = [expr | Enum.map(rest, &elem(&1, 2))]
-
-          new_expr =
-            Enum.reduce(exprs, condition, fn expr, condition ->
-              if condition == true do
-                expr
-              else
-                expr(^condition and ^expr)
-              end
-            end)
-
-          {:cont, {:atomic, new_expr}}
+          {:cont, {:atomic, condition_expr}}
 
         {:atomic, _, expr, _as_error} ->
-          new_expr =
-            if condition == true do
-              expr
-            else
-              expr(^condition and ^expr)
-            end
+          {:cont, {:atomic, atomic_condition_expr(condition_expr, expr)}}
 
-          {:cont, {:atomic, new_expr}}
+        {:error, _} ->
+          # Error from the validator, so the validations should just fail with
+          # a `false` expression.
+          {:halt, {:atomic, false}}
 
-        {:not_atomic, reason} ->
-          {:halt, {:not_atomic, reason}}
+        {:not_atomic, _reason} = not_atomic ->
+          {:halt, not_atomic}
+
+        atomic_conditions when is_list(atomic_conditions) ->
+          atomic_conditions
+          |> Stream.map(fn {:atomic, _, expr, _as_error} -> expr end)
+          |> Enum.reduce(condition_expr, &atomic_condition_expr(&2, &1))
+          |> then(&{:cont, {:atomic, &1}})
       end
     end)
+  end
+
+  # This is not expressly necessary as `expr(true and not ^new_expr)` would also
+  # work just fine, but the final output from omitting `true` is much easier to
+  # read if debugging.
+  defp atomic_condition_expr(true, expr) do
+    expr(not (^expr))
+  end
+
+  defp atomic_condition_expr(condition_expr, expr) do
+    expr(^condition_expr and not (^expr))
   end
 
   defp atomic_params(changeset, action, params, opts) do
