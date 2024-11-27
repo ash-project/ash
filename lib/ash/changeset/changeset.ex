@@ -1128,8 +1128,9 @@ defmodule Ash.Changeset do
 
         atomic_conditions when is_list(atomic_conditions) ->
           atomic_conditions
-          |> Stream.map(fn {:atomic, _, expr, _as_error} -> expr end)
-          |> Enum.reduce(condition_expr, &atomic_condition_expr(&2, &1))
+          |> Enum.reduce(condition_expr, fn {:atomic, _, expr, _as_error}, reduced_expr ->
+            atomic_condition_expr(reduced_expr, expr)
+          end)
           |> then(&{:cont, {:atomic, &1}})
       end
     end)
