@@ -1051,8 +1051,13 @@ defmodule Ash.Expr do
             end
 
           {{{type, constraints}, value}, _index}, acc ->
+            determined_type = determine_type(value)
+
             cond do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) ->
+                {:halt, :error}
+
+              match?({:ok, {determined_type, _}} when determined_type != type, determined_type) ->
                 {:halt, :error}
 
               Ash.Expr.expr?(value) ->
@@ -1063,8 +1068,13 @@ defmodule Ash.Expr do
             end
 
           {{type, value}, _index}, acc ->
+            determined_type = determine_type(value)
+
             cond do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, []) ->
+                {:halt, :error}
+
+              match?({:ok, {determined_type, _}} when determined_type != type, determined_type) ->
                 {:halt, :error}
 
               Ash.Expr.expr?(value) ->
@@ -1088,7 +1098,7 @@ defmodule Ash.Expr do
 
         %{basis: nil, must_adopt_basis: [], types: types} ->
           if returns not in [:same, :any, {:array, :same}, {:array, :any}] do
-            {Enum.reverse(types), returns, 0}
+            {Enum.reverse(types), returns, Enum.count(types)}
           end
 
         %{basis: nil, must_adopt_basis: _} ->
@@ -1118,14 +1128,14 @@ defmodule Ash.Expr do
       end
     end)
     |> Enum.filter(& &1)
-    |> select_matches(length(values))
+    |> select_matches(length(values), values)
   end
 
-  defp select_matches([], value_count) do
+  defp select_matches([], value_count, _values) do
     {Enum.map(1..value_count, fn _ -> nil end), nil}
   end
 
-  defp select_matches(results, value_count) do
+  defp select_matches(results, value_count, values) do
     case Enum.find(results, fn
            {_type, _returns, 0} ->
              true
@@ -1155,17 +1165,41 @@ defmodule Ash.Expr do
                 Enum.at(types, i - 1)
               end)
 
-            if Enum.uniq(possible_types) == possible_types do
-              Enum.at(possible_types, 0)
+            case Enum.find(possible_types, fn {type, constraints} ->
+                   matches_type?(type, Enum.at(values, i - 1), constraints)
+                 end) do
+              type when not is_nil(type) ->
+                type
+
+              nil ->
+                case Enum.uniq(possible_types) do
+                  [single] ->
+                    single
+
+                  _ ->
+                    nil
+                end
             end
           end)
 
         all_returns = Enum.map(results, &elem(&1, 1))
 
-        if Enum.uniq(all_returns) == all_returns do
-          {arg_types, Enum.at(all_returns, 0)}
-        else
-          {arg_types, nil}
+        case Enum.find_value(results, fn {types, returns} ->
+               if types == arg_types do
+                 returns
+               end
+             end) do
+          nil ->
+            case Enum.uniq(all_returns) do
+              [single] ->
+                {arg_types, single}
+
+              _ ->
+                {arg_types, nil}
+            end
+
+          returns ->
+            {arg_types, returns}
         end
     end
   end
