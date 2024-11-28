@@ -1166,7 +1166,7 @@ defmodule Ash.Expr do
               end)
 
             case Enum.find(possible_types, fn {type, constraints} ->
-                   matches_type?(type, Enum.at(values, i - 1), constraints)
+                   matches_type?(Enum.at(values, i - 1), type, constraints)
                  end) do
               type when not is_nil(type) ->
                 type
