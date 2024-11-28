@@ -1166,7 +1166,7 @@ defmodule Ash.Expr do
               end)
 
             case Enum.find(possible_types, fn {type, constraints} ->
-                   matches_type?(Enum.at(values, i - 1), type, constraints)
+                   matches_type?(type, Enum.at(values, i - 1), constraints)
                  end) do
               type when not is_nil(type) ->
                 type
@@ -1266,12 +1266,9 @@ defmodule Ash.Expr do
     end
   end
 
-  defp matches_type?({:array, type}, %MapSet{} = value, constraints) do
-    Enum.all?(value, &matches_type?(&1, type, constraints[:items]))
-  end
-
   defp matches_type?(type, value, constraints) do
-    Ash.Type.matches_type?(type, value, constraints)
+    type = Ash.Type.get_type(type)
+    Ash.Type.ash_type?(type) && Ash.Type.matches_type?(type, value, constraints)
   end
 
   defp expr_with_at_path(path, at_path, expr, struct, escape?) do
