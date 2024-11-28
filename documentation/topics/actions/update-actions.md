@@ -18,6 +18,8 @@ ticket # providing an initial ticket to close
 |> Ash.update!()
 ```
 
+For a full list of all of the available options for configuring update actions, see [the Ash.Resource.Dsl documentation](dsl-ash-resource.html#actions-update).
+
 See the [Code Interface guide](documentation/topics/resources/code-interfaces.md) for creating an interface to call the action more elegantly, like so:
 
 ```elixir

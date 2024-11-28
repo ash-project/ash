@@ -23,6 +23,8 @@ destroy :archive do
 end
 ```
 
+For a full list of all of the available options for configuring destroy actions, see [the Ash.Resource.Dsl documentation](dsl-ash-resource.html#actions-destroy).
+
 ## Returning the destroyed record
 
 You can use the `return_destroyed?` option to return the destroyed record.

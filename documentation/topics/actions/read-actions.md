@@ -19,6 +19,8 @@ read :ticket_queue do
 end
 ```
 
+For a full list of all of the available options for configuring read actions, see [the Ash.Resource.Dsl documentation](dsl-ash-resource.html#actions-read).
+
 ## Ash.get!
 
 The `Ash.get!` function is a convenience function for running a read action, filtering by a unique identifier, and expecting only a single result. It is equivalent to the following code:
