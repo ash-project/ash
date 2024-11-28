@@ -1172,9 +1172,9 @@ defmodule Ash.Expr do
                 type
 
               nil ->
-                case Enum.uniq(possible_types) do
+                case Enum.uniq_by(possible_types, &elem(&1, 0)) do
                   [single] ->
-                    single
+                    Enum.find(possible_types, single, fn {_, constraints} -> constraints != [] end)
 
                   _ ->
                     nil
@@ -1193,6 +1193,14 @@ defmodule Ash.Expr do
             case Enum.uniq(all_returns) do
               [single] ->
                 {arg_types, single}
+
+              _ ->
+                {arg_types, nil}
+            end
+
+            case Enum.uniq_by(all_returns, &elem(&1, 0)) do
+              [single] ->
+                {arg_types, Enum.find(all_returns, single, fn {_, constraints} -> constraints != [] end)}
 
               _ ->
                 {arg_types, nil}
