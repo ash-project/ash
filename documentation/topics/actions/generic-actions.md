@@ -28,6 +28,8 @@ A generic action declares its arguments, return type, and implementation, as ill
 > end
 > ```
 
+For a full list of all of the available options for configuring generic actions, see [the Ash.Resource.Dsl documentation](dsl-ash-resource.html#actions-action).
+
 ## Why use generic actions?
 
 The example above could be written as a normal function in elixir, i.e
