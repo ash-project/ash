@@ -871,17 +871,17 @@ defmodule Ash.Expr do
 
   def do_expr(other, _), do: other
 
-  def determine_types(mod, args, returns \\ nil)
+  def determine_types(mod, args, returns \\ nil, nested? \\ false)
 
-  def determine_types(Ash.Query.Function.Type, [_, type], _returns) do
+  def determine_types(Ash.Query.Function.Type, [_, type], _returns, _nested?) do
     {type, []}
   end
 
-  def determine_types(Ash.Query.Function.Type, [_, type, constraints], _returns) do
+  def determine_types(Ash.Query.Function.Type, [_, type, constraints], _returns, _nested?) do
     {type, constraints}
   end
 
-  def determine_types(mod, values, known_result) do
+  def determine_types(mod, values, known_result, _nested?) do
     Code.ensure_compiled(mod)
 
     name =
@@ -998,6 +998,20 @@ defmodule Ash.Expr do
                 end
 
               :error ->
+                acc =
+                  case acc[:fallback_basis] do
+                    {type, constraints} ->
+                      if !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) do
+                        # Map.put(acc, :fallback_basis, nil)
+                        acc
+                      else
+                        acc
+                      end
+
+                    _ ->
+                      acc
+                  end
+
                 acc = Map.update!(acc, :types, &[nil | &1])
                 {:cont, Map.update!(acc, :must_adopt_basis, &[{index, fn x -> x end} | &1])}
             end
@@ -1055,7 +1069,13 @@ defmodule Ash.Expr do
 
             cond do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) ->
-                {:halt, :error}
+                case Ash.Type.cast_input(type, value, constraints) do
+                  {:ok, _} ->
+                    {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+
+                  _ ->
+                    {:halt, :error}
+                end
 
               match?({:ok, {determined_type, _}} when determined_type != type, determined_type) ->
                 {:halt, :error}
@@ -1072,10 +1092,19 @@ defmodule Ash.Expr do
 
             cond do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, []) ->
-                {:halt, :error}
+                case Ash.Type.cast_input(type, value, []) do
+                  {:ok, _} ->
+                    {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+
+                  _ ->
+                    {:halt, :error}
+                end
 
               match?({:ok, {determined_type, _}} when determined_type != type, determined_type) ->
                 {:halt, :error}
+
+              match?({:ok, _}, determined_type) ->
+                {:cont, Map.update!(acc, :types, &[elem(determined_type, 1) | &1])}
 
               Ash.Expr.expr?(value) ->
                 {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
@@ -1128,7 +1157,13 @@ defmodule Ash.Expr do
       end
     end)
     |> Enum.filter(& &1)
-    |> select_matches(length(values), values)
+    |> case do
+      [{types, returns, _}] ->
+        {types, returns}
+
+      types ->
+        select_matches(types, length(values), values)
+    end
   end
 
   defp select_matches([], value_count, _values) do
@@ -1147,67 +1182,82 @@ defmodule Ash.Expr do
         {type, returns}
 
       _ ->
-        results =
-          Enum.map(results, fn {types, {type, constraints}, _} ->
-            types =
-              Enum.map(types, fn {type, constraints} ->
-                {Ash.Type.get_type(type), constraints}
-              end)
+        results
+        |> Enum.map(fn {types, {type, constraints}, _} ->
+          types =
+            Enum.map(types, fn {type, constraints} ->
+              {Ash.Type.get_type(type), constraints}
+            end)
 
-            {types, {Ash.Type.get_type(type), constraints}}
+          {types, {Ash.Type.get_type(type), constraints}}
+        end)
+        |> Enum.reject(fn {types, _} ->
+          types
+          |> Enum.zip(values)
+          |> Enum.any?(fn {{type, constraints}, value} ->
+            !Ash.Expr.expr?(value) and !(matches_type?(type, value, constraints) || match?({:ok, _}, Ash.Type.cast_input(type, value, constraints)))
           end)
+        end)
+        |> case do
+          [] ->
+            {Enum.map(1..value_count, fn _ -> nil end), nil}
 
-        arg_types =
-          1..value_count
-          |> Enum.map(fn i ->
-            possible_types =
-              Enum.map(results, fn {types, _} ->
-                Enum.at(types, i - 1)
+          results ->
+            arg_types =
+              1..value_count
+              |> Enum.map(fn i ->
+                possible_types =
+                  Enum.map(results, fn {types, _} ->
+                    Enum.at(types, i - 1)
+                  end)
+
+                case Enum.find(possible_types, fn {type, constraints} ->
+                       matches_type?(type, Enum.at(values, i - 1), constraints)
+                     end) do
+                  type when not is_nil(type) ->
+                    type
+
+                  nil ->
+                    case Enum.uniq_by(possible_types, &elem(&1, 0)) do
+                      [single] ->
+                        Enum.find(possible_types, single, fn {_, constraints} ->
+                          constraints != []
+                        end)
+
+                      _ ->
+                        nil
+                    end
+                end
               end)
 
-            case Enum.find(possible_types, fn {type, constraints} ->
-                   matches_type?(type, Enum.at(values, i - 1), constraints)
-                 end) do
-              type when not is_nil(type) ->
-                type
+            all_returns = Enum.map(results, &elem(&1, 1))
 
+            case Enum.find_value(results, fn {types, returns} ->
+                   if types == arg_types do
+                     returns
+                   end
+                 end) do
               nil ->
-                case Enum.uniq_by(possible_types, &elem(&1, 0)) do
+                case Enum.uniq(all_returns) do
                   [single] ->
-                    Enum.find(possible_types, single, fn {_, constraints} -> constraints != [] end)
+                    {arg_types, single}
 
                   _ ->
-                    nil
+                    {arg_types, nil}
                 end
+
+                case Enum.uniq_by(all_returns, &elem(&1, 0)) do
+                  [single] ->
+                    {arg_types,
+                     Enum.find(all_returns, single, fn {_, constraints} -> constraints != [] end)}
+
+                  _ ->
+                    {arg_types, nil}
+                end
+
+              returns ->
+                {arg_types, returns}
             end
-          end)
-
-        all_returns = Enum.map(results, &elem(&1, 1))
-
-        case Enum.find_value(results, fn {types, returns} ->
-               if types == arg_types do
-                 returns
-               end
-             end) do
-          nil ->
-            case Enum.uniq(all_returns) do
-              [single] ->
-                {arg_types, single}
-
-              _ ->
-                {arg_types, nil}
-            end
-
-            case Enum.uniq_by(all_returns, &elem(&1, 0)) do
-              [single] ->
-                {arg_types, Enum.find(all_returns, single, fn {_, constraints} -> constraints != [] end)}
-
-              _ ->
-                {arg_types, nil}
-            end
-
-          returns ->
-            {arg_types, returns}
         end
     end
   end
@@ -1258,13 +1308,13 @@ defmodule Ash.Expr do
         determine_type(expr)
 
       %mod{__predicate__?: _, arguments: arguments} ->
-        case determine_types(mod, arguments) do
+        case determine_types(mod, arguments, nil, true) do
           {_, nil} -> :error
           {_, type} -> {:ok, type}
         end
 
       %mod{__predicate__?: _, left: left, right: right} ->
-        case determine_types(mod, [left, right]) do
+        case determine_types(mod, [left, right], nil, true) do
           {_, nil} -> :error
           {_, type} -> {:ok, type}
         end
