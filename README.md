@@ -104,6 +104,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 - [Encrypt Attributes](documentation/how-to/encrypt-attributes.livemd)
 - [Prevent Concurrent Writes](documentation/how-to/prevent-concurrent-writes.livemd)
 - [Wrap External APIs](documentation/how-to/wrap-external-apis.livemd)
+- [Define Polymorphic Relationships](documentation/how-to/polymorphic-relationships.livemd)
 
 ---
 

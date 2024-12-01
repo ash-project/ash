@@ -83,6 +83,7 @@ defmodule Ash.MixProject do
         "documentation/topics/security/policies.md",
         "documentation/topics/reference/glossary.md",
         "documentation/topics/reference/expressions.md",
+        "documentation/how-to/polymorphic-relationships.livemd",
         "documentation/how-to/test-resources.livemd",
         "documentation/how-to/authorize-access-to-resources.livemd",
         "documentation/how-to/encrypt-attributes.livemd",
@@ -144,6 +145,9 @@ defmodule Ash.MixProject do
           """
           <style>
             .livebook-badge-container + pre {
+              display: none;
+            }
+            .livebook-badge-container + pre + pre {
               display: none;
             }
           </style>
