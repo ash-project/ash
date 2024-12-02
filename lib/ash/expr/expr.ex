@@ -1195,7 +1195,9 @@ defmodule Ash.Expr do
           types
           |> Enum.zip(values)
           |> Enum.any?(fn {{type, constraints}, value} ->
-            !Ash.Expr.expr?(value) and !(matches_type?(type, value, constraints) || match?({:ok, _}, Ash.Type.cast_input(type, value, constraints)))
+            !Ash.Expr.expr?(value) and
+              !(matches_type?(type, value, constraints) ||
+                  match?({:ok, _}, Ash.Type.cast_input(type, value, constraints)))
           end)
         end)
         |> case do
