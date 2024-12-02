@@ -10,7 +10,7 @@ In this guide we'll discuss some best practices for how to structure your projec
 > place. This ensures that all connections between one module and another
 > module are _explicit_ rather than _implicit_.
 
-Example project structure:
+These recommendations all correspond to standard practice in most Elixir/Phoenix applications
 
 ```
 lib/
