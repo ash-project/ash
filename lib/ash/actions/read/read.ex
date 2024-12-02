@@ -2391,6 +2391,7 @@ defmodule Ash.Actions.Read do
     data = %{
       query: query,
       changeset: nil,
+      subject: query,
       domain: domain,
       resource: query.resource,
       action_input: nil
@@ -2407,6 +2408,22 @@ defmodule Ash.Actions.Read do
           query.action,
           query.domain
         )
+
+      state =
+        cond do
+          is_struct(state) ->
+            if Map.has_key?(state, :subject) && !state.subject do
+              Map.put(state, :subject, query)
+            else
+              state
+            end
+
+            is_map(state) && !Map.has_key?(state, :subject)
+            Map.put(state, :subject, query)
+
+          true ->
+            state
+        end
 
       context = Ash.Authorizer.strict_check_context(authorizer, data)
 
