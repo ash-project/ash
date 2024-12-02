@@ -10,28 +10,33 @@ In this guide we'll discuss some best practices for how to structure your projec
 > place. This ensures that all connections between one module and another
 > module are _explicit_ rather than _implicit_.
 
+Example project structure:
+
 ```
-lib/ # top level lib folder for your whole project
-├─ my_app/ # your app's main namespace
-│  ├─ accounts/ # The Accounts context
-│  │  ├─ user/ # resource w/ additional files
-│  │  ├─ user.ex # The resource file
-│  │  ├─ token.ex # A resource without additional files
-│  │  ├─ password_helper.ex # A non-resource file
-│  │  ├─ accounts.ex # The Accounts domain module
-│  ├─ helpdesk/ # A Helpdesk context
-│  │  ├─ notification.ex # A resource without additional files
-│  │  ├─ other_file.ex # A non-resource file
-│  │  ├─ ticket/ # A resource with additional files
-│  │  │  ├─ preparations/ # Components of the resource, grouped by type
-│  │  │  ├─ changes/
-│  │  │  ├─ checks/
-│  │  ├─ ticket.ex # The resource file
+lib/
+├── my_app/                    # Your application's main namespace
+│   ├── accounts.ex            # Accounts domain module
+│   ├── helpdesk.ex            # Helpdesk domain module
+│   │
+│   ├── accounts/               # Accounts context
+│   │   ├── user.ex             # User resource
+│   │   ├── user/               # User resource files
+│   │   ├── token.ex            # Token resource
+│   │   └── password_helper.ex  # Support module
+│   │
+│   └── helpdesk/            # Helpdesk context
+│       ├── ticket.ex        # Ticket resource
+│       ├── notification.ex  # Notification resource
+│       ├── other_file.ex    # Support module
+│       └── ticket/          # Ticket resource files
+│           ├── preparations/
+│           ├── changes/
+│           └── checks/
 ```
 
-Generally speaking, your Ash application lives in the standard place within your elixir application, i.e `lib/my_app`. Within that folder, you create one folder for each context that you have. Each context has an `Ash.Domain` module within it, and the resources that live within that context. All resource interaction ultimately goes through a domain module.
+Place your Ash application in the standard Elixir application directory `lib/my_app`. Your `Ash.Domain` modules should be at the root level of this directory. Each domain should have a directory named after it, containing the domain's `Ash.Resource` modules and any of the domain's supporting modules. All resource interaction ultimately goes through a domain module.
 
-Alongside the domain module, you have your resources, as well as any other files used in the context. If a resource has any additional files that are used to implement it, they should be placed in a folder with the same name as the resource, in subfolders grouping the files by type. Feel free to choose another logical grouping, but we've found by-type to be effective.
+For resources that require additional files, create a dedicated folder in the domain context named after the resource. We suggest organizing these supplementary files into subdirectories by type (like `changes/`, `preparations/`, etc.), though this organization is optional.
 
 # Where do I put X thing
 
