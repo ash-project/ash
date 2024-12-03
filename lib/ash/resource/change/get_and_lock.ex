@@ -33,10 +33,11 @@ defmodule Ash.Resource.Change.GetAndLock do
     if opts[:skip_atomic?] do
       :ok
     else
-      {:not_atomic, """
-      Cannot lock during an atomic update. If no lock is necessary in an atomic situation,
-      add `skip_atomic_?: true`, i.e `change get_and_lock(#{opts[:lock]}, skip_atomic?: true)`
-      """}
+      {:not_atomic,
+       """
+       Cannot lock during an atomic update. If no lock is necessary in an atomic situation,
+       add `skip_atomic_?: true`, i.e `change get_and_lock(#{opts[:lock]}, skip_atomic?: true)`
+       """}
     end
   end
 end

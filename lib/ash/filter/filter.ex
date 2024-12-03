@@ -3889,7 +3889,8 @@ defmodule Ash.Filter do
     end
   end
 
-  defp parse_and_join(statement, op, context) when is_map(statement) and not is_struct(statement) do
+  defp parse_and_join(statement, op, context)
+       when is_map(statement) and not is_struct(statement) do
     statement
     |> Enum.reduce_while({:ok, []}, fn
       {key, value}, {:ok, acc} when is_integer(key) ->
