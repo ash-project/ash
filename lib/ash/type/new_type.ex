@@ -94,8 +94,15 @@ defmodule Ash.Type.NewType do
         raise ArgumentError, "Unknown options given to `use Ash.Type.NewType`: #{inspect(keys)}"
     end
 
+    subtype_of =
+      if opts[:lazy_init?] do
+        Macro.escape(opts[:subtype_of])
+      else
+        Ash.Type.get_type(opts[:subtype_of])
+      end
+
     quote bind_quoted: [
-            subtype_of: Ash.Type.get_type(opts[:subtype_of]),
+            subtype_of: subtype_of,
             subtype_constraints: Macro.escape(opts[:constraints] || []),
             lazy_init?: Keyword.get(opts, :lazy_init?, false),
             mod: __MODULE__
@@ -124,6 +131,7 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       def load(values, load, constraints, context) do
         constraints = get_constraints(constraints)
+
         apply(unquote(subtype_of), :load, [
           values,
           load,
@@ -171,6 +179,7 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       def cast_input(value, constraints) do
         constraints = get_constraints(constraints)
+
         with {:ok, value} <- unquote(subtype_of).cast_input(value, constraints) do
           Ash.Type.apply_constraints(unquote(subtype_of), value, constraints)
         end
@@ -179,6 +188,7 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       def cast_input_array(value, constraints) do
         constraints = get_constraints(constraints)
+
         with {:ok, value} <- unquote(subtype_of).cast_input_array(value, constraints) do
           Ash.Type.apply_constraints({:array, unquote(subtype_of)}, value, items: constraints)
         end
@@ -198,6 +208,7 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       def cast_stored(value, constraints) do
         constraints = get_constraints(constraints)
+
         unquote(subtype_of).cast_stored(
           value,
           constraints
@@ -208,6 +219,7 @@ defmodule Ash.Type.NewType do
         @impl Ash.Type
         def cast_stored_array(value, constraints) do
           constraints = get_constraints(constraints)
+
           unquote(subtype_of).cast_stored_array(
             value,
             constraints
@@ -221,6 +233,7 @@ defmodule Ash.Type.NewType do
         @impl Ash.Type
         def include_source(constraints, source) do
           constraints = get_constraints(constraints)
+
           unquote(subtype_of).include_source(
             constraints,
             source
@@ -232,6 +245,7 @@ defmodule Ash.Type.NewType do
         @impl Ash.Type
         def dump_to_embedded(value, constraints) do
           constraints = get_constraints(constraints)
+
           unquote(subtype_of).dump_to_embedded(
             value,
             constraints
@@ -255,6 +269,7 @@ defmodule Ash.Type.NewType do
         @impl Ash.Type
         def dump_to_embedded_array(value, constraints) do
           constraints = get_constraints(constraints)
+
           unquote(subtype_of).dump_to_embedded_array(
             value,
             constraints
@@ -266,6 +281,7 @@ defmodule Ash.Type.NewType do
         @impl Ash.Type
         def dump_to_native(value, constraints) do
           constraints = get_constraints(constraints)
+
           unquote(subtype_of).dump_to_native(
             value,
             constraints
@@ -277,6 +293,7 @@ defmodule Ash.Type.NewType do
         @impl Ash.Type
         def dump_to_native_array(value, constraints) do
           constraints = get_constraints(constraints)
+
           unquote(subtype_of).dump_to_native_array(
             value,
             constraints
@@ -308,6 +325,7 @@ defmodule Ash.Type.NewType do
         @impl Ash.Type
         def handle_change(old_term, new_term, constraints) do
           constraints = get_constraints(constraints)
+
           unquote(subtype_of).handle_change(
             old_term,
             new_term,
@@ -322,6 +340,7 @@ defmodule Ash.Type.NewType do
         @impl Ash.Type
         def handle_change_array(old_term, new_term, constraints) do
           constraints = get_constraints(constraints)
+
           unquote(subtype_of).handle_change_array(
             old_term,
             new_term,
@@ -336,6 +355,7 @@ defmodule Ash.Type.NewType do
         @impl Ash.Type
         def prepare_change(old_term, new_term, constraints) do
           constraints = get_constraints(constraints)
+
           unquote(subtype_of).prepare_change(
             old_term,
             new_term,
@@ -350,6 +370,7 @@ defmodule Ash.Type.NewType do
         @impl Ash.Type
         def prepare_change_array(old_term, new_term, constraints) do
           constraints = get_constraints(constraints)
+
           unquote(subtype_of).prepare_change_array(
             old_term,
             new_term,
