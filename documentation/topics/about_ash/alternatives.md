@@ -43,4 +43,4 @@ These frameworks have similar overarching goals of helping you build your applic
 
 - [Ecto](https://hexdocs.pm/ecto) - Ecto can be used to validate data at the edge, using things like schema-less changesets.
 - [Drops](https://hexdocs.pm/drops) - a collection of small modules that provide useful extensions and functions that can be used to work with data effectively.
-- [GuardedStruct](https://github.com/mishka-group/mishka_developer_tools/blob/master/guidance/guarded-struct.md) - validation, sanitization, and construction of structs, supporting nested structs.
+- [GuardedStruct](https://github.com/mishka-group/guarded_struct) - validation, sanitization, and construction of structs, supporting nested structs.
