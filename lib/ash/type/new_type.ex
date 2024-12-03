@@ -86,7 +86,7 @@ defmodule Ash.Type.NewType do
   end
 
   defmacro __using__(opts) do
-    case Keyword.keys(opts) -- [:subtype_of, :constraints] do
+    case Keyword.keys(opts) -- [:subtype_of, :constraints, :lazy_init?] do
       [] ->
         []
 
