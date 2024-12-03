@@ -3889,6 +3889,10 @@ defmodule Ash.Filter do
     end
   end
 
+  defp parse_and_join(statement, op, context) when is_map(statement) do
+    parse_and_join([statement], op, context)
+  end
+
   defp parse_predicates(value, field, context)
        when not is_list(value) and not is_map(value) do
     parse_predicates([eq: value], field, context)
