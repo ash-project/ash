@@ -11,6 +11,7 @@ defmodule Mix.Tasks.Ash.GenerateLivebook do
 
   @shortdoc "Generates a Livebook for each Ash domain"
   @doc @shortdoc
+  @impl true
   def run(argv) do
     Mix.Task.run("compile")
 
@@ -27,7 +28,7 @@ defmodule Mix.Tasks.Ash.GenerateLivebook do
     Mix.shell().info("Generated Livebook")
   end
 
-  def domains do
+  defp domains do
     Mix.Project.config()[:app]
     |> Application.get_env(:ash_domains, [])
   end

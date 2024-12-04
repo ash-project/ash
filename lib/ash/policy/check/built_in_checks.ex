@@ -88,6 +88,14 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
+  This check is false when there is an actor specified, and true when the actor is `nil`.
+  """
+  @spec actor_absent() :: Ash.Policy.Check.ref()
+  def actor_absent do
+    Ash.Policy.Check.ActorAbsent
+  end
+
+  @doc """
   This check is true when the field provided is being referenced anywhere in a filter statement.
 
   This applies to related filters as well. For example:

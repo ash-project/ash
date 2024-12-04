@@ -987,6 +987,7 @@ defmodule Ash.Filter do
             }
           })
           |> Ash.Query.select([])
+          |> Map.put(:filter, nil)
           |> Ash.can(actor,
             run_queries?: false,
             pre_flight?: false,
@@ -3886,6 +3887,37 @@ defmodule Ash.Filter do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp parse_and_join(statement, op, context)
+       when is_map(statement) and not is_struct(statement) do
+    statement
+    |> Enum.reduce_while({:ok, []}, fn
+      {key, value}, {:ok, acc} when is_integer(key) ->
+        {:cont, {:ok, [{key, value} | acc]}}
+
+      {key, value}, {:ok, acc} when is_binary(key) ->
+        case Integer.parse(key) do
+          {int, ""} ->
+            {:cont, {:ok, [{int, value} | acc]}}
+
+          _ ->
+            {:halt, :error}
+        end
+
+      _, _ ->
+        {:halt, :error}
+    end)
+    |> case do
+      {:ok, value} ->
+        value
+        |> Enum.sort_by(&elem(&1, 0))
+        |> Enum.map(&elem(&1, 1))
+
+      :error ->
+        [statement]
+    end
+    |> parse_and_join(op, context)
   end
 
   defp parse_predicates(value, field, context)

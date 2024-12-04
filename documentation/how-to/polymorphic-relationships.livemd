@@ -1,0 +1,330 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Define Polymorphic Relationships
+
+```elixir
+Mix.install([{:ash, "~> 3.0"}], consolidate_protocols: false)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+:ok
+```
+
+## Introduction
+
+Something that comes up in more complex domains is the idea of "polymorphic relationships". For this example, we will use the concept of a `BankAccount`, which can be either a `SavingsAccount` or a `CheckingAccount`. All accounts have an `account_number` and `transactions`, but checkings & savings accounts might have their own specific information. For example, a `SavingsAccount` has an `interest_rate`, and a `checkings_account` has many `DebitCard`s.
+
+Ash does not support polymorphic relationships defined _as relationships_, but you can accomplish similar functionality via [calculations](documentation/topics/resources/calculations.md) with the type `Ash.Type.Union`.
+
+For this tutorial, we will have a dedicated resource called `BankAccount`. I suggest taking that approach, as many things down the road will be simplified. With that said, you don't necessarily need to do that when there is no commonalities between the types. Instead of setting up the polymorphism on the `BankAccount` resource, you would define relationships to `SavingsAccount` and `CheckingAccount` directly.
+
+This tutorial is not attempting to illustrate good design of accounting systems. We make many concessions for the sake of the simplicity of our example.
+
+## Defining our Resources
+
+```elixir
+defmodule BankAccount do
+  use Ash.Resource,
+    domain: Finance,
+    data_layer: Ash.DataLayer.Ets
+
+  actions do
+    defaults [:read, :destroy, create: [:account_number, :type]]
+  end
+
+  attributes do
+    uuid_primary_key :id
+
+    attribute :account_number, :integer, allow_nil?: false
+    attribute :type, :atom, constraints: [one_of: [:checking, :savings]]
+  end
+
+  # calculations do
+  #   calculate :implementation, AccountImplementation, GetAccountImplementation do
+  #    allow_nil? false
+  #  end
+  # end
+
+  relationships do
+    has_one :checking_account, CheckingAccount
+    has_one :savings_account, SavingsAccount
+  end
+end
+
+defmodule CheckingAccount do
+  use Ash.Resource,
+    domain: Finance,
+    data_layer: Ash.DataLayer.Ets
+
+  actions do
+    defaults [:read, :destroy, create: [:bank_account_id]]
+  end
+
+  attributes do
+    uuid_primary_key :id
+  end
+
+  identities do
+    identity :unique_bank_account, [:bank_account_id], pre_check?: true
+  end
+
+  relationships do
+    belongs_to :bank_account, BankAccount do
+      allow_nil? false
+    end
+  end
+end
+
+defmodule SavingsAccount do
+  use Ash.Resource,
+    domain: Finance,
+    data_layer: Ash.DataLayer.Ets
+
+  actions do
+    defaults [:read, :destroy, create: [:bank_account_id]]
+  end
+
+
+  attributes do
+    uuid_primary_key :id
+  end
+
+  identities do
+    identity :unique_bank_account, [:bank_account_id], pre_check?: true
+  end
+
+  relationships do
+    belongs_to :bank_account, BankAccount do
+      allow_nil? false
+    end
+  end
+end
+
+defmodule Finance do
+  use Ash.Domain,
+    validate_config_inclusion?: false
+
+  resources do
+    resource BankAccount
+    resource SavingsAccount
+    resource CheckingAccount
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Finance, <<70, 79, 82, 49, 0, 0, 44, ...>>,
+ [
+   Ash.Domain.Dsl.Resources.Resource,
+   Ash.Domain.Dsl.Resources.Options,
+   %{opts: [], entities: [%Ash.Domain.Dsl.ResourceReference{...}, ...]}
+ ]}
+```
+
+We haven't implemented the polymorphic part yet, but lets create a few of the above resources to show how they relate. Below we create a `BankAccount` for checkings, and a `BankAccount` for savings, and connect them to their "specific" types, i.e `CheckingAccount` and `SavingsAccount`.
+
+We load the data, you can see that one `BankAccount` has a `:checking_account` but no `:savings_account`. For the other, the opposite is the case.
+
+```elixir
+bank_account1 = Ash.create!(BankAccount, %{account_number: 1, type: :checking})
+bank_account2 = Ash.create!(BankAccount, %{account_number: 2, type: :savings})
+checking_account = Ash.create!(CheckingAccount, %{bank_account_id: bank_account1.id})
+savings_account = Ash.create!(SavingsAccount, %{bank_account_id: bank_account2.id})
+
+[bank_account1, bank_account2] |> Ash.load!([:checking_account, :savings_account])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #BankAccount<
+    implementation: #Ash.NotLoaded<:calculation, field: :implementation>,
+    savings_account: nil,
+    checking_account: #CheckingAccount<
+      bank_account: #Ash.NotLoaded<:relationship, field: :bank_account>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "60f585f6-f352-410e-8c09-09ae49448851",
+      bank_account_id: "21d27a6c-49b8-4984-a1b7-f2ef030626af",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "21d27a6c-49b8-4984-a1b7-f2ef030626af",
+    account_number: 1,
+    type: :checking,
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #BankAccount<
+    implementation: #Ash.NotLoaded<:calculation, field: :implementation>,
+    savings_account: #SavingsAccount<
+      bank_account: #Ash.NotLoaded<:relationship, field: :bank_account>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "d2bcc1cc-d709-418d-a9ff-0d21fd7d667b",
+      bank_account_id: "4d8dc988-3e09-4efb-a643-d822013abfba",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    checking_account: nil,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "4d8dc988-3e09-4efb-a643-d822013abfba",
+    account_number: 2,
+    type: :savings,
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+## Defining our union type
+
+Below we define an `Ash.Type.NewType`. This allows defining a new type that is the combination of an existing type and custom constraints.
+
+```elixir
+defmodule AccountImplementation do
+  use Ash.Type.NewType, subtype_of: :union, constraints: [
+    checking: [
+      type: :struct,
+      constraints: [instance_of: CheckingAccount]
+    ],
+    savings: [
+      type: :struct,
+      constraints: [instance_of: SavingsAccount]
+    ]
+  ]
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, AccountImplementation, <<70, 79, 82, 49, 0, 0, 44, ...>>, :ok}
+```
+
+## Defining the calculation
+
+Next, we'll define a calculation resolves to the specific type of any given account.
+
+```elixir
+defmodule GetAccountImplementation do
+  use Ash.Resource.Calculation
+
+  def load(_, _, _) do
+    [:checking_account, :savings_account]
+  end
+
+  def calculate(records, _, _) do
+    Enum.map(records, &(&1.checking_account || &1.savings_account))
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, GetAccountImplementation, <<70, 79, 82, 49, 0, 0, 13, ...>>, {:calculate, 3}}
+```
+
+## Adding the calculation to our resource
+
+Finally, we'll add the calculation to our `BankAccount` resource!
+
+For those following along with the LiveBook, go back up and uncomment the commented out calculation.
+
+Now we can load `:implementation` and see that, for one account, it resolves to a `CheckingAccount` and for the other it resolves to a `SavingsAccount`.
+
+```elixir
+bank_account1 = Ash.create!(BankAccount, %{account_number: 1, type: :checking})
+bank_account2 = Ash.create!(BankAccount, %{account_number: 2, type: :savings})
+checking_account = Ash.create!(CheckingAccount, %{bank_account_id: bank_account1.id})
+savings_account = Ash.create!(SavingsAccount, %{bank_account_id: bank_account2.id})
+
+[bank_account1, bank_account2] |> Ash.load!([:implementation])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #BankAccount<
+    implementation: #CheckingAccount<
+      bank_account: #Ash.NotLoaded<:relationship, field: :bank_account>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "1d1a7b6c-dd08-4b8c-9769-2c1155a41a40",
+      bank_account_id: "ce370381-303e-49dc-9950-a05b5052e7f8",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    savings_account: #Ash.NotLoaded<:relationship, field: :savings_account>,
+    checking_account: #Ash.NotLoaded<:relationship, field: :checking_account>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "ce370381-303e-49dc-9950-a05b5052e7f8",
+    account_number: 1,
+    type: :checking,
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #BankAccount<
+    implementation: #SavingsAccount<
+      bank_account: #Ash.NotLoaded<:relationship, field: :bank_account>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "e537116d-c5b8-414a-a350-fa9b2afe0a4e",
+      bank_account_id: "c4739158-2a1f-4de8-bccb-ee1d1ee9e602",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    savings_account: #Ash.NotLoaded<:relationship, field: :savings_account>,
+    checking_account: #Ash.NotLoaded<:relationship, field: :checking_account>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "c4739158-2a1f-4de8-bccb-ee1d1ee9e602",
+    account_number: 2,
+    type: :savings,
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+## Taking it further
+
+One of the best things about using `Ash.Type.Union` is how it is *integrated*. Every extension (provided by the Ash team) supports working with unions. For example:
+
+* [Working with Unions in AshPhoenix.Form](https://hexdocs.pm/ash_phoenix/union-forms.html)
+* [AshGraphql & AshJsonApi Unions](https://hexdocs.pm/ash_graphql/use-unions-with-graphql.html)
+
+You can also synthesize filterable fields with calculations. For example, if you wanted to allow filtering `BankAccount` by `:interest_rate`, and that field only existed on `SavingsAccount`, you might have a calculation like this on `BankAccount`:
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+calculate :interest_rate, :decimal, expr(
+  if type == :savings_account do
+    savings_account.interest_rate
+  else
+    0
+  end
+)
+```
+
+This would allow usage like the following:
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+BankAccount
+|> Ash.Query.filter(interest_rate > 0.01)
+|> Ash.read!()
+```

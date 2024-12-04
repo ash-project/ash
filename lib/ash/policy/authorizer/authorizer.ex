@@ -524,7 +524,7 @@ defmodule Ash.Policy.Authorizer do
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
       actor: Map.get(state, :actor),
-      must_pass_strict_check?: true
+      must_pass_strict_check?: false
     )
   end
 
@@ -1249,7 +1249,7 @@ defmodule Ash.Policy.Authorizer do
         Enum.all?(scenario, fn {{check_module, opts}, _} ->
           opts[:access_type] == :filter ||
             match?(
-              {:ok, _},
+              {:ok, v} when is_boolean(v),
               Ash.Policy.Policy.fetch_fact(authorizer.facts, {check_module, opts})
             )
         end)
@@ -1402,7 +1402,7 @@ defmodule Ash.Policy.Authorizer do
     global_check_value =
       Enum.find_value(scenarios, fn scenario ->
         Enum.find(scenario, fn {{check_module, _opts} = check, value} ->
-          check_module.type == :filter &&
+          check_module.type() == :filter &&
             Enum.all?(scenarios, &(Map.fetch(&1, check) == {:ok, value}))
         end)
       end)
@@ -1444,23 +1444,32 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp check_result(authorizer) do
-    Enum.reduce_while(authorizer.data, {:ok, authorizer}, fn record, {:ok, authorizer} ->
-      authorizer.scenarios
-      |> Enum.reject(&scenario_impossible?(&1, authorizer, record))
-      |> case do
-        [] ->
-          {:halt, {:error, :forbidden, authorizer}}
+    {data, authorizer, any_forbidden?} =
+      authorizer.data
+      |> Enum.reduce({[], false, authorizer}, fn record, {data, any_forbidden?, authorizer} ->
+        authorizer.scenarios
+        |> Enum.reject(&scenario_impossible?(&1, authorizer, record))
+        |> case do
+          [] ->
+            {[record | data], authorizer, any_forbidden?}
 
-        scenarios ->
-          do_check_result(scenarios, authorizer, record)
-      end
-    end)
-    |> case do
-      {:ok, authorizer} ->
-        log_successful_policy_breakdown(authorizer)
+          scenarios ->
+            case do_check_result(scenarios, authorizer, record) do
+              {:ok, authorizer} ->
+                {[record | data], authorizer, any_forbidden?}
 
-      other ->
-        other
+              {:forbidden, authorizer} ->
+                {data, authorizer, true}
+            end
+        end
+      end)
+
+    log_successful_policy_breakdown(authorizer)
+
+    if any_forbidden? do
+      {:data, Enum.reverse(data)}
+    else
+      :authorized
     end
   end
 
@@ -1500,15 +1509,21 @@ defmodule Ash.Policy.Authorizer do
 
   defp do_check_result(cleaned_scenarios, authorizer, record) do
     if Enum.any?(cleaned_scenarios, &scenario_applies?(&1, authorizer, record)) do
-      {:cont, {:ok, authorizer}}
+      {:ok, authorizer}
     else
-      check_facts_until_known(cleaned_scenarios, authorizer, record)
+      case Enum.reject(cleaned_scenarios, &scenario_impossible?(&1, authorizer, record)) do
+        [] ->
+          {:forbidden, authorizer}
+
+        scenarios ->
+          check_facts_until_known(scenarios, authorizer, record)
+      end
     end
   end
 
   defp scenario_applies?(scenario, authorizer, record) do
     Enum.all?(scenario, fn {clause, requirement} ->
-      case Map.fetch(authorizer.facts, clause) do
+      case Policy.fetch_fact(authorizer.facts, clause) do
         {:ok, ^requirement} ->
           true
 
@@ -1533,7 +1548,7 @@ defmodule Ash.Policy.Authorizer do
   defp scenario_impossible?(scenario, authorizer, record) do
     Enum.any?(scenario, fn {clause, requirement} ->
       case Map.fetch(authorizer.facts, clause) do
-        {:ok, value} when value != requirement ->
+        {:ok, value} when is_boolean(value) and value != requirement ->
           true
 
         _ ->
@@ -1555,20 +1570,22 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp check_facts_until_known(scenarios, authorizer, record) do
-    new_authorizer =
-      scenarios
-      |> find_fact_to_check(authorizer)
-      |> check_fact(authorizer)
-
     scenarios
-    |> Enum.reject(&scenario_impossible?(&1, new_authorizer, record))
+    |> find_fact_to_check(authorizer)
     |> case do
-      [] ->
-        {:halt, {:forbidden, authorizer}}
+      nil ->
+        if Enum.any?(scenarios, &scenario_applies?(&1, authorizer, record)) do
+          {:ok, authorizer}
+        else
+          {:forbidden, authorizer}
+        end
 
-      scenarios ->
+      {fact, _value} ->
+        new_authorizer =
+          check_fact(fact, authorizer)
+
         if Enum.any?(scenarios, &scenario_applies?(&1, new_authorizer, record)) do
-          {:cont, {:ok, new_authorizer}}
+          {:ok, new_authorizer}
         else
           check_facts_until_known(scenarios, new_authorizer, record)
         end
@@ -1609,12 +1626,8 @@ defmodule Ash.Policy.Authorizer do
     scenarios
     |> Enum.concat()
     |> Enum.find(fn {key, _value} ->
-      not Map.has_key?(authorizer.facts, key) and not Map.has_key?(authorizer.data_facts, key)
+      authorizer.facts[key] in [:unknown, nil] and not Map.has_key?(authorizer.data_facts, key)
     end)
-    |> case do
-      nil -> raise "Assumption failed"
-      {key, _value} -> key
-    end
   end
 
   defp strict_check_result(authorizer, opts \\ []) do

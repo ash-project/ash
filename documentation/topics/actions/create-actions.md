@@ -18,6 +18,8 @@ Ticket
 |> Ash.create!()
 ```
 
+For a full list of all of the available options for configuring create actions, see [the Ash.Resource.Dsl documentation](dsl-ash-resource.html#actions-create).
+
 See the [Code Interface guide](documentation/topics/resources/code-interfaces.md) for creating an interface to call the action more elegantly, like so:
 
 ```elixir

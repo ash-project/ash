@@ -143,6 +143,11 @@ defmodule Ash.Query.Aggregate do
       doc: "Whether or not references to this aggregate will be considered sensitive",
       default: false
     ],
+    tenant: [
+      type: :any,
+      doc: "The tenant to use for the aggregate, if applicable.",
+      default: nil
+    ],
     authorize?: [
       type: :boolean,
       default: true,
@@ -341,6 +346,13 @@ defmodule Ash.Query.Aggregate do
                {:ok, type, constraints} <-
                  get_type(kind, type, attribute_type, attribute_constraints, constraints),
                %{valid?: true} = query <- build_query(related, resource, query) do
+            query =
+              if opts.tenant do
+                Ash.Query.set_tenant(query, opts.tenant)
+              else
+                query
+              end
+
             {:ok,
              %__MODULE__{
                name: name,
