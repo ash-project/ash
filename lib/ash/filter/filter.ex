@@ -3647,13 +3647,7 @@ defmodule Ash.Filter do
 
   def do_hydrate_refs(%Ash.Query.Parent{expr: expr} = this, context) do
     if !Map.has_key?(context, :parent_stack) || context.parent_stack in [[], nil] do
-      case do_hydrate_refs(expr, context) do
-        {:ok, expr} ->
-          {:ok, %{this | expr: expr}}
-
-        other ->
-          other
-      end
+      {:ok, this}
     else
       context =
         %{
