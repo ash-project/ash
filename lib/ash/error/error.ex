@@ -47,8 +47,9 @@ defmodule Ash.Error do
   @doc """
   Converts a value to an Ash.Error type.
   """
-  # @spec to_error_class(ash_error_fields() | term() | [ash_error_fields()] | [term()], Keyword.t()) :: ash_errors() | [ash_errors()]
-  # having a hard time to figure out the return type
+
+  @spec to_error_class(ash_error_fields() | term() | [ash_error_fields()] | [term()], Keyword.t()) ::
+          t()
   def to_error_class(value, opts \\ [])
 
   def to_error_class(%Ash.Changeset{errors: errors} = changeset, opts) do

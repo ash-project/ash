@@ -2418,7 +2418,7 @@ defmodule Ash.Actions.Read do
               state
             end
 
-            is_map(state) && !Map.has_key?(state, :subject)
+          is_map(state) && !Map.has_key?(state, :subject) ->
             Map.put(state, :subject, query)
 
           true ->
