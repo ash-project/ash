@@ -20,6 +20,12 @@ defmodule Ash.Test.Sort.SortTest do
       attribute :private_name, :string
     end
 
+    calculations do
+      calculate :name_and_private_name, :string, expr(name <> " " <> private_name) do
+        public? true
+      end
+    end
+
     actions do
       defaults [:read, :create, :update]
     end
@@ -81,7 +87,7 @@ defmodule Ash.Test.Sort.SortTest do
 
     test "a string sort can parse relationships" do
       {:ok, [{%Ash.Query.Calculation{}, :asc}] = sort} =
-        Ash.Sort.parse_input(Post, "+author.name")
+        Ash.Sort.parse_input(Post, "+author.name_and_private_name")
 
       Post
       |> Ash.Query.sort(sort)
