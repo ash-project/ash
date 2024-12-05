@@ -313,6 +313,13 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
       "sensitive" ->
         "sensitive? true"
+
+      unknown ->
+        raise ArgumentError,
+              """
+              Unrecognizeable attribute modifier: `#{unknown}`.
+              \tKnown modifiers are: primary_key, public, required, sensitive.
+              """
     end)
   end
 
