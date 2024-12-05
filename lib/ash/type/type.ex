@@ -707,6 +707,34 @@ defmodule Ash.Type do
     value
   end
 
+  @spec get_type!(atom | module | {:array, atom | module}) ::
+          atom | module | {:array, atom | module}
+  @doc """
+  Gets the type module for a given short name or module,
+  ensures that it is a valid `type`
+
+  ## Raises
+  - `RuntimeError`: If the provided type module is not found or invalid.
+  """
+  def get_type!(value) do
+    type = get_type(value)
+
+    ash_type? = Ash.Type.ash_type?(type)
+
+    unless ash_type? do
+      raise """
+      #{inspect(value)} is not a valid type.
+
+      Valid types include any custom types, or the following short codes (alongside the types they map to):
+
+      #{Enum.map_join(@short_names, "\n", fn {name, type} -> "  #{inspect(name)} -> #{inspect(type)}" end)}
+
+      """
+    end
+
+    type
+  end
+
   @doc "Returns true if the type is a composite type"
   @spec composite?(
           t(),
@@ -1991,20 +2019,7 @@ defmodule Ash.Type do
 
   @doc false
   def set_type_transformation(%{type: original_type, constraints: constraints} = thing) do
-    type = get_type(original_type)
-
-    ash_type? = Ash.Type.ash_type?(type)
-
-    unless ash_type? do
-      raise """
-      #{inspect(original_type)} is not a valid type.
-
-      Valid types include any custom types, or the following short codes (alongside the types they map to):
-
-      #{Enum.map_join(@short_names, "\n", fn {name, type} -> "  #{inspect(name)} -> #{inspect(type)}" end)}
-
-      """
-    end
+    type = get_type!(original_type)
 
     with {:ok, constraints} <- validate_constraints(type, constraints),
          {:ok, constraints} <- Ash.Type.init(type, constraints),

@@ -23,9 +23,9 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
   * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `public`, `sensitive`, and `required`. i.e `-a name:string:required`
   * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public`. `belongs_to` only modifiers: `primary_key`, `sensitive`, and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`
-  * `--default-actions` - A csv list of default action types to add, i.e `-da read,create`. The `create` and `update` actions accept the public attributes being added.
+  * `--default-actions` - A csv list of default action types to add. The `create` and `update` actions accept the public attributes being added.
   * `--uuid-primary-key` or `-u` - Adds a UUIDv4 primary key with that name. i.e `-u id`
-  * `--uuid-v7-primary-key` - Adds a UUIDv7 primary key with that name. i.e `-u7 id`
+  * `--uuid-v7-primary-key` - Adds a UUIDv7 primary key with that name.
   * `--integer-primary-key` or `-i` - Adds an integer primary key with that name. i.e `-i id`
   * `--domain` or `-d` - The domain module to add the resource to. i.e `-d MyApp.MyDomain`. This defaults to the resource's module name, minus the last segment.
   * `--extend` or `-e` - A comma separated list of modules or builtins to extend the resource with. i.e `-e postgres,Some.Extension`
@@ -301,7 +301,9 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   end
 
   defp attribute_modifier_string(modifiers) do
-    Enum.map_join(modifiers, "\n", fn
+    modifiers
+    |> Enum.uniq()
+    |> Enum.map_join("\n", fn
       "primary_key" ->
         "primary_key? true"
 
@@ -313,6 +315,14 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
       "sensitive" ->
         "sensitive? true"
+
+      unknown ->
+        raise ArgumentError,
+              """
+              Unrecognizeable attribute modifier: `#{unknown}`.
+
+              Known modifiers are: primary_key, public, required, sensitive.
+              """
     end)
   end
 
@@ -371,10 +381,19 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   end
 
   defp resolve_type(value) do
-    if String.contains?(value, ".") do
-      Module.concat([value])
-    else
-      String.to_atom(value)
-    end
+    resolved_type =
+      if String.contains?(value, ".") do
+        Module.concat([value])
+      else
+        String.to_atom(value)
+      end
+
+    ensure_ash_type!(resolved_type)
+
+    resolved_type
+  end
+
+  defp ensure_ash_type!(original_type) do
+    _ = Ash.Type.get_type!(original_type)
   end
 end
