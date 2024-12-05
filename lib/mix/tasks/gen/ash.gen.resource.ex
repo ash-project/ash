@@ -301,7 +301,9 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   end
 
   defp attribute_modifier_string(modifiers) do
-    Enum.map_join(modifiers, "\n", fn
+    modifiers
+    |> Enum.uniq()
+    |> Enum.map_join("\n", fn
       "primary_key" ->
         "primary_key? true"
 
