@@ -2399,15 +2399,6 @@ defmodule Ash.Filter do
 
   defp expand_get_path_refs(ref, path, expand_calculations?) do
     if is_list(path) && Enum.all?(path, &(is_atom(&1) || is_binary(&1))) do
-      path =
-        Enum.map(path, fn item ->
-          if is_binary(item) do
-            String.to_existing_atom(item)
-          else
-            item
-          end
-        end)
-
       attribute = List.last(path)
       path = :lists.droplast(path)
 

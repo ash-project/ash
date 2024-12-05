@@ -239,7 +239,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-action-wait_for-names){: #reactor-action-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-action-wait_for-description){: #reactor-action-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -377,6 +381,7 @@ argument :three, value(3)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`description`](#reactor-ash_step-argument-description){: #reactor-ash_step-argument-description } | `String.t` |  | An optional description for the argument. |
 | [`transform`](#reactor-ash_step-argument-transform){: #reactor-ash_step-argument-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the argument before it is passed to the step. |
 
 
@@ -412,7 +417,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-ash_step-wait_for-names){: #reactor-ash_step-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-ash_step-wait_for-description){: #reactor-ash_step-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -670,7 +679,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-bulk_create-wait_for-names){: #reactor-bulk_create-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-bulk_create-wait_for-description){: #reactor-bulk_create-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -949,7 +962,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-bulk_update-wait_for-names){: #reactor-bulk_update-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-bulk_update-wait_for-description){: #reactor-bulk_update-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -1061,6 +1078,7 @@ argument :three, value(3)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`description`](#reactor-change-argument-description){: #reactor-change-argument-description } | `String.t` |  | An optional description for the argument. |
 | [`transform`](#reactor-change-argument-transform){: #reactor-change-argument-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the argument before it is passed to the step. |
 
 
@@ -1096,7 +1114,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-change-wait_for-names){: #reactor-change-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-change-wait_for-description){: #reactor-change-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -1374,7 +1396,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-create-wait_for-names){: #reactor-create-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-create-wait_for-description){: #reactor-create-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -1648,7 +1674,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-destroy-wait_for-names){: #reactor-destroy-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-destroy-wait_for-description){: #reactor-destroy-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -1823,7 +1853,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-load-wait_for-names){: #reactor-load-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-load-wait_for-description){: #reactor-load-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -2082,7 +2116,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-read_one-wait_for-names){: #reactor-read_one-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-read_one-wait_for-description){: #reactor-read_one-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -2345,7 +2383,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-read-wait_for-names){: #reactor-read-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-read-wait_for-description){: #reactor-read-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -2417,7 +2459,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-transaction-wait_for-names){: #reactor-transaction-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-transaction-wait_for-description){: #reactor-transaction-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
@@ -2693,7 +2739,11 @@ wait_for :create_user
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`names`](#reactor-update-wait_for-names){: #reactor-update-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-update-wait_for-description){: #reactor-update-wait_for-description } | `String.t` |  | An optional description. |
 
 
 
