@@ -320,7 +320,8 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         raise ArgumentError,
               """
               Unrecognizeable attribute modifier: `#{unknown}`.
-              \tKnown modifiers are: primary_key, public, required, sensitive.
+
+              Known modifiers are: primary_key, public, required, sensitive.
               """
     end)
   end
@@ -380,10 +381,19 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   end
 
   defp resolve_type(value) do
-    if String.contains?(value, ".") do
-      Module.concat([value])
-    else
-      String.to_atom(value)
-    end
+    resolved_type =
+      if String.contains?(value, ".") do
+        Module.concat([value])
+      else
+        String.to_atom(value)
+      end
+
+    ensure_ash_type!(resolved_type)
+
+    resolved_type
+  end
+
+  defp ensure_ash_type!(original_type) do
+    _ = Ash.Type.get_type!(original_type)
   end
 end
