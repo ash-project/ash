@@ -1008,6 +1008,7 @@ defmodule Ash.Actions.ManagedRelationships do
           end
 
         {join_input, input} = split_join_keys(input, join_keys)
+        |> IO.inspect()
 
         join_relationship =
           Ash.Resource.Info.relationship(

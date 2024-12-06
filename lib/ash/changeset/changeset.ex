@@ -4868,13 +4868,14 @@ defmodule Ash.Changeset do
 
         relationship.destination
         |> Ash.Query.for_read(action, %{},
+          domain: domain,
           actor: changeset.context[:private][:actor],
           authorize?: changeset.context[:private][:authorize?],
           tenant: changeset.tenant
         )
         |> Ash.Query.limit(Enum.count(input))
         |> Ash.Query.do_filter(search)
-        |> domain.read()
+        |> Ash.read()
       end
 
     case results do
