@@ -116,12 +116,10 @@ defmodule Ash.Filter do
 
   ## Security Concerns
 
-  If you are using a map with string keys, it is likely that you are parsing
-  input. It is important to note that, instead of passing a filter supplied from
-  an external source directly to `Ash.Query.filter/2`, you should call
-  `Ash.Filter.parse_input/2`.  This ensures that the filter only uses public
-  attributes, relationships, aggregates and calculations, honors field policies
-  and any policies on related resources.
+  Do not pass user input directly to `Ash.Query.filter/2`, it will not be sanitised. Instead use
+  `Ash.Filter.parse_input/2` or `Ash.Query.filter_input/2`.
+
+  Refer to those functions for more information on how to safely work with user input.
 
   ## Writing a filter
 
