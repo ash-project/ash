@@ -16,7 +16,7 @@ defmodule Ash.CustomExpressionTest do
     end
 
     actions do
-      defaults create: [:name]
+      defaults [:read, create: [:name]]
 
       read :matches_query_with_calc do
         argument :query, :string, allow_nil?: false

@@ -9,6 +9,24 @@ defmodule Ash.Test.Filter.FilterTest do
 
   require Ash.Query
 
+  defmodule Image do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    attributes do
+      uuid_primary_key :id
+      attribute :meta, :map, allow_nil?: false, default: %{}, public?: true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:create, :read, :update]
+    end
+
+    calculations do
+      calculate :viewed?, :boolean, expr(not meta["not-viewed"])
+    end
+  end
+
   defmodule EmbeddedBio do
     @moduledoc false
     use Ash.Resource, data_layer: :embedded
@@ -51,6 +69,10 @@ defmodule Ash.Test.Filter.FilterTest do
       attribute :bio, :string, public?: true
       attribute :embedded_bio, EmbeddedBio, public?: true
       attribute :private, :string
+    end
+
+    calculations do
+      calculate :isnt_fred, :string, expr(not embedded_bio["title"] == "fred")
     end
 
     relationships do
@@ -886,6 +908,12 @@ defmodule Ash.Test.Filter.FilterTest do
                Profile
                |> Ash.Query.filter(get_path(embedded_bio, :title) == "fred")
                |> Ash.read!()
+    end
+
+    test "it can be used with strings" do
+      Ash.create!(Image, %{meta: %{"not-viewed" => true}})
+      |> Ash.Changeset.for_update(:update)
+      |> Ash.update!(load: :viewed?)
     end
 
     test "it can be used with arguments" do

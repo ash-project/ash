@@ -38,26 +38,7 @@ defmodule Ash.Resource.Actions.Action do
   end
 
   def transform(%{returns: original_type, constraints: constraints} = thing) do
-    type = Ash.Type.get_type(original_type)
-
-    ash_type? =
-      try do
-        Ash.Type.ash_type?(type)
-      rescue
-        _ ->
-          false
-      end
-
-    unless ash_type? do
-      raise """
-      #{inspect(original_type)} is not a valid type.
-
-      Valid types include any custom types, or the following short codes (alongside the types they map to):
-
-      #{Enum.map_join(Ash.Type.short_names(), "\n", fn {name, type} -> "  #{inspect(name)} -> #{inspect(type)}" end)}
-
-      """
-    end
+    type = Ash.Type.get_type!(original_type)
 
     case Ash.Type.validate_constraints(type, constraints) do
       {:ok, constraints} ->

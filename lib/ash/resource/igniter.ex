@@ -99,7 +99,7 @@ defmodule Ash.Resource.Igniter do
           |> Sourceror.to_string()
           |> Sourceror.parse_string!()
 
-        {:ok, Igniter.Code.Common.add_code(zipper, bypass, :before)}
+        {:ok, Igniter.Code.Common.add_code(zipper, bypass, placement: :before)}
       else
         _ ->
           bypass =
@@ -137,7 +137,7 @@ defmodule Ash.Resource.Igniter do
           |> Sourceror.to_string()
           |> Sourceror.parse_string!()
 
-        {:ok, Igniter.Code.Common.add_code(zipper, policy, :after)}
+        {:ok, Igniter.Code.Common.add_code(zipper, policy, placement: :after)}
       else
         _ ->
           policy =
