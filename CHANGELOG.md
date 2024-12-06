@@ -2,33 +2,77 @@
 
 <!-- changelog -->
 
-## [v3.4.43](https://github.com/ash-project/ash/compare/v3.4.42...v3.4.43) (2024-11-20)
-
-
-
+## [v3.4.44](https://github.com/ash-project/ash/compare/v3.4.43...v3.4.44) (2024-12-06)
 
 ### Bug Fixes:
 
-* use private context of query to populate context (#1586)
+- [`Ash.Changeset`] use `Ash.read` when eager validating relationships
 
-* store notifications from simple results (#1591)
+- [`Ash.Expr`] allow strings in `get_path/2`
 
-## [v3.4.42](https://github.com/ash-project/ash/compare/v3.4.41...v3.4.42) (2024-11-07)
+- [`Ash.Sort`] don't expand calculations until after authorization is complete
 
+- [`Ash.Resource.Change.GetAndLock`] don't automatically skip `get_and_lock` changes
 
+- [`Ash.Filter`] handle indexed maps in filter map syntax
 
+- [`Ash.Filter`] handle case where `%{or` is composing a single map
 
-### Bug Fixes:
+- [`Ash.Policy.Authorizer`] ensure that `subject` is properly set when running field policies
 
-* Allow multi-line descriptions to be rendered in Livebook without error (#1590)
+- [`Ash.Type`] fix logic errors in matches_type?/list logic
 
-* properly handle `changing_attributes` check with `from` in create (#1584)
+- [pagination] add tenant to Aggregate opts when building count query (#1630)
 
-* pass actor through from source_context when loading
+- [notifications] some notifications not being sent for bulk create actions
+
+- [validations] negate atomic validation expressions when used as `where` conditions (#1624)
+
+- [`Ash.Policy.Authorizer`] don't double apply action-filters when attaching policy filters (optimization)
+
+- [`Ash.read`] Fix not working skip_unknown_inputs opt of read action (#1596)
+
+- [`Ash.read`] Fix warning when actions.read.argument constraint is violated (#1607)
+
+- [aggregates] use last relationship's read action properly in aggregate queries
+
+- [`Ash.Changeset`] finish conversion from `append?` to `prepend?` option (#1601)
 
 ### Improvements:
 
-* support map w/ keys `_union_type` and `_union_value` for union inputs
+- [`Ash.Type.NewType`] add `lazy_init?` option. Allows for recursive embedded types.
+
+- [`mix ash.gen.resource`] More Descriptive Error Messages for ash.gen.resource (#1645)
+
+- [`Ash.Expr`] better type signatures for division
+
+- [`Ash.Expr`] converge on known types better
+
+- [`Ash.Changeset`] add `Ash.Changeset.force_delete_argument/2`
+
+- [`Ash.Policy.Check.Builtins`] add `actor_absent` builtin check
+
+- [`Ash.Changeset`] Warn when `manage_relationship` is called without opts (#1408)
+
+- [`Ash.Resource.Validation.Builtins`] use Comp with attribute_equals and attribute_does_not_equal (#1623)
+
+## [v3.4.43](https://github.com/ash-project/ash/compare/v3.4.42...v3.4.43) (2024-11-20)
+
+### Bug Fixes:
+
+- [generic actions] store notifications from simple results (#1591)
+
+## [v3.4.42](https://github.com/ash-project/ash/compare/v3.4.41...v3.4.42) (2024-11-07)
+
+### Bug Fixes:
+
+- [`mix ash.generate_livebook`] Allow multi-line descriptions to be rendered in Livebook without error (#1590)
+
+- [`Ash.Policy.Check.ChangingAttributes`] properly handle `changing_attributes` check with `from` in create (#1584)
+
+### Improvements:
+
+- [`Ash.Type.Union`] support map w/ keys `_union_type` and `_union_value` for union inputs
 
 ## [v3.4.41](https://github.com/ash-project/ash/compare/v3.4.40...v3.4.41) (2024-11-05)
 
