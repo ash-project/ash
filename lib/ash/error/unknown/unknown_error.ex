@@ -4,6 +4,12 @@ defmodule Ash.Error.Unknown.UnknownError do
 
   use Splode.Error, fields: [:error, :field, :value], class: :unknown
 
+  @type t :: %__MODULE__{
+          error: binary() | nil,
+          field: term() | nil,
+          value: term() | nil
+        }
+
   def message(%{error: error}) do
     if is_binary(error) do
       to_string(error)

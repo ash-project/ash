@@ -11,6 +11,18 @@ defmodule Ash.Error do
     ],
     unknown_error: Ash.Error.Unknown.UnknownError
 
+  @type ash_errors :: Exception.t()
+
+  @type ash_error_subject :: Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t()
+  @doc """
+  Converts a value with optional stacktrace and opts to
+  an error within Ash.
+  """
+  @spec to_ash_error(
+          ash_error_subject() | term() | [ash_error_subject() | term()],
+          list() | nil,
+          Keyword.t()
+        ) :: ash_errors() | [ash_errors()]
   def to_ash_error(value, stacktrace \\ nil, opts \\ []) do
     value =
       value
@@ -27,6 +39,15 @@ defmodule Ash.Error do
     to_error(value, Keyword.put(opts, :stacktrace, stacktrace))
   end
 
+  @doc """
+  Converts a value to an Ash.Error type.
+  """
+
+  @spec to_error_class(
+          ash_error_subject() | term() | [ash_error_subject()] | [term()],
+          Keyword.t()
+        ) ::
+          t()
   def to_error_class(value, opts \\ [])
 
   def to_error_class(%Ash.Changeset{errors: errors} = changeset, opts) do
@@ -86,6 +107,10 @@ defmodule Ash.Error do
     end
   end
 
+  @doc """
+  Converts errors into a single `String.t`.
+  """
+  @spec error_descriptions(term() | [term()]) :: String.t()
   def error_descriptions(errors) do
     errors
     |> to_error_class()
@@ -106,8 +131,17 @@ defmodule Ash.Error do
   defp header(:framework), do: "Framework Error"
   defp header(:unknown), do: "Unknown Error"
 
+  @doc """
+  Returns whether or not a term is an Ash.Error type.
+  """
+  @spec ash_error?(term()) :: boolean()
   def ash_error?(value), do: splode_error?(value, __MODULE__)
 
+  @doc """
+  This function prepends the provided path to any existing path on the errors.
+  """
+  @spec set_path(ash_error_subject() | term(), term() | [term()]) ::
+          ash_error_subject() | ash_errors()
   def set_path(%struct{errors: errors} = container, path)
       when struct in [Ash.Changeset, Ash.ActionInput, Ash.Query] do
     %{container | errors: set_path(errors, path)}
