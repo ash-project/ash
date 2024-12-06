@@ -11,20 +11,15 @@ defmodule Ash.Error do
     ],
     unknown_error: Ash.Error.Unknown.UnknownError
 
-  @type ash_errors ::
-          Ash.Error.Forbidden.t()
-          | Ash.Error.Invalid.t()
-          | Ash.Error.Framework.t()
-          | Ash.Error.Unknown.t()
-          | Ash.Error.Unknown.UnknownError.t()
+  @type ash_errors :: Exception.t()
 
-  @type ash_error_fields :: Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t()
+  @type ash_error_subject :: Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t()
   @doc """
   Converts a value with optional stacktrace and opts to
   an error within Ash.
   """
   @spec to_ash_error(
-          ash_error_fields() | term() | [ash_error_fields() | term()],
+          ash_error_subject() | term() | [ash_error_subject() | term()],
           list() | nil,
           Keyword.t()
         ) :: ash_errors() | [ash_errors()]
@@ -48,7 +43,10 @@ defmodule Ash.Error do
   Converts a value to an Ash.Error type.
   """
 
-  @spec to_error_class(ash_error_fields() | term() | [ash_error_fields()] | [term()], Keyword.t()) ::
+  @spec to_error_class(
+          ash_error_subject() | term() | [ash_error_subject()] | [term()],
+          Keyword.t()
+        ) ::
           t()
   def to_error_class(value, opts \\ [])
 
@@ -140,10 +138,10 @@ defmodule Ash.Error do
   def ash_error?(value), do: splode_error?(value, __MODULE__)
 
   @doc """
-  Sets the main path of the errors on the containing struct.
+  This function prepends the provided path to any existing path on the errors.
   """
-  @spec set_path(ash_error_fields() | term(), term() | [term()]) ::
-          ash_error_fields() | ash_errors()
+  @spec set_path(ash_error_subject() | term(), term() | [term()]) ::
+          ash_error_subject() | ash_errors()
   def set_path(%struct{errors: errors} = container, path)
       when struct in [Ash.Changeset, Ash.ActionInput, Ash.Query] do
     %{container | errors: set_path(errors, path)}
