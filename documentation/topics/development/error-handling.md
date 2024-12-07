@@ -158,4 +158,7 @@ end
 ## Showing errors over APIs
 
 AshJsonApi and AshGraphql both use a special protocol to determine how (and if) a raised or returned error should be displayed.
-See [AshJsonApi.Error](https://hexdocs.pm/ash_json_api/AshJsonApi.Error.html) and [AshGraphl.Error](https://hexdocs.pm/ash_graphql/AshGraphql.Error.html)
+
+See the relevant docs:
+- [handling errors in AshGraphql](https://hexdocs.pm/ash_graphql/handle-errors.html)
+- [AshJsonApi.ToJsonApiError](https://hexdocs.pm/ash_json_api/AshJsonApi.ToJsonApiError.html)
