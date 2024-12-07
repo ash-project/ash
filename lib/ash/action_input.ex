@@ -364,8 +364,13 @@ defmodule Ash.ActionInput do
     end)
   end
 
-  @doc "Adds an error to the input errors list, and marks the input as `valid?: false`"
-  @spec add_error(t(), term | String.t() | list(term | String.t())) :: t()
+  @doc """
+  Add an error to the errors list and mark the action input as invalid.
+
+  See `Ash.Error.to_ash_error/3` for more on supported values for `error`
+  """
+  @spec add_error(t(), Ash.Error.error_input() | list(Ash.Error.error_input()), Ash.Error.path_input()) :: t()
+  @spec add_error(t(), Ash.Error.error_input() | list(Ash.Error.error_input())) :: t()
   def add_error(input, errors, path \\ [])
 
   def add_error(input, errors, path) when is_list(errors) do

@@ -223,7 +223,7 @@ defmodule Ash.Actions.Create.Bulk do
 
         errors =
           Enum.map(errors, fn error ->
-            Ash.Error.to_ash_error(error,
+            Ash.Error.to_ash_error(error, [],
               bread_crumbs: [
                 "Exception raised in bulk create: #{inspect(resource)}.#{action.name}"
               ]

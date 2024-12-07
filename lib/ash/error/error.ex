@@ -11,18 +11,39 @@ defmodule Ash.Error do
     ],
     unknown_error: Ash.Error.Unknown.UnknownError
 
-  @type ash_errors :: Exception.t()
+  @type error_keyword_option ::
+          {:field, atom()}
+          | {:fields, list(atom)}
+          | {:value, term()}
+          | {:message, String.t()}
+          | {:path, list(atom | String.t())}
 
+  @type error_keyword :: list(error_keyword_option)
+
+  @type ash_error :: Exception.t()
   @type ash_error_subject :: Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t()
+  @type path :: [String.t() | atom() | integer()]
+  @type path_input :: [String.t() | atom() | integer()] | String.t() | atom() | integer()
+
+  @type error_input ::
+          ash_error() | error_keyword() | String.t() | ash_error_subject() | Exception.t() | any()
+
   @doc """
-  Converts a value with optional stacktrace and opts to
-  an error within Ash.
+  Converts a value to an Ash exception.
+
+  The supported inputs to this function can be provided to various places,
+  like `Ash.Query.add_error/2`, `Ash.Changeset.add_error/2` and `Ash.ActionInput.add_error/2`.
+
+  Additionally, any place that you can *return* an error you can return instead a valid
+  error input.
+
+  See [the error handling guide](/documentation/development/error-handling.md) for more.
   """
   @spec to_ash_error(
-          ash_error_subject() | term() | [ash_error_subject() | term()],
-          list() | nil,
+          error_input() | list(error_input),
+          Exception.stacktrace() | nil,
           Keyword.t()
-        ) :: ash_errors() | [ash_errors()]
+        ) :: ash_error() | [ash_error()]
   def to_ash_error(value, stacktrace \\ nil, opts \\ []) do
     value =
       value
@@ -140,11 +161,16 @@ defmodule Ash.Error do
   @doc """
   This function prepends the provided path to any existing path on the errors.
   """
-  @spec set_path(ash_error_subject() | term(), term() | [term()]) ::
-          ash_error_subject() | ash_errors()
+  @spec set_path(ash_error() | list(ash_error()), path_input()) :: ash_error() | list(ash_error())
+
+  @spec set_path(ash_error_subject(), path_input()) :: ash_error_subject()
   def set_path(%struct{errors: errors} = container, path)
       when struct in [Ash.Changeset, Ash.ActionInput, Ash.Query] do
     %{container | errors: set_path(errors, path)}
+  end
+
+  def set_path(errors, path) when is_list(errors) do
+    Enum.map(errors, &set_path(&1, path))
   end
 
   def set_path(error, path) do

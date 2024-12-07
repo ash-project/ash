@@ -3042,36 +3042,30 @@ defmodule Ash.Query do
     end
   end
 
-  def add_error(query, keys \\ [], message) do
-    keys = List.wrap(keys)
+  @doc """
+  Add an error to the errors list and mark the query as invalid.
+
+  See `Ash.Error.to_ash_error/3` for more on supported values for `error`
+
+  ## Inconsistencies
+  The `path` argument is the second argument here, but the third argument
+  in `Ash.ActionInput.add_error/2` and `Ash.Changeset.add_error/2`.
+  This will be fixed in 4.0.
+  """
+  @spec add_error(t(), path :: Ash.Error.path_input(), Ash.Error.error_input()) :: t()
+  @spec add_error(t(), Ash.Error.error_input()) :: t()
+  def add_error(query, path \\ [], error) do
+    path = List.wrap(path)
     query = new(query)
 
-    message =
-      if is_binary(message) do
-        string_path =
-          case keys do
-            [key] -> to_string(key)
-            keys -> Enum.join(keys, ".")
-          end
-
-        "#{string_path}: #{message}"
-      else
-        message
-      end
-
-    message
+    error
     |> Ash.Error.to_ash_error()
+    |> Ash.Error.set_path(path)
     |> case do
       errors when is_list(errors) ->
-        errors =
-          Enum.map(errors, fn error ->
-            Map.update(error, :path, keys, &(keys ++ List.wrap(&1)))
-          end)
-
         %{query | errors: query.errors ++ errors, valid?: false}
 
       error ->
-        error = Map.update(error, :path, keys, &(keys ++ List.wrap(&1)))
         %{query | errors: [error | query.errors], valid?: false}
     end
   end

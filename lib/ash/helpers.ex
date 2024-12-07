@@ -308,7 +308,7 @@ defmodule Ash.Helpers do
         {:ok, result, query}
 
       {:error, error} ->
-        {:error, Ash.Error.to_ash_error(error, query: query)}
+        {:error, Ash.Error.to_ash_error(error, nil, query: query)}
     end
   end
 

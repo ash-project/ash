@@ -60,15 +60,29 @@ end
 
 ## Generating Errors
 
-When returning errors in your application, you can a few different things:
+When returning errors from behaviors or adding errors to a
+changeset/query/action input, multiple formats are supported. You can return a
+simple String, which will be converted into an `Ash.Error.Unknown` exception.
+You can also return a keyword list containing `field` or `fields` and `message`,
+which will be used to construct an `Ash.Error.Invalid.InvalidChanges` error.
+Finally, you can pass an exception directly, which will be used as is if it is
+an Ash error, or wrapped in an `Ash.Error.Unknown` if it is not.
 
-## Return a keyword list in changes and validations
+Technically *any* value can be used as an error, but will be wrapped in an
+`Ash.Error.Unknown` accordingly.
 
-A shortcut for creating errors is to return a keyword list containing `field`
-and `message`. This works in changes and validations. For example:
+> ### Use exception modules {: .info}
+>
+> You should prefer to use the exception modules provided by Ash, or ones
+> that you have defined manually. This allows you to document your error
+> types, and to show those errors over API interfaces. See the section
+> on APIs below for more.
+
+## Examples of using non standard errors
+
+### Keyword list (`Ash.Error.Changes.InvalidChanges`)
 
 ```elixir
-# in a change, you use `Ash.Changeset.add_error/2`
 def change(changeset, _, _) do
   if under_21?(changeset) do
     Ash.Changeset.add_error(changeset, field: :age, message: "must be 21 or older")
@@ -76,18 +90,21 @@ def change(changeset, _, _) do
     changeset
   end
 end
+```
 
-# in a validation, you return the error in an `{:error, error}` tuple.
+### String (`Ash.Error.Unknown.UnknownError`)
+
+```elixir
 def change(changeset, _, _) do
   if under_21?(changeset) do
-    {:error,  field: :age, message: "must be 21 or older"}
+    Ash.Changeset.add_error(changeset, "must be 21 or older")
   else
-    :ok
+    changeset
   end
 end
 ```
 
-## Using a Builtin Exception
+## Using an exception module
 
 These are all modules under `Ash.Error.*`. You can create a new one with `error.exception(options)`, and the options are documented in each exception. This documentation is missing in some cases. Go to the source code of the exception to see its special options. All of them support the `vars` option, which are values to be interpolated into the message, useful for things like translation.
 
@@ -95,7 +112,7 @@ For example:
 
 ```elixir
 def change(changeset, _, _) do
-  if some_condition(changeset) do
+  if under_21?(changeset) do
     error = Ash.Error.Changes.Required.exception(
       field: :foo,
       type: :attribute,
@@ -109,26 +126,36 @@ def change(changeset, _, _) do
 end
 ```
 
-## Using a Custom Exception
+### Using a Custom Exception
 
 You can create a custom exception like so. This is an example of a builtin exception that you could mirror to build your own
 
 ```elixir
-defmodule Ash.Error.Action.InvalidArgument do
-  @moduledoc "Used when an invalid value is provided for an action argument"
-  use Splode.Error, fields: [:field, :message, :value], class: :invalid
+defmodule MyApp.Errors.Invalid.TooYoung do
+  @moduledoc "Used when a user who is too young is attempted to be created"
+  use Splode.Error, fields: [:age], class: :invalid
 
   def message(error) do
     """
-    Invalid value provided#{for_field(error)}#{do_message(error)}
-
-    #{inspect(error.value)}
+    Must be 21 or older, got: #{error.age}.
     """
+  end
+end
+
+def change(changeset, _, _) do
+  if under_21?(changeset) do
+    error = MyApp.Errors.Invalid.TooYoung.exception(
+      age: Ash.Changeset.get_attribute(changeset, :age)
+    )
+
+    Ash.Changeset.add_error(changeset, error)
+  else
+    changeset
   end
 end
 ```
 
-## API Extensions
+## Showing errors over APIs
 
 AshJsonApi and AshGraphql both use a special protocol to determine how (and if) a raised or returned error should be displayed.
 See [AshJsonApi.Error](https://hexdocs.pm/ash_json_api/AshJsonApi.Error.html) and [AshGraphl.Error](https://hexdocs.pm/ash_graphql/AshGraphql.Error.html)

@@ -1353,7 +1353,7 @@ defmodule Ash.Actions.Update.Bulk do
         errors =
           Enum.map(
             errors,
-            &Ash.Error.to_ash_error(&1,
+            &Ash.Error.to_ash_error(&1, [],
               bread_crumbs: [
                 "Returned from bulk update: #{inspect(resource)}.#{action_name}"
               ]

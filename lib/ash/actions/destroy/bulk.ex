@@ -1118,7 +1118,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         errors =
           Enum.map(
             errors,
-            &Ash.Error.to_ash_error(&1,
+            &Ash.Error.to_ash_error(&1, [],
               bread_crumbs: [
                 "Returned from bulk destroy: #{inspect(resource)}.#{action_name}"
               ]
