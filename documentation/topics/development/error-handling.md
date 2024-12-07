@@ -96,7 +96,7 @@ For example:
 ```elixir
 def change(changeset, _, _) do
   if some_condition(changeset) do
-    error = Ash.Error.Changes.Required.new(
+    error = Ash.Error.Changes.Required.exception(
       field: :foo,
       type: :attribute,
       resource: changeset.resource
@@ -127,3 +127,8 @@ defmodule Ash.Error.Action.InvalidArgument do
   end
 end
 ```
+
+## API Extensions
+
+AshJsonApi and AshGraphql both use a special protocol to determine how (and if) a raised or returned error should be displayed.
+See [AshJsonApi.Error](https://hexdocs.pm/ash_json_api/AshJsonApi.Error.html) and [AshGraphl.Error](https://hexdocs.pm/ash_graphql/AshGraphql.Error.html)
