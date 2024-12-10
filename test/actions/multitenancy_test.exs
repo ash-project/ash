@@ -529,6 +529,12 @@ defmodule Ash.Actions.MultitenancyTest do
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
     end
 
+    test "an aggregate can be used with a tenant specified", %{
+      tenant1: tenant1
+    } do
+      assert 0 = Ash.count!(Comment, tenant: tenant1)
+    end
+
     test "an aggregate cannot be used without tenant specified", %{
       tenant1: tenant1
     } do
