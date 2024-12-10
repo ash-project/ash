@@ -30,7 +30,14 @@ defmodule Ash.Error.Forbidden.Policy do
     exception =
       super(Keyword.put(opts, :policy_breakdown?, Ash.Policy.Info.show_policy_breakdowns?()))
 
-    case Ash.Policy.Info.log_policy_breakdowns() do
+    log_level =
+      if exception.for_fields do
+        Ash.Policy.Info.log_successful_policy_breakdowns()
+      else
+        Ash.Policy.Info.log_policy_breakdowns()
+      end
+
+    case log_level do
       nil ->
         :ok
 
