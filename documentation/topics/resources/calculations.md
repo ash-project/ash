@@ -49,7 +49,7 @@ defmodule Concat do
   end
 
   @impl true
-  def calculate(records, opts, %{separator: separator}) do
+  def calculate(records, opts, %{arguments: %{separator: separator}}) do
     Enum.map(records, fn record ->
       Enum.map_join(opts[:keys], separator, fn key ->
         to_string(Map.get(record, key))
