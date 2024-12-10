@@ -2,6 +2,16 @@
 
 <!-- changelog -->
 
+## [v3.4.45](https://github.com/ash-project/ash/compare/v3.4.44...v3.4.45) (2024-12-10)
+
+### Bug Fixes:
+
+- [`Ash`] don't ignore tenant when calling aggregate functions
+
+### Improvements:
+
+- [`Ash.Policy.Authorizer`] don't log field policies unless logging successful policy breakdowns
+
 ## [v3.4.44](https://github.com/ash-project/ash/compare/v3.4.43...v3.4.44) (2024-12-06)
 
 ### Bug Fixes:
