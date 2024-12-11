@@ -98,6 +98,7 @@ defmodule Ash.Test.Sort.SortTest do
       belongs_to :author, Ash.Test.Sort.SortTest.Author do
         public? true
       end
+
       belongs_to :post, Ash.Test.Sort.SortTest.Author do
         public? true
       end
@@ -170,12 +171,18 @@ defmodule Ash.Test.Sort.SortTest do
 
     test "can sort by nested relationships" do
       author = Author |> Ash.Changeset.for_create(:create) |> Ash.create!()
+      author2 = Author |> Ash.Changeset.for_create(:create) |> Ash.create!()
       Post |> Ash.Changeset.for_create(:create, %{author_id: author.id}) |> Ash.create!()
+      Post |> Ash.Changeset.for_create(:create, %{author_id: author2.id}) |> Ash.create!()
 
       sort = Ash.Sort.parse_input!(Post, "-author.id")
-      posts = Post |> Ash.Query.sort(sort) |> Ash.read!()
+      author_ids = Post |> Ash.Query.sort(sort) |> Ash.read!() |> Enum.map(&(&1.author_id))
+      assert Enum.reverse(Enum.sort([author.id, author2.id])) == author_ids
+
+      sort = Ash.Sort.parse_input!(Post, "author.id")
+      author_ids = Post |> Ash.Query.sort(sort) |> Ash.read!() |> Enum.map(&(&1.author_id))
+      assert Enum.sort([author.id, author2.id]) == author_ids
       # TODO: Write assertion here
     end
   end
-
 end

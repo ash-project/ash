@@ -301,8 +301,8 @@ defmodule Ash.Sort do
 
   defp related_field(resource, [first | rest], field, acc) do
     case Ash.Resource.Info.public_relationship(resource, first) do
-      %{sortable?: true, destination: destination} ->
-        related_field(destination, rest, field, [first | acc])
+      %{sortable?: true, destination: destination, name: name} ->
+        related_field(destination, rest, field, [name | acc])
 
       _ ->
         :error
