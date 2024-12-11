@@ -11,7 +11,7 @@ defmodule Ash.Test.Sort.SortTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
-      private?(true)
+      private? true
     end
 
     attributes do
@@ -36,7 +36,7 @@ defmodule Ash.Test.Sort.SortTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
-      private?(true)
+      private? true
     end
 
     actions do
@@ -48,11 +48,11 @@ defmodule Ash.Test.Sort.SortTest do
       uuid_primary_key :id
 
       attribute :title, :string do
-        public?(true)
+        public? true
       end
 
       attribute :contents, :string do
-        public?(true)
+        public? true
       end
 
       attribute :points, :integer
@@ -64,6 +64,43 @@ defmodule Ash.Test.Sort.SortTest do
       end
 
       belongs_to :private_author, Author
+
+      has_many :comments_by_author, Ash.Test.Sort.SortTest.Comment do
+        no_attributes? true
+        public? true
+        filter expr(author_id == parent(author.id))
+      end
+    end
+  end
+
+  defmodule Comment do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :create, :update]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :contents, :string do
+        public? true
+      end
+    end
+
+    relationships do
+      belongs_to :author, Ash.Test.Sort.SortTest.Author do
+        public? true
+      end
+      belongs_to :post, Ash.Test.Sort.SortTest.Author do
+        public? true
+      end
     end
   end
 
@@ -130,5 +167,15 @@ defmodule Ash.Test.Sort.SortTest do
       assert {:ok, [title: :asc_nils_first, contents: :desc_nils_last]} =
                Ash.Sort.parse_input(Post, "++title,--contents")
     end
+
+    test "can sort by nested relationships" do
+      author = Author |> Ash.Changeset.for_create(:create) |> Ash.create!()
+      Post |> Ash.Changeset.for_create(:create, %{author_id: author.id}) |> Ash.create!()
+
+      sort = Ash.Sort.parse_input!(Post, "-author.id")
+      posts = Post |> Ash.Query.sort(sort) |> Ash.read!()
+      # TODO: Write assertion here
+    end
   end
+
 end
