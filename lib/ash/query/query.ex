@@ -487,6 +487,11 @@ defmodule Ash.Query do
       type: {:wrap_list, {:or, [:atom, :string]}},
       doc:
         "A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys."
+    ],
+    context: [
+      type: :map,
+      doc:
+        "A map of context to set on the query. This will be merged with any context set on the query itself."
     ]
   ]
 
