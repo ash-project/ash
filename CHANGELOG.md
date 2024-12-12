@@ -2,6 +2,14 @@
 
 <!-- changelog -->
 
+## [v3.4.46](https://github.com/ash-project/ash/compare/v3.4.45...v3.4.46) (2024-12-12)
+
+### Bug Fixes:
+
+- [`Ash.Tracer`] use proper telemetry name for actions
+
+- [`Ash.Sort`] use atoms for paths in related sorts
+
 ## [v3.4.45](https://github.com/ash-project/ash/compare/v3.4.44...v3.4.45) (2024-12-10)
 
 ### Bug Fixes:
