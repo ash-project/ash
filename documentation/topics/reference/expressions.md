@@ -184,7 +184,7 @@ def has_comment_with_more_points_than(query, score) do
 end
 
 def has_comment_tagged(query, tag) do
-  Ash.Query.filter(query, exists(comments.tag.name == ^tag)
+  Ash.Query.filter(query, exists(comments.tag.name == ^tag))
 end
 
 Post
