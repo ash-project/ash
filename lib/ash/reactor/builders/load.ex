@@ -8,36 +8,34 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Load do
   @doc false
   @impl true
   def build(load, reactor) do
-    with {:ok, reactor} <- ensure_hooked(reactor) do
-      arguments =
-        [
-          Argument.from_template(:records, load.records),
-          Argument.from_template(:load, load.load, load.transform)
-        ]
-        |> maybe_append(load.actor)
-        |> maybe_append(load.tenant)
-        |> maybe_append(load.context)
-        |> Enum.concat(load.wait_for)
+    arguments =
+      [
+        Argument.from_template(:records, load.records),
+        Argument.from_template(:load, load.load, load.transform)
+      ]
+      |> maybe_append(load.actor)
+      |> maybe_append(load.tenant)
+      |> maybe_append(load.context)
+      |> Enum.concat(load.wait_for)
 
-      load_options =
-        load
-        |> Map.take([:authorize?, :domain, :lazy?, :reuse_values?, :strict?])
-        |> Enum.reject(&is_nil(elem(&1, 1)))
+    load_options =
+      load
+      |> Map.take([:authorize?, :domain, :lazy?, :reuse_values?, :strict?])
+      |> Enum.reject(&is_nil(elem(&1, 1)))
 
-      step_options =
-        load
-        |> Map.take([:async?])
-        |> Map.put(:ref, :step_name)
-        |> Enum.to_list()
+    step_options =
+      load
+      |> Map.take([:async?])
+      |> Map.put(:ref, :step_name)
+      |> Enum.to_list()
 
-      Builder.add_step(
-        reactor,
-        load.name,
-        {LoadStep, load_options},
-        arguments,
-        step_options
-      )
-    end
+    Builder.add_step(
+      reactor,
+      load.name,
+      {LoadStep, load_options},
+      arguments,
+      step_options
+    )
   end
 
   @doc false

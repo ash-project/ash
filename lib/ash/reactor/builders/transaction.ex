@@ -2,7 +2,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Transaction do
   @moduledoc false
 
   alias Reactor.{Builder, Dsl.Build}
-  import Ash.Reactor.BuilderUtils
   import Reactor.Utils
 
   @doc false
@@ -10,8 +9,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Transaction do
   def build(transaction, reactor) do
     sub_reactor = Builder.new({Ash.Reactor.TransactionStep, transaction.name})
 
-    with {:ok, reactor} <- ensure_hooked(reactor),
-         {:ok, sub_reactor} <- build_nested_steps(sub_reactor, transaction.steps),
+    with {:ok, sub_reactor} <- build_nested_steps(sub_reactor, transaction.steps),
          {:ok, sources} <- extract_inner_sources(sub_reactor),
          {:ok, arguments} <- build_transaction_arguments(sources),
          {:ok, sub_reactor} <- build_sub_reactor_inputs(sub_reactor, arguments),

@@ -3,7 +3,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Change do
 
   alias Ash.Reactor.ChangeStep
   alias Reactor.{Argument, Builder, Step.ReturnAllArguments}
-  import Ash.Reactor.BuilderUtils
   import Reactor.Template, only: :macros
 
   @doc false
@@ -11,8 +10,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Change do
   def build(change, reactor) do
     argument_step_name = {:__arguments__, change.name, Enum.map(change.arguments, & &1.name)}
 
-    with {:ok, reactor} <- ensure_hooked(reactor),
-         {:ok, reactor} <-
+    with {:ok, reactor} <-
            Builder.add_step(reactor, argument_step_name, ReturnAllArguments, change.arguments,
              async?: change.async?,
              ref: :step_name
