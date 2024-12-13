@@ -176,11 +176,11 @@ defmodule Ash.Test.Sort.SortTest do
       Post |> Ash.Changeset.for_create(:create, %{author_id: author2.id}) |> Ash.create!()
 
       sort = Ash.Sort.parse_input!(Post, "-author.id")
-      author_ids = Post |> Ash.Query.sort(sort) |> Ash.read!() |> Enum.map(&(&1.author_id))
+      author_ids = Post |> Ash.Query.sort(sort) |> Ash.read!() |> Enum.map(& &1.author_id)
       assert Enum.reverse(Enum.sort([author.id, author2.id])) == author_ids
 
       sort = Ash.Sort.parse_input!(Post, "author.id")
-      author_ids = Post |> Ash.Query.sort(sort) |> Ash.read!() |> Enum.map(&(&1.author_id))
+      author_ids = Post |> Ash.Query.sort(sort) |> Ash.read!() |> Enum.map(& &1.author_id)
       assert Enum.sort([author.id, author2.id]) == author_ids
       # TODO: Write assertion here
     end
