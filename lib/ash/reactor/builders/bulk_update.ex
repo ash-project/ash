@@ -11,8 +11,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkUpdate do
   @doc false
   @impl true
   def build(bulk_update, reactor) do
-    with {:ok, reactor} <- ensure_hooked(reactor),
-         {:ok, reactor, arguments} <- build_input_arguments(reactor, bulk_update) do
+    with {:ok, reactor, arguments} <- build_input_arguments(reactor, bulk_update) do
       initial = %Argument{name: :initial, source: bulk_update.initial}
 
       notification_metadata =

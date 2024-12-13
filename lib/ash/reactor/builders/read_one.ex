@@ -6,8 +6,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.ReadOne do
   @doc false
   @impl true
   def build(read_one, reactor) do
-    with {:ok, reactor} <- ensure_hooked(reactor),
-         {:ok, reactor, arguments} <- build_input_arguments(reactor, read_one) do
+    with {:ok, reactor, arguments} <- build_input_arguments(reactor, read_one) do
       arguments =
         arguments
         |> maybe_append(read_one.actor)

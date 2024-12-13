@@ -11,76 +11,74 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkCreate do
   @doc false
   @impl true
   def build(bulk_create, reactor) do
-    with {:ok, reactor} <- ensure_hooked(reactor) do
-      initial = %Argument{name: :initial, source: bulk_create.initial}
+    initial = %Argument{name: :initial, source: bulk_create.initial}
 
-      notification_metadata =
-        case bulk_create.notification_metadata do
-          template when is_template(template) ->
-            %Argument{name: :notification_metadata, source: template}
+    notification_metadata =
+      case bulk_create.notification_metadata do
+        template when is_template(template) ->
+          %Argument{name: :notification_metadata, source: template}
 
-          map when is_map(map) ->
-            Argument.from_value(:notification_metadata, map)
-        end
+        map when is_map(map) ->
+          Argument.from_value(:notification_metadata, map)
+      end
 
-      arguments =
-        [initial, notification_metadata]
-        |> maybe_append(bulk_create.actor)
-        |> maybe_append(bulk_create.tenant)
-        |> maybe_append(bulk_create.load)
-        |> maybe_append(bulk_create.context)
-        |> Enum.concat(bulk_create.wait_for)
+    arguments =
+      [initial, notification_metadata]
+      |> maybe_append(bulk_create.actor)
+      |> maybe_append(bulk_create.tenant)
+      |> maybe_append(bulk_create.load)
+      |> maybe_append(bulk_create.context)
+      |> Enum.concat(bulk_create.wait_for)
 
-      action_options =
-        bulk_create
-        |> Map.take([
-          :action,
-          :assume_casted?,
-          :authorize_changeset_with,
-          :authorize_query_with,
-          :authorize?,
-          :batch_size,
-          :domain,
-          :max_concurrency,
-          :notify?,
-          :read_action,
-          :resource,
-          :return_errors?,
-          :return_records?,
-          :return_stream?,
-          :rollback_on_error?,
-          :select,
-          :skip_unknown_inputs,
-          :sorted?,
-          :stop_on_error?,
-          :success_state,
-          :timeout,
-          :transaction,
-          :upsert_fields,
-          :upsert_fields,
-          :upsert_identity,
-          :upsert_identity,
-          :upsert?,
-          :undo_action,
-          :undo
-        ])
-        |> Map.put(:return_notifications?, bulk_create.notify?)
-        |> Enum.reject(&is_nil(elem(&1, 1)))
+    action_options =
+      bulk_create
+      |> Map.take([
+        :action,
+        :assume_casted?,
+        :authorize_changeset_with,
+        :authorize_query_with,
+        :authorize?,
+        :batch_size,
+        :domain,
+        :max_concurrency,
+        :notify?,
+        :read_action,
+        :resource,
+        :return_errors?,
+        :return_records?,
+        :return_stream?,
+        :rollback_on_error?,
+        :select,
+        :skip_unknown_inputs,
+        :sorted?,
+        :stop_on_error?,
+        :success_state,
+        :timeout,
+        :transaction,
+        :upsert_fields,
+        :upsert_fields,
+        :upsert_identity,
+        :upsert_identity,
+        :upsert?,
+        :undo_action,
+        :undo
+      ])
+      |> Map.put(:return_notifications?, bulk_create.notify?)
+      |> Enum.reject(&is_nil(elem(&1, 1)))
 
-      step_options =
-        bulk_create
-        |> Map.take([:async?])
-        |> Map.put(:ref, :step_name)
-        |> Enum.to_list()
+    step_options =
+      bulk_create
+      |> Map.take([:async?])
+      |> Map.put(:ref, :step_name)
+      |> Enum.to_list()
 
-      Builder.add_step(
-        reactor,
-        bulk_create.name,
-        {BulkCreateStep, action_options},
-        arguments,
-        step_options
-      )
-    end
+    Builder.add_step(
+      reactor,
+      bulk_create.name,
+      {BulkCreateStep, action_options},
+      arguments,
+      step_options
+    )
   end
 
   @doc false
