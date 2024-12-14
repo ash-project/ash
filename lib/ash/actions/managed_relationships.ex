@@ -1706,8 +1706,6 @@ defmodule Ash.Actions.ManagedRelationships do
             end
 
           {:destroy, action_name} ->
-            record_id = record.id
-
             record
             |> Ash.Changeset.new()
             |> Ash.Changeset.set_context(%{
@@ -1725,7 +1723,7 @@ defmodule Ash.Actions.ManagedRelationships do
               {:ok, notifications} ->
                 {:cont, {:ok, current_value, notifications ++ all_notifications}}
 
-              {:ok, %{id: ^record_id} = _soft_destroyed_record, notifications} ->
+              {:ok, _soft_destroyed_record, notifications} ->
                 {:cont, {:ok, current_value, notifications ++ all_notifications}}
 
               {:error, error} ->
