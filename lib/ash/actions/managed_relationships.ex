@@ -1723,6 +1723,9 @@ defmodule Ash.Actions.ManagedRelationships do
               {:ok, notifications} ->
                 {:cont, {:ok, current_value, notifications ++ all_notifications}}
 
+              {:ok, _soft_destroyed_record, notifications} ->
+                {:cont, {:ok, current_value, notifications ++ all_notifications}}
+
               {:error, error} ->
                 {:halt, {:error, error}}
             end
