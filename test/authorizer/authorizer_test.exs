@@ -4,11 +4,29 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
 
   require Ash.Query
 
+  defmodule User do
+    @moduledoc false
+
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      domain: Ash.Test.Changeset.AuthorizerTest.Domain
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:read, :create]
+    end
+  end
+
   defmodule Post do
+    @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [
-        Ash.Test.Authorizer
+        Ash.Test.Authorizer,
+        Ash.Policy.Authorizer
       ],
       domain: Ash.Test.Changeset.AuthorizerTest.Domain
 
@@ -27,6 +45,20 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
           Ash.Changeset.change_attribute(changeset, :title, context.authorize?)
         end
       end
+
+      update :update_title do
+        accept [:title]
+      end
+    end
+
+    relationships do
+      belongs_to :user, User, public?: true
+    end
+
+    policies do
+      policy action :update_title do
+        authorize_if relates_to_actor_via(:user)
+      end
     end
 
     attributes do
@@ -37,10 +69,15 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
   end
 
   defmodule Domain do
+    @moduledoc false
     use Ash.Domain, otp_app: :ash
 
     resources do
-      resource Post
+      resource Post do
+        define :update_post_title, action: :update_title
+      end
+
+      resource User
     end
   end
 
@@ -111,6 +148,34 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
         |> Ash.Changeset.for_create(:create, %{title: "test"}, actor: nil)
         |> Ash.create!()
       end
+    end
+  end
+
+  describe "can domain checks" do
+    test "a can check doesn't rerun queries" do
+      start_supervised({Ash.Test.Authorizer, {}})
+
+      user =
+        User
+        |> Ash.Changeset.for_create(:create)
+        |> Ash.create!(authorize?: false)
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "test", user_id: user.id})
+        |> Ash.create!(authorize?: false)
+        |> Ash.load!(:user)
+
+      # ! This causes an extra SQL query (!not when running against ETS)
+      Domain.can_update_post_title(user, post)
+
+      # In my actual usecase I have something like this in my liveview:
+      # <div :for={item <- @items}>
+      #   <button :if={MyDomain.can_delete(@current_user, item)}>Delete</button>
+      #   {item.name}
+      # </div>
+
+      # This causes 1 query for every row.
     end
   end
 
