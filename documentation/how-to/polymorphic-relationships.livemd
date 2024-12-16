@@ -14,7 +14,7 @@ Mix.install([{:ash, "~> 3.0"}], consolidate_protocols: false)
 
 ## Introduction
 
-Something that comes up in more complex domains is the idea of "polymorphic relationships". For this example, we will use the concept of a `BankAccount`, which can be either a `SavingsAccount` or a `CheckingAccount`. All accounts have an `account_number` and `transactions`, but checkings & savings accounts might have their own specific information. For example, a `SavingsAccount` has an `interest_rate`, and a `checkings_account` has many `DebitCard`s.
+Something that comes up in more complex domains is the idea of "polymorphic relationships". For this example, we will use the concept of a `BankAccount`, which can be either a `SavingsAccount` or a `CheckingAccount`. All accounts have an `account_number` and `transactions`, but checkings & savings accounts might have their own specific information. For example, a `SavingsAccount` has an `interest_rate`, and a `CheckingAccount` has many `debit_card`s.
 
 Ash does not support polymorphic relationships defined _as relationships_, but you can accomplish similar functionality via [calculations](documentation/topics/resources/calculations.md) with the type `Ash.Type.Union`.
 
@@ -311,7 +311,7 @@ You can also synthesize filterable fields with calculations. For example, if you
 
 ```elixir
 calculate :interest_rate, :decimal, expr(
-  if type == :savings_account do
+  if type == :savings do
     savings_account.interest_rate
   else
     0
