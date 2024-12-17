@@ -1643,6 +1643,8 @@ defmodule Ash.Query do
           Enum.find(calculation.arguments, fn arg -> arg.name == key end)
         end
 
+      value = Ash.Type.Helpers.handle_indexed_maps(argument.type, value)
+
       cond do
         !argument ->
           error_calc =
@@ -1779,34 +1781,42 @@ defmodule Ash.Query do
 
   defp set_defaults({:ok, inputs}, calculation) do
     Enum.reduce_while(calculation.arguments, {:ok, inputs}, fn argument, {:ok, inputs} ->
-      if Map.has_key?(inputs, argument.name) do
-        if is_nil(inputs[argument.name]) && !argument.allow_nil? do
-          {:halt,
-           {:error,
-            InvalidCalculationArgument.exception(
-              field: argument.name,
-              calculation: calculation.name,
-              message: "is required",
-              value: nil
-            )}}
-        else
-          {:cont, {:ok, inputs}}
+      value =
+        case Map.fetch(inputs, argument.name) do
+          :error -> Map.fetch(inputs, to_string(argument.name))
+          {:ok, value} -> {:ok, value}
         end
-      else
-        value = calc_arg_default(argument.default)
 
-        if is_nil(value) && !argument.allow_nil? do
-          {:halt,
-           {:error,
-            InvalidCalculationArgument.exception(
-              field: argument.name,
-              calculation: calculation.name,
-              message: "is required",
-              value: value
-            )}}
-        else
-          {:cont, {:ok, Map.put(inputs, argument.name, value)}}
-        end
+      case value do
+        {:ok, value} ->
+          if is_nil(value) && !argument.allow_nil? do
+            {:halt,
+             {:error,
+              InvalidCalculationArgument.exception(
+                field: argument.name,
+                calculation: calculation.name,
+                message: "is required",
+                value: nil
+              )}}
+          else
+            {:cont, {:ok, inputs}}
+          end
+
+        :error ->
+          value = calc_arg_default(argument.default)
+
+          if is_nil(value) && !argument.allow_nil? do
+            {:halt,
+             {:error,
+              InvalidCalculationArgument.exception(
+                field: argument.name,
+                calculation: calculation.name,
+                message: "is required",
+                value: value
+              )}}
+          else
+            {:cont, {:ok, Map.put(inputs, argument.name, value)}}
+          end
       end
     end)
   end
