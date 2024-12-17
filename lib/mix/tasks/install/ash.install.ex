@@ -62,6 +62,12 @@ defmodule Mix.Tasks.Ash.Install do
     |> Igniter.Project.Config.configure(
       "config.exs",
       :ash,
+      [:show_keysets_for_all_actions?],
+      false
+    )
+    |> Igniter.Project.Config.configure(
+      "config.exs",
+      :ash,
       [:default_page_type],
       :keyset
     )

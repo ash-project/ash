@@ -29,6 +29,7 @@ if Mix.env() == :test do
     Ash.Test.Support.PolicySimple.Domain
   ]
 
+  config :ash, :show_keysets_for_all_actions?, false
   config :ash, :policies, no_filter_static_forbidden_reads?: false
 
   config :ash, :custom_expressions, [Ash.Test.Expressions.JaroDistance]
