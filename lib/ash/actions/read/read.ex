@@ -1003,7 +1003,7 @@ defmodule Ash.Actions.Read do
     must_be_reselected =
       if opts[:reuse_values?] do
         must_be_reselected
-        |> Enum.reject(&Ash.Resource.selected?(first, &1))
+        |> Enum.reject(&Ash.Resource.selected?(first, &1, forbidden_means_selected?: true))
       else
         must_be_reselected
       end
@@ -1067,10 +1067,12 @@ defmodule Ash.Actions.Read do
              :select,
              :calculations
            ])
+           |> Ash.Query.select([])
            |> Ash.Query.load(calculations_in_query)
            |> Ash.Query.select(must_be_reselected)
            |> Ash.DataLayer.Simple.set_data(initial_data)
            |> Ash.Query.do_filter(filter),
+         {:ok, %{valid?: true} = query} <- handle_multitenancy(query),
          {:ok, data_layer_calculations} <-
            hydrate_calculations(
              query,
