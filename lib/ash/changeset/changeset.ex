@@ -1587,7 +1587,7 @@ defmodule Ash.Changeset do
 
                 changeset =
                   Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
-                    Ash.Changeset.set_argument(changeset, k, v)
+                    set_private_argument_for_action(changeset, k, v)
                   end)
 
                 changeset
@@ -1928,7 +1928,7 @@ defmodule Ash.Changeset do
 
               changeset =
                 Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
-                  Ash.Changeset.set_argument(changeset, k, v)
+                  set_private_argument_for_action(changeset, k, v)
                 end)
 
               changeset =
@@ -5078,6 +5078,53 @@ defmodule Ash.Changeset do
   def set_argument(changeset, argument, value) do
     maybe_already_validated_error!(changeset, :force_set_argument)
     do_set_argument(changeset, argument, value)
+  end
+
+  @doc """
+  Add a private argument to the changeset, which will be provided to the action.
+  """
+  @spec set_private_argument(t(), atom, term) :: t()
+  def set_private_argument(changeset, argument, value) do
+    do_set_private_argument(
+      changeset,
+      argument,
+      value,
+      "can't set public arguments with set_private_argument/3"
+    )
+  end
+
+  defp set_private_argument_for_action(changeset, argument, value) do
+    do_set_private_argument(
+      changeset,
+      argument,
+      value,
+      "can't set public arguments using the private_arguments option."
+    )
+  end
+
+  defp do_set_private_argument(changeset, name, value, error_msg) do
+    argument =
+      Enum.find(
+        changeset.action.arguments,
+        &(&1.name == name || to_string(&1.name) == name)
+      )
+
+    cond do
+      is_nil(argument) ->
+        changeset
+
+      argument.public? ->
+        add_invalid_errors(
+          value,
+          :argument,
+          changeset,
+          argument,
+          error_msg
+        )
+
+      true ->
+        set_argument(changeset, name, value)
+    end
   end
 
   @doc """

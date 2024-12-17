@@ -66,6 +66,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       create :with_name_validation do
         validate present(:name), message: "this validates the name is present"
       end
+
+      create :create_with_private_argument do
+        argument :ip_address_public, :string, allow_nil?: false, public?: true
+      end
     end
 
     attributes do
@@ -1218,6 +1222,42 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                  "name" => "foo",
                  "confirm_name" => "bar"
                }).errors
+    end
+
+    test "private_arguments are validated" do
+      assert [
+               %Ash.Error.Changes.InvalidArgument{
+                 class: :invalid,
+                 field: :ip_address_public,
+                 message: "can't set public arguments using the private_arguments option."
+               }
+             ] =
+               Ash.Changeset.for_create(Category, :create_with_private_argument, %{},
+                 private_arguments: %{ip_address_public: "123"}
+               ).errors
+
+      assert [
+               %Ash.Error.Changes.InvalidArgument{
+                 class: :invalid,
+                 field: :ip_address_public,
+                 message: "can't set public arguments with set_private_argument/3"
+               },
+               %Ash.Error.Changes.Required{
+                 class: :invalid,
+                 field: :ip_address_public
+               }
+             ] =
+               Ash.Changeset.for_create(Category, :create_with_private_argument, %{})
+               |> Ash.Changeset.set_private_argument(:ip_address_public, "123")
+               |> Map.get(:errors)
+
+      assert [] =
+               Ash.Changeset.for_create(
+                 Category,
+                 :create_with_private_argument,
+                 %{ip_address_public: "123"},
+                 private_arguments: %{}
+               ).errors
     end
 
     test "for_action works the same as calling for_<action>" do
