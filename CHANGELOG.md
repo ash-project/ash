@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.4.47](https://github.com/ash-project/ash/compare/v3.4.46...v3.4.47) (2024-12-17)
+
+
+### Bug Fixes:
+
+- [`Ash.Query`] handle indexed maps and string keys in calculation arguments
+
+- [`Ash.Changeset`] throw validation error when trying to set public arguments in private_arguments (#1663)
+
+- [`Ash.Policy.Authorizer`] include `changeset` in preflight authorization context
+
+- [embedded resources] include presence of authorizers in embedded resource optimization
+
+- [`Ash.DataLayer`] don't check data layer compatibility for manual actions
+
+### Improvements:
+
+- [`Ash.Reactor`]: Always add the notication middleware any time the extension is added. (#1657)
+
 ## [v3.4.46](https://github.com/ash-project/ash/compare/v3.4.45...v3.4.46) (2024-12-12)
 
 ### Bug Fixes:
