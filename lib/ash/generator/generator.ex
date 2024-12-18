@@ -76,7 +76,7 @@ defmodule Ash.Generator do
 
   This is equivalent to `identifier |> Ash.Generator.sequence(fun, sequencer) |> Enum.at(0)`
   """
-  def next_in_sequence(identifer, fun, sequencer \\ fn i -> (i || -1) + 1 end) do
+  def next_in_sequence(identifier, fun, sequencer \\ fn i -> (i || -1) + 1 end) do
     identifier
     |> sequence(fun, sequencer)
     |> Enum.at(0)
