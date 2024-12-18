@@ -70,6 +70,19 @@ defmodule Ash.Generator do
   end
 
   @doc """
+  Gets the next value for a given sequence identifier.
+
+  See `sequence/3` for more.
+
+  This is equivalent to `identifier |> Ash.Generator.sequence(fun, sequencer) |> Enum.at(0)`
+  """
+  def next_in_sequence(identifer, fun, sequencer \\ fn i -> (i || -1) + 1 end) do
+    identifier
+    |> sequence(fun, sequencer)
+    |> Enum.at(0)
+  end
+
+  @doc """
   Generate globally unique values.
 
   This is useful for generating values that are unique across all resources, such as email addresses,
