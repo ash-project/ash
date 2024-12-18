@@ -2711,7 +2711,7 @@ defmodule Ash.Actions.Read do
           Ash.Query.load(query, load)
         end)
       else
-        false
+        query
       end
     else
       case pagination_type(page_opts, query.action.pagination) do
