@@ -679,10 +679,11 @@ defmodule Ash.DataLayer do
 
   @spec select(data_layer_query(), select :: list(atom), Ash.Resource.t()) ::
           {:ok, data_layer_query()} | {:error, term}
-  def select(query, nil, _resource), do: {:ok, query}
-
   def select(query, select, resource) do
     if can?(:select, resource) do
+      select =
+        select || Enum.to_list(Ash.Resource.Info.selected_by_default_attribute_names(resource))
+
       data_layer = Ash.DataLayer.data_layer(resource)
       data_layer.select(query, select, resource)
     else

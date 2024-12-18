@@ -546,14 +546,13 @@ defmodule Ash.Changeset do
   def deselect(changeset, fields) do
     select =
       if changeset.select do
-        changeset.select
+        changeset.select -- List.wrap(fields)
       else
-        changeset.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.map(& &1.name)
+        MapSet.difference(
+          Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource),
+          MapSet.new(List.wrap(fields))
+        )
       end
-
-    select = select -- List.wrap(fields)
 
     select(changeset, select, replace?: true)
   end

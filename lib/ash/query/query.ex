@@ -1139,7 +1139,7 @@ defmodule Ash.Query do
         else
           attribute = Ash.Resource.Info.attribute(query.resource, field)
 
-          attribute && (attribute.primary_key? || !attribute.public?)
+          attribute && attribute.primary_key?
         end
     end || loading?(query, field)
   end
@@ -3176,7 +3176,7 @@ defmodule Ash.Query do
        ) do
     select =
       if is_nil(left_select) or is_nil(right_select) do
-        all_attribute_names(resource)
+        Enum.to_list(Ash.Resource.Info.selected_by_default_attribute_names(resource))
       else
         Enum.uniq(left_select ++ right_select)
       end
@@ -3208,10 +3208,6 @@ defmodule Ash.Query do
     |> Enum.reduce(sanitize_loads(left), fn {rel, rest}, acc ->
       Keyword.update(acc, rel, rest, &merge_load(&1, rest))
     end)
-  end
-
-  defp all_attribute_names(resource) do
-    resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
   end
 
   defp sanitize_loads(load) when is_atom(load), do: {load, []}
