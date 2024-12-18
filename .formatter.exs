@@ -235,7 +235,7 @@ spark_locals_without_parens = [
 ]
 
 [
-  import_deps: [:spark, :reactor],
+  import_deps: [:spark, :reactor, :nimble_parsec],
   inputs: [
     "{mix,.formatter}.exs",
     "{config,lib,test,benchmarks,flames}/**/*.{ex,exs}"
