@@ -399,6 +399,7 @@ defmodule Ash.MixProject do
         "spark.replace_doc_links",
         "spark.cheat_sheets_in_search"
       ],
+      format: "format --migrate",
       "spark.cheat_sheets_in_search":
         "spark.cheat_sheets_in_search --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
       "spark.formatter":
