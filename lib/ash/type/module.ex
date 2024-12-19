@@ -84,6 +84,8 @@ defmodule Ash.Type.Module do
   end
 
   @impl true
+  def cast_input(nil, _), do: {:ok, nil}
+
   def cast_input(value, _) when is_atom(value) do
     if Code.ensure_loaded?(value) do
       {:ok, value}
