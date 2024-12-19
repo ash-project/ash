@@ -528,50 +528,52 @@ defmodule Ash.Policy.Authorizer do
     )
   end
 
-  def install(igniter, module, type, _path, argv) do
-    yes = "--yes" in argv or "-y" in argv
+  if Code.ensure_loaded?(Igniter) do
+    def install(igniter, module, type, _path, argv) do
+      yes = "--yes" in argv or "-y" in argv
 
-    igniter =
-      with nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :picosat_elixir),
-           nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :simple_sat) do
-        solver =
-          if yes do
-            {:picosat_elixir, "~> 0.2"}
-          else
-            Owl.IO.select(
-              [
-                {:picosat_elixir, "~> 0.2"},
-                {:simple_sat, "~> 0.1"}
-              ],
-              label: """
-              Ash.Policy.Authorizer requires a SAT solver (Boolean Satisfiability Solver). This solver is used to
-              check policy requirements to answer questions like "Is this user allowed to do this action?" and
-              "What filter must be applied to this query to show only the allowed records a user can see?".
+      igniter =
+        with nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :picosat_elixir),
+             nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :simple_sat) do
+          solver =
+            if yes do
+              {:picosat_elixir, "~> 0.2"}
+            else
+              Owl.IO.select(
+                [
+                  {:picosat_elixir, "~> 0.2"},
+                  {:simple_sat, "~> 0.1"}
+                ],
+                label: """
+                Ash.Policy.Authorizer requires a SAT solver (Boolean Satisfiability Solver). This solver is used to
+                check policy requirements to answer questions like "Is this user allowed to do this action?" and
+                "What filter must be applied to this query to show only the allowed records a user can see?".
 
-              Which SAT solver would you like to use?
+                Which SAT solver would you like to use?
 
-              1. `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
-              2. `:simple_sat` (only if necessary) - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
-              """,
-              render_as: &to_string(elem(&1, 0))
-            )
-          end
+                1. `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
+                2. `:simple_sat` (only if necessary) - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
+                """,
+                render_as: &to_string(elem(&1, 0))
+              )
+            end
 
-        igniter
-        |> Igniter.Project.Deps.add_dep(solver, yes?: yes)
-        |> Igniter.apply_and_fetch_dependencies(yes: yes)
-      else
-        _ ->
           igniter
-      end
+          |> Igniter.Project.Deps.add_dep(solver, yes?: yes)
+          |> Igniter.apply_and_fetch_dependencies(yes: yes)
+        else
+          _ ->
+            igniter
+        end
 
-    igniter
-    |> Spark.Igniter.add_extension(
-      module,
-      type,
-      :authorizers,
-      Ash.Policy.Authorizer
-    )
+      igniter
+      |> Spark.Igniter.add_extension(
+        module,
+        type,
+        :authorizers,
+        Ash.Policy.Authorizer
+      )
+    end
   end
 
   @doc false
