@@ -11,7 +11,7 @@ defmodule Ash.Resource.Transformers.SetPreCheckWith do
     |> Enum.reject(&(&1.pre_check? == false && &1.pre_check_with == nil))
     |> Enum.reduce({:ok, dsl_state}, fn
       %{pre_check?: true, pre_check_with: nil} = identity, {:ok, dsl_state} ->
-        unless domain do
+        if !domain do
           raise Spark.Error.DslError,
             module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
             path: [:identities, identity.name, :pre_check?],

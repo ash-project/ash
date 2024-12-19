@@ -274,7 +274,7 @@ defmodule Ash.Schema do
             Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
           end
 
-          unless Kernel.Typespec.defines_type?(__MODULE__, {:t, 0}) do
+          if !Kernel.Typespec.defines_type?(__MODULE__, {:t, 0}) do
             @type t :: %__MODULE__{}
           end
 

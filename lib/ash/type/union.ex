@@ -649,7 +649,7 @@ defmodule Ash.Type.Union do
 
       :map_with_tag ->
         case Enum.find(types, fn {_type_name, config} ->
-               unless config[:tag] && config[:tag_value] do
+               if !(config[:tag] && config[:tag_value]) do
                  raise "Found a type without a tag when using the `:map_with_tag` storage constraint. Constraints: #{inspect(constraints)}"
                end
 
@@ -700,7 +700,7 @@ defmodule Ash.Type.Union do
         :map_with_tag ->
           config = union_constraints[:types][type_name]
 
-          unless config[:tag] && config[:tag_value] do
+          if !(config[:tag] && config[:tag_value]) do
             raise "Found a type without a tag when using the `:map_with_tag` storage constraint. Constraints: #{inspect(union_constraints)}"
           end
 

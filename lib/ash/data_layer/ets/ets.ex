@@ -1267,7 +1267,7 @@ defmodule Ash.DataLayer.Ets do
       end)
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
-         _ <- unless(from_bulk_create?, do: log_create(resource, changeset)),
+         _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          record <- unload_relationships(resource, record),
          {:ok, record} <- put_or_insert_new(table, {pkey, record}, resource) do
@@ -1523,7 +1523,7 @@ defmodule Ash.DataLayer.Ets do
     pkey = pkey || pkey_map(resource, changeset.data)
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
-         _ <- unless(from_bulk?, do: log_update(resource, pkey, changeset)),
+         _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
          {:ok, record} <-
            do_update(
              table,

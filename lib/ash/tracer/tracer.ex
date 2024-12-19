@@ -89,7 +89,7 @@ defmodule Ash.Tracer do
         compiling? = Code.can_await_module_compilation?()
 
         metadata =
-          unless compiling? do
+          if !compiling? do
             case :telemetry.list_handlers(telemetry_name) do
               [] -> %{}
               _ when is_function(metadata) -> apply(metadata, [])
@@ -99,7 +99,7 @@ defmodule Ash.Tracer do
 
         start = System.monotonic_time()
 
-        unless compiling? do
+        if !compiling? do
           :telemetry.execute(
             telemetry_name ++ [:start],
             %{system_time: System.system_time()},
@@ -112,7 +112,7 @@ defmodule Ash.Tracer do
         after
           duration = System.monotonic_time() - start
 
-          unless compiling? do
+          if !compiling? do
             :telemetry.execute(
               telemetry_name ++ [:stop],
               %{system_time: System.system_time(), duration: duration},
@@ -221,7 +221,7 @@ defmodule Ash.Tracer do
   def set_metadata(tracers, type, metadata) when is_list(tracers) do
     tracers = Enum.filter(tracers, &Ash.Tracer.trace_type?(&1, type))
 
-    unless Enum.empty?(tracers) do
+    if !Enum.empty?(tracers) do
       metadata = resolve_lazy(metadata)
       Enum.each(tracers, & &1.set_metadata(type, metadata))
     end

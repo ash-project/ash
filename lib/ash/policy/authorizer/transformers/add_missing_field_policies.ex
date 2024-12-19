@@ -71,7 +71,7 @@ defmodule Ash.Policy.Authorizer.Transformers.AddMissingFieldPolicies do
 
     module = Transformer.get_persisted(dsl, :module)
 
-    unless Enum.empty?(invalid_fields) do
+    if !Enum.empty?(invalid_fields) do
       raise Spark.Error.DslError,
         module: module,
         path: [:field_policies],
@@ -82,7 +82,7 @@ defmodule Ash.Policy.Authorizer.Transformers.AddMissingFieldPolicies do
         """
     end
 
-    unless Enum.empty?(missing_fields) do
+    if !Enum.empty?(missing_fields) do
       raise Spark.Error.DslError,
         module: module,
         path: [:field_policies],

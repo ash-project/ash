@@ -1828,7 +1828,7 @@ defmodule Ash.Changeset do
     else
       explicitly_changing_attributes =
         Enum.map(
-          Map.keys(changeset.attributes) -- Map.get(changeset, :defaults, []) -- keys,
+          Map.keys(changeset.attributes) -- (Map.get(changeset, :defaults, []) -- keys),
           fn key ->
             {key, Ash.Changeset.get_attribute(changeset, key)}
           end
@@ -2183,7 +2183,7 @@ defmodule Ash.Changeset do
         else
           tenant =
             if identity.all_tenants? do
-              unless Ash.Resource.Info.multitenancy_global?(changeset.resource) do
+              if !Ash.Resource.Info.multitenancy_global?(changeset.resource) do
                 raise ArgumentError,
                   message: """
                   Cannot pre or eager check an identity that has `all_tenants?: true`

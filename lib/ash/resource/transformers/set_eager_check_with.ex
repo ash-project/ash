@@ -11,7 +11,7 @@ defmodule Ash.Resource.Transformers.SetEagerCheckWith do
     |> Enum.reject(&(&1.eager_check? == false && &1.eager_check_with == nil))
     |> Enum.reduce({:ok, dsl_state}, fn
       %{eager_check?: true, eager_check_with: nil} = identity, {:ok, dsl_state} ->
-        unless domain do
+        if !domain do
           raise Spark.Error.DslError,
             module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
             path: [:identities, identity.name, :eager_check?],

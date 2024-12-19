@@ -21,7 +21,7 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
         &match?(%Ash.Resource.Change{change: {Ash.Resource.Change.ManageRelationship, _}}, &1)
       )
       |> Enum.each(fn %Ash.Resource.Change{change: {_, opts}} ->
-        unless Enum.find(action.arguments, &(&1.name == opts[:argument])) do
+        if !Enum.find(action.arguments, &(&1.name == opts[:argument])) do
           raise Spark.Error.DslError,
             path:
               [

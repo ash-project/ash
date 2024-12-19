@@ -1,4 +1,4 @@
-unless Code.ensure_loaded?(Comparable) do
+if !Code.ensure_loaded?(Comparable) do
   defprotocol Comparable do
     @moduledoc """
     Protocol which describes ordering relation for pair of types

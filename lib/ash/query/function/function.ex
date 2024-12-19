@@ -261,7 +261,7 @@ defmodule Ash.Query.Function do
                      can_return_nil?: 1,
                      returns: 0
 
-      unless unquote(opts[:no_inspect?]) do
+      if !unquote(opts[:no_inspect?]) do
         defimpl Inspect do
           import Inspect.Algebra
 

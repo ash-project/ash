@@ -7,7 +7,7 @@ defmodule Ash.CodeInterface do
   def require_action(resource, interface) do
     action = Ash.Resource.Info.action(resource, interface.action || interface.name)
 
-    unless action do
+    if !action do
       raise Spark.Error.DslError,
         module: resource,
         message:
@@ -434,7 +434,7 @@ defmodule Ash.CodeInterface do
               {key, [], Elixir}
           end)
 
-        unless Enum.uniq(args) == args do
+        if Enum.uniq(args) != args do
           raise """
           Arguments #{inspect(args)} for #{interface.name} are not unique!
           """

@@ -118,7 +118,7 @@ defmodule Ash.Resource do
           ] do
       @persist {:simple_notifiers, List.wrap(opts[:simple_notifiers])}
 
-      unless embedded? || has_domain? do
+      if !(embedded? || has_domain?) do
         IO.warn("""
         Configuration Error:
 

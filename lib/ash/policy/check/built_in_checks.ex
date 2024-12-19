@@ -48,7 +48,7 @@ defmodule Ash.Policy.Check.Builtins do
   @spec action_type(Ash.Resource.Actions.action_type()) :: Ash.Policy.Check.ref()
   def action_type(action_type) do
     Enum.each(List.wrap(action_type), fn type ->
-      unless type in [:create, :read, :update, :destroy, :action] do
+      if type not in [:create, :read, :update, :destroy, :action] do
         raise ArgumentError, "Invalid action type: #{inspect(type)}"
       end
     end)

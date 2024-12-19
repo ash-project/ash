@@ -22,7 +22,7 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
   end
 
   defp validate_relationship(relationship, attribute_names) do
-    unless relationship.source_attribute in attribute_names do
+    if relationship.source_attribute not in attribute_names do
       raise Spark.Error.DslError,
         path: [:relationships, relationship.name],
         message:
@@ -37,14 +37,14 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
             |> Ash.Resource.Info.attributes()
             |> Enum.map(& &1.name)
 
-          unless relationship.source_attribute_on_join_resource in through_attributes do
+          if relationship.source_attribute_on_join_resource not in through_attributes do
             raise Spark.Error.DslError,
               path: [:relationships, relationship.name],
               message:
                 "Relationship `#{relationship.name}` expects source attribute on resource `#{relationship.source_attribute_on_join_resource}` to be defined on #{inspect(relationship.through)}"
           end
 
-          unless relationship.destination_attribute_on_join_resource in through_attributes do
+          if relationship.destination_attribute_on_join_resource not in through_attributes do
             raise Spark.Error.DslError,
               path: [:relationships, relationship.name],
               message:
@@ -58,7 +58,7 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
         |> Ash.Resource.Info.attributes()
         |> Enum.map(& &1.name)
 
-      unless relationship.destination_attribute in destination_attributes do
+      if relationship.destination_attribute not in destination_attributes do
         raise Spark.Error.DslError,
           path: [:relationships, relationship.name],
           message:

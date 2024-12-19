@@ -1,4 +1,4 @@
-unless Code.ensure_loaded?(Comp) do
+if !Code.ensure_loaded?(Comp) do
   defmodule Comp do
     @moduledoc """
     Provides utilities to implement and work with `Comparable` types

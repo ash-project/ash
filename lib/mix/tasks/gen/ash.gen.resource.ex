@@ -117,7 +117,7 @@ if Code.ensure_loaded?(Igniter) do
           base =
             Igniter.Project.Module.parse(options[:base])
 
-          unless base in List.wrap(Application.get_env(app_name, :base_resources)) do
+          if base not in List.wrap(Application.get_env(app_name, :base_resources)) do
             raise """
             The base module #{inspect(base)} is not in the list of base resources.
 
