@@ -1,6 +1,6 @@
 defmodule Ash.Test.Policy.ComplexTest do
   @doc false
-  use ExUnit.Case, async?: false
+  use ExUnit.Case, async: false
   require Ash.Query
 
   alias Ash.Test.Support.PolicyComplex.{Bio, Comment, Post, User}
@@ -72,8 +72,10 @@ defmodule Ash.Test.Policy.ComplexTest do
     [
       me: me,
       my_friend: my_friend,
+      a_friend_of_my_friend: a_friend_of_my_friend,
       post_by_me: post_by_me,
       post_by_my_friend: post_by_my_friend,
+      post_by_a_friend_of_my_friend: post_by_a_friend_of_my_friend,
       comment_by_me_on_my_post: comment_by_me_on_my_post,
       comment_by_my_friend_on_my_post: comment_by_my_friend_on_my_post,
       comment_by_a_friend_of_a_friend_on_his_own_post:
@@ -144,6 +146,36 @@ defmodule Ash.Test.Policy.ComplexTest do
     |> Ash.Query.load(:count_of_comments)
     |> Ash.Query.filter(count_of_comments == 10)
     |> Ash.read!(actor: me)
+  end
+
+  test "calculations containing aggregates authorize their aggregates", %{me: me, post_by_my_friend: post_by_my_friend, a_friend_of_my_friend: a_friend_of_my_friend} do
+      Comment.create!(
+        post_by_my_friend.id,
+        "comment by a friend of a friend on my friend's post",
+        actor: a_friend_of_my_friend,
+        authorize?: false
+      )
+
+      Comment.create!(
+        post_by_my_friend.id,
+        "comment by a friend of a friend on my friend's post",
+        actor: a_friend_of_my_friend,
+        authorize?: false
+      )
+
+      Comment.create!(
+        post_by_my_friend.id,
+        "comment by a friend of a friend on my friend's post",
+        actor: a_friend_of_my_friend,
+        authorize?: false
+      )
+
+    assert [2, 0] ==
+      Post
+      |> Ash.Query.load(:count_of_comments_calc)
+      |> Ash.Query.sort(count_of_comments_calc: :desc)
+      |> Ash.read!(actor: me)
+      |> Enum.map(&(&1.count_of_comments_calc))
   end
 
   test "aggregates join paths are authorized", %{me: me, post_by_me: post_by_me} do
