@@ -148,34 +148,38 @@ defmodule Ash.Test.Policy.ComplexTest do
     |> Ash.read!(actor: me)
   end
 
-  test "calculations containing aggregates authorize their aggregates", %{me: me, post_by_my_friend: post_by_my_friend, a_friend_of_my_friend: a_friend_of_my_friend} do
-      Comment.create!(
-        post_by_my_friend.id,
-        "comment by a friend of a friend on my friend's post",
-        actor: a_friend_of_my_friend,
-        authorize?: false
-      )
+  test "calculations containing aggregates authorize their aggregates", %{
+    me: me,
+    post_by_my_friend: post_by_my_friend,
+    a_friend_of_my_friend: a_friend_of_my_friend
+  } do
+    Comment.create!(
+      post_by_my_friend.id,
+      "comment by a friend of a friend on my friend's post",
+      actor: a_friend_of_my_friend,
+      authorize?: false
+    )
 
-      Comment.create!(
-        post_by_my_friend.id,
-        "comment by a friend of a friend on my friend's post",
-        actor: a_friend_of_my_friend,
-        authorize?: false
-      )
+    Comment.create!(
+      post_by_my_friend.id,
+      "comment by a friend of a friend on my friend's post",
+      actor: a_friend_of_my_friend,
+      authorize?: false
+    )
 
-      Comment.create!(
-        post_by_my_friend.id,
-        "comment by a friend of a friend on my friend's post",
-        actor: a_friend_of_my_friend,
-        authorize?: false
-      )
+    Comment.create!(
+      post_by_my_friend.id,
+      "comment by a friend of a friend on my friend's post",
+      actor: a_friend_of_my_friend,
+      authorize?: false
+    )
 
     assert [2, 0] ==
-      Post
-      |> Ash.Query.load(:count_of_comments_calc)
-      |> Ash.Query.sort(count_of_comments_calc: :desc)
-      |> Ash.read!(actor: me)
-      |> Enum.map(&(&1.count_of_comments_calc))
+             Post
+             |> Ash.Query.load(:count_of_comments_calc)
+             |> Ash.Query.sort(count_of_comments_calc: :desc)
+             |> Ash.read!(actor: me)
+             |> Enum.map(& &1.count_of_comments_calc)
   end
 
   test "aggregates join paths are authorized", %{me: me, post_by_me: post_by_me} do
