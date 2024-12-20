@@ -108,6 +108,17 @@ defmodule Ash do
                           doc:
                             "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
                         ],
+                        strict?: [
+                          type: :boolean,
+                          default: false,
+                          doc: """
+                            If set to true, only specified attributes will be loaded when passing
+                            a list of fields to fetch on a relationship, which allows for more
+                            optimized data-fetching.
+
+                            See `Ash.Query.load/2`.
+                          """
+                        ],
                         authorize_with: [
                           type: {:one_of, [:filter, :error]},
                           default: :filter,
@@ -230,6 +241,17 @@ defmodule Ash do
                        default: false,
                        doc:
                          "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
+                     ],
+                     strict?: [
+                       type: :boolean,
+                       default: false,
+                       doc: """
+                         If set to true, only specified attributes will be loaded when passing
+                         a list of fields to fetch on a relationship, which allows for more
+                         optimized data-fetching.
+
+                         See `Ash.Query.load/2`.
+                       """
                      ]
                    ]
                    |> Spark.Options.merge(@global_opts, "Global Options")
