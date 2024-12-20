@@ -2,8 +2,36 @@
 
 <!-- changelog -->
 
-## [v3.4.47](https://github.com/ash-project/ash/compare/v3.4.46...v3.4.47) (2024-12-17)
+## [v3.4.48](https://github.com/ash-project/ash/compare/v3.4.47...v3.4.48) (2024-12-20)
 
+### Bug Fixes:
+
+- [calculations] properly update sort calculation expressions
+
+- [`Ash.Type.Module`] handle nil values in `Ash.Type.Module`
+
+- [`Ash.Resource`] ensure that `select_by_default?` is honored on loads
+
+- [`Ash.Type.Union`] Verify union types constraint on init
+
+- [loading data] ensure tenant is set on reselection query
+
+### Improvements:
+
+- [Igniter] handle igniter not being compiled, and make it optional
+
+- [`Ash.Generator`] add `Ash.Generator.next_in_sequence/3`
+
+- [performance] don't reselect unnecessary attributes
+
+- [pagination] add `show_keysets_for_all_actions?` configuration
+
+  Set `config :ash, show_keysets_for_all_actions?, false` for significant performance
+  improvements when reading resources that support keyset pagination. This causes
+  keysets to only be shown for actions that are actively being paginated with
+  keyset pagination.
+
+## [v3.4.47](https://github.com/ash-project/ash/compare/v3.4.46...v3.4.47) (2024-12-17)
 
 ### Bug Fixes:
 
