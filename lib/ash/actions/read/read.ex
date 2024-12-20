@@ -2967,7 +2967,7 @@ defmodule Ash.Actions.Read do
 
       {%Ash.Query.Calculation{
          module: Ash.Resource.Calculation.Expression,
-         opts: [expression: expression]
+         opts: [expr: expression]
        } = calc, direction},
       {:ok, sort} ->
         new_expr =
@@ -2982,7 +2982,7 @@ defmodule Ash.Actions.Read do
             query.domain
           )
 
-        new_calc = %{calc | opts: [expression: new_expr]}
+        new_calc = %{calc | opts: [expr: new_expr]}
 
         {:cont, {:ok, [{new_calc, direction} | sort]}}
 
