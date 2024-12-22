@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.4.49](https://github.com/ash-project/ash/compare/v3.4.48...v3.4.49) (2024-12-22)
+
+
+
+
+### Bug Fixes:
+
+* [`Ash.Policy.Authorizer`] ensure that old config applies all aggregate policies
+
+If you've upgraded to the following configuration this does not affect you:
+
+```elixir
+config :ash, :policies, no_filter_static_forbidden_reads?: false
+```
+
+You should upgrade regardless, and adopt that new configuration.
+
 ## [v3.4.48](https://github.com/ash-project/ash/compare/v3.4.47...v3.4.48) (2024-12-20)
 
 ### Bug Fixes:
