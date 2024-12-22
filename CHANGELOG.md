@@ -5,7 +5,9 @@
 ## [v3.4.49](https://github.com/ash-project/ash/compare/v3.4.48...v3.4.49) (2024-12-22)
 
 
+### Improvements:
 
+- [read actions] - add support for `strict?` in `Ash.read` options. (#1669)
 
 ### Bug Fixes:
 
