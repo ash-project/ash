@@ -1012,7 +1012,7 @@ defmodule Ash.Filter do
                 )}}
 
             {:ok, false, _error} ->
-              {:halt,
+              {:cont,
                {:ok,
                 Map.put(
                   filters,

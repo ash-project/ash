@@ -202,6 +202,15 @@ defmodule Ash.Test.Policy.ComplexTest do
     assert count_of_commenters_with_authorization == 2
   end
 
+  test "multiple aggregates join paths are authorized", %{me: me, post_by_me: post_by_me} do
+    assert %{always_forbidden_comments: 0, always_forbidden_author: 0} =
+             Post
+             |> Ash.Query.load([:always_forbidden_comments, :always_forbidden_author])
+             |> Ash.Query.filter(id == ^post_by_me.id)
+             |> Ash.read_one!(actor: me)
+             |> Map.take([:always_forbidden_comments, :always_forbidden_author])
+  end
+
   test "aggregates in calculations are authorized", %{me: me} do
     Post
     |> Ash.Query.load([:count_of_comments_calc, :count_of_comments])
