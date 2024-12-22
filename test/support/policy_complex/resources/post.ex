@@ -56,6 +56,16 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
       public? true
     end
 
+    count :always_forbidden_comments, :comments do
+      public? true
+      read_action :always_forbid
+    end
+
+    count :always_forbidden_author, :author do
+      public? true
+      read_action :always_forbid
+    end
+
     count :count_of_commenters, [:comments, :author] do
       public? true
       uniq? true
