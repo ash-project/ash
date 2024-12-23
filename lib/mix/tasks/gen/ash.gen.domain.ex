@@ -34,7 +34,8 @@ if Code.ensure_loaded?(Igniter) do
       else
         igniter
         |> Igniter.Project.Module.create_module(domain, """
-        use Ash.Domain
+        use Ash.Domain,
+          otp_app: :#{app_name}
 
         resources do
         end
