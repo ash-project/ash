@@ -371,6 +371,15 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.limit(1)
                |> Ash.read(return_query?: true)
+
+      assert {:ok, %{}, %Ash.Query{limit: 1}} =
+               Post
+               |> Ash.read_first(return_query?: true)
+
+      assert {:ok, %{}, %Ash.Query{limit: 1}} =
+               Post
+               |> Ash.Query.limit(1)
+               |> Ash.read_one(return_query?: true)
     end
 
     test "after action hooks are run" do

@@ -2074,9 +2074,12 @@ defmodule Ash do
          opts <- ReadOneOpts.to_options(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
-         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
-         {:ok, result} <- do_read_one(query, action, opts) do
-      {:ok, result}
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
+      case do_read_one(query, action, opts) do
+        {:ok, result} -> {:ok, result}
+        {:ok, result, query} -> {:ok, result, query}
+        {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+      end
     else
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}
@@ -2116,9 +2119,12 @@ defmodule Ash do
          opts <- ReadOneOpts.to_options(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
-         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
-         {:ok, result} <- do_read_one(query, action, opts) do
-      {:ok, result}
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
+      case do_read_one(query, action, opts) do
+        {:ok, result} -> {:ok, result}
+        {:ok, result, query} -> {:ok, result, query}
+        {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+      end
     else
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}
