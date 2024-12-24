@@ -366,6 +366,13 @@ defmodule Ash.Test.Actions.ReadTest do
                |> Ash.read()
     end
 
+    test "return_query returns the query" do
+      assert {:ok, [_post], query} =
+               Post
+               |> Ash.Query.limit(1)
+               |> Ash.read(return_query?: true)
+    end
+
     test "after action hooks are run" do
       assert [%{__metadata__: %{prepared?: true}}, %{__metadata__: %{prepared?: true}}] =
                Ash.read!(Post, action: :read_with_after_action)

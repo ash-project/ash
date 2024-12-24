@@ -1987,9 +1987,12 @@ defmodule Ash do
          opts <- ReadOpts.to_options(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
-         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
-         {:ok, results} <- Ash.Actions.Read.run(query, action, opts) do
-      {:ok, results}
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
+      case Ash.Actions.Read.run(query, action, opts) do
+        {:ok, results} -> {:ok, results}
+        {:ok, results, query} -> {:ok, results, query}
+        {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+      end
     else
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}
