@@ -172,7 +172,7 @@ defmodule Ash do
                  ]
                ]
                |> Spark.Options.merge(
-                 @read_opts_schema,
+                 Keyword.drop(@read_opts_schema, [:page]),
                  "Read Options"
                )
 
