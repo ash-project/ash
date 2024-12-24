@@ -367,7 +367,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     test "return_query returns the query" do
-      assert {:ok, [_post], query} =
+      assert {:ok, [_post], %Ash.Query{limit: 1}} =
                Post
                |> Ash.Query.limit(1)
                |> Ash.read(return_query?: true)
