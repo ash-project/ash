@@ -34,13 +34,13 @@ defmodule Ash.Resource.Validation.Changing do
   end
 
   @impl true
-  def validate(changeset, opts, _context) do
+  def validate(changeset, opts, context) do
     case Ash.Resource.Info.relationship(changeset.resource, opts[:field]) do
       nil ->
         if Ash.Changeset.changing_attribute?(changeset, opts[:field]) do
           :ok
         else
-          {:error, exception(opts)}
+          {:error, exception(opts, context)}
         end
 
       %{type: :belongs_to, source_attribute: source_attribute} = relationship ->
@@ -48,14 +48,14 @@ defmodule Ash.Resource.Validation.Changing do
              Ash.Changeset.changing_relationship?(changeset, relationship.name) do
           :ok
         else
-          {:error, exception(opts)}
+          {:error, exception(opts, context)}
         end
 
       relationship ->
         if Ash.Changeset.changing_relationship?(changeset, relationship.name) do
           :ok
         else
-          {:error, exception(opts)}
+          {:error, exception(opts, context)}
         end
     end
   end
@@ -75,7 +75,7 @@ defmodule Ash.Resource.Validation.Changing do
              })
            )}
         else
-          {:error, exception(opts)}
+          {:error, exception(opts, context)}
         end
 
       %{type: :belongs_to, source_attribute: source_attribute} ->
@@ -91,7 +91,7 @@ defmodule Ash.Resource.Validation.Changing do
              })
            )}
         else
-          {:error, exception(opts)}
+          {:error, exception(opts, context)}
         end
 
       relationship ->
@@ -107,9 +107,16 @@ defmodule Ash.Resource.Validation.Changing do
     ]
   end
 
-  defp exception(opts) do
+  defp exception(opts, context) do
     [field: opts[:field]]
     |> with_description(opts)
+    |> maybe_use_context_message(context.message)
     |> InvalidAttribute.exception()
+  end
+
+  defp maybe_use_context_message(opts, nil), do: opts
+
+  defp maybe_use_context_message(opts, message) do
+    Keyword.put(opts, :message, message)
   end
 end

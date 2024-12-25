@@ -52,7 +52,7 @@ defmodule Ash.Test.Resource.Validation.ChangingTest do
 
       update :ensure_author_changing do
         require_atomic? false
-        validate changing(:author)
+        validate changing(:author), message: "change is inevitable!"
       end
 
       update :ensure_comments_changing do
@@ -128,7 +128,7 @@ defmodule Ash.Test.Resource.Validation.ChangingTest do
 
       Post
       |> Ash.create!(%{title: "foo", author_id: author.id})
-      |> assert_invalid_updates(:ensure_author_changing, %{})
+      |> assert_invalid_updates(:ensure_author_changing, %{}, "change is inevitable!")
     end
 
     test "fails if relationship is being set to the same value" do
@@ -136,7 +136,11 @@ defmodule Ash.Test.Resource.Validation.ChangingTest do
 
       Post
       |> Ash.create!(%{title: "foo", author_id: author.id})
-      |> assert_invalid_updates(:ensure_author_changing, %{author_id: author.id})
+      |> assert_invalid_updates(
+        :ensure_author_changing,
+        %{author_id: author.id},
+        "change is inevitable!"
+      )
     end
 
     test "succeeds if relationship is being set to another value" do
