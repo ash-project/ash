@@ -41,6 +41,10 @@ if Code.ensure_loaded?(Igniter) do
             rest: true
           ]
         ],
+        schema: [
+          sat_solver: :string
+        ],
+        aliases: [],
         example: @example
       }
     end

@@ -323,6 +323,7 @@ defmodule Ash.MixProject do
     [
       name: :ash,
       licenses: ["MIT"],
+      maintainers: ["Zach Daniel"],
       files: ~w(lib .formatter.exs mix.exs README* LICENSE*
       CHANGELOG* documentation),
       links: %{
