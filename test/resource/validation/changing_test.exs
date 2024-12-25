@@ -46,10 +46,12 @@ defmodule Ash.Test.Resource.Validation.ChangingTest do
       defaults [:read, create: :*, update: :*]
 
       update :ensure_order_changing do
+        require_atomic? false
         validate changing(:order)
       end
 
       update :ensure_author_changing do
+        require_atomic? false
         validate changing(:author)
       end
 
@@ -70,67 +72,80 @@ defmodule Ash.Test.Resource.Validation.ChangingTest do
     end
   end
 
-  describe "Ash.Resource.Validation.Changing atomic validation" do
-    test "fails if attribute is not changing" do
-      post = Ash.create!(Post, %{title: "foo", order: 1})
+  def assert_invalid_updates(
+        %resource_module{} = resource,
+        action,
+        input,
+        message \\ "must be changing"
+      ) do
+    assert_raise Ash.Error.Invalid, ~r/#{message}/, fn ->
+      resource
+      |> Ash.Changeset.for_update(action, input)
+      |> Ash.update!(atomic_upgrade?: false)
+    end
 
-      assert_raise Ash.Error.Invalid, ~r/must be changing/, fn ->
-        Post
-        |> Ash.Query.filter(id == ^post.id)
-        |> Ash.bulk_update!(:ensure_order_changing, %{})
-      end
+    assert_raise Ash.Error.Invalid, ~r/#{message}/, fn ->
+      resource_module
+      |> Ash.Query.filter(id == ^resource.id)
+      |> Ash.bulk_update!(action, input)
+    end
+  end
+
+  def assert_valid_updates(%resource_module{} = resource, action, input) do
+    assert %Ash.BulkResult{status: :success} =
+             resource_module
+             |> Ash.Query.filter(id == ^resource.id)
+             |> Ash.bulk_update!(action, input)
+
+    # Ensures the non-atomic version works even if the data layer has already
+    # been updated.
+    assert resource
+           |> Ash.Changeset.for_update(action, input)
+           |> Ash.update!(atomic_upgrade?: false)
+  end
+
+  describe "Ash.Resource.Validation.Changing" do
+    test "fails if attribute is not changing" do
+      Post
+      |> Ash.create!(%{title: "foo", order: 1})
+      |> assert_invalid_updates(:ensure_order_changing, %{})
     end
 
     test "fails if attribute is being set to the same value" do
-      post = Ash.create!(Post, %{title: "foo", order: 1})
-
-      assert_raise Ash.Error.Invalid, ~r/must be changing/, fn ->
-        Post
-        |> Ash.Query.filter(id == ^post.id)
-        |> Ash.bulk_update!(:ensure_order_changing, %{order: 1})
-      end
+      Post
+      |> Ash.create!(%{title: "foo", order: 1})
+      |> assert_invalid_updates(:ensure_order_changing, %{order: 1})
     end
 
     test "succeeds if attribute changing to another value" do
-      post = Ash.create!(Post, %{title: "foo", order: 1})
-
-      assert %Ash.BulkResult{status: :success} =
-               Post
-               |> Ash.Query.filter(id == ^post.id)
-               |> Ash.bulk_update!(:ensure_order_changing, %{order: 2})
+      Post
+      |> Ash.create!(%{title: "foo", order: 1})
+      |> assert_valid_updates(:ensure_order_changing, %{order: 2})
     end
 
     test "fails if relationship is not changing" do
       author = Ash.create!(Author, %{name: "fred"})
-      post = Ash.create!(Post, %{title: "foo", author_id: author.id})
 
-      assert_raise Ash.Error.Invalid, ~r/must be changing/, fn ->
-        Post
-        |> Ash.Query.filter(id == ^post.id)
-        |> Ash.bulk_update!(:ensure_author_changing, %{})
-      end
+      Post
+      |> Ash.create!(%{title: "foo", author_id: author.id})
+      |> assert_invalid_updates(:ensure_author_changing, %{})
     end
 
     test "fails if relationship is being set to the same value" do
       author = Ash.create!(Author, %{name: "fred"})
-      post = Ash.create!(Post, %{title: "foo", author_id: author.id})
 
-      assert_raise Ash.Error.Invalid, ~r/must be changing/, fn ->
-        Post
-        |> Ash.Query.filter(id == ^post.id)
-        |> Ash.bulk_update!(:ensure_author_changing, %{author_id: author.id})
-      end
+      Post
+      |> Ash.create!(%{title: "foo", author_id: author.id})
+      |> assert_invalid_updates(:ensure_author_changing, %{author_id: author.id})
     end
 
     test "succeeds if relationship is being set to another value" do
       author1 = Ash.create!(Author, %{name: "fred"})
       author2 = Ash.create!(Author, %{name: "george"})
-      post = Ash.create!(Post, %{title: "foo", author_id: author1.id})
 
-      assert %Ash.BulkResult{status: :success} =
-               Post
-               |> Ash.Query.filter(id == ^post.id)
-               |> Ash.bulk_update!(:ensure_author_changing, %{author_id: author2.id})
+      Post
+      |> Ash.create!(%{title: "foo", author_id: author1.id})
+      |> assert_valid_updates(:ensure_author_changing, %{author_id: author2.id})
     end
 
     test "returns :not_atomic on has_many relationships" do
