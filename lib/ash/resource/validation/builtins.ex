@@ -27,7 +27,7 @@ defmodule Ash.Resource.Validation.Builtins do
       validate changing(:first_name)
       validate changing(:comments)
   """
-  @spec changing(attribute :: atom) :: Validation.ref()
+  @spec changing(attribute_or_relationship :: atom) :: Validation.ref()
   def changing(field) do
     {Validation.Changing, field: field}
   end
