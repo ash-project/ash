@@ -454,27 +454,6 @@ defmodule Ash.CodeInterface do
             {params, opts} =
               if opts == [] && Keyword.keyword?(params_or_opts),
                 do:
-                  {%{},
-                   unquote(interface_options).validate!(params_or_opts)
-                   |> unquote(interface_options).to_options()},
-                else:
-                  {params_or_opts,
-                   unquote(interface_options).validate!(opts)
-                   |> unquote(interface_options).to_options()}
-
-            params =
-              unquote(args)
-              |> Enum.zip([unquote_splicing(arg_vars)])
-              |> Enum.reduce(params, fn {key, value}, params ->
-                Map.put(params, key, value)
-              end)
-          end
-
-        resolve_bang_opts_params =
-          quote do
-            {params, opts} =
-              if opts == [] && Keyword.keyword?(params_or_opts),
-                do:
                   {if(params_or_opts != [], do: %{}, else: []),
                    unquote(interface_options).validate!(params_or_opts)
                    |> unquote(interface_options).to_options()},
@@ -1289,7 +1268,7 @@ defmodule Ash.CodeInterface do
                {first_opts_location + 1, interface_options.schema()}
              ]
         def unquote(:"#{interface.name}!")(unquote_splicing(common_args)) do
-          unquote(resolve_bang_opts_params)
+          unquote(resolve_opts_params)
           unquote(resolve_subject)
           unquote(act!)
         end
