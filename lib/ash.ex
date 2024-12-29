@@ -1009,6 +1009,8 @@ defmodule Ash do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
 
+    {default, opts} = Keyword.pop(opts, :default)
+
     query
     |> Ash.Query.new()
     |> Ash.Query.select([])
@@ -1042,6 +1044,11 @@ defmodule Ash do
 
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}
+    end
+    |> case do
+      {:ok, nil} when is_function(default) -> {:ok, default.()}
+      {:ok, nil} -> {:ok, default}
+      other -> other
     end
   end
 
