@@ -36,6 +36,8 @@ on:
         type: string
       rustler-precompiled-var:
         type: string
+      rustler-precompiled-module:
+        type: string
       sat-solver:
         type: string
         default: "Picosat"
