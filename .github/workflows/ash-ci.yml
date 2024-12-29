@@ -310,7 +310,7 @@ jobs:
   build-release:
      name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
      runs-on: ${{ matrix.job.os }}
-     if: ${{inputs.rustler-precompiled-var && inputs.rustler-precompiled-module}} 
+     if: ${{inputs.rustler-precompiled-module}} 
      needs:
       - credo
       - unused-deps
@@ -409,7 +409,7 @@ jobs:
       - dialyzer
       - build-dev
       - deps
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{ always() && !failure() && !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     name: Release
     steps:
