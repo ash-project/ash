@@ -34,6 +34,8 @@ on:
         default: false
       hex-api-key:
         type: string
+      rustler-precompiled-var:
+        type: string
       sat-solver:
         type: string
         default: "Picosat"
@@ -323,6 +325,15 @@ jobs:
     name: Release
     steps:
       - uses: actions/checkout@v3
+      - id: setEnv
+        run: |
+          echo 'ENV={ "${{inputs.rustler-precompiled-var}}": "1"}' >> $GITHUB_OUTPUT    
+        if: ${{inputs.rustler-precompiled-var && inputs.rustler-precompiled-module}} 
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        if: ${{inputs.rustler-precompiled-var && inputs.rustler-precompiled-module}} 
+        env: ${{ fromJson(steps.setEnv.outputs.ENV) }}
+        with:
+          task: rustler_precompiled.download ${{inputs.rustler-precompiled-module}} --only-local
       - uses: team-alembic/staple-actions/actions/mix-hex-publish@main
         with:
           mix-env: dev
