@@ -201,6 +201,40 @@ defmodule Ash.CodeInterface do
   end
 
   @doc """
+  A common pattern is for a function to have both optional parameters and
+  optional options. This usually comes in the form of two defaults:
+
+    * An empty map for params.
+    * An empty list for options.
+
+  With those two defaults in mind, this function will decipher, from two inputs,
+  which should be parameters and which should be options.
+
+  Parameters can take one of two primary forms:
+
+    1. A map.
+    2. A list of maps for bulk operations.
+
+  Additionally, if options are set explicitly (i.e. at least one option has
+  been set), a keywork list will be converted to a map.
+  """
+  @spec params_and_opts(params_or_opts :: map() | [map()] | keyword(), keyword()) ::
+          {params :: map() | [map()], opts :: keyword()}
+  def params_and_opts(%{} = params, opts), do: {params, opts}
+
+  def params_and_opts([], opts), do: {[], opts}
+
+  def params_and_opts(opts, []) when is_list(opts), do: {%{}, opts}
+
+  def params_and_opts(params_or_list, opts) do
+    params =
+      if Keyword.keyword?(params_or_list),
+        do: Map.new(params_or_list),
+        else: params_or_list
+
+    {params, opts}
+  end
+  @doc """
   Defines the code interface for a given resource + domain combination in the current module. For example:
 
   ```elixir
@@ -451,19 +485,12 @@ defmodule Ash.CodeInterface do
 
         resolve_opts_params =
           quote do
-            {params, opts} =
-              if opts == [] && Keyword.keyword?(params_or_opts),
-                do:
-                  {if(params_or_opts != [], do: %{}, else: []),
-                   unquote(interface_options).validate!(params_or_opts)
-                   |> unquote(interface_options).to_options()},
-                else:
-                  {if(Keyword.keyword?(params_or_opts),
-                     do: Map.new(params_or_opts),
-                     else: params_or_opts
-                   ),
-                   unquote(interface_options).validate!(opts)
-                   |> unquote(interface_options).to_options()}
+            {params, opts} = Ash.CodeInterface.params_and_opts(params_or_opts, opts)
+
+            opts =
+              opts
+              |> unquote(interface_options).validate!()
+              |> unquote(interface_options).to_options()
 
             params =
               if is_list(params) do
