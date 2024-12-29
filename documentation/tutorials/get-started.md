@@ -91,7 +91,7 @@ Open the project in your text editor, and we'll get started.
 > Already know you want to use `AshPostgres`? Use the `--extend` argument.
 >
 > ```bash
-> mix igniter.new helpdesk --install ash,ash_postgres --example --extend postgres`
+> mix igniter.new helpdesk --install ash,ash_postgres --example --extend postgres
 > ```
 >
 > Want to start with a Phoenix app setup too? Use the `--with` argument.
