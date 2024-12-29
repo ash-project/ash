@@ -236,6 +236,25 @@ defmodule Ash.CodeInterface do
   end
 
   @doc """
+  See `params_and_opts/2`.
+
+  Adds a post process function that can takes the opts and can further process
+  or transform them. This is used for validation and/or adding defaults.
+  """
+  @spec params_and_opts(
+          params_or_opts :: map() | [map()] | keyword(),
+          keyword(),
+          (keyword() -> keyword())
+        ) ::
+          {params :: map() | [map()], opts :: keyword()}
+  def params_and_opts(params_or_opts, maybe_opts, post_process_opts_fn)
+      when is_function(post_process_opts_fn, 1) do
+    params_or_opts
+    |> params_and_opts(maybe_opts)
+    |> then(fn {params, opts} -> {params, post_process_opts_fn.(opts)} end)
+  end
+
+  @doc """
   Defines the code interface for a given resource + domain combination in the current module. For example:
 
   ```elixir
@@ -486,12 +505,12 @@ defmodule Ash.CodeInterface do
 
         resolve_params_and_opts =
           quote do
-            {params, opts} = Ash.CodeInterface.params_and_opts(params_or_opts, opts)
-
-            opts =
-              opts
-              |> unquote(interface_options).validate!()
-              |> unquote(interface_options).to_options()
+            {params, opts} =
+              Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
+                opts
+                |> unquote(interface_options).validate!()
+                |> unquote(interface_options).to_options()
+              end)
 
             arg_params =
               unquote(args)
@@ -1350,17 +1369,13 @@ defmodule Ash.CodeInterface do
              ]
         def unquote(:"can_#{interface.name}")(actor, unquote_splicing(common_args)) do
           {params, opts} =
-            if opts == [] && Keyword.keyword?(params_or_opts),
-              do:
-                {%{},
-                 Ash.Resource.Interface.CanOpts.validate!(params_or_opts)
-                 |> unquote(interface_options).to_options()},
-              else:
-                {params_or_opts,
-                 Ash.Resource.Interface.CanOpts.validate!(opts)
-                 |> unquote(interface_options).to_options()}
+            Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
+              opts
+              |> Ash.Resource.Interface.CanOpts.validate!()
+              |> unquote(interface_options).to_options()
+              |> Keyword.put(:actor, actor)
+            end)
 
-          opts = Keyword.put(opts, :actor, actor)
           unquote(resolve_subject)
 
           case unquote(subject) do
@@ -1396,17 +1411,13 @@ defmodule Ash.CodeInterface do
              |> Ash.CodeInterface.trim_double_newlines()
         def unquote(:"can_#{interface.name}?")(actor, unquote_splicing(common_args)) do
           {params, opts} =
-            if opts == [] && Keyword.keyword?(params_or_opts),
-              do:
-                {%{},
-                 Ash.Resource.Interface.CanQuestionMarkOpts.validate!(params_or_opts)
-                 |> unquote(interface_options).to_options()},
-              else:
-                {params_or_opts,
-                 Ash.Resource.Interface.CanQuestionMarkOpts.validate!(opts)
-                 |> unquote(interface_options).to_options()}
+            Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
+              opts
+              |> Ash.Resource.Interface.CanOpts.validate!()
+              |> unquote(interface_options).to_options()
+              |> Keyword.put(:actor, actor)
+            end)
 
-          opts = Keyword.put(opts, :actor, actor)
           unquote(resolve_subject)
 
           case unquote(subject) do
