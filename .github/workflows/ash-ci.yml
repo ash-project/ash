@@ -44,6 +44,7 @@ on:
         default: true
 env:
   PG_VERSION: ${{inputs.postgres-version}}
+  ASH_CI_BUILD: true
 jobs:
   deps:
     name: mix deps.get
