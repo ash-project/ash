@@ -314,7 +314,6 @@ jobs:
       - credo
       - unused-deps
       - spark-formatter
-      - build-release
       - spark-cheat-sheets
       - igniter-upgrade
       - sobelow
