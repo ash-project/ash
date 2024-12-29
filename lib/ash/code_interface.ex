@@ -234,6 +234,7 @@ defmodule Ash.CodeInterface do
 
     {params, opts}
   end
+
   @doc """
   Defines the code interface for a given resource + domain combination in the current module. For example:
 
@@ -483,7 +484,7 @@ defmodule Ash.CodeInterface do
 
         interface_options = Ash.Resource.Interface.interface_options(action.type, interface)
 
-        resolve_opts_params =
+        resolve_params_and_opts =
           quote do
             {params, opts} = Ash.CodeInterface.params_and_opts(params_or_opts, opts)
 
@@ -1263,7 +1264,7 @@ defmodule Ash.CodeInterface do
                {first_opts_location + 1, interface_options.schema()}
              ]
         def unquote(interface.name)(unquote_splicing(common_args)) do
-          unquote(resolve_opts_params)
+          unquote(resolve_params_and_opts)
           unquote(resolve_subject)
           unquote(act)
         end
@@ -1287,7 +1288,7 @@ defmodule Ash.CodeInterface do
                {first_opts_location + 1, interface_options.schema()}
              ]
         def unquote(:"#{interface.name}!")(unquote_splicing(common_args)) do
-          unquote(resolve_opts_params)
+          unquote(resolve_params_and_opts)
           unquote(resolve_subject)
           unquote(act!)
         end
@@ -1325,7 +1326,7 @@ defmodule Ash.CodeInterface do
                  {first_opts_location + 1, subject_opts}
                ]
           def unquote(:"#{subject_name}_to_#{interface.name}")(unquote_splicing(common_args)) do
-            unquote(resolve_opts_params)
+            unquote(resolve_params_and_opts)
             unquote(resolve_subject)
             unquote(subject)
           end
