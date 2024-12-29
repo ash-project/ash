@@ -312,6 +312,20 @@ jobs:
      name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
      runs-on: ${{ matrix.job.os }}
      if: ${{inputs.rustler-precompiled-var && inputs.rustler-precompiled-module}} 
+     needs:
+      - credo
+      - unused-deps
+      - spark-formatter
+      - build-release
+      - spark-cheat-sheets
+      - igniter-upgrade
+      - sobelow
+      - formatter
+      - auditor
+      - test
+      - dialyzer
+      - build-dev
+      - deps
      permissions:
        contents: write
      strategy:
