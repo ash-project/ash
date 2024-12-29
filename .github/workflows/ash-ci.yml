@@ -417,7 +417,7 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-task@main
         if: ${{inputs.rustler-precompiled-module}} 
         with:
-          task: rustler_precompiled.download ${{inputs.rustler-precompiled-module}} --only-local
+          task: rustler_precompiled.download ${{inputs.rustler-precompiled-module}} --only-local --all --print
       - uses: team-alembic/staple-actions/actions/mix-hex-publish@main
         with:
           mix-env: dev
