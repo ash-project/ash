@@ -310,7 +310,7 @@ jobs:
   build-release:
      name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
      runs-on: ${{ matrix.job.os }}
-     if: ${{inputs.rustler-precompiled-module}} 
+     if: ${{ always() && !failure() && !cancelled() && ${{inputs.rustler-precompiled-module}} && startsWith(github.ref, 'refs/tags/v')}}
      needs:
       - credo
       - unused-deps
