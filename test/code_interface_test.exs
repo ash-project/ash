@@ -27,6 +27,7 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :get_by_id, action: :by_id, get?: true, args: [:id]
       define :create, args: [{:optional, :first_name}]
       define :hello, args: [:name]
+      define :hello_actor, default_options: %{actor: %{name: "William Shatner"}}
       define :create_with_map, args: [:map]
       define :update_with_map, args: [:map]
 
@@ -82,6 +83,12 @@ defmodule Ash.Test.CodeInterfaceTest do
 
         run(fn input, _ ->
           {:ok, "Hello #{input.arguments.name}"}
+        end)
+      end
+
+      action :hello_actor, :string do
+        run(fn input, _ ->
+          {:ok, "Hello, #{input.context.private.actor.name}."}
         end)
       end
     end
@@ -392,5 +399,10 @@ defmodule Ash.Test.CodeInterfaceTest do
              User.create("fred", [last_name: "weasley"], actor: nil)
 
     assert %{last_name: "weasley"} = User.create!("fred", [last_name: "weasley"], actor: nil)
+  end
+
+  test "default options" do
+    assert "Hello, Leonard Nimoy." = User.hello_actor!(actor: %{name: "Leonard Nimoy"})
+    assert "Hello, William Shatner." = User.hello_actor!()
   end
 end
