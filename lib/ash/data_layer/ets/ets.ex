@@ -814,7 +814,7 @@ defmodule Ash.DataLayer.Ets do
         if include_nil? do
           case records do
             [] ->
-              default
+              nil
 
             [record | _rest] ->
               field_value(record, field)
@@ -939,6 +939,10 @@ defmodule Ash.DataLayer.Ets do
                 end
             end
         end
+    end
+    |> case do
+      nil -> default
+      other -> other
     end
   end
 
