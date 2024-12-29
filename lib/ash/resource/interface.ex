@@ -248,7 +248,7 @@ defmodule Ash.Resource.Interface do
       """
     ],
     default_options: [
-      type: :any,
+      type: :keyword_list,
       default: [],
       doc:
         "Default options used when none are supplied. These can override domain or action defaults."
