@@ -508,9 +508,6 @@ defmodule Ash.CodeInterface do
             {params, opts} =
               Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
                 unquote(Macro.escape(interface.default_options))
-                |> Enum.reduce(opts, fn {key, default}, opts_with_defaults ->
-                  Keyword.put_new(opts_with_defaults, key, default)
-                end)
                 |> Keyword.merge(opts)
                 |> unquote(interface_options).validate!()
                 |> unquote(interface_options).to_options()
