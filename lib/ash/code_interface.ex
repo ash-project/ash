@@ -492,23 +492,15 @@ defmodule Ash.CodeInterface do
               |> unquote(interface_options).validate!()
               |> unquote(interface_options).to_options()
 
-            params =
-              if is_list(params) do
-                to_merge =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Map.new()
+            arg_params =
+              unquote(args)
+              |> Enum.zip([unquote_splicing(arg_vars)])
+              |> Map.new()
 
-                Enum.map(params, fn params ->
-                  Map.merge(params, to_merge)
-                end)
-              else
-                unquote(args)
-                |> Enum.zip([unquote_splicing(arg_vars)])
-                |> Enum.reduce(params, fn {key, value}, params ->
-                  Map.put(params, key, value)
-                end)
-              end
+            params =
+              if is_list(params),
+                do: Enum.map(params, &Map.merge(&1, arg_params)),
+                else: Map.merge(params, arg_params)
           end
 
         {subject, subject_args, resolve_subject, act, act!} =
