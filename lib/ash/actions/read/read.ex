@@ -212,11 +212,13 @@ defmodule Ash.Actions.Read do
       end
 
     opts = Keyword.delete(opts, :page)
-    query = if page_opts do
-    Ash.Query.page(query, page_opts)
-    else
-    query
-    end
+
+    query =
+      if page_opts do
+        Ash.Query.page(query, page_opts)
+      else
+        query
+      end
 
     query =
       if opts[:initial_data] do
