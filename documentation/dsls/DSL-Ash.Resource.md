@@ -457,6 +457,8 @@ end
 | [`sort`](#relationships-has_one-sort){: #relationships-has_one-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-has_one-could_be_related_at_creation?){: #relationships-has_one-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
 | [`violation_message`](#relationships-has_one-violation_message){: #relationships-has_one-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
+| [`authorize_read_with`](#relationships-has_one-authorize_read_with){: #relationships-has_one-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
+| [`allow_forbidden_field?`](#relationships-has_one-allow_forbidden_field?){: #relationships-has_one-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
 
 
 ## relationships.has_one.filter
@@ -554,6 +556,8 @@ end
 | [`sort`](#relationships-has_many-sort){: #relationships-has_many-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-has_many-could_be_related_at_creation?){: #relationships-has_many-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
 | [`violation_message`](#relationships-has_many-violation_message){: #relationships-has_many-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
+| [`authorize_read_with`](#relationships-has_many-authorize_read_with){: #relationships-has_many-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
+| [`allow_forbidden_field?`](#relationships-has_many-allow_forbidden_field?){: #relationships-has_many-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
 
 
 ## relationships.has_many.filter
@@ -662,6 +666,8 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`sort`](#relationships-many_to_many-sort){: #relationships-many_to_many-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-many_to_many-could_be_related_at_creation?){: #relationships-many_to_many-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
 | [`violation_message`](#relationships-many_to_many-violation_message){: #relationships-many_to_many-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
+| [`authorize_read_with`](#relationships-many_to_many-authorize_read_with){: #relationships-many_to_many-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
+| [`allow_forbidden_field?`](#relationships-many_to_many-allow_forbidden_field?){: #relationships-many_to_many-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
 
 
 ## relationships.many_to_many.filter
@@ -764,6 +770,8 @@ end
 | [`sortable?`](#relationships-belongs_to-sortable?){: #relationships-belongs_to-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sort`](#relationships-belongs_to-sort){: #relationships-belongs_to-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`violation_message`](#relationships-belongs_to-violation_message){: #relationships-belongs_to-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
+| [`authorize_read_with`](#relationships-belongs_to-authorize_read_with){: #relationships-belongs_to-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
+| [`allow_forbidden_field?`](#relationships-belongs_to-allow_forbidden_field?){: #relationships-belongs_to-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
 
 
 ## relationships.belongs_to.filter

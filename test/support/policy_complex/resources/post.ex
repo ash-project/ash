@@ -87,6 +87,13 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
       public?(true)
     end
 
+    belongs_to :forbidden_field_author, Ash.Test.Support.PolicyComplex.User do
+      source_attribute :author_id
+      define_attribute? false
+      authorize_read_with(:error)
+      allow_forbidden_field?(true)
+    end
+
     has_many :comments, Ash.Test.Support.PolicyComplex.Comment do
       public?(true)
     end

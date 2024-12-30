@@ -137,8 +137,6 @@ defmodule Ash.Test.Policy.ComplexTest do
              |> Ash.Query.filter(best_friend.name == "me")
              |> Ash.Query.deselect(:private_email)
              |> Ash.read!(actor: me)
-
-    # |> Ash.load!(:best_friend, actor: me)
   end
 
   test "aggregates can be loaded and filtered on", %{me: me} do
@@ -146,6 +144,14 @@ defmodule Ash.Test.Policy.ComplexTest do
     |> Ash.Query.load(:count_of_comments)
     |> Ash.Query.filter(count_of_comments == 10)
     |> Ash.read!(actor: me)
+  end
+
+  test "forbidden fields can be returned for relationships", %{me: me} do
+    assert [%Ash.ForbiddenField{}, %Ash.ForbiddenField{}] =
+             Post
+             |> Ash.Query.load(:forbidden_field_author)
+             |> Ash.read!(actor: me)
+             |> Enum.map(& &1.forbidden_field_author)
   end
 
   test "calculations containing aggregates authorize their aggregates", %{

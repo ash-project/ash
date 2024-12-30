@@ -231,6 +231,7 @@ publish_all :create, "created"
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`except`](#pub_sub-publish_all-except){: #pub_sub-publish_all-except } | `list(atom)` | `[]` | Exclude these actions from notifications |
 | [`action`](#pub_sub-publish_all-action){: #pub_sub-publish_all-action } | `atom` |  | The name of the action that should be published |
 | [`previous_values?`](#pub_sub-publish_all-previous_values?){: #pub_sub-publish_all-previous_values? } | `boolean` | `false` | Whether or not to publish messages with both the new values and the old values for referencing changed attributes |
 | [`event`](#pub_sub-publish_all-event){: #pub_sub-publish_all-event } | `String.t` |  | The name of the event to publish. Defaults to the action name |

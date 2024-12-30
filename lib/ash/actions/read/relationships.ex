@@ -31,6 +31,20 @@ defmodule Ash.Actions.Read.Relationships do
         {:cont,
          {:ok, do_attach_related_records(records, relationship, related_records, related_query)}}
 
+      {relationship, _related_query, {:error, %Ash.Error.Forbidden{} = error}}, _ ->
+        if relationship.allow_forbidden_field? do
+          {:cont,
+           {:ok,
+            Enum.map(records, fn record ->
+              Map.put(record, relationship.name, %Ash.ForbiddenField{
+                type: :relationship,
+                field: relationship.name
+              })
+            end)}}
+        else
+          {:halt, {:error, Ash.Error.set_path(error, relationship.name)}}
+        end
+
       {relationship, _related_query, {:error, error}}, _ ->
         {:halt, {:error, Ash.Error.set_path(error, relationship.name)}}
 
@@ -410,7 +424,9 @@ defmodule Ash.Actions.Read.Relationships do
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name}
           })
-          |> Ash.Actions.Read.unpaginated_read()
+          |> Ash.Actions.Read.unpaginated_read(nil,
+            authorize_with: relationship.authorize_read_with
+          )
 
         {relationship, related_query, result}
       end
@@ -434,7 +450,9 @@ defmodule Ash.Actions.Read.Relationships do
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name}
           })
-          |> Ash.Actions.Read.read_and_return_unpaged()
+          |> Ash.Actions.Read.read_and_return_unpaged(nil,
+            authorize_with: relationship.authorize_read_with
+          )
 
         {relationship, related_query, result}
       end
@@ -538,7 +556,9 @@ defmodule Ash.Actions.Read.Relationships do
               accessing_from: %{source: relationship.source, name: relationship.name}
             })
             |> Map.put(:page, nil)
-            |> Ash.Actions.Read.unpaginated_read()
+            |> Ash.Actions.Read.unpaginated_read(nil,
+              authorize_with: relationship.authorize_read_with
+            )
             |> case do
               {:ok, records} ->
                 {relationship, related_query,
@@ -583,7 +603,9 @@ defmodule Ash.Actions.Read.Relationships do
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name}
           })
-          |> Ash.Actions.Read.unpaginated_read()
+          |> Ash.Actions.Read.unpaginated_read(nil,
+            authorize_with: relationship.authorize_read_with
+          )
 
         {relationship, related_query, result}
       end
