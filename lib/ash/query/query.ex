@@ -2015,7 +2015,7 @@ defmodule Ash.Query do
   ### Keyset pagination
   #{Spark.Options.docs(Ash.Page.Keyset.page_opts())}
   """
-  @spec page(t() | Ash.Resource.t(), Keyword.t()) :: t()
+  @spec page(t() | Ash.Resource.t(), Keyword.t() | nil | false) :: t()
   def page(query, page_opts) do
     query = new(query)
 
