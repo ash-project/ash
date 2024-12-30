@@ -57,6 +57,12 @@ if Code.ensure_loaded?(Igniter) do
       |> Igniter.Project.Config.configure(
         "config.exs",
         :ash,
+        [:allow_forbidden_field_for_relationships_by_default?],
+        true
+      )
+      |> Igniter.Project.Config.configure(
+        "config.exs",
+        :ash,
         [:include_embedded_source_by_default?],
         false
       )
