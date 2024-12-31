@@ -217,6 +217,23 @@ defmodule Ash.CodeInterface do
 
   Additionally, if options are set explicitly (i.e. at least one option has
   been set), a keyword list will be converted to a map.
+
+  ## Examples
+
+      iex> params_and_opts(%{key: :param}, [key: :opt])
+      {%{key: :param}, [key: :opt]}
+
+      iex> params_and_opts([key: :opt], [])
+      {%{}, [key: :opt]}
+
+      iex> params_and_opts([], [])
+      {[], []}
+
+      iex> params_and_opts([%{key: :param}], [])
+      {[%{key: :param}], []}
+
+      iex> params_and_opts([key: :param], [key: :opt])
+      {%{key: :param}, [key: :opt]}
   """
   @spec params_and_opts(params_or_opts :: map() | [map()] | keyword(), keyword()) ::
           {params :: map() | [map()], opts :: keyword()}
@@ -274,6 +291,23 @@ defmodule Ash.CodeInterface do
       client value is a keyword list, they'll be merged.
     * `:load` - The default value and the client value will be combined in this
       case.
+
+  ## Examples
+
+      iex> merge_default_opts([key1: 1], key2: 2)
+      [key2: 2, key1: 1]
+
+      iex> merge_default_opts([key2: :client], key1: :default, key2: :default)
+      [key2: :client, key1: :default]
+
+      iex> merge_default_opts([page: false], page: [limit: 100])
+      [page: false]
+
+      iex> merge_default_opts([page: [offset: 2]], page: [limit: 100])
+      [page: [limit: 100, offset: 2]]
+
+      iex> merge_default_opts([load: [:calc2, :rel4]], load: [:calc1, rel1: [:rel2, :rel3]])
+      [load: [:calc1, {:rel1, [:rel2, :rel3]}, :calc2, :rel4]]
   """
   @spec merge_default_opts(keyword(), keyword()) :: keyword()
   def merge_default_opts(opts, default_opts) do

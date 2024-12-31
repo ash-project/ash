@@ -2,6 +2,8 @@ defmodule Ash.Test.CodeInterfaceTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  doctest Ash.CodeInterface, import: true
+
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
