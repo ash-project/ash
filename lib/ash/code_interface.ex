@@ -224,7 +224,9 @@ defmodule Ash.CodeInterface do
 
   def params_and_opts([], opts), do: {[], opts}
 
-  def params_and_opts(opts, []) when is_list(opts), do: {%{}, opts}
+  def params_and_opts([%{} | _] = params_list, opts), do: {params_list, opts}
+
+  def params_and_opts(opts, []), do: {%{}, opts}
 
   def params_and_opts(params_or_list, opts) do
     params =
