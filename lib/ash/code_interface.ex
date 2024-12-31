@@ -216,7 +216,7 @@ defmodule Ash.CodeInterface do
     2. A list of maps for bulk operations.
 
   Additionally, if options are set explicitly (i.e. at least one option has
-  been set), a keywork list will be converted to a map.
+  been set), a keyword list will be converted to a map.
   """
   @spec params_and_opts(params_or_opts :: map() | [map()] | keyword(), keyword()) ::
           {params :: map() | [map()], opts :: keyword()}
