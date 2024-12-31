@@ -240,21 +240,63 @@ defmodule Ash.CodeInterface do
   @doc """
   See `params_and_opts/2`.
 
-  Adds a post process function that can takes the opts and can further process
-  or transform them. This is used for validation and/or adding defaults.
+  Merges default options if provided (see `merge_default_opts/2`) and  dds a
+  post process function that can takes the opts and can further process,
+  validate, or transform them.
   """
   @spec params_and_opts(
           params_or_opts :: map() | [map()] | keyword(),
           keyword(),
+          keyword(),
           (keyword() -> keyword())
         ) ::
           {params :: map() | [map()], opts :: keyword()}
-  def params_and_opts(params_or_opts, maybe_opts, post_process_opts_fn)
+  def params_and_opts(params_or_opts, maybe_opts, default_opts \\ [], post_process_opts_fn)
       when is_function(post_process_opts_fn, 1) do
     params_or_opts
     |> params_and_opts(maybe_opts)
-    |> then(fn {params, opts} -> {params, post_process_opts_fn.(opts)} end)
+    |> then(fn {params, opts} ->
+      {params,
+       opts
+       |> merge_default_opts(default_opts)
+       |> post_process_opts_fn.()}
+    end)
   end
+
+  @deep_merge_keys [:bulk_options, :page]
+  @doc """
+  Selectively merges default opts into client-provided opts. For most keys,
+  the value in opts will be used instead of the default if provided. However,
+  certain options have special behavior:
+
+    * #{@deep_merge_keys |> Enum.map(&"`:#{&1}`") |> Enum.join(", ")} - These
+      options are deep merged, so if the default is a keyword list and the
+      client value is a keyword list, they'll be merged.
+    * `:load` - The default value and the client value will be combined in this
+      case.
+  """
+  @spec merge_default_opts(keyword(), keyword()) :: keyword()
+  def merge_default_opts(opts, default_opts) do
+    Enum.reduce(default_opts, opts, fn {k, default}, opts ->
+      opts
+      |> Keyword.fetch(k)
+      |> case do
+        :error -> default
+        {:ok, value} -> merge_default_opt(k, default, value)
+      end
+      |> then(&Keyword.put(opts, k, &1))
+    end)
+  end
+
+  defp merge_default_opt(:load, default, value) do
+    List.wrap(default) ++ List.wrap(value)
+  end
+
+  defp merge_default_opt(key, default, value)
+       when key in @deep_merge_keys and is_list(default) and is_list(value),
+       do: Keyword.merge(default, value)
+
+  defp merge_default_opt(_key, _default, value), do: value
 
   @doc """
   Defines the code interface for a given resource + domain combination in the current module. For example:
@@ -508,12 +550,16 @@ defmodule Ash.CodeInterface do
         resolve_params_and_opts =
           quote do
             {params, opts} =
-              Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
-                unquote(Macro.escape(interface.default_options))
-                |> Keyword.merge(opts)
-                |> unquote(interface_options).validate!()
-                |> unquote(interface_options).to_options()
-              end)
+              Ash.CodeInterface.params_and_opts(
+                params_or_opts,
+                opts,
+                unquote(Macro.escape(interface.default_options)),
+                fn opts ->
+                  opts
+                  |> unquote(interface_options).validate!()
+                  |> unquote(interface_options).to_options()
+                end
+              )
 
             arg_params =
               unquote(args)
