@@ -30,6 +30,8 @@ defmodule Ash.Test.Notifier.PubSubTest do
       publish :update, ["foo", :id], previous_values?: true
       publish :update, ["bar", :name], event: "name_change", previous_values?: true
       publish :update_pkey, ["foo", :_pkey], previous_values?: true
+
+      publish_all :update, ["baz", :id], event: "any_update", except: [:update_pkey]
     end
 
     ets do
@@ -160,6 +162,8 @@ defmodule Ash.Test.Notifier.PubSubTest do
     assert_receive {:broadcast, ^message, "name_change", %Ash.Notifier.Notification{}}
     message = "post:bar:ted"
     assert_receive {:broadcast, ^message, "name_change", %Ash.Notifier.Notification{}}
+    message = "post:baz:#{post.id}"
+    assert_receive {:broadcast, ^message, "any_update", %Ash.Notifier.Notification{}}
   end
 
   test "publishing a message with a pkey matcher" do
@@ -179,6 +183,8 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
     message = "post:foo:#{new_id}"
     assert_receive {:broadcast, ^message, "update_pkey", %Ash.Notifier.Notification{}}
+    message = "post:baz:#{new_id}"
+    refute_receive {:broadcast, ^message, "any_update", %Ash.Notifier.Notification{}}
   end
 
   test "publishing a message with a different delimiter" do
