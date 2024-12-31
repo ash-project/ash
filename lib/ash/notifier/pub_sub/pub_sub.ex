@@ -482,7 +482,7 @@ defmodule Ash.Notifier.PubSub do
 
   defp matches?(%{action: action}, %{name: action}), do: true
 
-  defp matches?(%{type: type, except: except}, %{type: type, action: action}) do
+  defp matches?(%{type: type, except: except}, %{type: type, name: action}) do
     action not in except
   end
 
