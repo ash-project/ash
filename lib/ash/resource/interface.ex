@@ -10,6 +10,7 @@ defmodule Ash.Resource.Interface do
     :get_by,
     :get_by_identity,
     :not_found_error?,
+    default_options: [],
     require_reference?: true
   ]
 
@@ -245,6 +246,12 @@ defmodule Ash.Resource.Interface do
       doc: """
       Takes an identity, gets its field list, and performs the same logic as `get_by` with those fields. Adds filters for read, update and destroy actions, replacing the `record` first argument.
       """
+    ],
+    default_options: [
+      type: :keyword_list,
+      default: [],
+      doc:
+        "Default options to be merged with client-provided options. These can override domain or action defaults. `:load`, `:bulk_options`, and `:page` options will be deep merged."
     ]
   ]
 

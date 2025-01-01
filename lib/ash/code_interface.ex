@@ -201,6 +201,138 @@ defmodule Ash.CodeInterface do
   end
 
   @doc """
+  A common pattern is for a function to have both optional parameters and
+  optional options. This usually comes in the form of two defaults:
+
+    * An empty map for params.
+    * An empty list for options.
+
+  With those two defaults in mind, this function will decipher, from two inputs,
+  which should be parameters and which should be options.
+
+  Parameters can take one of two primary forms:
+
+    1. A map.
+    2. A list of maps for bulk operations.
+
+  Additionally, if options are set explicitly (i.e. at least one option has
+  been set), a keyword list will be converted to a map.
+
+  ## Examples
+
+      iex> params_and_opts(%{key: :param}, [key: :opt])
+      {%{key: :param}, [key: :opt]}
+
+      iex> params_and_opts([key: :opt], [])
+      {%{}, [key: :opt]}
+
+      iex> params_and_opts([], [])
+      {[], []}
+
+      iex> params_and_opts([%{key: :param}], [])
+      {[%{key: :param}], []}
+
+      iex> params_and_opts([key: :param], [key: :opt])
+      {%{key: :param}, [key: :opt]}
+  """
+  @spec params_and_opts(params_or_opts :: map() | [map()] | keyword(), keyword()) ::
+          {params :: map() | [map()], opts :: keyword()}
+  def params_and_opts(%{} = params, opts), do: {params, opts}
+
+  def params_and_opts([], opts), do: {[], opts}
+
+  def params_and_opts([%{} | _] = params_list, opts), do: {params_list, opts}
+
+  def params_and_opts(opts, []), do: {%{}, opts}
+
+  def params_and_opts(params_or_list, opts) do
+    params =
+      if Keyword.keyword?(params_or_list),
+        do: Map.new(params_or_list),
+        else: params_or_list
+
+    {params, opts}
+  end
+
+  @doc """
+  See `params_and_opts/2`.
+
+  Merges default options if provided (see `merge_default_opts/2`) and  dds a
+  post process function that can takes the opts and can further process,
+  validate, or transform them.
+  """
+  @spec params_and_opts(
+          params_or_opts :: map() | [map()] | keyword(),
+          keyword(),
+          keyword(),
+          (keyword() -> keyword())
+        ) ::
+          {params :: map() | [map()], opts :: keyword()}
+  def params_and_opts(params_or_opts, maybe_opts, default_opts \\ [], post_process_opts_fn)
+      when is_function(post_process_opts_fn, 1) do
+    params_or_opts
+    |> params_and_opts(maybe_opts)
+    |> then(fn {params, opts} ->
+      {params,
+       opts
+       |> merge_default_opts(default_opts)
+       |> post_process_opts_fn.()}
+    end)
+  end
+
+  @deep_merge_keys [:bulk_options, :page]
+  @doc """
+  Selectively merges default opts into client-provided opts. For most keys,
+  the value in opts will be used instead of the default if provided. However,
+  certain options have special behavior:
+
+    * #{@deep_merge_keys |> Enum.map(&"`:#{&1}`") |> Enum.join(", ")} - These
+      options are deep merged, so if the default is a keyword list and the
+      client value is a keyword list, they'll be merged.
+    * `:load` - The default value and the client value will be combined in this
+      case.
+
+  ## Examples
+
+      iex> merge_default_opts([key1: 1], key2: 2)
+      [key2: 2, key1: 1]
+
+      iex> merge_default_opts([key2: :client], key1: :default, key2: :default)
+      [key2: :client, key1: :default]
+
+      iex> merge_default_opts([page: false], page: [limit: 100])
+      [page: false]
+
+      iex> merge_default_opts([page: [offset: 2]], page: [limit: 100])
+      [page: [limit: 100, offset: 2]]
+
+      iex> merge_default_opts([load: [:calc2, :rel4]], load: [:calc1, rel1: [:rel2, :rel3]])
+      [load: [:calc1, {:rel1, [:rel2, :rel3]}, :calc2, :rel4]]
+  """
+  @spec merge_default_opts(keyword(), keyword()) :: keyword()
+  def merge_default_opts(opts, default_opts) do
+    Enum.reduce(default_opts, opts, fn {k, default}, opts ->
+      opts
+      |> Keyword.fetch(k)
+      |> case do
+        :error -> default
+        {:ok, value} -> merge_default_opt(k, default, value)
+      end
+      |> then(&Keyword.put(opts, k, &1))
+    end)
+  end
+
+  defp merge_default_opt(:load, default, value) do
+    List.wrap(default) ++ List.wrap(value)
+  end
+
+  defp merge_default_opt(key, default, value)
+       when key in @deep_merge_keys and is_list(default) and is_list(value),
+       do: Keyword.merge(default, value)
+
+  defp merge_default_opt(_key, _default, value), do: value
+
+  @doc """
   Defines the code interface for a given resource + domain combination in the current module. For example:
 
   ```elixir
@@ -449,60 +581,29 @@ defmodule Ash.CodeInterface do
 
         interface_options = Ash.Resource.Interface.interface_options(action.type, interface)
 
-        resolve_opts_params =
+        resolve_params_and_opts =
           quote do
             {params, opts} =
-              if opts == [] && Keyword.keyword?(params_or_opts),
-                do:
-                  {%{},
-                   unquote(interface_options).validate!(params_or_opts)
-                   |> unquote(interface_options).to_options()},
-                else:
-                  {params_or_opts,
-                   unquote(interface_options).validate!(opts)
-                   |> unquote(interface_options).to_options()}
+              Ash.CodeInterface.params_and_opts(
+                params_or_opts,
+                opts,
+                unquote(Macro.escape(interface.default_options)),
+                fn opts ->
+                  opts
+                  |> unquote(interface_options).validate!()
+                  |> unquote(interface_options).to_options()
+                end
+              )
 
-            params =
+            arg_params =
               unquote(args)
               |> Enum.zip([unquote_splicing(arg_vars)])
-              |> Enum.reduce(params, fn {key, value}, params ->
-                Map.put(params, key, value)
-              end)
-          end
-
-        resolve_bang_opts_params =
-          quote do
-            {params, opts} =
-              if opts == [] && Keyword.keyword?(params_or_opts),
-                do:
-                  {if(params_or_opts != [], do: %{}, else: []),
-                   unquote(interface_options).validate!(params_or_opts)
-                   |> unquote(interface_options).to_options()},
-                else:
-                  {if(Keyword.keyword?(params_or_opts),
-                     do: Map.new(params_or_opts),
-                     else: params_or_opts
-                   ),
-                   unquote(interface_options).validate!(opts)
-                   |> unquote(interface_options).to_options()}
+              |> Map.new()
 
             params =
-              if is_list(params) do
-                to_merge =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Map.new()
-
-                Enum.map(params, fn params ->
-                  Map.merge(params, to_merge)
-                end)
-              else
-                unquote(args)
-                |> Enum.zip([unquote_splicing(arg_vars)])
-                |> Enum.reduce(params, fn {key, value}, params ->
-                  Map.put(params, key, value)
-                end)
-              end
+              if is_list(params),
+                do: Enum.map(params, &Map.merge(&1, arg_params)),
+                else: Map.merge(params, arg_params)
           end
 
         {subject, subject_args, resolve_subject, act, act!} =
@@ -1265,7 +1366,7 @@ defmodule Ash.CodeInterface do
                {first_opts_location + 1, interface_options.schema()}
              ]
         def unquote(interface.name)(unquote_splicing(common_args)) do
-          unquote(resolve_opts_params)
+          unquote(resolve_params_and_opts)
           unquote(resolve_subject)
           unquote(act)
         end
@@ -1289,7 +1390,7 @@ defmodule Ash.CodeInterface do
                {first_opts_location + 1, interface_options.schema()}
              ]
         def unquote(:"#{interface.name}!")(unquote_splicing(common_args)) do
-          unquote(resolve_bang_opts_params)
+          unquote(resolve_params_and_opts)
           unquote(resolve_subject)
           unquote(act!)
         end
@@ -1327,7 +1428,7 @@ defmodule Ash.CodeInterface do
                  {first_opts_location + 1, subject_opts}
                ]
           def unquote(:"#{subject_name}_to_#{interface.name}")(unquote_splicing(common_args)) do
-            unquote(resolve_opts_params)
+            unquote(resolve_params_and_opts)
             unquote(resolve_subject)
             unquote(subject)
           end
@@ -1351,17 +1452,13 @@ defmodule Ash.CodeInterface do
              ]
         def unquote(:"can_#{interface.name}")(actor, unquote_splicing(common_args)) do
           {params, opts} =
-            if opts == [] && Keyword.keyword?(params_or_opts),
-              do:
-                {%{},
-                 Ash.Resource.Interface.CanOpts.validate!(params_or_opts)
-                 |> unquote(interface_options).to_options()},
-              else:
-                {params_or_opts,
-                 Ash.Resource.Interface.CanOpts.validate!(opts)
-                 |> unquote(interface_options).to_options()}
+            Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
+              opts
+              |> Ash.Resource.Interface.CanOpts.validate!()
+              |> unquote(interface_options).to_options()
+              |> Keyword.put(:actor, actor)
+            end)
 
-          opts = Keyword.put(opts, :actor, actor)
           unquote(resolve_subject)
 
           case unquote(subject) do
@@ -1397,17 +1494,13 @@ defmodule Ash.CodeInterface do
              |> Ash.CodeInterface.trim_double_newlines()
         def unquote(:"can_#{interface.name}?")(actor, unquote_splicing(common_args)) do
           {params, opts} =
-            if opts == [] && Keyword.keyword?(params_or_opts),
-              do:
-                {%{},
-                 Ash.Resource.Interface.CanQuestionMarkOpts.validate!(params_or_opts)
-                 |> unquote(interface_options).to_options()},
-              else:
-                {params_or_opts,
-                 Ash.Resource.Interface.CanQuestionMarkOpts.validate!(opts)
-                 |> unquote(interface_options).to_options()}
+            Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
+              opts
+              |> Ash.Resource.Interface.CanOpts.validate!()
+              |> unquote(interface_options).to_options()
+              |> Keyword.put(:actor, actor)
+            end)
 
-          opts = Keyword.put(opts, :actor, actor)
           unquote(resolve_subject)
 
           case unquote(subject) do
