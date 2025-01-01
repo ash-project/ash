@@ -86,11 +86,11 @@ end
 > `{:array, :struct}` and set the `items` constraint to the name of your resource.
 >
 > ```elixir
-  action :list_resources, {:array, :struct} do
-    constraints items: [instance_of: __MODULE__]
-
-    run # ...
-  end
+>  action :list_resources, {:array, :struct} do
+>    constraints items: [instance_of: __MODULE__]
+>
+>    run # ...
+>  end
 > ```
 
 ## Calling Generic Actions

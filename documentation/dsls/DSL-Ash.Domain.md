@@ -126,7 +126,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 | [`get?`](#resources-resource-define-get?){: #resources-resource-define-get? } | `boolean` | `false` | Expects to only receive a single result from a read action or a bulk update/destroy, and returns a single result instead of a list. Sets `require_reference?` to false automatically. |
 | [`get_by`](#resources-resource-define-get_by){: #resources-resource-define-get_by } | `atom \| list(atom)` |  | Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true and `require_reference?` to false automatically. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
 | [`get_by_identity`](#resources-resource-define-get_by_identity){: #resources-resource-define-get_by_identity } | `atom` |  | Takes an identity, gets its field list, and performs the same logic as `get_by` with those fields. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
-| [`default_options`](#resources-resource-define-default_options){: #resources-resource-define-default_options } | `keyword` | `[]` | Default options to be merged with client-provided options. These can override domain or action defaults. |
+| [`default_options`](#resources-resource-define-default_options){: #resources-resource-define-default_options } | `keyword` | `[]` | Default options to be merged with client-provided options. These can override domain or action defaults. `:load`, `:bulk_options`, and `:page` options will be deep merged. |
 
 
 
