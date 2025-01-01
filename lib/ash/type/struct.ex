@@ -186,6 +186,19 @@ defmodule Ash.Type.Struct do
   end
 
   @impl true
+  def generator(constraints) do
+    if !constraints[:instance_of] do
+      raise ArgumentError,
+            "Cannot generate instances of the `:struct` type without an `:instance_of` constraint"
+    else
+      Ash.Type.Map.generator(constraints)
+      |> StreamData.map(fn value ->
+        struct(constraints[:instance_of], value)
+      end)
+    end
+  end
+
+  @impl true
   def apply_constraints(value, constraints) do
     with {:ok, value} <- handle_fields(value, constraints) do
       handle_instance_of(value, constraints)

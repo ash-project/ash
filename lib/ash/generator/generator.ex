@@ -45,6 +45,11 @@ defmodule Ash.Generator do
              do_changeset_or_query: 5}
 
   @doc "Creates a generator map where the keys are required except the list provided"
+  def mixed_map(map, []) do
+    map = to_generators(map)
+    StreamData.fixed_map(map)
+  end
+
   def mixed_map(map, keys) do
     map = to_generators(map)
     {optional, required} = Map.split(map, keys)

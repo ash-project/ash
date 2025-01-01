@@ -146,6 +146,14 @@ defmodule Ash.Type.Keyword do
     end)
   end
 
+  @impl true
+  def generator(constraints) do
+    Ash.Type.Map.generator(constraints)
+    |> StreamData.map(fn value ->
+      Map.to_list(value)
+    end)
+  end
+
   defp check_fields(value, fields) do
     Enum.reduce(fields, {:ok, []}, fn
       {field, field_constraints}, {:ok, checked_value} ->

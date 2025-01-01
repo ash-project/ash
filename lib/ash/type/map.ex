@@ -125,6 +125,28 @@ defmodule Ash.Type.Map do
     end)
   end
 
+  @impl true
+  def generator(constraints) do
+    if constraints[:fields] do
+      optional =
+        constraints[:fields]
+        |> Enum.filter(fn {_, value} ->
+          value[:allow_nil?]
+        end)
+        |> Keyword.keys()
+
+      constraints[:fields]
+      |> Map.new(fn {key, config} ->
+        type = config[:type]
+        constraints = config[:constraints] || []
+        {key, Ash.Type.generator(type, constraints)}
+      end)
+      |> Ash.Generator.mixed_map(optional)
+    else
+      StreamData.repeatedly(%{})
+    end
+  end
+
   defp check_fields(value, fields) do
     Enum.reduce(fields, {:ok, %{}}, fn
       {field, field_constraints}, {:ok, checked_value} ->
