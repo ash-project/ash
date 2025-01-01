@@ -251,7 +251,7 @@ defmodule Ash.Resource.Interface do
       type: :keyword_list,
       default: [],
       doc:
-        "Default options to be merged with client-provided options. These can override domain or action defaults."
+        "Default options to be merged with client-provided options. These can override domain or action defaults. `:load`, `:bulk_options`, and `:page` options will be deep merged."
     ]
   ]
 
