@@ -2,6 +2,53 @@
 
 <!-- changelog -->
 
+## [v3.4.50](https://github.com/ash-project/ash/compare/v3.4.49...v3.4.50) (2025-01-01)
+
+
+
+
+### Bug Fixes:
+
+* properly handle aggregate defaults in ets/mnesia (#1684)
+
+* use context message instead of default if provided in changing validation (#1677)
+
+* match on `return_query` output in read_one and read_first
+
+* ensure that `changed?` context is set to true for atomics
+
+* properly match on `return_query?` option
+
+* ensure that old config applies all aggregate policies
+
+### Improvements:
+
+* add `Ash.Generator.once/2`
+
+* define `generate/1` callback for maps, structs, keywords
+
+* add `data_layer?` option to `Ash.calculate/3`
+
+* Add default code interface options (#1681)
+
+* set new
+
+* add `allow_forbidden_field?` option to relationships
+
+* add `authorize_read_with` option to relationships
+
+* support `default` option in `Ash.first` (#1683)
+
+* allow exclusion of certain actions from publish_all (#1680)
+
+* test atomic and non-atomic validation paths of changing validation
+
+* no prompt about SAT solver unless user is on windows
+
+* add otp_app option to use Ash.Domain
+
+* add support for `strict?` in read options (#1669)
+
 ## [v3.4.49](https://github.com/ash-project/ash/compare/v3.4.48...v3.4.49) (2024-12-22)
 
 
