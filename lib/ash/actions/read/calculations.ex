@@ -85,11 +85,15 @@ defmodule Ash.Actions.Read.Calculations do
 
               evaled =
                 try do
-                  Ash.Expr.eval(expr,
-                    record: record,
-                    resource: resource,
-                    unknown_on_unknown_refs?: true
-                  )
+                  if opts[:data_layer?] do
+                    :unknown
+                  else
+                    Ash.Expr.eval(expr,
+                      record: record,
+                      resource: resource,
+                      unknown_on_unknown_refs?: true
+                    )
+                  end
                 rescue
                   _ ->
                     :unknown

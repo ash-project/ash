@@ -741,6 +741,12 @@ defmodule Ash do
       A record to use as the base of the calculation
       """
     ],
+    data_layer?: [
+      type: :boolean,
+      doc: """
+      Set to `true` to require that the value be computed within the data layer. Only works for calculations that define an expression.
+      """
+    ],
     domain: [
       type: {:spark, Ash.Domain},
       doc: "The domain to use for the action"
