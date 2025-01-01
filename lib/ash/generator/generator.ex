@@ -88,13 +88,91 @@ defmodule Ash.Generator do
   end
 
   @doc """
+  Run the provided function or enumerable (i.e generator) only once.
+
+  This is useful for ensuring that some piece of data is generated a single time during a test.
+
+  The lifecycle of this generator is tied to the process that initially starts it. In general,
+  that will be the test. In the rare case where you are running async processes that need to share a sequence
+  that is not created in the test process, you can initialize a sequence in the test using `initialize_once/1`.
+
+  Example:
+
+      iex> Ash.Generator.once(:user, fn -> 
+             register_user(...)
+           end) |> Enum.at(0)
+      %User{id: 1} # created the user
+
+      iex> Ash.Generator.once(:user, fn -> 
+             register_user(...)
+           end) |> Enum.at(0)
+      %User{id: 1} # reused the last user
+  """
+  @spec once(pid | atom, (-> value) | Enumerable.t(value)) ::
+          StreamData.t(value)
+        when value: term
+  def once(identifier, generator) do
+    pid =
+      if is_pid(identifier) do
+        identifier
+      else
+        initialize_once(identifier)
+      end
+
+    StreamData.repeatedly(fn ->
+      Agent.get_and_update(pid, fn state ->
+        case state do
+          :none ->
+            new =
+              case generator do
+                generator when is_function(generator) ->
+                  generator.()
+
+                value ->
+                  Enum.at(value, 0)
+              end
+
+            {new, {:some, new}}
+
+          {:some, value} ->
+            {value, {:some, value}}
+        end
+      end)
+    end)
+  end
+
+  @doc """
+  Starts and links an agent for a `once/2`, or returns the existing agent pid if it already exists.
+
+  See `once/2` for more.
+  """
+  # sobelow_skip ["DOS.BinToAtom"]
+  @spec initialize_once(atom) :: pid
+  def initialize_once(identifier) do
+    identifier = :"__ash_once_#{identifier}__"
+
+    case Agent.start_link(fn -> :none end, name: identifier) do
+      {:ok, pid} -> pid
+      {:error, {:already_started, pid}} -> pid
+    end
+  end
+
+  @doc """
+  Stops the agent for a `once/2`.
+
+  See `once/2` for more.
+  """
+  def stop_once(identifier) do
+    Agent.stop(identifier)
+    :ok
+  end
+
+  @doc """
   Generate globally unique values.
 
   This is useful for generating values that are unique across all resources, such as email addresses,
   or for generating values that are unique across a single resource, such as identifiers. The values will be unique
   for anything using the same sequence name.
-
-  The name of the identifier will be used as the name of the agent process, so use a unique name not in use anywhere else.
 
   The lifecycle of this generator is tied to the process that initially starts it. In general,
   that will be the test. In the rare case where you are running async processes that need to share a sequence
@@ -141,7 +219,10 @@ defmodule Ash.Generator do
   See `sequence/3` for more.
   """
   @spec initialize_sequence(atom) :: pid
+  # sobelow_skip ["DOS.BinToAtom"]
   def initialize_sequence(identifier) do
+    identifier = :"__ash_sequence_#{identifier}__"
+
     case Agent.start_link(fn -> nil end, name: identifier) do
       {:ok, pid} -> pid
       {:error, {:already_started, pid}} -> pid

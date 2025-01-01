@@ -286,7 +286,7 @@ defmodule Ash.CodeInterface do
   the value in opts will be used instead of the default if provided. However,
   certain options have special behavior:
 
-    * #{@deep_merge_keys |> Enum.map(&"`:#{&1}`") |> Enum.join(", ")} - These
+    * #{Enum.map_join(@deep_merge_keys, ", ", &"`:#{&1}`")} - These
       options are deep merged, so if the default is a keyword list and the
       client value is a keyword list, they'll be merged.
     * `:load` - The default value and the client value will be combined in this

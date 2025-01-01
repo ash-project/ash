@@ -143,7 +143,7 @@ defmodule Ash.Type.Map do
       end)
       |> Ash.Generator.mixed_map(optional)
     else
-      StreamData.repeatedly(%{})
+      StreamData.constant(%{})
     end
   end
 
