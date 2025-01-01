@@ -647,4 +647,12 @@ defmodule Ash.Helpers do
 
     :ok
   end
+
+  def json_module do
+    if Code.ensure_loaded?(JSON) do
+      JSON
+    else
+      Jason
+    end
+  end
 end
