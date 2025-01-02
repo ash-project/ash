@@ -210,10 +210,11 @@ defmodule Ash.CodeInterface do
   With those two defaults in mind, this function will decipher, from two inputs,
   which should be parameters and which should be options.
 
-  Parameters can take one of two primary forms:
+  Parameters can take one of three primary forms:
 
     1. A map.
     2. A list of maps for bulk operations.
+    3. A single value, such as a UUID or integer (used as an ID).
 
   Additionally, if options are set explicitly (i.e. at least one option has
   been set), a keyword list will be converted to a map.
@@ -234,16 +235,19 @@ defmodule Ash.CodeInterface do
 
       iex> params_and_opts([key: :param], [key: :opt])
       {%{key: :param}, [key: :opt]}
+
+      iex> params_and_opts("9aee6849-d52a-4bb9-818d-ff242ac6582f", [])
+      {"9aee6849-d52a-4bb9-818d-ff242ac6582f", []}
   """
-  @spec params_and_opts(params_or_opts :: map() | [map()] | keyword(), keyword()) ::
-          {params :: map() | [map()], opts :: keyword()}
+  @spec params_and_opts(params_or_opts :: term(), keyword()) ::
+          {params :: term(), opts :: keyword()}
   def params_and_opts(%{} = params, opts), do: {params, opts}
 
   def params_and_opts([], opts), do: {[], opts}
 
   def params_and_opts([%{} | _] = params_list, opts), do: {params_list, opts}
 
-  def params_and_opts(opts, []), do: {%{}, opts}
+  def params_and_opts(opts, []) when is_list(opts), do: {%{}, opts}
 
   def params_and_opts(params_or_list, opts) do
     params =
@@ -262,12 +266,12 @@ defmodule Ash.CodeInterface do
   validate, or transform them.
   """
   @spec params_and_opts(
-          params_or_opts :: map() | [map()] | keyword(),
+          params_or_opts :: term(),
           keyword(),
           keyword(),
           (keyword() -> keyword())
         ) ::
-          {params :: map() | [map()], opts :: keyword()}
+          {params :: term(), opts :: keyword()}
   def params_and_opts(params_or_opts, maybe_opts, default_opts \\ [], post_process_opts_fn)
       when is_function(post_process_opts_fn, 1) do
     params_or_opts
