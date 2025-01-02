@@ -4610,6 +4610,8 @@ defmodule Ash.Changeset do
   end
 
   def manage_relationship(changeset, relationship, input, opts) do
+    changeset = maybe_dirty_hook(changeset, :manage_relationships)
+
     if opts == [] do
       IO.warn("Calling `manage_relationship` without any options will not do anything")
     end

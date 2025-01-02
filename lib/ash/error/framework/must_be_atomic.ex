@@ -10,7 +10,7 @@ defmodule Ash.Error.Framework.MustBeAtomic do
 
     Reason: #{error.reason}
 
-    See https://hexdocs.pm/ash/3.0.0/update-actions.html#atomic-updates for more on atomics.
+    See https://hexdocs.pm/ash/update-actions.html#fully-atomic-updates for more on atomics.
     """
   end
 end
