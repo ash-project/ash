@@ -428,6 +428,47 @@ ticket
 >
 ```
 
+What if we would try to close the ticket again?
+
+```elixir
+ticket
+|> Ash.Changeset.for_update(:close)
+|> Ash.update!()
+```
+
+The application would halt with an error:
+
+```text
+...
+** (Ash.Error.Invalid)
+Bread Crumbs:
+  > Returned from bulk query update: Helpdesk.Support.Ticket.close
+
+Invalid Error
+
+* Invalid value provided for status: Ticket is already closed.
+...
+```
+Note the 'Ticket is already closed' message that we have defined in the ```attribute_does_not_equal``` validation.
+
+And if we'd use the non-bang version:
+
+```elixir
+ticket
+|> Ash.Changeset.for_update(:close)
+|> Ash.update()
+```
+we get an error tuple with a %Ash.Error.Invalid struct that contains the message:
+
+```text
+{:error,
+ %Ash.Error.Invalid{
+...
+       message: "Ticket is already closed",
+...
+```
+
+
 ### Querying without persistence
 
 So far we haven't used a data layer that does any persistence, like storing records in a database. All that this simple resource does is return the record back to us. You can see this lack of persistence by attempting to use a `read` action:
