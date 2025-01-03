@@ -35,6 +35,7 @@ defmodule Ash.Generator do
              query: 3,
              query: 4,
              generate_attributes: 4,
+             generate_attributes: 5,
              mixed_map: 2,
              many_changesets: 3,
              many_changesets: 4,
@@ -71,7 +72,7 @@ defmodule Ash.Generator do
     |> Enum.reject(fn attribute ->
       Enum.any?(relationships, &(&1.source_attribute == attribute.name))
     end)
-    |> generate_attributes(generators, true, :create)
+    |> generate_attributes(generators, true, :create, Enum.map(relationships, & &1.name))
   end
 
   @doc """
@@ -352,7 +353,13 @@ defmodule Ash.Generator do
     end
   end
 
-  defp generate_attributes(attributes, generators, keep_nil?, action_type) do
+  defp generate_attributes(
+         attributes,
+         generators,
+         keep_nil?,
+         action_type,
+         extra_keys_to_keep \\ []
+       ) do
     attributes
     |> Enum.reduce({%{}, %{}}, fn attribute, {required, optional} ->
       default =
@@ -410,8 +417,8 @@ defmodule Ash.Generator do
     |> then(fn {required, optional} ->
       generators =
         generators
-        |> Map.take(Enum.map(attributes, & &1.name))
         |> to_generators()
+        |> Map.take(Enum.map(attributes, & &1.name) ++ extra_keys_to_keep)
 
       {Map.merge(required, generators), Map.drop(optional, Map.keys(generators))}
     end)
