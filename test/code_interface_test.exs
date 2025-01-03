@@ -14,6 +14,42 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
   end
 
+  defmodule NonStreamable do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets, notifiers: [Notifier]
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    actions do
+      defaults create: [:name]
+
+      update :update do
+        primary? true
+        require_atomic? false
+        accept [:name]
+
+        change fn changeset, _ ->
+          changeset
+        end
+      end
+
+      read :read do
+        primary? true
+      end
+    end
+
+    code_interface do
+      define :update
+    end
+  end
+
   defmodule User do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets, notifiers: [Notifier]
@@ -288,6 +324,15 @@ defmodule Ash.Test.CodeInterfaceTest do
       User
       |> Ash.Query.filter(id == ^bob.id)
       |> User.update!(%{first_name: "bob_updated"})
+    end
+
+    test "non-streamable actions can be used when limit: 1" do
+      record =
+        NonStreamable
+        |> Ash.create!(%{name: "name"})
+
+      record.id
+      |> NonStreamable.update!(%{name: "new name"})
     end
 
     test "can take an id" do
