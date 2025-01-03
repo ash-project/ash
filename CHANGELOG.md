@@ -5,60 +5,50 @@
 ## [v3.4.51](https://github.com/ash-project/ash/compare/v3.4.50...v3.4.51) (2025-01-03)
 
 
-
-
 ### Bug Fixes:
 
-* handle ambiguous case of empty params in code interfaces (#1694)
+* [`Ash.Resource`] handle ambiguous case of empty params in code interfaces (#1694)
 
-* discard manage_relationships added inside changes on atomic upgrade
+* [`Ash.Changeset`] discard manage_relationships added inside changes on atomic upgrade
 
 ## [v3.4.50](https://github.com/ash-project/ash/compare/v3.4.49...v3.4.50) (2025-01-01)
 
 
-
-
 ### Bug Fixes:
 
-* properly handle aggregate defaults in ets/mnesia (#1684)
+* [`Ash.DataLayer.Ets`, `Ash.DataLayer.Mnesia`] properly handle aggregate defaults in ets/mnesia (#1684)
 
-* use context message instead of default if provided in changing validation (#1677)
+* [`Ash.Resource.Validation.Changing`] use context message instead of default if provided in changing validation (#1677)
 
-* match on `return_query` output in read_one and read_first
+* [`Ash.Changeset`] ensure that `changed?` context is set to true for atomics
 
-* ensure that `changed?` context is set to true for atomics
+* [`Ash`] properly match on `return_query?` option, avoid raised pattern match error
 
-* properly match on `return_query?` option
-
-* ensure that old config applies all aggregate policies
+* [`Ash.Policy.Authorizer`] ensure that old config applies all aggregate policies
 
 ### Improvements:
 
-* add `Ash.Generator.once/2`
+* [`Ash.Generator`] add `Ash.Generator.once/2`
 
-* define `generate/1` callback for maps, structs, keywords
+* [`Ash.Type.Map`, `Ash.Type.Keyword`, `Ash.Type.Struct`] define `generate/1` callback for maps, structs, keywords
 
-* add `data_layer?` option to `Ash.calculate/3`
+* [`Ash`] add `data_layer?` option to `Ash.calculate/3`
 
-* Add default code interface options (#1681)
+* [`Ash.Resource`] Add default code interface options (#1681)
 
-* set new
+* [`Ash.Resource`] add `allow_forbidden_field?` option to relationships
 
-* add `allow_forbidden_field?` option to relationships
+* [`Ash.Resource`] add `authorize_read_with` option to relationships
 
-* add `authorize_read_with` option to relationships
+* [`Ash`] support `default` option in `Ash.first` (#1683)
 
-* support `default` option in `Ash.first` (#1683)
+* [`Ash.Notifier.PubSub`] allow exclusion of certain actions from publish_all (#1680)
 
-* allow exclusion of certain actions from publish_all (#1680)
+* [`mix igniter.install ash`] no prompt about SAT solver unless user is on windows
 
-* test atomic and non-atomic validation paths of changing validation
+* [`Ash.Domain`] add otp_app option to use Ash.Domain
 
-* no prompt about SAT solver unless user is on windows
-
-* add otp_app option to use Ash.Domain
-
-* add support for `strict?` in read options (#1669)
+* - [`Ash`] add support for `strict?` in read options (#1669)
 
 ## [v3.4.49](https://github.com/ash-project/ash/compare/v3.4.48...v3.4.49) (2024-12-22)
 
