@@ -408,7 +408,12 @@ defmodule Ash.Generator do
       end
     end)
     |> then(fn {required, optional} ->
-      {Map.merge(required, to_generators(generators)), Map.drop(optional, Map.keys(generators))}
+      generators =
+        generators
+        |> Map.take(Enum.map(attributes, & &1.name))
+        |> to_generators()
+
+      {Map.merge(required, generators), Map.drop(optional, Map.keys(generators))}
     end)
     |> do_mixed_map()
   end
