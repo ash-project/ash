@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.4.51](https://github.com/ash-project/ash/compare/v3.4.50...v3.4.51) (2025-01-03)
+
+
+
+
+### Bug Fixes:
+
+* handle ambiguous case of empty params in code interfaces (#1694)
+
+* discard manage_relationships added inside changes on atomic upgrade
+
 ## [v3.4.50](https://github.com/ash-project/ash/compare/v3.4.49...v3.4.50) (2025-01-01)
 
 
