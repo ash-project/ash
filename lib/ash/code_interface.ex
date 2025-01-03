@@ -257,25 +257,22 @@ defmodule Ash.CodeInterface do
   @doc """
   See `params_and_opts/2`.
 
-  Merges default options if provided (see `merge_default_opts/2`) and  dds a
-  post process function that can takes the opts and can further process,
+  Adds a post process function that can takes the opts and can further process,
   validate, or transform them.
   """
   @spec params_and_opts(
           params_or_opts :: map() | [map()] | keyword(),
           keyword(),
-          keyword(),
           (keyword() -> keyword())
         ) ::
           {params :: map() | [map()], opts :: keyword()}
-  def params_and_opts(params_or_opts, maybe_opts, default_opts \\ [], post_process_opts_fn)
+  def params_and_opts(params_or_opts, maybe_opts, post_process_opts_fn)
       when is_function(post_process_opts_fn, 1) do
     params_or_opts
     |> params_and_opts(maybe_opts)
     |> then(fn {params, opts} ->
       {params,
        opts
-       |> merge_default_opts(default_opts)
        |> post_process_opts_fn.()}
     end)
   end
@@ -587,9 +584,11 @@ defmodule Ash.CodeInterface do
               Ash.CodeInterface.params_and_opts(
                 params_or_opts,
                 opts,
-                unquote(Macro.escape(interface.default_options)),
                 fn opts ->
                   opts
+                  |> Ash.CodeInterface.merge_default_opts(
+                    unquote(Macro.escape(interface.default_options))
+                  )
                   |> unquote(interface_options).validate!()
                   |> unquote(interface_options).to_options()
                 end
@@ -1342,13 +1341,53 @@ defmodule Ash.CodeInterface do
         common_args =
           quote do: [
                   unquote_splicing(subject_args),
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
+                  unquote_splicing(arg_vars_function)
                 ]
 
         first_opts_location = Enum.count(subject_args) + Enum.count(arg_vars_function)
 
+        params_handling_bulk_empty_params =
+          if action.type == :create do
+            quote do
+              if params == [] and opts == nil do
+                {name, arity} = __ENV__.function
+
+                raise ArgumentError, """
+                Cannot provide an empty list for params `#{__MODULE__}.#{name}/#{arity}` without also specifying options.
+
+                We cannot tell the difference between an empty list of inputs and an empty list of options.
+
+                If you are trying to provide an empty list of options, 
+                you should also specify empty `params`, i.e `#{name}(..., %{}, params)`
+
+                If you are trying to provide an empty list of records to create,
+                you should also specify empty `opts`, i.e `#{name}(...,  params, [])`
+                """
+              else
+                if Keyword.keyword?(params) and is_nil(opts) do
+                  {%{}, params}
+                else
+                  {params || %{}, opts || []}
+                end
+              end
+            end
+          else
+            quote do
+              keyword? = Keyword.keyword?(params)
+
+              if keyword? and is_nil(opts) do
+                {%{}, params}
+              else
+                if keyword? do
+                  {Map.new(params), opts || []}
+                else
+                  {params || %{}, opts || []}
+                end
+              end
+            end
+          end
+
+        @dialyzer {:nowarn_function, {interface.name, length(common_args) + 2}}
         @doc """
              #{action.description || "Calls the #{action.name} action on #{inspect(resource)}."}
 
@@ -1360,17 +1399,25 @@ defmodule Ash.CodeInterface do
              """
              |> Ash.CodeInterface.trim_double_newlines()
 
-        @dialyzer {:nowarn_function, {interface.name, length(common_args)}}
         @doc spark_opts: [
                {first_opts_location, interface_options.schema()},
                {first_opts_location + 1, interface_options.schema()}
              ]
-        def unquote(interface.name)(unquote_splicing(common_args)) do
+
+        def unquote(interface.name)(
+              unquote_splicing(common_args),
+              params \\ nil,
+              opts \\ nil
+            ) do
+          {params_or_opts, opts} = unquote(params_handling_bulk_empty_params)
+
           unquote(resolve_params_and_opts)
           unquote(resolve_subject)
           unquote(act)
         end
 
+        # sobelow_skip ["DOS.BinToAtom"]
+        @dialyzer {:nowarn_function, {:"#{interface.name}!", length(common_args) + 2}}
         @doc """
              #{action.description || "Calls the #{action.name} action on #{inspect(resource)}."}
 
@@ -1383,13 +1430,17 @@ defmodule Ash.CodeInterface do
              #{interface_options.docs()}
              """
              |> Ash.CodeInterface.trim_double_newlines()
-        # sobelow_skip ["DOS.BinToAtom"]
-        @dialyzer {:nowarn_function, {:"#{interface.name}!", length(common_args)}}
+
         @doc spark_opts: [
                {first_opts_location, interface_options.schema()},
                {first_opts_location + 1, interface_options.schema()}
              ]
-        def unquote(:"#{interface.name}!")(unquote_splicing(common_args)) do
+        def unquote(:"#{interface.name}!")(
+              unquote_splicing(common_args),
+              params \\ nil,
+              opts \\ nil
+            ) do
+          {params_or_opts, opts} = unquote(params_handling_bulk_empty_params)
           unquote(resolve_params_and_opts)
           unquote(resolve_subject)
           unquote(act!)
@@ -1409,7 +1460,7 @@ defmodule Ash.CodeInterface do
             ])
 
           @dialyzer {:nowarn_function,
-                     {:"#{subject_name}_to_#{interface.name}", length(common_args)}}
+                     {:"#{subject_name}_to_#{interface.name}", length(common_args) + 2}}
 
           @doc spark_opts: [
                  {first_opts_location, interface_options.schema()},
@@ -1427,7 +1478,11 @@ defmodule Ash.CodeInterface do
                  {first_opts_location, subject_opts},
                  {first_opts_location + 1, subject_opts}
                ]
-          def unquote(:"#{subject_name}_to_#{interface.name}")(unquote_splicing(common_args)) do
+          def unquote(:"#{subject_name}_to_#{interface.name}")(
+                unquote_splicing(common_args),
+                params_or_opts \\ %{},
+                opts \\ []
+              ) do
             unquote(resolve_params_and_opts)
             unquote(resolve_subject)
             unquote(subject)
@@ -1445,12 +1500,17 @@ defmodule Ash.CodeInterface do
              #{Ash.Resource.Interface.CanOpts.docs()}
              """
              |> Ash.CodeInterface.trim_double_newlines()
-        @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 1}}
+        @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 3}}
         @doc spark_opts: [
                {first_opts_location + 1, Ash.Resource.Interface.CanOpts.schema()},
                {first_opts_location + 2, Ash.Resource.Interface.CanOpts.schema()}
              ]
-        def unquote(:"can_#{interface.name}")(actor, unquote_splicing(common_args)) do
+        def unquote(:"can_#{interface.name}")(
+              actor,
+              unquote_splicing(common_args),
+              params_or_opts \\ %{},
+              opts \\ []
+            ) do
           {params, opts} =
             Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
               opts
@@ -1477,7 +1537,7 @@ defmodule Ash.CodeInterface do
         end
 
         # sobelow_skip ["DOS.BinToAtom"]
-        @dialyzer {:nowarn_function, {:"can_#{interface.name}?", length(common_args) + 1}}
+        @dialyzer {:nowarn_function, {:"can_#{interface.name}?", length(common_args) + 3}}
         @doc spark_opts: [
                {first_opts_location + 1, Ash.Resource.Interface.CanQuestionMarkOpts.schema()},
                {first_opts_location + 2, Ash.Resource.Interface.CanQuestionMarkOpts.schema()}
@@ -1492,7 +1552,12 @@ defmodule Ash.CodeInterface do
              #{Ash.Resource.Interface.CanQuestionMarkOpts.docs()}
              """
              |> Ash.CodeInterface.trim_double_newlines()
-        def unquote(:"can_#{interface.name}?")(actor, unquote_splicing(common_args)) do
+        def unquote(:"can_#{interface.name}?")(
+              actor,
+              unquote_splicing(common_args),
+              params_or_opts \\ %{},
+              opts \\ []
+            ) do
           {params, opts} =
             Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
               opts
