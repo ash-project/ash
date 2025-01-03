@@ -1728,7 +1728,7 @@ defmodule Ash.CodeInterface do
       :id ->
         case Ash.Filter.get_filter(resource, id) do
           {:ok, filter} ->
-            {:ok, Ash.Query.do_filter(resource, filter)}
+            {:ok, resource |> Ash.Query.do_filter(filter) |> Ash.Query.limit(1)}
 
           {:error, error} ->
             {:error, error}
