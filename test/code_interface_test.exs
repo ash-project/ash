@@ -250,7 +250,14 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     test "bulk_create can be take an empty list" do
-      assert %Ash.BulkResult{status: :success} = User.bulk_create!([])
+      assert_raise ArgumentError, ~r/Cannot provide an empty list for params/, fn ->
+        # Note, this is an unfortunately required breaking change
+        # We can't tell the difference between an empty set of inputs to create one record w/o inputs
+        # and an empty list to create no records as a bulk action
+        User.bulk_create!([])
+      end
+
+      assert %Ash.BulkResult{status: :success} = User.bulk_create!([], [])
     end
   end
 
@@ -315,6 +322,11 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     test "bulk update can take an empty list" do
       assert %Ash.BulkResult{status: :success} = User.update([], %{first_name: "other_bob"})
+    end
+
+    test "bulk update can take an empty list and keyword params" do
+      assert %Ash.BulkResult{status: :success} =
+               User.update([], [first_name: "other_bob"], [])
     end
   end
 
@@ -389,6 +401,9 @@ defmodule Ash.Test.CodeInterfaceTest do
       |> Ash.create!()
 
     assert User.get_by_id!(user.id).id == user.id
+
+    assert {:ok, user} = User.get_by_id(user.id)
+    assert user.id == user.id
   end
 
   test "optional arguments are optional" do
