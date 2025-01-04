@@ -360,6 +360,8 @@ defmodule Ash.Generator do
          action_type,
          extra_keys_to_keep \\ []
        ) do
+    generators = Map.new(generators)
+
     attributes
     |> Enum.reduce({%{}, %{}}, fn attribute, {required, optional} ->
       default =

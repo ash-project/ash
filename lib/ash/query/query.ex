@@ -420,6 +420,11 @@ defmodule Ash.Query do
   def new(%__MODULE__{} = query, _opts), do: query
 
   def new(resource, opts) when is_atom(resource) do
+    if !Ash.Resource.Info.resource?(resource) do
+      raise ArgumentError,
+            "Expected a resource or a query in `Ash.Query.new/2`, got: `#{inspect(resource)}`"
+    end
+
     query = %__MODULE__{
       domain: opts[:domain],
       filter: nil,
@@ -457,6 +462,11 @@ defmodule Ash.Query do
     query
     |> set_context(context)
     |> Ash.DataLayer.transform_query()
+  end
+
+  def new(resource, _) do
+    raise ArgumentError,
+          "Expected a resource or a query in `Ash.Query.new/2`, got: `#{inspect(resource)}`"
   end
 
   @for_read_opts [
