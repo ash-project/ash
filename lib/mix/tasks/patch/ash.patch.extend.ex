@@ -57,8 +57,8 @@ if Code.ensure_loaded?(Igniter) do
 
       opts =
         [
-          subjects: String.split(subject, ",", trim: true),
-          extensions: String.split(Enum.join(extensions, ","), ",", trim: true)
+          subjects: Enum.uniq(String.split(subject, ",", trim: true)),
+          extensions: Enum.uniq(String.split(Enum.join(extensions, ","), ",", trim: true))
         ]
 
       extensions = opts[:extensions]
