@@ -611,7 +611,7 @@ defmodule Ash.Policy.Authorizer do
 
           igniter
           |> Igniter.Project.Deps.add_dep(solver, yes?: yes)
-          |> Igniter.apply_and_fetch_dependencies(yes: yes)
+          |> Igniter.apply_and_fetch_dependencies(yes: yes, yes_to_deps: true)
         else
           _ ->
             igniter
