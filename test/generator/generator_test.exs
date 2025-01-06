@@ -281,6 +281,22 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  describe "seed_generator" do
+    test "it correctly seeds a record" do
+      assert %Author{} =
+               Ash.Generator.seed_generator(%Author{}, overrides: @meta_generator)
+               |> Ash.Generator.generate()
+    end
+  end
+
+  describe "changeset_generator" do
+    test "it correctly seeds a record" do
+      assert %Author{} =
+               Ash.Generator.changeset_generator(Author, :create, overrides: @meta_generator)
+               |> Ash.Generator.generate()
+    end
+  end
+
   describe "seed" do
     test "it seeds correctly a resource" do
       assert %Author{} = Ash.Generator.seed!(Author, @meta_generator)
