@@ -9,7 +9,7 @@ defmodule Ash.Resource.Dsl do
     args: [:filter],
     target: Filter,
     describe:
-      "Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.",
+      "Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.",
     examples: [
       """
       filter expr(first_name == "fred")
@@ -23,7 +23,7 @@ defmodule Ash.Resource.Dsl do
       filter: [
         type: :any,
         doc:
-          "The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.",
+          "The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.",
         required: true
       ]
     ]
