@@ -24,7 +24,22 @@ defmodule Type.MapTest do
 
         constraints fields: [
                       foo: [type: :string, allow_nil?: false],
-                      bar: [type: :integer, constraints: [min: 0]]
+                      integer_min_0: [type: :integer, constraints: [min: 0]],
+                      string_min_3: [
+                        type: :string,
+                        allow_nil?: true,
+                        constraints: [min_length: 3]
+                      ],
+                      string_max_3: [
+                        type: :string,
+                        allow_nil?: true,
+                        constraints: [max_length: 3]
+                      ],
+                      string_match: [
+                        type: :string,
+                        allow_nil?: true,
+                        constraints: [match: ~r/a_A/]
+                      ]
                     ]
       end
 
@@ -40,7 +55,7 @@ defmodule Type.MapTest do
       |> Ash.Changeset.for_create(:create, %{
         metadata: %{
           foo: "bar",
-          bar: 1
+          integer_min_0: 1
         }
       })
 
@@ -53,14 +68,14 @@ defmodule Type.MapTest do
       |> Ash.Changeset.for_create(:create, %{
         metadata: %{
           foo: "bar",
-          bar: "2"
+          integer_min_0: "2"
         }
       })
 
     assert changeset.valid?
 
     assert changeset.attributes == %{
-             metadata: %{foo: "bar", bar: 2}
+             metadata: %{foo: "bar", integer_min_0: 2}
            }
   end
 
@@ -69,7 +84,7 @@ defmodule Type.MapTest do
       Post
       |> Ash.Changeset.for_create(:create, %{
         metadata: %{
-          "bar" => nil,
+          "integer_min_0" => nil,
           foo: "bar"
         }
       })
@@ -77,7 +92,7 @@ defmodule Type.MapTest do
     assert changeset.valid?
 
     assert changeset.attributes == %{
-             metadata: %{foo: "bar", bar: nil}
+             metadata: %{foo: "bar", integer_min_0: nil}
            }
   end
 
@@ -97,7 +112,7 @@ defmodule Type.MapTest do
     changeset =
       Post
       |> Ash.Changeset.for_create(:create, %{
-        metadata: %{bar: 1}
+        metadata: %{integer_min_0: 1}
       })
 
     refute changeset.valid?
@@ -107,7 +122,7 @@ defmodule Type.MapTest do
                field: :foo,
                message: "field must be present",
                private_vars: nil,
-               value: %{bar: 1},
+               value: %{integer_min_0: 1},
                bread_crumbs: [],
                vars: [],
                path: [:metadata]
@@ -119,17 +134,17 @@ defmodule Type.MapTest do
     changeset =
       Post
       |> Ash.Changeset.for_create(:create, %{
-        metadata: %{foo: "hello", bar: -1}
+        metadata: %{foo: "hello", integer_min_0: -1}
       })
 
     refute changeset.valid?
 
     assert [
              %Ash.Error.Changes.InvalidAttribute{
-               field: :bar,
+               field: :integer_min_0,
                message: "must be more than or equal to %{min}",
                private_vars: nil,
-               value: %{bar: -1, foo: "hello"},
+               value: %{integer_min_0: -1, foo: "hello"},
                bread_crumbs: [],
                vars: [min: 0],
                path: [:metadata]
@@ -165,7 +180,7 @@ defmodule Type.MapTest do
         %{
           metadata: %{
             "foo" => "",
-            bar: "2"
+            integer_min_0: "2"
           }
         }
       )
@@ -177,7 +192,7 @@ defmodule Type.MapTest do
                field: :foo,
                message: "value must not be nil",
                private_vars: nil,
-               value: %{:bar => "2", "foo" => ""},
+               value: %{:integer_min_0 => "2", "foo" => ""},
                bread_crumbs: [],
                vars: [],
                path: [:metadata]
@@ -202,5 +217,106 @@ defmodule Type.MapTest do
     assert changeset.attributes == %{
              otherdata: %{extra: "field"}
            }
+  end
+
+  test "multiple values with constraint errors" do
+    changeset =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        metadata: %{
+          foo: "bar",
+          string_min_3: "a",
+          integer_min_0: -1
+        }
+      })
+
+    refute changeset.valid?
+
+    assert [
+             %Ash.Error.Changes.InvalidAttribute{
+               message: "length must be greater than or equal to %{min}",
+               vars: [min: 3],
+               field: :string_min_3,
+               private_vars: nil,
+               value: %{string_min_3: "a", foo: "bar"},
+               bread_crumbs: [],
+               path: [:metadata]
+             }
+           ] = changeset.errors
+  end
+
+  test "string_min_3 validates length" do
+    changeset =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        metadata: %{
+          foo: "bar",
+          string_min_3: "a"
+        }
+      })
+
+    refute changeset.valid?
+
+    assert [
+             %Ash.Error.Changes.InvalidAttribute{
+               message: "length must be greater than or equal to %{min}",
+               vars: [min: 3],
+               field: :string_min_3,
+               private_vars: nil,
+               value: %{string_min_3: "a", foo: "bar"},
+               bread_crumbs: [],
+               path: [:metadata]
+             }
+           ] = changeset.errors
+  end
+
+  test "string_max_3 validates length" do
+    changeset =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        metadata: %{
+          foo: "bar",
+          string_max_3: "aaaa"
+        }
+      })
+
+    refute changeset.valid?
+
+    assert [
+             %Ash.Error.Changes.InvalidAttribute{
+               message: "length must be less than or equal to %{max}",
+               vars: [max: 3],
+               field: :string_max_3,
+               private_vars: nil,
+               value: %{string_max_3: "aaaa", foo: "bar"},
+               bread_crumbs: [],
+               path: [:metadata]
+             }
+           ] = changeset.errors
+  end
+
+  test "string_match validates against regex pattern" do
+    changeset =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        metadata: %{
+          foo: "bar",
+          string_match: "invalid"
+        }
+      })
+
+    refute changeset.valid?
+
+    assert [
+             %Ash.Error.Changes.InvalidAttribute{
+               message: "must match the pattern %{regex}",
+               vars: [regex: "~r/a_A/"],
+               field: :string_match,
+               private_vars: nil,
+               value: %{string_match: "invalid", foo: "bar"},
+               bread_crumbs: [],
+               path: [:metadata]
+             }
+           ] = changeset.errors
   end
 end
