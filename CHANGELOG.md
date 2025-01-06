@@ -5,35 +5,33 @@
 ## [v3.4.52](https://github.com/ash-project/ash/compare/v3.4.51...v3.4.52) (2025-01-06)
 
 
-
-
 ### Bug Fixes:
 
-* handle keyword errors from map field type casting
+* [`Ash.Type.Map`]  handle keyword errors from map field type casting
 
-* unique extensions & subjects
+* [`mix ash.gen.resource`] ensure extensions & subjects args are unique
 
 ### Improvements:
 
-* validate field names in `ash.gen.resource`
+* [`ash.gen.resource`] validate that names given to `ash.gen.resource`
 
-* add `Ash.Generator.changeset_generator/3`
+* [`Ash.Generator`] add `Ash.Generator.changeset_generator/3`
 
-* add `Ash.Generator.seed_generator/2`
+* [`Ash.Generator`] add `Ash.Generator.seed_generator/2`
 
-* support `after_action` option to `Ash.bulk_create`
+* [`Ash.Generator`] only use known keys in generators in `Ash.Generator`
 
-* set `yes_to_deps` when fetching dependencies
+* [`Ash`] support `after_action` option to `Ash.bulk_create`
 
-* better error message on non-resource in `Ash.Query.new/2`
+* [`mix ash.install`] set `yes_to_deps` when fetching dependencies
 
-* only use known keys in generators in `Ash.Generator`
+* [`Ash.Query`] better error message on non-resource in `Ash.Query.new/2`
 
-* handle limited bulk destroys from streams
+* [`Ash.bulk_destroy`] handle limited bulk destroys from streams
 
-* bulk actions use `full_read` from code interfaces given ids
+* [Code interfaces] bulk actions use `full_read` from code interfaces given ids
 
-* set `limit` in code interface to update or destroy one thing
+* [Code Interfaces] set `limit` in code interface to update or destroy one thing
 
 ## [v3.4.51](https://github.com/ash-project/ash/compare/v3.4.50...v3.4.51) (2025-01-03)
 
