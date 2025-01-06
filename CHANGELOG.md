@@ -2,6 +2,39 @@
 
 <!-- changelog -->
 
+## [v3.4.52](https://github.com/ash-project/ash/compare/v3.4.51...v3.4.52) (2025-01-06)
+
+
+
+
+### Bug Fixes:
+
+* handle keyword errors from map field type casting
+
+* unique extensions & subjects
+
+### Improvements:
+
+* validate field names in `ash.gen.resource`
+
+* add `Ash.Generator.changeset_generator/3`
+
+* add `Ash.Generator.seed_generator/2`
+
+* support `after_action` option to `Ash.bulk_create`
+
+* set `yes_to_deps` when fetching dependencies
+
+* better error message on non-resource in `Ash.Query.new/2`
+
+* only use known keys in generators in `Ash.Generator`
+
+* handle limited bulk destroys from streams
+
+* bulk actions use `full_read` from code interfaces given ids
+
+* set `limit` in code interface to update or destroy one thing
+
 ## [v3.4.51](https://github.com/ash-project/ash/compare/v3.4.50...v3.4.51) (2025-01-03)
 
 
