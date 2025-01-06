@@ -4,8 +4,8 @@ defmodule Ash.Generator do
 
   ## Using Ash.Generator
 
-  To define generators for your tests, `use` this module, and define
-  functions that use `changeset_generator/3` and/or `seed_generator/3`.
+  To define generators for your tests, `use Ash.Generator`, and define
+  functions that use `changeset_generator/3` and/or `seed_generator/2`.
 
   ```elixir
   defmodule YourApp.Generator do
