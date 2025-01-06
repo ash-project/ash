@@ -376,8 +376,7 @@ defmodule Ash.MixProject do
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
-      # {:ex_doc, "~> 0.32", only: [:dev, :test], runtime: false},
-      {:ex_doc, path: "../ex_doc"},
+      {:ex_doc, "~> 0.32", only: [:dev, :test], runtime: false},
       {:ex_check, "~> 0.12", only: [:dev, :test]},
       {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev, :test], runtime: false},
