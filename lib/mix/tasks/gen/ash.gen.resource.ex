@@ -271,7 +271,7 @@ if Code.ensure_loaded?(Igniter) do
     end
 
     defp valid_attribute_name?(name) do
-      Regex.match?(~r/^[a-zA-Z][a-zA-Z0-9]*[!?]?$/, name)
+      Regex.match?(~r/^[a-zA-Z][a-zA-Z0-9_]*[!?]?$/, name)
     end
 
     defp attributes(options) do
