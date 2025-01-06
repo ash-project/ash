@@ -632,6 +632,10 @@ defmodule Ash do
                                doc:
                                  "The fields to upsert. If not set, the action's `upsert_fields` is used. Unlike singular `create`, `bulk_create` with `upsert?` requires that `upsert_fields` be specified explicitly in one of these two locations."
                              ],
+                             after_action: [
+                               type: {:fun, 2},
+                               doc: "An after_action hook to be added to each processed changeset"
+                             ],
                              upsert_condition: [
                                type: :any,
                                doc:

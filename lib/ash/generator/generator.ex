@@ -1,14 +1,65 @@
 defmodule Ash.Generator do
   @moduledoc """
-  Tools for generating input to Ash resource actions, as well as for seeds.
+  Tools for generating input to Ash resource actions and for generating seed data.
 
-  These tools are young, and various factors are not taken into account. For example,
-  validations and identities are not automatically considered.
+  ## Using Ash.Generator
 
-  If you want to use this with stream data testing, you will likely want to get familiar with `StreamData`.
+  To define generators for your tests, `use` this module, and define
+  functions that use `changeset_generator/3` and/or `seed_generator/3`.
 
-  Many functions in this module support overrides, which allow passing down either constant values
-  or your own generators.
+  ```elixir
+  defmodule YourApp.Generator do
+    use Ash.Generator
+
+    # using `seed_generator`, bypasses the action and saves directly to the data layer
+    def blog_post(opts \\ []) do
+      seed_generator(
+        %MyApp.Blog.Post{
+          name: sequence(:title, &"My Blog Post \#{&1}")
+          text: StreamData.repeatedly(fn -> Faker.Lorem.paragraph() end)
+        },
+        overrides: opts
+      )
+    end
+
+    # using `changeset_generator`, calls the action when passed to `create`
+    def blog_post_comment(opts \\ []) do
+      blog_post_id = opts[:blog_post_id] || once(:default_blog_post_id, fn -> create(blog_post()).id end)
+
+      changeset_generator(
+        MyApp.Blog.Comment,
+        :create,
+        defaults: [
+          blog_post_id: blog_post_id
+        ],
+        overrides: opts
+      )
+    end
+  end
+  ```
+
+  Then, in your tests, you can `import YourApp.Generator`, and use `create/1` and `create_many/1` to generate data.
+  For example:
+
+  ```elixir
+  import YourApp.Generator
+
+  test "`comment_count` on blog_post shows the count of comments" do
+    blog_post = create(blog_post())
+    assert Ash.load!(blog_post, :comment_count).comment_count == 0
+
+    create_many(blog_post_comment(blog_post_id: blog_post.id), 10)
+
+    assert Ash.load!(blog_post, :comment_count).comment_count == 10
+  end
+  ```
+
+  ## About Generators
+
+  These generators are backed by `StreamData`, and are ready for use with proeprty testing via `ExUnitProperties`
+
+  Many functions in this module support "overrides", which allow passing down either constant values
+  or your own `StreamData` generators.
 
   For example:
 
@@ -34,6 +85,10 @@ defmodule Ash.Generator do
              query: 2,
              query: 3,
              query: 4,
+             seed_generator: 1,
+             seed_generator: 2,
+             changeset_generator: 2,
+             changeset_generator: 3,
              generate_attributes: 4,
              generate_attributes: 5,
              mixed_map: 2,
@@ -45,127 +100,163 @@ defmodule Ash.Generator do
              many_queries: 5,
              do_changeset_or_query: 5}
 
-  @doc "Creates a generator map where the keys are required except the list provided"
-  def mixed_map(map, []) do
-    map = to_generators(map)
-    StreamData.fixed_map(map)
-  end
+  @typedoc """
+  A map or keyword of data generators or constant values to use in place of defaults.
 
-  def mixed_map(map, keys) do
-    map = to_generators(map)
-    {optional, required} = Map.split(map, keys)
-    do_mixed_map({StreamData.fixed_map(required), StreamData.optional_map(optional)})
+  Many functions in `Ash.Generator` support `overrides`, allowing to customize the default
+  generated values.
+  """
+  @type overrides ::
+          %{term() => stream_data() | term()} | Keyword.t(stream_data() | term())
+
+  @typedoc """
+  An instance of `StreamData`, gotten from one of the functions in that module.
+  """
+  @type stream_data :: Enumerable.t()
+
+  defmacro __using__(_opts) do
+    quote do
+      import Ash.Generator
+
+      defdelegate create(generator), to: Ash.Generator
+      defdelegate create_many(generator), to: Ash.Generator
+    end
   end
 
   @doc """
-  Generate input meant to be passed into `Ash.Seed.seed!/2`.
+  A generator of seedable records, to be passed to `generate/1` or `generate_many/1`
 
-  A map of custom `StreamData` generators can be provided to add to or overwrite the generated input,
-  for example: `Ash.Generator.for_seed(Post, %{text: StreamData.constant("Post")})`
-  """
-  @spec seed_input(Ash.Resource.t(), map()) :: StreamData.t(map())
-  def seed_input(resource, generators \\ %{}) do
-    relationships = Ash.Resource.Info.relationships(resource)
+  See `changeset_generator/3` for the equivalent construct for cases when you want to call resource
+  actions as opposed to seed directly to the data layer.
 
-    resource
-    |> Ash.Resource.Info.attributes()
-    |> Enum.reject(fn attribute ->
-      Enum.any?(relationships, &(&1.source_attribute == attribute.name))
-    end)
-    |> generate_attributes(generators, true, :create, Enum.map(relationships, & &1.name))
+  ## Examples
+
+  ```elixir
+  iex> changeset_generator(MyApp.Blog.Post, :create, defaults: [title: sequence(:blog_post_title, &"My Blog Post \#{&1}")]) |> generate() 
+  %Ash.Changeset{...}
+  ```
+
+  ## Usage in tests
+
+  This can be used to define generators in tests. A useful pattern is defining a function like so:
+
+  ```elixir
+  def blog_post(opts \\ []) do
+    changeset_generator(
+      MyApp.Blog.Post,
+      :create,
+      defaults: [
+        name: sequence(:blog_post_title, &"My Blog Post \#{&1}")
+        text: StreamData.repeatedly(fn -> Faker.Lorem.paragraph() end)
+      ],
+      overrides: opts
+    )
   end
+  ```
 
-  @doc """
-  Gets the next value for a given sequence identifier.
+  See the `Ash.Generator` moduledocs for more information.
 
-  See `sequence/3` for more.
+  ## Options
 
-  This is equivalent to `identifier |> Ash.Generator.sequence(fun, sequencer) |> Enum.at(0)`
+  * `:overrides` - A keyword list or map of `t:overrides()`
+  * `:actor` - Passed through to the changeset
+  * `:tenant` - Passed through to the changeset
+  * `:authorize?` - Passed through to the changeset
+  * `:context` - Passed through to the changeset
+  * `:after_action` - A one argument function that takes the result and returns 
+    a new result to run after the record is creatd.
   """
-  def next_in_sequence(identifier, fun, sequencer \\ fn i -> (i || -1) + 1 end) do
-    identifier
-    |> sequence(fun, sequencer)
-    |> Enum.at(0)
-  end
+  def changeset_generator(resource, action, opts \\ []) do
+    generators =
+      opts[:defaults]
+      |> Kernel.||([])
+      |> Map.new()
+      |> Map.merge(Map.new(opts[:overrides] || %{}))
 
-  @doc """
-  Run the provided function or enumerable (i.e generator) only once.
+    changeset_opts =
+      StreamData.fixed_map(
+        to_generators(Keyword.take(opts, [:actor, :tenant, :authorize?, :context]))
+      )
 
-  This is useful for ensuring that some piece of data is generated a single time during a test.
+    input = action_input(resource, action, generators)
 
-  The lifecycle of this generator is tied to the process that initially starts it. In general,
-  that will be the test. In the rare case where you are running async processes that need to share a sequence
-  that is not created in the test process, you can initialize a sequence in the test using `initialize_once/1`.
-
-  Example:
-
-      iex> Ash.Generator.once(:user, fn -> 
-             register_user(...)
-           end) |> Enum.at(0)
-      %User{id: 1} # created the user
-
-      iex> Ash.Generator.once(:user, fn -> 
-             register_user(...)
-           end) |> Enum.at(0)
-      %User{id: 1} # reused the last user
-  """
-  @spec once(pid | atom, (-> value) | Enumerable.t(value)) ::
-          StreamData.t(value)
-        when value: term
-  def once(identifier, generator) do
-    pid =
-      if is_pid(identifier) do
-        identifier
-      else
-        initialize_once(identifier)
-      end
-
-    StreamData.repeatedly(fn ->
-      Agent.get_and_update(pid, fn state ->
-        case state do
-          :none ->
-            new =
-              case generator do
-                generator when is_function(generator) ->
-                  generator.()
-
-                value ->
-                  Enum.at(value, 0)
-              end
-
-            {new, {:some, new}}
-
-          {:some, value} ->
-            {value, {:some, value}}
+    StreamData.fixed_map(%{
+      changeset_opts: changeset_opts,
+      input: input
+    })
+    |> StreamData.map(fn %{input: input, changeset_opts: changeset_opts} ->
+      Ash.Changeset.for_action(
+        resource,
+        action,
+        input,
+        Map.to_list(changeset_opts)
+      )
+      |> then(fn changeset ->
+        if opts[:after_action] do
+          Ash.Changeset.after_action(changeset, fn _changeset, record ->
+            {:ok, opts[:after_action].(record)}
+          end)
+          |> Ash.Changeset.set_context(%{private: %{generator_after_action: opts[:after_action]}})
+        else
+          changeset
         end
       end)
     end)
   end
 
   @doc """
-  Starts and links an agent for a `once/2`, or returns the existing agent pid if it already exists.
+  A generator of seedable records, to be passed to `generate/1` or `generate_many/1`
 
-  See `once/2` for more.
-  """
-  # sobelow_skip ["DOS.BinToAtom"]
-  @spec initialize_once(atom) :: pid
-  def initialize_once(identifier) do
-    identifier = :"__ash_once_#{identifier}__"
+  See `changeset_generator/3` for the equivalent construct for cases when you want to call resource
+  actions as opposed to seed directly to the data layer.
 
-    case Agent.start_link(fn -> :none end, name: identifier) do
-      {:ok, pid} -> pid
-      {:error, {:already_started, pid}} -> pid
-    end
+  ## Examples
+
+  ```elixir
+  iex> seed_generator(%MyApp.Blog.Post{name: sequence(:blog_post_title, &"My Blog Post \#{&1}")}) |> generate() 
+  %Tunez.Music.Artist{name: "Artist 1"}
+  ```
+
+  ## Usage in tests
+
+  This can be used to define seed generators in tests. A useful pattern is defining a function like so:
+
+  ```elixir
+  def blog_post(opts \\ []) do
+    seed_generator(
+      %MyApp.Blog.Post{
+        name: sequence(:blog_post_title, &"My Blog Post \#{&1}")
+        text: StreamData.repeatedly(fn -> Faker.Lorem.paragraph() end)
+      },
+      overrides: opts
+    )
   end
+  ```
 
-  @doc """
-  Stops the agent for a `once/2`.
+  See the `Ash.Generator` moduledocs for more information.
 
-  See `once/2` for more.
+  ## Options
+
+  * `:overrides` - A keyword list or map of `t:overrides()`
+  * `:actor` - Passed through to the changeset
+  * `:tenant` - Passed through to the changeset
+  * `:authorize?` - Passed through to the changeset
+  * `:context` - Passed through to the changeset
+  * `:after_action` - A one argument function that takes the result and returns 
+    a new result to run after the record is creatd.
   """
-  def stop_once(identifier) do
-    Agent.stop(identifier)
-    :ok
+  @spec seed_generator(Ash.Resource.record(), opts :: Keyword.t()) :: stream_data()
+  def seed_generator(%resource{} = record, opts \\ []) do
+    record
+    |> Map.take(Enum.to_list(Ash.Resource.Info.attribute_names(resource)))
+    |> Map.merge(Map.new(opts[:overrides] || %{}))
+    |> to_generators()
+    |> StreamData.fixed_map()
+    |> StreamData.map(fn keys ->
+      Ash.Resource.set_metadata(struct(resource, keys), %{
+        private: %{generator_after_action: opts[:after_action]}
+      })
+    end)
   end
 
   @doc """
@@ -215,6 +306,107 @@ defmodule Ash.Generator do
   end
 
   @doc """
+  Run the provided function or enumerable (i.e generator) only once.
+
+  This is useful for ensuring that some piece of data is generated a single time during a test.
+
+  The lifecycle of this generator is tied to the process that initially starts it. In general,
+  that will be the test. In the rare case where you are running async processes that need to share a sequence
+  that is not created in the test process, you can initialize a sequence in the test using `initialize_once/1`.
+
+  Example:
+
+      iex> Ash.Generator.once(:user, fn -> 
+             register_user(...)
+           end) |> Enum.at(0)
+      %User{id: 1} # created the user
+
+      iex> Ash.Generator.once(:user, fn -> 
+             register_user(...)
+           end) |> Enum.at(0)
+      %User{id: 1} # reused the last user
+  """
+  @spec once(pid | atom, (-> value) | Enumerable.t(value)) ::
+          StreamData.t(value)
+        when value: term
+  def once(identifier, generator) do
+    pid =
+      if is_pid(identifier) do
+        identifier
+      else
+        initialize_once(identifier)
+      end
+
+    StreamData.repeatedly(fn ->
+      generate_once(pid, generator)
+    end)
+  end
+
+  defp generate_once(pid, generator) do
+    Agent.get_and_update(pid, fn state ->
+      case state do
+        :locked ->
+          {:locked, :locked}
+
+        :none ->
+          {{:generate, generator}, :locked}
+
+        {:some, value} ->
+          {{:value, value}, {:some, value}}
+      end
+    end)
+    |> case do
+      :locked ->
+        generate_once(pid, generator)
+
+      {:generate, generator} ->
+        new =
+          case generator do
+            generator when is_function(generator) ->
+              generator.()
+
+            value ->
+              Enum.at(value, 0)
+          end
+
+        Agent.update(pid, fn _state ->
+          {:some, new}
+        end)
+
+        new
+
+      {:value, value} ->
+        value
+    end
+  end
+
+  @doc """
+  Starts and links an agent for a `once/2`, or returns the existing agent pid if it already exists.
+
+  See `once/2` for more.
+  """
+  # sobelow_skip ["DOS.BinToAtom"]
+  @spec initialize_once(atom) :: pid
+  def initialize_once(identifier) do
+    identifier = :"__ash_once_#{identifier}__"
+
+    case Agent.start_link(fn -> :none end, name: identifier) do
+      {:ok, pid} -> pid
+      {:error, {:already_started, pid}} -> pid
+    end
+  end
+
+  @doc """
+  Stops the agent for a `once/2`.
+
+  See `once/2` for more.
+  """
+  def stop_once(identifier) do
+    Agent.stop(identifier)
+    :ok
+  end
+
+  @doc """
   Starts and links an agent for a sequence, or returns the existing agent pid if it already exists.
 
   See `sequence/3` for more.
@@ -256,16 +448,92 @@ defmodule Ash.Generator do
   """
   def seed_many!(resource, n, generators \\ %{}) do
     seed_input(resource, generators)
-    |> Enum.take(n)
+    |> Stream.take(n)
     |> Enum.map(&Ash.Seed.seed!(resource, &1))
+  end
+
+  @doc """
+  Takes one value from a changeset or seed generator and calls `Ash.create!` on it.
+
+  Passes through resource structs without doing anything.
+  Creates a changeset if given
+  """
+  @spec generate(
+          stream_data()
+          | Ash.Changeset.t()
+          | Ash.Resource.record()
+        ) ::
+          Ash.Resource.record()
+  def generate(%Ash.Changeset{} = changeset) do
+    Ash.create!(changeset, return_notifications?: true) |> elem(0)
+  end
+
+  def generate(changeset_generator) do
+    if is_struct(changeset_generator) and
+         Ash.Resource.Info.resource?(changeset_generator.__struct__) do
+      if changeset_generator.__meta__.state == :built do
+        result = Ash.Seed.seed!(changeset_generator)
+
+        case changeset_generator.__metadata__[:private][:generator_after_action] do
+          nil ->
+            result
+
+          after_action ->
+            after_action.(result)
+        end
+      else
+        changeset_generator
+      end
+    else
+      changeset_generator |> Enum.at(0) |> generate()
+    end
+  end
+
+  @doc """
+  Takes `count` values from a changeset or seed generator and passes their inputs into `Ash.bulk_create!` or `Ash.Seed.seed!` respectively.
+  """
+  def generate_many(changeset_generator, count) do
+    changeset_generator
+    |> Stream.take(count)
+    |> Stream.chunk_every(500)
+    |> Enum.flat_map(fn
+      [%Ash.Changeset{} = first | _rest] = batch ->
+        after_action = first.context[:private][:generator_after_action]
+
+        after_action =
+          if after_action do
+            fn _changeset, record ->
+              {:ok, after_action.(record)}
+            end
+          end
+
+        Ash.bulk_create!(Enum.map(batch, & &1.params), first.resource, first.action,
+          after_action: after_action,
+          return_records?: true
+        ).records || []
+
+      batch ->
+        Enum.map(batch, fn record ->
+          if record.__meta__.state == :built do
+            Ash.Seed.seed!(record)
+          else
+            record
+          end
+        end)
+    end)
   end
 
   @doc """
   Generate input meant to be passed into a resource action.
 
-  Currently input for arguments that are passed to a `manage_relationship` are excluded, and you will
+  Arguments that are passed to a `manage_relationship` are excluded, and you will
   have to generate them yourself by passing your own generators/values down. See the module documentation for more.
   """
+  @spec action_input(
+          Ash.Resource.t() | Ash.Resource.record(),
+          action :: atom,
+          generators :: overrides()
+        ) :: map()
   def action_input(resource_or_record, action, generators \\ %{}) do
     resource =
       case resource_or_record do
@@ -290,6 +558,12 @@ defmodule Ash.Generator do
 
   See `action_input/3` and the module documentation for more.
   """
+  @spec changeset(
+          Ash.Resource.t(),
+          action :: atom(),
+          overrides(),
+          changeset_options :: Keyword.t()
+        ) :: Ash.Changeset.t()
   def changeset(resource_or_record, action, generators \\ %{}, changeset_options \\ []) do
     resource =
       case resource_or_record do
@@ -305,9 +579,22 @@ defmodule Ash.Generator do
   end
 
   @doc """
-  Generate n changesets and return them as a list.
+  Generate `count` changesets and return them as a list.
   """
-  def many_changesets(resource_or_record, action, n, generators \\ %{}, changeset_options \\ []) do
+  @spec many_changesets(
+          Ash.Resource.t(),
+          action :: atom(),
+          count :: pos_integer(),
+          overrides(),
+          changeset_options :: Keyword.t()
+        ) :: list(Ash.Changeset.t())
+  def many_changesets(
+        resource_or_record,
+        action,
+        count,
+        generators \\ %{},
+        changeset_options \\ []
+      ) do
     resource =
       case resource_or_record do
         %resource{} -> resource
@@ -315,26 +602,92 @@ defmodule Ash.Generator do
       end
 
     action_input(resource_or_record, action, generators)
-    |> Enum.take(n)
+    |> Enum.take(count)
     |> Enum.map(fn input ->
       do_changeset_or_query(resource, resource_or_record, action, input, changeset_options)
     end)
   end
 
   @doc """
-  Creates the input for the provided action with `action_input/3`, and creates a query for that action with that input.
+  Creates the input for the provided action with `action_input/3`, and returns a query for that action with that input.
 
   See `action_input/3` and the module documentation for more.
   """
-  def query(resource, action, generators \\ %{}, changeset_options \\ []) do
-    changeset(resource, action, generators, changeset_options)
+  @spec query(
+          Ash.Resource.t(),
+          action :: atom(),
+          overrides(),
+          query_options :: Keyword.t()
+        ) :: Ash.Query.t()
+  def query(resource, action, generators \\ %{}, query_options \\ []) do
+    changeset(resource, action, generators, query_options)
   end
 
   @doc """
-  Generate n queries and return them as a list.
+  Generate `count` queries and return them as a list.
   """
-  def many_queries(resource, action, n, generators \\ %{}, changeset_options \\ []) do
-    many_changesets(resource, action, n, generators, changeset_options)
+  @spec many_queries(
+          Ash.Resource.t(),
+          action :: atom(),
+          count :: pos_integer(),
+          overrides(),
+          changeset_options :: Keyword.t()
+        ) :: list(Ash.Query.t())
+  def many_queries(resource, action, count, generators \\ %{}, changeset_options \\ []) do
+    many_changesets(resource, action, count, generators, changeset_options)
+  end
+
+  @doc """
+  Generate input meant to be passed into `Ash.Seed.seed!/2`.
+
+  A map of custom `StreamData` generators can be provided to add to or overwrite the generated input,
+  for example: `Ash.Generator.for_seed(Post, %{text: StreamData.constant("Post")})`
+  """
+  @spec seed_input(Ash.Resource.t(), map()) :: StreamData.t(map())
+  def seed_input(resource, generators \\ %{}) do
+    relationships = Ash.Resource.Info.relationships(resource)
+
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.reject(fn attribute ->
+      Enum.any?(relationships, &(&1.source_attribute == attribute.name))
+    end)
+    |> generate_attributes(generators, true, :create, Enum.map(relationships, & &1.name))
+  end
+
+  @doc """
+  Gets the next value for a given sequence identifier.
+
+  See `sequence/3` for more.
+
+  This is equivalent to `identifier |> Ash.Generator.sequence(fun, sequencer) |> Enum.at(0)`
+  """
+  def next_in_sequence(identifier, fun, sequencer \\ fn i -> (i || -1) + 1 end) do
+    identifier
+    |> sequence(fun, sequencer)
+    |> Enum.at(0)
+  end
+
+  @doc """
+  Creates a generator of maps where all keys are required except the list provided
+
+  ## Example
+
+  ```elixir
+  iex> mixed_map(%{a: StreamData.constant(1), b: StreamData.constant(2)}, [:b]) |> Enum.take(2)
+  [%{a: 1}, %{a: 1, b: 2}]
+  ```
+  """
+  @spec mixed_map(map(), list(term())) :: stream_data()
+  def mixed_map(map, []) do
+    map = to_generators(map)
+    StreamData.fixed_map(map)
+  end
+
+  def mixed_map(map, keys) do
+    map = to_generators(map)
+    {optional, required} = Map.split(map, keys)
+    do_mixed_map({StreamData.fixed_map(required), StreamData.optional_map(optional)})
   end
 
   defp do_changeset_or_query(resource, resource_or_record, action, input, changeset_options) do

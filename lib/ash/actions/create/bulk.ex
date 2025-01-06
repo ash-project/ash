@@ -358,6 +358,13 @@ defmodule Ash.Actions.Create.Bulk do
     |> Ash.Actions.Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
+    |> then(fn changeset ->
+      if opts[:after_action] do
+        Ash.Changeset.after_action(changeset, opts[:after_action])
+      else
+        changeset
+      end
+    end)
     |> then(fn
       changeset when upsert_condition != nil -> Ash.Changeset.filter(changeset, upsert_condition)
       changeset -> changeset
