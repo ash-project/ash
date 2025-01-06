@@ -234,9 +234,9 @@ defmodule Type.MapTest do
 
     assert [
              %Ash.Error.Changes.InvalidAttribute{
-               message: "length must be greater than or equal to %{min}",
-               vars: [min: 3],
-               field: :string_min_3,
+               message: "must be more than or equal to %{min}",
+               vars: [min: 0],
+               field: :integer_min_0,
                private_vars: nil,
                value: %{string_min_3: "a", foo: "bar"},
                bread_crumbs: [],

@@ -190,6 +190,13 @@ defmodule Ash.Type.Map do
             {:ok, Map.put(result, field, field_value)}
 
           {:error, errors} ->
+            errors =
+              if Keyword.keyword?(errors) do
+                [errors]
+              else
+                List.wrap(errors)
+              end
+
             {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
         end
 
