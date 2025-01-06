@@ -255,6 +255,10 @@ if Code.ensure_loaded?(Igniter) do
       [name | modifiers] = String.split(text, ":", trim: true)
       modifiers = modifiers -- ["primary_key"]
 
+      unless valid_attribute_name?(name) do
+        raise "Invalid attribute name provided for `#{builder}`: #{name}"
+      end
+
       if Enum.empty?(modifiers) do
         "#{builder} :#{name}"
       else
@@ -266,6 +270,10 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
+    defp valid_attribute_name?(name) do
+      Regex.match?(~r/^[a-zA-Z][a-zA-Z0-9]*[!?]?$/, name)
+    end
+
     defp attributes(options) do
       options[:attribute]
       |> List.wrap()
@@ -274,6 +282,10 @@ if Code.ensure_loaded?(Igniter) do
       |> Enum.map(fn attribute ->
         case String.split(attribute, ":") do
           [name, type | modifiers] ->
+            unless valid_attribute_name?(name) do
+              raise "Invalid attribute name provided: #{name}"
+            end
+
             {name, type, modifiers}
 
           _name ->
@@ -335,6 +347,10 @@ if Code.ensure_loaded?(Igniter) do
       |> Enum.map(fn relationship ->
         case String.split(relationship, ":") do
           [type, name, destination | modifiers] ->
+            unless valid_attribute_name?(name) do
+              raise "Invalid relationship name provided: #{name}"
+            end
+
             {type, name, destination, modifiers}
 
           _name ->
