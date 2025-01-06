@@ -467,7 +467,7 @@ filter filter
 ```
 
 
-Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
 
 
 
@@ -484,7 +484,7 @@ filter expr(last_name == "weasley" and magician == true)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`filter`](#relationships-has_one-filter-filter){: #relationships-has_one-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*. |
+| [`filter`](#relationships-has_one-filter-filter){: #relationships-has_one-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
 
 
 
@@ -566,7 +566,7 @@ filter filter
 ```
 
 
-Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
 
 
 
@@ -583,7 +583,7 @@ filter expr(last_name == "weasley" and magician == true)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`filter`](#relationships-has_many-filter-filter){: #relationships-has_many-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*. |
+| [`filter`](#relationships-has_many-filter-filter){: #relationships-has_many-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
 
 
 
@@ -676,7 +676,7 @@ filter filter
 ```
 
 
-Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
 
 
 
@@ -693,7 +693,7 @@ filter expr(last_name == "weasley" and magician == true)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`filter`](#relationships-many_to_many-filter-filter){: #relationships-many_to_many-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*. |
+| [`filter`](#relationships-many_to_many-filter-filter){: #relationships-many_to_many-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
 
 
 
@@ -780,7 +780,7 @@ filter filter
 ```
 
 
-Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
 
 
 
@@ -797,7 +797,7 @@ filter expr(last_name == "weasley" and magician == true)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`filter`](#relationships-belongs_to-filter-filter){: #relationships-belongs_to-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*. |
+| [`filter`](#relationships-belongs_to-filter-filter){: #relationships-belongs_to-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
 
 
 
@@ -1453,7 +1453,7 @@ filter filter
 ```
 
 
-Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
 
 
 
@@ -1470,7 +1470,7 @@ filter expr(last_name == "weasley" and magician == true)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`filter`](#actions-read-filter-filter){: #actions-read-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*. |
+| [`filter`](#actions-read-filter-filter){: #actions-read-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
 
 
 
