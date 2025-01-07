@@ -664,8 +664,15 @@ defmodule Ash.Changeset do
            %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
            %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
            %Ash.Changeset{} = changeset <-
-             hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?])),
-           %Ash.Changeset{} = changeset <- apply_atomic_constraints(changeset, opts[:actor]) do
+             hydrate_atomic_refs(
+               changeset,
+               opts[:actor],
+               opts
+               |> Keyword.take([:eager?])
+               |> Keyword.put(:error_is_not_atomic?, true)
+             ),
+           %Ash.Changeset{} = changeset <-
+             apply_atomic_constraints(changeset, opts[:actor]) do
         changeset
       else
         {:not_atomic, reason} ->
@@ -2797,113 +2804,136 @@ defmodule Ash.Changeset do
     eager? = Keyword.get(opts, :eager?, true)
 
     changeset.atomic_validations
-    |> Enum.reduce_while(changeset, fn {condition_expr, error_expr}, changeset ->
-      condition_expr =
-        Ash.Expr.fill_template(
-          condition_expr,
-          actor,
-          changeset.arguments,
-          changeset.context,
-          changeset
-        )
-
-      error_expr =
-        Ash.Expr.fill_template(
-          error_expr,
-          actor,
-          changeset.arguments,
-          changeset.context,
-          changeset
-        )
-
-      with {:expr, {:ok, condition_expr}, _expr} <-
-             {:expr,
-              Ash.Filter.hydrate_refs(condition_expr, %{
-                resource: changeset.resource,
-                public?: false
-              }), condition_expr},
-           {:expr, {:ok, error_expr}, _} <-
-             {:expr,
-              Ash.Filter.hydrate_refs(error_expr, %{resource: changeset.resource, public?: false}),
-              error_expr} do
-        eager_condition_expr =
-          if eager? do
-            Ash.Expr.eval(condition_expr,
-              resource: changeset.resource,
-              unknown_on_unknown_refs?: true
+    |> Enum.reduce_while(
+      %{changeset | atomic_validations: []},
+      fn
+        {condition_expr, error_expr}, changeset ->
+          condition_expr =
+            Ash.Expr.fill_template(
+              condition_expr,
+              actor,
+              changeset.arguments,
+              changeset.context,
+              changeset
             )
-          else
-            {:ok, condition_expr}
-          end
 
-        eager_error_expr =
-          if eager? do
-            Ash.Expr.eval(error_expr,
-              resource: changeset.resource,
-              unknown_on_unknown_refs?: true
+          error_expr =
+            Ash.Expr.fill_template(
+              error_expr,
+              actor,
+              changeset.arguments,
+              changeset.context,
+              changeset
             )
-          else
-            {:ok, error_expr}
-          end
 
-        case extract_eager_error(eager_condition_expr, eager_error_expr, eager?) do
-          {:ok, error} ->
-            {:cont,
-             add_error(
-               changeset,
-               error
-             )}
-
-          :error ->
-            if changeset.action.type == :update || Map.get(changeset.action, :soft?) do
-              [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
-
-              full_atomic_update =
-                expr(
-                  if ^condition_expr do
-                    ^error_expr
-                  else
-                    ^atomic_ref(changeset, first_pkey_field)
-                  end
+          with {:expr, {:ok, condition_expr}, _expr} <-
+                 {:expr,
+                  Ash.Filter.hydrate_refs(condition_expr, %{
+                    resource: changeset.resource,
+                    public?: false
+                  }), condition_expr},
+               {:expr, {:ok, error_expr}, _} <-
+                 {:expr,
+                  Ash.Filter.hydrate_refs(error_expr, %{
+                    resource: changeset.resource,
+                    public?: false
+                  }), error_expr} do
+            eager_condition_expr =
+              if eager? do
+                Ash.Expr.eval(condition_expr,
+                  resource: changeset.resource,
+                  unknown_on_unknown_refs?: true
                 )
-
-              case Ash.Filter.hydrate_refs(full_atomic_update, %{
-                     resource: changeset.resource,
-                     public: false
-                   }) do
-                {:ok, full_atomic_update} ->
-                  {:cont,
-                   atomic_update(
-                     changeset,
-                     first_pkey_field,
-                     full_atomic_update
-                   )}
-
-                {:error, error} ->
-                  {:halt,
-                   {:not_atomic,
-                    "Failed to validate expression #{inspect(full_atomic_update)}: #{inspect(error)}"}}
+              else
+                {:ok, condition_expr}
               end
-            else
-              {:cont,
-               filter(
-                 changeset,
-                 expr(
-                   if ^condition_expr do
-                     ^error_expr
-                   else
-                     true
-                   end
-                 )
-               )}
+
+            eager_error_expr =
+              if eager? do
+                Ash.Expr.eval(error_expr,
+                  resource: changeset.resource,
+                  unknown_on_unknown_refs?: true
+                )
+              else
+                {:ok, error_expr}
+              end
+
+            case extract_eager_error(eager_condition_expr, eager_error_expr, eager?) do
+              {:ok, error} ->
+                {:cont,
+                 add_error(
+                   changeset,
+                   error
+                 )}
+
+              :error ->
+                if changeset.action.type == :update || Map.get(changeset.action, :soft?) do
+                  [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
+
+                  full_atomic_update =
+                    expr(
+                      if ^condition_expr do
+                        ^error_expr
+                      else
+                        ^atomic_ref(changeset, first_pkey_field)
+                      end
+                    )
+
+                  case Ash.Filter.hydrate_refs(full_atomic_update, %{
+                         resource: changeset.resource,
+                         public: false
+                       }) do
+                    {:ok, full_atomic_update} ->
+                      {:cont,
+                       atomic_update(
+                         changeset,
+                         first_pkey_field,
+                         full_atomic_update
+                       )}
+
+                    {:error, error} ->
+                      if Keyword.get(opts, :error_is_not_atomic?, false) do
+                        {:halt,
+                         {:not_atomic,
+                          "Failed to validate expression #{inspect(full_atomic_update)}: #{inspect(error)}"}}
+                      else
+                        {:cont,
+                         Ash.Changeset.add_error(
+                           changeset,
+                           "Failed to validate expression #{inspect(full_atomic_update)}: #{inspect(error)}"
+                         )}
+                      end
+                  end
+                else
+                  {:cont,
+                   filter(
+                     changeset,
+                     expr(
+                       if ^condition_expr do
+                         ^error_expr
+                       else
+                         true
+                       end
+                     )
+                   )}
+                end
             end
-        end
-      else
-        {:expr, {:error, error}, expr} ->
-          {:halt,
-           {:not_atomic, "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"}}
+          else
+            {:expr, {:error, error}, expr} ->
+              if Keyword.get(opts, :error_is_not_atomic?, false) do
+                {:halt,
+                 {:not_atomic,
+                  "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"}}
+              else
+                {:cont,
+                 Ash.Changeset.add_error(
+                   changeset,
+                   "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"
+                 )}
+              end
+          end
       end
-    end)
+    )
   end
 
   defp extract_eager_error({:ok, true}, {:error, %{class: :invalid} = error}, true) do

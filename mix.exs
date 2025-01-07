@@ -108,16 +108,16 @@ defmodule Ash.MixProject do
           ~r"documentation/topics/about_ash",
           "CHANGELOG.md"
         ],
+        Reference: [
+          ~r"documentation/topics/reference",
+          ~r"documentation/dsls"
+        ],
         Resources: ~r"documentation/topics/resources",
         Actions: ~r"documentation/topics/actions",
         Security: ~r"documentation/topics/security",
         Development: ~r"documentation/topics/development",
         Advanced: ~r"documentation/topics/advanced",
         "How To": ~r"documentation/how-to",
-        Reference: [
-          ~r"documentation/topics/reference",
-          ~r"documentation/dsls"
-        ],
         Moved: [
           ~r"documentation/moved"
         ]
