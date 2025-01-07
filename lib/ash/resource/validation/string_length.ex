@@ -76,53 +76,61 @@ defmodule Ash.Resource.Validation.StringLength do
   end
 
   @impl true
-  def atomic(_changeset, opts, context) do
-    opts
-    |> Keyword.delete(:attribute)
-    |> Enum.map(fn
-      {:min, min} ->
-        {:atomic, [opts[:attribute]], expr(string_length(^atomic_ref(opts[:attribute])) < ^min),
-         expr(
-           error(
-             Ash.Error.Changes.InvalidAttribute,
-             %{
-               field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
-               message: ^(context.message || "must have length of at least %{min}"),
-               vars: %{min: ^min}
-             }
-           )
-         )}
+  def atomic(changeset, opts, context) do
+    case Ash.Changeset.fetch_argument(changeset, opts[:attribute]) do
+      {:ok, _} ->
+        validate(changeset, opts, context)
 
-      {:max, max} ->
-        {:atomic, [opts[:attribute]], expr(string_length(^atomic_ref(opts[:attribute])) > ^max),
-         expr(
-           error(
-             Ash.Error.Changes.InvalidAttribute,
-             %{
-               field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
-               message: ^(context.message || "must have length of at most %{max}"),
-               vars: %{max: ^max}
-             }
-           )
-         )}
+      :error ->
+        opts
+        |> Keyword.delete(:attribute)
+        |> Enum.map(fn
+          {:min, min} ->
+            {:atomic, [opts[:attribute]],
+             expr(string_length(^atomic_ref(opts[:attribute])) < ^min),
+             expr(
+               error(
+                 Ash.Error.Changes.InvalidAttribute,
+                 %{
+                   field: ^opts[:attribute],
+                   value: ^atomic_ref(opts[:attribute]),
+                   message: ^(context.message || "must have length of at least %{min}"),
+                   vars: %{min: ^min}
+                 }
+               )
+             )}
 
-      {:exact, exact} ->
-        {:atomic, [opts[:attribute]],
-         expr(string_length(^atomic_ref(opts[:attribute])) != ^exact),
-         expr(
-           error(
-             Ash.Error.Changes.InvalidAttribute,
-             %{
-               field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
-               message: ^(context.message || "must have length of at most %{exact}"),
-               vars: %{exact: ^exact}
-             }
-           )
-         )}
-    end)
+          {:max, max} ->
+            {:atomic, [opts[:attribute]],
+             expr(string_length(^atomic_ref(opts[:attribute])) > ^max),
+             expr(
+               error(
+                 Ash.Error.Changes.InvalidAttribute,
+                 %{
+                   field: ^opts[:attribute],
+                   value: ^atomic_ref(opts[:attribute]),
+                   message: ^(context.message || "must have length of at most %{max}"),
+                   vars: %{max: ^max}
+                 }
+               )
+             )}
+
+          {:exact, exact} ->
+            {:atomic, [opts[:attribute]],
+             expr(string_length(^atomic_ref(opts[:attribute])) != ^exact),
+             expr(
+               error(
+                 Ash.Error.Changes.InvalidAttribute,
+                 %{
+                   field: ^opts[:attribute],
+                   value: ^atomic_ref(opts[:attribute]),
+                   message: ^(context.message || "must have length of at most %{exact}"),
+                   vars: %{exact: ^exact}
+                 }
+               )
+             )}
+        end)
+    end
   end
 
   defp do_validate(value, %{exact: exact} = opts) do
