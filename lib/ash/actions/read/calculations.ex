@@ -1024,41 +1024,45 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp should_be_in_expression?(calculation, expression \\ nil, ash_query) do
-    expression =
-      expression ||
-        calculation.opts
-        |> calculation.module.expression(calculation.context)
-        |> Ash.Expr.fill_template(
-          calculation.context.actor,
-          calculation.context.arguments,
-          calculation.context.source_context
-        )
-        |> Ash.Actions.Read.add_calc_context_to_filter(
-          calculation.context.actor,
-          calculation.context.authorize?,
-          calculation.context.tenant,
-          calculation.context.tracer,
-          ash_query.domain
-        )
+    if calculation.module.has_expression?() do
+      case Map.fetch(calculation.context, :should_be_in_expression?) do
+        {:ok, value} ->
+          value
 
-    case Map.fetch(calculation.context, :should_be_in_expression?) do
-      {:ok, value} ->
-        value
+        :error ->
+          expression =
+            expression ||
+              calculation.opts
+              |> calculation.module.expression(calculation.context)
+              |> Ash.Expr.fill_template(
+                calculation.context.actor,
+                calculation.context.arguments,
+                calculation.context.source_context
+              )
+              |> Ash.Actions.Read.add_calc_context_to_filter(
+                calculation.context.actor,
+                calculation.context.authorize?,
+                calculation.context.tenant,
+                calculation.context.tracer,
+                ash_query.domain
+              )
 
-      :error ->
-        expression
-        |> Ash.Filter.hydrate_refs(%{resource: ash_query.resource, public?: false})
-        |> case do
-          {:ok, expression} ->
-            expression
-            |> Ash.Filter.used_calculations(ash_query.resource, :*)
-            |> Enum.all?(fn %{module: module} ->
-              module.has_expression?()
-            end)
+          expression
+          |> Ash.Filter.hydrate_refs(%{resource: ash_query.resource, public?: false})
+          |> case do
+            {:ok, expression} ->
+              expression
+              |> Ash.Filter.used_calculations(ash_query.resource, :*)
+              |> Enum.all?(fn %{module: module} ->
+                module.has_expression?()
+              end)
 
-          {:error, _error} ->
-            false
-        end
+            {:error, _error} ->
+              false
+          end
+      end
+    else
+      false
     end
   end
 
@@ -1101,6 +1105,8 @@ defmodule Ash.Actions.Read.Calculations do
             query
           end
 
+        checked_calculations = [{calculation.module, calculation.opts} | checked_calculations]
+
         calculation.required_loads
         |> List.wrap()
         |> Enum.concat(List.wrap(calculation.select))
@@ -1113,7 +1119,7 @@ defmodule Ash.Actions.Read.Calculations do
           calculation.module.strict_loads?(),
           relationship_path,
           can_expression_calculation?,
-          [{calculation.module, calculation.opts} | checked_calculations],
+          checked_calculations,
           initial_data,
           reuse_values?,
           authorize?
@@ -1733,6 +1739,13 @@ defmodule Ash.Actions.Read.Calculations do
 
           query =
             Ash.Query.load(query, new_calculation)
+
+          new_calculation =
+            if should_be_in_expression?(new_calculation, query) do
+              new_calculation
+            else
+              query.calculations[new_calculation.name]
+            end
 
           domain
           |> load_calculation_requirements(
