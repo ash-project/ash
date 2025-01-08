@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.4.53](https://github.com/ash-project/ash/compare/v3.4.52...v3.4.53) (2025-01-08)
+
+
+
+
+### Bug Fixes:
+
+* properly delegate and handle conflicts in `Ash.Generator`
+
+* `Ash.Generator`: Replace calls to `create` and `create_many` with `generate` and `generate_many` (#1701)
+
+* use nested calculation dependencies from expr if not in expression
+
+* pattern match error on expression parse failure
+
+* handle `string_length` on arguments when atomic
+
 ## [v3.4.52](https://github.com/ash-project/ash/compare/v3.4.51...v3.4.52) (2025-01-06)
 
 
