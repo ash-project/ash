@@ -201,7 +201,7 @@ defmodule Ash.Actions.Read do
           initial_limit: query.limit,
           initial_offset: query.offset,
           page_opts:
-            if !opts[:inital_data] do
+            if !opts[:initial_data] do
               page_opts
             end,
           initial_query: query,
