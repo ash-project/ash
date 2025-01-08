@@ -4372,6 +4372,20 @@ defmodule Ash.Changeset do
       By default, we assume it is the primary key of the destination resource, unless it is a composite primary key.
       """
     ],
+    order_is_key: [
+      type: :atom,
+      doc: """
+      If set, the order that each input appears in the list will be added to the input as this key.
+
+      This is useful when you want to accept an ordered list of related records and write that order to the entity.
+      This should only currently be used with `type: :direct_control` or `type: :create` when there are no currently
+      existing related records (like when creating the source record).
+
+      If you have an identity on the field and relationship id on the destination, and you are using
+      AshPostgres, you will want to use the `deferrable` option to ensure that conflicting orders are temporarily
+      allowed within a single transaction.
+      """
+    ],
     identity_priority: [
       type: {:list, :atom},
       doc: """
@@ -4759,7 +4773,7 @@ defmodule Ash.Changeset do
               input
               |> List.wrap()
               |> Enum.map(fn input ->
-                if is_map(input) || Keyword.keyword?(input) do
+                if !opts.value_is_key && (is_map(input) || Keyword.keyword?(input)) do
                   input
                 else
                   %{key => input}
@@ -4768,9 +4782,25 @@ defmodule Ash.Changeset do
             else
               input
             end
+            |> List.wrap()
+
+          input =
+            if opts.order_is_key do
+              input
+              |> Enum.with_index()
+              |> Enum.map(fn {map, index} ->
+                if is_map(map) do
+                  Map.put(map, opts.order_is_key, index)
+                else
+                  Keyword.put(map, opts.order_is_key, index)
+                end
+              end)
+            else
+              input
+            end
 
           if Enum.any?(
-               List.wrap(input),
+               input,
                &(is_struct(&1) && Ash.Resource.Info.resource?(&1.__struct__) &&
                    &1.__struct__ != relationship.destination)
              ) do

@@ -19,6 +19,13 @@ defmodule Ash.Test.ManageRelationshipTest do
         change manage_relationship(:other_resources, type: :direct_control)
       end
 
+      create :create_ordered do
+        accept [:name]
+        argument :other_resources, {:array, :map}
+
+        change manage_relationship(:other_resources, type: :direct_control, order_is_key: :order)
+      end
+
       update :update do
         require_atomic? false
         accept [:name]
@@ -91,6 +98,7 @@ defmodule Ash.Test.ManageRelationshipTest do
       uuid_primary_key :id
       attribute :required_attribute, :string, allow_nil?: false, public?: true
       attribute :archived_at, :utc_datetime_usec
+      attribute :order, :integer, public?: true
     end
 
     relationships do
@@ -114,6 +122,23 @@ defmodule Ash.Test.ManageRelationshipTest do
                }
              })
              |> Ash.create()
+  end
+
+  test "order_is_key sets the order accordingly" do
+    assert %{other_resources: [%{order: 0}, %{order: 1}]} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create_ordered, %{
+               name: "Test Parent Resource",
+               other_resources: [
+                 %{
+                   required_attribute: "string"
+                 },
+                 %{
+                   required_attribute: "string"
+                 }
+               ]
+             })
+             |> Ash.create!()
   end
 
   test "can create and update a related resource" do

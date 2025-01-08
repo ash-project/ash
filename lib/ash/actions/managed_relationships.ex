@@ -674,10 +674,10 @@ defmodule Ash.Actions.ManagedRelationships do
              ) do
           {:ok, new_value, notifications} ->
             new_value =
-              if is_list(new_value) do
-                Enum.reverse(new_value)
+              if key = opts[:order_is_key] do
+                Enum.sort_by(new_value, &Map.get(&1, key))
               else
-                new_value
+                Enum.reverse(new_value)
               end
 
             {:ok, Map.put(record, relationship.name, new_value),
