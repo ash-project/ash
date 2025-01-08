@@ -345,8 +345,7 @@ defmodule Ash.MixProject do
   defp deps do
     [
       # DSLs
-      # {:spark, "~> 2.1 and >= 2.2.29"},
-      {:spark, github: "ash-project/spark", override: true},
+      {:spark, "~> 2.1 and >= 2.2.29"},
       # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.7"},
       # Used by the ETS data layer
@@ -377,13 +376,7 @@ defmodule Ash.MixProject do
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
-      # {:ex_doc, "~> 0.32", only: [:dev, :test], runtime: false},
-      {:ex_doc,
-       github: "zachdaniel/ex_doc",
-       branch: "more-customizable-sidebar-items",
-       only: [:dev, :test],
-       runtime: false,
-       override: true},
+      {:ex_doc, "~> 0.32", only: [:dev, :test], runtime: false},
       {:ex_check, "~> 0.12", only: [:dev, :test]},
       {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev, :test], runtime: false},
