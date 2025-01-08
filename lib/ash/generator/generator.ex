@@ -22,9 +22,9 @@ defmodule Ash.Generator do
       )
     end
 
-    # using `changeset_generator`, calls the action when passed to `create`
+    # using `changeset_generator`, calls the action when passed to `generate`
     def blog_post_comment(opts \\ []) do
-      blog_post_id = opts[:blog_post_id] || once(:default_blog_post_id, fn -> create(blog_post()).id end)
+      blog_post_id = opts[:blog_post_id] || once(:default_blog_post_id, fn -> generate(blog_post()).id end)
 
       changeset_generator(
         MyApp.Blog.Comment,
@@ -38,17 +38,17 @@ defmodule Ash.Generator do
   end
   ```
 
-  Then, in your tests, you can `import YourApp.Generator`, and use `create/1` and `create_many/1` to generate data.
+  Then, in your tests, you can `import YourApp.Generator`, and use `generate/1` and `generate_many/1` to generate data.
   For example:
 
   ```elixir
   import YourApp.Generator
 
   test "`comment_count` on blog_post shows the count of comments" do
-    blog_post = create(blog_post())
+    blog_post = generate(blog_post())
     assert Ash.load!(blog_post, :comment_count).comment_count == 0
 
-    create_many(blog_post_comment(blog_post_id: blog_post.id), 10)
+    generate_many(blog_post_comment(blog_post_id: blog_post.id), 10)
 
     assert Ash.load!(blog_post, :comment_count).comment_count == 10
   end
@@ -118,8 +118,8 @@ defmodule Ash.Generator do
     quote do
       import Ash.Generator
 
-      defdelegate create(generator), to: Ash.Generator
-      defdelegate create_many(generator), to: Ash.Generator
+      defdelegate generate(generator), to: Ash.Generator
+      defdelegate generate_many(generator), to: Ash.Generator
     end
   end
 
