@@ -194,23 +194,6 @@ defmodule Ash.Actions.Read do
         page_opts(action, query.page, relationship?)
       end
 
-    query =
-      if page_opts do
-        query
-        |> Ash.Query.set_context(%{
-          initial_limit: query.limit,
-          initial_offset: query.offset,
-          page_opts:
-            if !opts[:inital_data] do
-              page_opts
-            end,
-          initial_query: query,
-          query_opts: opts
-        })
-      else
-        query
-      end
-
     opts = Keyword.delete(opts, :page)
 
     query = Ash.Query.page(query, page_opts)
