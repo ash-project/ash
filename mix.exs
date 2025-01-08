@@ -41,6 +41,13 @@ defmodule Ash.MixProject do
       extra_section: "GUIDES",
       extras: [
         {"README.md", title: "Home"},
+        "documentation/dsls/DSL-Ash.Resource.md",
+        "documentation/dsls/DSL-Ash.Domain.md",
+        "documentation/dsls/DSL-Ash.Notifier.PubSub.md",
+        "documentation/dsls/DSL-Ash.Policy.Authorizer.md",
+        "documentation/dsls/DSL-Ash.DataLayer.Ets.md",
+        "documentation/dsls/DSL-Ash.DataLayer.Mnesia.md",
+        "documentation/dsls/DSL-Ash.Reactor.md",
         "documentation/tutorials/get-started.md",
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
@@ -89,13 +96,6 @@ defmodule Ash.MixProject do
         "documentation/how-to/encrypt-attributes.livemd",
         "documentation/how-to/prevent-concurrent-writes.livemd",
         "documentation/how-to/wrap-external-apis.livemd",
-        "documentation/dsls/DSL-Ash.Resource.md",
-        "documentation/dsls/DSL-Ash.Domain.md",
-        "documentation/dsls/DSL-Ash.Notifier.PubSub.md",
-        "documentation/dsls/DSL-Ash.Policy.Authorizer.md",
-        "documentation/dsls/DSL-Ash.DataLayer.Ets.md",
-        "documentation/dsls/DSL-Ash.DataLayer.Mnesia.md",
-        "documentation/dsls/DSL-Ash.Reactor.md",
         "CHANGELOG.md"
       ],
       groups_for_extras: [
@@ -345,7 +345,8 @@ defmodule Ash.MixProject do
   defp deps do
     [
       # DSLs
-      {:spark, "~> 2.1 and >= 2.2.29"},
+      # {:spark, "~> 2.1 and >= 2.2.29"},
+      {:spark, github: "ash-project/spark", override: true},
       # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.7"},
       # Used by the ETS data layer
@@ -376,7 +377,13 @@ defmodule Ash.MixProject do
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
-      {:ex_doc, "~> 0.32", only: [:dev, :test], runtime: false},
+      # {:ex_doc, "~> 0.32", only: [:dev, :test], runtime: false},
+      {:ex_doc,
+       github: "zachdaniel/ex_doc",
+       branch: "more-customizable-sidebar-items",
+       only: [:dev, :test],
+       runtime: false,
+       override: true},
       {:ex_check, "~> 0.12", only: [:dev, :test]},
       {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev, :test], runtime: false},
