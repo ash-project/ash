@@ -6,6 +6,14 @@ defmodule Ash.Test.GeneratorTest do
   require Ash.Query
   alias Ash.Test.Domain, as: Domain
 
+  defmodule Notifier do
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(Application.get_env(__MODULE__, :notifier_test_pid), {:notification, notification})
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
@@ -50,7 +58,7 @@ defmodule Ash.Test.GeneratorTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets, notifiers: [Notifier]
 
     ets do
       private?(true)
@@ -199,6 +207,10 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  setup do
+    Application.put_env(Notifier, :notifier_test_pid, self())
+  end
+
   describe "generator" do
     test "can generate one" do
       import Generator
@@ -234,6 +246,27 @@ defmodule Ash.Test.GeneratorTest do
       assert_raise Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
         generate_many(post(title: %{a: :b}), 2)
       end
+    end
+
+    test "notifications are emitted on generate_many" do
+      import Generator
+      assert [%Post{title: "Post 0"}, %Post{title: "Post 1"}] = generate_many(post(), 2)
+      assert_receive {:notification, %Ash.Notifier.Notification{}}
+      assert_receive {:notification, %Ash.Notifier.Notification{}}
+    end
+  end
+
+  describe "once" do
+    test "generates the same value given the same name" do
+      assert Enum.at(Ash.Generator.once(:name, fn -> 1 end), 0) ==
+               Enum.at(Ash.Generator.once(:name, fn -> 2 end), 0)
+    end
+
+    test "generates the same value given the same name, but only in the same process" do
+      assert Task.await(Task.async(fn -> Enum.at(Ash.Generator.once(:name, fn -> 1 end), 0) end)) !=
+               Task.await(
+                 Task.async(fn -> Enum.at(Ash.Generator.once(:name, fn -> 2 end), 0) end)
+               )
     end
   end
 

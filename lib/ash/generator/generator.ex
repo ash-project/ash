@@ -388,11 +388,14 @@ defmodule Ash.Generator do
   # sobelow_skip ["DOS.BinToAtom"]
   @spec initialize_once(atom) :: pid
   def initialize_once(identifier) do
-    identifier = :"__ash_once_#{identifier}__"
+    case find_in_self_or_ancestor({:ash_once, identifier}) do
+      nil ->
+        {:ok, pid} = Agent.start_link(fn -> :none end)
+        Process.put({:ash_once, identifier}, pid)
+        pid
 
-    case Agent.start_link(fn -> :none end, name: identifier) do
-      {:ok, pid} -> pid
-      {:error, {:already_started, pid}} -> pid
+      pid ->
+        pid
     end
   end
 
@@ -414,12 +417,28 @@ defmodule Ash.Generator do
   @spec initialize_sequence(atom) :: pid
   # sobelow_skip ["DOS.BinToAtom"]
   def initialize_sequence(identifier) do
-    identifier = :"__ash_sequence_#{identifier}__"
+    case find_in_self_or_ancestor({:ash_sequence, identifier}) do
+      nil ->
+        {:ok, pid} = Agent.start_link(fn -> nil end)
+        Process.put({:ash_sequence, identifier}, pid)
+        pid
 
-    case Agent.start_link(fn -> nil end, name: identifier) do
-      {:ok, pid} -> pid
-      {:error, {:already_started, pid}} -> pid
+      pid ->
+        pid
     end
+  end
+
+  defp find_in_self_or_ancestor(key) do
+    Enum.find_value([self()] ++ Process.get(:"$ancestors", []) || [], fn pid ->
+      pid
+      |> Process.info(:dictionary)
+      |> elem(1)
+      |> Enum.find_value(fn {found_key, value} ->
+        if found_key == key do
+          value
+        end
+      end)
+    end)
   end
 
   @doc """
