@@ -429,7 +429,7 @@ defmodule Ash.Generator do
   end
 
   defp find_in_self_or_ancestor(key) do
-    Enum.find_value([self()] ++ Process.get(:"$ancestors", []) || [], fn pid ->
+    Enum.find_value([self()] ++ (Process.get(:"$ancestors", []) || []), fn pid ->
       pid
       |> Process.info(:dictionary)
       |> elem(1)
@@ -524,6 +524,7 @@ defmodule Ash.Generator do
           return_errors?: true,
           notify?: true,
           sorted?: true,
+          max_concurrency: 0,
           stop_on_error?: true,
           actor: first.context[:private][:actor]
         ]

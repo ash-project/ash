@@ -556,7 +556,8 @@ defmodule Ash.Actions.Create.Bulk do
         if notify? do
           notifications = Process.get(:ash_notifications, [])
           remaining_notifications = Ash.Notifier.notify(notifications)
-          Process.delete(:ash_notifications) || []
+          Process.delete(:ash_notifications)
+          Process.delete(:ash_started_transaction?)
 
           Ash.Actions.Helpers.warn_missed!(resource, action, %{
             resource_notifications: remaining_notifications
