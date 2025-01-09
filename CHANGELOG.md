@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.4.54](https://github.com/ash-project/ash/compare/v3.4.53...v3.4.54) (2025-01-09)
+
+
+
+
+### Bug Fixes:
+
+* Fix issues in `Ash.Generator.generate_many/2` (#1703)
+
+* `Ash.Generator`: Don't error if no `after_action` is provided to `generate_many`
+
+* `Ash.Generator`: Reuse the changeset actor when calling `bulk_create`
+
+### Improvements:
+
+* run notifications for generators
+
+* `order_is_key` option for sorted relationships
+
 ## [v3.4.53](https://github.com/ash-project/ash/compare/v3.4.52...v3.4.53) (2025-01-08)
 
 
