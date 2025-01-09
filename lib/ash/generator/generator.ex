@@ -510,12 +510,18 @@ defmodule Ash.Generator do
             fn _changeset, record -> {:ok, record} end
           end
 
-        Ash.bulk_create!(Enum.map(batch, & &1.params), first.resource, first.action.name,
-          after_action: after_action,
-          return_records?: true,
-          return_errors?: true,
-          actor: first.context[:private][:actor]
-        ).records || []
+        result =
+          Ash.bulk_create!(Enum.map(batch, & &1.params), first.resource, first.action.name,
+            after_action: after_action,
+            return_records?: true,
+            return_errors?: true,
+            return_notifications?: true,
+            actor: first.context[:private][:actor]
+          )
+
+        Ash.Notifier.notify(result.notifications)
+
+        result.records || []
 
       batch ->
         Enum.map(batch, fn record ->
