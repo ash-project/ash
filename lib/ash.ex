@@ -2050,7 +2050,7 @@ defmodule Ash do
   Runs an ash query, returning a single result or raise an error. See `read_one/2` for more.
   """
   @doc spark_opts: [{1, @read_one_opts_schema}]
-  @spec read_one(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
+  @spec read_one!(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
           Ash.Resource.record() | nil
   def read_one!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
