@@ -519,6 +519,10 @@ defmodule Ash.Generator do
             actor: first.context[:private][:actor]
           )
 
+        if result.status != :success do
+          raise Ash.Error.to_error_class(result.errors)
+        end
+
         Ash.Notifier.notify(result.notifications)
 
         result.records || []
