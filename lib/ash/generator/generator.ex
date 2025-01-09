@@ -116,7 +116,7 @@ defmodule Ash.Generator do
 
   defmacro __using__(_opts) do
     quote do
-      import Ash.Generator, except: [generate: 1, generated_many: 2]
+      import Ash.Generator, except: [generate: 1, generate_many: 2]
 
       defdelegate generate(generator), to: Ash.Generator
       defdelegate generate_many(generator, count), to: Ash.Generator
