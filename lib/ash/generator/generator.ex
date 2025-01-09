@@ -513,7 +513,8 @@ defmodule Ash.Generator do
         Ash.bulk_create!(Enum.map(batch, & &1.params), first.resource, first.action.name,
           after_action: after_action,
           return_records?: true,
-          return_errors?: true
+          return_errors?: true,
+          actor: first.context[:private][:actor]
         ).records || []
 
       batch ->
