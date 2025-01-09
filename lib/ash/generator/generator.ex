@@ -12,7 +12,7 @@ defmodule Ash.Generator do
     use Ash.Generator
 
     # using `seed_generator`, bypasses the action and saves directly to the data layer
-    def blog_post(opts \\ []) do
+    def blog_post(opts \\\\ []) do
       seed_generator(
         %MyApp.Blog.Post{
           name: sequence(:title, &"My Blog Post \#{&1}")
@@ -23,7 +23,7 @@ defmodule Ash.Generator do
     end
 
     # using `changeset_generator`, calls the action when passed to `generate`
-    def blog_post_comment(opts \\ []) do
+    def blog_post_comment(opts \\\\ []) do
       blog_post_id = opts[:blog_post_id] || once(:default_blog_post_id, fn -> generate(blog_post()).id end)
 
       changeset_generator(
@@ -641,7 +641,7 @@ defmodule Ash.Generator do
   Generate input meant to be passed into `Ash.Seed.seed!/2`.
 
   A map of custom `StreamData` generators can be provided to add to or overwrite the generated input,
-  for example: `Ash.Generator.for_seed(Post, %{text: StreamData.constant("Post")})`
+  for example: `Ash.Generator.seed_input(Post, %{text: StreamData.constant("Post")})`
   """
   @spec seed_input(Ash.Resource.t(), map()) :: StreamData.t(map())
   def seed_input(resource, generators \\ %{}) do
