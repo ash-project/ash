@@ -9,34 +9,32 @@
 
 ### Bug Fixes:
 
-* Fix issues in `Ash.Generator.generate_many/2` (#1703)
+* [`Ash.Generator`] Fix issues in `Ash.Generator.generate_many/2` (#1703)
 
-* `Ash.Generator`: Don't error if no `after_action` is provided to `generate_many`
+* [`Ash.Generator`: Don't error if no `after_action` is provided to `generate_many`
 
-* `Ash.Generator`: Reuse the changeset actor when calling `bulk_create`
+* [`Ash.Generator`] Reuse the changeset actor when calling `bulk_create`
 
 ### Improvements:
 
-* run notifications for generators
+* [`Ash.Generator`] run notifications for generators
 
-* `order_is_key` option for sorted relationships
+* [`Ash.Changeset`] `order_is_key` option for sorted relationships
 
 ## [v3.4.53](https://github.com/ash-project/ash/compare/v3.4.52...v3.4.53) (2025-01-08)
 
 
-
-
 ### Bug Fixes:
 
-* properly delegate and handle conflicts in `Ash.Generator`
+* [`Ash.Generator`] properly delegate and handle conflicts in `Ash.Generator`
 
-* `Ash.Generator`: Replace calls to `create` and `create_many` with `generate` and `generate_many` (#1701)
+* [`Ash.Generator`] Replace calls to `create` and `create_many` with `generate` and `generate_many` (#1701)
 
-* use nested calculation dependencies from expr if not in expression
+* [calculations] use nested calculation dependencies from expr if not in expression
 
-* pattern match error on expression parse failure
+* [`Ash.Changeset`] pattern match error on expression parse failure
 
-* handle `string_length` on arguments when atomic
+* [`Ash.Test.Resource.Validation.StringLengthTest`] handle `string_length` on arguments when atomic
 
 ## [v3.4.52](https://github.com/ash-project/ash/compare/v3.4.51...v3.4.52) (2025-01-06)
 
