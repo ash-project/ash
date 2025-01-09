@@ -179,6 +179,64 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  defmodule Generator do
+    use Ash.Generator
+
+    def seed_post(opts \\ []) do
+      seed_generator(
+        %Post{
+          title: sequence(:title, &"Post #{&1}")
+        },
+        overrides: opts
+      )
+    end
+
+    def post(opts \\ []) do
+      changeset_generator(Post, :create,
+        defaults: [title: sequence(:title, &"Post #{&1}")],
+        overrides: opts
+      )
+    end
+  end
+
+  describe "generator" do
+    test "can generate one" do
+      import Generator
+      assert %Post{title: "Post 0"} = generate(post())
+      assert %Post{title: "Post 1"} = generate(seed_post())
+    end
+
+    test "can generate many" do
+      import Generator
+      assert [%Post{title: "Post 0"}, %Post{title: "Post 1"}] = generate_many(post(), 2)
+      assert [%Post{title: "Post 2"}, %Post{title: "Post 3"}] = generate_many(seed_post(), 2)
+    end
+
+    test "errors are raised when generating invalid single items" do
+      import Generator
+
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
+        generate(post(title: %{a: :b}))
+      end
+
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
+        generate(seed_post(title: %{a: :b}))
+      end
+    end
+
+    test "errors are raised when generating invalid many items" do
+      import Generator
+
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
+        generate_many(post(title: %{a: :b}), 2)
+      end
+
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
+        generate_many(post(title: %{a: :b}), 2)
+      end
+    end
+  end
+
   describe "action_input" do
     test "action input can be provided to an action" do
       check all(input <- Ash.Generator.action_input(Post, :create)) do

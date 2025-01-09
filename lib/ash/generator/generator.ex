@@ -465,7 +465,7 @@ defmodule Ash.Generator do
         ) ::
           Ash.Resource.record()
   def generate(%Ash.Changeset{} = changeset) do
-    Ash.create!(changeset, return_notifications?: true) |> elem(0)
+    Ash.create!(changeset)
   end
 
   def generate(changeset_generator) do
@@ -500,30 +500,30 @@ defmodule Ash.Generator do
       [%Ash.Changeset{} = first | _rest] = batch ->
         after_action = first.context[:private][:generator_after_action]
 
-        after_action =
+        opts = [
+          return_records?: true,
+          return_errors?: true,
+          notify?: true,
+          sorted?: true,
+          stop_on_error?: true,
+          actor: first.context[:private][:actor]
+        ]
+
+        opts =
           if after_action do
-            fn _changeset, record ->
+            Keyword.put(opts, :after_action, fn _changeset, record ->
               {:ok, after_action.(record)}
-            end
+            end)
           else
-            # Do nothing
-            fn _changeset, record -> {:ok, record} end
+            opts
           end
 
         result =
-          Ash.bulk_create!(Enum.map(batch, & &1.params), first.resource, first.action.name,
-            after_action: after_action,
-            return_records?: true,
-            return_errors?: true,
-            return_notifications?: true,
-            actor: first.context[:private][:actor]
-          )
+          Ash.bulk_create!(Enum.map(batch, & &1.params), first.resource, first.action.name, opts)
 
         if result.status != :success do
           raise Ash.Error.to_error_class(result.errors)
         end
-
-        Ash.Notifier.notify(result.notifications)
 
         result.records || []
 
