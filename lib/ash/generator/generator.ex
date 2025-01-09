@@ -505,11 +505,15 @@ defmodule Ash.Generator do
             fn _changeset, record ->
               {:ok, after_action.(record)}
             end
+          else
+            # Do nothing
+            fn _changeset, record -> {:ok, record} end
           end
 
-        Ash.bulk_create!(Enum.map(batch, & &1.params), first.resource, first.action,
+        Ash.bulk_create!(Enum.map(batch, & &1.params), first.resource, first.action.name,
           after_action: after_action,
-          return_records?: true
+          return_records?: true,
+          return_errors?: true
         ).records || []
 
       batch ->
