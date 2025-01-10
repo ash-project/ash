@@ -11,7 +11,7 @@ defmodule Ash.Test do
   Use the optional second argument to assert that the errors (all together) are of a specific class.
   """
   @spec assert_has_error(
-          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t() | {:error, term},
+          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t() | {:error, term} | {:ok, term},
           error_class :: Ash.Error.class_module(),
           (Ash.Error.t() -> boolean)
         ) :: Ash.Error.t() | no_return
@@ -42,6 +42,17 @@ defmodule Ash.Test do
     )
 
     match
+  end
+
+  def assert_has_error({:ok, _record}, error_class, _callback, _opts) do
+    message =
+      if error_class do
+        "Expected the value to have errors of class #{inspect(error_class)}, but it had no errors"
+      else
+        "Expected the value to have errors matching the provided callback, but it had no errors"
+      end
+
+    ExUnit.Assertions.assert(false, message: message)
   end
 
   def assert_has_error(changeset_query_or_input, error_class, callback, opts) do
