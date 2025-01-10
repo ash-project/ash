@@ -3411,11 +3411,15 @@ defmodule Ash.Changeset do
 
   defp do_belongs_to_attr_of_rel_being_managed?(changeset, attribute, only_if_relating?) do
     Enum.any?(changeset.relationships, fn
-      {key, [{rels, _}]} ->
-        relationship = Ash.Resource.Info.relationship(changeset.resource, key)
+      {key, [{rels, opts}]} ->
+        if attribute == opts[:order_is_key] do
+          true
+        else
+          relationship = Ash.Resource.Info.relationship(changeset.resource, key)
 
-        relationship.type == :belongs_to && relationship.source_attribute == attribute &&
-          (not only_if_relating? || rels != [])
+          relationship.type == :belongs_to && relationship.source_attribute == attribute &&
+            (not only_if_relating? || rels != [])
+        end
 
       {_key, list} when is_list(list) ->
         false
@@ -3431,13 +3435,23 @@ defmodule Ash.Changeset do
   end
 
   defp belongs_to_attr_of_being_managed_through?(
-         %{context: %{accessing_from: %{source: source, name: relationship}}},
+         %{context: %{accessing_from: %{source: source, name: relationship} = accessing_from}},
          attribute,
          _
        ) do
-    case Ash.Resource.Info.relationship(source, relationship) do
-      %{type: :belongs_to} -> false
-      relationship -> relationship.destination_attribute == attribute
+    with opts when not is_nil(opts) <- accessing_from[:manage_relationship_opts],
+         key when not is_nil(key) <- opts[:order_is_key],
+         true <- key == attribute do
+      true
+    else
+      _ ->
+        case Ash.Resource.Info.relationship(source, relationship) do
+          %{type: :belongs_to} ->
+            false
+
+          relationship ->
+            relationship.destination_attribute == attribute
+        end
     end
   end
 
