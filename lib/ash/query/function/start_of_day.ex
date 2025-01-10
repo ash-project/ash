@@ -16,6 +16,18 @@ defmodule Ash.Query.Function.StartOfDay do
 
   def returns, do: [:utc_datetime]
 
+  def evaluate(%{arguments: [%DateTime{} = date]}) do
+    with {:ok, term} <- DateTime.new(DateTime.to_date(date), Time.new!(0, 0, 0)) do
+      {:known, term}
+    end
+  end
+
+  def evaluate(%{arguments: [%DateTime{} = date, timezone]}) do
+    with {:ok, term} <- DateTime.new(DateTime.to_date(date), Time.new!(0, 0, 0), timezone) do
+      {:known, term}
+    end
+  end
+
   def evaluate(%{arguments: [date]}) do
     with {:ok, term} <- DateTime.new(date, Time.new!(0, 0, 0)) do
       {:known, term}
