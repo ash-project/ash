@@ -819,9 +819,13 @@ defmodule Ash.Generator do
     attribute.type
     |> Ash.Type.generator(attribute.constraints)
     |> StreamData.filter(fn item ->
-      case Ash.Type.apply_constraints(attribute.type, item, attribute.constraints) do
-        {:ok, nil} -> false
-        _ -> true
+      with {:ok, value} <- Ash.Type.cast_input(attribute.type, item, attribute.constraints),
+           {:ok, nil} <-
+             Ash.Type.apply_constraints(attribute.type, value, attribute.constraints) do
+        false
+      else
+        _ ->
+          true
       end
     end)
   end

@@ -14,6 +14,19 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  defmodule Embedded do
+    use Ash.Resource, data_layer: :embedded
+
+    actions do
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
@@ -82,6 +95,11 @@ defmodule Ash.Test.GeneratorTest do
 
       attribute :category, :string do
         public?(true)
+      end
+
+      attribute :embedded, Embedded do
+        public? true
+        allow_nil? false
       end
 
       timestamps()
@@ -205,6 +223,15 @@ defmodule Ash.Test.GeneratorTest do
         overrides: opts
       )
     end
+
+    def embedded(opts \\ []) do
+      changeset_generator(Embedded, :create,
+        defaults: [
+          title: sequence(:title, &"Post #{&1}")
+        ],
+        overrides: opts
+      )
+    end
   end
 
   setup do
@@ -253,6 +280,13 @@ defmodule Ash.Test.GeneratorTest do
       assert [%Post{title: "Post 0"}, %Post{title: "Post 1"}] = generate_many(post(), 2)
       assert_receive {:notification, %Ash.Notifier.Notification{}}
       assert_receive {:notification, %Ash.Notifier.Notification{}}
+    end
+
+    test "can generate embedded resource" do
+      import Generator
+
+      assert %Embedded{} = generate(embedded())
+      Ash.Generator.action_input(Embedded, :create) |> Enum.take(1)
     end
   end
 
