@@ -71,6 +71,57 @@ end
 
 You can also provide the `parse_attribute?` option if the tenant being set doesn't exactly match the attribute value, e.g the tenant is `org_10` and the attribute is `organization_id`, which requires just `10`.
 
+## Tenant-Aware Identities
+
+When using identities in a multitenant resource, the tenant attribute is automatically included in the uniqueness constraints. This means that the same identity value can exist across different tenants, but must be unique within a single tenant. For example, if you have a `User` resource with an email identity, users in different organizations could have the same email address.
+
+If you need an identity to be globally unique across all tenants (like a global user email system), you can set `all_tenants?: true` on the identity.
+
+```elixir
+defmodule MyApp.User do
+  use Ash.Resource, ...
+
+  multitenancy do
+    strategy :attribute
+    attribute :organization_id
+  end
+
+  identities do
+    # This email must be unique within a tenant
+    identity :tenant_scoped_email, [:email]
+
+    # This username must be unique across all tenants
+    identity :global_username, [:username], all_tenants?: true
+  end
+end
+```
+
+Example implications:
+
+```elixir
+# These are valid because they're in different tenants
+User
+|> Ash.Changeset.for_create(:create, %{email: "fred@example.com"})
+|> Ash.Changeset.set_tenant(1)
+|> Ash.create!()
+
+User
+|> Ash.Changeset.for_create(:create, %{email: "fred@example.com"})
+|> Ash.Changeset.set_tenant(2)
+|> Ash.create!()
+
+# This would fail because usernames are global
+User
+|> Ash.Changeset.for_create(:create, %{username: "fred"})
+|> Ash.Changeset.set_tenant(1)
+|> Ash.create!()
+
+User
+|> Ash.Changeset.for_create(:create, %{username: "fred"})
+|> Ash.Changeset.set_tenant(2)
+|> Ash.create!() # Error: username already taken
+```
+
 ## Context Multitenancy
 
 Context multitenancy allows for the data layer to dictate how multitenancy works. For example, a csv data layer might implement multitenancy via saving the file with different suffixes, or an API wrapping data layer might use different subdomains for the tenant.
