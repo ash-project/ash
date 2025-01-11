@@ -11,7 +11,12 @@ defmodule Ash.Test do
   Use the optional second argument to assert that the errors (all together) are of a specific class.
   """
   @spec assert_has_error(
-          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t() | {:error, term} | {:ok, term},
+          Ash.Changeset.t()
+          | Ash.Query.t()
+          | Ash.ActionInput.t()
+          | {:error, term}
+          | {:ok, term}
+          | :ok,
           error_class :: Ash.Error.class_module(),
           (Ash.Error.t() -> boolean)
         ) :: Ash.Error.t() | no_return
@@ -44,16 +49,8 @@ defmodule Ash.Test do
     match
   end
 
-  def assert_has_error({:ok, _record}, error_class, _callback, _opts) do
-    message =
-      if error_class do
-        "Expected the value to have errors of class #{inspect(error_class)}, but it had no errors"
-      else
-        "Expected the value to have errors matching the provided callback, but it had no errors"
-      end
-
-    ExUnit.Assertions.assert(false, message: message)
-  end
+  def assert_has_error({:ok, _record}, error_class, _callback, _opts), do: no_errors(error_class)
+  def assert_has_error(:ok, error_class, _callback, _opts), do: no_errors(error_class)
 
   def assert_has_error(changeset_query_or_input, error_class, callback, opts) do
     type =
@@ -89,23 +86,40 @@ defmodule Ash.Test do
     match
   end
 
+  defp no_errors(error_class) do
+    message =
+      if error_class do
+        "Expected the value to have errors of class #{inspect(error_class)}, but it had no errors"
+      else
+        "Expected the value to have errors matching the provided callback, but it had no errors"
+      end
+
+    ExUnit.Assertions.flunk(message)
+  end
+
   @doc """
   Refute that the given changeset, query, or action input has a matching error.
 
   Use the optional second argument to assert that the errors (all together) are of a specific class.
   """
   @spec refute_has_error(
-          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t() | {:ok, term} | {:error, term},
+          Ash.Changeset.t()
+          | Ash.Query.t()
+          | Ash.ActionInput.t()
+          | :ok
+          | {:ok, term}
+          | {:error, term},
           error_class :: Ash.Error.class_module(),
           (Ash.Error.t() -> boolean)
         ) :: Ash.Error.t() | no_return
   def refute_has_error(changeset_query_or_input, error_class \\ nil, callback, opts \\ [])
 
-  # An :ok tuple doesn't have any errors!
+  # An :ok response doesn't have any errors!
+  def refute_has_error(:ok, _error_class, _callback, _opts), do: :ok
   def refute_has_error({:ok, _record}, _error_class, _callback, _opts), do: :ok
 
-  def refute_has_error({:error, %{splode: splode} = error}, error_class, callback, opts) do
-    error = splode.to_class(error)
+  def refute_has_error({:error, error}, error_class, callback, opts) do
+    error = Ash.Error.to_error_class(error)
 
     if error_class do
       ExUnit.Assertions.assert(error.__struct__ != error_class,
