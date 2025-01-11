@@ -100,7 +100,7 @@ defmodule Ash.Test do
   @doc """
   Refute that the given changeset, query, or action input has a matching error.
 
-  Use the optional second argument to assert that the errors (all together) are of a specific class.
+  The `error_class` argument has been deprecated and should not be used.
   """
   @spec refute_has_error(
           Ash.Changeset.t()
@@ -119,15 +119,11 @@ defmodule Ash.Test do
   def refute_has_error({:ok, _record}, _error_class, _callback, _opts), do: :ok
 
   def refute_has_error({:error, error}, error_class, callback, opts) do
-    error = Ash.Error.to_error_class(error)
-
-    if error_class do
-      ExUnit.Assertions.assert(error.__struct__ != error_class,
-        message:
-          "Expected the value not to have errors of class #{inspect(error_class)}, got: #{inspect(error, pretty: true)}"
-      )
+    if error_class != nil do
+      IO.warn("`error_class` argument to `refute_has_error` is deprecated and will be ignored")
     end
 
+    error = Ash.Error.to_error_class(error)
     match = Enum.find(error.errors, callback)
 
     ExUnit.Assertions.assert(!match,
@@ -146,22 +142,11 @@ defmodule Ash.Test do
   end
 
   def refute_has_error(changeset_query_or_input, error_class, callback, opts) do
-    type =
-      case changeset_query_or_input do
-        %Ash.Changeset{} -> "changeset"
-        %Ash.Query{} -> "query"
-        %Ash.ActionInput{} -> "action input"
-      end
-
-    error = Ash.Error.to_error_class(changeset_query_or_input)
-
-    if error_class do
-      ExUnit.Assertions.assert(error.__struct__ == error_class,
-        message:
-          "Expected the #{type} to have errors of class #{inspect(error_class)}, got: #{inspect(error.__struct__)}"
-      )
+    if error_class != nil do
+      IO.warn("`error_class` argument to `refute_has_error` is deprecated and will be ignored")
     end
 
+    error = Ash.Error.to_error_class(changeset_query_or_input)
     match = Enum.find(error.errors, callback)
 
     ExUnit.Assertions.refute(match,

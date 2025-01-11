@@ -198,9 +198,7 @@ defmodule Ash.Test.ErrorTest do
         err.error == "whoops!"
       end)
 
-      Ash.Test.refute_has_error(cs, Ash.Error.Unknown, fn err ->
-        err.error == "yay!"
-      end)
+      Ash.Test.refute_has_error(cs, fn err -> err.error == "yay!" end)
 
       assert clean(Ash.Error.to_error_class(cs)) ==
                clean(Ash.Error.to_error_class([error1, error2], changeset: cs))
