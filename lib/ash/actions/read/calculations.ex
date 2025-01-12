@@ -1742,9 +1742,9 @@ defmodule Ash.Actions.Read.Calculations do
 
           new_calculation =
             if should_be_in_expression?(new_calculation, query) do
-              new_calculation
-            else
               query.calculations[new_calculation.name]
+            else
+              new_calculation
             end
 
           domain
