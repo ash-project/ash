@@ -95,6 +95,14 @@ defmodule Ash.Test.Policy.RbacTest do
     assert Ash.can?({File, :read, %{}}, user)
     refute Ash.can?({File, :read, %{}}, user, data: [file1, file2])
     assert Ash.can?({File, :read, %{}}, user, data: file_with_access)
+
+    assert Ash.can?({File, :get_by_id, %{id: file_with_access.id}}, user, data: file_with_access)
+    refute Ash.can?({File, :get_by_id, %{id: file1.id}}, user, data: file1)
+    refute Ash.can?({File, :get_by_id, %{id: file2.id}}, user, data: file2)
+
+    assert File.can_get_by_id?(user, file_with_access.id, data: file_with_access)
+    refute File.can_get_by_id?(user, file1.id, data: file1)
+    refute File.can_get_by_id?(user, file2.id, data: file2)
   end
 
   test "if the query can be performed, the can utility should return true", %{
