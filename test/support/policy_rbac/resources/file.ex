@@ -27,6 +27,16 @@ defmodule Ash.Test.Support.PolicyRbac.File do
   actions do
     default_accept :*
     defaults [:read, :destroy, create: :*, update: :*]
+
+    read :get_by_id do
+      get? true
+      argument :id, :string, allow_nil?: false
+      filter expr(id == ^arg(:id))
+    end
+  end
+
+  code_interface do
+    define :get_by_id, args: [:id]
   end
 
   attributes do
