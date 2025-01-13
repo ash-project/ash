@@ -1,6 +1,6 @@
 defmodule Ash.Test.Support.PolicyRbac.Domain do
   @moduledoc false
-  use Ash.Domain, authorizers: [Ash.Policy.Authorizer]
+  use Ash.Domain
 
   resources do
     resource Ash.Test.Support.PolicyRbac.User
