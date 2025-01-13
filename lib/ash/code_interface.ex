@@ -1336,11 +1336,6 @@ defmodule Ash.CodeInterface do
 
         subject_name = elem(subject, 0)
 
-        resolve_subject =
-          quote do
-            unquote(resolve_subject)
-          end
-
         common_args =
           quote do: [
                   unquote_splicing(subject_args),
@@ -1522,6 +1517,16 @@ defmodule Ash.CodeInterface do
               |> Keyword.put(:actor, actor)
             end)
 
+          arg_params =
+            unquote(args)
+            |> Enum.zip([unquote_splicing(arg_vars)])
+            |> Map.new()
+
+          params =
+            if is_list(params),
+              do: Enum.map(params, &Map.merge(&1, arg_params)),
+              else: Map.merge(params, arg_params)
+
           unquote(resolve_subject)
 
           case unquote(subject) do
@@ -1568,6 +1573,16 @@ defmodule Ash.CodeInterface do
               |> unquote(interface_options).to_options()
               |> Keyword.put(:actor, actor)
             end)
+
+          arg_params =
+            unquote(args)
+            |> Enum.zip([unquote_splicing(arg_vars)])
+            |> Map.new()
+
+          params =
+            if is_list(params),
+              do: Enum.map(params, &Map.merge(&1, arg_params)),
+              else: Map.merge(params, arg_params)
 
           unquote(resolve_subject)
 
