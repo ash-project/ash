@@ -99,7 +99,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
     else
       {:error,
        DslError.exception(
-         module: Transformer.get_entities(dsl_state, :module),
+         module: Transformer.get_persisted(dsl_state, :module),
          path: [:reactor, entity.type, entity.name],
          message:
            "The #{entity.type} step `#{inspect(entity.name)}` has its domain set to `#{inspect(entity.domain)}` but it is not a valid `Ash.Domain`."

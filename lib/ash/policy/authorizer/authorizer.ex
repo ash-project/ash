@@ -473,7 +473,8 @@ defmodule Ash.Policy.Authorizer do
 
   @verifiers [
     Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers,
-    Ash.Policy.Authorizer.Verifiers.VerifySatSolverImplementation
+    Ash.Policy.Authorizer.Verifiers.VerifySatSolverImplementation,
+    Ash.Policy.Authorizer.Verifiers.VerifyResources
   ]
 
   use Spark.Dsl.Extension,

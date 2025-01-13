@@ -22,6 +22,12 @@ defmodule Ash.Domain do
 
   use Spark.Dsl,
     default_extensions: [extensions: [Ash.Domain.Dsl]],
+    many_extension_kinds: [
+      :authorizers
+    ],
+    extension_kind_types: [
+      authorizers: {:wrap_list, {:behaviour, Ash.Authorizer}}
+    ],
     opt_schema: [
       validate_config_inclusion?: [
         type: :boolean,
