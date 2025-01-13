@@ -792,6 +792,9 @@ defmodule Ash.Can do
                   {:error, error} ->
                     {:error, error}
                 end
+
+              {:error, error} ->
+                {:error, error}
             end
           end
         else
