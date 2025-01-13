@@ -1638,6 +1638,15 @@ defmodule Ash.Type do
 
         @impl true
         def embed_as(_, _), do: :self
+
+        if Keyword.get(unquote(opts), :autogenerate_enabled?) do
+          @impl true
+          def autogenerate(constraints) do
+            constraints
+            |> @parent.generator()
+            |> Enum.at(0)
+          end
+        end
       end
 
       @impl true
