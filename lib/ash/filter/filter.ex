@@ -471,6 +471,18 @@ defmodule Ash.Filter do
         end
 
       {fields, value} ->
+        multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(resource)
+        fields = Enum.reject(fields, fn key -> key == multitenancy_attribute end)
+
+        {keyval?, value} =
+          case fields do
+            [field] when not keyval? ->
+              {true, [{field, value}]}
+
+            _ ->
+              {keyval?, value}
+          end
+
         if keyval? do
           with :error <- get_keys(value, fields, resource),
                :error <- get_identity_filter(resource, id) do
