@@ -842,20 +842,16 @@ defmodule Ash.Actions.Read.Calculations do
         match?({:__calc_dep__, _}, calculation.name)
     end)
     |> Enum.flat_map(fn {_calc_name, calculation} ->
-      relationship = calculation.opts[:relationship]
-      query = calculation.opts[:query]
-
-      query
-      |> get_all_rewrites(top_calculation, path)
-      |> Enum.map(fn {{path, data, calc_name, calc_load}, source} ->
-        {{path ++ [{:rel, relationship}], data, calc_name, calc_load}, source}
-      end)
+      get_all_rewrites(
+        calculation.opts[:query],
+        top_calculation,
+        path ++ [{:rel, calculation.opts[:relationship]}]
+      )
     end)
   end
 
   # TODO: This currently must assume that all relationship loads are different if
   # authorize?: true, because the policies have not yet been applied.
-  #
 
   def split_and_load_calculations(
         domain,
