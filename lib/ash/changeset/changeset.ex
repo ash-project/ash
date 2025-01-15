@@ -1767,10 +1767,10 @@ defmodule Ash.Changeset do
         allow_nil? =
           attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
 
-        value =
-          if allow_nil? || not Ash.Expr.can_return_nil?(value) do
-            value
-          else
+        if allow_nil? || not Ash.Expr.can_return_nil?(value) do
+          value
+        else
+          if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
             expr(
               if is_nil(^value) do
                 error(
@@ -1785,9 +1785,18 @@ defmodule Ash.Changeset do
                 ^value
               end
             )
+          else
+            {:error,
+             "Failed to validate expression #{inspect(value)}: data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error"}
           end
+        end
+        |> case do
+          {:error, error} ->
+            Ash.Changeset.add_error(changeset, error)
 
-        %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+          value ->
+            %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+        end
       end
     end)
     |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
