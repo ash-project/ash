@@ -1367,7 +1367,7 @@ defmodule Ash.Actions.ManagedRelationships do
               {input, %{}}
 
             is_struct(input) ->
-              Map.from_struct(input)
+              {match, Map.from_struct(input)}
 
             true ->
               {match, input}
