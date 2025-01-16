@@ -266,7 +266,13 @@ defmodule Ash.Expr do
 
   def can_return_nil?(%Ash.Query.Ref{attribute: %{allow_nil?: false}}), do: false
 
-  def can_return_nil?(_), do: true
+  def can_return_nil?(value) do
+    if Ash.Expr.expr?(value) do
+      true
+    else
+      false
+    end
+  end
 
   @doc "Whether or not a given template contains an actor reference"
   def template_references?(%{__struct__: Ash.Filter, expression: expression}, pred) do

@@ -867,17 +867,22 @@ defmodule Ash.Changeset do
 
   @doc false
   def run_atomic_validation(changeset, %{where: where} = validation, context) do
-    with {:atomic, condition} <- atomic_condition(where, changeset, context) do
-      case condition do
-        false ->
-          changeset
+    if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
+      with {:atomic, condition} <- atomic_condition(where, changeset, context) do
+        case condition do
+          false ->
+            changeset
 
-        true ->
-          do_run_atomic_validation(changeset, validation, context)
+          true ->
+            do_run_atomic_validation(changeset, validation, context)
 
-        where_condition ->
-          do_run_atomic_validation(changeset, validation, context, where_condition)
+          where_condition ->
+            do_run_atomic_validation(changeset, validation, context, where_condition)
+        end
       end
+    else
+      {:not_atomic,
+       "data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error"}
     end
   end
 
@@ -1767,10 +1772,10 @@ defmodule Ash.Changeset do
         allow_nil? =
           attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
 
-        value =
-          if allow_nil? || not Ash.Expr.can_return_nil?(value) do
-            value
-          else
+        if allow_nil? || not Ash.Expr.can_return_nil?(value) do
+          value
+        else
+          if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
             expr(
               if is_nil(^value) do
                 error(
@@ -1785,9 +1790,18 @@ defmodule Ash.Changeset do
                 ^value
               end
             )
+          else
+            {:not_atomic,
+             "Failed to validate expression #{inspect(value)}: data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error"}
           end
+        end
+        |> case do
+          {:not_atomic, error} ->
+            Ash.Changeset.add_error(changeset, error)
 
-        %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+          value ->
+            %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+        end
       end
     end)
     |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
@@ -2715,7 +2729,7 @@ defmodule Ash.Changeset do
 
       if key in changeset.no_atomic_constraints do
         value =
-          if attribute.primary_key? do
+          if(attribute.primary_key?) do
             value
           else
             set_error_field(value, attribute.name)
