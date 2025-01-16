@@ -15,7 +15,7 @@ defmodule Ash.Query.Operator.IsNil do
 
   def new(left, right) do
     if right == false and not Ash.Expr.can_return_nil?(left) do
-      {:known, false}
+      {:known, true}
     else
       super(left, right)
     end

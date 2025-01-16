@@ -653,6 +653,9 @@ defmodule Ash.Filter.Runtime do
           {:op, {:ok, expr}} ->
             resolve_expr(expr, record, parent, resource, unknown_on_unknown_refs?)
 
+          {:op, {:known, value}} ->
+            {:ok, value}
+
           {:error, error} ->
             {:error, error}
 
