@@ -35,7 +35,10 @@ defmodule Ash.Resource.Calculation.LoadRelationship do
     end
 
     load_opts =
-      Ash.Context.to_opts(context, Keyword.put(opts[:opts] || [], :domain, opts[:domain]))
+      Ash.Context.to_opts(
+        context,
+        Keyword.put(opts[:opts] || [], :domain, opts[:domain])
+      )
 
     Ash.load(results, [{relationship.name, query}], load_opts)
     |> case do

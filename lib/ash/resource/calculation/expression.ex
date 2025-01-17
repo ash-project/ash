@@ -113,21 +113,46 @@ defmodule Ash.Resource.Calculation.Expression do
       {:ok, expression} ->
         expression
         |> Ash.Filter.list_refs()
-        |> Enum.map(fn
-          %{attribute: %Ash.Query.Aggregate{} = agg} ->
-            agg
+        |> Enum.reduce([], fn
+          %{attribute: %Ash.Query.Aggregate{} = agg, relationship_path: relationship_path}, acc ->
+            add_at_path(acc, relationship_path, agg)
 
-          %{attribute: %Ash.Query.Calculation{} = calc} ->
-            calc
+          %{attribute: %Ash.Query.Calculation{} = calc, relationship_path: relationship_path},
+          acc ->
+            add_at_path(acc, relationship_path, calc)
 
-          %{attribute: %{name: name}} ->
-            name
+          %{attribute: %{name: name}, relationship_path: relationship_path}, acc ->
+            add_at_path(acc, relationship_path, name)
         end)
         |> Enum.concat(Ash.Filter.used_aggregates(expression))
         |> Enum.uniq()
 
       {:error, _} ->
         []
+    end
+  end
+
+  defp add_at_path(acc, [], value) do
+    Enum.uniq([value | acc])
+  end
+
+  defp add_at_path(acc, [first | rest], value) do
+    Enum.reduce(acc, {acc, false}, fn
+      {key, current}, {acc, _found?} when key == first ->
+        {[{key, add_at_path(List.wrap(current), rest, value)} | acc], true}
+
+      key, {acc, _found?} when key == first ->
+        {[{key, add_at_path([], rest, value)} | acc], true}
+
+      v, {acc, found?} ->
+        {[v | acc], found?}
+    end)
+    |> case do
+      {acc, false} ->
+        [{first, add_at_path([], rest, value)} | acc]
+
+      {acc, _} ->
+        acc
     end
   end
 end
