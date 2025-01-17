@@ -649,10 +649,12 @@ defmodule Ash.Helpers do
   end
 
   def json_module do
-    if Code.ensure_loaded?(JSON) do
-      JSON
-    else
-      Jason
-    end
+    # there are libraries depending on our use of `Jason` here
+    # we are going to be stuck with `Jason` for a while
+    # if Code.ensure_loaded?(JSON) do
+    #   JSON
+    # else
+    Jason
+    # end
   end
 end
