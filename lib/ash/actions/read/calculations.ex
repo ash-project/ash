@@ -1430,7 +1430,7 @@ defmodule Ash.Actions.Read.Calculations do
         else
           current_load = query.load[relationship.name]
 
-          if current_load && !authorize? do
+          if current_load && !calculation.authorize? && !authorize? do
             if compatible_relationships?(current_load, further) do
               %{
                 query
@@ -1464,7 +1464,8 @@ defmodule Ash.Actions.Read.Calculations do
                 relationship_path,
                 initial_data,
                 reuse_values?,
-                further
+                further,
+                calculation.authorize?
               )
             end
           else
@@ -1480,7 +1481,8 @@ defmodule Ash.Actions.Read.Calculations do
                 relationship_path,
                 initial_data,
                 reuse_values?,
-                further
+                further,
+                calculation.authorize?
               )
             else
               Ash.Query.load(query, [{relationship.name, further}])
@@ -1504,7 +1506,8 @@ defmodule Ash.Actions.Read.Calculations do
          relationship_path,
          initial_data,
          reuse_values?,
-         further
+         further,
+         authorize?
        ) do
     {type, constraints} =
       case relationship.cardinality do
@@ -1515,7 +1518,7 @@ defmodule Ash.Actions.Read.Calculations do
     case Enum.find(query.calculations, fn {_name, existing_calculation} ->
            existing_calculation.module == Ash.Resource.Calculation.LoadRelationship &&
              existing_calculation.opts[:relationship] == relationship.name &&
-             existing_calculation.opts[:opts][:authorize?] == false &&
+             existing_calculation.opts[:opts][:authorize?] == authorize? &&
              compatible_relationships?(existing_calculation.opts[:query], further) &&
              match?(%{name: {:__calc_dep__, _}}, existing_calculation)
          end) do
@@ -1534,7 +1537,7 @@ defmodule Ash.Actions.Read.Calculations do
             Ash.Resource.Calculation.LoadRelationship,
             relationship: relationship.name,
             query: further,
-            opts: [authorize?: false],
+            opts: [authorize?: authorize?],
             domain: relationship.domain || domain
           },
           %{},
@@ -1849,7 +1852,7 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp find_equivalent_calculation(query, calculation, authorize?) do
     reusable? =
-      if authorize? && calculation.module.has_expression?() do
+      if !calculation.authorize? && authorize? && calculation.module.has_expression?() do
         calculation.module.expression(calculation.opts, calculation.context)
         |> Ash.Filter.list_refs(false, false, true, true)
         |> Enum.any?(&(&1.relationship_path != []))

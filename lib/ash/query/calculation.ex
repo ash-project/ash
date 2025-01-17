@@ -12,6 +12,7 @@ defmodule Ash.Query.Calculation do
     context: %{},
     required_loads: [],
     select: [],
+    authorize?: false,
     filterable?: true,
     async?: false,
     sortable?: true,
@@ -30,6 +31,12 @@ defmodule Ash.Query.Calculation do
       type: :boolean,
       default: false,
       doc: "Whether or not this calculation should be run asynchronously"
+    ],
+    authorize?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not to authorize relationship and calculations referenced by this calculation. Only occurs if the calculation itself is being loaded with `authorize?: true`"
     ],
     filterable?: [
       type: :boolean,
@@ -220,6 +227,7 @@ defmodule Ash.Query.Calculation do
         resource_calculation.type,
         resource_calculation.constraints,
         arguments: args,
+        authorize?: resource_calculation.authorize?,
         async?: resource_calculation.async?,
         filterable?: resource_calculation.filterable?,
         sortable?: resource_calculation.sortable?,

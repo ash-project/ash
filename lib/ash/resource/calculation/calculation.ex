@@ -78,6 +78,12 @@ defmodule Ash.Resource.Calculation do
       default: true,
       doc: "Whether or not the calculation can return nil."
     ],
+    authorize?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not to authorize relationship and calculations referenced by this calculation. Only occurs if the calculation itself is being loaded with `authorize?: true`"
+    ],
     filterable?: [
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
