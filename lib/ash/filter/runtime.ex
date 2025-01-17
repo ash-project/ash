@@ -908,9 +908,6 @@ defmodule Ash.Filter.Runtime do
                 {:ok, [result]} ->
                   {:ok, result}
 
-                :unknown when unknown_on_unknown_refs? ->
-                  :unknown
-
                 _ ->
                   {:ok, nil}
               end
