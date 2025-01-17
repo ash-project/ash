@@ -217,6 +217,15 @@ defmodule Ash.Policy.FilterCheck do
              changeset: %Ash.Changeset{data: data, tenant: tenant} = changeset,
              actor: actor
            }) do
+        expression =
+          Ash.Expr.fill_template(
+            expression,
+            actor,
+            changeset.arguments,
+            changeset.context,
+            changeset
+          )
+
         case Ash.Filter.hydrate_refs(expression, %{
                resource: resource,
                aggregates: %{},
@@ -272,12 +281,6 @@ defmodule Ash.Policy.FilterCheck do
           {:error, error} ->
             {:error, error}
         end
-      end
-
-      defp no_related_references?(expression) do
-        expression
-        |> Ash.Filter.list_refs()
-        |> Enum.any?(&(&1.relationship_path != []))
       end
 
       def auto_filter(actor, authorizer, opts) do

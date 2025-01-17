@@ -43,7 +43,7 @@ defmodule Ash.Actions.Action do
 
       Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :create],
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :action],
                                 metadata do
         if input.action.transaction? do
           resources =

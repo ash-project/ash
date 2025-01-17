@@ -2,6 +2,8 @@ defmodule Ash.Test.CodeInterfaceTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  doctest Ash.CodeInterface, import: true
+
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -9,6 +11,42 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     def notify(notification) do
       send(Application.get_env(__MODULE__, :notifier_test_pid), {:notification, notification})
+    end
+  end
+
+  defmodule NonStreamable do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets, notifiers: [Notifier]
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    actions do
+      defaults create: [:name]
+
+      update :update do
+        primary? true
+        require_atomic? false
+        accept [:name]
+
+        change fn changeset, _ ->
+          changeset
+        end
+      end
+
+      read :read do
+        primary? true
+      end
+    end
+
+    code_interface do
+      define :update
     end
   end
 
@@ -27,6 +65,7 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :get_by_id, action: :by_id, get?: true, args: [:id]
       define :create, args: [{:optional, :first_name}]
       define :hello, args: [:name]
+      define :hello_actor, default_options: [actor: %{name: "William Shatner"}]
       define :create_with_map, args: [:map]
       define :update_with_map, args: [:map]
 
@@ -82,6 +121,12 @@ defmodule Ash.Test.CodeInterfaceTest do
 
         run(fn input, _ ->
           {:ok, "Hello #{input.arguments.name}"}
+        end)
+      end
+
+      action :hello_actor, :string do
+        run(fn input, _ ->
+          {:ok, "Hello, #{input.context.private.actor.name}."}
         end)
       end
     end
@@ -241,7 +286,14 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     test "bulk_create can be take an empty list" do
-      assert %Ash.BulkResult{status: :success} = User.bulk_create!([])
+      assert_raise ArgumentError, ~r/Cannot provide an empty list for params/, fn ->
+        # Note, this is an unfortunately required breaking change
+        # We can't tell the difference between an empty set of inputs to create one record w/o inputs
+        # and an empty list to create no records as a bulk action
+        User.bulk_create!([])
+      end
+
+      assert %Ash.BulkResult{status: :success} = User.bulk_create!([], [])
     end
   end
 
@@ -272,6 +324,15 @@ defmodule Ash.Test.CodeInterfaceTest do
       User
       |> Ash.Query.filter(id == ^bob.id)
       |> User.update!(%{first_name: "bob_updated"})
+    end
+
+    test "non-streamable actions can be used when limit: 1" do
+      record =
+        NonStreamable
+        |> Ash.create!(%{name: "name"})
+
+      record.id
+      |> NonStreamable.update!(%{name: "new name"})
     end
 
     test "can take an id" do
@@ -306,6 +367,11 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     test "bulk update can take an empty list" do
       assert %Ash.BulkResult{status: :success} = User.update([], %{first_name: "other_bob"})
+    end
+
+    test "bulk update can take an empty list and keyword params" do
+      assert %Ash.BulkResult{status: :success} =
+               User.update([], [first_name: "other_bob"], [])
     end
   end
 
@@ -380,6 +446,9 @@ defmodule Ash.Test.CodeInterfaceTest do
       |> Ash.create!()
 
     assert User.get_by_id!(user.id).id == user.id
+
+    assert {:ok, user} = User.get_by_id(user.id)
+    assert user.id == user.id
   end
 
   test "optional arguments are optional" do
@@ -388,6 +457,14 @@ defmodule Ash.Test.CodeInterfaceTest do
   end
 
   test "it handles keyword inputs properly" do
-    assert User.create!("fred", [last_name: "weasley"], actor: nil)
+    assert {:ok, %{last_name: "weasley"}} =
+             User.create("fred", [last_name: "weasley"], actor: nil)
+
+    assert %{last_name: "weasley"} = User.create!("fred", [last_name: "weasley"], actor: nil)
+  end
+
+  test "default options" do
+    assert "Hello, Leonard Nimoy." = User.hello_actor!(actor: %{name: "Leonard Nimoy"})
+    assert "Hello, William Shatner." = User.hello_actor!()
   end
 end

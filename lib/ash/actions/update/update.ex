@@ -61,7 +61,7 @@ defmodule Ash.Actions.Update do
           !Ash.DataLayer.data_layer_can?(changeset.resource, :update_query) ->
             {{:not_atomic, "data layer does not support updating a query"}, nil}
 
-          !Enum.empty?(changeset.relationships) ->
+          :manage_relationships in changeset.dirty_hooks ->
             {{:not_atomic, "cannot atomically manage relationships"}, nil}
 
           !Enum.empty?(dirty_hooks) ->

@@ -6,6 +6,27 @@ defmodule Ash.Test.GeneratorTest do
   require Ash.Query
   alias Ash.Test.Domain, as: Domain
 
+  defmodule Notifier do
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(Application.get_env(__MODULE__, :notifier_test_pid), {:notification, notification})
+    end
+  end
+
+  defmodule Embedded do
+    use Ash.Resource, data_layer: :embedded
+
+    actions do
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
@@ -50,7 +71,7 @@ defmodule Ash.Test.GeneratorTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets, notifiers: [Notifier]
 
     ets do
       private?(true)
@@ -74,6 +95,11 @@ defmodule Ash.Test.GeneratorTest do
 
       attribute :category, :string do
         public?(true)
+      end
+
+      attribute :embedded, Embedded do
+        public? true
+        allow_nil? false
       end
 
       timestamps()
@@ -179,6 +205,105 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  defmodule Generator do
+    use Ash.Generator
+
+    def seed_post(opts \\ []) do
+      seed_generator(
+        %Post{
+          title: sequence(:title, &"Post #{&1}")
+        },
+        overrides: opts
+      )
+    end
+
+    def post(opts \\ []) do
+      changeset_generator(Post, :create,
+        defaults: [title: sequence(:title, &"Post #{&1}")],
+        overrides: opts
+      )
+    end
+
+    def embedded(opts \\ []) do
+      changeset_generator(Embedded, :create,
+        defaults: [
+          title: sequence(:title, &"Post #{&1}")
+        ],
+        overrides: opts
+      )
+    end
+  end
+
+  setup do
+    Application.put_env(Notifier, :notifier_test_pid, self())
+  end
+
+  describe "generator" do
+    test "can generate one" do
+      import Generator
+      assert %Post{title: "Post 0"} = generate(post())
+      assert %Post{title: "Post 1"} = generate(seed_post())
+    end
+
+    test "can generate many" do
+      import Generator
+      assert [%Post{title: "Post 0"}, %Post{title: "Post 1"}] = generate_many(post(), 2)
+      assert [%Post{title: "Post 2"}, %Post{title: "Post 3"}] = generate_many(seed_post(), 2)
+    end
+
+    test "errors are raised when generating invalid single items" do
+      import Generator
+
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
+        generate(post(title: %{a: :b}))
+      end
+
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
+        generate(seed_post(title: %{a: :b}))
+      end
+    end
+
+    test "errors are raised when generating invalid many items" do
+      import Generator
+
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
+        generate_many(post(title: %{a: :b}), 2)
+      end
+
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for title/, fn ->
+        generate_many(post(title: %{a: :b}), 2)
+      end
+    end
+
+    test "notifications are emitted on generate_many" do
+      import Generator
+      assert [%Post{title: "Post 0"}, %Post{title: "Post 1"}] = generate_many(post(), 2)
+      assert_receive {:notification, %Ash.Notifier.Notification{}}
+      assert_receive {:notification, %Ash.Notifier.Notification{}}
+    end
+
+    test "can generate embedded resource" do
+      import Generator
+
+      assert %Embedded{} = generate(embedded())
+      Ash.Generator.action_input(Embedded, :create) |> Enum.take(1)
+    end
+  end
+
+  describe "once" do
+    test "generates the same value given the same name" do
+      assert Enum.at(Ash.Generator.once(:name, fn -> 1 end), 0) ==
+               Enum.at(Ash.Generator.once(:name, fn -> 2 end), 0)
+    end
+
+    test "generates the same value given the same name, but only in the same process" do
+      assert Task.await(Task.async(fn -> Enum.at(Ash.Generator.once(:name, fn -> 1 end), 0) end)) !=
+               Task.await(
+                 Task.async(fn -> Enum.at(Ash.Generator.once(:name, fn -> 2 end), 0) end)
+               )
+    end
+  end
+
   describe "action_input" do
     test "action input can be provided to an action" do
       check all(input <- Ash.Generator.action_input(Post, :create)) do
@@ -281,6 +406,22 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  describe "seed_generator" do
+    test "it correctly seeds a record" do
+      assert %Author{} =
+               Ash.Generator.seed_generator(%Author{}, overrides: @meta_generator)
+               |> Ash.Generator.generate()
+    end
+  end
+
+  describe "changeset_generator" do
+    test "it correctly seeds a record" do
+      assert %Author{} =
+               Ash.Generator.changeset_generator(Author, :create, overrides: @meta_generator)
+               |> Ash.Generator.generate()
+    end
+  end
+
   describe "seed" do
     test "it seeds correctly a resource" do
       assert %Author{} = Ash.Generator.seed!(Author, @meta_generator)
@@ -293,7 +434,8 @@ defmodule Ash.Test.GeneratorTest do
   end
 
   describe "built in generators" do
-    for type <- Enum.uniq(Ash.Type.builtin_types()), type != Ash.Type.Keyword do
+    for type <- Enum.uniq(Ash.Type.builtin_types()),
+        type not in [Ash.Type.Struct, Ash.Type.Keyword, Ash.Type.Map] do
       for type <- [{:array, type}, type] do
         constraints =
           case type do

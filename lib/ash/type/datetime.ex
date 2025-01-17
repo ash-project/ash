@@ -10,6 +10,10 @@ defmodule Ash.Type.DateTime do
       type: {:one_of, [:microsecond, :second]},
       default: :second
     ],
+    cast_dates_as: [
+      type: {:one_of, [:start_of_day, :error]},
+      default: :start_of_day
+    ],
     timezone: [
       type: {:one_of, [:utc]},
       default: :utc
@@ -56,12 +60,18 @@ defmodule Ash.Type.DateTime do
 
   @impl true
   def cast_input(%Date{} = date, constraints) do
-    case DateTime.new(date, @beginning_of_day) do
-      {:ok, value} ->
-        cast_input(value, constraints)
+    case Keyword.get(constraints, :cast_dates_as, :start_of_day) do
+      :start_of_day ->
+        case DateTime.new(date, @beginning_of_day) do
+          {:ok, value} ->
+            cast_input(value, constraints)
+
+          _ ->
+            {:error, "Date could not be converted to datetime"}
+        end
 
       _ ->
-        {:error, "Date could not be converted to datetime"}
+        {:error, "must be a datetime, got a date"}
     end
   end
 
@@ -90,12 +100,18 @@ defmodule Ash.Type.DateTime do
   def cast_input(value, constraints) do
     case Ecto.Type.cast(storage_type(constraints), value) do
       :error ->
-        case Ash.Type.cast_input(:date, value, []) do
-          {:ok, date} ->
-            cast_input(date, constraints)
+        case Keyword.get(constraints, :cast_dates_as, :start_of_day) do
+          :start_of_day ->
+            case Ash.Type.cast_input(:date, value, []) do
+              {:ok, date} ->
+                cast_input(date, constraints)
+
+              _ ->
+                {:error, "Could not cast input to datetime"}
+            end
 
           _ ->
-            {:error, "Could not cast input to datetime"}
+            {:error, "must be a datetime, got a date"}
         end
 
       {:ok, value} ->

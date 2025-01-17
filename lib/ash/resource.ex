@@ -118,7 +118,7 @@ defmodule Ash.Resource do
           ] do
       @persist {:simple_notifiers, List.wrap(opts[:simple_notifiers])}
 
-      unless embedded? || has_domain? do
+      if !(embedded? || has_domain?) do
         IO.warn("""
         Configuration Error:
 
@@ -574,11 +574,19 @@ defmodule Ash.Resource do
     get_in(record.__metadata__ || %{}, List.wrap(key_or_path))
   end
 
+  @doc """
+  Returns true if the given field has been selected on a record
+
+  ## Options
+
+  - `forbidden_means_selected?`: set to `true` to return `true` if the field is marked as forbidden
+
+  """
   @spec selected?(Ash.Resource.record(), atom) :: boolean
-  def selected?(record, field) do
+  def selected?(record, field, opts \\ []) do
     case Map.get(record, field) do
       %Ash.NotLoaded{} -> false
-      %Ash.ForbiddenField{} -> false
+      %Ash.ForbiddenField{} -> Keyword.get(opts, :forbidden_means_selected?, false)
       _ -> true
     end
   end

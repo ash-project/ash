@@ -5,7 +5,8 @@ defmodule Ash.Type.UUIDv7 do
   A builtin type that can be referenced via `:uuid_v7`
   """
 
-  use Ash.Type
+  use Ash.Type,
+    autogenerate_enabled?: true
 
   @impl true
   def storage_type(_), do: :uuid

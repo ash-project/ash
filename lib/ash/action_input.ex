@@ -126,7 +126,7 @@ defmodule Ash.ActionInput do
 
         input =
           Enum.reduce(opts[:private_arguments] || %{}, input, fn {k, v}, input ->
-            Ash.ActionInput.set_argument(input, k, v)
+            Ash.ActionInput.set_private_argument(input, k, v)
           end)
 
         input
@@ -249,6 +249,34 @@ defmodule Ash.ActionInput do
       end
     else
       input
+    end
+  end
+
+  @doc """
+  Sets a private argument value
+  """
+  @spec set_private_argument(input :: t(), name :: atom, value :: term()) :: t()
+  def set_private_argument(input, name, value) do
+    argument =
+      Enum.find(
+        input.action.arguments,
+        &(&1.name == name || to_string(&1.name) == name)
+      )
+
+    cond do
+      is_nil(argument) ->
+        input
+
+      argument.public? ->
+        add_invalid_errors(
+          value,
+          input,
+          argument,
+          "can't set public arguments with set_private_argument/3"
+        )
+
+      true ->
+        set_argument(input, name, value)
     end
   end
 

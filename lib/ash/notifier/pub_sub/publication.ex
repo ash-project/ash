@@ -6,6 +6,7 @@ defmodule Ash.Notifier.PubSub.Publication do
     :topic,
     :event,
     :type,
+    :except,
     :dispatcher,
     :previous_values?
   ]
@@ -43,6 +44,11 @@ defmodule Ash.Notifier.PubSub.Publication do
                       |> Keyword.put(:type,
                         type: {:in, [:create, :update, :destroy]},
                         doc: "Publish on all actions of a given type"
+                      )
+                      |> Keyword.put(:except,
+                        type: {:list, :atom},
+                        doc: "Exclude these actions from notifications",
+                        default: []
                       )
 
   def schema, do: @schema

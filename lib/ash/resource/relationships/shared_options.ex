@@ -97,6 +97,21 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       doc: """
       A message to show if there is a conflict with this relationship in the database on destroy.
       """
+    ],
+    authorize_read_with: [
+      type: {:one_of, [:error, :filter]},
+      doc: """
+      If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database.
+      """
+    ],
+    # in 4.0, set this to always true
+    allow_forbidden_field?: [
+      type: :boolean,
+      default:
+        Application.compile_env(:ash, :allow_forbidden_field_for_relationships_by_default, false),
+      doc: """
+      If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error.
+      """
     ]
   ]
 

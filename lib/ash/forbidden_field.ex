@@ -1,6 +1,6 @@
 defmodule Ash.ForbiddenField do
   @moduledoc "Represents a field that was hidden due to authorization rules."
-  @type field_type :: :aggregate | :attribute | :calculation
+  @type field_type :: :aggregate | :attribute | :calculation | :relationship
   @type t :: %__MODULE__{
           field: atom(),
           original_value: term(),

@@ -23,6 +23,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     filters: [],
     filterable?: true,
     sortable?: true,
+    allow_forbidden_field?: false,
+    authorize_read_with: :filter,
     could_be_related_at_creation?: false,
     validate_destination_attribute?: true,
     cardinality: :many,

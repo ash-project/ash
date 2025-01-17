@@ -81,6 +81,17 @@ end
 >   run # ...
 > end
 > ```
+>
+> For returning many instances of the resource, you can set your action's return type to
+> `{:array, :struct}` and set the `items` constraint to the name of your resource.
+>
+> ```elixir
+>  action :list_resources, {:array, :struct} do
+>    constraints items: [instance_of: __MODULE__]
+>
+>    run # ...
+>  end
+> ```
 
 ## Calling Generic Actions
 

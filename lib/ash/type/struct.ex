@@ -96,7 +96,7 @@ defmodule Ash.Type.Struct do
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, constraints) when is_binary(value) do
-    case Jason.decode(value) do
+    case Ash.Helpers.json_module().decode(value) do
       {:ok, value} ->
         cast_input(value, constraints)
 
@@ -183,6 +183,19 @@ defmodule Ash.Type.Struct do
     else
       {:atomic, new_value}
     end
+  end
+
+  @impl true
+  def generator(constraints) do
+    if !constraints[:instance_of] do
+      raise ArgumentError,
+            "Cannot generate instances of the `:struct` type without an `:instance_of` constraint"
+    end
+
+    Ash.Type.Map.generator(constraints)
+    |> StreamData.map(fn value ->
+      struct(constraints[:instance_of], value)
+    end)
   end
 
   @impl true

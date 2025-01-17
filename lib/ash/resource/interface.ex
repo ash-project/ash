@@ -1,6 +1,9 @@
 defmodule Ash.Resource.Interface do
   @moduledoc """
   Represents a function in a resource's code interface
+
+  See the functions defined in this module for specifications of the options
+  that each type of code interface function supports in its options list.
   """
   defstruct [
     :name,
@@ -10,17 +13,11 @@ defmodule Ash.Resource.Interface do
     :get_by,
     :get_by_identity,
     :not_found_error?,
+    default_options: [],
     require_reference?: true
   ]
 
   @type t :: %__MODULE__{}
-
-  def transform(definition) do
-    {:ok,
-     definition
-     |> set_get?()
-     |> set_require_reference?()}
-  end
 
   defp set_get?(definition) do
     if definition.get_by || definition.get_by_identity do
@@ -170,32 +167,110 @@ defmodule Ash.Resource.Interface do
         |> Keyword.drop([:domain])
   end
 
-  def interface_options(:calculate, _) do
-    CalculateOpts
-  end
+  @doc """
+  Options supported by code interfaces for create actions
 
-  def interface_options(:create, _) do
+  ## Options
+
+  #{CreateOpts.docs()}
+  """
+  def create_opts do
     CreateOpts
   end
 
-  def interface_options(:update, _) do
+  @doc """
+  Options supported by code interfaces for read actions with `get?` or `get_by` set.
+
+  ## Options
+
+  #{ReadOpts.docs()}
+  """
+  def get_opts do
+    ReadOpts
+  end
+
+  @doc """
+  Options supported by code interfaces for read actions
+
+  ## Options
+
+  #{ReadOpts.docs()}
+  """
+  def read_opts do
+    ReadOpts
+  end
+
+  @doc """
+  Options supported by code interfaces for update actions
+
+  ## Options
+
+  #{UpdateOpts.docs()}
+  """
+  def update_opts do
     UpdateOpts
   end
 
-  def interface_options(:destroy, _) do
+  @doc """
+  Options supported by code interfaces for destroy actions
+
+  ## Options
+
+  #{DestroyOpts.docs()}
+  """
+  def destroy_opts do
     DestroyOpts
+  end
+
+  @doc """
+  Options supported by code interfaces for generic actions
+
+  ## Options
+
+  #{ActionOpts.docs()}
+  """
+  def generic_action_opts do
+    ActionOpts
+  end
+
+  @doc """
+  Options supported by code interfaces for calculations
+
+  ## Options
+
+  #{CalculateOpts.docs()}
+  """
+  def calculate_opts do
+    CalculateOpts
+  end
+
+  @doc false
+  def interface_options(:calculate, _) do
+    calculate_opts()
+  end
+
+  def interface_options(:create, _) do
+    create_opts()
+  end
+
+  def interface_options(:update, _) do
+    update_opts()
+  end
+
+  def interface_options(:destroy, _) do
+    destroy_opts()
   end
 
   def interface_options(:read, interface) do
     if interface.get? do
-      GetOpts
+      get_opts()
     else
-      ReadOpts
+      read_opts()
     end
   end
 
   def interface_options(:action, _) do
-    ActionOpts
+    generic_action_opts()
   end
 
   @schema [
@@ -245,8 +320,23 @@ defmodule Ash.Resource.Interface do
       doc: """
       Takes an identity, gets its field list, and performs the same logic as `get_by` with those fields. Adds filters for read, update and destroy actions, replacing the `record` first argument.
       """
+    ],
+    default_options: [
+      type: :keyword_list,
+      default: [],
+      doc:
+        "Default options to be merged with client-provided options. These can override domain or action defaults. `:load`, `:bulk_options`, and `:page` options will be deep merged."
     ]
   ]
 
+  @doc false
   def schema, do: @schema
+
+  @doc false
+  def transform(definition) do
+    {:ok,
+     definition
+     |> set_get?()
+     |> set_require_reference?()}
+  end
 end

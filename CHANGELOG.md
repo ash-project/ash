@@ -2,6 +2,224 @@
 
 <!-- changelog -->
 
+## [v3.4.55](https://github.com/ash-project/ash/compare/v3.4.54...v3.4.55) (2025-01-13)
+
+
+
+
+### Bug Fixes:
+
+* ensure can_* code interfaces pass arguments to actions
+
+* another pattern match error in `Ash.can?`
+
+* case clause error in `Ash.can?`
+
+* handle embedded attributes in attribute generator
+
+* `Ash.Generator`: Fix typo in skipped import name (#1704)
+
+* reset `ash_started_transaction?` on bulk create
+
+* set max_concurrency to 0 for generate_many
+
+* ensure that `once` and `sequence` behave predictably across tests
+
+### Improvements:
+
+* destroy missing records first in `manage_relationship`
+
+* add start_of_day function
+
+* add `cast_dates_as` constraint to `Ash.Type.DateTime`
+
+## [v3.4.54](https://github.com/ash-project/ash/compare/v3.4.53...v3.4.54) (2025-01-09)
+
+
+
+
+### Bug Fixes:
+
+* [`Ash.Generator`] Fix issues in `Ash.Generator.generate_many/2` (#1703)
+
+* [`Ash.Generator`: Don't error if no `after_action` is provided to `generate_many`
+
+* [`Ash.Generator`] Reuse the changeset actor when calling `bulk_create`
+
+### Improvements:
+
+* [`Ash.Generator`] run notifications for generators
+
+* [`Ash.Changeset`] `order_is_key` option for sorted relationships
+
+## [v3.4.53](https://github.com/ash-project/ash/compare/v3.4.52...v3.4.53) (2025-01-08)
+
+
+### Bug Fixes:
+
+* [`Ash.Generator`] properly delegate and handle conflicts in `Ash.Generator`
+
+* [`Ash.Generator`] Replace calls to `create` and `create_many` with `generate` and `generate_many` (#1701)
+
+* [calculations] use nested calculation dependencies from expr if not in expression
+
+* [`Ash.Changeset`] pattern match error on expression parse failure
+
+* [`Ash.Test.Resource.Validation.StringLengthTest`] handle `string_length` on arguments when atomic
+
+## [v3.4.52](https://github.com/ash-project/ash/compare/v3.4.51...v3.4.52) (2025-01-06)
+
+
+### Bug Fixes:
+
+* [`Ash.Type.Map`]  handle keyword errors from map field type casting
+
+* [`mix ash.gen.resource`] ensure extensions & subjects args are unique
+
+### Improvements:
+
+* [`ash.gen.resource`] validate that names given to `ash.gen.resource`
+
+* [`Ash.Generator`] add `Ash.Generator.changeset_generator/3`
+
+* [`Ash.Generator`] add `Ash.Generator.seed_generator/2`
+
+* [`Ash.Generator`] only use known keys in generators in `Ash.Generator`
+
+* [`Ash`] support `after_action` option to `Ash.bulk_create`
+
+* [`mix ash.install`] set `yes_to_deps` when fetching dependencies
+
+* [`Ash.Query`] better error message on non-resource in `Ash.Query.new/2`
+
+* [`Ash.bulk_destroy`] handle limited bulk destroys from streams
+
+* [Code interfaces] bulk actions use `full_read` from code interfaces given ids
+
+* [Code Interfaces] set `limit` in code interface to update or destroy one thing
+
+## [v3.4.51](https://github.com/ash-project/ash/compare/v3.4.50...v3.4.51) (2025-01-03)
+
+
+### Bug Fixes:
+
+* [`Ash.Resource`] handle ambiguous case of empty params in code interfaces (#1694)
+
+* [`Ash.Changeset`] discard manage_relationships added inside changes on atomic upgrade
+
+## [v3.4.50](https://github.com/ash-project/ash/compare/v3.4.49...v3.4.50) (2025-01-01)
+
+
+### Bug Fixes:
+
+* [`Ash.DataLayer.Ets`, `Ash.DataLayer.Mnesia`] properly handle aggregate defaults in ets/mnesia (#1684)
+
+* [`Ash.Resource.Validation.Changing`] use context message instead of default if provided in changing validation (#1677)
+
+* [`Ash.Changeset`] ensure that `changed?` context is set to true for atomics
+
+* [`Ash`] properly match on `return_query?` option, avoid raised pattern match error
+
+* [`Ash.Policy.Authorizer`] ensure that old config applies all aggregate policies
+
+### Improvements:
+
+* [`Ash.Generator`] add `Ash.Generator.once/2`
+
+* [`Ash.Type.Map`, `Ash.Type.Keyword`, `Ash.Type.Struct`] define `generate/1` callback for maps, structs, keywords
+
+* [`Ash`] add `data_layer?` option to `Ash.calculate/3`
+
+* [`Ash.Resource`] Add default code interface options (#1681)
+
+* [`Ash.Resource`] add `allow_forbidden_field?` option to relationships
+
+* [`Ash.Resource`] add `authorize_read_with` option to relationships
+
+* [`Ash`] support `default` option in `Ash.first` (#1683)
+
+* [`Ash.Notifier.PubSub`] allow exclusion of certain actions from publish_all (#1680)
+
+* [`mix igniter.install ash`] no prompt about SAT solver unless user is on windows
+
+* [`Ash.Domain`] add otp_app option to use Ash.Domain
+
+* - [`Ash`] add support for `strict?` in read options (#1669)
+
+## [v3.4.49](https://github.com/ash-project/ash/compare/v3.4.48...v3.4.49) (2024-12-22)
+
+
+### Improvements:
+
+- [read actions] - add support for `strict?` in `Ash.read` options. (#1669)
+
+### Bug Fixes:
+
+* [`Ash.Policy.Authorizer`] ensure that old config applies all aggregate policies
+
+If you've upgraded to the following configuration this does not affect you:
+
+```elixir
+config :ash, :policies, no_filter_static_forbidden_reads?: false
+```
+
+You should upgrade regardless, and adopt that new configuration.
+
+## [v3.4.48](https://github.com/ash-project/ash/compare/v3.4.47...v3.4.48) (2024-12-20)
+
+### Bug Fixes:
+
+- [calculations] properly update sort calculation expressions
+
+- [`Ash.Type.Module`] handle nil values in `Ash.Type.Module`
+
+- [`Ash.Resource`] ensure that `select_by_default?` is honored on loads
+
+- [`Ash.Type.Union`] Verify union types constraint on init
+
+- [loading data] ensure tenant is set on reselection query
+
+### Improvements:
+
+- [Igniter] handle igniter not being compiled, and make it optional
+
+- [`Ash.Generator`] add `Ash.Generator.next_in_sequence/3`
+
+- [performance] don't reselect unnecessary attributes
+
+- [pagination] add `show_keysets_for_all_actions?` configuration
+
+  Set `config :ash, show_keysets_for_all_actions?, false` for significant performance
+  improvements when reading resources that support keyset pagination. This causes
+  keysets to only be shown for actions that are actively being paginated with
+  keyset pagination.
+
+## [v3.4.47](https://github.com/ash-project/ash/compare/v3.4.46...v3.4.47) (2024-12-17)
+
+### Bug Fixes:
+
+- [`Ash.Query`] handle indexed maps and string keys in calculation arguments
+
+- [`Ash.Changeset`] throw validation error when trying to set public arguments in private_arguments (#1663)
+
+- [`Ash.Policy.Authorizer`] include `changeset` in preflight authorization context
+
+- [embedded resources] include presence of authorizers in embedded resource optimization
+
+- [`Ash.DataLayer`] don't check data layer compatibility for manual actions
+
+### Improvements:
+
+- [`Ash.Reactor`]: Always add the notication middleware any time the extension is added. (#1657)
+
+## [v3.4.46](https://github.com/ash-project/ash/compare/v3.4.45...v3.4.46) (2024-12-12)
+
+### Bug Fixes:
+
+- [`Ash.Tracer`] use proper telemetry name for actions
+
+- [`Ash.Sort`] use atoms for paths in related sorts
+
 ## [v3.4.45](https://github.com/ash-project/ash/compare/v3.4.44...v3.4.45) (2024-12-10)
 
 ### Bug Fixes:

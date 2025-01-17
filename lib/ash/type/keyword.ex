@@ -80,7 +80,7 @@ defmodule Ash.Type.Keyword do
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, constraints) when is_binary(value) do
-    case Jason.decode(value) do
+    case Ash.Helpers.json_module().decode(value) do
       {:ok, value} ->
         cast_input(value, constraints)
 
@@ -143,6 +143,14 @@ defmodule Ash.Type.Keyword do
 
       {_, _}, {:error, errors} ->
         {:error, errors}
+    end)
+  end
+
+  @impl true
+  def generator(constraints) do
+    Ash.Type.Map.generator(constraints)
+    |> StreamData.map(fn value ->
+      Map.to_list(value)
     end)
   end
 

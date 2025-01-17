@@ -653,6 +653,9 @@ defmodule Ash.Filter.Runtime do
           {:op, {:ok, expr}} ->
             resolve_expr(expr, record, parent, resource, unknown_on_unknown_refs?)
 
+          {:op, {:known, value}} ->
+            {:ok, value}
+
           {:error, error} ->
             {:error, error}
 
@@ -889,30 +892,31 @@ defmodule Ash.Filter.Runtime do
             |> resolve_expr(record, parent, resource, unknown_on_unknown_refs?)
           end
         else
-          # We need to rewrite this
-          # As it stands now, it will evaluate the calculation
-          # once per expanded result. I'm not sure what that will
-          # look like though.
-
-          if record do
-            case module.calculate([record], opts, context) do
-              [result] ->
-                {:ok, result}
-
-              {:ok, [result]} ->
-                {:ok, result}
-
-              :unknown when unknown_on_unknown_refs? ->
-                :unknown
-
-              _ ->
-                {:ok, nil}
-            end
+          if unknown_on_unknown_refs? do
+            :unknown
           else
-            if unknown_on_unknown_refs? do
-              :unknown
+            # We need to rewrite this
+            # As it stands now, it will evaluate the calculation
+            # once per expanded result. I'm not sure what that will
+            # look like though.
+
+            if record do
+              case module.calculate([record], opts, context) do
+                [result] ->
+                  {:ok, result}
+
+                {:ok, [result]} ->
+                  {:ok, result}
+
+                _ ->
+                  {:ok, nil}
+              end
             else
-              {:ok, nil}
+              if unknown_on_unknown_refs? do
+                :unknown
+              else
+                {:ok, nil}
+              end
             end
           end
         end

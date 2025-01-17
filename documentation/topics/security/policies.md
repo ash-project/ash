@@ -222,6 +222,75 @@ end
 
 A non-admin using the `:read_hidden` action would see a forbidden error.
 
+### Relationships and Policies 
+
+A common point of confusion when working with relationships is when they return less results or no results due to policies.
+Additionally, when requesting related data that produces a forbidden error, it forbids the *entire request*.
+
+For example, if you have a `Post`, that `belongs_to` `:author`, and the user requesting data cannot see the `author` due to a **filter** policy,
+then you may see something like this:
+
+```elixir
+%MyApp.Post{author: nil, ...}
+```
+
+Even though it is not possible for a `Post` to exist without an associated `:author`!
+
+Additionally, if the user cannot read the `author` due to a `:strict` policy, if you attempt to load the `:author`, the result
+of the **entire operation** will be `{:error, %Ash.Error.Forbidden{}}`.
+
+There are two ways that you can improve this behavior
+
+#### The `allow_forbidden_field?` Option
+
+This option will **default to `true`** in 4.0. You can adopt this behavior now with the following configuration.
+
+```elixir
+config :ash, :allow_forbidden_field_for_relationships_by_default, true
+```
+
+This option adjusts the relationship reading logic such that, if running a related read action would produce a
+forbidden error, the relationship will be set to `%Ash.ForbiddenField{}`, instead of forbidding the entire request.
+
+So in the example above where the **entire operation** fails, you would instead get:
+
+```elixir
+{:ok, %MyApp.Post{author: %Ash.ForbiddenField{}}}
+```
+
+#### The `authorize_read_with` Option
+
+This option typically only makes sense to apply on `has_one` and `belongs_to` relationships. This alters the behavior
+of policy filtering when loading related records. In our above example, lets say there is a policy like the following
+on `MyApp.Author`, that prevents us from reading an author that has been deactivated.
+
+```elixir
+policy action_type(:read) do
+  access_type :filter # This is the default access type. It is here for example.
+  authorize_if expr(active == false)
+end
+```
+
+When running a normal read action against that resource, you want any deactivated authors to be filtered out.
+However, when reading the `:author` relationship, you don't want the author to appear as `nil`. This is especially
+useful when combined with `allow_forbidden_field? true`.
+
+So lets make our `belongs_to` relationship looks like this.
+
+```elixir
+belongs_to :author, MyApp.Author do
+  allow_nil? false
+  allow_forbidden_field? true
+  athorize_read_with :error
+end
+```
+
+Now, that filter will be applied in such a way that produces an error if any record exists that matches `not(active == false)`.
+
+So a forbidden read of the `:author` relationship will never produce a `nil` value, nor will it produce an `{:error, %Ash.Error.Forbidden{}}`
+result. Instead, it the value of `:author` will be `%Ash.ForbiddenField{}`!
+
+
 ## Checks
 
 Checks evaluate from top to bottom within a policy. A check can produce one of three results, the same that a policy can produce. While checks are not necessarily evaluated in order, they _logically apply_ in that order, so you may as well think of it in that way. It can be thought of as a step-through algorithm.

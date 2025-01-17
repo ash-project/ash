@@ -28,9 +28,10 @@ jobs:
             { org: "ash-project", name: "ash_paper_trail" },
             { org: "team-alembic", name: "ash_authentication" },
             { org: "team-alembic", name: "ash_authentication_phoenix" },
+            { org: "sevenseacat", name: "tunez" }
           ]
-        otp: ["26.0.2"]
-        elixir: ["1.16.0"]
+        otp: ["27.2"]
+        elixir: ["1.18.1"]
     services:
       pg:
         image: postgres:16

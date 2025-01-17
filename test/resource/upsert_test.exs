@@ -172,7 +172,7 @@ defmodule Ash.Test.Resource.UpsertTest do
       assert expected.color == v.color
 
       # v_1 gets matched by sku and then updated
-      %{variants: [expected_updated]} = Product.upsert_variants!(p, [v_updated])
+      assert %{variants: [expected_updated]} = Product.upsert_variants!(p, [v_updated])
 
       assert expected_updated.color == v_updated.color
     end

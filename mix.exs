@@ -6,7 +6,7 @@ defmodule Ash.MixProject do
   A declarative, extensible framework for building Elixir applications.
   """
 
-  @version "3.4.45"
+  @version "3.4.55"
 
   def project do
     [
@@ -18,8 +18,8 @@ defmodule Ash.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       deps: deps(),
-      dialyzer: [plt_add_apps: [:mix, :mnesia, :plug, :ex_unit]],
-      docs: docs(),
+      dialyzer: [plt_add_apps: [:mix, :mnesia, :plug, :ex_unit, :stream_data]],
+      docs: &docs/0,
       aliases: aliases(),
       description: @description,
       source_url: "https://github.com/ash-project/ash",
@@ -41,6 +41,13 @@ defmodule Ash.MixProject do
       extra_section: "GUIDES",
       extras: [
         {"README.md", title: "Home"},
+        "documentation/dsls/DSL-Ash.Resource.md",
+        "documentation/dsls/DSL-Ash.Domain.md",
+        "documentation/dsls/DSL-Ash.Notifier.PubSub.md",
+        "documentation/dsls/DSL-Ash.Policy.Authorizer.md",
+        "documentation/dsls/DSL-Ash.DataLayer.Ets.md",
+        "documentation/dsls/DSL-Ash.DataLayer.Mnesia.md",
+        "documentation/dsls/DSL-Ash.Reactor.md",
         "documentation/tutorials/get-started.md",
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
@@ -89,13 +96,6 @@ defmodule Ash.MixProject do
         "documentation/how-to/encrypt-attributes.livemd",
         "documentation/how-to/prevent-concurrent-writes.livemd",
         "documentation/how-to/wrap-external-apis.livemd",
-        "documentation/dsls/DSL-Ash.Resource.md",
-        "documentation/dsls/DSL-Ash.Domain.md",
-        "documentation/dsls/DSL-Ash.Notifier.PubSub.md",
-        "documentation/dsls/DSL-Ash.Policy.Authorizer.md",
-        "documentation/dsls/DSL-Ash.DataLayer.Ets.md",
-        "documentation/dsls/DSL-Ash.DataLayer.Mnesia.md",
-        "documentation/dsls/DSL-Ash.Reactor.md",
         "CHANGELOG.md"
       ],
       groups_for_extras: [
@@ -108,16 +108,16 @@ defmodule Ash.MixProject do
           ~r"documentation/topics/about_ash",
           "CHANGELOG.md"
         ],
+        Reference: [
+          ~r"documentation/topics/reference",
+          ~r"documentation/dsls"
+        ],
         Resources: ~r"documentation/topics/resources",
         Actions: ~r"documentation/topics/actions",
         Security: ~r"documentation/topics/security",
         Development: ~r"documentation/topics/development",
         Advanced: ~r"documentation/topics/advanced",
         "How To": ~r"documentation/how-to",
-        Reference: [
-          ~r"documentation/topics/reference",
-          ~r"documentation/dsls"
-        ],
         Moved: [
           ~r"documentation/moved"
         ]
@@ -323,6 +323,7 @@ defmodule Ash.MixProject do
     [
       name: :ash,
       licenses: ["MIT"],
+      maintainers: ["Zach Daniel"],
       files: ~w(lib .formatter.exs mix.exs README* LICENSE*
       CHANGELOG* documentation),
       links: %{
@@ -368,7 +369,7 @@ defmodule Ash.MixProject do
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Code Generators
-      {:igniter, "~> 0.4 and >= 0.4.8"},
+      {:igniter, "~> 0.4 and >= 0.4.8", optional: true},
 
       # IO Utilities
       {:owl, "~> 0.11"},
@@ -399,6 +400,7 @@ defmodule Ash.MixProject do
         "spark.replace_doc_links",
         "spark.cheat_sheets_in_search"
       ],
+      format: "format --migrate",
       "spark.cheat_sheets_in_search":
         "spark.cheat_sheets_in_search --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
       "spark.formatter":

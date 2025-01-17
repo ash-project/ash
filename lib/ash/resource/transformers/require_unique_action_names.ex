@@ -12,7 +12,7 @@ defmodule Ash.Resource.Transformers.RequireUniqueActionNames do
     |> Transformer.get_entities([:actions])
     |> Enum.group_by(& &1.name)
     |> Enum.each(fn {name, actions} ->
-      unless Enum.count(actions) == 1 do
+      if Enum.count(actions) != 1 do
         raise DslError.exception(
                 message: """
                 Multiple actions (#{Enum.count(actions)}) with the name `#{name}` defined.

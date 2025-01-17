@@ -22,6 +22,7 @@ Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, (doma
 - `[:ash, (domain_short_name), :update]` - The execution of a update action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, (domain_short_name), :read]` - The execution of a read action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, (domain_short_name), :destroy]` - The execution of a destroy action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (domain_short_name), :action]` - The execution of a generic action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, :changeset]` - A changeset being processed for a given action, i.e with `Ash.Changeset.for_create`. Use `resource_short_name` metadata to break down measurements.
 - `[:ash, :query]` - A query being processed for an action, with `Ash.Query.for_read`. Use `resource_short_name` metadata to break down measurements.
 - `[:ash, :validation]` - A validation being run on a changeset. Use `resource_short_name` and `validation` metadata to break down measurements.

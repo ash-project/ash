@@ -721,7 +721,7 @@ defmodule Ash.Type do
 
     ash_type? = Ash.Type.ash_type?(type)
 
-    unless ash_type? do
+    if !ash_type? do
       raise """
       #{inspect(value)} is not a valid type.
 
@@ -1638,6 +1638,15 @@ defmodule Ash.Type do
 
         @impl true
         def embed_as(_, _), do: :self
+
+        if Keyword.get(unquote(opts), :autogenerate_enabled?) do
+          @impl true
+          def autogenerate(constraints) do
+            constraints
+            |> @parent.generator()
+            |> Enum.at(0)
+          end
+        end
       end
 
       @impl true
@@ -2112,12 +2121,12 @@ defmodule Ash.Type do
   defmacro __before_compile__(_env) do
     quote generated: true do
       if Module.defines?(__MODULE__, {:equal?, 2}, :def) do
-        unless Module.defines?(__MODULE__, {:simple_equality, 0}, :def) do
+        if !Module.defines?(__MODULE__, {:simple_equality, 0}, :def) do
           @impl true
           def simple_equality?, do: false
         end
       else
-        unless Module.defines?(__MODULE__, {:simple_equality, 0}, :def) do
+        if !Module.defines?(__MODULE__, {:simple_equality, 0}, :def) do
           @impl true
           def simple_equality?, do: true
         end
@@ -2190,7 +2199,7 @@ defmodule Ash.Type do
         def custom_apply_constraints_array?, do: false
       end
 
-      unless Module.defines?(__MODULE__, {:can_load?, 1}, :def) do
+      if !Module.defines?(__MODULE__, {:can_load?, 1}, :def) do
         @impl Ash.Type
         if Module.defines?(__MODULE__, {:load, 4}, :def) do
           def can_load?(_), do: true

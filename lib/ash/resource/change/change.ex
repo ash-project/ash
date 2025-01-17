@@ -308,12 +308,12 @@ defmodule Ash.Resource.Change do
       end
 
       if Module.defines?(__MODULE__, {:atomic, 3}, :def) do
-        unless Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
+        if !Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
           @impl true
           def atomic?, do: true
         end
       else
-        unless Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
+        if !Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
           @impl true
           def atomic?, do: false
         end

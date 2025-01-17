@@ -1,399 +1,439 @@
-defmodule Mix.Tasks.Ash.Gen.Resource do
-  @example """
-  mix ash.gen.resource Helpdesk.Support.Ticket \\
-    --default-actions read \\
-    --uuid-primary-key id \\
-    --attribute subject:string:required:public \\
-    --relationship belongs_to:representative:Helpdesk.Support.Representative \\
-    --timestamps \\
-    --extend postgres,graphql
-  """
-  @moduledoc """
-  Generate and configure an Ash.Resource.
+if Code.ensure_loaded?(Igniter) do
+  defmodule Mix.Tasks.Ash.Gen.Resource do
+    @example """
+    mix ash.gen.resource Helpdesk.Support.Ticket \\
+      --default-actions read \\
+      --uuid-primary-key id \\
+      --attribute subject:string:required:public \\
+      --relationship belongs_to:representative:Helpdesk.Support.Representative \\
+      --timestamps \\
+      --extend postgres,graphql
+    """
+    @moduledoc """
+    Generate and configure an Ash.Resource.
 
-  If the domain does not exist, we create it. If it does, we add the resource to it if it is not already present.
+    If the domain does not exist, we create it. If it does, we add the resource to it if it is not already present.
 
-  ## Example
+    ## Example
 
-  ```bash
-  #{@example}
-  ```
+    ```bash
+    #{@example}
+    ```
 
-  ## Options
+    ## Options
 
-  * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `public`, `sensitive`, and `required`. i.e `-a name:string:required`
-  * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public`. `belongs_to` only modifiers: `primary_key`, `sensitive`, and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`
-  * `--default-actions` - A csv list of default action types to add. The `create` and `update` actions accept the public attributes being added.
-  * `--uuid-primary-key` or `-u` - Adds a UUIDv4 primary key with that name. i.e `-u id`
-  * `--uuid-v7-primary-key` - Adds a UUIDv7 primary key with that name.
-  * `--integer-primary-key` or `-i` - Adds an integer primary key with that name. i.e `-i id`
-  * `--domain` or `-d` - The domain module to add the resource to. i.e `-d MyApp.MyDomain`. This defaults to the resource's module name, minus the last segment.
-  * `--extend` or `-e` - A comma separated list of modules or builtins to extend the resource with. i.e `-e postgres,Some.Extension`
-  * `--base` or `-b` - The base module to use for the resource. i.e `-b Ash.Resource`. Requires that the module is in `config :your_app, :base_resources`
-  * `--timestamps` or `-t` - If set adds `inserted_at` and `updated_at` timestamps to the resource.
-  """
+    * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `public`, `sensitive`, and `required`. i.e `-a name:string:required`
+    * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public`. `belongs_to` only modifiers: `primary_key`, `sensitive`, and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`
+    * `--default-actions` - A csv list of default action types to add. The `create` and `update` actions accept the public attributes being added.
+    * `--uuid-primary-key` or `-u` - Adds a UUIDv4 primary key with that name. i.e `-u id`
+    * `--uuid-v7-primary-key` - Adds a UUIDv7 primary key with that name.
+    * `--integer-primary-key` or `-i` - Adds an integer primary key with that name. i.e `-i id`
+    * `--domain` or `-d` - The domain module to add the resource to. i.e `-d MyApp.MyDomain`. This defaults to the resource's module name, minus the last segment.
+    * `--extend` or `-e` - A comma separated list of modules or builtins to extend the resource with. i.e `-e postgres,Some.Extension`
+    * `--base` or `-b` - The base module to use for the resource. i.e `-b Ash.Resource`. Requires that the module is in `config :your_app, :base_resources`
+    * `--timestamps` or `-t` - If set adds `inserted_at` and `updated_at` timestamps to the resource.
+    """
 
-  @shortdoc "Generate and configure an Ash.Resource."
-  use Igniter.Mix.Task
+    @shortdoc "Generate and configure an Ash.Resource."
+    use Igniter.Mix.Task
 
-  @impl Igniter.Mix.Task
-  def info(argv, _parent) do
-    for {key, cmd} <- [da: "--default-actions", u7: "--uuid-v7-primary-key"] do
-      if "-#{key}" in argv do
-        Mix.shell().error("""
-          The `-#{key}` alias has been removed as multi-char aliases are deprecated in OptionParser.
-          Please use `--#{cmd}` instead.
-        """)
+    @impl Igniter.Mix.Task
+    def info(argv, _parent) do
+      for {key, cmd} <- [da: "--default-actions", u7: "--uuid-v7-primary-key"] do
+        if "-#{key}" in argv do
+          Mix.shell().error("""
+            The `-#{key}` alias has been removed as multi-char aliases are deprecated in OptionParser.
+            Please use `--#{cmd}` instead.
+          """)
 
-        Mix.shell().exit({:shutdown, 1})
+          Mix.shell().exit({:shutdown, 1})
+        end
       end
+
+      %Igniter.Mix.Task.Info{
+        positional: [:resource],
+        example: @example,
+        schema: [
+          attribute: :csv,
+          relationship: :csv,
+          default_actions: :csv,
+          uuid_primary_key: :string,
+          uuid_v7_primary_key: :string,
+          integer_primary_key: :string,
+          domain: :string,
+          extend: :csv,
+          base: :string,
+          timestamps: :boolean,
+          da: :string,
+          u7: :string
+        ],
+        aliases: [
+          a: :attribute,
+          r: :relationship,
+          d: :domain,
+          u: :uuid_primary_key,
+          i: :integer_primary_key,
+          e: :extend,
+          b: :base,
+          t: :timestamps
+        ]
+      }
     end
 
-    %Igniter.Mix.Task.Info{
-      positional: [:resource],
-      example: @example,
-      schema: [
-        attribute: :csv,
-        relationship: :csv,
-        default_actions: :csv,
-        uuid_primary_key: :string,
-        uuid_v7_primary_key: :string,
-        integer_primary_key: :string,
-        domain: :string,
-        extend: :csv,
-        base: :string,
-        timestamps: :boolean,
-        da: :string,
-        u7: :string
-      ],
-      aliases: [
-        a: :attribute,
-        r: :relationship,
-        d: :domain,
-        u: :uuid_primary_key,
-        i: :integer_primary_key,
-        e: :extend,
-        b: :base,
-        t: :timestamps
-      ]
-    }
-  end
+    @impl Igniter.Mix.Task
+    def igniter(igniter) do
+      arguments = igniter.args.positional
+      options = igniter.args.options
+      argv = igniter.args.argv_flags
 
-  @impl Igniter.Mix.Task
-  def igniter(igniter) do
-    arguments = igniter.args.positional
-    options = igniter.args.options
-    argv = igniter.args.argv_flags
+      resource = Igniter.Project.Module.parse(arguments.resource)
+      app_name = Igniter.Project.Application.app_name(igniter)
 
-    resource = Igniter.Project.Module.parse(arguments.resource)
-    app_name = Igniter.Project.Application.app_name(igniter)
+      domain =
+        case options[:domain] do
+          nil ->
+            resource
+            |> Module.split()
+            |> :lists.droplast()
+            |> Module.concat()
 
-    domain =
-      case options[:domain] do
-        nil ->
-          resource
-          |> Module.split()
-          |> :lists.droplast()
-          |> Module.concat()
+          domain ->
+            Igniter.Project.Module.parse(domain)
+        end
 
-        domain ->
-          Igniter.Project.Module.parse(domain)
-      end
+      options =
+        options
+        |> Keyword.update(
+          :default_actions,
+          [],
+          fn defaults -> Enum.sort_by(defaults, &(&1 in ["create", "update"])) end
+        )
+        |> Keyword.put_new(:base, "Ash.Resource")
 
-    options =
-      options
-      |> Keyword.update(
-        :default_actions,
-        [],
-        fn defaults -> Enum.sort_by(defaults, &(&1 in ["create", "update"])) end
-      )
-      |> Keyword.put_new(:base, "Ash.Resource")
+      base =
+        if options[:base] == "Ash.Resource" do
+          "Ash.Resource"
+        else
+          base =
+            Igniter.Project.Module.parse(options[:base])
 
-    base =
-      if options[:base] == "Ash.Resource" do
-        "Ash.Resource"
-      else
-        base =
-          Igniter.Project.Module.parse(options[:base])
+          if base not in List.wrap(Application.get_env(app_name, :base_resources)) do
+            raise """
+            The base module #{inspect(base)} is not in the list of base resources.
 
-        unless base in List.wrap(Application.get_env(app_name, :base_resources)) do
-          raise """
-          The base module #{inspect(base)} is not in the list of base resources.
+            If it exists but is not in the base resource list, add it like so:
 
-          If it exists but is not in the base resource list, add it like so:
+            `config #{inspect(app_name)}, base_resources: [#{inspect(base)}]`
 
-          `config #{inspect(app_name)}, base_resources: [#{inspect(base)}]`
+            If it does not exist, you can generate a base resource with `mix ash.gen.base_resource #{inspect(base)}`
+            """
+          end
 
-          If it does not exist, you can generate a base resource with `mix ash.gen.base_resource #{inspect(base)}`
+          inspect(base)
+        end
+
+      attributes = attributes(options)
+
+      relationships =
+        if !Enum.empty?(options[:relationship]) do
+          """
+          relationships do
+          #{relationships(options)}
+          end
           """
         end
 
-        inspect(base)
+      default_accept =
+        Enum.flat_map(options[:attribute], fn attribute ->
+          [name, _type | modifiers] = String.split(attribute, ":", trim: true)
+
+          if "public" in modifiers do
+            [String.to_atom(name)]
+          else
+            []
+          end
+        end)
+
+      actions =
+        case options[:default_actions] do
+          [] ->
+            ""
+
+          defaults ->
+            default_contents =
+              Enum.map_join(defaults, ", ", fn
+                type when type in ["read", "destroy"] ->
+                  ":#{type}"
+
+                type when type in ["create", "update"] ->
+                  "#{type}: #{inspect(default_accept)}"
+
+                type ->
+                  raise """
+                  Invalid default action type given to `--default-actions`: #{inspect(type)}.
+                  """
+              end)
+
+            """
+            actions do
+              defaults [#{default_contents}]
+            end
+            """
+        end
+
+      attributes =
+        if options[:uuid_primary_key] || options[:integer_primary_key] ||
+             options[:uuid_v7_primary_key] ||
+             !Enum.empty?(options[:attribute]) || options[:timestamps] do
+          uuid_primary_key =
+            if options[:uuid_primary_key] do
+              pkey_builder("uuid_primary_key", options[:uuid_primary_key])
+            end
+
+          uuid_v7_primary_key =
+            if options[:uuid_v7_primary_key] do
+              pkey_builder("uuid_v7_primary_key", options[:uuid_v7_primary_key])
+            end
+
+          integer_primary_key =
+            if options[:integer_primary_key] do
+              pkey_builder("integer_primary_key", options[:integer_primary_key])
+            end
+
+          timestamps =
+            if options[:timestamps] do
+              "timestamps()"
+            end
+
+          """
+          attributes do
+            #{uuid_primary_key}
+            #{uuid_v7_primary_key}
+            #{integer_primary_key}
+            #{attributes}
+            #{timestamps}
+          end
+          """
+        end
+
+      igniter
+      |> Igniter.compose_task("ash.gen.domain", [inspect(domain), "--ignore-if-exists"])
+      |> Ash.Domain.Igniter.add_resource_reference(
+        domain,
+        resource
+      )
+      |> Igniter.Project.Module.create_module(
+        resource,
+        """
+        use #{base},
+          otp_app: #{inspect(app_name)},
+          domain: #{inspect(domain)}
+
+        #{actions}
+
+        #{attributes}
+
+        #{relationships}
+        """
+      )
+      |> extend(resource, options[:extend], argv)
+    end
+
+    defp extend(igniter, _, [], _) do
+      igniter
+    end
+
+    defp extend(igniter, resource, extensions, argv) do
+      Igniter.compose_task(
+        igniter,
+        "ash.patch.extend",
+        [inspect(resource), Enum.join(extensions, ",")] ++ argv
+      )
+    end
+
+    defp pkey_builder(builder, text) do
+      [name | modifiers] = String.split(text, ":", trim: true)
+      modifiers = modifiers -- ["primary_key"]
+
+      if !valid_attribute_name?(name) do
+        raise "Invalid attribute name provided for `#{builder}`: #{name}"
       end
 
-    attributes = attributes(options)
-
-    relationships =
-      if !Enum.empty?(options[:relationship]) do
+      if Enum.empty?(modifiers) do
+        "#{builder} :#{name}"
+      else
         """
-        relationships do
-        #{relationships(options)}
+        #{builder} :#{name} do
+          #{attribute_modifier_string(modifiers)}
         end
         """
       end
+    end
 
-    default_accept =
-      Enum.flat_map(options[:attribute], fn attribute ->
-        [name, _type | modifiers] = String.split(attribute, ":", trim: true)
+    defp valid_attribute_name?(name) do
+      Regex.match?(~r/^[a-zA-Z][a-zA-Z0-9_]*[!?]?$/, name)
+    end
 
-        if "public" in modifiers do
-          [String.to_atom(name)]
-        else
-          []
+    defp attributes(options) do
+      options[:attribute]
+      |> List.wrap()
+      |> Enum.join(",")
+      |> String.split(",", trim: true)
+      |> Enum.map(fn attribute ->
+        case String.split(attribute, ":") do
+          [name, type | modifiers] ->
+            if !valid_attribute_name?(name) do
+              raise "Invalid attribute name provided: #{name}"
+            end
+
+            {name, type, modifiers}
+
+          _name ->
+            raise """
+            Invalid attribute format: #{attribute}. Please use the format `name:type` for each attribute.
+            """
         end
       end)
+      |> Enum.map_join("\n", fn
+        {name, type, []} ->
+          type = resolve_type(type)
 
-    actions =
-      case options[:default_actions] do
-        [] ->
-          ""
+          "attribute :#{name}, #{inspect(type)}"
 
-        defaults ->
-          default_contents =
-            Enum.map_join(defaults, ", ", fn
-              type when type in ["read", "destroy"] ->
-                ":#{type}"
+        {name, type, modifiers} ->
+          modifier_string = attribute_modifier_string(modifiers)
 
-              type when type in ["create", "update"] ->
-                "#{type}: #{inspect(default_accept)}"
+          type = resolve_type(type)
 
-              type ->
-                raise """
-                Invalid default action type given to `--default-actions`: #{inspect(type)}.
+          """
+          attribute :#{name}, #{inspect(type)} do
+            #{modifier_string}
+          end
+          """
+      end)
+    end
+
+    defp attribute_modifier_string(modifiers) do
+      modifiers
+      |> Enum.uniq()
+      |> Enum.map_join("\n", fn
+        "primary_key" ->
+          "primary_key? true"
+
+        "public" ->
+          "public? true"
+
+        "required" ->
+          "allow_nil? false"
+
+        "sensitive" ->
+          "sensitive? true"
+
+        unknown ->
+          raise ArgumentError,
                 """
+                Unrecognizeable attribute modifier: `#{unknown}`.
+
+                Known modifiers are: primary_key, public, required, sensitive.
+                """
+      end)
+    end
+
+    defp relationships(options) do
+      options[:relationship]
+      |> List.wrap()
+      |> Enum.join(",")
+      |> String.split(",")
+      |> Enum.map(fn relationship ->
+        case String.split(relationship, ":") do
+          [type, name, destination | modifiers] ->
+            if !valid_attribute_name?(name) do
+              raise "Invalid relationship name provided: #{name}"
+            end
+
+            {type, name, destination, modifiers}
+
+          _name ->
+            raise """
+            Invalid relationship format: #{relationship}. Please use the format `type:name:destination` for each attribute.
+            """
+        end
+      end)
+      |> Enum.map_join("\n", fn
+        {type, name, destination, []} ->
+          "#{type} :#{name}, #{destination}"
+
+        {type, name, destination, modifiers} ->
+          modifier_string =
+            Enum.map_join(modifiers, "\n", fn
+              "primary_key" ->
+                if type == "belongs_to" do
+                  "primary_key? true"
+                else
+                  raise ArgumentError,
+                        "The @ modifier (for `primary_key?: true`) is only valid for belongs_to relationships, saw it in `#{type}:#{name}`"
+                end
+
+              "public" ->
+                "public? true"
+
+              "sensitive?" ->
+                "sensitive? true"
+
+              "required" ->
+                if type == "belongs_to" do
+                  "allow_nil? false"
+                else
+                  raise ArgumentError,
+                        "The ! modifier (for `allow_nil?: false`) is only valid for belongs_to relationships, saw it in `#{type}:#{name}`"
+                end
             end)
 
           """
-          actions do
-            defaults [#{default_contents}]
+          #{type} :#{name}, #{destination} do
+            #{modifier_string}
           end
           """
-      end
+      end)
+    end
 
-    attributes =
-      if options[:uuid_primary_key] || options[:integer_primary_key] ||
-           options[:uuid_v7_primary_key] ||
-           !Enum.empty?(options[:attribute]) || options[:timestamps] do
-        uuid_primary_key =
-          if options[:uuid_primary_key] do
-            pkey_builder("uuid_primary_key", options[:uuid_primary_key])
-          end
-
-        uuid_v7_primary_key =
-          if options[:uuid_v7_primary_key] do
-            pkey_builder("uuid_v7_primary_key", options[:uuid_v7_primary_key])
-          end
-
-        integer_primary_key =
-          if options[:integer_primary_key] do
-            pkey_builder("integer_primary_key", options[:integer_primary_key])
-          end
-
-        timestamps =
-          if options[:timestamps] do
-            "timestamps()"
-          end
-
-        """
-        attributes do
-          #{uuid_primary_key}
-          #{uuid_v7_primary_key}
-          #{integer_primary_key}
-          #{attributes}
-          #{timestamps}
+    defp resolve_type(value) do
+      resolved_type =
+        if String.contains?(value, ".") do
+          Module.concat([value])
+        else
+          String.to_atom(value)
         end
-        """
-      end
 
-    igniter
-    |> Igniter.compose_task("ash.gen.domain", [inspect(domain), "--ignore-if-exists"])
-    |> Ash.Domain.Igniter.add_resource_reference(
-      domain,
-      resource
-    )
-    |> Igniter.Project.Module.create_module(
-      resource,
-      """
-      use #{base},
-        otp_app: #{inspect(app_name)},
-        domain: #{inspect(domain)}
+      ensure_ash_type!(resolved_type)
 
-      #{actions}
+      resolved_type
+    end
 
-      #{attributes}
-
-      #{relationships}
-      """
-    )
-    |> extend(resource, options[:extend], argv)
-  end
-
-  defp extend(igniter, _, [], _) do
-    igniter
-  end
-
-  defp extend(igniter, resource, extensions, argv) do
-    Igniter.compose_task(
-      igniter,
-      "ash.patch.extend",
-      [inspect(resource), Enum.join(extensions, ",")] ++ argv
-    )
-  end
-
-  defp pkey_builder(builder, text) do
-    [name | modifiers] = String.split(text, ":", trim: true)
-    modifiers = modifiers -- ["primary_key"]
-
-    if Enum.empty?(modifiers) do
-      "#{builder} :#{name}"
-    else
-      """
-      #{builder} :#{name} do
-        #{attribute_modifier_string(modifiers)}
-      end
-      """
+    defp ensure_ash_type!(original_type) do
+      _ = Ash.Type.get_type!(original_type)
     end
   end
+else
+  defmodule Mix.Tasks.Ash.Gen.Resource do
+    @moduledoc """
+    Generate and configure an Ash.Resource.
+    """
 
-  defp attributes(options) do
-    options[:attribute]
-    |> List.wrap()
-    |> Enum.join(",")
-    |> String.split(",", trim: true)
-    |> Enum.map(fn attribute ->
-      case String.split(attribute, ":") do
-        [name, type | modifiers] ->
-          {name, type, modifiers}
+    @shortdoc "Generate and configure an Ash.Resource."
 
-        _name ->
-          raise """
-          Invalid attribute format: #{attribute}. Please use the format `name:type` for each attribute.
-          """
-      end
-    end)
-    |> Enum.map_join("\n", fn
-      {name, type, []} ->
-        type = resolve_type(type)
+    use Mix.Task
 
-        "attribute :#{name}, #{inspect(type)}"
+    def run(_argv) do
+      Mix.shell().error("""
+      The task 'ash.gen.resource' requires igniter to be run.
 
-      {name, type, modifiers} ->
-        modifier_string = attribute_modifier_string(modifiers)
+      Please install igniter and try again.
 
-        type = resolve_type(type)
+      For more information, see: https://hexdocs.pm/igniter
+      """)
 
-        """
-        attribute :#{name}, #{inspect(type)} do
-          #{modifier_string}
-        end
-        """
-    end)
-  end
-
-  defp attribute_modifier_string(modifiers) do
-    modifiers
-    |> Enum.uniq()
-    |> Enum.map_join("\n", fn
-      "primary_key" ->
-        "primary_key? true"
-
-      "public" ->
-        "public? true"
-
-      "required" ->
-        "allow_nil? false"
-
-      "sensitive" ->
-        "sensitive? true"
-
-      unknown ->
-        raise ArgumentError,
-              """
-              Unrecognizeable attribute modifier: `#{unknown}`.
-
-              Known modifiers are: primary_key, public, required, sensitive.
-              """
-    end)
-  end
-
-  defp relationships(options) do
-    options[:relationship]
-    |> List.wrap()
-    |> Enum.join(",")
-    |> String.split(",")
-    |> Enum.map(fn relationship ->
-      case String.split(relationship, ":") do
-        [type, name, destination | modifiers] ->
-          {type, name, destination, modifiers}
-
-        _name ->
-          raise """
-          Invalid relationship format: #{relationship}. Please use the format `type:name:destination` for each attribute.
-          """
-      end
-    end)
-    |> Enum.map_join("\n", fn
-      {type, name, destination, []} ->
-        "#{type} :#{name}, #{destination}"
-
-      {type, name, destination, modifiers} ->
-        modifier_string =
-          Enum.map_join(modifiers, "\n", fn
-            "primary_key" ->
-              if type == "belongs_to" do
-                "primary_key? true"
-              else
-                raise ArgumentError,
-                      "The @ modifier (for `primary_key?: true`) is only valid for belongs_to relationships, saw it in `#{type}:#{name}`"
-              end
-
-            "public" ->
-              "public? true"
-
-            "sensitive?" ->
-              "sensitive? true"
-
-            "required" ->
-              if type == "belongs_to" do
-                "allow_nil? false"
-              else
-                raise ArgumentError,
-                      "The ! modifier (for `allow_nil?: false`) is only valid for belongs_to relationships, saw it in `#{type}:#{name}`"
-              end
-          end)
-
-        """
-        #{type} :#{name}, #{destination} do
-          #{modifier_string}
-        end
-        """
-    end)
-  end
-
-  defp resolve_type(value) do
-    resolved_type =
-      if String.contains?(value, ".") do
-        Module.concat([value])
-      else
-        String.to_atom(value)
-      end
-
-    ensure_ash_type!(resolved_type)
-
-    resolved_type
-  end
-
-  defp ensure_ash_type!(original_type) do
-    _ = Ash.Type.get_type!(original_type)
+      exit({:shutdown, 1})
+    end
   end
 end

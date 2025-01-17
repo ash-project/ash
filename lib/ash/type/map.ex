@@ -81,7 +81,7 @@ defmodule Ash.Type.Map do
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, constraints) when is_binary(value) do
-    case Jason.decode(value) do
+    case Ash.Helpers.json_module().decode(value) do
       {:ok, value} ->
         cast_input(value, constraints)
 
@@ -123,6 +123,28 @@ defmodule Ash.Type.Map do
       {_, _}, {:error, errors} ->
         {:error, errors}
     end)
+  end
+
+  @impl true
+  def generator(constraints) do
+    if constraints[:fields] do
+      optional =
+        constraints[:fields]
+        |> Enum.filter(fn {_, value} ->
+          value[:allow_nil?]
+        end)
+        |> Keyword.keys()
+
+      constraints[:fields]
+      |> Map.new(fn {key, config} ->
+        type = config[:type]
+        constraints = config[:constraints] || []
+        {key, Ash.Type.generator(type, constraints)}
+      end)
+      |> Ash.Generator.mixed_map(optional)
+    else
+      StreamData.constant(%{})
+    end
   end
 
   defp check_fields(value, fields) do
@@ -168,6 +190,13 @@ defmodule Ash.Type.Map do
             {:ok, Map.put(result, field, field_value)}
 
           {:error, errors} ->
+            errors =
+              if Keyword.keyword?(errors) do
+                [errors]
+              else
+                List.wrap(errors)
+              end
+
             {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
         end
 

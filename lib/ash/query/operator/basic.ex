@@ -1,4 +1,5 @@
 defmodule Ash.Query.Operator.Basic do
+  @moduledoc false
   require Decimal
 
   @operators [

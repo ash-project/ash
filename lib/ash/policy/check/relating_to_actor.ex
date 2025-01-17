@@ -17,7 +17,7 @@ defmodule Ash.Policy.Check.RelatingToActor do
     if is_nil(Map.get(actor, relationship.destination_attribute)) do
       false
     else
-      unless relationship.type == :belongs_to do
+      if relationship.type != :belongs_to do
         raise "Can only use `belongs_to` relationships in relating_to_actor checks"
       end
 
@@ -58,8 +58,8 @@ defmodule Ash.Policy.Check.RelatingToActor do
             actor_keys = take_keys(actor, primary_key)
             input_keys = take_keys(input, primary_key)
 
-            opts[:on_lookup] == :relate and Enum.all?(actor_keys, & &1) &&
-              Enum.all?(input_keys, & &1) and input_keys == actor_keys
+            ((opts[:on_lookup] == :relate and Enum.all?(actor_keys, & &1)) &&
+               Enum.all?(input_keys, & &1)) and input_keys == actor_keys
 
           _ ->
             false

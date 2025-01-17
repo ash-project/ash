@@ -164,3 +164,7 @@ The Ash ecosystem consists of numerous packages, all of which have their own doc
 ### Testing
 
 - [Smokestack](https://hexdocs.pm/smokestack) | Declarative test factories for Ash resources
+
+### Examples & External Resources
+
+- [Ash Real World](https://github.com/team-alembic/realworld) | Ash + Phoenix LiveView codebase containing real world examples (CRUD, auth, advanced patterns, etc)

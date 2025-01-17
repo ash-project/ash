@@ -26,6 +26,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     filters: [],
     filterable?: true,
     sortable?: true,
+    allow_forbidden_field?: false,
+    authorize_read_with: :filter,
     validate_destination_attribute?: true,
     cardinality: :one,
     type: :belongs_to

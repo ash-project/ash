@@ -11,8 +11,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
   @doc false
   @impl true
   def build(create, reactor) do
-    with {:ok, reactor} <- ensure_hooked(reactor),
-         {:ok, reactor, arguments} <- build_input_arguments(reactor, create) do
+    with {:ok, reactor, arguments} <- build_input_arguments(reactor, create) do
       initial =
         case create.initial do
           nil ->

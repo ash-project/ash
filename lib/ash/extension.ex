@@ -8,7 +8,11 @@ defmodule Ash.Extension do
 
   @type argv :: [String.t()]
 
-  @type igniter :: Igniter.t()
+  if Code.ensure_loaded?(Igniter) do
+    @type igniter :: Igniter.t()
+  else
+    @type igniter :: any()
+  end
 
   @callback migrate(argv) :: term
   @callback reset(argv) :: term

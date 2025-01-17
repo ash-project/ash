@@ -56,6 +56,16 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
       public? true
     end
 
+    count :always_forbidden_comments, :comments do
+      public? true
+      read_action :always_forbid
+    end
+
+    count :always_forbidden_author, :author do
+      public? true
+      read_action :always_forbid
+    end
+
     count :count_of_commenters, [:comments, :author] do
       public? true
       uniq? true
@@ -75,6 +85,13 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
   relationships do
     belongs_to :author, Ash.Test.Support.PolicyComplex.User do
       public?(true)
+    end
+
+    belongs_to :forbidden_field_author, Ash.Test.Support.PolicyComplex.User do
+      source_attribute :author_id
+      define_attribute? false
+      authorize_read_with(:error)
+      allow_forbidden_field?(true)
     end
 
     has_many :comments, Ash.Test.Support.PolicyComplex.Comment do

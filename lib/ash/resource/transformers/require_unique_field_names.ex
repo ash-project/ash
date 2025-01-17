@@ -32,7 +32,7 @@ defmodule Ash.Resource.Transformers.RequireUniqueFieldNames do
     |> Enum.each(fn {name, groups} ->
       name_count = Enum.count(groups)
 
-      unless name_count == 1 do
+      if name_count != 1 do
         raise DslError.exception(
                 message: """
                 There are #{name_count} fields(attributes, calculations, aggregates, and relationships) that share the name `#{name}`

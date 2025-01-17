@@ -194,27 +194,16 @@ defmodule Ash.Actions.Read do
         page_opts(action, query.page, relationship?)
       end
 
-    query =
-      if page_opts do
-        query
-        |> Ash.Query.set_context(%{
-          initial_limit: query.limit,
-          initial_offset: query.offset,
-          page_opts:
-            unless opts[:inital_data] do
-              page_opts
-            end,
-          initial_query: query,
-          query_opts: opts
-        })
-      else
-        query
-      end
-
     opts = Keyword.delete(opts, :page)
+
     query = Ash.Query.page(query, page_opts)
 
-    query = load_and_select_sort(query)
+    query =
+      if opts[:initial_data] do
+        query
+      else
+        load_and_select_sort(query, page_opts)
+      end
 
     query = add_relationship_count_aggregates(query)
 
@@ -998,7 +987,7 @@ defmodule Ash.Actions.Read do
     must_be_reselected =
       if opts[:reuse_values?] do
         must_be_reselected
-        |> Enum.reject(&Ash.Resource.selected?(first, &1))
+        |> Enum.reject(&Ash.Resource.selected?(first, &1, forbidden_means_selected?: true))
       else
         must_be_reselected
       end
@@ -1062,10 +1051,12 @@ defmodule Ash.Actions.Read do
              :select,
              :calculations
            ])
+           |> Ash.Query.select([])
            |> Ash.Query.load(calculations_in_query)
            |> Ash.Query.select(must_be_reselected)
            |> Ash.DataLayer.Simple.set_data(initial_data)
            |> Ash.Query.do_filter(filter),
+         {:ok, %{valid?: true} = query} <- handle_multitenancy(query),
          {:ok, data_layer_calculations} <-
            hydrate_calculations(
              query,
@@ -2604,21 +2595,9 @@ defmodule Ash.Actions.Read do
       end
 
     paginated =
-      cond do
-        page_opts[:before] || page_opts[:after] ->
-          keyset_pagination(query, pagination, page_opts)
-
-        page_opts[:offset] ->
-          limit_offset_pagination(query, pagination, page_opts)
-
-        pagination.offset? && pagination.keyset? ->
-          keyset_pagination(query, pagination, page_opts)
-
-        pagination.offset? ->
-          limit_offset_pagination(query, pagination, page_opts)
-
-        true ->
-          keyset_pagination(query, pagination, page_opts)
+      case pagination_type(page_opts, query.action.pagination) do
+        :keyset -> keyset_pagination(query, pagination, page_opts)
+        :offset -> limit_offset_pagination(query, pagination, page_opts)
       end
 
     case paginated do
@@ -2631,6 +2610,30 @@ defmodule Ash.Actions.Read do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  defp pagination_type(_page_opts, pagination) when pagination in [nil, false], do: nil
+
+  defp pagination_type(page_opts, pagination) do
+    cond do
+      !page_opts ->
+        nil
+
+      page_opts[:before] || page_opts[:after] ->
+        :keyset
+
+      page_opts[:offset] ->
+        :offset
+
+      pagination.keyset? ->
+        :keyset
+
+      pagination.offset? ->
+        :offset
+
+      true ->
+        nil
     end
   end
 
@@ -2677,18 +2680,35 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp load_and_select_sort(query) do
-    query.resource
-    |> Ash.Resource.Info.actions()
-    |> Enum.any?(&match?(%{pagination: %{keyset?: true}}, &1))
-    |> if do
-      query.sort
-      |> Enum.map(&elem(&1, 0))
-      |> then(fn load ->
-        Ash.Query.load(query, load)
-      end)
+  defp load_and_select_sort(query, page_opts) do
+    if Application.get_env(:ash, :show_keysets_for_all_actions?, true) do
+      # in 4.0 remove this branch
+      show_keyset? =
+        query.resource
+        |> Ash.Resource.Info.actions()
+        |> Enum.any?(&match?(%{pagination: %{keyset?: true}}, &1))
+
+      if show_keyset? do
+        query.sort
+        |> Enum.map(&elem(&1, 0))
+        |> then(fn load ->
+          Ash.Query.load(query, load)
+        end)
+      else
+        query
+      end
     else
-      query
+      case pagination_type(page_opts, query.action.pagination) do
+        :keyset ->
+          query.sort
+          |> Enum.map(&elem(&1, 0))
+          |> then(fn load ->
+            Ash.Query.load(query, load)
+          end)
+
+        _ ->
+          query
+      end
     end
   end
 
@@ -2931,7 +2951,7 @@ defmodule Ash.Actions.Read do
 
       {%Ash.Query.Calculation{
          module: Ash.Resource.Calculation.Expression,
-         opts: [expression: expression]
+         opts: [expr: expression]
        } = calc, direction},
       {:ok, sort} ->
         new_expr =
@@ -2946,7 +2966,7 @@ defmodule Ash.Actions.Read do
             query.domain
           )
 
-        new_calc = %{calc | opts: [expression: new_expr]}
+        new_calc = %{calc | opts: [expr: new_expr]}
 
         {:cont, {:ok, [{new_calc, direction} | sort]}}
 

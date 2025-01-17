@@ -122,70 +122,70 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     case fully_atomic_changeset do
       {:not_atomic, reason} ->
-        case Ash.Actions.Read.Stream.stream_strategy(
-               query,
-               nil,
-               opts[:allow_stream_with] || :keyset
-             ) do
-          {:error, %Ash.Error.Invalid.NonStreamableAction{} = exception} ->
-            %Ash.BulkResult{
-              status: :error,
-              error_count: 1,
-              errors: [
-                Ash.Error.to_error_class(
-                  Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
-                    resource: query.resource,
-                    action: query.action.name,
-                    requested_strategies: opts[:strategy],
-                    not_stream_reason: "could not stream the query",
-                    footer: "Non stream reason:\n\n" <> Exception.message(exception)
-                  )
-                )
-              ]
-            }
-
-          _ ->
-            read_opts =
-              opts
-              |> then(fn read_opts ->
-                if opts[:batch_size] do
-                  Keyword.put(read_opts, :batch_size, opts[:stream_batch_size])
-                else
-                  read_opts
-                end
-              end)
-              |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
-              |> Keyword.put(:domain, domain)
-              |> Keyword.delete(:load)
-
-            query =
-              Ash.Query.do_filter(query, opts[:filter])
-
-            if query.limit && query.limit < (opts[:batch_size] || 100) do
-              read_opts = Keyword.take(read_opts, Keyword.keys(Ash.read_opts()))
-
-              case Ash.Actions.Read.unpaginated_read(query, query.action, read_opts) do
-                {:ok, results} ->
-                  run(
-                    domain,
-                    results,
-                    action,
-                    input,
-                    Keyword.merge(opts,
-                      resource: query.resource,
-                      input_was_stream?: false
-                    ),
-                    reason
-                  )
-
-                {:error, error} ->
-                  %Ash.BulkResult{
-                    status: :error,
-                    error_count: 1,
-                    errors: [Ash.Error.to_error_class(error)]
-                  }
-              end
+        read_opts =
+          opts
+          |> then(fn read_opts ->
+            if opts[:batch_size] do
+              Keyword.put(read_opts, :batch_size, opts[:stream_batch_size])
             else
+              read_opts
+            end
+          end)
+          |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
+          |> Keyword.put(:domain, domain)
+          |> Keyword.delete(:load)
+
+        query =
+          Ash.Query.do_filter(query, opts[:filter])
+
+        if query.limit && query.limit < (opts[:batch_size] || 100) do
+          read_opts = Keyword.take(read_opts, Keyword.keys(Ash.read_opts()))
+
+          case Ash.Actions.Read.unpaginated_read(query, query.action, read_opts) do
+            {:ok, results} ->
+              run(
+                domain,
+                results,
+                action,
+                input,
+                Keyword.merge(opts,
+                  resource: query.resource,
+                  input_was_stream?: false
+                ),
+                reason
+              )
+
+            {:error, error} ->
+              %Ash.BulkResult{
+                status: :error,
+                error_count: 1,
+                errors: [Ash.Error.to_error_class(error)]
+              }
+          end
+        else
+          case Ash.Actions.Read.Stream.stream_strategy(
+                 query,
+                 nil,
+                 opts[:allow_stream_with] || :keyset
+               ) do
+            {:error, %Ash.Error.Invalid.NonStreamableAction{} = exception} ->
+              %Ash.BulkResult{
+                status: :error,
+                error_count: 1,
+                errors: [
+                  Ash.Error.to_error_class(
+                    Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
+                      resource: query.resource,
+                      action: query.action.name,
+                      requested_strategies: opts[:strategy],
+                      not_stream_reason: "could not stream the query",
+                      footer: "Non stream reason:\n\n" <> Exception.message(exception)
+                    )
+                  )
+                ]
+              }
+
+            _ ->
               read_opts = Keyword.take(read_opts, Ash.stream_opt_keys())
 
               # We need to figure out a way to capture errors raised by the stream when picking items off somehow
@@ -208,7 +208,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 ),
                 reason
               )
-            end
+          end
         end
 
       %Ash.Changeset{valid?: false, errors: errors} ->

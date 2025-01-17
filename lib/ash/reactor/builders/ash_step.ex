@@ -3,13 +3,11 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.AshStep do
 
   alias Reactor.Builder
   alias Spark.Error.DslError
-  import Ash.Reactor.BuilderUtils
 
   @doc false
   @impl true
   def build(ash_step, reactor) do
-    with {:ok, reactor} <- ensure_hooked(reactor),
-         {:ok, ash_step} <- rewrite_step(ash_step, reactor.id) do
+    with {:ok, ash_step} <- rewrite_step(ash_step, reactor.id) do
       Builder.add_step(
         reactor,
         ash_step.name,

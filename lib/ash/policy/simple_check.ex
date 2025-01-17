@@ -12,7 +12,7 @@ defmodule Ash.Policy.SimpleCheck do
   @callback match?(actor(), context(), options()) :: boolean | {:ok, boolean} | {:error, term}
 
   defmacro __using__(_) do
-    quote do
+    quote generated: true do
       @behaviour Ash.Policy.SimpleCheck
       @behaviour Ash.Policy.Check
 

@@ -12,17 +12,28 @@ defmodule Ash.Test.ManageRelationshipTest do
 
       create :create do
         accept [:name]
-        argument :related_resource, :map, allow_nil?: false
+        argument :related_resource, :map
+        argument :other_resources, {:array, :map}
 
         change manage_relationship(:related_resource, :related_resource, type: :create)
+        change manage_relationship(:other_resources, type: :direct_control)
+      end
+
+      create :create_ordered do
+        accept [:name]
+        argument :other_resources, {:array, :map}
+
+        change manage_relationship(:other_resources, type: :direct_control, order_is_key: :order)
       end
 
       update :update do
         require_atomic? false
         accept [:name]
-        argument :related_resource, :map, allow_nil?: false
+        argument :related_resource, :map
+        argument :other_resources, {:array, :map}
 
         change manage_relationship(:related_resource, :related_resource, type: :direct_control)
+        change manage_relationship(:other_resources, type: :direct_control)
       end
     end
 
@@ -34,6 +45,8 @@ defmodule Ash.Test.ManageRelationshipTest do
     relationships do
       has_one :related_resource, Ash.Test.ManageRelationshipTest.RelatedResource,
         destination_attribute: :parent_resource_id
+
+      has_many :other_resources, Ash.Test.ManageRelationshipTest.OtherResource
     end
   end
 
@@ -65,6 +78,34 @@ defmodule Ash.Test.ManageRelationshipTest do
     end
   end
 
+  defmodule OtherResource do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      fragments: [RelatedResourceFragment]
+
+    actions do
+      defaults [:read, create: :*, update: :*]
+
+      destroy :archive do
+        primary? true
+        soft? true
+        change set_attribute(:archived_at, &DateTime.utc_now/0)
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :required_attribute, :string, allow_nil?: false, public?: true
+      attribute :archived_at, :utc_datetime_usec
+      attribute :order, :integer, public?: true
+    end
+
+    relationships do
+      belongs_to :parent_resource, ParentResource
+    end
+  end
+
   test "errors have the proper path set on them" do
     assert {:error,
             %Ash.Error.Invalid{
@@ -81,6 +122,23 @@ defmodule Ash.Test.ManageRelationshipTest do
                }
              })
              |> Ash.create()
+  end
+
+  test "order_is_key sets the order accordingly" do
+    assert %{other_resources: [%{order: 0}, %{order: 1}]} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create_ordered, %{
+               name: "Test Parent Resource",
+               other_resources: [
+                 %{
+                   required_attribute: "string"
+                 },
+                 %{
+                   required_attribute: "string"
+                 }
+               ]
+             })
+             |> Ash.create!()
   end
 
   test "can create and update a related resource" do
@@ -109,5 +167,46 @@ defmodule Ash.Test.ManageRelationshipTest do
              |> Ash.load(:related_resource)
 
     assert parent.related_resource.required_attribute == "other_string"
+  end
+
+  test "can create and destroy arrays" do
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               other_resources: [
+                 %{required_attribute: "first"},
+                 %{required_attribute: "second"}
+               ]
+             })
+             |> Ash.create!()
+             |> Ash.load(:other_resources)
+
+    assert Enum.map(parent.other_resources, & &1.required_attribute) |> Enum.sort() == [
+             "first",
+             "second"
+           ]
+
+    other_resources = Enum.reject(parent.other_resources, &(&1.required_attribute == "first"))
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update, %{
+               other_resources: other_resources
+             })
+             |> Ash.update!()
+             |> Ash.load(:other_resources)
+
+    # Since we did a soft destroy, we should still have all other resources
+    assert Enum.map(updated_parent.other_resources, & &1.required_attribute) |> Enum.sort() == [
+             "first",
+             "second"
+           ]
+
+    first_other = Enum.find(updated_parent.other_resources, &(&1.required_attribute == "first"))
+    assert not is_nil(first_other.archived_at)
+
+    second_other = Enum.find(updated_parent.other_resources, &(&1.required_attribute == "second"))
+    assert is_nil(second_other.archived_at)
   end
 end

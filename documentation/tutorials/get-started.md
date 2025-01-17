@@ -91,7 +91,7 @@ Open the project in your text editor, and we'll get started.
 > Already know you want to use `AshPostgres`? Use the `--extend` argument.
 >
 > ```bash
-> mix igniter.new helpdesk --install ash,ash_postgres --example --extend postgres`
+> mix igniter.new helpdesk --install ash,ash_postgres --example --extend postgres
 > ```
 >
 > Want to start with a Phoenix app setup too? Use the `--with` argument.
@@ -106,7 +106,8 @@ Open the project in your text editor, and we'll get started.
 >   --example
 > ```
 >
-> If you generate this code, you can browse the rest of the guide, but the code shown will already be present in your application 🥳
+> Afterwards change the active directory to the newly created folder `helpdesk`, edit `devs.exs` to reflect your database credentials and run ```mix ash.setup``` which will setup your postgres database.
+> If you like you can now browse the rest of the guide, but the code shown will already be present in your application 🥳
 
 ### Using Mix
 
@@ -426,6 +427,47 @@ ticket
   ...
 >
 ```
+
+What if we would try to close the ticket again?
+
+```elixir
+ticket
+|> Ash.Changeset.for_update(:close)
+|> Ash.update!()
+```
+
+The application would halt with an error:
+
+```text
+...
+** (Ash.Error.Invalid)
+Bread Crumbs:
+  > Returned from bulk query update: Helpdesk.Support.Ticket.close
+
+Invalid Error
+
+* Invalid value provided for status: Ticket is already closed.
+...
+```
+Note the 'Ticket is already closed' message that we have defined in the ```attribute_does_not_equal``` validation.
+
+And if we'd use the non-bang version:
+
+```elixir
+ticket
+|> Ash.Changeset.for_update(:close)
+|> Ash.update()
+```
+we get an error tuple with a %Ash.Error.Invalid struct that contains the message:
+
+```text
+{:error,
+ %Ash.Error.Invalid{
+...
+       message: "Ticket is already closed",
+...
+```
+
 
 ### Querying without persistence
 

@@ -473,7 +473,8 @@ defmodule Ash.Policy.Authorizer do
 
   @verifiers [
     Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers,
-    Ash.Policy.Authorizer.Verifiers.VerifySatSolverImplementation
+    Ash.Policy.Authorizer.Verifiers.VerifySatSolverImplementation,
+    Ash.Policy.Authorizer.Verifiers.VerifyResources
   ]
 
   use Spark.Dsl.Extension,
@@ -528,50 +529,103 @@ defmodule Ash.Policy.Authorizer do
     )
   end
 
-  def install(igniter, module, type, _path, argv) do
-    yes = "--yes" in argv or "-y" in argv
+  if Code.ensure_loaded?(Igniter) do
+    def install(igniter, module, type, _path, argv) do
+      yes = "--yes" in argv or "-y" in argv
 
-    igniter =
-      with nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :picosat_elixir),
-           nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :simple_sat) do
-        solver =
-          if yes do
-            {:picosat_elixir, "~> 0.2"}
-          else
-            Owl.IO.select(
-              [
-                {:picosat_elixir, "~> 0.2"},
-                {:simple_sat, "~> 0.1"}
-              ],
-              label: """
-              Ash.Policy.Authorizer requires a SAT solver (Boolean Satisfiability Solver). This solver is used to
-              check policy requirements to answer questions like "Is this user allowed to do this action?" and
-              "What filter must be applied to this query to show only the allowed records a user can see?".
+      igniter =
+        with nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :picosat_elixir),
+             nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :simple_sat) do
+          {solver, notice_type} =
+            if yes do
+              case :os.type() do
+                {_, :nt} ->
+                  {{:simple_sat, "~> 0.1"}, :windows}
 
-              Which SAT solver would you like to use?
+                _ ->
+                  {{:picosat_elixir, "~> 0.2"}, :not_windows}
+              end
+            else
+              case :os.type() do
+                {_, :nt} ->
+                  {Owl.IO.select(
+                     [
+                       {:picosat_elixir, "~> 0.2"},
+                       {:simple_sat, "~> 0.1"}
+                     ],
+                     label: """
+                     Ash.Policy.Authorizer requires a SAT solver (Boolean Satisfiability Solver). This solver is used to
+                     check policy requirements to answer questions like "Is this user allowed to do this action?" and
+                     "What filter must be applied to this query to show only the allowed records a user can see?".
 
-              1. `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
-              2. `:simple_sat` (only if necessary) - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
-              """,
-              render_as: &to_string(elem(&1, 0))
-            )
-          end
+                     Which SAT solver would you like to use?
 
-        igniter
-        |> Igniter.Project.Deps.add_dep(solver, yes?: yes)
-        |> Igniter.apply_and_fetch_dependencies(yes: yes)
-      else
-        _ ->
+                     1. `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
+                     2. `:simple_sat` (only if necessary) - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
+                     """,
+                     render_as: &to_string(elem(&1, 0))
+                   ), nil}
+
+                _ ->
+                  {{:picosat_elixir, "~> 0.2"}, :not_windows}
+              end
+            end
+
+          igniter =
+            case notice_type do
+              :windows ->
+                notice =
+                  """
+                  Ash.Policy.Authorizer requires a SAT solver (Boolean Satisfiability Solver). This solver is used to
+                  check policy requirements to answer questions like "Is this user allowed to do this action?" and
+                  "What filter must be applied to this query to show only the allowed records a user can see?".
+
+                  We detected that you are using windows, and so have installed `:simple_sat`, due to
+                  users on windows often having trouble installing `:picosat_elixir`.
+
+                  You can stick with `:simple_sat`, but we suggest switching to `:picosat_elixir` at some point,
+                  for performance reasons.
+
+                  For more, see the documentation for `:picosat_elixir`: https://github.com/bitwalker/picosat_elixir
+                  """
+
+                Igniter.add_notice(igniter, notice)
+
+              :not_windows ->
+                notice =
+                  """
+                  Ash.Policy.Authorizer requires a SAT solver (Boolean Satisfiability Solver). This solver is used to
+                  check policy requirements to answer questions like "Is this user allowed to do this action?" and
+                  "What filter must be applied to this query to show only the allowed records a user can see?".
+
+                  We have installed `:picosat_elixir` by default. This can occasionally cause problems for some users.
+                  If you have issues, you can rerun the command with `--sat-solver simple_sat`, or change the dependency
+                  manually. `:simple_sat` is a less performant solver, but will work anywhere Elixir works. We suggest
+                  getting `:picosat_elixir` working at some point.
+                  """
+
+                Igniter.add_notice(igniter, notice)
+
+              _ ->
+                igniter
+            end
+
           igniter
-      end
+          |> Igniter.Project.Deps.add_dep(solver, yes?: yes)
+          |> Igniter.apply_and_fetch_dependencies(yes: yes, yes_to_deps: true)
+        else
+          _ ->
+            igniter
+        end
 
-    igniter
-    |> Spark.Igniter.add_extension(
-      module,
-      type,
-      :authorizers,
-      Ash.Policy.Authorizer
-    )
+      igniter
+      |> Spark.Igniter.add_extension(
+        module,
+        type,
+        :authorizers,
+        Ash.Policy.Authorizer
+      )
+    end
   end
 
   @doc false

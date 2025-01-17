@@ -546,14 +546,13 @@ defmodule Ash.Changeset do
   def deselect(changeset, fields) do
     select =
       if changeset.select do
-        changeset.select
+        changeset.select -- List.wrap(fields)
       else
-        changeset.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.map(& &1.name)
+        MapSet.difference(
+          Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource),
+          MapSet.new(List.wrap(fields))
+        )
       end
-
-    select = select -- List.wrap(fields)
 
     select(changeset, select, replace?: true)
   end
@@ -665,8 +664,15 @@ defmodule Ash.Changeset do
            %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
            %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
            %Ash.Changeset{} = changeset <-
-             hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?])),
-           %Ash.Changeset{} = changeset <- apply_atomic_constraints(changeset, opts[:actor]) do
+             hydrate_atomic_refs(
+               changeset,
+               opts[:actor],
+               opts
+               |> Keyword.take([:eager?])
+               |> Keyword.put(:error_is_not_atomic?, true)
+             ),
+           %Ash.Changeset{} = changeset <-
+             apply_atomic_constraints(changeset, opts[:actor]) do
         changeset
       else
         {:not_atomic, reason} ->
@@ -861,17 +867,22 @@ defmodule Ash.Changeset do
 
   @doc false
   def run_atomic_validation(changeset, %{where: where} = validation, context) do
-    with {:atomic, condition} <- atomic_condition(where, changeset, context) do
-      case condition do
-        false ->
-          changeset
+    if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
+      with {:atomic, condition} <- atomic_condition(where, changeset, context) do
+        case condition do
+          false ->
+            changeset
 
-        true ->
-          do_run_atomic_validation(changeset, validation, context)
+          true ->
+            do_run_atomic_validation(changeset, validation, context)
 
-        where_condition ->
-          do_run_atomic_validation(changeset, validation, context, where_condition)
+          where_condition ->
+            do_run_atomic_validation(changeset, validation, context, where_condition)
+        end
       end
+    else
+      {:not_atomic,
+       "data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error"}
     end
   end
 
@@ -1587,7 +1598,7 @@ defmodule Ash.Changeset do
 
                 changeset =
                   Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
-                    Ash.Changeset.set_argument(changeset, k, v)
+                    set_private_argument_for_action(changeset, k, v)
                   end)
 
                 changeset
@@ -1761,10 +1772,10 @@ defmodule Ash.Changeset do
         allow_nil? =
           attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
 
-        value =
-          if allow_nil? || not Ash.Expr.can_return_nil?(value) do
-            value
-          else
+        if allow_nil? || not Ash.Expr.can_return_nil?(value) do
+          value
+        else
+          if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
             expr(
               if is_nil(^value) do
                 error(
@@ -1779,9 +1790,18 @@ defmodule Ash.Changeset do
                 ^value
               end
             )
+          else
+            {:not_atomic,
+             "Failed to validate expression #{inspect(value)}: data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error"}
           end
+        end
+        |> case do
+          {:not_atomic, error} ->
+            Ash.Changeset.add_error(changeset, error)
 
-        %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+          value ->
+            %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+        end
       end
     end)
     |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
@@ -1829,7 +1849,7 @@ defmodule Ash.Changeset do
     else
       explicitly_changing_attributes =
         Enum.map(
-          Map.keys(changeset.attributes) -- Map.get(changeset, :defaults, []) -- keys,
+          Map.keys(changeset.attributes) -- (Map.get(changeset, :defaults, []) -- keys),
           fn key ->
             {key, Ash.Changeset.get_attribute(changeset, key)}
           end
@@ -1928,7 +1948,7 @@ defmodule Ash.Changeset do
 
               changeset =
                 Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
-                  Ash.Changeset.set_argument(changeset, k, v)
+                  set_private_argument_for_action(changeset, k, v)
                 end)
 
               changeset =
@@ -2184,7 +2204,7 @@ defmodule Ash.Changeset do
         else
           tenant =
             if identity.all_tenants? do
-              unless Ash.Resource.Info.multitenancy_global?(changeset.resource) do
+              if !Ash.Resource.Info.multitenancy_global?(changeset.resource) do
                 raise ArgumentError,
                   message: """
                   Cannot pre or eager check an identity that has `all_tenants?: true`
@@ -2709,7 +2729,7 @@ defmodule Ash.Changeset do
 
       if key in changeset.no_atomic_constraints do
         value =
-          if attribute.primary_key? do
+          if(attribute.primary_key?) do
             value
           else
             set_error_field(value, attribute.name)
@@ -2798,113 +2818,136 @@ defmodule Ash.Changeset do
     eager? = Keyword.get(opts, :eager?, true)
 
     changeset.atomic_validations
-    |> Enum.reduce_while(changeset, fn {condition_expr, error_expr}, changeset ->
-      condition_expr =
-        Ash.Expr.fill_template(
-          condition_expr,
-          actor,
-          changeset.arguments,
-          changeset.context,
-          changeset
-        )
-
-      error_expr =
-        Ash.Expr.fill_template(
-          error_expr,
-          actor,
-          changeset.arguments,
-          changeset.context,
-          changeset
-        )
-
-      with {:expr, {:ok, condition_expr}, _expr} <-
-             {:expr,
-              Ash.Filter.hydrate_refs(condition_expr, %{
-                resource: changeset.resource,
-                public?: false
-              }), condition_expr},
-           {:expr, {:ok, error_expr}, _} <-
-             {:expr,
-              Ash.Filter.hydrate_refs(error_expr, %{resource: changeset.resource, public?: false}),
-              error_expr} do
-        eager_condition_expr =
-          if eager? do
-            Ash.Expr.eval(condition_expr,
-              resource: changeset.resource,
-              unknown_on_unknown_refs?: true
+    |> Enum.reduce_while(
+      %{changeset | atomic_validations: []},
+      fn
+        {condition_expr, error_expr}, changeset ->
+          condition_expr =
+            Ash.Expr.fill_template(
+              condition_expr,
+              actor,
+              changeset.arguments,
+              changeset.context,
+              changeset
             )
-          else
-            {:ok, condition_expr}
-          end
 
-        eager_error_expr =
-          if eager? do
-            Ash.Expr.eval(error_expr,
-              resource: changeset.resource,
-              unknown_on_unknown_refs?: true
+          error_expr =
+            Ash.Expr.fill_template(
+              error_expr,
+              actor,
+              changeset.arguments,
+              changeset.context,
+              changeset
             )
-          else
-            {:ok, error_expr}
-          end
 
-        case extract_eager_error(eager_condition_expr, eager_error_expr, eager?) do
-          {:ok, error} ->
-            {:cont,
-             add_error(
-               changeset,
-               error
-             )}
-
-          :error ->
-            if changeset.action.type == :update || Map.get(changeset.action, :soft?) do
-              [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
-
-              full_atomic_update =
-                expr(
-                  if ^condition_expr do
-                    ^error_expr
-                  else
-                    ^atomic_ref(changeset, first_pkey_field)
-                  end
+          with {:expr, {:ok, condition_expr}, _expr} <-
+                 {:expr,
+                  Ash.Filter.hydrate_refs(condition_expr, %{
+                    resource: changeset.resource,
+                    public?: false
+                  }), condition_expr},
+               {:expr, {:ok, error_expr}, _} <-
+                 {:expr,
+                  Ash.Filter.hydrate_refs(error_expr, %{
+                    resource: changeset.resource,
+                    public?: false
+                  }), error_expr} do
+            eager_condition_expr =
+              if eager? do
+                Ash.Expr.eval(condition_expr,
+                  resource: changeset.resource,
+                  unknown_on_unknown_refs?: true
                 )
-
-              case Ash.Filter.hydrate_refs(full_atomic_update, %{
-                     resource: changeset.resource,
-                     public: false
-                   }) do
-                {:ok, full_atomic_update} ->
-                  {:cont,
-                   atomic_update(
-                     changeset,
-                     first_pkey_field,
-                     full_atomic_update
-                   )}
-
-                {:error, error} ->
-                  {:halt,
-                   {:not_atomic,
-                    "Failed to validate expression #{inspect(full_atomic_update)}: #{inspect(error)}"}}
+              else
+                {:ok, condition_expr}
               end
-            else
-              {:cont,
-               filter(
-                 changeset,
-                 expr(
-                   if ^condition_expr do
-                     ^error_expr
-                   else
-                     true
-                   end
-                 )
-               )}
+
+            eager_error_expr =
+              if eager? do
+                Ash.Expr.eval(error_expr,
+                  resource: changeset.resource,
+                  unknown_on_unknown_refs?: true
+                )
+              else
+                {:ok, error_expr}
+              end
+
+            case extract_eager_error(eager_condition_expr, eager_error_expr, eager?) do
+              {:ok, error} ->
+                {:cont,
+                 add_error(
+                   changeset,
+                   error
+                 )}
+
+              :error ->
+                if changeset.action.type == :update || Map.get(changeset.action, :soft?) do
+                  [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
+
+                  full_atomic_update =
+                    expr(
+                      if ^condition_expr do
+                        ^error_expr
+                      else
+                        ^atomic_ref(changeset, first_pkey_field)
+                      end
+                    )
+
+                  case Ash.Filter.hydrate_refs(full_atomic_update, %{
+                         resource: changeset.resource,
+                         public: false
+                       }) do
+                    {:ok, full_atomic_update} ->
+                      {:cont,
+                       atomic_update(
+                         changeset,
+                         first_pkey_field,
+                         full_atomic_update
+                       )}
+
+                    {:error, error} ->
+                      if Keyword.get(opts, :error_is_not_atomic?, false) do
+                        {:halt,
+                         {:not_atomic,
+                          "Failed to validate expression #{inspect(full_atomic_update)}: #{inspect(error)}"}}
+                      else
+                        {:cont,
+                         Ash.Changeset.add_error(
+                           changeset,
+                           "Failed to validate expression #{inspect(full_atomic_update)}: #{inspect(error)}"
+                         )}
+                      end
+                  end
+                else
+                  {:cont,
+                   filter(
+                     changeset,
+                     expr(
+                       if ^condition_expr do
+                         ^error_expr
+                       else
+                         true
+                       end
+                     )
+                   )}
+                end
             end
-        end
-      else
-        {:expr, {:error, error}, expr} ->
-          {:halt,
-           {:not_atomic, "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"}}
+          else
+            {:expr, {:error, error}, expr} ->
+              if Keyword.get(opts, :error_is_not_atomic?, false) do
+                {:halt,
+                 {:not_atomic,
+                  "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"}}
+              else
+                {:cont,
+                 Ash.Changeset.add_error(
+                   changeset,
+                   "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"
+                 )}
+              end
+          end
       end
-    end)
+    )
   end
 
   defp extract_eager_error({:ok, true}, {:error, %{class: :invalid} = error}, true) do
@@ -3382,11 +3425,15 @@ defmodule Ash.Changeset do
 
   defp do_belongs_to_attr_of_rel_being_managed?(changeset, attribute, only_if_relating?) do
     Enum.any?(changeset.relationships, fn
-      {key, [{rels, _}]} ->
-        relationship = Ash.Resource.Info.relationship(changeset.resource, key)
+      {key, [{rels, opts}]} ->
+        if attribute == opts[:order_is_key] do
+          true
+        else
+          relationship = Ash.Resource.Info.relationship(changeset.resource, key)
 
-        relationship.type == :belongs_to && relationship.source_attribute == attribute &&
-          (not only_if_relating? || rels != [])
+          relationship.type == :belongs_to && relationship.source_attribute == attribute &&
+            (not only_if_relating? || rels != [])
+        end
 
       {_key, list} when is_list(list) ->
         false
@@ -3402,13 +3449,23 @@ defmodule Ash.Changeset do
   end
 
   defp belongs_to_attr_of_being_managed_through?(
-         %{context: %{accessing_from: %{source: source, name: relationship}}},
+         %{context: %{accessing_from: %{source: source, name: relationship} = accessing_from}},
          attribute,
          _
        ) do
-    case Ash.Resource.Info.relationship(source, relationship) do
-      %{type: :belongs_to} -> false
-      relationship -> relationship.destination_attribute == attribute
+    with opts when not is_nil(opts) <- accessing_from[:manage_relationship_opts],
+         key when not is_nil(key) <- opts[:order_is_key],
+         true <- key == attribute do
+      true
+    else
+      _ ->
+        case Ash.Resource.Info.relationship(source, relationship) do
+          %{type: :belongs_to} ->
+            false
+
+          relationship ->
+            relationship.destination_attribute == attribute
+        end
     end
   end
 
@@ -4343,6 +4400,20 @@ defmodule Ash.Changeset do
       By default, we assume it is the primary key of the destination resource, unless it is a composite primary key.
       """
     ],
+    order_is_key: [
+      type: :atom,
+      doc: """
+      If set, the order that each input appears in the list will be added to the input as this key.
+
+      This is useful when you want to accept an ordered list of related records and write that order to the entity.
+      This should only currently be used with `type: :direct_control` or `type: :create` when there are no currently
+      existing related records (like when creating the source record).
+
+      If you have an identity on the field and relationship id on the destination, and you are using
+      AshPostgres, you will want to use the `deferrable` option to ensure that conflicting orders are temporarily
+      allowed within a single transaction.
+      """
+    ],
     identity_priority: [
       type: {:list, :atom},
       doc: """
@@ -4611,6 +4682,8 @@ defmodule Ash.Changeset do
   end
 
   def manage_relationship(changeset, relationship, input, opts) do
+    changeset = maybe_dirty_hook(changeset, :manage_relationships)
+
     if opts == [] do
       IO.warn("Calling `manage_relationship` without any options will not do anything")
     end
@@ -4728,7 +4801,7 @@ defmodule Ash.Changeset do
               input
               |> List.wrap()
               |> Enum.map(fn input ->
-                if is_map(input) || Keyword.keyword?(input) do
+                if !opts.value_is_key && (is_map(input) || Keyword.keyword?(input)) do
                   input
                 else
                   %{key => input}
@@ -4737,9 +4810,25 @@ defmodule Ash.Changeset do
             else
               input
             end
+            |> List.wrap()
+
+          input =
+            if opts.order_is_key do
+              input
+              |> Enum.with_index()
+              |> Enum.map(fn {map, index} ->
+                if is_map(map) do
+                  Map.put(map, opts.order_is_key, index)
+                else
+                  Keyword.put(map, opts.order_is_key, index)
+                end
+              end)
+            else
+              input
+            end
 
           if Enum.any?(
-               List.wrap(input),
+               input,
                &(is_struct(&1) && Ash.Resource.Info.resource?(&1.__struct__) &&
                    &1.__struct__ != relationship.destination)
              ) do
@@ -5078,6 +5167,53 @@ defmodule Ash.Changeset do
   def set_argument(changeset, argument, value) do
     maybe_already_validated_error!(changeset, :force_set_argument)
     do_set_argument(changeset, argument, value)
+  end
+
+  @doc """
+  Add a private argument to the changeset, which will be provided to the action.
+  """
+  @spec set_private_argument(t(), atom, term) :: t()
+  def set_private_argument(changeset, argument, value) do
+    do_set_private_argument(
+      changeset,
+      argument,
+      value,
+      "can't set public arguments with set_private_argument/3"
+    )
+  end
+
+  defp set_private_argument_for_action(changeset, argument, value) do
+    do_set_private_argument(
+      changeset,
+      argument,
+      value,
+      "can't set public arguments using the private_arguments option."
+    )
+  end
+
+  defp do_set_private_argument(changeset, name, value, error_msg) do
+    argument =
+      Enum.find(
+        changeset.action.arguments,
+        &(&1.name == name || to_string(&1.name) == name)
+      )
+
+    cond do
+      is_nil(argument) ->
+        changeset
+
+      argument.public? ->
+        add_invalid_errors(
+          value,
+          :argument,
+          changeset,
+          argument,
+          error_msg
+        )
+
+      true ->
+        set_argument(changeset, name, value)
+    end
   end
 
   @doc """

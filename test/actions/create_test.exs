@@ -289,7 +289,7 @@ defmodule Ash.Test.Actions.CreateTest do
       end
 
       create :create_with_private_argument do
-        argument :private_name, :string, allow_nil?: false
+        argument :private_name, :string, allow_nil?: false, public?: false
         accept [:title]
 
         change set_attribute(:private_name, arg(:private_name))
@@ -584,7 +584,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     test "allows setting private arguments" do
-      assert %Post{title: "title", private_name: "private"} =
+      assert %Post{title: "title"} =
                Post
                |> Ash.Changeset.for_create(:create_with_private_argument, %{title: "title"},
                  private_arguments: %{private_name: "private"}

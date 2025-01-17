@@ -385,7 +385,7 @@ defmodule Ash.Query.Operator do
   end
 
   defmacro __using__(opts) do
-    unless opts[:operator] do
+    if !opts[:operator] do
       raise "Operator is required!"
     end
 

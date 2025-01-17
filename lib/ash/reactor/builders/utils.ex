@@ -58,9 +58,4 @@ defmodule Ash.Reactor.BuilderUtils do
   @spec maybe_append(Enum.t(), nil | any) :: Enum.t()
   def maybe_append(lhs, nil), do: lhs
   def maybe_append(lhs, rhs), do: Enum.concat(lhs, [rhs])
-
-  @doc false
-  @spec ensure_hooked(Reactor.t()) :: {:ok, Reactor.t()} | {:error, any}
-  def ensure_hooked(reactor),
-    do: Reactor.Builder.ensure_middleware(reactor, Ash.Reactor.Notifications)
 end

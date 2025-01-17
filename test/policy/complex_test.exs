@@ -1,6 +1,6 @@
 defmodule Ash.Test.Policy.ComplexTest do
   @doc false
-  use ExUnit.Case, async?: false
+  use ExUnit.Case, async: false
   require Ash.Query
 
   alias Ash.Test.Support.PolicyComplex.{Bio, Comment, Post, User}
@@ -72,8 +72,10 @@ defmodule Ash.Test.Policy.ComplexTest do
     [
       me: me,
       my_friend: my_friend,
+      a_friend_of_my_friend: a_friend_of_my_friend,
       post_by_me: post_by_me,
       post_by_my_friend: post_by_my_friend,
+      post_by_a_friend_of_my_friend: post_by_a_friend_of_my_friend,
       comment_by_me_on_my_post: comment_by_me_on_my_post,
       comment_by_my_friend_on_my_post: comment_by_my_friend_on_my_post,
       comment_by_a_friend_of_a_friend_on_his_own_post:
@@ -135,8 +137,6 @@ defmodule Ash.Test.Policy.ComplexTest do
              |> Ash.Query.filter(best_friend.name == "me")
              |> Ash.Query.deselect(:private_email)
              |> Ash.read!(actor: me)
-
-    # |> Ash.load!(:best_friend, actor: me)
   end
 
   test "aggregates can be loaded and filtered on", %{me: me} do
@@ -144,6 +144,48 @@ defmodule Ash.Test.Policy.ComplexTest do
     |> Ash.Query.load(:count_of_comments)
     |> Ash.Query.filter(count_of_comments == 10)
     |> Ash.read!(actor: me)
+  end
+
+  test "forbidden fields can be returned for relationships", %{me: me} do
+    assert [%Ash.ForbiddenField{}, %Ash.ForbiddenField{}] =
+             Post
+             |> Ash.Query.load(:forbidden_field_author)
+             |> Ash.read!(actor: me)
+             |> Enum.map(& &1.forbidden_field_author)
+  end
+
+  test "calculations containing aggregates authorize their aggregates", %{
+    me: me,
+    post_by_my_friend: post_by_my_friend,
+    a_friend_of_my_friend: a_friend_of_my_friend
+  } do
+    Comment.create!(
+      post_by_my_friend.id,
+      "comment by a friend of a friend on my friend's post",
+      actor: a_friend_of_my_friend,
+      authorize?: false
+    )
+
+    Comment.create!(
+      post_by_my_friend.id,
+      "comment by a friend of a friend on my friend's post",
+      actor: a_friend_of_my_friend,
+      authorize?: false
+    )
+
+    Comment.create!(
+      post_by_my_friend.id,
+      "comment by a friend of a friend on my friend's post",
+      actor: a_friend_of_my_friend,
+      authorize?: false
+    )
+
+    assert [2, 0] ==
+             Post
+             |> Ash.Query.load(:count_of_comments_calc)
+             |> Ash.Query.sort(count_of_comments_calc: :desc)
+             |> Ash.read!(actor: me)
+             |> Enum.map(& &1.count_of_comments_calc)
   end
 
   test "aggregates join paths are authorized", %{me: me, post_by_me: post_by_me} do
@@ -164,6 +206,15 @@ defmodule Ash.Test.Policy.ComplexTest do
       |> Map.get(:count_of_commenters)
 
     assert count_of_commenters_with_authorization == 2
+  end
+
+  test "multiple aggregates join paths are authorized", %{me: me, post_by_me: post_by_me} do
+    assert %{always_forbidden_comments: 0, always_forbidden_author: 0} =
+             Post
+             |> Ash.Query.load([:always_forbidden_comments, :always_forbidden_author])
+             |> Ash.Query.filter(id == ^post_by_me.id)
+             |> Ash.read_one!(actor: me)
+             |> Map.take([:always_forbidden_comments, :always_forbidden_author])
   end
 
   test "aggregates in calculations are authorized", %{me: me} do

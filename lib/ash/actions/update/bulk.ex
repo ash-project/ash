@@ -570,6 +570,9 @@ defmodule Ash.Actions.Update.Bulk do
          query <- handle_attribute_multitenancy(query),
          {:ok, data_layer_query} <-
            Ash.Query.data_layer_query(query) do
+      atomic_changeset =
+        Ash.Changeset.set_context(atomic_changeset, %{changed?: true})
+
       case Ash.DataLayer.update_query(
              data_layer_query,
              atomic_changeset,
@@ -622,8 +625,6 @@ defmodule Ash.Actions.Update.Bulk do
                 fn result, {results, errors, error_count, notifications} ->
                   # we can't actually know if the changeset changed or not when doing atomics
                   # so we just have to set it to statically true here.
-                  atomic_changeset =
-                    Ash.Changeset.set_context(atomic_changeset, %{changed?: true})
 
                   case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
                     {:error, error} ->

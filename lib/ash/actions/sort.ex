@@ -464,6 +464,7 @@ defmodule Ash.Actions.Sort do
         Ash.load!(batch, query,
           domain: opts[:domain],
           reuse_values?: true,
+          authorize?: false,
           lazy?: opts[:lazy?] || false
         )
       end)

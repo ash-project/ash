@@ -564,7 +564,7 @@ defmodule Ash.Actions.Helpers do
 
   def apply_opts_load(%Ash.Query{} = query, opts) do
     if opts[:load] do
-      Ash.Query.load(query, opts[:load])
+      Ash.Query.load(query, opts[:load], Keyword.take(opts, [:strict?]))
     else
       query
     end

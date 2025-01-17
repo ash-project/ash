@@ -108,6 +108,17 @@ defmodule Ash do
                           doc:
                             "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
                         ],
+                        strict?: [
+                          type: :boolean,
+                          default: false,
+                          doc: """
+                            If set to true, only specified attributes will be loaded when passing
+                            a list of fields to fetch on a relationship, which allows for more
+                            optimized data-fetching.
+
+                            See `Ash.Query.load/2`.
+                          """
+                        ],
                         authorize_with: [
                           type: {:one_of, [:filter, :error]},
                           default: :filter,
@@ -161,7 +172,7 @@ defmodule Ash do
                  ]
                ]
                |> Spark.Options.merge(
-                 @read_opts_schema,
+                 Keyword.drop(@read_opts_schema, [:page]),
                  "Read Options"
                )
 
@@ -230,6 +241,17 @@ defmodule Ash do
                        default: false,
                        doc:
                          "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
+                     ],
+                     strict?: [
+                       type: :boolean,
+                       default: false,
+                       doc: """
+                         If set to true, only specified attributes will be loaded when passing
+                         a list of fields to fetch on a relationship, which allows for more
+                         optimized data-fetching.
+
+                         See `Ash.Query.load/2`.
+                       """
                      ]
                    ]
                    |> Spark.Options.merge(@global_opts, "Global Options")
@@ -610,6 +632,10 @@ defmodule Ash do
                                doc:
                                  "The fields to upsert. If not set, the action's `upsert_fields` is used. Unlike singular `create`, `bulk_create` with `upsert?` requires that `upsert_fields` be specified explicitly in one of these two locations."
                              ],
+                             after_action: [
+                               type: {:fun, 2},
+                               doc: "An after_action hook to be added to each processed changeset"
+                             ],
                              upsert_condition: [
                                type: :any,
                                doc:
@@ -717,6 +743,12 @@ defmodule Ash do
       type: :any,
       doc: """
       A record to use as the base of the calculation
+      """
+    ],
+    data_layer?: [
+      type: :boolean,
+      doc: """
+      Set to `true` to require that the value be computed within the data layer. Only works for calculations that define an expression.
       """
     ],
     domain: [
@@ -987,6 +1019,8 @@ defmodule Ash do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
 
+    {default, opts} = Keyword.pop(opts, :default)
+
     query
     |> Ash.Query.new()
     |> Ash.Query.select([])
@@ -1020,6 +1054,11 @@ defmodule Ash do
 
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}
+    end
+    |> case do
+      {:ok, nil} when is_function(default) -> {:ok, default.()}
+      {:ok, nil} -> {:ok, default}
+      other -> other
     end
   end
 
@@ -1965,9 +2004,12 @@ defmodule Ash do
          opts <- ReadOpts.to_options(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
-         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
-         {:ok, results} <- Ash.Actions.Read.run(query, action, opts) do
-      {:ok, results}
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
+      case Ash.Actions.Read.run(query, action, opts) do
+        {:ok, results} -> {:ok, results}
+        {:ok, results, query} -> {:ok, results, query}
+        {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+      end
     else
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}
@@ -2008,7 +2050,7 @@ defmodule Ash do
   Runs an ash query, returning a single result or raise an error. See `read_one/2` for more.
   """
   @doc spark_opts: [{1, @read_one_opts_schema}]
-  @spec read_one(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
+  @spec read_one!(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
           Ash.Resource.record() | nil
   def read_one!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -2049,9 +2091,12 @@ defmodule Ash do
          opts <- ReadOneOpts.to_options(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
-         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
-         {:ok, result} <- do_read_one(query, action, opts) do
-      {:ok, result}
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
+      case do_read_one(query, action, opts) do
+        {:ok, result} -> {:ok, result}
+        {:ok, result, query} -> {:ok, result, query}
+        {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+      end
     else
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}
@@ -2091,9 +2136,12 @@ defmodule Ash do
          opts <- ReadOneOpts.to_options(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
-         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
-         {:ok, result} <- do_read_one(query, action, opts) do
-      {:ok, result}
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
+      case do_read_one(query, action, opts) do
+        {:ok, result} -> {:ok, result}
+        {:ok, result, query} -> {:ok, result, query}
+        {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+      end
     else
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}

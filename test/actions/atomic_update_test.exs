@@ -90,6 +90,11 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
         require_atomic? true
         change Atomic
       end
+
+      update :relate_actor do
+        accept []
+        change relate_actor(:owner)
+      end
     end
 
     attributes do
@@ -108,6 +113,10 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       end
 
       update_timestamp :updated_at
+    end
+
+    relationships do
+      belongs_to :owner, __MODULE__
     end
 
     code_interface do
@@ -154,6 +163,22 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
         strategy: :stream
       )
     end
+  end
+
+  test "manage_relationship in a change is discarded" do
+    maker =
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
+      |> Ash.create!()
+
+    author =
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
+      |> Ash.create!()
+
+    author
+    |> Ash.Changeset.for_update(:relate_actor, %{}, actor: maker)
+    |> Ash.update!()
   end
 
   test "values are eagerly validated" do

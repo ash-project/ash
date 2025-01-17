@@ -230,6 +230,7 @@ defmodule Ash.EmbeddableType do
                Enum.empty?(Ash.Resource.Info.changes(__MODULE__, action.type)) &&
                Enum.empty?(Ash.Resource.Info.validations(__MODULE__, action.type)) &&
                Enum.empty?(Ash.Resource.Info.notifiers(__MODULE__)) &&
+               Enum.empty?(Ash.Resource.Info.authorizers(__MODULE__)) &&
                Enum.empty?(Ash.Resource.Info.relationships(__MODULE__)) do
             has_structs? = not Enum.empty?(structs)
 

@@ -22,6 +22,8 @@ defmodule Ash.Resource.Relationships.HasOne do
     filters: [],
     from_many?: false,
     no_attributes?: false,
+    allow_forbidden_field?: false,
+    authorize_read_with: :filter,
     could_be_related_at_creation?: false,
     validate_destination_attribute?: true,
     cardinality: :one,

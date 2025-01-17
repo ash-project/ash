@@ -545,11 +545,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Enum.reduce_while({:ok, record, []}, fn {relationship, inputs, opts, index},
                                                {:ok, record, all_notifications} ->
       inputs =
-        if relationship.cardinality == :many do
-          List.wrap(inputs)
-        else
-          inputs
-        end
+        List.wrap(inputs)
 
       case manage_relationship(record, relationship, inputs, changeset, actor, index, opts) do
         {:ok, record, notifications} ->
@@ -627,71 +623,74 @@ defmodule Ash.Actions.ManagedRelationships do
         value -> value
       end
 
-    inputs
-    |> Stream.with_index()
-    |> Enum.reduce_while(
-      {:ok, [], [], []},
-      fn {input, input_index}, {:ok, current_value, all_notifications, all_used} ->
-        try do
-          case handle_input(
-                 record,
-                 current_value,
-                 original_value,
-                 relationship,
-                 input,
-                 pkeys,
-                 changeset,
-                 actor,
-                 index,
-                 opts
-               ) do
-            {:ok, new_value, notifications, used} ->
-              {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
+    case delete_unused(
+           record,
+           List.wrap(original_value),
+           relationship,
+           pkeys,
+           inputs,
+           changeset,
+           actor,
+           opts
+         ) do
+      {:ok, new_value, notifications} ->
+        inputs
+        |> Stream.with_index()
+        |> Enum.reduce_while(
+          {:ok, new_value, notifications},
+          fn {input, input_index}, {:ok, new_value, all_notifications} ->
+            try do
+              case handle_input(
+                     record,
+                     new_value,
+                     original_value,
+                     relationship,
+                     input,
+                     pkeys,
+                     changeset,
+                     actor,
+                     index,
+                     opts
+                   ) do
+                {:ok, new_value, notifications} ->
+                  {:cont, {:ok, new_value, notifications ++ all_notifications}}
 
-            {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-              {:halt, {:error, error}}
+                {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+                  {:halt, {:error, error}}
 
-            {:error, error} ->
-              {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
+                {:error, error} ->
+                  {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
+              end
+            catch
+              {DBConnection, ref, error} ->
+                throw({DBConnection, ref, set_error_path(error, relationship, input_index, opts)})
+            end
           end
-        catch
-          {DBConnection, ref, error} ->
-            throw({DBConnection, ref, set_error_path(error, relationship, input_index, opts)})
-        end
-      end
-    )
-    |> case do
-      {:ok, new_value, all_notifications, all_used} ->
-        case delete_unused(
-               record,
-               original_value,
-               relationship,
-               new_value,
-               all_used,
-               changeset,
-               actor,
-               opts
-             ) do
+        )
+        |> case do
           {:ok, new_value, notifications} ->
             new_value =
               if is_list(new_value) do
-                Enum.reverse(new_value)
+                if key = opts[:order_is_key] do
+                  Enum.sort_by(new_value, &Map.get(&1, key))
+                else
+                  Enum.reverse(new_value)
+                end
               else
                 new_value
               end
 
-            {:ok, Map.put(record, relationship.name, new_value),
-             all_notifications ++ notifications}
+            {:ok, Map.put(record, relationship.name, new_value), notifications}
 
-          {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-            {:error, error}
-
-          {:error, error} ->
-            {:error, set_error_path(error, relationship, 0, opts)}
+          other ->
+            other
         end
 
-      {:error, error} ->
+      {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
         {:error, error}
+
+      {:error, error} ->
+        {:error, set_error_path(error, relationship, 0, opts)}
     end
   end
 
@@ -728,62 +727,62 @@ defmodule Ash.Actions.ManagedRelationships do
 
     inputs = List.wrap(inputs)
 
-    inputs
-    |> Enum.reduce_while(
-      {:ok, List.wrap(original_value), [], []},
-      fn input, {:ok, current_value, all_notifications, all_used} ->
-        case handle_input(
-               record,
-               current_value,
-               original_value,
-               relationship,
-               input,
-               pkeys,
-               changeset,
-               actor,
-               index,
-               opts
-             ) do
-          {:ok, new_value, notifications, used} ->
-            {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
+    case delete_unused(
+           record,
+           List.wrap(original_value),
+           relationship,
+           pkeys,
+           inputs,
+           changeset,
+           actor,
+           opts
+         ) do
+      {:ok, current_value, notifications} ->
+        inputs
+        |> Enum.reduce_while(
+          {:ok, current_value, notifications},
+          fn input, {:ok, current_value, all_notifications} ->
+            case handle_input(
+                   record,
+                   current_value,
+                   original_value,
+                   relationship,
+                   input,
+                   pkeys,
+                   changeset,
+                   actor,
+                   index,
+                   opts
+                 ) do
+              {:ok, new_value, notifications} ->
+                {:cont, {:ok, new_value, notifications ++ all_notifications}}
 
-          {:error, error} ->
-            {:halt, {:error, error}}
-        end
-      end
-    )
-    |> case do
-      {:ok, new_value, all_notifications, all_used} ->
-        case delete_unused(
-               record,
-               original_value,
-               relationship,
-               new_value,
-               all_used,
-               changeset,
-               actor,
-               opts
-             ) do
-          {:ok, new_value, notifications} ->
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+          end
+        )
+        |> case do
+          {:ok, new_value, all_notifications} ->
             {:ok, Map.put(record, relationship.name, Enum.at(List.wrap(new_value), 0)),
-             all_notifications ++ notifications}
+             all_notifications}
 
           {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
             {:error, error}
 
           {:error, error} ->
-            {:error,
-             Ash.Error.set_path(
-               error,
-               opts[:error_path] || [opts[:meta][:id] || relationship.name]
-             )}
+            {:error, set_error_path(error, relationship, 0, opts)}
         end
 
       {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
         {:error, error}
 
       {:error, error} ->
-        {:error, set_error_path(error, relationship, 0, opts)}
+        {:error,
+         Ash.Error.set_path(
+           error,
+           opts[:error_path] || [opts[:meta][:id] || relationship.name]
+         )}
     end
   catch
     {DBConnection, ref, error} ->
@@ -842,8 +841,8 @@ defmodule Ash.Actions.ManagedRelationships do
              pkeys,
              opts
            ) do
-        {:ok, current_value, notifications, used} ->
-          {:ok, current_value, notifications, used}
+        {:ok, current_value, notifications} ->
+          {:ok, current_value, notifications}
 
         {:error, error} ->
           {:error, error}
@@ -968,7 +967,7 @@ defmodule Ash.Actions.ManagedRelationships do
             end
 
           {:ok, found} ->
-            {:ok, [found | current_value], [], [found]}
+            {:ok, [found | current_value], []}
         end
     end
   end
@@ -1044,7 +1043,7 @@ defmodule Ash.Actions.ManagedRelationships do
           {:ok, _created, notifications} ->
             case key do
               :relate ->
-                {:ok, [found | current_value], notifications, [found]}
+                {:ok, [found | current_value], notifications}
 
               :relate_and_update ->
                 case handle_update(
@@ -1058,8 +1057,8 @@ defmodule Ash.Actions.ManagedRelationships do
                        pkeys,
                        opts
                      ) do
-                  {:ok, new_value, update_notifications, used} ->
-                    {:ok, new_value, update_notifications ++ notifications, used}
+                  {:ok, new_value, update_notifications} ->
+                    {:ok, new_value, update_notifications ++ notifications}
 
                   {:error, error} ->
                     {:error, error}
@@ -1112,14 +1111,14 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.update(return_notifications?: true)
         |> case do
           {:ok, updated, notifications} ->
-            {:ok, [updated | current_value], notifications, [updated]}
+            {:ok, [updated | current_value], notifications}
 
           {:error, error} ->
             {:error, error}
         end
 
       :belongs_to ->
-        {:ok, [found | current_value], [], [found]}
+        {:ok, [found | current_value], []}
     end
   end
 
@@ -1186,14 +1185,14 @@ defmodule Ash.Actions.ManagedRelationships do
 
             case created do
               {:ok, created, notifications} ->
-                {:ok, [created | current_value], notifications, [created]}
+                {:ok, [created | current_value], notifications}
 
               {:error, error} ->
                 {:error, error}
             end
 
           created ->
-            {:ok, [created | current_value], [], [created]}
+            {:ok, [created | current_value], []}
         end
 
       {:create, action_name, join_action_name, params} ->
@@ -1274,8 +1273,7 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.create(return_notifications?: true)
             |> case do
               {:ok, _join_row, notifications} ->
-                {:ok, [created | current_value], regular_notifications ++ notifications,
-                 [created]}
+                {:ok, [created | current_value], regular_notifications ++ notifications}
 
               {:error, error} ->
                 {:error, error}
@@ -1286,7 +1284,7 @@ defmodule Ash.Actions.ManagedRelationships do
         end
 
       ignore when ignore in [:ignore, :match] ->
-        {:ok, current_value, [], [input]}
+        {:ok, current_value, []}
     end
   end
 
@@ -1314,10 +1312,10 @@ defmodule Ash.Actions.ManagedRelationships do
          )}
 
       :ignore ->
-        {:ok, [match | current_value], [], [match]}
+        {:ok, [match | current_value], []}
 
       :missing ->
-        {:ok, current_value, [], []}
+        {:ok, current_value, []}
 
       {:destroy, action_name} ->
         case destroy_data(
@@ -1331,7 +1329,7 @@ defmodule Ash.Actions.ManagedRelationships do
                relationship
              ) do
           {:ok, notifications} ->
-            {:ok, current_value, notifications, [match]}
+            {:ok, current_value, notifications}
 
           {:error, error} ->
             {:error, error}
@@ -1356,7 +1354,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 end)
               end)
 
-            {:ok, new_value, notifications, [match]}
+            {:ok, new_value, notifications}
 
           {:error, error} ->
             {:error, error}
@@ -1369,7 +1367,7 @@ defmodule Ash.Actions.ManagedRelationships do
               {input, %{}}
 
             is_struct(input) ->
-              Map.from_struct(input)
+              {match, Map.from_struct(input)}
 
             true ->
               {match, input}
@@ -1397,7 +1395,7 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.update(return_notifications?: true)
         |> case do
           {:ok, updated, update_notifications} ->
-            {:ok, [updated | current_value], update_notifications, [match]}
+            {:ok, [updated | current_value], update_notifications}
 
           {:error, error} ->
             {:error, error}
@@ -1500,7 +1498,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> case do
                   {:ok, _updated_join, join_update_notifications} ->
                     {:ok, [updated | current_value],
-                     update_notifications ++ join_update_notifications, [updated]}
+                     update_notifications ++ join_update_notifications}
 
                   {:error, error} ->
                     {:error, error}
@@ -1516,21 +1514,18 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  defp find_match(current_value, input, pkeys, relationship, force_has_one? \\ false)
-
-  defp find_match(%Ash.NotLoaded{}, _input, _pkeys, _relationship, _force_has_one?) do
-    nil
-  end
-
-  defp find_match([match], _input, _pkeys, %{cardinality: :one}, true) do
+  @doc false
+  def find_match([match], _input, _pkeys, %{cardinality: :one}, true) do
     match
   end
 
-  defp find_match(current_value, input, pkeys, relationship, _force_has_one?) do
-    Enum.find(current_value, fn current_value ->
-      Enum.any?(pkeys, fn pkey ->
-        matches?(current_value, input, pkey, relationship)
-      end)
+  def find_match(current_value, input, pkeys, relationship, _force_has_one?) do
+    Enum.find(current_value, &matches_any?(&1, input, pkeys, relationship))
+  end
+
+  defp matches_any?(current_value, input, pkeys, relationship) do
+    Enum.any?(pkeys, fn pkey ->
+      matches?(current_value, input, pkey, relationship)
     end)
   end
 
@@ -1603,20 +1598,27 @@ defmodule Ash.Actions.ManagedRelationships do
          source_record,
          original_value,
          relationship,
-         current_value,
-         all_used,
+         pkeys,
+         inputs,
          changeset,
          actor,
          opts
        ) do
     domain = domain(changeset, relationship)
-    pkey = Ash.Resource.Info.primary_key(relationship.destination)
 
-    original_value
-    |> List.wrap()
-    |> Enum.reject(&find_match(all_used, &1, [pkey], relationship))
+    {_kept, missing} =
+      original_value
+      |> List.wrap()
+      |> Enum.split_with(fn value ->
+        Enum.any?(
+          inputs,
+          &matches_any?(value, &1, pkeys, relationship)
+        )
+      end)
+
+    missing
     |> Enum.reduce_while(
-      {:ok, current_value, []},
+      {:ok, [], []},
       fn record, {:ok, current_value, all_notifications} ->
         case opts[:on_missing] do
           :ignore ->
@@ -1723,6 +1725,9 @@ defmodule Ash.Actions.ManagedRelationships do
               {:ok, notifications} ->
                 {:cont, {:ok, current_value, notifications ++ all_notifications}}
 
+              {:ok, _soft_destroyed_record, notifications} ->
+                {:cont, {:ok, current_value, notifications ++ all_notifications}}
+
               {:error, error} ->
                 {:halt, {:error, error}}
             end
@@ -1747,9 +1752,7 @@ defmodule Ash.Actions.ManagedRelationships do
                    relationship
                  ) do
               {:ok, notifications} ->
-                new_value = Enum.reject(current_value, &matches?(&1, record, pkey, relationship))
-
-                {:cont, {:ok, new_value, notifications}}
+                {:cont, {:ok, current_value, notifications}}
 
               {:error, error} ->
                 {:halt, {:error, error}}

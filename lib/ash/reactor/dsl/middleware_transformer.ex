@@ -16,7 +16,9 @@ defmodule Ash.Reactor.Dsl.MiddlewareTransformer do
   @doc false
   @impl true
   def transform(dsl_state) do
-    add_middleware(dsl_state, Ash.Reactor.Tracer)
+    with {:ok, dsl_state} <- add_middleware(dsl_state, Ash.Reactor.Tracer) do
+      add_middleware(dsl_state, Ash.Reactor.Notifications)
+    end
   end
 
   defp add_middleware(dsl_state, middleware) do
