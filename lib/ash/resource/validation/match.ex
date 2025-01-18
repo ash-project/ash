@@ -78,7 +78,8 @@ defmodule Ash.Resource.Validation.Match do
         validate(changeset, opts, context)
 
       not Ash.Changeset.changing_attribute?(changeset, opts[:attribute]) ->
-        {:not_atomic, "can't atomically match an attribute that is not changing"}
+        {:not_atomic,
+         "can't atomically run match validation on attribute `#{opts[:attribute]}` that is not changing"}
 
       atomic_expr_change?(changeset.atomics, opts[:attribute]) ->
         {:not_atomic, "can't match on an atomic expression"}
