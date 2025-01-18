@@ -1488,23 +1488,34 @@ defmodule Ash.Query do
     module = calculation.module
     opts = calculation.opts
 
-    resource_calculation_load =
-      if resource_calculation do
+    if resource_calculation do
+      resource_calculation_load =
         List.wrap(resource_calculation.load)
-      else
-        []
-      end
 
-    loads =
-      module.load(
-        query,
-        opts,
-        Map.put(calculation.context, :context, query.context)
-      )
-      |> Ash.Actions.Helpers.validate_calculation_load!(module)
-      |> Enum.concat(resource_calculation_load)
+      loads =
+        module.load(
+          query,
+          opts,
+          Map.put(calculation.context, :context, query.context)
+        )
+        |> Ash.Actions.Helpers.validate_calculation_load!(module)
+        |> Enum.concat(resource_calculation_load)
 
-    %{calculation | required_loads: loads}
+      %{calculation | required_loads: loads}
+    else
+      loads =
+        module.load(
+          query,
+          opts,
+          Map.put(calculation.context, :context, query.context)
+        )
+        |> Ash.Actions.Helpers.validate_calculation_load!(module)
+
+      %{
+        calculation
+        | required_loads: Enum.concat(List.wrap(loads), List.wrap(calculation.required_loads))
+      }
+    end
   end
 
   defp fetch_key(map, key) when is_map(map) do

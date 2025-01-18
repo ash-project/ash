@@ -51,7 +51,7 @@ defmodule Ash.Test.ExprCalculationWithRelatedDepTest do
     end
 
     relationships do
-      belongs_to :account, Account do
+      belongs_to :account, Ash.Test.ExprCalculationWithRelatedDepTest.Account do
         public? true
         allow_nil? false
       end
@@ -81,6 +81,32 @@ defmodule Ash.Test.ExprCalculationWithRelatedDepTest do
 
     calculations do
       calculate(:balance, :integer, expr(related_account.balance))
+
+      calculate :related_account_account_count, :integer do
+        load related_account: :account
+
+        calculation fn accounts, ctx ->
+          accounts
+          |> Enum.map(fn account ->
+            if match?(%Ash.NotLoaded{}, account.related_account.account) do
+              raise "nested dep not loaded"
+            end
+
+            Enum.count(List.wrap(account.related_account.account))
+          end)
+        end
+      end
+
+      calculate :double_related_account_account_count, :integer do
+        load :related_account_account_count
+
+        calculation fn accounts, ctx ->
+          accounts
+          |> Enum.map(fn account ->
+            account.related_account_account_count * 2
+          end)
+        end
+      end
     end
 
     relationships do
@@ -98,5 +124,16 @@ defmodule Ash.Test.ExprCalculationWithRelatedDepTest do
     account = Ash.Seed.seed!(Account, %{related_account: account2})
 
     assert Ash.load!(account, :balance, authorize?: true, actor: %{a: :b}).balance == 10
+  end
+
+  test "can load nested calculation dependences from function calculations" do
+    account2 =
+      Ash.Seed.seed!(Account2, %{type: :test, balance_attr: 10})
+
+    account = Ash.Seed.seed!(Account, %{related_account: account2})
+
+    account = account |> Ash.load!(:double_related_account_account_count)
+
+    assert account.double_related_account_account_count == 2
   end
 end
