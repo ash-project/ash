@@ -2104,8 +2104,10 @@ defmodule Ash do
   end
 
   @doc """
-  Runs an ash query, returning the first result or raise an error. See `read_first/2` for more.
+  Runs an Ash query, returning the first result or nil, or raising an error. See `read_first/2` for more.
   """
+  @spec read_first!(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
+          Ash.Resource.record() | nil
   @doc spark_opts: [{1, @read_one_opts_schema}]
   def read_first!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -2125,6 +2127,8 @@ defmodule Ash do
 
   #{Spark.Options.docs(@read_one_opts_schema)}
   """
+  @spec read_first(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
+          {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()}
   @doc spark_opts: [{1, @read_one_opts_schema}]
   def read_first(query, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
