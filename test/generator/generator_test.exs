@@ -89,6 +89,10 @@ defmodule Ash.Test.GeneratorTest do
         public?(true)
       end
 
+      attribute :title_again, :string do
+        public?(true)
+      end
+
       attribute :contents, :string do
         public?(true)
       end
@@ -224,6 +228,33 @@ defmodule Ash.Test.GeneratorTest do
       )
     end
 
+    def post_with_double_name(opts \\ []) do
+      changeset_generator(Post, :create,
+        uses: %{
+          name: sequence(:title, &"Post #{&1}")
+        },
+        defaults: fn uses ->
+          [title: uses.name, title_again: uses.name]
+        end,
+        overrides: opts
+      )
+    end
+
+    def seed_post_with_double_name(opts \\ []) do
+      seed_generator(
+        fn uses ->
+          %Post{
+            title: uses.name,
+            title_again: uses.name
+          }
+        end,
+        uses: %{
+          name: sequence(:title, &"Post #{&1}")
+        },
+        overrides: opts
+      )
+    end
+
     def embedded(opts \\ []) do
       changeset_generator(Embedded, :create,
         defaults: [
@@ -249,6 +280,22 @@ defmodule Ash.Test.GeneratorTest do
       import Generator
       assert [%Post{title: "Post 0"}, %Post{title: "Post 1"}] = generate_many(post(), 2)
       assert [%Post{title: "Post 2"}, %Post{title: "Post 3"}] = generate_many(seed_post(), 2)
+    end
+
+    test "can share generators with `uses`" do
+      import Generator
+
+      assert [
+               %Post{title: "Post 0", title_again: "Post 0"},
+               %Post{title: "Post 1", title_again: "Post 1"}
+             ] =
+               generate_many(post_with_double_name(), 2)
+
+      assert [
+               %Post{title: "Post 2", title_again: "Post 2"},
+               %Post{title: "Post 3", title_again: "Post 3"}
+             ] =
+               generate_many(seed_post_with_double_name(), 2)
     end
 
     test "errors are raised when generating invalid single items" do
