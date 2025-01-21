@@ -105,6 +105,15 @@ defmodule Ash.MixProject do
         "documentation/how-to/wrap-external-apis.livemd",
         "CHANGELOG.md"
       ],
+      redirects: %{
+        "dsl-ash-resource" => "ash-resource",
+        "dsl-ash-domain" => "ash-domain",
+        "dsl-ash-notifier-pubsub" => "ash-notifier-pubsub",
+        "dsl-ash-policy-authorizer" => "ash-policy-authorizer",
+        "dsl-ash-datalayer-ets" => "ash-datalayer-ets",
+        "dsl-ash-datalayer-mnesia" => "ash-datalayer-mnesia",
+        "dsl-ash-reactor" => "ash-reactor"
+      },
       groups_for_extras: [
         "Start Here": [
           "readme.md",
