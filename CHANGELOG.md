@@ -2,6 +2,45 @@
 
 <!-- changelog -->
 
+## [3.4.56](https://github.com/ash-project/ash/compare/v3.4.55...3.4.56) (2025-01-21)
+
+
+
+
+### Features:
+
+* make atomics work even if expr err is not supported (#1718)
+
+### Bug Fixes:
+
+* properly load doubly nested calculation's explicit dependencies
+
+* use `Jason` always for compatibility
+
+* handle related non-expr calculations referenced from expr calcs
+
+* matching in managed_relationships handle_update (#1719)
+
+* simplify and fix path generation for nested relationship path deps
+
+* donât require multitenancy attribute in `get` (#1716)
+
+### Improvements:
+
+* support error shorthand for `Ash.Query.add_error/2-3`
+
+* add `uses` option for `changeset_generator`
+
+* add `uses` option for `seed_generator`
+
+* Use clearer error message for match validation atomic errors (#1721)
+
+* Add autogenerate_enabled? to Ash.Type for Ecto compatability (#1715)
+
+* warn when domain policies would be ignored by resources
+
+* allow policy authorizer to be in authorizers key in domains
+
 ## [v3.4.55](https://github.com/ash-project/ash/compare/v3.4.54...v3.4.55) (2025-01-13)
 
 
