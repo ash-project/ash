@@ -7,39 +7,38 @@
 
 
 
-### Features:
-
-* make atomics work even if expr err is not supported (#1718)
-
 ### Bug Fixes:
 
-* properly load doubly nested calculation's explicit dependencies
 
-* use `Jason` always for compatibility
+* [`Ash`] don't use `JSON` due to library compatibility issues
 
-* handle related non-expr calculations referenced from expr calcs
+* [`Ash.Changeset`] matching in managed_relationships handle_update (#1719)
 
-* matching in managed_relationships handle_update (#1719)
+* [`Ash.Query.Calculation`] properly load doubly nested calculation's explicit dependencies
 
-* simplify and fix path generation for nested relationship path deps
+* [`Ash.Query.Calculation`] handle related non-expr calculations referenced from expr calcs
 
-* donât require multitenancy attribute in `get` (#1716)
+* [`Ash.Query.Calculation`] simplify and fix path generation for nested relationship path deps
+
+* [`Ash`] don't require multitenancy attribute in `get` (#1716)
 
 ### Improvements:
 
-* support error shorthand for `Ash.Query.add_error/2-3`
+* [`Ash.Changeset`] make atomics work even if expr err is not supported (#1718)
 
-* add `uses` option for `changeset_generator`
+* [`Ash.Query`] support error shorthand for `Ash.Query.add_error/2-3`
 
-* add `uses` option for `seed_generator`
+* [`Ash.Generator`] add `uses` option for `changeset_generator`
 
-* Use clearer error message for match validation atomic errors (#1721)
+* [`Ash.Generator`] add `uses` option for `seed_generator`
 
-* Add autogenerate_enabled? to Ash.Type for Ecto compatability (#1715)
+* [`Ash.Changeset`] Use clearer error message for match validation atomic errors (#1721)
 
-* warn when domain policies would be ignored by resources
+* [`Ash.Type`] Add autogenerate_enabled? to Ash.Type for Ecto compatability (#1715)
 
-* allow policy authorizer to be in authorizers key in domains
+* [`Ash.Policy.Authorizer`] warn when domain policies would be ignored by resources
+
+* [`Ash.Domain`] allow policy authorizer to be in authorizers key in domains
 
 ## [v3.4.55](https://github.com/ash-project/ash/compare/v3.4.54...v3.4.55) (2025-01-13)
 
@@ -48,29 +47,27 @@
 
 ### Bug Fixes:
 
-* ensure can_* code interfaces pass arguments to actions
+* [code interfaces] ensure can_* code interfaces pass arguments to actions
 
-* another pattern match error in `Ash.can?`
+* [`Ash`] case clause error in `Ash.can?`
 
-* case clause error in `Ash.can?`
+* [`Ash`] reset `ash_started_transaction?` on bulk create
 
-* handle embedded attributes in attribute generator
+* [`Ash.Generator`] handle embedded attributes in attribute generator
 
-* `Ash.Generator`: Fix typo in skipped import name (#1704)
+* [`Ash.Generator`] Fix typo in skipped import name (#1704)
 
-* reset `ash_started_transaction?` on bulk create
+* [`Ash.Generator`] set max_concurrency to 0 for generate_many
 
-* set max_concurrency to 0 for generate_many
-
-* ensure that `once` and `sequence` behave predictably across tests
+* [`Ash.Generator`] ensure that `once` and `sequence` behave predictably across tests
 
 ### Improvements:
 
-* destroy missing records first in `manage_relationship`
+* [`Ash.Changeset`] destroy missing records first in `manage_relationship`
 
-* add start_of_day function
+* [`Ash.Expr`] add start_of_day function
 
-* add `cast_dates_as` constraint to `Ash.Type.DateTime`
+* [`Ash.Type.DateTime`] add `cast_dates_as` constraint to `Ash.Type.DateTime`
 
 ## [v3.4.54](https://github.com/ash-project/ash/compare/v3.4.53...v3.4.54) (2025-01-09)
 
@@ -81,7 +78,7 @@
 
 * [`Ash.Generator`] Fix issues in `Ash.Generator.generate_many/2` (#1703)
 
-* [`Ash.Generator`: Don't error if no `after_action` is provided to `generate_many`
+* [`Ash.Generator`] Don't error if no `after_action` is provided to `generate_many`
 
 * [`Ash.Generator`] Reuse the changeset actor when calling `bulk_create`
 
