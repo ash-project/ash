@@ -158,32 +158,95 @@ defmodule Ash.Generator do
 
   ## Options
 
+  * `:defaults` - A keyword list of values or generators, used as inputs. Can also be a function
+    when using the `:uses` option.
   * `:overrides` - A keyword list or map of `t:overrides()`
   * `:actor` - Passed through to the changeset
   * `:tenant` - Passed through to the changeset
+  * `:uses` - A map of generators that are passed into your `defaults`. `defaults` must be a 
+    function. This is useful when multiple things in your `defaults` need to use the same generated
+    value.
   * `:authorize?` - Passed through to the changeset
   * `:context` - Passed through to the changeset
   * `:after_action` - A one argument function that takes the result and returns 
     a new result to run after the record is creatd.
+
+  ## The `uses` option
+
+  ```elixir
+  def blog_post(opts \\ []) do
+    changeset_generator(
+      MyApp.Blog.Post,
+      :create,
+      uses: [
+        author: author() # A function using `changeset_generator` just like this one.
+      ],
+      defaults: fn %{author: author} -> 
+        author = generate(author)
+
+        [
+          name: sequence(:blog_post_title, &"My Blog Post \#{&1}")
+          author_name: author.name, 
+          text: StreamData.repeatedly(fn -> Faker.Lorem.paragraph() end)
+        ]
+      end
+      overrides: opts
+    )
+  end
+  ```
+
   """
   def changeset_generator(resource, action, opts \\ []) do
-    generators =
-      opts[:defaults]
-      |> Kernel.||([])
-      |> Map.new()
-      |> Map.merge(Map.new(opts[:overrides] || %{}))
-
     changeset_opts =
       StreamData.fixed_map(
         to_generators(Keyword.take(opts, [:actor, :tenant, :authorize?, :context]))
       )
 
-    input = action_input(resource, action, generators)
+    generator =
+      if opts[:uses] do
+        if !is_function(opts[:defaults]) do
+          raise ArgumentError,
+                "The `uses` option can only be provided if the `defaults` option is a function"
+        end
 
-    StreamData.fixed_map(%{
-      changeset_opts: changeset_opts,
-      input: input
-    })
+        opts[:uses]
+        |> to_generators()
+        |> StreamData.fixed_map()
+        |> StreamData.bind(fn uses ->
+          generators =
+            opts[:defaults].(uses)
+            |> Map.new()
+            |> Map.merge(Map.new(opts[:overrides] || %{}))
+
+          action_input(resource, action, generators)
+        end)
+        |> StreamData.bind(fn input ->
+          StreamData.fixed_map(%{
+            changeset_opts: changeset_opts,
+            input: StreamData.fixed_map(to_generators(input))
+          })
+        end)
+      else
+        if is_function(opts[:defaults]) do
+          raise ArgumentError,
+                "The `uses` option must be provided if the `defaults` option is a function"
+        end
+
+        generators =
+          opts[:defaults]
+          |> Kernel.||([])
+          |> Map.new()
+          |> Map.merge(Map.new(opts[:overrides] || %{}))
+
+        input = action_input(resource, action, generators)
+
+        StreamData.fixed_map(%{
+          changeset_opts: changeset_opts,
+          input: input
+        })
+      end
+
+    generator
     |> StreamData.map(fn %{input: input, changeset_opts: changeset_opts} ->
       Ash.Changeset.for_action(
         resource,
@@ -240,23 +303,60 @@ defmodule Ash.Generator do
   * `:overrides` - A keyword list or map of `t:overrides()`
   * `:actor` - Passed through to the changeset
   * `:tenant` - Passed through to the changeset
+  * `:uses` - A map of generators that are passed into the first argument, if it is a function.
   * `:authorize?` - Passed through to the changeset
   * `:context` - Passed through to the changeset
   * `:after_action` - A one argument function that takes the result and returns 
     a new result to run after the record is creatd.
   """
-  @spec seed_generator(Ash.Resource.record(), opts :: Keyword.t()) :: stream_data()
-  def seed_generator(%resource{} = record, opts \\ []) do
-    record
-    |> Map.take(Enum.to_list(Ash.Resource.Info.attribute_names(resource)))
-    |> Map.merge(Map.new(opts[:overrides] || %{}))
-    |> to_generators()
-    |> StreamData.fixed_map()
-    |> StreamData.map(fn keys ->
-      Ash.Resource.set_metadata(struct(resource, keys), %{
-        private: %{generator_after_action: opts[:after_action]}
-      })
-    end)
+  @spec seed_generator(
+          Ash.Resource.record() | (map -> Ash.Resource.record()),
+          opts :: Keyword.t()
+        ) :: stream_data()
+  def seed_generator(record, opts \\ []) do
+    if opts[:uses] do
+      if !is_function(record) do
+        raise ArgumentError, "The `uses` option can only be provided if `record` is a function"
+      end
+
+      opts[:uses]
+      |> to_generators()
+      |> StreamData.fixed_map()
+      |> StreamData.bind(fn uses ->
+        %resource{} =
+          record =
+          record.(uses)
+
+        record
+        |> Map.take(Enum.to_list(Ash.Resource.Info.attribute_names(resource)))
+        |> Map.merge(Map.new(opts[:overrides] || %{}))
+        |> to_generators()
+        |> Map.put(:__will_be_struct__, resource)
+        |> StreamData.fixed_map()
+      end)
+      |> StreamData.map(fn keys ->
+        Ash.Resource.set_metadata(struct(keys.__will_be_struct__, keys), %{
+          private: %{generator_after_action: opts[:after_action]}
+        })
+      end)
+    else
+      if is_function(record) do
+        raise ArgumentError, "The `uses` option must be provided if `record` is a function"
+      end
+
+      %resource{} = record
+
+      record
+      |> Map.take(Enum.to_list(Ash.Resource.Info.attribute_names(resource)))
+      |> Map.merge(Map.new(opts[:overrides] || %{}))
+      |> to_generators()
+      |> StreamData.fixed_map()
+      |> StreamData.map(fn keys ->
+        Ash.Resource.set_metadata(struct(resource, keys), %{
+          private: %{generator_after_action: opts[:after_action]}
+        })
+      end)
+    end
   end
 
   @doc """

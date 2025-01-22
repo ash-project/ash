@@ -123,6 +123,7 @@ defmodule Ash.Query do
     InvalidLimit,
     InvalidOffset,
     InvalidPage,
+    InvalidQuery,
     NoReadAction,
     ReadActionRequiresActor,
     Required
@@ -1488,23 +1489,34 @@ defmodule Ash.Query do
     module = calculation.module
     opts = calculation.opts
 
-    resource_calculation_load =
-      if resource_calculation do
+    if resource_calculation do
+      resource_calculation_load =
         List.wrap(resource_calculation.load)
-      else
-        []
-      end
 
-    loads =
-      module.load(
-        query,
-        opts,
-        Map.put(calculation.context, :context, query.context)
-      )
-      |> Ash.Actions.Helpers.validate_calculation_load!(module)
-      |> Enum.concat(resource_calculation_load)
+      loads =
+        module.load(
+          query,
+          opts,
+          Map.put(calculation.context, :context, query.context)
+        )
+        |> Ash.Actions.Helpers.validate_calculation_load!(module)
+        |> Enum.concat(resource_calculation_load)
 
-    %{calculation | required_loads: loads}
+      %{calculation | required_loads: loads}
+    else
+      loads =
+        module.load(
+          query,
+          opts,
+          Map.put(calculation.context, :context, query.context)
+        )
+        |> Ash.Actions.Helpers.validate_calculation_load!(module)
+
+      %{
+        calculation
+        | required_loads: Enum.concat(List.wrap(loads), List.wrap(calculation.required_loads))
+      }
+    end
   end
 
   defp fetch_key(map, key) when is_map(map) do
@@ -3079,19 +3091,56 @@ defmodule Ash.Query do
   """
   @spec add_error(t(), path :: Ash.Error.path_input(), Ash.Error.error_input()) :: t()
   @spec add_error(t(), Ash.Error.error_input()) :: t()
-  def add_error(query, path \\ [], error) do
+
+  def add_error(query, path \\ [], error)
+
+  def add_error(query, path, errors) when is_list(errors) do
+    if Keyword.keyword?(errors) do
+      error =
+        errors
+        |> to_query_error()
+        |> Ash.Error.set_path(path)
+
+      add_error(query, error)
+    else
+      Enum.reduce(errors, query, &add_error(&2, &1, path))
+    end
+  end
+
+  def add_error(query, path, error) do
     path = List.wrap(path)
     query = new(query)
 
-    error
-    |> Ash.Error.to_ash_error()
-    |> Ash.Error.set_path(path)
-    |> case do
-      errors when is_list(errors) ->
-        %{query | errors: query.errors ++ errors, valid?: false}
+    error =
+      error
+      |> Ash.Error.to_ash_error()
+      |> Ash.Error.set_path(path)
 
-      error ->
-        %{query | errors: [error | query.errors], valid?: false}
+    %{query | errors: [error | query.errors], valid?: false}
+  end
+
+  defp to_query_error(keyword) do
+    error =
+      if keyword[:field] do
+        InvalidArgument.exception(
+          field: keyword[:field],
+          message: keyword[:message],
+          value: keyword[:value],
+          vars: keyword
+        )
+      else
+        InvalidQuery.exception(
+          fields: keyword[:fields] || [],
+          message: keyword[:message],
+          value: keyword[:value],
+          vars: keyword
+        )
+      end
+
+    if keyword[:path] do
+      Ash.Error.set_path(error, keyword[:path])
+    else
+      error
     end
   end
 

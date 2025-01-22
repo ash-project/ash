@@ -110,15 +110,15 @@ Welcome! Here you will find everything you need to know to get started with and 
 
 ## Reference
 
+- [Ash.Resource DSL](documentation/dsls/Ash.Resource.md)
+- [Ash.Domain DSL](documentation/dsls/Ash.Domain.md)
+- [Ash.Reactor DSL](documentation/dsls/Ash.Reactor.md)
+- [Ash.Notifier.PubSub DSL](documentation/dsls/Ash.Notifier.PubSub.md)
+- [Ash.Policy.Authorizer DSL](documentation/dsls/Ash.Policy.Authorizer.md)
+- [Ash.DataLayer.Ets DSL](documentation/dsls/Ash.DataLayer.Ets.md)
+- [Ash.DataLayer.Mnesia DSL](documentation/dsls/Ash.DataLayer.Mnesia.md)
 - [Glossary](documentation/topics/reference/glossary.md)
 - [Expressions](documentation/topics/reference/expressions.md)
-- [Ash.Resource DSL](documentation/dsls/DSL-Ash.Resource.md)
-- [Ash.Domain DSL](documentation/dsls/DSL-Ash.Domain.md)
-- [Ash.Reactor DSL](documentation/dsls/DSL-Ash.Reactor.md)
-- [Ash.Notifier.PubSub DSL](documentation/dsls/DSL-Ash.Notifier.PubSub.md)
-- [Ash.Policy.Authorizer DSL](documentation/dsls/DSL-Ash.Policy.Authorizer.md)
-- [Ash.DataLayer.Ets DSL](documentation/dsls/DSL-Ash.DataLayer.Ets.md)
-- [Ash.DataLayer.Mnesia DSL](documentation/dsls/DSL-Ash.DataLayer.Mnesia.md)
 - For other reference documentation, see the sidebar & search bar
 
 ## Packages

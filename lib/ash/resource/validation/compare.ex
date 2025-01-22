@@ -199,10 +199,17 @@ defmodule Ash.Resource.Validation.Compare do
   defp atomic_value(attribute), do: attribute
 
   defp invalid_attribute_error(opts, attribute_value) do
+    value =
+      if is_function(attribute_value) do
+        attribute_value.()
+      else
+        attribute_value
+      end
+
     {:error,
      [
        field: opts[:attribute],
-       value: attribute_value
+       value: value
      ]
      |> with_description(opts)
      |> InvalidAttribute.exception()}
