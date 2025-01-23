@@ -28,7 +28,7 @@ jobs:
             { org: "ash-project", name: "ash_paper_trail" },
             { org: "team-alembic", name: "ash_authentication" },
             { org: "team-alembic", name: "ash_authentication_phoenix" },
-            { org: "sevenseacat", name: "tunez" }
+            { org: "sevenseacat", name: "tunez", ref: "chapter-7" }
           ]
         otp: ["27.2"]
         elixir: ["1.18.1"]
@@ -50,6 +50,7 @@ jobs:
         with:
           repository: ${{matrix.project.org}}/${{matrix.project.name}}
           path: ${{matrix.project.name}}
+          ref: ${{matrix.project.ref}}
       - uses: actions/checkout@v2
         with:
           repository: ash-project/ash
