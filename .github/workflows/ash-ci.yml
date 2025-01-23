@@ -5,6 +5,9 @@ on:
       HEX_API_KEY:
         required: false
     inputs:
+      publish-docs:
+        type: boolean
+        default: true
       spark-formatter:
         type: boolean
         default: true
@@ -76,6 +79,7 @@ jobs:
   build-docs:
     name: mix docs
     runs-on: ubuntu-latest
+    if: ${{inputs.publish-docs}}
     needs:
       - build-test
     steps:
@@ -93,7 +97,7 @@ jobs:
     needs:
       - build-test
       - build-docs
-    if: github.ref == 'refs/heads/main'
+    if: ${{inputs.publish-docs && github.ref == 'refs/heads/main'}}
     permissions:
       pages: write
       id-token: write
