@@ -41,19 +41,19 @@ defmodule Ash.MixProject do
       extra_section: "GUIDES",
       extras: [
         {"README.md", title: "Home"},
-        {"documentation/dsls/Ash.Resource.md",
+        {"documentation/dsls/DSL-Ash.Resource.md",
          search_data: Spark.Docs.search_data_for(Ash.Resource.Dsl)},
-        {"documentation/dsls/Ash.Domain.md",
+        {"documentation/dsls/DSL-Ash.Domain.md",
          search_data: Spark.Docs.search_data_for(Ash.Domain.Dsl)},
-        {"documentation/dsls/Ash.Notifier.PubSub.md",
+        {"documentation/dsls/DSL-Ash.Notifier.PubSub.md",
          search_data: Spark.Docs.search_data_for(Ash.Notifier.PubSub)},
-        {"documentation/dsls/Ash.Policy.Authorizer.md",
+        {"documentation/dsls/DSL-Ash.Policy.Authorizer.md",
          search_data: Spark.Docs.search_data_for(Ash.Policy.Authorizer)},
-        {"documentation/dsls/Ash.DataLayer.Ets.md",
+        {"documentation/dsls/DSL-Ash.DataLayer.Ets.md",
          search_data: Spark.Docs.search_data_for(Ash.DataLayer.Ets)},
-        {"documentation/dsls/Ash.DataLayer.Mnesia.md",
+        {"documentation/dsls/DSL-Ash.DataLayer.Mnesia.md",
          search_data: Spark.Docs.search_data_for(Ash.DataLayer.Mnesia)},
-        {"documentation/dsls/Ash.Reactor.md",
+        {"documentation/dsls/DSL-Ash.Reactor.md",
          search_data: Spark.Docs.search_data_for(Ash.Reactor)},
         "documentation/tutorials/get-started.md",
         "documentation/topics/about_ash/what-is-ash.md",
@@ -105,15 +105,6 @@ defmodule Ash.MixProject do
         "documentation/how-to/wrap-external-apis.livemd",
         "CHANGELOG.md"
       ],
-      redirects: %{
-        "dsl-ash-resource" => "ash-resource",
-        "dsl-ash-domain" => "ash-domain",
-        "dsl-ash-notifier-pubsub" => "ash-notifier-pubsub",
-        "dsl-ash-policy-authorizer" => "ash-policy-authorizer",
-        "dsl-ash-datalayer-ets" => "ash-datalayer-ets",
-        "dsl-ash-datalayer-mnesia" => "ash-datalayer-mnesia",
-        "dsl-ash-reactor" => "ash-reactor"
-      },
       groups_for_extras: [
         "Start Here": [
           "readme.md",
