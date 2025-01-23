@@ -9,9 +9,9 @@
 
 ### Bug Fixes:
 
-* ensure compare validation doesn't put functions in exceptions
 
-* resolve functions in errors from compare validation
+* [`Ash.Resource.Validation.Compare`] ensure compare validation doesn't put functions in exceptions
+
 
 ## [3.4.56](https://github.com/ash-project/ash/compare/v3.4.55...3.4.56) (2025-01-21)
 
