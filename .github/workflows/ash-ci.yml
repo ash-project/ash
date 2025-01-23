@@ -84,7 +84,7 @@ jobs:
         with:
           mix-env: dev
           use-cache: false
-      - uses: actions/upload-pages-artifact@v1
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: doc/
   deploy-docs:
