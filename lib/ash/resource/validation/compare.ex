@@ -164,17 +164,19 @@ defmodule Ash.Resource.Validation.Compare do
   @impl true
   def describe(opts) do
     [
-      vars: [
-        value:
-          case opts[:value] do
-            fun when is_function(fun, 0) -> fun.()
-            v -> v
-          end,
-        greater_than: opts[:greater_than],
-        less_than: opts[:less_than],
-        greater_than_or_equal_to: opts[:greater_than_or_equal_to],
-        less_than_or_equal_to: opts[:less_than_or_equal_to]
-      ],
+      vars:
+        [
+          greater_than: opts[:greater_than],
+          less_than: opts[:less_than],
+          greater_than_or_equal_to: opts[:greater_than_or_equal_to],
+          less_than_or_equal_to: opts[:less_than_or_equal_to]
+        ]
+        |> Enum.map(fn {k, v} ->
+          case v do
+            fun when is_function(fun, 0) -> {k, fun.()}
+            v -> {k, v}
+          end
+        end),
       message: opts[:message] || message(opts)
     ]
   end
