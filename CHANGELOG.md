@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.4.57](https://github.com/ash-project/ash/compare/v3.4.56...v3.4.57) (2025-01-23)
+
+
+
+
+### Bug Fixes:
+
+* ensure compare validation doesn't put functions in exceptions
+
+* resolve functions in errors from compare validation
+
 ## [3.4.56](https://github.com/ash-project/ash/compare/v3.4.55...3.4.56) (2025-01-21)
 
 
