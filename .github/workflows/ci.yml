@@ -19,4 +19,4 @@ jobs:
     with:
       sat-solver: ${{ matrix.sat_solver }}
       igniter-upgrade: ${{matrix.sat_solver == 'SimpleSat'}}
-      publish-docs: ${{matrix.sat_solver == "Picosat"}}
+      publish-docs: ${{matrix.sat_solver == 'Picosat'}}
