@@ -252,6 +252,12 @@ defmodule Ash do
 
                          See `Ash.Query.load/2`.
                        """
+                     ],
+                     authorize_with: [
+                       type: {:one_of, [:filter, :error]},
+                       default: :filter,
+                       doc:
+                         "If set to `:error`, instead of applying authorization filters as a filter, any records not matching the authroization filter will cause an error to be returned."
                      ]
                    ]
                    |> Spark.Options.merge(@global_opts, "Global Options")
