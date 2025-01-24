@@ -426,9 +426,10 @@ defmodule Ash.Test.Policy.SimpleTest do
       |> Ash.Changeset.for_create(:create, %{author: user.id, text: "aaa"})
       |> Ash.create!(authorize?: false)
 
-    Post
-    |> Ash.Changeset.for_create(:create, %{text: "invalid"})
-    |> Ash.create!(authorize?: false)
+    post2 =
+      Post
+      |> Ash.Changeset.for_create(:create, %{text: "invalid"})
+      |> Ash.create!(authorize?: false)
 
     ids =
       Post
@@ -439,8 +440,13 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert ids == Enum.sort([post1.id])
 
     assert_raise Ash.Error.Forbidden, fn ->
-      Post
-      |> Ash.read!(actor: user, authorize_with: :error)
+      Ash.read!(Post, actor: user, authorize_with: :error)
+    end
+
+    Ash.get!(Post, post1.id, actor: user, authorize_with: :error)
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Ash.get!(Post, post2.id, actor: user, authorize_with: :error)
     end
   end
 
