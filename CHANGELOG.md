@@ -2,6 +2,19 @@
 
 <!-- changelog -->
 
+## [v3.4.58](https://github.com/ash-project/ash/compare/v3.4.57...v3.4.58) (2025-01-26)
+
+
+
+
+### Bug Fixes:
+
+* properly check query aggregate support
+
+### Improvements:
+
+* support `authorize_with` option in `Ash.get` (#1732)
+
 ## [v3.4.57](https://github.com/ash-project/ash/compare/v3.4.56...v3.4.57) (2025-01-23)
 
 
