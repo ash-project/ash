@@ -2783,56 +2783,65 @@ defmodule Ash.Filter do
         end
 
       aggregate = aggregate(context, field) ->
-        related = Ash.Resource.Info.related(context.resource, aggregate.relationship_path)
+        if Ash.DataLayer.data_layer_can?(context.resource, {:aggregate, aggregate.kind}) do
+          related = Ash.Resource.Info.related(context.resource, aggregate.relationship_path)
 
-        read_action =
-          aggregate.read_action || Ash.Resource.Info.primary_action!(related, :read).name
+          read_action =
+            aggregate.read_action || Ash.Resource.Info.primary_action!(related, :read).name
 
-        with %{valid?: true} = aggregate_query <- Ash.Query.for_read(related, read_action),
-             %{valid?: true} = aggregate_query <-
-               Ash.Query.Aggregate.build_query(
-                 aggregate_query,
-                 context.resource,
-                 filter: aggregate.filter,
-                 sort: aggregate.sort
-               ),
-             {:ok, query_aggregate} <-
-               Aggregate.new(
-                 context.resource,
-                 aggregate.name,
-                 aggregate.kind,
-                 agg_name: aggregate.name,
-                 path: aggregate.relationship_path,
-                 query: aggregate_query,
-                 field: aggregate.field,
-                 default: aggregate.default,
-                 filterable?: aggregate.filterable?,
-                 sortable?: aggregate.sortable?,
-                 sensitive?: aggregate.sensitive?,
-                 type: aggregate.type,
-                 include_nil?: aggregate.include_nil?,
-                 constraints: aggregate.constraints,
-                 implementation: aggregate.implementation,
-                 uniq?: aggregate.uniq?,
-                 read_action: read_action,
-                 authorize?: aggregate.authorize?,
-                 join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
-               ) do
-          query_aggregate = %{query_aggregate | load: aggregate.name}
+          with %{valid?: true} = aggregate_query <- Ash.Query.for_read(related, read_action),
+               %{valid?: true} = aggregate_query <-
+                 Ash.Query.Aggregate.build_query(
+                   aggregate_query,
+                   context.resource,
+                   filter: aggregate.filter,
+                   sort: aggregate.sort
+                 ),
+               {:ok, query_aggregate} <-
+                 Aggregate.new(
+                   context.resource,
+                   aggregate.name,
+                   aggregate.kind,
+                   agg_name: aggregate.name,
+                   path: aggregate.relationship_path,
+                   query: aggregate_query,
+                   field: aggregate.field,
+                   default: aggregate.default,
+                   filterable?: aggregate.filterable?,
+                   sortable?: aggregate.sortable?,
+                   sensitive?: aggregate.sensitive?,
+                   type: aggregate.type,
+                   include_nil?: aggregate.include_nil?,
+                   constraints: aggregate.constraints,
+                   implementation: aggregate.implementation,
+                   uniq?: aggregate.uniq?,
+                   read_action: read_action,
+                   authorize?: aggregate.authorize?,
+                   join_filters:
+                     Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                 ) do
+            query_aggregate = %{query_aggregate | load: aggregate.name}
 
-          case parse_predicates(nested_statement, query_aggregate, context) do
-            {:ok, nested_statement} ->
-              {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
+            case parse_predicates(nested_statement, query_aggregate, context) do
+              {:ok, nested_statement} ->
+                {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          else
+            %{valid?: false, errors: errors} ->
+              {:error, errors}
 
             {:error, error} ->
               {:error, error}
           end
         else
-          %{valid?: false, errors: errors} ->
-            {:error, errors}
-
-          {:error, error} ->
-            {:error, error}
+          {:error,
+           Ash.Error.Query.AggregatesNotSupported.exception(
+             resource: context.resource,
+             feature: "using"
+           )}
         end
 
       resource_calculation = calculation(context, field) ->
@@ -3155,31 +3164,36 @@ defmodule Ash.Filter do
 
     opts = Enum.at(args, 1) || []
 
-    if Keyword.keyword?(opts) do
-      kind =
-        if name == :custom_aggregate do
-          :custom
-        else
-          name
+    kind =
+      if name == :custom_aggregate do
+        :custom
+      else
+        name
+      end
+
+    if Ash.DataLayer.data_layer_can?(context.resource, {:aggregate, kind}) do
+      if Keyword.keyword?(opts) do
+        opts = Keyword.put(opts, :path, path)
+
+        with {:ok, agg} <-
+               Aggregate.new(
+                 resource,
+                 agg_name(kind, opts),
+                 kind,
+                 opts
+               ) do
+          {:ok,
+           %Ref{
+             relationship_path: call.relationship_path,
+             attribute: agg
+           }}
         end
-
-      opts = Keyword.put(opts, :path, path)
-
-      with {:ok, agg} <-
-             Aggregate.new(
-               resource,
-               agg_name(kind, opts),
-               kind,
-               opts
-             ) do
-        {:ok,
-         %Ref{
-           relationship_path: call.relationship_path,
-           attribute: agg
-         }}
+      else
+        {:error, "Aggregate options must be keyword list. In: #{inspect(call)}"}
       end
     else
-      {:error, "Aggregate options must be keyword list. In: #{inspect(call)}"}
+      {:error,
+       Ash.Error.Query.AggregatesNotSupported.exception(resource: resource, feature: "using")}
     end
   end
 
@@ -3468,6 +3482,18 @@ defmodule Ash.Filter do
   end
 
   def do_hydrate_refs(
+        %Ref{attribute: %Ash.Query.Aggregate{} = agg} = ref,
+        _context
+      ) do
+    if Ash.DataLayer.data_layer_can?(agg.resource, {:aggregate, agg.kind}) do
+      {:ok, ref}
+    else
+      {:error,
+       Ash.Error.Query.AggregatesNotSupported.exception(resource: agg.resource, feature: "using")}
+    end
+  end
+
+  def do_hydrate_refs(
         %Ref{attribute: attribute} = ref,
         context
       )
@@ -3498,49 +3524,57 @@ defmodule Ash.Filter do
             end
 
           aggregate = aggregate(context, attribute) ->
-            agg_related = Ash.Resource.Info.related(related, aggregate.relationship_path)
+            if Ash.DataLayer.data_layer_can?(context.resource, {:aggregate, aggregate.kind}) do
+              agg_related = Ash.Resource.Info.related(related, aggregate.relationship_path)
 
-            with %{valid?: true} = aggregate_query <-
-                   Ash.Query.new(agg_related),
-                 %{valid?: true} = aggregate_query <-
-                   Ash.Query.Aggregate.build_query(
-                     aggregate_query,
-                     context.resource,
-                     filter: aggregate.filter,
-                     sort: aggregate.sort
-                   ),
-                 {:ok, query_aggregate} <-
-                   Aggregate.new(
-                     related,
-                     aggregate.name,
-                     aggregate.kind,
-                     agg_name: aggregate.name,
-                     path: aggregate.relationship_path,
-                     query: aggregate_query,
-                     field: aggregate.field,
-                     default: aggregate.default,
-                     filterable?: aggregate.filterable?,
-                     type: aggregate.type,
-                     sortable?: aggregate.sortable?,
-                     include_nil?: aggregate.include_nil?,
-                     sensitive?: aggregate.sensitive?,
-                     constraints: aggregate.constraints,
-                     implementation: aggregate.implementation,
-                     uniq?: aggregate.uniq?,
-                     read_action: aggregate.read_action,
-                     authorize?: aggregate.authorize?,
-                     join_filters:
-                       Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
-                   ) do
-              query_aggregate = %{query_aggregate | load: aggregate.name}
+              with %{valid?: true} = aggregate_query <-
+                     Ash.Query.new(agg_related),
+                   %{valid?: true} = aggregate_query <-
+                     Ash.Query.Aggregate.build_query(
+                       aggregate_query,
+                       context.resource,
+                       filter: aggregate.filter,
+                       sort: aggregate.sort
+                     ),
+                   {:ok, query_aggregate} <-
+                     Aggregate.new(
+                       related,
+                       aggregate.name,
+                       aggregate.kind,
+                       agg_name: aggregate.name,
+                       path: aggregate.relationship_path,
+                       query: aggregate_query,
+                       field: aggregate.field,
+                       default: aggregate.default,
+                       filterable?: aggregate.filterable?,
+                       type: aggregate.type,
+                       sortable?: aggregate.sortable?,
+                       include_nil?: aggregate.include_nil?,
+                       sensitive?: aggregate.sensitive?,
+                       constraints: aggregate.constraints,
+                       implementation: aggregate.implementation,
+                       uniq?: aggregate.uniq?,
+                       read_action: aggregate.read_action,
+                       authorize?: aggregate.authorize?,
+                       join_filters:
+                         Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                     ) do
+                query_aggregate = %{query_aggregate | load: aggregate.name}
 
-              {:ok, %{ref | attribute: query_aggregate, resource: related}}
+                {:ok, %{ref | attribute: query_aggregate, resource: related}}
+              else
+                %{valid?: false, errors: errors} ->
+                  {:error, errors}
+
+                {:error, error} ->
+                  {:error, error}
+              end
             else
-              %{valid?: false, errors: errors} ->
-                {:error, errors}
-
-              {:error, error} ->
-                {:error, error}
+              {:error,
+               Ash.Error.Query.AggregatesNotSupported.exception(
+                 resource: context.resource,
+                 feature: "using"
+               )}
             end
 
           relationship = relationship(context, attribute) ->
@@ -3564,11 +3598,6 @@ defmodule Ash.Filter do
             {:error, "Invalid reference #{inspect(ref)}"}
         end
     end
-  end
-
-  def do_hydrate_refs(%Ref{relationship_path: relationship_path, resource: nil} = ref, context) do
-    ref = %{ref | input?: ref.input? || context[:input?] || false}
-    {:ok, %{ref | resource: Ash.Resource.Info.related(context.resource, relationship_path)}}
   end
 
   def do_hydrate_refs(%BooleanExpression{left: left, right: right} = expr, context) do

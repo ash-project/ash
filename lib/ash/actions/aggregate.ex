@@ -174,17 +174,29 @@ defmodule Ash.Actions.Aggregate do
     end)
     |> case do
       {:ok, aggregates} ->
-        {:ok,
-         Enum.map(aggregates, fn aggregate ->
-           Ash.Actions.Read.add_calc_context(
-             aggregate,
-             opts[:actor],
-             opts[:authorize?],
-             opts[:tenant],
-             opts[:tracer],
-             query.domain
-           )
-         end)}
+        Enum.reduce_while(aggregates, {:ok, []}, fn aggregate, {:ok, aggregates} ->
+          if Ash.DataLayer.data_layer_can?(aggregate.resource, {:query_aggregate, aggregate.kind}) do
+            aggregate =
+              Ash.Actions.Read.add_calc_context(
+                aggregate,
+                opts[:actor],
+                opts[:authorize?],
+                opts[:tenant],
+                opts[:tracer],
+                query.domain
+              )
+
+            {:cont, {:ok, [aggregate | aggregates]}}
+          else
+            {:halt,
+             {:error,
+              Ash.Error.Query.AggregatesNotSupported.exception(
+                resource: aggregate.resource,
+                feature: "using",
+                type: :query_aggregate
+              )}}
+          end
+        end)
 
       other ->
         other

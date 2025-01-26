@@ -2,9 +2,18 @@ defmodule Ash.Error.Query.AggregatesNotSupported do
   @moduledoc "Used when the data_layer does not support aggregates, or filtering/sorting them"
   use Ash.Error.Exception
 
-  use Splode.Error, fields: [:resource, :feature], class: :invalid
+  use Splode.Error, fields: [:resource, :feature, type: :aggregate], class: :invalid
 
-  def message(%{resource: resource, feature: feature}) do
-    "Data layer for #{inspect(resource)} does not support #{feature} aggregates"
+  def message(%{resource: resource, feature: feature, type: type}) do
+    type =
+      case type do
+        :aggregate ->
+          "aggregates"
+
+        :query_aggregate ->
+          "query aggregates"
+      end
+
+    "Data layer for #{inspect(resource)} does not support #{feature} #{type}"
   end
 end

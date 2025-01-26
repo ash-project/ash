@@ -1571,15 +1571,25 @@ defmodule Ash.Query do
         )
 
       match?(%{__struct__: Ash.Query.Aggregate}, field) ->
-        Map.update!(
-          query,
-          :aggregates,
-          &Map.put(
-            &1,
-            field.name,
-            field
+        if Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, field.kind}) do
+          Map.update!(
+            query,
+            :aggregates,
+            &Map.put(
+              &1,
+              field.name,
+              field
+            )
           )
-        )
+        else
+          add_error(
+            query,
+            Ash.Error.Query.AggregatesNotSupported.exception(
+              resource: query.resource,
+              feature: "using"
+            )
+          )
+        end
 
       Ash.Resource.Info.attribute(query.resource, field) ->
         ensure_selected(query, field)
