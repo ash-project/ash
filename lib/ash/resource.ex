@@ -5,6 +5,12 @@ defmodule Ash.Resource do
   [Resource DSL documentation](dsl-ash-resource.html)
   """
 
+  def foo do
+    # x + y + z
+
+    1 - 2 - 3
+  end
+
   @type t :: module
   @type record :: struct()
 

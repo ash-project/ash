@@ -396,7 +396,7 @@ defmodule Ash.Query.Aggregate do
   end
 
   defp validate_supported(resource, kind, nil) do
-    if Ash.DataLayer.data_layer_can?(resource, {:aggregate, kind}) do
+    if Ash.DataLayer.data_layer_can?(resource, {:query_aggregate, kind}) do
       :ok
     else
       {:error, AggregatesNotSupported.exception(resource: resource, feature: "using")}
