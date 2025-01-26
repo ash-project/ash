@@ -5,6 +5,9 @@ on:
       HEX_API_KEY:
         required: false
     inputs:
+      release:
+        type: boolean
+        default: true
       publish-docs:
         type: boolean
         default: true
@@ -413,7 +416,7 @@ jobs:
       - dialyzer
       - build-dev
       - deps
-    if: ${{ always() && !failure() && !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
+    if: ${{ inputs.release && always() && !failure() && !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     name: Release
     steps:
