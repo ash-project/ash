@@ -282,4 +282,11 @@ defmodule Ash.Type.String do
   def dump_to_native(value, _) do
     Ecto.Type.dump(:string, value)
   end
+
+  @doc false
+  def match(%Regex{} = regex), do: {:ok, regex}
+
+  def match(_) do
+    {:error, "Must provide a regex to match, e.g ~r/foobar/"}
+  end
 end
