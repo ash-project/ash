@@ -243,8 +243,8 @@ defmodule Ash.Resource.Change.CascadeDestroy do
           Keyword.update(
             context_opts,
             :context,
-            relationship.context || %{},
-            &Map.merge(&1, relationship.context || %{})
+            context,
+            &Map.merge(&1, context)
           )
         )
 

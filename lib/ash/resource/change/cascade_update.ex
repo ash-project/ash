@@ -215,8 +215,8 @@ defmodule Ash.Resource.Change.CascadeUpdate do
           Keyword.update(
             context_opts,
             :context,
-            relationship.context || %{},
-            &Map.merge(&1, relationship.context || %{})
+            context,
+            &Map.merge(&1, context)
           )
         )
 
