@@ -204,9 +204,21 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         return_notifications?: opts.return_notifications?
       )
 
+    context = Map.merge(relationship.context || %{}, %{cascade_destroy: true})
+
     case related_query(data, opts) do
       {:ok, query} ->
-        Ash.bulk_update(query, action.name, inputs, context_opts)
+        Ash.bulk_update(
+          query,
+          action.name,
+          inputs,
+          Keyword.update(
+            context_opts,
+            :context,
+            relationship.context || %{},
+            &Map.merge(&1, relationship.context || %{})
+          )
+        )
 
       :error ->
         data
@@ -229,8 +241,8 @@ defmodule Ash.Resource.Change.CascadeUpdate do
           Keyword.update(
             context_opts,
             :context,
-            %{cascade_update: true},
-            &Map.put(&1, :cascade_update, true)
+            context,
+            &Map.merge(&1, context)
           )
         )
     end
