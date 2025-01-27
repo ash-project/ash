@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.60](https://github.com/ash-project/ash/compare/v3.4.59...v3.4.60) (2025-01-27)
+
+
+
+
+### Bug Fixes:
+
+* traverse custom expressions when listing refs
+
 ## [v3.4.59](https://github.com/ash-project/ash/compare/v3.4.58...v3.4.59) (2025-01-27)
 
 
