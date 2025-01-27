@@ -50,10 +50,6 @@ defmodule Ash.Type.Keyword do
     ]
   ]
 
-  def field_types(value) do
-    {:ok, value}
-  end
-
   @moduledoc """
   Represents a keyword list, stored as a `:map` in the database.
 

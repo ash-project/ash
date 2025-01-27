@@ -175,6 +175,7 @@ defmodule Ash.Type.String do
     end
   end
 
+  @impl true
   def apply_constraints(nil, _), do: :ok
 
   def apply_constraints(value, constraints) do
@@ -280,11 +281,5 @@ defmodule Ash.Type.String do
 
   def dump_to_native(value, _) do
     Ecto.Type.dump(:string, value)
-  end
-
-  def match(%Regex{} = regex), do: {:ok, regex}
-
-  def match(_) do
-    {:error, "Must provide a regex to match, e.g ~r/foobar/"}
   end
 end

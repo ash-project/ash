@@ -49,10 +49,6 @@ defmodule Ash.Type.Map do
     ]
   ]
 
-  def field_types(value) do
-    {:ok, value}
-  end
-
   @moduledoc """
   Represents a map stored in the database.
 

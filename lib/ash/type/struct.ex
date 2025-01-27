@@ -69,10 +69,6 @@ defmodule Ash.Type.Struct do
   #{Spark.Options.docs(@constraints)}
   """
 
-  def field_types(value) do
-    {:ok, value}
-  end
-
   use Ash.Type
 
   @impl true

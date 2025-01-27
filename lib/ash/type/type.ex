@@ -1235,6 +1235,11 @@ defmodule Ash.Type do
     type.dump_to_native(term, constraints)
   end
 
+  @doc """
+  Modifies an expression to apply a type's casting logic to the value it produces.
+
+  This delegates to the underlying types implementaiton of `c:cast_atomic/2`.
+  """
   @spec cast_atomic(t(), term, constraints()) ::
           {:atomic, Ash.Expr.t()}
           | {:ok, term}
@@ -1280,6 +1285,11 @@ defmodule Ash.Type do
     end
   end
 
+  @doc """
+  Applies a types constraints to an expression.
+
+  This delegates to the underlying types implementaiton of `c:apply_atomic_constraints/2`.
+  """
   @spec apply_atomic_constraints(t(), term, constraints()) ::
           {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
   def apply_atomic_constraints({:array, {:array, _}}, _term, _constraints),
@@ -1349,6 +1359,11 @@ defmodule Ash.Type do
     type.equal?(left, right)
   end
 
+  @doc """
+  Provides the changeset, action_input or query to the type, to potentially store in its constraints.
+
+  This is used for embedded types to allow accessing the parent changeset in certain cases.
+  """
   @spec include_source(
           t(),
           Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t(),
@@ -1367,6 +1382,11 @@ defmodule Ash.Type do
     type.include_source(constraints, changeset_or_query)
   end
 
+  @doc """
+  Merges two load statements for a given type.
+
+  This is used to "load through" types. For more see `load/5`.
+  """
   @spec merge_load(
           type :: Ash.Type.t(),
           left :: term(),
@@ -1390,6 +1410,11 @@ defmodule Ash.Type do
     type.merge_load(left, right, constraints, context)
   end
 
+  @doc """
+  Checks if a given path has been loaded on a type.
+
+  This is used to "load through" types. For more see `load/5`.
+  """
   @spec loaded?(
           type :: Ash.Type.t(),
           value_or_values :: term,
@@ -1418,6 +1443,13 @@ defmodule Ash.Type do
     type.loaded?(value, load_path, constraints, opts)
   end
 
+  @doc """
+  Apply a load statement to a value.
+
+  This is used for types that can be "loaded through". For example, maps, unions and structs.
+  If they have keys that are embedded types, for example, we want to be able to apply a load
+  statements to their contents.
+  """
   @spec load(
           type :: Ash.Type.t(),
           values :: list(term),
