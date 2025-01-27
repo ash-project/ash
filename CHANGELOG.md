@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.59](https://github.com/ash-project/ash/compare/v3.4.58...v3.4.59) (2025-01-27)
+
+
+
+
+### Bug Fixes:
+
+* better placed validations of aggregate support for data layers
+
 ## [v3.4.58](https://github.com/ash-project/ash/compare/v3.4.57...v3.4.58) (2025-01-26)
 
 
