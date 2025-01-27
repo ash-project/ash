@@ -144,7 +144,10 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
     1..Enum.random(3..5)
     |> Enum.map(fn _ -> Post.create!(%{author_id: author.id}) end)
 
-    Ash.bulk_destroy!([author], :no_notification_destroy, %{})
+    Ash.bulk_destroy([author], :no_notification_destroy, %{},
+      return_errors?: true,
+      strategy: [:stream, :atomic, :atomic_batches]
+    )
 
     assert [] = Post.read!()
     assert [] = Author.read!()
