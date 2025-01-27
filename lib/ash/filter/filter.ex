@@ -2309,6 +2309,9 @@ defmodule Ash.Filter do
             expand_get_path?
           )
 
+      %Ash.CustomExpression{expression: expression} ->
+        do_list_refs(expression, no_longer_simple?, false, expand_calculations?, expand_get_path?)
+
       %{__predicate__?: _, arguments: args} ->
         Enum.flat_map(
           args,
