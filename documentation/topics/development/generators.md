@@ -45,4 +45,4 @@ Ash can be installed into a project using `igniter`. Some examples of how this c
 
 ## Patchers
 
-- `mix ash.patch.extend` - Adds an extension or extensions to a domain or resource.
+- `mix ash.extend` - Adds an extension or extensions to a domain or resource.

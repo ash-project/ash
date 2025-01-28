@@ -246,7 +246,7 @@ if Code.ensure_loaded?(Igniter) do
     defp extend(igniter, resource, extensions, argv) do
       Igniter.compose_task(
         igniter,
-        "ash.patch.extend",
+        "ash.extend",
         [inspect(resource), Enum.join(extensions, ",")] ++ argv
       )
     end
