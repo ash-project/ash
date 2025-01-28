@@ -2023,7 +2023,7 @@ defmodule Ash do
   end
 
   @doc """
-  Refetches a record by primary key or raises an error. See `reload/2` for more.
+  Refetches a record by primary key or raises an error. See `get/2` for more.
   """
   @spec reload!(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
           Ash.Resource.record() | no_return
@@ -2038,7 +2038,7 @@ defmodule Ash do
   end
 
   @doc """
-  Refetches a record by primary key. See `reload/2` for more.
+  Refetches a record by primary key. See `get/2` for more.
   """
   @spec reload(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
           {:ok, Ash.Resource.record()} | {:error, Ash.Error.t()}
