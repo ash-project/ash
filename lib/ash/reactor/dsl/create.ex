@@ -12,6 +12,7 @@ defmodule Ash.Reactor.Dsl.Create do
             context: nil,
             description: nil,
             domain: nil,
+            guards: [],
             initial: nil,
             inputs: [],
             load: nil,
@@ -36,6 +37,7 @@ defmodule Ash.Reactor.Dsl.Create do
           context: nil | Ash.Reactor.Dsl.Context.t(),
           description: String.t() | nil,
           domain: Ash.Domain.t(),
+          guards: [Reactor.Guard.Build.t()],
           initial: nil | Ash.Resource.t() | Reactor.Template.t(),
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
           load: nil | Ash.Reactor.Dsl.ActionLoad.t(),
@@ -79,6 +81,7 @@ defmodule Ash.Reactor.Dsl.Create do
       entities: [
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
         context: [Ash.Reactor.Dsl.Context.__entity__()],
+        guards: [Reactor.Dsl.Guard.__entity__(), Reactor.Dsl.Where.__entity__()],
         inputs: [Ash.Reactor.Dsl.Inputs.__entity__()],
         load: [Ash.Reactor.Dsl.ActionLoad.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],

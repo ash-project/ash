@@ -14,11 +14,12 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.AshStep do
         ash_step.impl,
         ash_step.arguments,
         async?: ash_step.async?,
+        compensate: ash_step.compensate,
+        guards: ash_step.guards,
         max_retries: ash_step.max_retries,
-        transform: ash_step.transform,
         ref: :step_name,
         run: ash_step.run,
-        compensate: ash_step.compensate,
+        transform: ash_step.transform,
         undo: ash_step.undo
       )
     end

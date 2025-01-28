@@ -49,6 +49,8 @@ Declares a step that will call a generic action on a resource.
 ### Nested DSLs
  * [actor](#reactor-action-actor)
  * [context](#reactor-action-context)
+ * [guard](#reactor-action-guard)
+ * [where](#reactor-action-where)
  * [inputs](#reactor-action-inputs)
  * [tenant](#reactor-action-tenant)
  * [wait_for](#reactor-action-wait_for)
@@ -136,6 +138,102 @@ A map to be merged into the action's context
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Context`
+
+### reactor.action.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-action-guard-fun){: #reactor-action-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-action-guard-description){: #reactor-action-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.action.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-action-where-predicate){: #reactor-action-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-action-where-description){: #reactor-action-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
 
 ### reactor.action.inputs
 ```elixir
@@ -279,6 +377,8 @@ See the `Reactor.Step` behaviour for more information.
 ### Nested DSLs
  * [argument](#reactor-ash_step-argument)
  * [wait_for](#reactor-ash_step-wait_for)
+ * [guard](#reactor-ash_step-guard)
+ * [where](#reactor-ash_step-where)
 
 
 ### Examples
@@ -431,6 +531,102 @@ wait_for :create_user
 
 Target: `Reactor.Dsl.WaitFor`
 
+### reactor.ash_step.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-ash_step-guard-fun){: #reactor-ash_step-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-ash_step-guard-description){: #reactor-ash_step-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.ash_step.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-ash_step-where-predicate){: #reactor-ash_step-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-ash_step-where-description){: #reactor-ash_step-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
+
 
 
 
@@ -469,8 +665,10 @@ Caveats/differences from `Ash.bulk_create/4`:
 
 
 ### Nested DSLs
- * [context](#reactor-bulk_create-context)
  * [actor](#reactor-bulk_create-actor)
+ * [context](#reactor-bulk_create-context)
+ * [guard](#reactor-bulk_create-guard)
+ * [where](#reactor-bulk_create-where)
  * [load](#reactor-bulk_create-load)
  * [tenant](#reactor-bulk_create-tenant)
  * [wait_for](#reactor-bulk_create-wait_for)
@@ -530,6 +728,37 @@ end
 | [`undo`](#reactor-bulk_create-undo){: #reactor-bulk_create-undo } | `:always \| :never \| :outside_transaction` | `:never` | How to handle undoing this action |
 
 
+### reactor.bulk_create.actor
+```elixir
+actor source
+```
+
+
+Specifies the action actor
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-bulk_create-actor-source){: #reactor-bulk_create-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_create-actor-transform){: #reactor-bulk_create-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Actor`
+
 ### reactor.bulk_create.context
 ```elixir
 context context
@@ -561,15 +790,36 @@ A map to be merged into the action's context
 
 Target: `Ash.Reactor.Dsl.Context`
 
-### reactor.bulk_create.actor
+### reactor.bulk_create.guard
 ```elixir
-actor source
+guard fun
 ```
 
 
-Specifies the action actor
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
 
 
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
 
 
 
@@ -577,12 +827,12 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-bulk_create-actor-source){: #reactor-bulk_create-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+| [`fun`](#reactor-bulk_create-guard-fun){: #reactor-bulk_create-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`transform`](#reactor-bulk_create-actor-transform){: #reactor-bulk_create-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+| [`description`](#reactor-bulk_create-guard-description){: #reactor-bulk_create-guard-description } | `String.t` |  | An optional description of the guard. |
 
 
 
@@ -590,7 +840,51 @@ Specifies the action actor
 
 ### Introspection
 
-Target: `Ash.Reactor.Dsl.Actor`
+Target: `Reactor.Dsl.Guard`
+
+### reactor.bulk_create.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-bulk_create-where-predicate){: #reactor-bulk_create-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-bulk_create-where-description){: #reactor-bulk_create-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
 
 ### reactor.bulk_create.load
 ```elixir
@@ -733,6 +1027,8 @@ Caveats/differences from `Ash.bulk_update/4`:
 ### Nested DSLs
  * [actor](#reactor-bulk_update-actor)
  * [context](#reactor-bulk_update-context)
+ * [guard](#reactor-bulk_update-guard)
+ * [where](#reactor-bulk_update-where)
  * [inputs](#reactor-bulk_update-inputs)
  * [tenant](#reactor-bulk_update-tenant)
  * [wait_for](#reactor-bulk_update-wait_for)
@@ -859,6 +1155,102 @@ A map to be merged into the action's context
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Context`
+
+### reactor.bulk_update.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-bulk_update-guard-fun){: #reactor-bulk_update-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-bulk_update-guard-description){: #reactor-bulk_update-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.bulk_update.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-bulk_update-where-predicate){: #reactor-bulk_update-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-bulk_update-where-description){: #reactor-bulk_update-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
 
 ### reactor.bulk_update.inputs
 ```elixir
@@ -1158,6 +1550,8 @@ Declares a step that will call a create action on a resource.
 ### Nested DSLs
  * [actor](#reactor-create-actor)
  * [context](#reactor-create-context)
+ * [guard](#reactor-create-guard)
+ * [where](#reactor-create-where)
  * [inputs](#reactor-create-inputs)
  * [load](#reactor-create-load)
  * [tenant](#reactor-create-tenant)
@@ -1262,6 +1656,102 @@ A map to be merged into the action's context
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Context`
+
+### reactor.create.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-create-guard-fun){: #reactor-create-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-create-guard-description){: #reactor-create-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.create.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-create-where-predicate){: #reactor-create-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-create-where-description){: #reactor-create-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
 
 ### reactor.create.inputs
 ```elixir
@@ -1440,6 +1930,8 @@ Declares a step that will call a destroy action on a resource.
 ### Nested DSLs
  * [actor](#reactor-destroy-actor)
  * [context](#reactor-destroy-context)
+ * [guard](#reactor-destroy-guard)
+ * [where](#reactor-destroy-where)
  * [inputs](#reactor-destroy-inputs)
  * [load](#reactor-destroy-load)
  * [tenant](#reactor-destroy-tenant)
@@ -1540,6 +2032,102 @@ A map to be merged into the action's context
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Context`
+
+### reactor.destroy.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-destroy-guard-fun){: #reactor-destroy-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-destroy-guard-description){: #reactor-destroy-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.destroy.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-destroy-where-predicate){: #reactor-destroy-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-destroy-where-description){: #reactor-destroy-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
 
 ### reactor.destroy.inputs
 ```elixir
@@ -1708,6 +2296,8 @@ Declares a step that will load additional data on a resource.
 ### Nested DSLs
  * [actor](#reactor-load-actor)
  * [context](#reactor-load-context)
+ * [guard](#reactor-load-guard)
+ * [where](#reactor-load-where)
  * [tenant](#reactor-load-tenant)
  * [wait_for](#reactor-load-wait_for)
 
@@ -1796,6 +2386,102 @@ A map to be merged into the action's context
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Context`
+
+### reactor.load.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-load-guard-fun){: #reactor-load-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-load-guard-description){: #reactor-load-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.load.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-load-where-predicate){: #reactor-load-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-load-where-description){: #reactor-load-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
 
 ### reactor.load.tenant
 ```elixir
@@ -1887,6 +2573,8 @@ Declares a step that will call a read action on a resource returning a single re
 ### Nested DSLs
  * [actor](#reactor-read_one-actor)
  * [context](#reactor-read_one-context)
+ * [guard](#reactor-read_one-guard)
+ * [where](#reactor-read_one-where)
  * [inputs](#reactor-read_one-inputs)
  * [load](#reactor-read_one-load)
  * [tenant](#reactor-read_one-tenant)
@@ -1982,6 +2670,102 @@ A map to be merged into the action's context
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Context`
+
+### reactor.read_one.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-read_one-guard-fun){: #reactor-read_one-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-read_one-guard-description){: #reactor-read_one-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.read_one.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-read_one-where-predicate){: #reactor-read_one-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-read_one-where-description){: #reactor-read_one-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
 
 ### reactor.read_one.inputs
 ```elixir
@@ -2150,6 +2934,8 @@ Declares a step that will call a read action on a resource.
 ### Nested DSLs
  * [actor](#reactor-read-actor)
  * [context](#reactor-read-context)
+ * [guard](#reactor-read-guard)
+ * [where](#reactor-read-where)
  * [inputs](#reactor-read-inputs)
  * [load](#reactor-read-load)
  * [tenant](#reactor-read-tenant)
@@ -2249,6 +3035,102 @@ A map to be merged into the action's context
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Context`
+
+### reactor.read.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-read-guard-fun){: #reactor-read-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-read-guard-description){: #reactor-read-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.read.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-read-where-predicate){: #reactor-read-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-read-where-description){: #reactor-read-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
 
 ### reactor.read.inputs
 ```elixir
@@ -2415,6 +3297,8 @@ transaction name, resources
 Creates a group of steps which will be executed inside a data layer transaction.
 
 ### Nested DSLs
+ * [guard](#reactor-transaction-guard)
+ * [where](#reactor-transaction-where)
  * [wait_for](#reactor-transaction-wait_for)
 
 
@@ -2433,6 +3317,102 @@ Creates a group of steps which will be executed inside a data layer transaction.
 | [`return`](#reactor-transaction-return){: #reactor-transaction-return } | `atom` |  | The name of the step whose result will be returned as the return value of the transaction. |
 | [`timeout`](#reactor-transaction-timeout){: #reactor-transaction-timeout } | `pos_integer \| :infinity` | `15000` | How long to allow the transaction to run before timing out. |
 
+
+### reactor.transaction.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-transaction-guard-fun){: #reactor-transaction-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-transaction-guard-description){: #reactor-transaction-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.transaction.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-transaction-where-predicate){: #reactor-transaction-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-transaction-where-description){: #reactor-transaction-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
 
 ### reactor.transaction.wait_for
 ```elixir
@@ -2503,6 +3483,8 @@ Declares a step that will call an update action on a resource.
 ### Nested DSLs
  * [actor](#reactor-update-actor)
  * [context](#reactor-update-context)
+ * [guard](#reactor-update-guard)
+ * [where](#reactor-update-where)
  * [inputs](#reactor-update-inputs)
  * [load](#reactor-update-load)
  * [tenant](#reactor-update-tenant)
@@ -2605,6 +3587,102 @@ A map to be merged into the action's context
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Context`
+
+### reactor.update.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-update-guard-fun){: #reactor-update-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-update-guard-description){: #reactor-update-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.update.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-update-where-predicate){: #reactor-update-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-update-where-description){: #reactor-update-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
 
 ### reactor.update.inputs
 ```elixir

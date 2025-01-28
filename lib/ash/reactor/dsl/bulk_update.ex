@@ -19,6 +19,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             context: nil,
             description: nil,
             domain: nil,
+            guards: [],
             filter: %{},
             initial: nil,
             inputs: [],
@@ -70,6 +71,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
           context: nil | Ash.Reactor.Dsl.Context.t(),
           description: String.t() | nil,
           domain: Ash.Domain.t(),
+          guards: [Reactor.Guard.Build.t()],
           filter:
             %{optional(String.t()) => %{required(String.t()) => String.t() | number | boolean}}
             | Keyword.t(Keyword.t(String.t() | number | boolean)),
@@ -140,6 +142,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
       entities: [
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
         context: [Ash.Reactor.Dsl.Context.__entity__()],
+        guards: [Reactor.Dsl.Guard.__entity__(), Reactor.Dsl.Where.__entity__()],
         inputs: [Ash.Reactor.Dsl.Inputs.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()]

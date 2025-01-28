@@ -12,6 +12,7 @@ defmodule Ash.Reactor.Dsl.Load do
             context: nil,
             description: nil,
             domain: nil,
+            guards: [],
             lazy?: nil,
             load: nil,
             name: nil,
@@ -33,6 +34,7 @@ defmodule Ash.Reactor.Dsl.Load do
           context: nil | Ash.Reactor.Dsl.Context.t(),
           description: nil | String.t(),
           domain: nil | Ash.Domain.t(),
+          guards: [Reactor.Guard.Build.t()],
           lazy?: nil | boolean,
           load: Reactor.Template.t(),
           name: atom,
@@ -56,6 +58,7 @@ defmodule Ash.Reactor.Dsl.Load do
       entities: [
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
         context: [Ash.Reactor.Dsl.Context.__entity__()],
+        guards: [Reactor.Dsl.Guard.__entity__(), Reactor.Dsl.Where.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()]
       ],

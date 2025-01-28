@@ -12,6 +12,7 @@ defmodule Ash.Reactor.Dsl.Read do
             async?: true,
             authorize?: nil,
             description: nil,
+            guards: [],
             inputs: [],
             load: nil,
             name: nil,
@@ -31,6 +32,7 @@ defmodule Ash.Reactor.Dsl.Read do
           async?: boolean,
           authorize?: boolean | nil,
           description: String.t() | nil,
+          guards: [Reactor.Guard.Build.t()],
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
           load: nil | Ash.Reactor.Dsl.ActionLoad.t(),
           name: atom,
@@ -63,6 +65,7 @@ defmodule Ash.Reactor.Dsl.Read do
       entities: [
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
         context: [Ash.Reactor.Dsl.Context.__entity__()],
+        guards: [Reactor.Dsl.Guard.__entity__(), Reactor.Dsl.Where.__entity__()],
         inputs: [Ash.Reactor.Dsl.Inputs.__entity__()],
         load: [Ash.Reactor.Dsl.ActionLoad.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],

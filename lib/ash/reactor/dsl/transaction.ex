@@ -10,6 +10,7 @@ defmodule Ash.Reactor.Dsl.Transaction do
   defstruct __identifier__: nil,
             arguments: [],
             description: nil,
+            guards: [],
             name: nil,
             resources: [],
             return: nil,
@@ -22,6 +23,7 @@ defmodule Ash.Reactor.Dsl.Transaction do
           __identifier__: any,
           arguments: [],
           description: nil | String.t(),
+          guards: [Reactor.Guard.Build.t()],
           name: atom,
           resources: [Ash.Resource.t()],
           return: atom,
@@ -42,6 +44,7 @@ defmodule Ash.Reactor.Dsl.Transaction do
       identifier: :name,
       imports: [Reactor.Dsl.Argument],
       entities: [
+        guards: [Reactor.Dsl.Guard.__entity__(), Reactor.Dsl.Where.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()],
         steps: []
       ],

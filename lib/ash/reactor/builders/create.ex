@@ -49,7 +49,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
 
       step_options =
         create
-        |> Map.take([:async?])
+        |> Map.take([:async?, :guards])
         |> Map.put(:ref, :step_name)
         |> Enum.to_list()
 
