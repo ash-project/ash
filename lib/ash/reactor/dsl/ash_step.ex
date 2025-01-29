@@ -9,6 +9,7 @@ defmodule Ash.Reactor.Dsl.AshStep do
             arguments: [],
             async?: true,
             compensate: nil,
+            guards: [],
             impl: nil,
             max_retries: :infinity,
             name: nil,
@@ -23,6 +24,7 @@ defmodule Ash.Reactor.Dsl.AshStep do
           async?: boolean,
           compensate:
             nil | (any, Reactor.inputs(), Reactor.context() -> :ok | :retry | {:continue, any}),
+          guards: [Reactor.Guard.Build.t()],
           impl: nil | module | {module, keyword},
           max_retries: non_neg_integer() | :infinity,
           name: atom,
@@ -67,7 +69,10 @@ defmodule Ash.Reactor.Dsl.AshStep do
       target: __MODULE__,
       identifier: :name,
       no_depend_modules: [:impl],
-      entities: [arguments: [Dsl.Argument.__entity__(), Dsl.WaitFor.__entity__()]],
+      entities: [
+        arguments: [Dsl.Argument.__entity__(), Dsl.WaitFor.__entity__()],
+        guards: [Reactor.Dsl.Guard.__entity__(), Reactor.Dsl.Where.__entity__()]
+      ],
       recursive_as: :steps,
       schema: [
         name: [

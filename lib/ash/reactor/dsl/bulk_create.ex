@@ -16,6 +16,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             context: nil,
             description: nil,
             domain: nil,
+            guards: [],
             initial: nil,
             load: nil,
             max_concurrency: 0,
@@ -59,6 +60,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
           context: nil | Ash.Reactor.Dsl.Context.t(),
           description: String.t() | nil,
           domain: Ash.Domain.t(),
+          guards: [Reactor.Guard.Build.t()],
           initial: Reactor.Template.t(),
           load: nil | Ash.Reactor.Dsl.ActionLoad.t(),
           max_concurrency: non_neg_integer(),
@@ -120,8 +122,9 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
       identifier: :name,
       imports: [Reactor.Dsl.Argument],
       entities: [
-        context: [Ash.Reactor.Dsl.Context.__entity__()],
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
+        context: [Ash.Reactor.Dsl.Context.__entity__()],
+        guards: [Reactor.Dsl.Guard.__entity__(), Reactor.Dsl.Where.__entity__()],
         load: [Ash.Reactor.Dsl.ActionLoad.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()]
