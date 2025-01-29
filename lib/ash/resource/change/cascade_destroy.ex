@@ -204,7 +204,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
             Enum.concat(result, notifications)
 
           {{:error, error}, _} ->
-            {:error, error}
+            Enum.map(result, fn _ -> {:error, error} end)
         end
       end
     else
