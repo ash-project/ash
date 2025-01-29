@@ -23,9 +23,10 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       required: false,
       default: false
     ],
-    require_atomic?: [
+    after_action?: [
       type: :boolean,
-      doc: "If true all the cascade destroys are done in after_action hooks.",
+      doc:
+        "If true all the cascade destroys are done in after_action hooks. This makes it safe to use in atomic actions",
       required: false,
       default: true
     ],
@@ -45,12 +46,13 @@ defmodule Ash.Resource.Change.CascadeDestroy do
   @moduledoc """
   Cascade a resource's destroy action to a related resource's destroy action.
 
-  If require_atomic? is true this change will ads an after-action hook that explicitly
+  If after_action? is true this change adds an after-action hook that explicitly
   calls destroy on any records related via the named relationship.  It will optimise
-  for bulk destroys where possible.
+  for bulk destroys where possible. This makes it safe to use in atomic actions, but
+  might not be possible depending on the data layer setup (see warning below).
 
-  If require_atomic? is false this change will add a before-action hook for relationships
-  where the child record points to the parent (has_many, has_one, many_to_many)
+  If after_action? is false this change will add a before-action hook for relationships
+  where the child record points to the parent (has_many, has_one, many_to_many).
 
   > #### Beware database constraints {: .warning}
   >
@@ -89,7 +91,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
   def change(changeset, opts, context) do
     with {:ok, %Opts{} = opts} <- Opts.validate(opts),
          {:ok, opts} <- validate_relationship_and_action(opts, changeset.resource) do
-      if not opts.require_atomic? and
+      if not opts.after_action? and
            opts.relationship.type in [:many_to_many, :has_many, :has_one] do
         Ash.Changeset.before_action(changeset, fn changeset ->
           case {destroy_related([changeset.data], opts, context, changeset),
@@ -135,7 +137,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
   def atomic(%{resource: resource}, opts, _) do
     with {:ok, %Opts{} = opts} <- Opts.validate(opts),
          {:ok, opts} <- validate_relationship_and_action(opts, resource) do
-      if not opts.require_atomic? and
+      if not opts.after_action? and
            opts.relationship.type in [:many_to_many, :has_many, :has_one] do
         {:not_atomic, "Need to destroy relationships in a before batch"}
       else
@@ -154,7 +156,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
          {:ok, opts} <- validate_relationship_and_action(opts, resource) do
       records = Enum.map(changesets, & &1.data)
 
-      if not opts.require_atomic? and
+      if not opts.after_action? and
            opts.relationship.type in [:many_to_many, :has_many, :has_one] do
         case {destroy_related(records, opts, context, changeset), opts.return_notifications?} do
           {_, false} ->
@@ -189,7 +191,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       records = Enum.map(changesets_and_results, &elem(&1, 1))
       result = Enum.map(records, &{:ok, &1})
 
-      if not opts.require_atomic? and
+      if not opts.after_action? and
            opts.relationship.type in [:many_to_many, :has_many, :has_one] do
         result
       else
