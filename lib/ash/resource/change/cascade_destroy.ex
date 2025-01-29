@@ -167,7 +167,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
             Enum.concat(changesets, notifications)
 
           {{:error, error}, _} ->
-            {:error, error}
+            Enum.map(changesets, &Ash.Changeset.add_error(&1, error))
         end
       else
         changesets
