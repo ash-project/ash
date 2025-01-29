@@ -86,12 +86,6 @@ defmodule Ash.Type do
   Generally you add `use Ash.Type` to your module (it is possible to add `@behaviour
   Ash.Type` and define everything yourself, but this is more work and error-prone).
 
-  Overriding the `{:array, type}` behaviour. By defining the `*_array` versions
-  of `cast_input`, `cast_stored`, `dump_to_native` and `apply_constraints`, you can
-  override how your type behaves as a collection. This is how the features of embedded
-  resources are implemented. No need to implement them unless you wish to override the
-  default behaviour. Your type is responsible for handling nil values in each callback as well.
-
   Simple example of a float custom type
 
   ```elixir
@@ -120,6 +114,13 @@ defmodule Ash.Type do
     end
   end
   ```
+
+  ### Overriding the `{:array, type}` behaviour
+
+  By defining the `*_array` versions of `cast_input`, `cast_stored`, `dump_to_native` and `apply_constraints`, you can
+  override how your type behaves as a collection. This is how the features of embedded
+  resources are implemented. No need to implement them unless you wish to override the
+  default behaviour. Your type is responsible for handling nil values in each callback as well.
 
   All the Ash built-in types are implemented with `use Ash.Type` so they are good
   examples to look at to create your own `Ash.Type`.
