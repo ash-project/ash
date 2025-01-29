@@ -10,10 +10,12 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Transaction do
     sub_reactor = Builder.new({Ash.Reactor.TransactionStep, transaction.name})
 
     with {:ok, sub_reactor} <- build_nested_steps(sub_reactor, transaction.steps),
-         {:ok, sources} <- extract_inner_sources(sub_reactor),
+         {:ok, inner_step_names} <- extract_inner_step_names(sub_reactor),
+         {:ok, sources} <- extract_inner_sources(sub_reactor, inner_step_names),
          {:ok, arguments} <- build_transaction_arguments(sources),
          {:ok, sub_reactor} <- build_sub_reactor_inputs(sub_reactor, arguments),
          {:ok, sub_reactor} <- maybe_add_return(sub_reactor, transaction),
+         {:ok, sub_reactor} <- rewrite_inner_step_arguments(sub_reactor, inner_step_names),
          {:ok, sub_reactor} <- Reactor.Planner.plan(sub_reactor) do
       arguments =
         transaction.wait_for
@@ -61,14 +63,11 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Transaction do
   defp build_nested_steps(sub_reactor, steps),
     do: reduce_while_ok(steps, sub_reactor, &Build.build/2)
 
+  defp extract_inner_step_names(sub_reactor), do: {:ok, MapSet.new(sub_reactor.steps, & &1.name)}
+
   # Iterates the nested steps and returns any argument sources which are not
   # transaction local.
-  defp extract_inner_sources(sub_reactor) do
-    inside_step_names =
-      sub_reactor.steps
-      |> Enum.map(& &1.name)
-      |> MapSet.new()
-
+  defp extract_inner_sources(sub_reactor, inner_step_names) do
     sources_to_raise =
       sub_reactor.steps
       |> Enum.flat_map(& &1.arguments)
@@ -78,7 +77,10 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Transaction do
           true
 
         source when is_struct(source, Reactor.Template.Result) ->
-          !MapSet.member?(inside_step_names, source.name)
+          !MapSet.member?(inner_step_names, source.name)
+
+        source when is_struct(source, Reactor.Template.Element) ->
+          !MapSet.member?(inner_step_names, source.name)
 
         _ ->
           false
@@ -96,14 +98,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Transaction do
   defp build_transaction_arguments(sources) do
     transaction_arguments =
       sources
-      |> Enum.with_index()
-      |> Enum.map(fn
-        {source, _idx} when is_struct(source, Reactor.Template.Input) ->
-          %Reactor.Argument{name: source.name, source: source}
-
-        {source, idx} when is_struct(source, Reactor.Template.Result) ->
-          %Reactor.Argument{name: String.to_atom("result_#{idx}"), source: source}
-      end)
+      |> Enum.map(&%Reactor.Argument{name: &1.name, source: &1})
 
     {:ok, transaction_arguments}
   end
@@ -139,4 +134,47 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Transaction do
 
   defp maybe_add_return(sub_reactor, transaction),
     do: Builder.return(sub_reactor, transaction.return)
+
+  defp rewrite_inner_step_arguments(sub_reactor, inner_step_names) do
+    steps =
+      sub_reactor.steps
+      |> Enum.map(fn step ->
+        arguments =
+          step.arguments
+          |> Enum.map(fn
+            argument when is_struct(argument.source, Reactor.Template.Result) ->
+              if MapSet.member?(inner_step_names, argument.source.name) do
+                argument
+              else
+                %{
+                  argument
+                  | source: %Reactor.Template.Input{
+                      name: argument.source.name,
+                      sub_path: argument.source.sub_path
+                    }
+                }
+              end
+
+            argument when is_struct(argument.source, Reactor.Template.Element) ->
+              if MapSet.member?(inner_step_names, argument.source.name) do
+                argument
+              else
+                %{
+                  argument
+                  | source: %Reactor.Template.Input{
+                      name: argument.source.name,
+                      sub_path: argument.source.sub_path
+                    }
+                }
+              end
+
+            argument ->
+              argument
+          end)
+
+        %{step | arguments: arguments}
+      end)
+
+    {:ok, %{sub_reactor | steps: steps}}
+  end
 end

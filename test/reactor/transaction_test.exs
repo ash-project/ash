@@ -124,4 +124,55 @@ defmodule Ash.Test.Reactor.TransactionTest do
         false
     end)
   end
+
+  test "steps inside a transaction can refer to step results outside the transaction" do
+    defmodule OutsideResultReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      ash do
+        default_domain Domain
+      end
+
+      step :title do
+        run fn _ ->
+          {:ok, "About Einstein the dog"}
+        end
+      end
+
+      transaction :create_post, Post do
+        create :post, Post, :create do
+          inputs(%{title: result(:title)})
+        end
+
+        return :post
+      end
+    end
+
+    assert %{title: "About Einstein the dog"} = Reactor.run!(OutsideResultReactor)
+  end
+
+  test "steps inside a transaction can refer to inputs outside the transaction" do
+    defmodule OutsideInputReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      ash do
+        default_domain Domain
+      end
+
+      input :title
+
+      transaction :create_post, Post do
+        create :post, Post, :create do
+          inputs(%{title: input(:title)})
+        end
+
+        return :post
+      end
+    end
+
+    assert %{title: "About Einstein the dog"} =
+             Reactor.run!(OutsideInputReactor, %{title: "About Einstein the dog"})
+  end
 end
