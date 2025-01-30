@@ -53,6 +53,13 @@ Accounts.register_user(username, password, %{key: "val"})
 Accounts.register_user(username, password, %{key: "val"}, [tenant: "organization_22"])
 ```
 
+For a full list of options, see the functions in `Ash.Resource.Interface`, or use iex help on your generated
+functions, i.e
+
+```elixir
+iex> h Accounts.register_user/3
+``
+
 ## Calculations
 
 Resource calculations can be run dynamically using `Ash.calculate/3`, but
