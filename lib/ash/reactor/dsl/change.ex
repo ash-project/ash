@@ -44,12 +44,7 @@ defmodule Ash.Reactor.Dsl.Change do
         Reactor.Dsl.Argument
       ],
       no_depend_modules: [:change],
-      entities: [
-        arguments: [
-          Reactor.Dsl.Argument.__entity__(),
-          Reactor.Dsl.WaitFor.__entity__()
-        ]
-      ],
+      entities: [arguments: [Reactor.Dsl.Argument.__entity__(), Reactor.Dsl.WaitFor.__entity__()]],
       recursive_as: :steps,
       schema: [
         name: [

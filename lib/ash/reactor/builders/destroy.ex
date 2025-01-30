@@ -35,7 +35,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Destroy do
 
       step_options =
         destroy
-        |> Map.take([:async?])
+        |> Map.take([:async?, :guards])
         |> Map.put(:ref, :step_name)
         |> Enum.to_list()
 

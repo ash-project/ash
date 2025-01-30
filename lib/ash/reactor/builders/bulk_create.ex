@@ -68,7 +68,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkCreate do
 
     step_options =
       bulk_create
-      |> Map.take([:async?])
+      |> Map.take([:async?, :guards])
       |> Map.put(:ref, :step_name)
       |> Enum.to_list()
 

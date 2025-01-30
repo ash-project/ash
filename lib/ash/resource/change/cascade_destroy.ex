@@ -23,6 +23,13 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       required: false,
       default: false
     ],
+    after_action?: [
+      type: :boolean,
+      doc:
+        "If true all the cascade destroys are done in after_action hooks. This makes it safe to use in atomic actions",
+      required: false,
+      default: true
+    ],
     domain: [
       type: {:spark, Ash.Domain},
       private?: true
@@ -39,9 +46,13 @@ defmodule Ash.Resource.Change.CascadeDestroy do
   @moduledoc """
   Cascade a resource's destroy action to a related resource's destroy action.
 
-  Adds an after-action hook that explicitly calls destroy on any records related
-  via the named relationship.  It will optimise for bulk destroys where
-  possible.
+  If after_action? is true this change adds an after-action hook that explicitly
+  calls destroy on any records related via the named relationship.  It will optimise
+  for bulk destroys where possible. This makes it safe to use in atomic actions, but
+  might not be possible depending on the data layer setup (see warning below).
+
+  If after_action? is false this change will add a before-action hook for relationships
+  where the child record points to the parent (has_many, has_one, many_to_many).
 
   > #### Beware database constraints {: .warning}
   >
@@ -80,13 +91,41 @@ defmodule Ash.Resource.Change.CascadeDestroy do
   def change(changeset, opts, context) do
     with {:ok, %Opts{} = opts} <- Opts.validate(opts),
          {:ok, opts} <- validate_relationship_and_action(opts, changeset.resource) do
-      Ash.Changeset.after_action(changeset, fn _changeset, result ->
-        case {destroy_related([result], opts, context), opts.return_notifications?} do
-          {_, false} -> {:ok, result}
-          {%{notifications: []}, true} -> {:ok, result}
-          {%{notifications: notifications}, true} -> {:ok, result, notifications}
-        end
-      end)
+      if not opts.after_action? and
+           opts.relationship.type in [:many_to_many, :has_many, :has_one] do
+        Ash.Changeset.before_action(changeset, fn changeset ->
+          case {destroy_related([changeset.data], opts, context, changeset),
+                opts.return_notifications?} do
+            {_, false} ->
+              changeset
+
+            {%{notifications: []}, true} ->
+              changeset
+
+            {%{notifications: notifications}, true} ->
+              {changeset, %{notifications: notifications}}
+
+            {{:error, error}, _} ->
+              Ash.Changeset.add_error(changeset, error)
+          end
+        end)
+      else
+        Ash.Changeset.after_action(changeset, fn changeset, result ->
+          case {destroy_related([result], opts, context, changeset), opts.return_notifications?} do
+            {_, false} ->
+              {:ok, result}
+
+            {%{notifications: []}, true} ->
+              {:ok, result}
+
+            {%{notifications: notifications}, true} ->
+              {:ok, result, notifications}
+
+            {{:error, error}, _} ->
+              {:error, error}
+          end
+        end)
+      end
     else
       {:error, reason} ->
         Ash.Changeset.add_error(changeset, reason)
@@ -95,20 +134,80 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
   @doc false
   @impl true
-  def atomic(_, _, _), do: :ok
+  def atomic(%{resource: resource}, opts, _) do
+    with {:ok, %Opts{} = opts} <- Opts.validate(opts),
+         {:ok, opts} <- validate_relationship_and_action(opts, resource) do
+      if not opts.after_action? and
+           opts.relationship.type in [:many_to_many, :has_many, :has_one] do
+        {:not_atomic, "Need to destroy relationships in a before batch"}
+      else
+        :ok
+      end
+    else
+      _ ->
+        {:error, "Couldn't validate the opts"}
+    end
+  end
 
   @doc false
   @impl true
-  def after_batch([{%{resource: resource}, _} | _] = changesets_and_results, opts, context) do
+  def before_batch([%{resource: resource} = changeset | _] = changesets, opts, context) do
+    with {:ok, %Opts{} = opts} <- Opts.validate(opts),
+         {:ok, opts} <- validate_relationship_and_action(opts, resource) do
+      records = Enum.map(changesets, & &1.data)
+
+      if not opts.after_action? and
+           opts.relationship.type in [:many_to_many, :has_many, :has_one] do
+        case {destroy_related(records, opts, context, changeset), opts.return_notifications?} do
+          {_, false} ->
+            changesets
+
+          {%{notifications: empty}, true} when empty in [nil, []] ->
+            changesets
+
+          {%{notifications: notifications}, true} ->
+            Enum.concat(changesets, notifications)
+
+          {{:error, error}, _} ->
+            Enum.map(changesets, &Ash.Changeset.add_error(&1, error))
+        end
+      else
+        changesets
+      end
+    else
+      {:error, reason} -> [{:error, reason}]
+    end
+  end
+
+  @doc false
+  @impl true
+  def after_batch(
+        [{%{resource: resource} = changeset, _} | _] = changesets_and_results,
+        opts,
+        context
+      ) do
     with {:ok, %Opts{} = opts} <- Opts.validate(opts),
          {:ok, opts} <- validate_relationship_and_action(opts, resource) do
       records = Enum.map(changesets_and_results, &elem(&1, 1))
       result = Enum.map(records, &{:ok, &1})
 
-      case {destroy_related(records, opts, context), opts.return_notifications?} do
-        {_, false} -> result
-        {%{notifications: empty}, true} when empty in [nil, []] -> result
-        {%{notifications: notifications}, true} -> Enum.concat(result, notifications)
+      if not opts.after_action? and
+           opts.relationship.type in [:many_to_many, :has_many, :has_one] do
+        result
+      else
+        case {destroy_related(records, opts, context, changeset), opts.return_notifications?} do
+          {_, false} ->
+            result
+
+          {%{notifications: empty}, true} when empty in [nil, []] ->
+            result
+
+          {%{notifications: notifications}, true} ->
+            Enum.concat(result, notifications)
+
+          {{:error, error}, _} ->
+            Enum.map(result, fn _ -> {:error, error} end)
+        end
       end
     else
       {:error, reason} -> [{:error, reason}]
@@ -165,9 +264,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
     end
   end
 
-  defp destroy_related([], _, _), do: :ok
+  defp destroy_related([], _, _, _), do: :ok
 
-  defp destroy_related(data, opts, context) do
+  defp destroy_related(data, opts, context, changeset) do
     action = opts.action
     relationship = opts.relationship
 
@@ -180,35 +279,52 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         return_notifications?: opts.return_notifications?
       )
 
+    context = Map.merge(relationship.context || %{}, %{cascade_destroy: true})
+
     case related_query(data, opts) do
       {:ok, query} ->
-        Ash.bulk_destroy!(query, action.name, %{}, context_opts)
-
-      :error ->
-        data
-        |> List.wrap()
-        |> Ash.load!(
-          [
-            {relationship.name,
-             Ash.Query.set_context(relationship.destination, %{cascade_destroy: true})}
-          ],
-          authorize?: false
-        )
-        |> Enum.flat_map(fn record ->
-          record
-          |> Map.get(relationship.name)
-          |> List.wrap()
-        end)
-        |> Ash.bulk_destroy!(
+        Ash.bulk_destroy!(
+          query,
           action.name,
           %{},
           Keyword.update(
             context_opts,
             :context,
-            %{cascade_destroy: true},
-            &Map.put(&1, :cascade_destroy, true)
+            context,
+            &Map.merge(&1, context)
           )
         )
+
+      :error ->
+        if changeset.phase == :after_action and changeset.action_type == :destroy do
+          {:error,
+           "Unable to cascade destroy for #{relationship.name} relationship in after_action"}
+        else
+          data
+          |> List.wrap()
+          |> Ash.load!(
+            [
+              {relationship.name,
+               Ash.Query.set_context(relationship.destination, %{cascade_destroy: true})}
+            ],
+            authorize?: false
+          )
+          |> Enum.flat_map(fn record ->
+            record
+            |> Map.get(relationship.name)
+            |> List.wrap()
+          end)
+          |> Ash.bulk_destroy!(
+            action.name,
+            %{},
+            Keyword.update(
+              context_opts,
+              :context,
+              context,
+              &Map.merge(&1, context)
+            )
+          )
+        end
     end
   end
 

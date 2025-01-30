@@ -22,7 +22,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.ReadOne do
 
       step_options =
         read_one
-        |> Map.take([:async?])
+        |> Map.take([:async?, :guards])
         |> Map.put(:ref, :step_name)
         |> Enum.to_list()
 

@@ -32,8 +32,9 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Transaction do
         {Ash.Reactor.TransactionStep, transaction_options},
         arguments,
         async?: false,
-        ref: :step_name,
-        max_retries: 0
+        guards: transaction.guards,
+        max_retries: 0,
+        ref: :step_name
       )
     end
   end

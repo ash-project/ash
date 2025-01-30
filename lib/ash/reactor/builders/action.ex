@@ -25,7 +25,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Action do
 
       step_options =
         action
-        |> Map.take([:async?])
+        |> Map.take([:async?, :guards])
         |> Map.put(:ref, :step_name)
         |> Enum.to_list()
 
