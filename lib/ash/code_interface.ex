@@ -74,6 +74,7 @@ defmodule Ash.CodeInterface do
     end
   end
 
+  @doc false
   def without_optional(keys) do
     Enum.map(keys, fn
       {:optional, key} ->
@@ -84,6 +85,7 @@ defmodule Ash.CodeInterface do
     end)
   end
 
+  @doc false
   def unwrap_calc_interface_args(keys, resource, arguments, function_head? \\ false) do
     {Enum.map(keys, &unwrap_calc_interface_arg_binding(resource, arguments, &1, function_head?)),
      Enum.map(keys, &unwrap_calc_interface_arg_access(&1))}
@@ -200,41 +202,40 @@ defmodule Ash.CodeInterface do
     end
   end
 
-  @doc """
-  A common pattern is for a function to have both optional parameters and
-  optional options. This usually comes in the form of two defaults:
-
-    * An empty map for params.
-    * An empty list for options.
-
-  With those two defaults in mind, this function will decipher, from two inputs,
-  which should be parameters and which should be options.
-
-  Parameters can take one of two primary forms:
-
-    1. A map.
-    2. A list of maps for bulk operations.
-
-  Additionally, if options are set explicitly (i.e. at least one option has
-  been set), a keyword list will be converted to a map.
-
-  ## Examples
-
-      iex> params_and_opts(%{key: :param}, [key: :opt])
-      {%{key: :param}, [key: :opt]}
-
-      iex> params_and_opts([key: :opt], [])
-      {%{}, [key: :opt]}
-
-      iex> params_and_opts([], [])
-      {[], []}
-
-      iex> params_and_opts([%{key: :param}], [])
-      {[%{key: :param}], []}
-
-      iex> params_and_opts([key: :param], [key: :opt])
-      {%{key: :param}, [key: :opt]}
-  """
+  # A common pattern is for a function to have both optional parameters and
+  # optional options. This usually comes in the form of two defaults:
+  #
+  #   * An empty map for params.
+  #   * An empty list for options.
+  #
+  # With those two defaults in mind, this function will decipher, from two inputs,
+  # which should be parameters and which should be options.
+  #
+  # Parameters can take one of two primary forms:
+  #
+  #   1. A map.
+  #   2. A list of maps for bulk operations.
+  #
+  # Additionally, if options are set explicitly (i.e. at least one option has
+  # been set), a keyword list will be converted to a map.
+  #
+  # ## Examples
+  #
+  #     iex> params_and_opts(%{key: :param}, [key: :opt])
+  #     {%{key: :param}, [key: :opt]}
+  #
+  #     iex> params_and_opts([key: :opt], [])
+  #     {%{}, [key: :opt]}
+  #
+  #     iex> params_and_opts([], [])
+  #     {[], []}
+  #
+  #     iex> params_and_opts([%{key: :param}], [])
+  #     {[%{key: :param}], []}
+  #
+  #     iex> params_and_opts([key: :param], [key: :opt])
+  #     {%{key: :param}, [key: :opt]}
+  @doc false
   @spec params_and_opts(params_or_opts :: map() | [map()] | keyword(), keyword()) ::
           {params :: map() | [map()], opts :: keyword()}
   def params_and_opts(%{} = params, opts), do: {params, opts}
@@ -278,34 +279,33 @@ defmodule Ash.CodeInterface do
   end
 
   @deep_merge_keys [:bulk_options, :page]
-  @doc """
-  Selectively merges default opts into client-provided opts. For most keys,
-  the value in opts will be used instead of the default if provided. However,
-  certain options have special behavior:
-
-    * #{Enum.map_join(@deep_merge_keys, ", ", &"`:#{&1}`")} - These
-      options are deep merged, so if the default is a keyword list and the
-      client value is a keyword list, they'll be merged.
-    * `:load` - The default value and the client value will be combined in this
-      case.
-
-  ## Examples
-
-      iex> merge_default_opts([key1: 1], key2: 2)
-      [key2: 2, key1: 1]
-
-      iex> merge_default_opts([key2: :client], key1: :default, key2: :default)
-      [key2: :client, key1: :default]
-
-      iex> merge_default_opts([page: false], page: [limit: 100])
-      [page: false]
-
-      iex> merge_default_opts([page: [offset: 2]], page: [limit: 100])
-      [page: [limit: 100, offset: 2]]
-
-      iex> merge_default_opts([load: [:calc2, :rel4]], load: [:calc1, rel1: [:rel2, :rel3]])
-      [load: [:calc1, {:rel1, [:rel2, :rel3]}, :calc2, :rel4]]
-  """
+  # Selectively merges default opts into client-provided opts. For most keys,
+  # the value in opts will be used instead of the default if provided. However,
+  # certain options have special behavior:
+  #
+  #   * #{Enum.map_join(@deep_merge_keys, ", ", &"`:#{&1}`")} - These
+  #     options are deep merged, so if the default is a keyword list and the
+  #     client value is a keyword list, they'll be merged.
+  #   * `:load` - The default value and the client value will be combined in this
+  #     case.
+  #
+  # ## Examples
+  #
+  #     iex> merge_default_opts([key1: 1], key2: 2)
+  #     [key2: 2, key1: 1]
+  #
+  #     iex> merge_default_opts([key2: :client], key1: :default, key2: :default)
+  #     [key2: :client, key1: :default]
+  #
+  #     iex> merge_default_opts([page: false], page: [limit: 100])
+  #     [page: false]
+  #
+  #     iex> merge_default_opts([page: [offset: 2]], page: [limit: 100])
+  #     [page: [limit: 100, offset: 2]]
+  #
+  #     iex> merge_default_opts([load: [:calc2, :rel4]], load: [:calc1, rel1: [:rel2, :rel3]])
+  #     [load: [:calc1, {:rel1, [:rel2, :rel3]}, :calc2, :rel4]]
+  @doc false
   @spec merge_default_opts(keyword(), keyword()) :: keyword()
   def merge_default_opts(opts, default_opts) do
     Enum.reduce(default_opts, opts, fn {k, default}, opts ->
@@ -1604,6 +1604,7 @@ defmodule Ash.CodeInterface do
     end
   end
 
+  @doc false
   def describe_action(resource, action, args) do
     resource
     |> Ash.Resource.Info.action_inputs(action.name)
@@ -1654,6 +1655,7 @@ defmodule Ash.CodeInterface do
     end
   end
 
+  @doc false
   def describe_calculation(resource, calculation, args) do
     calculation.arguments
     |> Enum.map(& &1.name)
@@ -1728,6 +1730,7 @@ defmodule Ash.CodeInterface do
     "* #{name}"
   end
 
+  @doc false
   def trim_double_newlines(str) do
     str
     |> String.replace(~r/\n{2,}/, "\n")
