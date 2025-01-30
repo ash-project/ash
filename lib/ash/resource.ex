@@ -5,12 +5,6 @@ defmodule Ash.Resource do
   [Resource DSL documentation](dsl-ash-resource.html)
   """
 
-  def foo do
-    # x + y + z
-
-    1 - 2 - 3
-  end
-
   @type t :: module
   @type record :: struct()
 
@@ -37,6 +31,12 @@ defmodule Ash.Resource do
       validate_domain_inclusion?: [
         type: :boolean,
         doc: "Whether or not to validate that this resource is included in a domain.",
+        default: true
+      ],
+      primary_read_warning?: [
+        type: :boolean,
+        doc:
+          "Set to `false` to silence warnings about arguments, preparations and filters on the primary read action.",
         default: true
       ],
       domain: [
@@ -123,6 +123,7 @@ defmodule Ash.Resource do
             embed_nil_values?: opts[:embed_nil_values?]
           ] do
       @persist {:simple_notifiers, List.wrap(opts[:simple_notifiers])}
+      @persist {:primary_read_warning?, Keyword.get(opts, :primary_read_warning?, true)}
 
       if !(embedded? || has_domain?) do
         IO.warn("""
