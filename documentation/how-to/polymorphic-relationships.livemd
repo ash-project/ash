@@ -224,6 +224,10 @@ defmodule GetAccountImplementation do
     [:checking_account, :savings_account]
   end
 
+  # This ensures that all attributes are selected by default
+  # on the related loads we depend on.
+  def strict_loads?, do: false
+
   def calculate(records, _, _) do
     Enum.map(records, &(&1.checking_account || &1.savings_account))
   end
