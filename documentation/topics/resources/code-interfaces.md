@@ -58,7 +58,7 @@ functions, i.e
 
 ```elixir
 iex> h Accounts.register_user/3
-``
+```
 
 ## Calculations
 
