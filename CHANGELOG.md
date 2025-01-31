@@ -2,6 +2,29 @@
 
 <!-- changelog -->
 
+## [v3.4.61](https://github.com/ash-project/ash/compare/v3.4.60...v3.4.61) (2025-01-31)
+
+
+
+
+### Bug Fixes:
+
+* don't prevent setting manage_relationship inputs in generators
+
+* Ash.Reactor: Fix referring to outer steps and inputs in `transaction` steps. (#1741)
+
+* always return utc timestamp as result of `start_of_day`
+
+* support `after_action?` option on cascade destroys & better error when it should be used (#1734)
+
+### Improvements:
+
+* warning on args, preparations or filters on primary reads
+
+* Support guards in `Ash.Reactor` steps. (#1739)
+
+* use `ash.extend` and use it instead of `ash.patch.extend`
+
 ## [v3.4.60](https://github.com/ash-project/ash/compare/v3.4.59...v3.4.60) (2025-01-27)
 
 
