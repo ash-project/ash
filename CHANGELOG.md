@@ -2,6 +2,19 @@
 
 <!-- changelog -->
 
+## [v3.4.62](https://github.com/ash-project/ash/compare/v3.4.61...v3.4.62) (2025-01-31)
+
+
+
+
+### Bug Fixes:
+
+* always start transactions when managing relationships
+
+* handle parent in rel in managed belongs to (#1746)
+
+* always do a transaction without relationships
+
 ## [v3.4.61](https://github.com/ash-project/ash/compare/v3.4.60...v3.4.61) (2025-01-31)
 
 
