@@ -3537,55 +3537,46 @@ defmodule Ash.Changeset do
 
         resources = Enum.reject(resources, &Ash.DataLayer.in_transaction?/1)
 
-        do_transaction? =
-          data_layer_prefers_transaction? || (changeset.action && changeset.action.manual) ||
-            !(Enum.empty?(changeset.before_action) && Enum.empty?(changeset.after_action) &&
-                Enum.empty?(changeset.around_action))
+        try do
+          resources
+          |> Ash.DataLayer.transaction(
+            fn ->
+              case run_around_actions(changeset, func) do
+                {:error, error} ->
+                  if opts[:rollback_on_error?] do
+                    Ash.DataLayer.rollback(
+                      changeset.resource,
+                      error
+                    )
+                  else
+                    {:error, error}
+                  end
 
-        if do_transaction? do
-          try do
-            resources
-            |> Ash.DataLayer.transaction(
-              fn ->
-                case run_around_actions(changeset, func) do
-                  {:error, error} ->
-                    if opts[:rollback_on_error?] do
-                      Ash.DataLayer.rollback(
-                        changeset.resource,
-                        error
-                      )
-                    else
-                      {:error, error}
-                    end
-
-                  other ->
-                    other
-                end
-              end,
-              changeset.timeout || :infinity,
-              Map.put(
-                opts[:transaction_metadata],
-                :data_layer_context,
-                changeset.context[:data_layer] || %{}
-              )
+                other ->
+                  other
+              end
+            end,
+            changeset.timeout || :infinity,
+            Map.put(
+              opts[:transaction_metadata],
+              :data_layer_context,
+              changeset.context[:data_layer] || %{}
             )
-            |> case do
-              {:ok, {:ok, value, changeset, instructions}} ->
-                {:ok, value, changeset, Map.put(instructions, :gather_notifications?, notify?)}
+          )
+          |> case do
+            {:ok, {:ok, value, changeset, instructions}} ->
+              {:ok, value, changeset, Map.put(instructions, :gather_notifications?, notify?)}
 
-              {:ok, {:error, error}} ->
-                {:error, error}
+            {:ok, {:error, error}} ->
+              {:error, error}
 
-              {:error, error} ->
-                {:error, error}
-            end
-          after
-            if notify? do
-              Process.delete(:ash_started_transaction?)
-            end
+            {:error, error} ->
+              {:error, error}
           end
-        else
-          run_around_actions(changeset, func)
+        after
+          if notify? do
+            Process.delete(:ash_started_transaction?)
+          end
         end
       end)
     else
