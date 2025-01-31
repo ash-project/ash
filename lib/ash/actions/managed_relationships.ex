@@ -220,10 +220,7 @@ defmodule Ash.Actions.ManagedRelationships do
                             domain: domain(changeset, relationship)
                           )
                           |> Ash.Query.filter(^keys)
-                          |> Ash.Query.do_filter(relationship.filter,
-                            parent_stack: relationship.source
-                          )
-                          |> Ash.Query.sort(relationship.sort, prepend?: true)
+                          |> sort_and_filter(relationship)
                           |> Ash.Query.set_context(relationship.context)
                           |> Ash.Query.set_tenant(changeset.tenant)
                           |> Ash.read_one()
@@ -980,6 +977,7 @@ defmodule Ash.Actions.ManagedRelationships do
     else
       Ash.Query.do_filter(query, relationship.filter, parent_stack: relationship.source)
     end
+    |> Ash.Query.sort(relationship.sort, prepend?: true)
   end
 
   defp do_handle_found(
@@ -1644,8 +1642,7 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Query.limit(1)
             |> Ash.Query.set_tenant(changeset.tenant)
             |> Ash.Query.set_context(join_relationship.context)
-            |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
-            |> Ash.Query.sort(relationship.sort, prepend?: true)
+            |> sort_and_filter(relationship)
             |> Ash.read_one(
               domain: domain(changeset, join_relationship),
               authorize?: opts[:authorize?],
