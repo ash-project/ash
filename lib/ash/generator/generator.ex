@@ -89,7 +89,6 @@ defmodule Ash.Generator do
              seed_generator: 2,
              changeset_generator: 2,
              changeset_generator: 3,
-             generate_attributes: 4,
              generate_attributes: 5,
              mixed_map: 2,
              many_changesets: 3,
@@ -685,7 +684,7 @@ defmodule Ash.Generator do
     |> Enum.filter(&(&1.name in action.accept))
     |> set_allow_nil(action)
     |> Enum.concat(arguments)
-    |> generate_attributes(generators, false, action.type, Enum.map(action.arguments, &(&1.name)))
+    |> generate_attributes(generators, false, action.type, Enum.map(action.arguments, & &1.name))
   end
 
   @doc """
@@ -846,7 +845,7 @@ defmodule Ash.Generator do
          generators,
          keep_nil?,
          action_type,
-         extra_keys_to_keep \\ []
+         extra_keys_to_keep
        ) do
     generators = Map.new(generators)
 
