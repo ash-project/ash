@@ -1642,8 +1642,7 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Query.limit(1)
             |> Ash.Query.set_tenant(changeset.tenant)
             |> Ash.Query.set_context(join_relationship.context)
-            |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
-            |> Ash.Query.sort(relationship.sort, prepend?: true)
+            |> sort_and_filter(relationship)
             |> Ash.read_one(
               domain: domain(changeset, join_relationship),
               authorize?: opts[:authorize?],
