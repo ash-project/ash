@@ -685,7 +685,7 @@ defmodule Ash.Generator do
     |> Enum.filter(&(&1.name in action.accept))
     |> set_allow_nil(action)
     |> Enum.concat(arguments)
-    |> generate_attributes(generators, false, action.type)
+    |> generate_attributes(generators, false, action.type, Enum.map(action.arguments, &(&1.name)))
   end
 
   @doc """
