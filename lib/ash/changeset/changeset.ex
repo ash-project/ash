@@ -3512,7 +3512,7 @@ defmodule Ash.Changeset do
       if !(changeset.action && changeset.action.manual) &&
            Enum.empty?(changeset.before_transaction) && Enum.empty?(changeset.around_transaction) &&
            Enum.empty?(changeset.before_action) && Enum.empty?(changeset.after_action) &&
-           Enum.empty?(changeset.around_action) do
+           Enum.empty?(changeset.around_action) && Enum.empty?(changeset.relationships) do
         data_layer_prefers_transaction?
       else
         true
