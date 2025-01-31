@@ -11,7 +11,7 @@ phoenix channel) of a change. If you send a message to another process while you
 that process tries to look up a record you just created, it won't find it yet, because your transaction is still open!
 
 Notifiers are a solution for a certain kind of side effect, what we call "at most once" effects. An example is
-sending an event to an analytics system, or our pusbub example above. It is "okay" if the event is fired and some
+sending an event to an analytics system, or our pubsub example above. It is "okay" if the event is fired and some
 error in that process prevents it from being sent.
 
 ### When you really need an event to happen
