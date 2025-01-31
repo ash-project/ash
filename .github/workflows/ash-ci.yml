@@ -231,6 +231,8 @@ jobs:
         image: postgres:${{inputs.postgres-version}}
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
+          TZ: 'UTC'
+          PGTZ: 'UTC'
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
