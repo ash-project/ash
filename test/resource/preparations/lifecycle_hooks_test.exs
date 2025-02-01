@@ -69,7 +69,7 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
   describe "before_action/1" do
     test "it is called before the action is run" do
       TimeMachine
-      |> Ash.Query.for_read(:read_with_before_action, caller: self())
+      |> Ash.Query.for_read(:read_with_before_action, %{caller: self()})
       |> Ash.read!()
 
       assert_received :before_action
@@ -77,7 +77,7 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
 
     test "multiple before actions have the same phase" do
       TimeMachine
-      |> Ash.Query.for_read(:read_with_multiple_before_actions, caller: self())
+      |> Ash.Query.for_read(:read_with_multiple_before_actions, %{caller: self()})
       |> Ash.read!()
 
       assert_received {:before_action, 1}
@@ -88,7 +88,7 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
   describe "after_action/1" do
     test "it is called after the action is run" do
       TimeMachine
-      |> Ash.Query.for_read(:read_with_after_action, caller: self())
+      |> Ash.Query.for_read(:read_with_after_action, %{caller: self()})
       |> Ash.read!()
 
       assert_received :after_action
@@ -96,7 +96,7 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
 
     test "multiple after actions have the same phase" do
       TimeMachine
-      |> Ash.Query.for_read(:read_with_multiple_after_actions, caller: self())
+      |> Ash.Query.for_read(:read_with_multiple_after_actions, %{caller: self()})
       |> Ash.read!()
 
       assert_received {:after_action, 1}
