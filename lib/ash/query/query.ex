@@ -523,7 +523,12 @@ defmodule Ash.Query do
   #{Spark.Options.docs(@for_read_opts)}
 
   """
-  def for_read(query, action_name, args \\ %{}, opts \\ []) do
+  def for_read(query, action_name, args \\ %{}, opts \\ [])
+
+  def for_read(query, action_name, opts, _) when is_list(opts),
+    do: for_read(query, action_name, %{}, opts)
+
+  def for_read(query, action_name, args, opts) do
     query = new(query)
 
     domain =
