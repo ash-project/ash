@@ -2614,7 +2614,7 @@ defmodule Ash.Query do
                   !Ash.Resource.Info.primary_action(relationship.through, :read) ->
                 [
                   NoReadAction.exception(
-                    resource: relationship.destination,
+                    resource: relationship.through,
                     when: "loading relationship #{relationship.name}"
                   )
                 ]
