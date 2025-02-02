@@ -625,7 +625,10 @@ defmodule Ash.Generator do
           sorted?: true,
           max_concurrency: 0,
           stop_on_error?: true,
-          actor: first.context[:private][:actor]
+          actor: first.context[:private][:actor],
+          authorize?: first.context[:private][:authorize?],
+          tenant: first.tenant,
+          tracer: first.context[:private][:tracer]
         ]
 
         opts =
