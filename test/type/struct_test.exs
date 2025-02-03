@@ -51,6 +51,33 @@ defmodule Type.StructTest do
     end
   end
 
+  defmodule InvalidPost do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, update: :*]
+
+      create :create do
+        primary? true
+        accept [:*]
+
+        argument :dummy_metadata, :struct,
+          constraints: [instance_of: NonExistingModule],
+          allow_nil?: true
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
   test "an embedded resource can be used" do
     assert {:ok, %Embedded{name: "fred", title: "title"}} =
              Ash.Type.apply_constraints(Ash.Type.Struct, %{"name" => "fred", :title => "title"},
@@ -205,6 +232,24 @@ defmodule Type.StructTest do
                bread_crumbs: [],
                vars: [],
                path: [:metadata]
+             }
+           ] = changeset.errors
+  end
+
+  test "invalid instance of argument is checked" do
+    changeset =
+      InvalidPost
+      |> Ash.Changeset.for_create(:create, %{dummy_metadata: %Metadata{}})
+
+    refute changeset.valid?
+
+    assert [
+             %Ash.Error.Changes.InvalidArgument{
+               field: :dummy_metadata,
+               message: "-> constraints: -> instance_of: Elixir.NonExistingModule",
+               bread_crumbs: [],
+               vars: [],
+               path: []
              }
            ] = changeset.errors
   end
