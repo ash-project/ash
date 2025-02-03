@@ -69,8 +69,14 @@ defmodule Ash.Actions.Action do
                 case authorize(domain, opts[:actor], input) do
                   :ok ->
                     case call_run_function(module, input, run_opts, context, true) do
+                      :ok when is_nil(input.action.returns) ->
+                        {:ok, nil, []}
+
                       {:ok, result} ->
                         {:ok, result, []}
+
+                      {:ok, result, notifications} ->
+                        {:ok, result, notifications}
 
                       {:error, error} ->
                         Ash.DataLayer.rollback(resources, error)
@@ -96,7 +102,7 @@ defmodule Ash.Actions.Action do
               }
             )
             |> case do
-              {:ok, {:ok, value, notifications}} ->
+              {:ok, {:ok, result, notifications}} ->
                 notifications =
                   if notify? && !opts[:return_notifications?] do
                     Enum.concat(
@@ -113,7 +119,11 @@ defmodule Ash.Actions.Action do
                   resource_notifications: remaining
                 })
 
-                {:ok, value}
+                if input.action.returns do
+                  {:ok, result}
+                else
+                  :ok
+                end
 
               {:error, error} ->
                 {:error, Ash.Error.to_ash_error(error)}
