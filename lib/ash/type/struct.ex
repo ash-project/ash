@@ -271,7 +271,7 @@ defmodule Ash.Type.Struct do
             {:ok, value}
 
           is_struct(value) ->
-            {:error, "-> constraints: -> instance_of: #{struct}"}
+            {:error, "is invalid"}
 
           true ->
             if constraints[:fields] do

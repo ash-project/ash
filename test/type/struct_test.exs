@@ -246,7 +246,7 @@ defmodule Type.StructTest do
     assert [
              %Ash.Error.Changes.InvalidArgument{
                field: :dummy_metadata,
-               message: "-> constraints: -> instance_of: Elixir.NonExistingModule",
+               message: "is invalid",
                bread_crumbs: [],
                vars: [],
                path: []
