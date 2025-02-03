@@ -21,7 +21,7 @@ defmodule Ash.Query.Function.Type do
   end
 
   def evaluate(%{arguments: [val, type, constraints]}) do
-    case Ash.Type.cast_input(type, val, constraints) do
+    case Ash.Type.coerce(type, val, constraints) do
       {:ok, value} ->
         {:known, value}
 

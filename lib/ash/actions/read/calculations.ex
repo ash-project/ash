@@ -945,57 +945,36 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp try_evaluate(expression, resource, calculation, {:ok, initial_data}, reuse_values?) do
-    expression
-    |> Ash.Filter.list_refs(false, false, true, true)
-    |> then(fn refs ->
-      if refs == [] do
-        true
-      else
-        if reuse_values? do
-          Enum.all?(refs, fn ref ->
-            # consider doing `lists: :any`?
-            Ash.Resource.loaded?(initial_data, ref.relationship_path ++ [ref.attribute],
-              strict?: true,
-              type: :request
-            )
-          end)
-        else
-          false
-        end
-      end
-    end)
-    |> case do
-      true ->
-        Enum.reduce_while(initial_data, {:ok, []}, fn record, {:ok, results} ->
-          case Ash.Expr.eval(expression,
-                 record: record,
-                 resource: resource,
-                 unknown_on_unknown_refs?: true
-               ) do
-            {:ok, result} ->
-              {:cont, {:ok, [result | results]}}
-
-            _ ->
-              {:halt, :error}
-          end
-        end)
-        |> case do
-          {:ok, values} ->
-            {:ok,
-             %{
-               calculation
-               | module: Ash.Resource.Calculation.Literal,
-                 opts: [value: Enum.reverse(values), precomputed?: true],
-                 required_loads: [],
-                 select: []
-             }}
+    if reuse_values? do
+      Enum.reduce_while(initial_data, {:ok, []}, fn record, {:ok, results} ->
+        case Ash.Expr.eval(expression,
+               record: record,
+               resource: resource,
+               unknown_on_unknown_refs?: true
+             ) do
+          {:ok, result} ->
+            {:cont, {:ok, [result | results]}}
 
           _ ->
-            :error
+            {:halt, :error}
         end
+      end)
+      |> case do
+        {:ok, values} ->
+          {:ok,
+           %{
+             calculation
+             | module: Ash.Resource.Calculation.Literal,
+               opts: [value: Enum.reverse(values), precomputed?: true],
+               required_loads: [],
+               select: []
+           }}
 
-      false ->
-        :error
+        _ ->
+          :error
+      end
+    else
+      :error
     end
   end
 

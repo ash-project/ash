@@ -372,6 +372,22 @@ defmodule Ash.Type do
   @callback cast_input(term, constraints) ::
               {:ok, term} | Ash.Error.t()
 
+  @doc """
+  Attempt to coerce unknown, potentially user-provided input, into a valid instance of the type.
+
+  ## Coercion vs Casting
+
+  Coercion can be summed up as a more "insistent" form of casting. It means "we really want to use
+  this value as this type, so please try to convert it to that type". This is used in expressions as 
+  opposed to `cast_input`. For example, the value `10`, if passed into `Ash.Type.String.cast_input/2` 
+  would fail to cast. However, if used in the following expression: `expr(type(10, :string) <> " minutes")`
+  the `10` would be "coerced" (using `to_string/1`) into `"10"`.
+
+  By default, coercion uses `cast_input/2` unless
+  """
+  @callback coerce(term, constraints) ::
+              {:ok, term} | Ash.Error.t()
+
   @doc "Whether or not the value a valid instance of the type."
   @callback matches_type?(term, constraints) :: boolean()
 
@@ -1012,6 +1028,85 @@ defmodule Ash.Type do
     |> case do
       {:ok, result} -> {:ok, Enum.reverse(result)}
       other -> other
+    end
+  end
+
+  @doc """
+  Coerces input (e.g. unknown) data to an instance of the type, or errors.
+
+  See `c:Ash.Type.coerce/2`
+  """
+  @spec coerce(t(), term, constraints | nil) :: {:ok, term} | {:error, Keyword.t()} | :error
+  def coerce(type, term, constraints \\ nil)
+
+  def coerce(type, term, nil) do
+    with {:ok, constraints} <- Spark.Options.validate([], Ash.Type.constraints(type)),
+         {:ok, constraints} <- Ash.Type.init(type, constraints) do
+      coerce(type, term, constraints)
+    end
+  end
+
+  def coerce({:array, {:array, type}}, term, constraints) do
+    cond do
+      is_nil(term) ->
+        {:ok, nil}
+
+      empty?(term, constraints) ->
+        {:ok, []}
+
+      is_list(term) ->
+        map_while_ok(term, &coerce({:array, type}, &1, item_constraints(constraints)))
+    end
+  end
+
+  def coerce({:array, type}, term, constraints) do
+    type = get_type(type)
+
+    cond do
+      empty?(term, constraints) ->
+        {:ok, []}
+
+      is_nil(term) ->
+        {:ok, nil}
+
+      true ->
+        term =
+          if is_map(term) and not is_struct(term) do
+            term
+            |> Enum.sort_by(&elem(&1, 1))
+            |> Enum.map(&elem(&1, 0))
+          else
+            term
+          end
+
+        map_while_ok(term, &coerce(type, &1, item_constraints(constraints)))
+    end
+  end
+
+  def coerce(type, term, constraints) do
+    type = get_type(type)
+
+    case type.coerce(term, constraints) do
+      {:ok, value} ->
+        {:ok, value}
+
+      :error ->
+        case term do
+          "" ->
+            coerce(type, nil, constraints)
+
+          _ ->
+            {:error, "is invalid"}
+        end
+
+      {:error, other} ->
+        case term do
+          "" ->
+            coerce(type, nil, constraints)
+
+          _ ->
+            {:error, other}
+        end
     end
   end
 
@@ -1739,6 +1834,11 @@ defmodule Ash.Type do
       def loaded?(_, _, _, _), do: false
 
       @impl true
+      def coerce(value, constraints) do
+        cast_input(value, constraints)
+      end
+
+      @impl true
       def cast_input_array(nil, _), do: {:ok, nil}
 
       def cast_input_array(term, single_constraints) do
@@ -1927,6 +2027,7 @@ defmodule Ash.Type do
                      cast_atomic_array: 2,
                      apply_atomic_constraints: 2,
                      apply_atomic_constraints_array: 2,
+                     coerce: 2,
                      cast_input_array: 2,
                      dump_to_native_array: 2,
                      dump_to_embedded: 2,

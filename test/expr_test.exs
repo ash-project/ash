@@ -19,4 +19,11 @@ defmodule Ash.Test.ExprTest do
       determine_types(func, args)
     end
   end
+
+  describe "type coercion" do
+    test "integers are coerced to strings" do
+      expr = expr("foo" <> type(2024, :string))
+      assert eval!(expr) == "foo2024"
+    end
+  end
 end

@@ -32,12 +32,12 @@ defmodule Ash.Query.Type do
   def try_cast(value, :any, _constraints), do: {:ok, value}
 
   def try_cast(value, :number, constraints) do
-    case Ash.Type.cast_input(:decimal, value, constraints) do
+    case Ash.Type.coerce(:decimal, value, constraints) do
       {:ok, value} ->
         {:ok, value}
 
       _ ->
-        case Ash.Type.cast_input(:integer, value, constraints) do
+        case Ash.Type.coerce(:integer, value, constraints) do
           {:ok, value} ->
             {:ok, value}
 
@@ -51,7 +51,7 @@ defmodule Ash.Query.Type do
     if Ash.Expr.expr?(value) do
       :error
     else
-      case Ash.Type.cast_input(type, value, constraints) do
+      case Ash.Type.coerce(type, value, constraints) do
         {:ok, value} ->
           {:ok, value}
 

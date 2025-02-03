@@ -1075,7 +1075,7 @@ defmodule Ash.Expr do
 
             cond do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) ->
-                case Ash.Type.cast_input(type, value, constraints) do
+                case Ash.Type.coerce(type, value, constraints) do
                   {:ok, _} ->
                     {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
 
@@ -1098,7 +1098,7 @@ defmodule Ash.Expr do
 
             cond do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, []) ->
-                case Ash.Type.cast_input(type, value, []) do
+                case Ash.Type.coerce(type, value, []) do
                   {:ok, _} ->
                     {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
 
@@ -1203,7 +1203,7 @@ defmodule Ash.Expr do
           |> Enum.any?(fn {{type, constraints}, value} ->
             !Ash.Expr.expr?(value) and
               !(matches_type?(type, value, constraints) ||
-                  match?({:ok, _}, Ash.Type.cast_input(type, value, constraints)))
+                  match?({:ok, _}, Ash.Type.coerce(type, value, constraints)))
           end)
         end)
         |> case do

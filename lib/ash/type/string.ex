@@ -269,6 +269,21 @@ defmodule Ash.Type.String do
   end
 
   @impl true
+  def coerce(value, constraints) do
+    case cast_input(value, constraints) do
+      {:ok, value} ->
+        {:ok, value}
+
+      _ ->
+        if String.Chars.impl_for(value) do
+          {:ok, to_string(value)}
+        else
+          {:error, "could not be coerced"}
+        end
+    end
+  end
+
+  @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, _) do
