@@ -81,7 +81,7 @@ defmodule Ash.Resource.Interface do
           bulk_options: [
             type: :keyword_list,
             doc:
-              "Options passed to `Ash.bulk_create`, if a query, list, or stream of inputs is provided.",
+              "Options passed to `Ash.bulk_update`, if a query, list, or stream of inputs is provided.",
             keys:
               Keyword.drop(Ash.bulk_update_opts(), Keyword.keys(Ash.update_opts()) ++ [:resource])
           ]
@@ -98,7 +98,7 @@ defmodule Ash.Resource.Interface do
           bulk_options: [
             type: :keyword_list,
             doc:
-              "Options passed to `Ash.bulk_create`, if a query, list, or stream of inputs is provided.",
+              "Options passed to `Ash.bulk_destroy`, if a query, list, or stream of inputs is provided.",
             keys:
               Keyword.drop(
                 Ash.bulk_destroy_opts(),
