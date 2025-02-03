@@ -523,6 +523,7 @@ defmodule Ash.Query do
   #{Spark.Options.docs(@for_read_opts)}
 
   """
+  # 4.0: make args required, same with action input and changeset
   def for_read(query, action_name, args \\ %{}, opts \\ []) do
     query = new(query)
 
