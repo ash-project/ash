@@ -43,6 +43,11 @@ cond do
       def solve_expression(_cnf) do
         check!()
 
+        # make the type checker happy
+        apply(__MODULE__, :ok, [])
+      end
+
+      def ok do
         :ok
       end
 

@@ -63,7 +63,7 @@ if Code.ensure_loaded?(Igniter) do
       else
         igniter
         |> Igniter.add_warning(
-          "Domain #{domain} was not an `Ash.Domain`, so could not add `#{inspect(resource)}` to its resource list."
+          "Domain #{inspect(domain)} was not an `Ash.Domain`, so could not add `#{inspect(resource)}` to its resource list."
         )
       end
     end

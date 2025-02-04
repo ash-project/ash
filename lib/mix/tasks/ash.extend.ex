@@ -63,6 +63,8 @@ if Code.ensure_loaded?(Igniter) do
 
       extensions = opts[:extensions]
 
+      resource_mods = Ash.Resource.Igniter.resource_mods(igniter)
+
       Enum.reduce(opts[:subjects], igniter, fn subject, igniter ->
         subject = Igniter.Project.Module.parse(subject)
 
@@ -71,13 +73,14 @@ if Code.ensure_loaded?(Igniter) do
             Igniter.add_issue(igniter, "Could not find module to extend: #{subject}")
 
           {:ok, {igniter, source, zipper}} ->
-            case kind_of_thing(zipper) do
-              {:ok, kind_of_thing} ->
+            case kind_of_thing(zipper, resource_mods) do
+              {:ok, kind_of_thing, uses} ->
                 {igniter, patchers, _install} =
                   Enum.reduce(extensions, {igniter, [], []}, fn extension,
                                                                 {igniter, patchers, install} ->
                     case patcher(
                            kind_of_thing,
+                           uses,
                            subject,
                            extension,
                            source.path,
@@ -105,25 +108,25 @@ if Code.ensure_loaded?(Igniter) do
       end)
     end
 
-    defp kind_of_thing(zipper) do
+    defp kind_of_thing(zipper, resource_mods) do
       case Igniter.Code.Common.move_to_do_block(zipper) do
         {:ok, zipper} ->
-          with {_, :error} <-
-                 {Ash.Resource, Igniter.Code.Module.move_to_use(zipper, Ash.Resource)},
-               {_, :error} <-
-                 {Ash.Domain, Igniter.Code.Module.move_to_use(zipper, Ash.Domain)} do
-            :error
-          else
-            {kind_of_thing, {:ok, _}} ->
-              {:ok, kind_of_thing}
-          end
+          resource_mods
+          |> Enum.map(&{Ash.Resource, &1})
+          |> then(&Enum.concat([{Ash.Domain, Ash.Domain}], &1))
+          |> Enum.find_value(fn {type, using} ->
+            case Igniter.Code.Module.move_to_use(zipper, using) do
+              {:ok, _} -> {:ok, type, using}
+              _ -> nil
+            end
+          end)
 
         _ ->
           :error
       end
     end
 
-    defp patcher(kind_of_thing, module, extension, path, argv) do
+    defp patcher(kind_of_thing, uses, module, extension, path, argv) do
       original_request = extension
 
       {install, extension} =
@@ -144,7 +147,7 @@ if Code.ensure_loaded?(Igniter) do
             {[], Ash.DataLayer.Mnesia}
 
           {Ash.Resource, "embedded", _} ->
-            {[], &embedded_patcher(&1, module)}
+            {[], &embedded_patcher(&1, module, uses)}
 
           {Ash.Resource, "json_api", _} ->
             {[:ash_json_api], AshJsonApi.Resource}
@@ -172,10 +175,10 @@ if Code.ensure_loaded?(Igniter) do
             if function_exported?(extension, :install, 5) do
               fn igniter ->
                 extension.install(igniter, module, kind_of_thing, path, argv)
-                |> simple_add_extension(kind_of_thing, module, extension)
+                |> simple_add_extension(kind_of_thing, module, uses, extension)
               end
             else
-              &simple_add_extension(&1, kind_of_thing, module, extension)
+              &simple_add_extension(&1, kind_of_thing, module, uses, extension)
             end
 
           {fun, install}
@@ -221,7 +224,7 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp embedded_patcher(igniter, resource) do
+    defp embedded_patcher(igniter, resource, uses) do
       domain =
         resource
         |> Module.split()
@@ -230,7 +233,7 @@ if Code.ensure_loaded?(Igniter) do
 
       igniter
       |> remove_domain_option(resource)
-      |> Spark.Igniter.add_extension(resource, Ash.Resource, :data_layer, :embedded, true)
+      |> Spark.Igniter.add_extension(resource, uses, :data_layer, :embedded, true)
       |> Ash.Domain.Igniter.remove_resource_reference(domain, resource)
       |> Spark.Igniter.update_dsl(
         resource,
@@ -255,24 +258,24 @@ if Code.ensure_loaded?(Igniter) do
       end)
     end
 
-    defp simple_add_extension(igniter, Ash.Resource, module, extension) do
+    defp simple_add_extension(igniter, Ash.Resource, module, uses, extension) do
       cond do
         Spark.implements_behaviour?(extension, Ash.DataLayer) ->
-          Spark.Igniter.add_extension(igniter, module, Ash.Resource, :data_layer, extension, true)
+          Spark.Igniter.add_extension(igniter, module, uses, :data_layer, extension, true)
 
         Spark.implements_behaviour?(extension, Ash.Notifier) ->
-          Spark.Igniter.add_extension(igniter, module, Ash.Resource, :notifiers, extension)
+          Spark.Igniter.add_extension(igniter, module, uses, :notifiers, extension)
 
         Spark.implements_behaviour?(extension, Ash.Authorizer) ->
-          Spark.Igniter.add_extension(igniter, module, Ash.Resource, :authorizers, extension)
+          Spark.Igniter.add_extension(igniter, module, uses, :authorizers, extension)
 
         true ->
-          Spark.Igniter.add_extension(igniter, module, Ash.Resource, :extensions, extension)
+          Spark.Igniter.add_extension(igniter, module, uses, :extensions, extension)
       end
     end
 
-    defp simple_add_extension(igniter, type, module, extension) do
-      Spark.Igniter.add_extension(igniter, module, type, :extensions, extension)
+    defp simple_add_extension(igniter, _type, module, uses, extension) do
+      Spark.Igniter.add_extension(igniter, module, uses, :extensions, extension)
     end
   end
 else
