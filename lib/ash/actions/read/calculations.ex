@@ -1007,7 +1007,15 @@ defmodule Ash.Actions.Read.Calculations do
       end
       |> if do
         if should_calculate? do
-          calculation.module.calculate(initial_data, calculation.opts, calculation.context)
+          opts =
+            calculation.opts
+            |> Ash.Expr.fill_template(
+              calculation.context.actor,
+              calculation.context.arguments,
+              calculation.context.source_context
+            )
+
+          calculation.module.calculate(initial_data, opts, calculation.context)
         else
           if calc_only? do
             :error
