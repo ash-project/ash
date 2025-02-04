@@ -250,4 +250,40 @@ if Code.ensure_loaded?(Plug.Conn) do
       end
     end
   end
+else
+  defmodule Ash.PlugHelpers do
+    @moduledoc false
+
+    def set_actor(_conn, _actor) do
+      raise ArgumentError, "Ash.PlugHelpers.set_actor/2 requires `Plug` to be available"
+    end
+
+    def get_actor(_) do
+      raise ArgumentError, "Ash.PlugHelpers.get_actor/1 requires `Plug` to be available"
+    end
+
+    def update_actor(_conn, _callback) do
+      raise ArgumentError, "Ash.PlugHelpers.update_actor/2 requires `Plug` to be available"
+    end
+
+    def set_tenant(_conn, _tenant) do
+      raise ArgumentError, "Ash.PlugHelpers.set_tenant/2 requires `Plug` to be available"
+    end
+
+    def get_tenant(_) do
+      raise ArgumentError, "Ash.PlugHelpers.get_tenant/1 requires `Plug` to be available"
+    end
+
+    def set_context(_conn, _context) do
+      raise ArgumentError, "Ash.PlugHelpers.set_context/2 requires `Plug` to be available"
+    end
+
+    def get_context(_) do
+      raise ArgumentError, "Ash.PlugHelpers.get_context/1 requires `Plug` to be available"
+    end
+
+    def update_context(_conn, _callback) do
+      raise ArgumentError, "Ash.PlugHelpers.update_context/2 requires `Plug` to be available"
+    end
+  end
 end
