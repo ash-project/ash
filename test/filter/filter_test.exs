@@ -307,6 +307,33 @@ defmodule Ash.Test.Filter.FilterTest do
       assert stringified_query =~ ~S(title in ["bar", "baz", "foo"])
     end
 
+    test "multiple nested equality simplifies to `in`" do
+      import Ash.Expr
+      keys = [:id]
+
+      records =
+        for i <- ["foo", "bar", "baz", "buz"] do
+          %{id: i}
+        end
+
+      expr =
+        Enum.reduce(records, expr(false), fn record, filter_expr ->
+          all_keys_match_expr =
+            Enum.reduce(keys, expr(true), fn key, key_expr ->
+              expr(^key_expr and ^ref(key) == ^Map.get(record, key))
+            end)
+
+          expr(^filter_expr or ^all_keys_match_expr)
+        end)
+
+      stringified_query =
+        Post
+        |> Ash.Query.filter(^expr)
+        |> inspect()
+
+      assert stringified_query =~ ~S(id in ["bar", "baz", "buz", "foo"])
+    end
+
     test "in across ands in ors isn't optimized" do
       stringified_query =
         Post

@@ -17,6 +17,14 @@ defmodule Ash.Query.BooleanExpression do
     %__MODULE__{op: op, left: left, right: right}
   end
 
+  defp maybe_optimize(%__MODULE__{op: op, left: left, right: right}) do
+    optimized_new(op, left, right)
+  end
+
+  defp maybe_optimize(other) do
+    other
+  end
+
   # In many cases we could actually just return `true/false` directly because we know
   # statements are contradictions. However, that would likely confuse users. For example:
   # `Ash.Query.filter(Resource, x == 1 and x in [2, 3])` becomes `#Ash.Query<filter: false>`
@@ -29,12 +37,14 @@ defmodule Ash.Query.BooleanExpression do
   def optimized_new(:and, _, false), do: false
   def optimized_new(:and, nil, _), do: false
   def optimized_new(:and, _, nil), do: false
-  def optimized_new(:and, true, right), do: right
-  def optimized_new(:and, left, true), do: left
+  def optimized_new(:and, true, right), do: maybe_optimize(right)
+  def optimized_new(:and, left, true), do: maybe_optimize(left)
   def optimized_new(:or, true, _), do: true
   def optimized_new(:or, _, true), do: true
-  def optimized_new(:or, nil, right), do: right
-  def optimized_new(:or, left, nil), do: left
+  def optimized_new(:or, nil, right), do: maybe_optimize(right)
+  def optimized_new(:or, false, right), do: maybe_optimize(right)
+  def optimized_new(:or, left, nil), do: maybe_optimize(left)
+  def optimized_new(:or, left, false), do: maybe_optimize(left)
 
   def optimized_new(
         op,
