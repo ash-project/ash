@@ -662,7 +662,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       |> Ash.create!()
 
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}], error_count: 1, errors: nil} =
-             Ash.bulk_create!(
+             Ash.bulk_create(
                [%{title: "title1"}, %{title: %{foo: :bar}}],
                Post,
                :create_with_change,
@@ -684,7 +684,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              error_count: 1,
              errors: [%Ash.Error.Invalid{}]
            } =
-             Ash.bulk_create!(
+             Ash.bulk_create(
                [%{title: "title1"}, %{title: %{foo: :bar}}],
                Post,
                :create_with_change,

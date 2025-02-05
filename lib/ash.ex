@@ -2292,7 +2292,8 @@ defmodule Ash do
     inputs
     |> bulk_create(resource, action, opts)
     |> case do
-      %Ash.BulkResult{status: :error, errors: errors} when errors in [nil, []] ->
+      %Ash.BulkResult{status: status, errors: errors}
+      when status in [:partial_success, :error] and errors in [nil, []] ->
         if opts[:return_errors?] do
           raise Ash.Error.to_error_class(
                   Ash.Error.Unknown.UnknownError.exception(
@@ -2308,7 +2309,7 @@ defmodule Ash do
                 )
         end
 
-      %Ash.BulkResult{status: :error, errors: errors} ->
+      %Ash.BulkResult{status: status, errors: errors} when status in [:partial_success, :error] ->
         raise Ash.Error.to_error_class(errors)
 
       bulk_result ->
@@ -2436,7 +2437,8 @@ defmodule Ash do
     stream_or_query
     |> bulk_update(action, input, opts)
     |> case do
-      %Ash.BulkResult{status: :error, errors: errors} when errors in [nil, []] ->
+      %Ash.BulkResult{status: status, errors: errors}
+      when status in [:partial_success, :error] and errors in [nil, []] ->
         if opts[:return_errors?] do
           raise Ash.Error.to_error_class(
                   Ash.Error.Unknown.UnknownError.exception(
@@ -2452,7 +2454,7 @@ defmodule Ash do
                 )
         end
 
-      %Ash.BulkResult{status: :error, errors: errors} ->
+      %Ash.BulkResult{status: status, errors: errors} when status in [:partial_success, :error] ->
         raise Ash.Error.to_error_class(errors)
 
       bulk_result ->
@@ -2545,7 +2547,8 @@ defmodule Ash do
     stream_or_query
     |> bulk_destroy(action, input, opts)
     |> case do
-      %Ash.BulkResult{status: :error, errors: errors} when errors in [nil, []] ->
+      %Ash.BulkResult{status: status, errors: errors}
+      when status in [:partial_success, :error] and errors in [nil, []] ->
         if opts[:return_errors?] do
           raise Ash.Error.to_error_class(
                   Ash.Error.Unknown.UnknownError.exception(
@@ -2561,7 +2564,7 @@ defmodule Ash do
                 )
         end
 
-      %Ash.BulkResult{status: :error, errors: errors} ->
+      %Ash.BulkResult{status: status, errors: errors} when status in [:partial_success, :error] ->
         raise Ash.Error.to_error_class(errors)
 
       %Ash.BulkResult{} = bulk_result ->
