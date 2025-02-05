@@ -62,152 +62,138 @@ defmodule Ash.Actions.Read.Calculations do
           source_context: opts[:context] || %{}
         }
 
-      case try_evaluate(
-             nil,
-             resource,
-             %Ash.Query.Calculation{module: module, opts: calc_opts, context: calc_context},
-             {:ok, [record]},
-             true,
-             true
-           ) do
-        {:ok, [result]} ->
-          {:ok, result}
+      if module.has_expression?() do
+        expr =
+          case module.expression(calc_opts, calc_context) do
+            {:ok, result} -> {:ok, result}
+            {:error, error} -> {:error, error}
+            result -> {:ok, result}
+          end
 
-        _ ->
-          if module.has_expression?() do
-            expr =
-              case module.expression(calc_opts, calc_context) do
-                {:ok, result} -> {:ok, result}
-                {:error, error} -> {:error, error}
-                result -> {:ok, result}
-              end
+        with {:ok, expr} <- expr,
+             {:ok, expr} <-
+               Ash.Filter.hydrate_refs(expr, %{resource: resource}) do
+          if is_nil(primary_key) && requires_primary_key?(expr) do
+            {:error,
+             Ash.Error.Query.CalculationRequiresPrimaryKey.exception(
+               resource: resource,
+               calculation: calculation
+             )}
+          else
+            if is_nil(primary_key) do
+              expr = replace_refs(expr, Keyword.put(opts, :record, record))
 
-            with {:ok, expr} <- expr,
-                 {:ok, expr} <-
-                   Ash.Filter.hydrate_refs(expr, %{resource: resource}) do
-              if is_nil(primary_key) && requires_primary_key?(expr) do
-                {:error,
-                 Ash.Error.Query.CalculationRequiresPrimaryKey.exception(
-                   resource: resource,
-                   calculation: calculation
-                 )}
-              else
-                if is_nil(primary_key) do
-                  expr = replace_refs(expr, Keyword.put(opts, :record, record))
+              evaled =
+                try do
+                  if opts[:data_layer?] do
+                    :unknown
+                  else
+                    Ash.Expr.eval(expr,
+                      record: record,
+                      resource: resource,
+                      unknown_on_unknown_refs?: true
+                    )
+                  end
+                rescue
+                  _ ->
+                    :unknown
+                end
 
-                  evaled =
-                    try do
-                      if opts[:data_layer?] do
-                        :unknown
-                      else
-                        Ash.Expr.eval(expr,
-                          record: record,
-                          resource: resource,
-                          unknown_on_unknown_refs?: true
-                        )
-                      end
-                    rescue
-                      _ ->
-                        :unknown
+              case evaled do
+                {:ok, result} ->
+                  {:ok, result}
+
+                :unknown ->
+                  data_layer_result =
+                    if Ash.DataLayer.data_layer_can?(resource, :calculate) do
+                      Ash.DataLayer.calculate(resource, [expr], %{
+                        calculation_context: calc_context,
+                        primary_key: primary_key
+                      })
+                    else
+                      :cant_calculate
                     end
 
-                  case evaled do
+                  case data_layer_result do
                     {:ok, result} ->
-                      {:ok, result}
+                      {:ok, Enum.at(result, 0)}
 
-                    :unknown ->
-                      data_layer_result =
-                        if Ash.DataLayer.data_layer_can?(resource, :calculate) do
-                          Ash.DataLayer.calculate(resource, [expr], %{
-                            calculation_context: calc_context,
-                            primary_key: primary_key
-                          })
-                        else
-                          :cant_calculate
-                        end
-
-                      case data_layer_result do
-                        {:ok, result} ->
-                          {:ok, Enum.at(result, 0)}
-
-                        :cant_calculate ->
-                          {:error,
-                           "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer does not support one-off calculations."}
-
-                        {:error, error} ->
-                          if module.has_calculate?() do
-                            case with_trace(
-                                   fn -> module.calculate([record], calc_opts, calc_context) end,
-                                   resource,
-                                   calculation,
-                                   opts
-                                 ) do
-                              [result] ->
-                                result
-
-                              {:ok, [result]} ->
-                                {:ok, result}
-
-                              {:ok, _} ->
-                                {:error, "Invalid calculation return"}
-
-                              {:error, error} ->
-                                {:error, error}
-
-                              :unknown ->
-                                {:error,
-                                 "Failed to run calculation in memory, or in the data layer. Data layer returned #{inspect(error)}"}
-                            end
-                          else
-                            {:error,
-                             "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer returned #{inspect(error)}"}
-                          end
-                      end
+                    :cant_calculate ->
+                      {:error,
+                       "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer does not support one-off calculations."}
 
                     {:error, error} ->
-                      {:error, error}
-                  end
-                else
-                  case Ash.load(record, [{calculation, arguments}],
-                         actor: opts[:actor],
-                         domain: opts[:domain],
-                         tenant: opts[:tenant],
-                         authorize?: opts[:authorize?],
-                         tracer: opts[:tracer],
-                         resource: opts[:resource],
-                         context: opts[:context] || %{}
-                       ) do
-                    {:ok, record} -> {:ok, Map.get(record, calculation)}
-                    {:error, error} -> {:error, error}
-                  end
-                end
-              end
-            end
-          else
-            if module.has_calculate?() do
-              case with_trace(
-                     fn -> module.calculate([record], calc_opts, calc_context) end,
-                     resource,
-                     calculation,
-                     opts
-                   ) do
-                [result] ->
-                  {:ok, result}
+                      if module.has_calculate?() do
+                        case with_trace(
+                               fn -> module.calculate([record], calc_opts, calc_context) end,
+                               resource,
+                               calculation,
+                               opts
+                             ) do
+                          [result] ->
+                            result
 
-                {:ok, [result]} ->
-                  {:ok, result}
+                          {:ok, [result]} ->
+                            {:ok, result}
 
-                {:ok, _} ->
-                  {:error, "Invalid calculation return"}
+                          {:ok, _} ->
+                            {:error, "Invalid calculation return"}
+
+                          {:error, error} ->
+                            {:error, error}
+
+                          :unknown ->
+                            {:error,
+                             "Failed to run calculation in memory, or in the data layer. Data layer returned #{inspect(error)}"}
+                        end
+                      else
+                        {:error,
+                         "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer returned #{inspect(error)}"}
+                      end
+                  end
 
                 {:error, error} ->
                   {:error, error}
               end
             else
-              {:error,
-               "Module #{inspect(module)} does not have an expression or calculate function"}
+              case Ash.load(record, [{calculation, arguments}],
+                     actor: opts[:actor],
+                     domain: opts[:domain],
+                     tenant: opts[:tenant],
+                     authorize?: opts[:authorize?],
+                     tracer: opts[:tracer],
+                     resource: opts[:resource],
+                     context: opts[:context] || %{}
+                   ) do
+                {:ok, record} -> {:ok, Map.get(record, calculation)}
+                {:error, error} -> {:error, error}
+              end
             end
           end
+        end
+      else
+        if module.has_calculate?() do
+          case with_trace(
+                 fn -> module.calculate([record], calc_opts, calc_context) end,
+                 resource,
+                 calculation,
+                 opts
+               ) do
+            [result] ->
+              {:ok, result}
+
+            {:ok, [result]} ->
+              {:ok, result}
+
+            {:ok, _} ->
+              {:error, "Invalid calculation return"}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        else
+          {:error, "Module #{inspect(module)} does not have an expression or calculate function"}
+        end
       end
     else
       {:calc, nil} ->
@@ -962,100 +948,60 @@ defmodule Ash.Actions.Read.Calculations do
          expression,
          resource,
          calculation,
-         data,
-         reuse_values?,
-         calc_only? \\ false
-       )
-
-  defp try_evaluate(
-         expression,
-         resource,
-         calculation,
          {:ok, initial_data},
-         reuse_values?,
-         calc_only?
+         reuse_values?
        ) do
-    should_calculate? =
-      calculation.module != Ash.Resource.Calculation.Expression &&
-        calculation.module.has_calculate?()
+    refs =
+      expression
+      |> Ash.Filter.list_refs(false, false, true, true)
 
-    if calc_only? && !should_calculate? do
-      :error
+    if refs == [] do
+      true
     else
-      refs =
-        if should_calculate? do
-          expression
-          |> Ash.Filter.list_refs(false, false, true, true)
-        else
-          []
-        end
-
-      if refs == [] do
-        true
+      if reuse_values? do
+        Enum.all?(refs, fn ref ->
+          # consider doing `lists: :any`?
+          Ash.Resource.loaded?(initial_data, ref.relationship_path ++ [ref.attribute],
+            strict?: true,
+            type: :request
+          )
+        end)
       else
-        if reuse_values? do
-          Enum.all?(refs, fn ref ->
-            # consider doing `lists: :any`?
-            Ash.Resource.loaded?(initial_data, ref.relationship_path ++ [ref.attribute],
-              strict?: true,
-              type: :request
-            )
-          end)
-        else
-          false
-        end
+        false
       end
-      |> if do
-        if should_calculate? do
-          opts =
-            calculation.opts
-            |> Ash.Expr.fill_template(
-              calculation.context.actor,
-              calculation.context.arguments,
-              calculation.context.source_context
-            )
+    end
+    |> if do
+      Enum.reduce_while(initial_data, {:ok, []}, fn record, {:ok, results} ->
+        case Ash.Expr.eval(expression,
+               record: record,
+               resource: resource,
+               unknown_on_unknown_refs?: true
+             ) do
+          {:ok, result} ->
+            {:cont, {:ok, [result | results]}}
 
-          calculation.module.calculate(initial_data, opts, calculation.context)
-        else
-          if calc_only? do
-            :error
-          else
-            Enum.reduce_while(initial_data, {:ok, []}, fn record, {:ok, results} ->
-              case Ash.Expr.eval(expression,
-                     record: record,
-                     resource: resource,
-                     unknown_on_unknown_refs?: true
-                   ) do
-                {:ok, result} ->
-                  {:cont, {:ok, [result | results]}}
-
-                _ ->
-                  {:halt, :error}
-              end
-            end)
-            |> case do
-              {:ok, values} ->
-                {:ok,
-                 %{
-                   calculation
-                   | module: Ash.Resource.Calculation.Literal,
-                     opts: [value: Enum.reverse(values), precomputed?: true],
-                     required_loads: [],
-                     select: []
-                 }}
-
-              _ ->
-                :error
-            end
-          end
+          _ ->
+            {:halt, :error}
         end
-      else
-        :error
+      end)
+      |> case do
+        {:ok, values} ->
+          {:ok,
+           %{
+             calculation
+             | module: Ash.Resource.Calculation.Literal,
+               opts: [value: Enum.reverse(values), precomputed?: true],
+               required_loads: [],
+               select: []
+           }}
+
+        _ ->
+          :error
       end
     end
   end
 
-  defp try_evaluate(expression, resource, calculation, _, _, _) do
+  defp try_evaluate(expression, resource, calculation, _, _) do
     case Ash.Expr.eval(expression,
            resource: resource,
            unknown_on_unknown_refs?: true
