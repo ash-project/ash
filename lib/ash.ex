@@ -757,6 +757,13 @@ defmodule Ash do
       Set to `true` to require that the value be computed within the data layer. Only works for calculations that define an expression.
       """
     ],
+    reuse_values?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Set to `true` to reuse existing values on any provided record. Only necessary if providing a record as the basis for calculation.
+      """
+    ],
     domain: [
       type: {:spark, Ash.Domain},
       doc: "The domain to use for the action"
