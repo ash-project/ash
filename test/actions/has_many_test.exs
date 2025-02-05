@@ -101,21 +101,8 @@ defmodule Ash.Test.Actions.HasManyTest do
         domain(OtherDomain)
       end
 
-      has_many :comments_with_today, Comment do
-        destination_attribute :post_id
-        public?(true)
-        domain(OtherDomain)
-        filter expr(content == "Today")
-      end
-
       has_many :meow_comments, Comment do
         manual MeowCommentRelationship
-      end
-    end
-
-    aggregates do
-      count :comments_with_today_count, :comments_with_today do
-        public?(true)
       end
     end
   end
@@ -192,7 +179,7 @@ defmodule Ash.Test.Actions.HasManyTest do
         destination_attribute :tenant_id
         public?(true)
 
-        # This is eventually what I want to do, but it results is no matches
+        # This is eventually what I want to do, but it results in no matches
         # filter expr(inserted_at > parent(post_view.last_post.inserted_at))
 
         # After some experimentation, I found that this works
