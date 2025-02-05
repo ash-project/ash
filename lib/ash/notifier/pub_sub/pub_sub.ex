@@ -201,7 +201,9 @@ defmodule Ash.Notifier.PubSub do
   - `:broadcast` sends `%{topic: (topic), event: (event), notification: (notification)}`
   """
 
-  use Spark.Dsl.Extension, sections: @sections
+  use Spark.Dsl.Extension,
+    sections: @sections,
+    verifiers: [Ash.Notifier.PubSub.Verifiers.VerifyActionNames]
 
   use Ash.Notifier
 
