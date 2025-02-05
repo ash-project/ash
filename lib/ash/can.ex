@@ -140,6 +140,22 @@ defmodule Ash.Can do
       subject = %{subject | domain: domain}
 
       pre_flight? = Keyword.get(opts, :pre_flight?, true)
+      reuse_values? = Keyword.get(opts, :reuse_values?, false)
+
+      opts =
+        if pre_flight? && !reuse_values? && opts[:data] do
+          fields = [:__metadata__ | Enum.to_list(Ash.Resource.Info.attribute_names(resource))]
+
+          Keyword.update!(opts, :data, fn data ->
+            data
+            |> List.wrap()
+            |> Enum.map(fn record ->
+              struct(resource, Map.take(record, fields))
+            end)
+          end)
+        else
+          opts
+        end
 
       subject =
         case subject do
@@ -147,9 +163,18 @@ defmodule Ash.Can do
             Ash.Query.set_context(subject, %{private: %{pre_flight_authorization?: pre_flight?}})
 
           %Ash.Changeset{} ->
-            Ash.Changeset.set_context(subject, %{
-              private: %{pre_flight_authorization?: pre_flight?}
-            })
+            changeset =
+              Ash.Changeset.set_context(subject, %{
+                private: %{pre_flight_authorization?: pre_flight?}
+              })
+
+            if pre_flight? && !reuse_values? && is_struct(changeset.data, resource) do
+              fields = [:__metadata__ | Enum.to_list(Ash.Resource.Info.attribute_names(resource))]
+
+              %{changeset | data: struct(resource, Map.take(changeset.data, fields))}
+            else
+              changeset
+            end
 
           %Ash.ActionInput{} ->
             Ash.ActionInput.set_context(subject, %{

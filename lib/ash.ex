@@ -821,6 +821,12 @@ defmodule Ash do
       default: false,
       doc: "Whether or not to treat an invalid action as a non-allowed action."
     ],
+    reuse_values?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not loaded data like aggregates, calculations and relationships should be checked in memory if possible, instead of querying. No effect if `pre_flight?` is `false`."
+    ],
     pre_flight?: [
       type: :boolean,
       default: true,
