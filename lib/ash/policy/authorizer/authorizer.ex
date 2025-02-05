@@ -599,9 +599,11 @@ defmodule Ash.Policy.Authorizer do
                   "What filter must be applied to this query to show only the allowed records a user can see?".
 
                   We have installed `:picosat_elixir` by default. This can occasionally cause problems for some users.
-                  If you have issues, you can rerun the command with `--sat-solver simple_sat`, or change the dependency
-                  manually. `:simple_sat` is a less performant solver, but will work anywhere Elixir works. We suggest
-                  getting `:picosat_elixir` working at some point.
+
+                  If you encounter issues compiling `:picosat_elixir`, first remove it from your dependencies list,
+                  and then run:
+
+                      mix igniter.install simple_sat && mix deps.compile ash --force
                   """
 
                 Igniter.add_notice(igniter, notice)
