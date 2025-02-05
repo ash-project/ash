@@ -107,13 +107,20 @@ defmodule Ash.Actions.Read.Calculations do
                            reuse_values?
                          ) do
                       {:ok, calculation} ->
-                        {:ok,
-                         calculation.module.calculate(
-                           [record],
-                           calculation.opts,
-                           calculation.context
-                         )
-                         |> Enum.at(0)}
+                        with_trace(
+                          fn ->
+                            {:ok,
+                             calculation.module.calculate(
+                               [record],
+                               calculation.opts,
+                               calculation.context
+                             )
+                             |> Enum.at(0)}
+                          end,
+                          resource,
+                          calculation,
+                          opts
+                        )
 
                       _ ->
                         :unknown
@@ -195,46 +202,63 @@ defmodule Ash.Actions.Read.Calculations do
           end
         end
       else
-        if module.has_calculate?() do
-          record =
-            if primary_key do
-              Ash.load(record, module.load(Ash.Query.new(resource), calc_opts, calc_context),
-                actor: opts[:actor],
-                domain: opts[:domain],
-                lazy?: reuse_values?,
-                reuse_values?: reuse_values?,
-                tenant: opts[:tenant],
-                authorize?: false,
-                tracer: opts[:tracer],
-                resource: opts[:resource],
-                context: opts[:context] || %{}
-              )
-            else
-              {:ok, record}
-            end
-
-          with {:ok, record} <- record do
-            case with_trace(
-                   fn -> module.calculate([record], calc_opts, calc_context) end,
-                   resource,
-                   calculation,
-                   opts
-                 ) do
-              [result] ->
-                {:ok, result}
-
-              {:ok, [result]} ->
-                {:ok, result}
-
-              {:ok, _} ->
-                {:error, "Invalid calculation return"}
-
-              {:error, error} ->
-                {:error, error}
-            end
+        if primary_key do
+          case Ash.load(record, [{calculation, arguments}],
+                 actor: opts[:actor],
+                 domain: opts[:domain],
+                 tenant: opts[:tenant],
+                 authorize?: opts[:authorize?],
+                 reuse_values?: reuse_values?,
+                 tracer: opts[:tracer],
+                 resource: opts[:resource],
+                 context: opts[:context] || %{}
+               ) do
+            {:ok, record} -> {:ok, Map.get(record, calculation)}
+            {:error, error} -> {:error, error}
           end
         else
-          {:error, "Module #{inspect(module)} does not have an expression or calculate function"}
+          if module.has_calculate?() do
+            record =
+              if primary_key do
+                Ash.load(record, module.load(Ash.Query.new(resource), calc_opts, calc_context),
+                  actor: opts[:actor],
+                  domain: opts[:domain],
+                  lazy?: reuse_values?,
+                  reuse_values?: reuse_values?,
+                  tenant: opts[:tenant],
+                  authorize?: false,
+                  tracer: opts[:tracer],
+                  resource: opts[:resource],
+                  context: opts[:context] || %{}
+                )
+              else
+                {:ok, record}
+              end
+
+            with {:ok, record} <- record do
+              case with_trace(
+                     fn -> module.calculate([record], calc_opts, calc_context) end,
+                     resource,
+                     calculation,
+                     opts
+                   ) do
+                [result] ->
+                  {:ok, result}
+
+                {:ok, [result]} ->
+                  {:ok, result}
+
+                {:ok, _} ->
+                  {:error, "Invalid calculation return"}
+
+                {:error, error} ->
+                  {:error, error}
+              end
+            end
+          else
+            {:error,
+             "Module #{inspect(module)} does not have an expression or calculate function"}
+          end
         end
       end
     else
