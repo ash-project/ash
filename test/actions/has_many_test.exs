@@ -88,9 +88,10 @@ defmodule Ash.Test.Actions.HasManyTest do
     attributes do
       uuid_primary_key :id, type: :ci_string
 
-      attribute :title, :string do
-        public?(true)
-      end
+      attribute :title, :string, public?: true
+      attribute :tenant_id, :string, public?: true
+
+      create_timestamp :inserted_at, public?: true
     end
 
     relationships do
@@ -106,13 +107,98 @@ defmodule Ash.Test.Actions.HasManyTest do
     end
   end
 
+  defmodule PostView do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Ash.Test.Actions.HasManyTest.Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :last_post_id, :uuid, public?: true
+      attribute :user_id, :uuid, public?: true
+    end
+
+    relationships do
+      belongs_to :user, Ash.Test.Actions.HasManyTest.User do
+        source_attribute :user_id
+        destination_attribute :id
+        public?(true)
+      end
+
+      belongs_to :last_post, Post do
+        source_attribute :last_post_id
+        destination_attribute :id
+        public?(true)
+      end
+    end
+  end
+
+
+  defmodule User do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Ash.Test.Actions.HasManyTest.Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string, public?: true
+      attribute :tenant_id, :string, public?: true
+    end
+
+    relationships do
+      has_one :post_view, PostView do
+        source_attribute :id
+        destination_attribute :user_id
+        public?(true)
+      end
+
+      has_many :unread_posts, Post do
+        source_attribute :tenant_id
+        destination_attribute :tenant_id
+        public?(true)
+
+        # This is eventually what I want to do, but it results in no matches
+        # filter expr(inserted_at > parent(post_view.last_post.inserted_at))
+
+        # After some experimentation, I found that this works
+        # filter expr(id != parent(post_view.last_post_id))
+        # But this doesn't
+        filter expr(id != parent(post_view.last_post.id))
+      end
+    end
+  end
+
   defmodule Domain do
     @moduledoc false
     use Ash.Domain
 
     resources do
       resource Post
+      resource PostView
       resource Comment
+      resource User
     end
   end
 
@@ -196,5 +282,40 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.load!(:meow_comments)
 
     assert length(post.meow_comments) == 1
+  end
+
+  test "expr within relationship - 2" do
+    tenant_id = Ash.UUID.generate()
+
+    user =
+      User
+      |> Ash.Changeset.for_create(:create, %{name: "My Name", tenant_id: tenant_id})
+      |> Ash.create!()
+
+    _first_read_post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "Read Post 1", tenant_id: tenant_id})
+      |> Ash.Changeset.force_change_attribute(:inserted_at, DateTime.utc_now() |> DateTime.add(-10, :second))
+      |> Ash.create!()
+
+    last_read_post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "Read Post 2", tenant_id: tenant_id})
+      |> Ash.Changeset.force_change_attribute(:inserted_at, DateTime.utc_now() |> DateTime.add(-9, :second))
+      |> Ash.create!()
+
+    _unread_post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "Unread Post", tenant_id: tenant_id})
+      |> Ash.Changeset.force_change_attribute(:inserted_at, DateTime.utc_now() |> DateTime.add(-8, :second))
+      |> Ash.create!()
+
+    # Track which post was read last
+    PostView
+    |> Ash.Changeset.for_create(:create, %{last_post_id: last_read_post.id, user_id: user.id})
+    |> Ash.create!()
+
+    user = Ash.get!(User, to_string(user.id), load: :unread_posts, authorize?: false)
+    assert length(user.unread_posts) == 2
   end
 end
