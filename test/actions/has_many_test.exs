@@ -125,7 +125,7 @@ defmodule Ash.Test.Actions.HasManyTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :last_post_id, :uuid, public?: true
+      attribute :last_post_id, :ci_string, public?: true
       attribute :user_id, :uuid, public?: true
     end
 
@@ -143,7 +143,6 @@ defmodule Ash.Test.Actions.HasManyTest do
       end
     end
   end
-
 
   defmodule User do
     @moduledoc false
@@ -179,12 +178,7 @@ defmodule Ash.Test.Actions.HasManyTest do
         destination_attribute :tenant_id
         public?(true)
 
-        # This is eventually what I want to do, but it results in no matches
-        # filter expr(inserted_at > parent(post_view.last_post.inserted_at))
-
-        # After some experimentation, I found that this works
-        # filter expr(id != parent(post_view.last_post_id))
-        # But this doesn't
+        # This is evenn't
         filter expr(id != parent(post_view.last_post.id))
       end
     end
@@ -295,19 +289,28 @@ defmodule Ash.Test.Actions.HasManyTest do
     _first_read_post =
       Post
       |> Ash.Changeset.for_create(:create, %{title: "Read Post 1", tenant_id: tenant_id})
-      |> Ash.Changeset.force_change_attribute(:inserted_at, DateTime.utc_now() |> DateTime.add(-10, :second))
+      |> Ash.Changeset.force_change_attribute(
+        :inserted_at,
+        DateTime.utc_now() |> DateTime.add(-10, :second)
+      )
       |> Ash.create!()
 
     last_read_post =
       Post
       |> Ash.Changeset.for_create(:create, %{title: "Read Post 2", tenant_id: tenant_id})
-      |> Ash.Changeset.force_change_attribute(:inserted_at, DateTime.utc_now() |> DateTime.add(-9, :second))
+      |> Ash.Changeset.force_change_attribute(
+        :inserted_at,
+        DateTime.utc_now() |> DateTime.add(-9, :second)
+      )
       |> Ash.create!()
 
     _unread_post =
       Post
       |> Ash.Changeset.for_create(:create, %{title: "Unread Post", tenant_id: tenant_id})
-      |> Ash.Changeset.force_change_attribute(:inserted_at, DateTime.utc_now() |> DateTime.add(-8, :second))
+      |> Ash.Changeset.force_change_attribute(
+        :inserted_at,
+        DateTime.utc_now() |> DateTime.add(-8, :second)
+      )
       |> Ash.create!()
 
     # Track which post was read last

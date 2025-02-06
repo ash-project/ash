@@ -1,4 +1,5 @@
 defmodule Ash.Notifier.PubSub.Verifiers.VerifyActionNames do
+  @moduledoc "Verifies action names in configured publications"
   use Spark.Dsl.Verifier
 
   def verify(dsl) do

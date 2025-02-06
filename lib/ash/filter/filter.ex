@@ -449,7 +449,7 @@ defmodule Ash.Filter do
   """
   def get_filter(resource, id) do
     primary_key = Ash.Resource.Info.primary_key(resource)
-    keyval? = Keyword.keyword?(id) || is_map(id)
+    keyval? = Keyword.keyword?(id) || (is_map(id) and not is_struct(id))
 
     case {primary_key, id} do
       {[field], [{field, value}]} ->
