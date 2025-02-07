@@ -416,9 +416,9 @@ ticket = (
   |> Ash.create!()
 )
 
-ticket
-|> Ash.Changeset.for_update(:close)
-|> Ash.update!()
+ticket = ticket
+  |> Ash.Changeset.for_update(:close)
+  |> Ash.update!()
 
 #Helpdesk.Support.Ticket<
   ...
