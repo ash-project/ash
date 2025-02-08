@@ -118,18 +118,6 @@ We first create a new project with the `--sup` flag to add a supervision tree. T
 mix new --sup helpdesk && cd helpdesk
 ```
 
-It is a good idea to make it a git repository and commit the initial project. You'll be able to see what changes we made, and can save your changes once we're done.
-
-```bash
-# Run in your terminal
-git init
-git add -A
-git commit -m "first commit"
-git branch -M main
-```
-
-Open the project in your text editor, and we'll get started.
-
 #### Add Ash to your application
 
 Add the `ash` and `picosat_elixir` dependencies to your `mix.exs`
@@ -144,6 +132,19 @@ end
 ```
 
 And then run `mix deps.get && mix deps.compile` to install the dependencies
+
+It is a good idea to make it a git repository and commit the initial project. You'll be able to see what changes we made, and can save your changes once we're done.
+
+```bash
+# Run in your terminal
+git init
+git add -A
+git commit -m "first commit"
+git branch -M main
+```
+
+Open the project in your text editor, and we'll get started.
+
 
 #### Formatting
 
