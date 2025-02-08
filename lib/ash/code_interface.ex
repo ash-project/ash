@@ -941,10 +941,17 @@ defmodule Ash.CodeInterface do
                         |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
                           if method == :id || unquote(interface.get?) do
+                            authorize_with =
+                              if Ash.DataLayer.data_layer_can?(__MODULE__, :expr_error) do
+                                :error
+                              else
+                                :filter
+                              end
+
                             bulk_opts
                             |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
-                            |> Keyword.put_new(:authorize_with, :error)
+                            |> Keyword.put_new(:authorize_with, authorize_with)
                             |> Keyword.put(:notify?, true)
                           else
                             bulk_opts
@@ -1011,11 +1018,18 @@ defmodule Ash.CodeInterface do
                         |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
                           if method == :id || unquote(interface.get?) do
+                            authorize_with =
+                              if Ash.DataLayer.data_layer_can?(__MODULE__, :expr_error) do
+                                :error
+                              else
+                                :filter
+                              end
+
                             bulk_opts
                             |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
                             |> Keyword.put(:allow_stream_with, :full_read)
-                            |> Keyword.put_new(:authorize_with, :error)
+                            |> Keyword.put_new(:authorize_with, authorize_with)
                             |> Keyword.put(:notify?, true)
                           else
                             bulk_opts
@@ -1173,11 +1187,18 @@ defmodule Ash.CodeInterface do
                         |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
                           if method == :id || unquote(interface.get?) do
+                            authorize_with =
+                              if Ash.DataLayer.data_layer_can?(__MODULE__, :expr_error) do
+                                :error
+                              else
+                                :filter
+                              end
+
                             bulk_opts
                             |> Keyword.put(:return_records?, opts[:return_destroyed?])
                             |> Keyword.put(:return_errors?, true)
                             |> Keyword.put(:allow_stream_with, :full_read)
-                            |> Keyword.put_new(:authorize_with, :error)
+                            |> Keyword.put_new(:authorize_with, authorize_with)
                             |> Keyword.put(:notify?, true)
                           else
                             Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
@@ -1261,11 +1282,18 @@ defmodule Ash.CodeInterface do
                         |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
                           if method == :id || unquote(interface.get?) do
+                            authorize_with =
+                              if Ash.DataLayer.data_layer_can?(__MODULE__, :expr_error) do
+                                :error
+                              else
+                                :filter
+                              end
+
                             bulk_opts
                             |> Keyword.put(:return_records?, opts[:return_destroyed?])
                             |> Keyword.put(:return_errors?, true)
                             |> Keyword.put(:allow_stream_with, :full_read)
-                            |> Keyword.put_new(:authorize_with, :error)
+                            |> Keyword.put_new(:authorize_with, authorize_with)
                             |> Keyword.put(:notify?, true)
                           else
                             Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])

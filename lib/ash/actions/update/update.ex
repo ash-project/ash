@@ -155,6 +155,13 @@ defmodule Ash.Actions.Update do
             )
             |> Ash.Query.do_filter(primary_key_filter)
 
+          authorize_changeset_with =
+            if Ash.DataLayer.data_layer_can?(atomic_changeset.resource, :expr_error) do
+              :error
+            else
+              :filter
+            end
+
           case Ash.Actions.Update.Bulk.run(
                  domain,
                  query,
@@ -168,7 +175,7 @@ defmodule Ash.Actions.Update do
                    authorize_query?: false,
                    return_records?: true,
                    atomic_changeset: atomic_changeset,
-                   authorize_changeset_with: :error
+                   authorize_changeset_with: authorize_changeset_with
                  )
                ) do
             %Ash.BulkResult{status: :success, records: [record], notifications: notifications} ->

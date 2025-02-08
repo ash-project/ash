@@ -1137,10 +1137,27 @@ defmodule Ash do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
 
+    if opts[:uniq?] do
+    end
+
     query
     |> Ash.Query.new()
     |> Ash.Query.select([])
     |> Ash.Query.load(field)
+    |> then(fn query ->
+      if opts[:uniq?] do
+        Ash.Query.distinct(query, [field])
+      else
+        query
+      end
+    end)
+    |> then(fn query ->
+      if Keyword.get(opts, :include_nil?, false) do
+        query
+      else
+        Ash.Query.filter(query, not is_nil(^Ash.Expr.ref(field)))
+      end
+    end)
     |> Ash.Actions.Read.unpaginated_read(nil, opts)
     |> case do
       {:ok, records} ->

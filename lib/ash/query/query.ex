@@ -2340,7 +2340,7 @@ defmodule Ash.Query do
     type = opts[:type]
     constraints = opts[:constraints] || []
     implementation = opts[:implementation]
-    include_nil? = Keyword.get(opts, :include_nil?, true)
+    include_nil? = Keyword.get(opts, :include_nil?, false)
     uniq? = opts[:uniq?]
     read_action = opts[:read_action]
     authorize? = Keyword.get(opts, :authorize?, true)
