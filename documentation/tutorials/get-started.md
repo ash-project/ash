@@ -130,7 +130,7 @@ git branch -M main
 
 Open the project in your text editor, and we'll get started.
 
-### Add Ash to your application
+#### Add Ash to your application
 
 Add the `ash` and `picosat_elixir` dependencies to your `mix.exs`
 
