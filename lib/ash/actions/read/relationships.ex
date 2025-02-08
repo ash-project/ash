@@ -1191,6 +1191,9 @@ defmodule Ash.Actions.Read.Relationships do
       has_page? = query.page not in [nil, false]
 
       cond do
+        is_list(relationship.through) ->
+          false
+
         !Ash.DataLayer.data_layer_can?(
           relationship.source,
           {:lateral_join, resources}
