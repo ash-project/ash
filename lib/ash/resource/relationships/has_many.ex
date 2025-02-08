@@ -64,7 +64,7 @@ defmodule Ash.Resource.Relationships.HasMany do
                   no_attributes(),
                   through: [
                     type: :any,
-                    doc: "The resource to use as the join resource."
+                    doc: "list of relationships as atoms"
                   ]
                 ],
                 @global_opts,

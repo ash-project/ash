@@ -105,7 +105,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   ],
                   through: [
                     type: :any,
-                    doc: "The resource to use as the join resource."
+                    doc: "list of relationships as atoms"
                   ]
                 ],
                 @global_opts,
