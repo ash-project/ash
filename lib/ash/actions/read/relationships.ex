@@ -918,7 +918,7 @@ defmodule Ash.Actions.Read.Relationships do
     simple_equality? = Ash.Type.simple_equality?(attribute.type)
 
     related =
-      if simple_equality? do
+      if simple_equality? and not is_list(relationship.through) do
         if relationship.cardinality == :one do
           Map.new(
             Enum.reverse(related_records),
@@ -942,28 +942,33 @@ defmodule Ash.Actions.Read.Relationships do
       Enum.map(records, fn record ->
         value = Map.get(record, relationship.source_attribute)
 
-        if relationship.cardinality == :many do
-          Map.put(
-            record,
-            relationship.name,
-            apply_runtime_query_operations(
+        cond do
+          is_list(relationship.through) ->
+            Map.put(record, relationship.name, related_records)
+
+          relationship.cardinality == :many ->
+            Map.put(
               record,
-              relationship,
-              Map.get(related, value) || default,
-              related_query
+              relationship.name,
+              apply_runtime_query_operations(
+                record,
+                relationship,
+                Map.get(related, value) || default,
+                related_query
+              )
             )
-          )
-        else
-          Map.put(
-            record,
-            relationship.name,
-            apply_runtime_query_operations(
+
+          true ->
+            Map.put(
               record,
-              relationship,
-              Enum.at(List.wrap(Map.get(related, value) || default), 0),
-              related_query
+              relationship.name,
+              apply_runtime_query_operations(
+                record,
+                relationship,
+                Enum.at(List.wrap(Map.get(related, value) || default), 0),
+                related_query
+              )
             )
-          )
         end
       end)
     else
