@@ -442,7 +442,7 @@ end
 | [`no_attributes?`](#relationships-has_one-no_attributes?){: #relationships-has_one-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
 | [`allow_nil?`](#relationships-has_one-allow_nil?){: #relationships-has_one-allow_nil? } | `boolean` | `true` | Marks the relationship as required. Has no effect on validations, but can inform extensions that there will always be a related entity. |
 | [`from_many?`](#relationships-has_one-from_many?){: #relationships-has_one-from_many? } | `boolean` | `false` | Signal that this relationship is actually a `has_many` where the first record is given via the `sort`. This will allow data layers to properly deduplicate when necessary. |
-| [`through`](#relationships-has_one-through){: #relationships-has_one-through } | `any` |  | list of relationships as atoms |
+| [`through`](#relationships-has_one-through){: #relationships-has_one-through } | `list(atom)` |  | list of relationships as atoms |
 | [`description`](#relationships-has_one-description){: #relationships-has_one-description } | `String.t` |  | An optional description for the relationship |
 | [`destination_attribute`](#relationships-has_one-destination_attribute){: #relationships-has_one-destination_attribute } | `atom` |  | The attribute on the related resource that should match the `source_attribute` configured on this resource. |
 | [`validate_destination_attribute?`](#relationships-has_one-validate_destination_attribute?){: #relationships-has_one-validate_destination_attribute? } | `boolean` | `true` | Whether or not to validate that the destination field exists on the destination resource |
@@ -542,7 +542,7 @@ end
 |------|------|---------|------|
 | [`manual`](#relationships-has_many-manual){: #relationships-has_many-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. |
 | [`no_attributes?`](#relationships-has_many-no_attributes?){: #relationships-has_many-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
-| [`through`](#relationships-has_many-through){: #relationships-has_many-through } | `any` |  | list of relationships as atoms |
+| [`through`](#relationships-has_many-through){: #relationships-has_many-through } | `list(atom)` |  | list of relationships as atoms |
 | [`description`](#relationships-has_many-description){: #relationships-has_many-description } | `String.t` |  | An optional description for the relationship |
 | [`destination_attribute`](#relationships-has_many-destination_attribute){: #relationships-has_many-destination_attribute } | `atom` |  | The attribute on the related resource that should match the `source_attribute` configured on this resource. |
 | [`validate_destination_attribute?`](#relationships-has_many-validate_destination_attribute?){: #relationships-has_many-validate_destination_attribute? } | `boolean` | `true` | Whether or not to validate that the destination field exists on the destination resource |
@@ -758,7 +758,7 @@ end
 | [`attribute_public?`](#relationships-belongs_to-attribute_public?){: #relationships-belongs_to-attribute_public? } | `boolean` |  | Whether or not the generated attribute will be public. If not set, it will default to the relationship's `public?` setting. |
 | [`define_attribute?`](#relationships-belongs_to-define_attribute?){: #relationships-belongs_to-define_attribute? } | `boolean` | `true` | If set to `false` an attribute is not created on the resource for this relationship, and one must be manually added in `attributes`, invalidating many other options. |
 | [`attribute_type`](#relationships-belongs_to-attribute_type){: #relationships-belongs_to-attribute_type } | `any` | `:uuid` | The type of the generated created attribute. See `Ash.Type` for more. |
-| [`through`](#relationships-belongs_to-through){: #relationships-belongs_to-through } | `any` |  | list of relationships as atoms |
+| [`through`](#relationships-belongs_to-through){: #relationships-belongs_to-through } | `list(atom)` |  | list of relationships as atoms |
 | [`description`](#relationships-belongs_to-description){: #relationships-belongs_to-description } | `String.t` |  | An optional description for the relationship |
 | [`destination_attribute`](#relationships-belongs_to-destination_attribute){: #relationships-belongs_to-destination_attribute } | `atom` | `:id` | The attribute on the related resource that should match the `source_attribute` configured on this resource. |
 | [`validate_destination_attribute?`](#relationships-belongs_to-validate_destination_attribute?){: #relationships-belongs_to-validate_destination_attribute? } | `boolean` | `true` | Whether or not to validate that the destination field exists on the destination resource |

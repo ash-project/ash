@@ -104,7 +104,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     doc: "The type of the generated created attribute. See `Ash.Type` for more."
                   ],
                   through: [
-                    type: :any,
+                    type: {:list, :atom},
                     doc: "list of relationships as atoms"
                   ]
                 ],

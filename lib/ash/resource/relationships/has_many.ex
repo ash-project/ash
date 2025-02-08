@@ -63,7 +63,7 @@ defmodule Ash.Resource.Relationships.HasMany do
                   manual(),
                   no_attributes(),
                   through: [
-                    type: :any,
+                    type: {:list, :atom},
                     doc: "list of relationships as atoms"
                   ]
                 ],

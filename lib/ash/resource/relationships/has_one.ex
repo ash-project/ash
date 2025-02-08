@@ -80,7 +80,7 @@ defmodule Ash.Resource.Relationships.HasOne do
                       """
                     ],
                     through: [
-                      type: :any,
+                      type: {:list, :atom},
                       doc: "list of relationships as atoms"
                     ]
                   ],
