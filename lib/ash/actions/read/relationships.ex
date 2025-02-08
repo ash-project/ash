@@ -587,6 +587,17 @@ defmodule Ash.Actions.Read.Relationships do
     )
   end
 
+  defp do_fetch_related_records(
+         records,
+         %{through: through} = relationship,
+         related_query,
+         _last?
+       )
+       when is_list(through) and through != [] do
+    result = load_related_records(records, through, relationship.cardinality)
+    {relationship, related_query, result}
+  end
+
   defp do_fetch_related_records(records, relationship, related_query, last?) do
     destination_attributes = Enum.map(records, &Map.get(&1, relationship.source_attribute))
 
