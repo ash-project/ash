@@ -21,6 +21,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :writable?,
     :context,
     :description,
+    :through,
     :attribute_writable?,
     :attribute_public?,
     filters: [],
@@ -101,6 +102,10 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     type: :any,
                     default: Application.compile_env(:ash, :default_belongs_to_type, :uuid),
                     doc: "The type of the generated created attribute. See `Ash.Type` for more."
+                  ],
+                  through: [
+                    type: :any,
+                    doc: "The resource to use as the join resource."
                   ]
                 ],
                 @global_opts,

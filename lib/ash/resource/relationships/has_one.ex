@@ -19,6 +19,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :violation_message,
     :manual,
     :writable?,
+    :through,
     filters: [],
     from_many?: false,
     no_attributes?: false,
@@ -77,6 +78,10 @@ defmodule Ash.Resource.Relationships.HasOne do
                       doc: """
                       Signal that this relationship is actually a `has_many` where the first record is given via the `sort`. This will allow data layers to properly deduplicate when necessary.
                       """
+                    ],
+                    through: [
+                      type: :any,
+                      doc: "The resource to use as the join resource."
                     ]
                   ],
                 @global_opts,
