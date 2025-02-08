@@ -56,6 +56,7 @@ The following functions are built in:
 - `string_downcase/1` | Downcases a string
 - `string_join/1` | Concatenates a list of strings, and ignores any nil values
 - `string_join/2` | As above, but with a joiner
+- `string_position/2` | Returns the zero-based position of a substring within a string, or nil, i.e. `string_position("fred", "red") == 1`
 - `string_split/1` | Splits a string on spaces
 - `string_split/2` | As above, but with a specific delimiter
 - `string_split/3` | As above, but with options. See the function for the available options.
