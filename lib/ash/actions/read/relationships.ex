@@ -612,6 +612,50 @@ defmodule Ash.Actions.Read.Relationships do
     )
   end
 
+  defp load_related_records(records, through, cardinality) do
+    load_statement =
+      Enum.reduce(Enum.reverse(through), [], fn
+        key, [] -> [key]
+        key, [keys] -> [{key, [keys]}]
+      end)
+
+    records
+    |> Enum.reduce_while({:ok, []}, fn
+      record, {:ok, acc} ->
+        through
+        |> Enum.reduce_while(Ash.load(record, load_statement), fn
+          key, {:ok, records} when is_list(records) ->
+            {:cont, {:ok, Enum.map(records, fn record -> Map.get(record, key) end)}}
+
+          key, {:ok, record} ->
+            {:cont, Map.fetch(record, key)}
+
+          _key, acc ->
+            {:halt, acc}
+        end)
+        |> case do
+          {:ok, records} when is_list(records) ->
+            {:cont, {:ok, List.flatten(records) ++ acc}}
+
+          {:ok, record} ->
+            {:cont, {:ok, [record | acc]}}
+
+          result ->
+            {:halt, result}
+        end
+
+      _record, result ->
+        {:halt, result}
+    end)
+    |> case do
+      {:ok, [related]} when cardinality == :one ->
+        {:ok, related}
+
+      result ->
+        result
+    end
+  end
+
   defp regroup_manual_results(records, %{cardinality: :many}) do
     Enum.group_by(records, & &1.__metadata__.manual_key, &delete_manual_key/1)
   end
