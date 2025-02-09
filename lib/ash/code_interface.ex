@@ -1383,7 +1383,7 @@ defmodule Ash.CodeInterface do
 
                 We cannot tell the difference between an empty list of inputs and an empty list of options.
 
-                If you are trying to provide an empty list of options, 
+                If you are trying to provide an empty list of options,
                 you should also specify empty `params`, i.e `#{name}(..., %{}, params)`
 
                 If you are trying to provide an empty list of records to create,
@@ -1644,6 +1644,8 @@ defmodule Ash.CodeInterface do
 
       inputs ->
         {arguments, inputs} = Enum.split_with(inputs, &(&1 in (args || [])))
+
+        arguments = Enum.sort_by(arguments, fn arg -> Enum.find_index(args, &(&1 == arg)) end)
 
         arguments =
           Enum.map(arguments, &describe_input(resource, action, &1))
