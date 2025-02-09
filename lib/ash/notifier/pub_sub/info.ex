@@ -26,6 +26,16 @@ defmodule Ash.Notifier.PubSub.Info do
     Spark.Dsl.Extension.get_opt(resource, [:pub_sub], :name, nil)
   end
 
+  @doc "The pubsub filter for a resource"
+  def filter(resource) do
+    Spark.Dsl.Extension.get_opt(resource, [:pub_sub], :filter, nil)
+  end
+
+  @doc "The transform for a resource"
+  def transform(resource) do
+    Spark.Dsl.Extension.get_opt(resource, [:pub_sub], :transform, nil)
+  end
+
   @doc "The broadcast type for a resource"
   def broadcast_type(resource) do
     Spark.Dsl.Extension.get_opt(resource, [:pub_sub], :broadcast_type, nil)

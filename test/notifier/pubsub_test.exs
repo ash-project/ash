@@ -31,6 +31,16 @@ defmodule Ash.Test.Notifier.PubSubTest do
       publish :update, ["bar", :name], event: "name_change", previous_values?: true
       publish :update_pkey, ["foo", :_pkey], previous_values?: true
 
+      publish :update_with_transform, ["update_with_transform", :name] do
+        transform fn notification ->
+          notification.data
+        end
+
+        filter fn notification ->
+          notification.data.name == "george"
+        end
+      end
+
       publish_all :update, ["baz", :id], event: "any_update", except: [:update_pkey]
       publish_all :update, ["fiz", :id], event: "any_update", except: [:doesnotexist]
     end
@@ -47,6 +57,11 @@ defmodule Ash.Test.Notifier.PubSubTest do
       end
 
       update :update do
+        require_atomic? false
+        accept :*
+      end
+
+      update :update_with_transform do
         require_atomic? false
         accept :*
       end
@@ -144,6 +159,35 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
     assert_receive {:broadcast, ^message, "destroy",
                     %Ash.Notifier.Notification{metadata: %{foo: :bar}}}
+  end
+
+  test "publishing with a filter and a transform" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{name: "ted"})
+      |> Ash.create!()
+
+    post
+    |> Ash.Changeset.for_update(:update_with_transform, %{name: "george"})
+    |> Ash.update!()
+
+    post
+    |> Ash.Changeset.for_update(:update_with_transform, %{name: "fred"})
+    |> Ash.update!()
+
+    assert_receive {
+      :broadcast,
+      "post:update_with_transform:george",
+      "update_with_transform",
+      %Post{}
+    }
+
+    refute_receive {
+      :broadcast,
+      "post:update_with_transform:fred",
+      "update_with_transform",
+      %Post{}
+    }
   end
 
   test "publishing a message with multiple matches/changes" do

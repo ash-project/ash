@@ -7,6 +7,8 @@ defmodule Ash.Notifier.PubSub.Publication do
     :event,
     :type,
     :except,
+    :filter,
+    :transform,
     :dispatcher,
     :previous_values?
   ]
@@ -22,6 +24,16 @@ defmodule Ash.Notifier.PubSub.Publication do
       default: false,
       doc:
         "Whether or not to publish messages with both the new values and the old values for referencing changed attributes"
+    ],
+    filter: [
+      type: {:fun, 1},
+      doc:
+        "A filter for notifications. Receives a notification, and ignores it if the function returns a falsy value."
+    ],
+    transform: [
+      type: {:fun, 1},
+      doc:
+        "A transformer for notifications. Receives a notification, and returns a new value to be broadcasted."
     ],
     topic: [
       type: {:custom, __MODULE__, :topic, []},
