@@ -2410,19 +2410,23 @@ defmodule Ash do
 
     case inputs do
       [] ->
-        result = %Ash.BulkResult{status: :success, errors: []}
+        if opts[:return_stream?] do
+          []
+        else
+          result = %Ash.BulkResult{status: :success, errors: []}
 
-        result =
-          if opts[:return_records?] do
-            %{result | records: []}
+          result =
+            if opts[:return_records?] do
+              %{result | records: []}
+            else
+              result
+            end
+
+          if opts[:return_notifications?] do
+            %{result | notifications: []}
           else
             result
           end
-
-        if opts[:return_notifications?] do
-          %{result | notifications: []}
-        else
-          result
         end
 
       inputs ->
