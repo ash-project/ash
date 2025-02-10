@@ -3,6 +3,33 @@ defmodule Ash.Policy.SimpleCheck do
   A type of check that operates only on request context, never on the data
 
   Define `c:match?/3`, which gets the actor, request context, and opts, and returns true or false
+
+
+  ## Example
+
+  This is a simple check that checks if the user is changing anything other than the
+  provided list.
+
+  ```elixir
+  defmodule ChangingNothingExcept do
+    use Ash.Policy.SimpleCheck
+
+    def match?(_actor, %{subject: %Ash.Changeset{} = changeset}, opts) do
+      allowed = opts[:attributes]
+      {:ok, Enum.all?(Map.keys(changeset.attributes), &(&1 in allowed))}
+    end
+
+    def match?(_, _, _), do: true
+  end
+  ```
+
+  You could then use this like
+
+  ```elixir
+  policy actor_attribute_equals(:role, :foobar) do
+    authorize_if {ChangingNothingExcept, attributes: [:foo, :bar]}
+  end
+  ```
   """
   @type actor :: Ash.Policy.Check.actor()
   @type context :: Ash.Policy.Authorizer.t()
