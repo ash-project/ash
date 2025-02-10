@@ -26,9 +26,10 @@ defmodule Ash.Vector do
     dim = list |> length()
     bin = for v <- list, into: "", do: <<v::float-32>>
 
-    {:ok, %Ash.Vector{data: bin, dimensions: dim}}
+    {:ok, %Ash.Vector{data: <<dim::unsigned-16, 0::unsigned-16>> <> bin, dimensions: dim}}
   rescue
-    _ -> {:error, :invalid_vector}
+    _ ->
+      {:error, :invalid_vector}
   end
 
   @doc """
