@@ -41,8 +41,7 @@ defmodule Ash.Resource.Verifiers.VerifyPrimaryReadActionHasNoArguments do
     This is often done by mistake, but can also be done intentionally.
 
     Primary read actions are used when loading relationships, checking policies and more.
-    It is okay to have optional arguments, but required arguments are almost never desired.
-
+    #{if things == "arguments", do: "It is okay to have optional arguments, but required arguments are almost never desired.\n", else: ""}
     If you intended to have #{things} on your primary read action, add `primary_read_warning?: false`
     to `use Ash.Resource`. For example:
 
