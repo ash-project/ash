@@ -38,8 +38,8 @@ defmodule Ash.Type.Vector do
     with {:ok, vector} <- Ash.Vector.new(value) do
       dims = constraints[:dimensions]
 
-      if dims && vector.dimensions != dimensions do
-        {:error, "must have #{dimensions} dimensions"}
+      if dims && vector.dimensions != dims do
+        {:error, "must have #{dims} dimensions"}
       else
         {:ok, vector}
       end
