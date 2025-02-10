@@ -5,10 +5,11 @@ defmodule Ash.Vector do
   Implementation based off of https://github.com/pgvector/pgvector-elixir/blob/v0.2.0/lib/pgvector.ex
   """
 
-  defstruct [:data]
+  defstruct [:data, :dimensions]
 
   @type t :: %__MODULE__{
-          data: binary()
+          data: binary(),
+          dimensions: pos_integer()
         }
 
   @doc """
@@ -24,7 +25,8 @@ defmodule Ash.Vector do
   def new(list) when is_list(list) do
     dim = list |> length()
     bin = for v <- list, into: "", do: <<v::float-32>>
-    {:ok, from_binary(<<dim::unsigned-16, 0::unsigned-16, bin::binary>>)}
+
+    {:ok, %Ash.Vector{data: bin, dimensions: dim}}
   rescue
     _ -> {:error, :invalid_vector}
   end
@@ -34,7 +36,8 @@ defmodule Ash.Vector do
   """
   @spec from_binary(binary()) :: t()
   def from_binary(binary) when is_binary(binary) do
-    %Ash.Vector{data: binary}
+    <<dim::unsigned-16>> <> _ = binary
+    %Ash.Vector{data: binary, dimensions: dim}
   end
 
   @doc """
