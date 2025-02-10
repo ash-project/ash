@@ -20,6 +20,14 @@ defmodule Ash.Test.ExprTest do
     end
   end
 
+  describe "string interpolation" do
+    test "pinned values can be used in interpolation" do
+      var = "foo"
+      expr = expr("#{^var}-#{^var}")
+      assert eval!(expr) == "foo-foo"
+    end
+  end
+
   describe "type coercion" do
     test "integers are coerced to strings" do
       expr = expr("foo" <> type(2024, :string))

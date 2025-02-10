@@ -609,7 +609,7 @@ defmodule Ash.Expr do
         {:<<>>, meta, [next | rest]},
         escape?
       ) do
-    do_expr({:<>, meta, [next, do_expr({:<<>>, meta, rest}, escape?)]}, escape?)
+    do_expr({:<>, meta, [next, {:<<>>, meta, rest}]}, escape?)
   end
 
   def do_expr(
