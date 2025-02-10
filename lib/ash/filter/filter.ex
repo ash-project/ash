@@ -4092,6 +4092,7 @@ defmodule Ash.Filter do
                   end
                 end
               else
+                {:known, value} -> {:cont, {:ok, value}}
                 {:error, error} -> {:halt, {:error, error}}
               end
           end

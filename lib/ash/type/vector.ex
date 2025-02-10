@@ -18,12 +18,8 @@ defmodule Ash.Type.Vector do
   def constraints, do: @constraints
 
   @impl true
-  def storage_type(constraints) do
-    if constraints[:dimensions] do
-      {:vector, constraints[:dimensions]}
-    else
-      :vector
-    end
+  def storage_type(_constraints) do
+    :vector
   end
 
   @impl true
