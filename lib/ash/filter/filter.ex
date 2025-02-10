@@ -37,6 +37,7 @@ defmodule Ash.Filter do
     StringDowncase,
     StringJoin,
     StringLength,
+    StringPosition,
     StringSplit,
     StringTrim,
     Today,
@@ -83,6 +84,7 @@ defmodule Ash.Filter do
     StringDowncase,
     StringJoin,
     StringLength,
+    StringPosition,
     StringSplit,
     StringTrim
   ]
