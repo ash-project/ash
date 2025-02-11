@@ -146,3 +146,33 @@ end
 ```
 
 Your extension will automatically support autocompletion if using `ElixirLS`, showing inline documentation and type-aware auto complete as you type. For more, see [Development Utilities](/documentation/topics/development/development-utilities.md)
+
+## Base Resources
+
+Base resources are a "quick and easy" way to ensure that all or a set of your resources use the same behavior.
+If we want to ensure that all of our resources have timestamps, we could create a module like so:
+
+```elixir
+defmodule MyApp.Resource do
+  defmacro __using__(opts) do
+    quote do
+      use Ash.Resource, unquote(opts)
+
+      attributes do
+        timestamps()
+      end
+    end
+  end
+end
+```
+
+Then we would configure that this base resource exists, with
+`config :my_app, base_resources: [MyApp.Resource]`
+
+Now in our resources instead of `use Ash.Resource`, we say `use MyApp.Resource`.
+
+Use `mix ash.gen.base_resource` to create one of these.:w
+
+This pattern is relatively limited, good for simple things like making sure that all
+of our resources use a particular extension. See the section above on extensions for the
+ideal way of extending resources.
