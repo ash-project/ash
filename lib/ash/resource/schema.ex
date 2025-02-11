@@ -17,7 +17,7 @@ defmodule Ash.Schema do
           embedded_schema do
             for attribute <- Ash.Resource.Info.attributes(__MODULE__),
                 attribute.name not in Ash.Resource.reserved_names() do
-              read_after_writes? = attribute.generated? and is_nil(attribute.default)
+              read_after_writes? = attribute.generated?
 
               constraint_opts =
                 case attribute.type do
@@ -137,7 +137,7 @@ defmodule Ash.Schema do
           schema Ash.DataLayer.source(__MODULE__) do
             for attribute <- Ash.Resource.Info.attributes(__MODULE__),
                 attribute.name not in Ash.Resource.reserved_names() do
-              read_after_writes? = attribute.generated? and is_nil(attribute.default)
+              read_after_writes? = attribute.generated?
 
               constraint_opts =
                 case attribute.type do
