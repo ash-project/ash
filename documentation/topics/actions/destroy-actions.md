@@ -55,7 +55,7 @@ Atomic bulk destroys are used when the subject of the bulk destroy is a query an
 ```elixir
 Ticket
 |> Ash.Query.filter(status == :open)
-|> Ash.bulk_destroy!(:close)
+|> Ash.bulk_destroy!(:close, %{})
 ```
 
 If using a SQL data layer, this would produce a query along the lines of
@@ -97,7 +97,7 @@ The benefit of having a single interface (`Ash.bulk_destroy/4`) is that the call
 If you provide an enumerable of records, they will be destroyed in batches. For example:
 
 ```elixir
-Ash.bulk_destroy([%Ticket{}, %Ticket{}], :destroy)
+Ash.bulk_destroy([%Ticket{}, %Ticket{}], :destroy, %{})
 ```
 
 ### Destroying
