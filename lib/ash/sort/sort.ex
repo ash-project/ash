@@ -7,7 +7,8 @@ defmodule Ash.Sort do
           :asc | :desc | :asc_nils_first | :asc_nils_last | :desc_nils_first | :desc_nils_last
 
   @type sort_item ::
-          atom
+          String.t()
+          | atom
           | {atom, sort_order}
           | %Ash.Query.Calculation{}
           | {%Ash.Query.Calculation{}, sort_order}
@@ -17,6 +18,7 @@ defmodule Ash.Sort do
           list(sort_item)
           | sort_item
 
+  alias Ash.Error.Query.UnsortableField
   alias Ash.Error.Query.{InvalidSortOrder, NoSuchField}
 
   @doc """
@@ -120,6 +122,8 @@ defmodule Ash.Sort do
 
   def parse_input(_, "", _), do: {:ok, []}
 
+  def parse_input(_, [], _), do: {:ok, []}
+
   def parse_input(resource, sort, handler) when is_binary(sort) do
     sort = String.split(sort, ",")
     parse_input(resource, sort, handler)
@@ -156,9 +160,9 @@ defmodule Ash.Sort do
     end
   end
 
-  def parse_sort(resource, sort, handler \\ nil)
+  def parse_sort(resource, sort, handler \\ nil, public_only? \\ true)
 
-  def parse_sort(resource, {field, direction}, handler)
+  def parse_sort(resource, {field, {input, direction}}, handler, public_only?)
       when direction in [
              :asc,
              :desc,
@@ -167,48 +171,70 @@ defmodule Ash.Sort do
              :desc_nils_first,
              :desc_nils_last
            ] do
-    case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
-      field -> {:ok, {field, direction}}
+    case get_field(resource, field, handler, public_only?, input) do
+      {:error, error} -> {:error, error}
+      {:ok, field} -> {:ok, add_order(field, direction)}
     end
   end
 
-  def parse_sort(_resource, {_field, order}, _) do
+  def parse_sort(resource, {field, direction}, handler, public_only?)
+      when direction in [
+             :asc,
+             :desc,
+             :asc_nils_first,
+             :asc_nils_last,
+             :desc_nils_first,
+             :desc_nils_last
+           ] do
+    case get_field(resource, field, handler, public_only?) do
+      {:error, error} -> {:error, error}
+      {:ok, field} -> {:ok, add_order(field, direction)}
+    end
+  end
+
+  def parse_sort(resource, {field, input}, handler, public_only?) when not is_atom(input) do
+    case get_field(resource, field, handler, public_only?, input) do
+      {:error, error} -> {:error, error}
+      {:ok, field} -> {:ok, add_order(field, :asc)}
+    end
+  end
+
+  def parse_sort(_resource, {_field, order}, _, _) do
     {:error, InvalidSortOrder.exception(order: order)}
   end
 
-  def parse_sort(resource, "++" <> field, handler) do
-    case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
-      field -> {:ok, add_order(field, :asc_nils_first)}
+  def parse_sort(resource, "++" <> field, handler, public_only?) do
+    case get_field(resource, field, handler, public_only?) do
+      {:error, error} -> {:error, error}
+      {:ok, field} -> {:ok, add_order(field, :asc_nils_first)}
     end
   end
 
-  def parse_sort(resource, "--" <> field, handler) do
-    case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
-      field -> {:ok, add_order(field, :desc_nils_last)}
+  def parse_sort(resource, "--" <> field, handler, public_only?) do
+    case get_field(resource, field, handler, public_only?) do
+      {:error, error} -> {:error, error}
+      {:ok, field} -> {:ok, add_order(field, :desc_nils_last)}
     end
   end
 
-  def parse_sort(resource, "+" <> field, handler) do
-    case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
-      field -> {:ok, add_order(field, :asc)}
+  def parse_sort(resource, "+" <> field, handler, public_only?) do
+    case get_field(resource, field, handler, public_only?) do
+      {:error, error} -> {:error, error}
+      {:ok, field} -> {:ok, add_order(field, :asc)}
     end
   end
 
-  def parse_sort(resource, "-" <> field, handler) do
-    case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
-      field -> {:ok, add_order(field, :desc)}
+  def parse_sort(resource, "-" <> field, handler, public_only?) do
+    case get_field(resource, field, handler, public_only?) do
+      {:error, error} -> {:error, error}
+      {:ok, field} -> {:ok, add_order(field, :desc)}
     end
   end
 
-  def parse_sort(resource, field, handler) do
-    case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
-      field -> {:ok, add_order(field, :asc)}
+  def parse_sort(resource, field, handler, public_only?) do
+    case get_field(resource, field, handler, public_only?) do
+      {:error, error} -> {:error, error}
+      {:ok, field} -> {:ok, add_order(field, :asc)}
     end
   end
 
@@ -220,62 +246,216 @@ defmodule Ash.Sort do
     {field, order}
   end
 
-  defp get_field(resource, field, handler) do
+  defp get_field(resource, field, handler, only_public?, input \\ %{}) do
     case call_handler(field, handler) do
       nil ->
         {path, field} =
-          if is_binary(field) do
-            case Enum.reverse(String.split(field, ".", trim: true)) do
-              [] -> {[], ""}
-              [field | path] -> {Enum.reverse(path), field}
-            end
-          else
-            {[], field}
+          cond do
+            is_binary(field) ->
+              case Enum.reverse(String.split(field, ".", trim: true)) do
+                [] -> {[], ""}
+                [field | path] -> {Enum.reverse(path), field}
+              end
+
+            is_atom(field) ->
+              case Enum.reverse(String.split(to_string(field), ".", trim: true)) do
+                [] -> {[], ""}
+                [_] -> {[], field}
+                [field | path] -> {Enum.reverse(path), field}
+              end
+
+            true ->
+              {[], field}
           end
 
         case path do
           [] ->
-            case Ash.Resource.Info.public_field(resource, field) do
-              %{name: name} -> name
-              _ -> nil
+            case do_get_field(resource, field, only_public?, input) do
+              {:ok, field} ->
+                if type_sortable?(resource, field) do
+                  case field do
+                    %Ash.Query.Aggregate{} = field -> {:ok, field}
+                    %Ash.Query.Calculation{} = field -> {:ok, field}
+                    %{name: name} -> {:ok, name}
+                  end
+                else
+                  {:error, UnsortableField.exception(name: field.name, resource: resource)}
+                end
+
+              {:error, error} ->
+                {:error, error}
             end
 
           path ->
-            case related_field(resource, path, field) do
-              {:ok, path, field} ->
+            case related_field(resource, path, field, only_public?, input) do
+              {:ok, path, field, type, constraints} ->
                 case field do
-                  %{name: name, type: type, constraints: constraints} ->
-                    case Ash.Query.Calculation.new(
-                           :__expr_sort__,
-                           Ash.Resource.Calculation.Expression,
-                           [expr: Ash.Expr.ref(path, name)],
-                           type,
-                           constraints
-                         ) do
-                      {:ok, calc} -> calc
-                      {:error, term} -> raise Ash.Error.to_ash_error(term)
-                    end
+                  %struct{} = thing when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
+                    ref = %Ash.Query.Ref{
+                      attribute: thing,
+                      relationship_path: path,
+                      resource: Ash.Resource.Info.related(resource, path)
+                    }
+
+                    Ash.Query.Calculation.new(
+                      :__expr_sort__,
+                      Ash.Resource.Calculation.Expression,
+                      [expr: ref],
+                      type,
+                      constraints
+                    )
 
                   %{name: name} ->
-                    case Ash.Query.Calculation.new(
-                           :__expr_sort__,
-                           Ash.Resource.Calculation.Expression,
-                           [expr: Ash.Expr.ref(path, name)],
-                           nil,
-                           []
-                         ) do
-                      {:ok, calc} -> calc
-                      {:error, term} -> raise Ash.Error.to_ash_error(term)
-                    end
+                    ref = %Ash.Query.Ref{
+                      attribute: name,
+                      relationship_path: path,
+                      resource: Ash.Resource.Info.related(resource, path)
+                    }
+
+                    Ash.Query.Calculation.new(
+                      :__expr_sort__,
+                      Ash.Resource.Calculation.Expression,
+                      [expr: ref],
+                      type,
+                      constraints
+                    )
                 end
 
-              :error ->
-                nil
+              {:error, error} ->
+                {:error, error}
             end
         end
 
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, ok} ->
+        {:ok, ok}
+
       value ->
-        value
+        {:ok, value}
+    end
+  end
+
+  defp do_get_field(resource, field, true, input) do
+    case Ash.Resource.Info.public_field(resource, field) do
+      %Ash.Resource.Calculation{} = calc ->
+        with {:ok, calc} <-
+               Ash.Query.Calculation.from_resource_calculation(resource, calc, args: input) do
+          {:ok, %{calc | name: :__expr_sort__}}
+        end
+
+      nil ->
+        {:error, NoSuchField.exception(field: field, resource: resource)}
+
+      other ->
+        {:ok, other}
+    end
+  end
+
+  defp do_get_field(_resource, %Ash.Query.Calculation{} = calc, _, _input) do
+    {:ok, calc}
+  end
+
+  defp do_get_field(_resource, %Ash.Query.Aggregate{} = agg, _, _input) do
+    {:ok, agg}
+  end
+
+  defp do_get_field(resource, field, _, input) do
+    case Ash.Resource.Info.field(resource, field) do
+      %Ash.Resource.Calculation{} = calc ->
+        with {:ok, calc} <-
+               Ash.Query.Calculation.from_resource_calculation(resource, calc, args: input) do
+          {:ok, %{calc | name: :__expr_sort__}}
+        end
+
+      nil ->
+        {:error, NoSuchField.exception(field: field, resource: resource)}
+
+      other ->
+        {:ok, other}
+    end
+  end
+
+  defp do_get_relationship(resource, relationship, true) do
+    Ash.Resource.Info.public_relationship(resource, relationship)
+  end
+
+  defp do_get_relationship(resource, relationship, _) do
+    Ash.Resource.Info.relationship(resource, relationship)
+  end
+
+  defp type_sortable?(resource, %Ash.Resource.Aggregate{} = aggregate) do
+    attribute =
+      if aggregate.field do
+        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
+        Ash.Resource.Info.attribute(related, aggregate.field)
+      end
+
+    attribute_type =
+      if attribute do
+        attribute.type
+      end
+
+    attribute_constraints =
+      if attribute do
+        attribute.constraints
+      end
+
+    case Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type, attribute_constraints) do
+      {:ok, type, constraints} ->
+        do_type_sortable?(resource, type, constraints)
+
+      _other ->
+        false
+    end
+  end
+
+  # an ugly workaround
+  defp type_sortable?(_resource, %Ash.Query.Calculation{}), do: true
+
+  defp type_sortable?(resource, field) do
+    do_type_sortable?(resource, field.type, field.constraints)
+  end
+
+  defp get_type(resource, %Ash.Resource.Aggregate{} = aggregate) do
+    attribute =
+      if aggregate.field do
+        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
+        Ash.Resource.Info.attribute(related, aggregate.field)
+      end
+
+    attribute_type =
+      if attribute do
+        attribute.type
+      end
+
+    attribute_constraints =
+      if attribute do
+        attribute.constraints
+      end
+
+    case Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type, attribute_constraints) do
+      {:ok, type, constraints} ->
+        {type, constraints}
+
+      _other ->
+        nil
+    end
+  end
+
+  defp get_type(_resource, field) do
+    {field.type, field.constraints}
+  end
+
+  defp do_type_sortable?(resource, type, constraints) do
+    if Ash.Type.embedded_type?(type) do
+      false
+    else
+      Ash.DataLayer.data_layer_can?(
+        resource,
+        {:sort, Ash.Type.storage_type(type, constraints)}
+      )
     end
   end
 
@@ -285,22 +465,40 @@ defmodule Ash.Sort do
 
   defp call_handler(_, _), do: nil
 
-  defp related_field(resource, path, field, acc \\ [])
+  defp related_field(resource, path, field, only_public?, input, acc \\ [])
 
-  defp related_field(resource, [], field, acc) do
-    case Ash.Resource.Info.public_field(resource, field) do
-      nil -> :error
-      field -> {:ok, Enum.reverse(acc), field}
+  defp related_field(resource, [], field, only_public?, input, acc) do
+    case do_get_field(resource, field, only_public?, input) do
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, nil} ->
+        {:error, NoSuchField.exception(field: field, resource: resource)}
+
+      {:ok, %{sortable?: true} = field} ->
+        {type, constraints} = get_type(resource, field)
+
+        if do_type_sortable?(resource, type, constraints) do
+          {:ok, Enum.reverse(acc), field, type, constraints}
+        else
+          {:error, UnsortableField.exception(name: field.name, resource: resource)}
+        end
+
+      {:ok, %{name: name}} ->
+        {:error, UnsortableField.exception(name: name, resource: resource)}
     end
   end
 
-  defp related_field(resource, [first | rest], field, acc) do
-    case Ash.Resource.Info.public_relationship(resource, first) do
+  defp related_field(resource, [first | rest], field, only_public?, input, acc) do
+    case do_get_relationship(resource, first, only_public?) do
+      %{sortable?: false, name: name} ->
+        {:error, UnsortableField.exception(name: name, resource: resource)}
+
       %{sortable?: true, destination: destination, name: name} ->
-        related_field(destination, rest, field, [name | acc])
+        related_field(destination, rest, field, only_public?, input, [name | acc])
 
       _ ->
-        :error
+        {:error, NoSuchField.exception(field: field, resource: resource)}
     end
   end
 

@@ -407,7 +407,12 @@ defmodule Ash.DataLayer.Ets do
          {:ok, records} <-
            do_add_aggregates(records, domain, resource, aggregates),
          {:ok, records} <-
-           do_add_calculations(records, resource, calculations, domain) do
+           do_add_calculations(
+             records,
+             resource,
+             calculations,
+             domain
+           ) do
       {:ok, records}
     else
       {:error, error} ->

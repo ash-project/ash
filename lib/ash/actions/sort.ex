@@ -1,238 +1,34 @@
 defmodule Ash.Actions.Sort do
   @moduledoc false
-  alias Ash.Error.Query.{
-    AggregatesNotSupported,
-    InvalidSortOrder,
-    NoSuchField,
-    UnsortableField
-  }
 
-  @sort_orders [:asc, :desc, :asc_nils_first, :asc_nils_last, :desc_nils_first, :desc_nils_last]
+  def process(resource, sort, _aggregates, _context) do
+    process(resource, sort)
+  end
 
-  def process(_resource, empty, _aggregates, context \\ %{})
+  def process(_, ""), do: {:ok, []}
 
-  def process(_resource, empty, _aggregates, _context) when empty in [nil, []], do: {:ok, []}
+  def process(_, []), do: {:ok, []}
 
-  def process(resource, sort, aggregates, context) do
+  def process(resource, sort) when is_binary(sort) do
+    sort = String.split(sort, ",")
+    process(resource, sort)
+  end
+
+  def process(resource, sort) when is_list(sort) do
     sort
-    |> List.wrap()
-    |> Enum.map(fn
-      {key, {context, order}} when is_atom(order) ->
-        {key, {context, order}}
-
-      {key, val} ->
-        if is_atom(val) do
-          {key, val}
-        else
-          {key, {val, :asc}}
-        end
-
-      val ->
-        {val, :asc}
-    end)
-    |> Enum.reduce({[], []}, fn
-      {field, {_, inner_order} = order}, {sorts, errors} when inner_order in @sort_orders ->
-        case Ash.Resource.Info.calculation(resource, field) do
-          nil ->
-            {sorts,
-             [
-               "Cannot provide arguments to a non-calculation field while sorting"
-               | errors
-             ]}
-
-          %{name: name, sortable?: false} ->
-            {sorts, [UnsortableField.exception(resource: resource, field: name) | errors]}
-
-          calc ->
-            {module, _opts} = calc.calculation
-
-            if module.has_expression?() do
-              if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
-                calculation_sort(
-                  resource,
-                  field,
-                  calc,
-                  order,
-                  sorts,
-                  errors,
-                  context
-                )
-              else
-                {sorts, ["Datalayer cannot sort on calculations"]}
-              end
-            else
-              {sorts, ["Calculations cannot be sorted on unless they define an expression"]}
-            end
-        end
-
-      {%Ash.Query.Calculation{sortable?: false} = calc, _order}, {sorts, errors} ->
-        {sorts, [UnsortableField.exception(resource: resource, field: calc) | errors]}
-
-      {%Ash.Query.Calculation{} = calc, order}, {sorts, errors} ->
-        if String.starts_with?(to_string(calc.name), "__expr_sort__") do
-          %{opts: [{:expr, expr}]} = calc
-
-          expr
-          |> Ash.Filter.list_refs()
-          |> Enum.reduce_while(:ok, fn %{relationship_path: path, attribute: attribute}, :ok ->
-            {ref_attribute, field_name} =
-              case attribute do
-                atom when is_atom(attribute) ->
-                  case Ash.Resource.Info.related(resource, path) do
-                    nil ->
-                      raise Ash.Error.Framework.AssumptionFailed,
-                        message: """
-                        Listing refs in #{inspect(expr)}:
-
-                        Found reference #{inspect(attribute)} at path #{inspect(path)}
-
-                        No related resource at path #{inspect(path)} from #{inspect(resource)}
-                        """
-
-                    related ->
-                      case Ash.Resource.Info.field(related, attribute) do
-                        nil ->
-                          raise Ash.Error.Framework.AssumptionFailed,
-                            message: """
-                            Listing refs in #{inspect(expr)}:
-
-                            Found reference #{inspect(attribute)} at path #{inspect(path)}
-
-                            Related resource at path #{inspect(path)} from #{inspect(resource)}
-                            does not have field #{inspect(atom)}
-                            """
-
-                        field ->
-                          {field, atom}
-                      end
-                  end
-
-                %struct{} = attribute
-                when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
-                  {attribute, attribute}
-
-                other ->
-                  {other, other.name}
-              end
-
-            if ref_attribute.sortable? do
-              case find_non_sortable_relationship(resource, path, sort) do
-                nil ->
-                  {:cont, :ok}
-
-                {resource, non_sortable_field} ->
-                  {:halt, {:error, resource, non_sortable_field}}
-              end
-            else
-              {:halt, {:error, resource, field_name}}
-            end
-          end)
-          |> case do
-            :ok ->
-              if order in @sort_orders do
-                {sorts ++ [{calc, order}], errors}
-              else
-                {sorts, [InvalidSortOrder.exception(order: order) | errors]}
-              end
-
-            {:error, resource, non_sortable_field} ->
-              {sorts,
-               [UnsortableField.exception(resource: resource, field: non_sortable_field) | errors]}
-          end
-        else
-          if order in @sort_orders do
-            {sorts ++ [{calc, order}], errors}
-          else
-            {sorts, [InvalidSortOrder.exception(order: order) | errors]}
-          end
-        end
-
-      {%{__struct__: Ash.Query.Aggregate} = agg, order}, {sorts, errors} ->
-        if order in @sort_orders do
-          {sorts ++ [{agg, order}], errors}
-        else
-          {sorts, [InvalidSortOrder.exception(order: order) | errors]}
-        end
-
-      {field, order}, {sorts, errors} when order in @sort_orders ->
-        attribute = Ash.Resource.Info.attribute(resource, field)
-
-        cond do
-          aggregate = Ash.Resource.Info.aggregate(resource, field) ->
-            if aggregate.sortable? do
-              aggregate_sort(aggregate, order, resource, sorts, errors)
-            else
-              {sorts, [UnsortableField.exception(resource: resource, field: field) | errors]}
-            end
-
-          Map.has_key?(aggregates, field) ->
-            if aggregates[field].sortable? do
-              aggregate_sort(Map.get(aggregates, field), order, resource, sorts, errors)
-            else
-              {sorts,
-               [
-                 UnsortableField.exception(resource: resource, field: Map.get(aggregates, field))
-                 | errors
-               ]}
-            end
-
-          calc = Ash.Resource.Info.calculation(resource, field) ->
-            if calc.sortable? do
-              {module, _} = calc.calculation
-
-              if module.has_expression?() do
-                if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
-                  calculation_sort(
-                    resource,
-                    field,
-                    calc,
-                    order,
-                    sorts,
-                    errors,
-                    context
-                  )
-                else
-                  {sorts, ["Datalayer cannot sort on calculations"]}
-                end
-              else
-                {sorts, ["Calculations cannot be sorted on unless they define an expression"]}
-              end
-            else
-              {sorts, [UnsortableField.exception(resource: resource, field: field) | errors]}
-            end
-
-          !attribute ->
-            {sorts, [NoSuchField.exception(field: field, resource: resource) | errors]}
-
-          !attribute.sortable? ->
-            {sorts,
-             [UnsortableField.exception(resource: resource, field: attribute.name) | errors]}
-
-          Ash.Type.embedded_type?(attribute.type) ->
-            {sorts, ["Cannot sort on embedded types" | errors]}
-
-          !Ash.DataLayer.data_layer_can?(
-            resource,
-            {:sort, Ash.Type.storage_type(attribute.type, attribute.constraints)}
-          ) ->
-            {sorts,
-             [
-               UnsortableField.exception(resource: resource, field: field, reason: :type)
-               | errors
-             ]}
-
-          true ->
-            {sorts ++ [{field, order}], errors}
-        end
-
-      {_, order}, {sorts, errors} ->
-        {sorts, [InvalidSortOrder.exception(order: order) | errors]}
+    |> Enum.reduce_while({:ok, []}, fn field, {:ok, sort} ->
+      case Ash.Sort.parse_sort(resource, field, nil, false) do
+        {:ok, value} -> {:cont, {:ok, [value | sort]}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
     end)
     |> case do
-      {sorts, []} -> {:ok, sorts}
-      {_, errors} -> {:error, errors}
+      {:ok, values} -> {:ok, Enum.reverse(values)}
+      {:error, error} -> {:error, error}
     end
   end
+
+  def process(_resource, nil), do: {:ok, nil}
 
   def sorting_on_identity?(%{sort: nil}), do: false
 
@@ -257,110 +53,6 @@ defmodule Ash.Actions.Sort do
         end)
       end)
     end)
-  end
-
-  defp find_non_sortable_relationship(_resource, [], _sort) do
-    nil
-  end
-
-  defp find_non_sortable_relationship(resource, [first | rest], sort) do
-    relationship = Ash.Resource.Info.relationship(resource, first)
-
-    cond do
-      !relationship ->
-        raise """
-          No such relationship #{first} for resource #{inspect(resource)} when evaluating #{inspect(sort)}
-        """
-
-      !relationship.sortable? ->
-        {relationship.source, relationship.name}
-
-      true ->
-        find_non_sortable_relationship(relationship.destination, rest, sort)
-    end
-  end
-
-  defp aggregate_sort(field, order, resource, sorts, errors) do
-    {field, type} =
-      case field do
-        %{name: name, kind: :custom, type: type} ->
-          {name, type}
-
-        %Ash.Resource.Aggregate{} = agg ->
-          attribute =
-            if agg.field do
-              related = Ash.Resource.Info.related(resource, agg.relationship_path)
-              Ash.Resource.Info.attribute(related, agg.field)
-            end
-
-          attribute_type =
-            if attribute do
-              attribute.type
-            end
-
-          attribute_constraints =
-            if attribute do
-              attribute.constraints
-            end
-
-          {agg.name,
-           Ash.Query.Aggregate.kind_to_type(agg.kind, attribute_type, attribute_constraints)}
-      end
-
-    case type do
-      {:ok, type, _constraints} ->
-        if Ash.DataLayer.data_layer_can?(resource, :aggregate_sort) &&
-             Ash.DataLayer.data_layer_can?(
-               resource,
-               # do we need to get actual constraints for aggregates here?
-               {:sort, Ash.Type.storage_type(type, [])}
-             ) do
-          {sorts ++ [{field, order}], errors}
-        else
-          {sorts,
-           [AggregatesNotSupported.exception(resource: resource, feature: "sorting") | errors]}
-        end
-
-      {:error, error} ->
-        {sorts, [error | errors]}
-    end
-  end
-
-  defp calculation_sort(
-         resource,
-         field,
-         calc,
-         order,
-         sorts,
-         errors,
-         context
-       ) do
-    {order, calc_context} =
-      case order do
-        order when is_atom(order) ->
-          {order, %{}}
-
-        {value, order} when is_list(value) ->
-          {order, Map.new(value)}
-
-        {value, order} when is_map(value) ->
-          {order, value}
-
-        other ->
-          {other, %{}}
-      end
-
-    case Ash.Query.Calculation.from_resource_calculation(resource, calc,
-           source_context: context || %{},
-           args: calc_context
-         ) do
-      {:ok, calc} ->
-        calc = Map.put(calc, :load, field)
-        {sorts ++ [{calc, order}], errors}
-
-      {:error, error} ->
-        {sorts, [error | errors]}
-    end
   end
 
   @doc """
