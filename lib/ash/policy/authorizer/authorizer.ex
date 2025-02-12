@@ -534,8 +534,9 @@ defmodule Ash.Policy.Authorizer do
       yes = "--yes" in argv or "-y" in argv
 
       igniter =
-        with nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :picosat_elixir),
-             nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :simple_sat) do
+        with {:ok, nil} <-
+               Igniter.Project.Deps.get_dep(igniter, :picosat_elixir),
+             {:ok, nil} <- Igniter.Project.Deps.get_dep(igniter, :simple_sat) do
           {solver, notice_type} =
             if yes do
               case :os.type() do
