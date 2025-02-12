@@ -13,6 +13,7 @@ defmodule Ash.Resource.Identity do
     :name,
     :keys,
     :description,
+    :field_names,
     :message,
     :eager_check?,
     :eager_check_with,
@@ -70,6 +71,10 @@ defmodule Ash.Resource.Identity do
     description: [
       type: :string,
       doc: "An optional description for the identity"
+    ],
+    field_names: [
+      type: {:wrap_list, :atom},
+      doc: "The field names to hold errors when unique identity is violated."
     ],
     message: [
       type: :string,

@@ -17,6 +17,7 @@ defmodule Ash.Test.Actions.IdentityTest do
     identities do
       identity :unique_title, [:title] do
         eager_check_with(Domain)
+        field_names([:title, :slug])
       end
 
       identity :unique_url, [:url] do
@@ -56,7 +57,7 @@ defmodule Ash.Test.Actions.IdentityTest do
                valid?: false,
                errors: [
                  %Ash.Error.Changes.InvalidChanges{
-                   fields: [:title],
+                   fields: [:title, :slug],
                    message: "has already been taken"
                  }
                ]

@@ -17,6 +17,9 @@ defmodule MyApp.MyResource do
 
     # If the `username` attribute must be unique for every record with a given `site` value
     identity :special_usernames, [:username, :site]
+
+    # If the `user_id` field should hold the errors for the uniqueness violation
+    identity :unique_email, [:email], field_names: [:user_id]
   end
 end
 ```

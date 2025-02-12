@@ -2236,7 +2236,7 @@ defmodule Ash.Changeset do
             {:ok, _} ->
               error =
                 Ash.Error.Changes.InvalidChanges.exception(
-                  fields: identity.keys,
+                  fields: identity.field_names || identity.keys,
                   message: identity.message || "has already been taken"
                 )
 
