@@ -1090,6 +1090,7 @@ defmodule Ash.Filter do
           Ash.Query.for_read(
             last_relationship.destination,
             Ash.Resource.Info.primary_action(last_relationship.destination, :read).name,
+            %{},
             actor: actor,
             tenant: tenant,
             authorize?: authorize?
