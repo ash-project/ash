@@ -106,6 +106,10 @@ defmodule Ash.Test.Actions.CalculationsReferenceAggregatesTest do
   defmodule Domain do
     use Ash.Domain
 
+    authorization do
+      require_actor? true
+    end
+
     resources do
       resource One
       resource Two
@@ -116,8 +120,8 @@ defmodule Ash.Test.Actions.CalculationsReferenceAggregatesTest do
 
   test "loading calculations that reference aggregates" do
     Four
-    |> Ash.create!(%{})
-    |> Ash.load!(:total_quantity)
+    |> Ash.create!(%{}, actor: nil)
+    |> Ash.load!(:total_quantity, actor: nil)
     |> Map.get(:total_quantity)
     |> Kernel.==(0)
     |> assert()
