@@ -594,7 +594,7 @@ defmodule Ash.Actions.Read.Relationships do
          _last?
        )
        when is_list(through) and through != [] do
-    result = load_related_records(records, through, relationship.cardinality)
+    result = load_related_records(records, through, relationship, related_query)
     {relationship, related_query, result}
   end
 
@@ -623,44 +623,25 @@ defmodule Ash.Actions.Read.Relationships do
     )
   end
 
-  defp load_related_records(records, through, cardinality) do
-    load_statement =
-      Enum.reduce(Enum.reverse(through), [], fn
-        key, [] -> [key]
-        key, [keys] -> [{key, [keys]}]
-      end)
+  defp load_related_records(records, through, relationship, related_query) do
+    load_keys = [:actor, :authorize?, :tenant, :tracer]
+    opts = related_query.context[:private] |> Map.take(load_keys) |> Map.to_list()
+    [last_key | rest_of_through] = Enum.reverse(through)
+    load_statement = Enum.reduce(rest_of_through, [last_key], &[{&1, &2}])
 
-    records
-    |> Enum.reduce_while({:ok, []}, fn
-      record, {:ok, acc} ->
-        through
-        |> Enum.reduce_while(Ash.load(record, load_statement), fn
-          key, {:ok, records} when is_list(records) ->
-            {:cont, {:ok, Enum.map(records, fn record -> Map.get(record, key) end)}}
+    case Ash.load(records, load_statement, opts) do
+      {:ok, records} ->
+        Enum.reduce(through, records, fn
+          key, loaded_records when is_list(loaded_records) ->
+            loaded_records |> Enum.map(fn record -> Map.get(record, key) end) |> List.flatten()
 
-          key, {:ok, record} ->
-            {:cont, Map.fetch(record, key)}
-
-          _key, acc ->
-            {:halt, acc}
+          key, loaded_record ->
+            Map.get(loaded_record, key)
         end)
-        |> case do
-          {:ok, records} when is_list(records) ->
-            {:cont, {:ok, List.flatten(records) ++ acc}}
-
-          {:ok, record} ->
-            {:cont, {:ok, [record | acc]}}
-
-          result ->
-            {:halt, result}
-        end
-
-      _record, result ->
-        {:halt, result}
-    end)
-    |> case do
-      {:ok, [related]} when cardinality == :one ->
-        {:ok, related}
+        |> then(fn result ->
+          result = if relationship.cardinality == :one, do: hd(result), else: result
+          {:ok, result}
+        end)
 
       result ->
         result
