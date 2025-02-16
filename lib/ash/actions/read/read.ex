@@ -2990,10 +2990,10 @@ defmodule Ash.Actions.Read do
       resource_aggregate.read_action ||
         Ash.Resource.Info.primary_action!(related_resource, :read).name
 
-    actor = query.context[:private][:actor]
+    opts = query.context[:private] |> Map.take([:actor, :authorize?, :tenant]) |> Map.to_list()
 
     with %{valid?: true} = aggregate_query <-
-           Ash.Query.for_read(related_resource, read_action, %{}, actor: actor),
+           Ash.Query.for_read(related_resource, read_action, %{}, opts),
          %{valid?: true} = aggregate_query <-
            Ash.Query.Aggregate.build_query(
              aggregate_query,
@@ -3243,8 +3243,10 @@ defmodule Ash.Actions.Read do
           resource_aggregate.read_action ||
             Ash.Resource.Info.primary_action!(agg_related_resource, :read).name
 
+        opts = [actor: actor, authorize?: authorize?, tenant: tenant]
+
         with %{valid?: true} = aggregate_query <-
-               Ash.Query.for_read(agg_related_resource, read_action, %{}, actor: actor),
+               Ash.Query.for_read(agg_related_resource, read_action, %{}, opts),
              %{valid?: true} = aggregate_query <-
                Ash.Query.Aggregate.build_query(
                  aggregate_query,
