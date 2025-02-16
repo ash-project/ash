@@ -1,0 +1,711 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Write Queries
+
+```elixir
+Mix.install([{:ash, "~> 3.0"}],
+  consolidate_protocols: false
+)
+
+Application.put_env(:ash, :validate_domain_resource_inclusion?, false)
+Application.put_env(:ash, :validate_domain_config_inclusion?, false)
+
+ExUnit.start()
+```
+
+## Introduction
+
+Here we will show practical examples of using `Ash.Query`. To understand more about its capabilities, limitations, and design, see the module docs of `Ash.Query`.
+
+This guide is here to provide a slew of examples, for more information on any given function or option please search the documentation. Please propose additions
+for any useful patterns that are not demonstrated here!
+
+## Setup
+
+First, lets create some resources and some data to query.
+
+```elixir
+defmodule MyApp.Posts do
+  use Ash.Domain
+
+  resources do
+    resource MyApp.Posts.Post
+    resource MyApp.Posts.Comment
+  end
+end
+
+defmodule MyApp.Posts.Post do
+  use Ash.Resource,
+    domain: MyApp.Posts,
+    data_layer: Ash.DataLayer.Ets
+
+  actions do
+    defaults [:read, :destroy, create: :*]
+  end
+  
+  attributes do
+    uuid_primary_key :id
+    
+    attribute :text, :string do
+      allow_nil? false
+      public? true
+    end
+  end
+
+  calculations do
+    calculate :text_length, :integer, expr(string_length(text))
+  end
+
+  aggregates do
+    count :count_of_comments, :comments
+  end
+
+  relationships do
+    has_many :comments, MyApp.Posts.Comment do
+      public? true
+    end
+  end
+end
+
+defmodule MyApp.Posts.Comment do
+  use Ash.Resource,
+    domain: MyApp.Posts,
+    data_layer: Ash.DataLayer.Ets
+
+  actions do
+    defaults [:read, :destroy, create: :*]
+  end
+  
+  attributes do
+    uuid_primary_key :id
+    attribute :text, :string do
+      allow_nil? false
+      public? true
+    end
+  end
+
+  relationships do
+    belongs_to :post, MyApp.Posts.Post do
+      public? true
+    end
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, MyApp.Posts.Comment, <<70, 79, 82, 49, 0, 0, 110, ...>>,
+ [
+   Ash.Expr,
+   Ash.Resource.Dsl.Relationships.BelongsTo,
+   Ash.Resource.Dsl.Relationships.ManyToMany,
+   Ash.Resource.Dsl.Relationships.HasMany,
+   Ash.Resource.Dsl.Relationships.HasOne,
+   %{...}
+ ]}
+```
+
+```elixir
+# Get rid of any existing comments/posts
+Ash.bulk_destroy!(MyApp.Posts.Comment, :destroy, %{})
+Ash.bulk_destroy!(MyApp.Posts.Post, :destroy, %{})
+
+# Create some posts
+post1 =
+  Ash.create!(MyApp.Posts.Post, %{text: "First post about Ash!"})
+
+post2 =
+  Ash.create!(MyApp.Posts.Post, %{text: "Learning to write queries"})
+
+comment1 =
+  Ash.create!(MyApp.Posts.Comment, %{text: "Great post!", post_id: post1.id})
+
+comment2 =
+  Ash.create!(MyApp.Posts.Comment, %{text: "Very helpful!", post_id: post1.id})
+
+comment3 =
+  Ash.create!(MyApp.Posts.Comment, %{text: "Thanks for the explanation", post_id: post2.id})
+
+# Store the created records in module attributes for later use
+posts = [post1, post2]
+comments = [comment1, comment2, comment3]
+
+IO.puts("\nCreated #{length(posts)} posts and #{length(comments)} comments!")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+
+23:17:15.097 [debug] ETS: Destroying MyApp.Posts.Comment
+
+
+23:17:15.104 [debug] ETS: Destroying MyApp.Posts.Post
+
+
+23:17:15.110 [debug] Creating MyApp.Posts.Post:
+
+%{id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b", text: "First post about Ash!"}
+
+
+23:17:15.110 [debug] Creating MyApp.Posts.Post:
+
+%{id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3", text: "Learning to write queries"}
+
+
+23:17:15.111 [debug] Creating MyApp.Posts.Comment:
+
+%{
+  id: "05863bdd-38eb-4e0e-9ff7-f23f65639ec3",
+  text: "Great post!",
+  post_id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b"
+}
+
+
+23:17:15.111 [debug] Creating MyApp.Posts.Comment:
+
+%{
+  id: "437b6966-2929-4e12-94cc-5807adf60c3e",
+  text: "Very helpful!",
+  post_id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b"
+}
+
+
+23:17:15.111 [debug] Creating MyApp.Posts.Comment:
+
+%{
+  id: "09aaffc4-bca7-4848-8b05-2d1ca11aba33",
+  text: "Thanks for the explanation",
+  post_id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3"
+}
+
+
+Created 2 posts and 3 comments!
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+:ok
+```
+
+### Basic Queries
+
+Let's start with some basic query examples. To use `Ash.Query.filter/2`, we'll need to
+`require Ash.Query`.
+
+```elixir
+require Ash.Query
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+Ash.Query
+```
+
+## Read everything
+
+```elixir
+# with a lot of data, you probably shouldn't do this
+Ash.read!(MyApp.Posts.Post)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3",
+    text: "Learning to write queries",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+    text: "First post about Ash!",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+## Count all comments
+
+```elixir
+MyApp.Posts.Comment
+|> Ash.count!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+3
+```
+
+## Filtering
+
+```elixir
+MyApp.Posts.Post
+|> Ash.Query.filter(id == ^post1.id)
+|> Ash.read!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+    text: "First post about Ash!",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+```elixir
+MyApp.Posts.Post
+# you can filter on calculations
+|> Ash.Query.filter(text_length == 25)
+|> Ash.read!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3",
+    text: "Learning to write queries",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+```elixir
+MyApp.Posts.Post
+# you can filter on aggregates
+|> Ash.Query.filter(count_of_comments == 2)
+|> Ash.read!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: 2,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+    text: "First post about Ash!",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+```elixir
+MyApp.Posts.Post
+# use `filter_input` to filter based on user input
+# it only allows accessing public fields
+|> Ash.Query.filter_input(%{count_of_comments: %{eq: 2}})
+|> Ash.read!()
+```
+
+## Sorting
+
+```elixir
+MyApp.Posts.Post
+|> Ash.Query.sort(:text)
+|> Ash.read!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+    text: "First post about Ash!",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3",
+    text: "Learning to write queries",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+```elixir
+# Apply multiple sorts
+MyApp.Posts.Post
+|> Ash.Query.sort(text: :asc, count_of_comments: :desc)
+|> Ash.read!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: 2,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+    text: "First post about Ash!",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: 1,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3",
+    text: "Learning to write queries",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+```elixir
+# use `sort_input` to sort based on user input
+# it only allows accessing public fields
+MyApp.Posts.Post
+|> Ash.Query.sort("text,-count_of_comments")
+|> Ash.read!()
+```
+
+## Distinct
+
+```elixir
+MyApp.Posts.Comment
+# only one comment per post
+|> Ash.Query.distinct(:post_id)
+|> Ash.read!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #MyApp.Posts.Comment<
+    post: #Ash.NotLoaded<:relationship, field: :post>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "09aaffc4-bca7-4848-8b05-2d1ca11aba33",
+    text: "Thanks for the explanation",
+    post_id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #MyApp.Posts.Comment<
+    post: #Ash.NotLoaded<:relationship, field: :post>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "05863bdd-38eb-4e0e-9ff7-f23f65639ec3",
+    text: "Great post!",
+    post_id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+```elixir
+MyApp.Posts.Comment
+# only one comment per post_id & text combination
+|> Ash.Query.distinct([:post_id, :text])
+|> Ash.read!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #MyApp.Posts.Comment<
+    post: #Ash.NotLoaded<:relationship, field: :post>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "09aaffc4-bca7-4848-8b05-2d1ca11aba33",
+    text: "Thanks for the explanation",
+    post_id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #MyApp.Posts.Comment<
+    post: #Ash.NotLoaded<:relationship, field: :post>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "05863bdd-38eb-4e0e-9ff7-f23f65639ec3",
+    text: "Great post!",
+    post_id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #MyApp.Posts.Comment<
+    post: #Ash.NotLoaded<:relationship, field: :post>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "437b6966-2929-4e12-94cc-5807adf60c3e",
+    text: "Very helpful!",
+    post_id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+## Load calculations/aggregates
+
+```elixir
+MyApp.Posts.Post
+|> Ash.Query.load([:count_of_comments, :text_length])
+|> Ash.read!()
+|> Enum.map(&Map.take(&1, [:text, :count_of_comments, :text_length]))
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  %{text: "Learning to write queries", text_length: 25, count_of_comments: 1},
+  %{text: "First post about Ash!", text_length: 21, count_of_comments: 2}
+]
+```
+
+## Load relationships
+
+```elixir
+MyApp.Posts.Post
+|> Ash.Query.load(:comments)
+|> Ash.read!()
+|> Enum.at(0)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#MyApp.Posts.Post<
+  text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+  count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+  comments: [
+    #MyApp.Posts.Comment<
+      post: #Ash.NotLoaded<:relationship, field: :post>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "09aaffc4-bca7-4848-8b05-2d1ca11aba33",
+      text: "Thanks for the explanation",
+      post_id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  __meta__: #Ecto.Schema.Metadata<:loaded>,
+  id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3",
+  text: "Learning to write queries",
+  aggregates: %{},
+  calculations: %{},
+  ...
+>
+```
+
+## Limit & Offset
+
+```elixir
+MyApp.Posts.Post
+|> Ash.Query.limit(1)
+|> Ash.read!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3",
+    text: "Learning to write queries",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+```elixir
+MyApp.Posts.Post
+|> Ash.Query.offset(1)
+|> Ash.read!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #MyApp.Posts.Post<
+    text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+    count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+    text: "First post about Ash!",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+## Pagination
+
+```elixir
+# Offset Pagination
+
+MyApp.Posts.Post
+|> Ash.Query.page(limit: 1)
+|> Ash.read!()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Offset{
+  results: [
+    #MyApp.Posts.Post<
+      text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+      count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "2f22973b-f1cd-4d2d-b241-d7c53bf097d3",
+      text: "Learning to write queries",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  limit: 1,
+  offset: 0,
+  count: nil,
+  more?: true
+}
+```
+
+```elixir
+# Keyset pagination
+
+first_post = 
+  MyApp.Posts.Post
+  # You can paginate using `Ash.Query.page/1`
+  |> Ash.Query.page(limit: 1)
+  |> Ash.read!()
+  |> Map.get(:results)
+  |> Enum.at(0)
+  
+MyApp.Posts.Post
+# Or using the `page` option
+|> Ash.read!(page: [limit: 1, after: first_post.__metadata__.keyset])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Keyset{
+  results: [
+    #MyApp.Posts.Post<
+      text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+      count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+      text: "First post about Ash!",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  count: nil,
+  before: nil,
+  after: "g2wAAAABbQAAACQyZjIyOTczYi1mMWNkLTRkMmQtYjI0MS1kN2M1M2JmMDk3ZDNq",
+  limit: 1,
+  more?: false
+}
+```
+
+```elixir
+MyApp.Posts.Post
+|> Ash.Query.page(limit: 1)
+|> Ash.read!()
+# you can ask for :next, :prev, :first, :last, or a page number
+|> Ash.page!(:next)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Offset{
+  results: [
+    #MyApp.Posts.Post<
+      text_length: #Ash.NotLoaded<:calculation, field: :text_length>,
+      count_of_comments: #Ash.NotLoaded<:aggregate, field: :count_of_comments>,
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "eafcb80f-8c90-4c16-8a29-cf0c28964d9b",
+      text: "First post about Ash!",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  limit: 1,
+  offset: 1,
+  count: nil,
+  more?: false
+}
+```
