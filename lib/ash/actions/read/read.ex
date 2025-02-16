@@ -2990,8 +2990,10 @@ defmodule Ash.Actions.Read do
       resource_aggregate.read_action ||
         Ash.Resource.Info.primary_action!(related_resource, :read).name
 
+    actor = query.context[:private][:actor]
+
     with %{valid?: true} = aggregate_query <-
-           Ash.Query.for_read(related_resource, read_action),
+           Ash.Query.for_read(related_resource, read_action, %{}, actor: actor),
          %{valid?: true} = aggregate_query <-
            Ash.Query.Aggregate.build_query(
              aggregate_query,
