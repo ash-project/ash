@@ -3,6 +3,8 @@ if Code.ensure_loaded?(Igniter) do
     @moduledoc """
     Generates a base resource
 
+    See the [writing extensions guide](/documentation/topics/advanced/writing-extensions.md#base-resources) for more.
+
     ## Example
 
     ```bash

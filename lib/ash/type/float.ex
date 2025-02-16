@@ -107,6 +107,8 @@ defmodule Ash.Type.Float do
   end
 
   @impl true
+  def cast_input(nil, _), do: {:ok, nil}
+
   def cast_input(value, _) do
     Ecto.Type.cast(:float, value)
   end

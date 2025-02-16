@@ -34,19 +34,17 @@ defmodule Ash.Notifier do
         resource && Ash.DataLayer.in_transaction?(resource)
       end)
 
-    for {resource, notifications} <- to_send do
-      for notification <- notifications do
-        case notification.for do
-          nil ->
-            for notifier <- Ash.Resource.Info.notifiers(resource) do
-              notifier.notify(%{notification | from: self()})
-            end
+    for {resource, notifications} <- to_send, notification <- notifications do
+      case notification.for do
+        nil ->
+          for notifier <- Ash.Resource.Info.notifiers(resource) do
+            notifier.notify(%{notification | from: self()})
+          end
 
-          allowed_notifiers ->
-            for notifier <- Enum.uniq(List.wrap(allowed_notifiers)) do
-              notifier.notify(%{notification | from: self()})
-            end
-        end
+        allowed_notifiers ->
+          for notifier <- Enum.uniq(List.wrap(allowed_notifiers)) do
+            notifier.notify(%{notification | from: self()})
+          end
       end
     end
 

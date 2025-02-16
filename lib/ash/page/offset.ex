@@ -5,6 +5,8 @@ defmodule Ash.Page.Offset do
   If a resource supports `keyset` pagination as well,
   it will also have the `keyset` metadata.
   """
+
+  @derive {Inspect, only: [:results, :count, :limit, :offset, :more?]}
   defstruct [:results, :limit, :offset, :count, :rerun, :more?]
 
   @type t :: %__MODULE__{

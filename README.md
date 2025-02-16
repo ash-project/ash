@@ -99,6 +99,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 
 ## How-to
 
+- [Write Queries](documentation/how-to/write-queries.livemd)
 - [Test Resources](documentation/how-to/test-resources.livemd)
 - [Authorize Access to Resources](documentation/how-to/authorize-access-to-resources.livemd)
 - [Encrypt Attributes](documentation/how-to/encrypt-attributes.livemd)

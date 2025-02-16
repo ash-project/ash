@@ -2,6 +2,75 @@
 
 <!-- changelog -->
 
+## [v3.4.63](https://github.com/ash-project/ash/compare/v3.4.62...v3.4.63) (2025-02-11)
+
+
+
+
+### Bug Fixes:
+
+* set `read_after_writes` to true if generated
+
+* type cast errors w/ floats & vectors
+
+* handle case clause error in filters
+
+* don't return invalid type from vector type
+
+* don't double process string interpolation expressions
+
+* Include warning for arguments only when 'things' are arguments (#1785)
+
+* empty bulk create inputs must still return a stream
+
+* don't use `authorize_with: :error` on data layers that can't do it
+
+* pass tenant to load in cascade destroy (#1775)
+
+* add tenant to load in cascade update (#1773)
+
+* raise errors on partial_success results in bulk actions
+
+* add `reuse_values?` opt to `Ash.can` and disable it automatically
+
+* compile `Ash.PlugHelpers` even without `Plug` available
+
+* expand `opts` when using `calculate/3`
+
+* handle base resources in `ash.extend`
+
+* type system warning on apps w/o solvers
+
+* Fix no read action exception for through relationship (#1750)
+
+* always recompile domain on resource changes
+
+* fix handling of generic action returns with transaction enabled (#1758)
+
+* type struct handle instance of return error tuple (#1756)
+
+* Compilation failure when using the `ash_step` Reactor DSL. (#1753)
+
+* pass `authorize?` option to `bulk_create` in `Ash.Generator.generate_many/2`
+
+### Improvements:
+
+* Add string_position expression (#1782)
+
+* add `dimensions` to vector type
+
+* add filter & transform options for pubsub notifier
+
+* verify pub_sub actions at compile time
+
+* more clean boolean filter optimization for `or ==`
+
+* add `reuse_values?` option for calculate!
+
+* prefer `calculate/3` when reusing values
+
+* add `c:Ash.Type.coerce/2` callback
+
 ## [v3.4.62](https://github.com/ash-project/ash/compare/v3.4.61...v3.4.62) (2025-01-31)
 
 

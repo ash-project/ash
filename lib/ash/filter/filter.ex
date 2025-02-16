@@ -37,6 +37,7 @@ defmodule Ash.Filter do
     StringDowncase,
     StringJoin,
     StringLength,
+    StringPosition,
     StringSplit,
     StringTrim,
     Today,
@@ -83,6 +84,7 @@ defmodule Ash.Filter do
     StringDowncase,
     StringJoin,
     StringLength,
+    StringPosition,
     StringSplit,
     StringTrim
   ]
@@ -1088,6 +1090,7 @@ defmodule Ash.Filter do
           Ash.Query.for_read(
             last_relationship.destination,
             Ash.Resource.Info.primary_action(last_relationship.destination, :read).name,
+            %{},
             actor: actor,
             tenant: tenant,
             authorize?: authorize?
@@ -4090,6 +4093,7 @@ defmodule Ash.Filter do
                   end
                 end
               else
+                {:known, value} -> {:cont, {:ok, value}}
                 {:error, error} -> {:halt, {:error, error}}
               end
           end

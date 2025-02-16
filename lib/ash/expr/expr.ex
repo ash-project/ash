@@ -526,6 +526,10 @@ defmodule Ash.Expr do
      Enum.map(keys, fn {key, value} -> {do_expr(key, escape?), do_expr(value, escape?)} end)}
   end
 
+  def do_expr({:{}, _, vals}, escape?) do
+    {%{}, [], Enum.map(vals, fn value -> do_expr(value, escape?) end)}
+  end
+
   def do_expr({{:., _, [at_path, :exists]}, _, [path, expr]}, escape?) do
     expr_with_at_path(path, at_path, expr, Ash.Query.Exists, escape?)
   end
@@ -609,7 +613,7 @@ defmodule Ash.Expr do
         {:<<>>, meta, [next | rest]},
         escape?
       ) do
-    do_expr({:<>, meta, [next, do_expr({:<<>>, meta, rest}, escape?)]}, escape?)
+    do_expr({:<>, meta, [next, {:<<>>, meta, rest}]}, escape?)
   end
 
   def do_expr(

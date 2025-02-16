@@ -5,10 +5,22 @@ defmodule Ash.Type.Vector do
   A builtin type that can be referenced via `:vector`
   """
 
+  @constraints [
+    dimensions: [
+      type: :integer,
+      doc: "The dimensions of the vector"
+    ]
+  ]
+
   use Ash.Type
 
   @impl true
-  def storage_type(_), do: :vector
+  def constraints, do: @constraints
+
+  @impl true
+  def storage_type(_constraints) do
+    :vector
+  end
 
   @impl true
   def generator(_constraints) do
@@ -18,8 +30,16 @@ defmodule Ash.Type.Vector do
   @impl true
   def cast_input(nil, _), do: {:ok, nil}
 
-  def cast_input(value, _) do
-    Ash.Vector.new(value)
+  def cast_input(value, constraints) do
+    with {:ok, vector} <- Ash.Vector.new(value) do
+      dims = constraints[:dimensions]
+
+      if dims && vector.dimensions != dims do
+        {:error, "must have #{dims} dimensions"}
+      else
+        {:ok, vector}
+      end
+    end
   end
 
   @impl true

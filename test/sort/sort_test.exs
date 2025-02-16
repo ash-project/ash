@@ -132,11 +132,20 @@ defmodule Ash.Test.Sort.SortTest do
       |> Ash.read!()
     end
 
+    test "a string sort can parse relationships as atoms" do
+      {:ok, [{%Ash.Query.Calculation{}, :asc}] = sort} =
+        Ash.Sort.parse_input(Post, "author.name_and_private_name": :asc)
+
+      Post
+      |> Ash.Query.sort(sort)
+      |> Ash.read!()
+    end
+
     test "a string sort honors private relationships" do
       {:error,
        %Ash.Error.Query.NoSuchField{
          resource: Ash.Test.Sort.SortTest.Post,
-         field: "private_author.name"
+         field: "name"
        }} =
         Ash.Sort.parse_input(Post, "+private_author.name")
     end
@@ -144,8 +153,8 @@ defmodule Ash.Test.Sort.SortTest do
     test "a string sort honors private fields" do
       {:error,
        %Ash.Error.Query.NoSuchField{
-         resource: Ash.Test.Sort.SortTest.Post,
-         field: "author.private_name"
+         resource: Ash.Test.Sort.SortTest.Author,
+         field: "private_name"
        }} =
         Ash.Sort.parse_input(Post, "+author.private_name")
     end

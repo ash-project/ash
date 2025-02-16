@@ -5,6 +5,8 @@ defmodule Ash.Page.Keyset do
   The results are generated with a `keyset` metadata,
   which can be used to fetch the next/previous pages.
   """
+
+  @derive {Inspect, only: [:results, :count, :before, :after, :more?]}
   defstruct [:results, :count, :before, :after, :limit, :rerun, :more?]
 
   @type t :: %__MODULE__{

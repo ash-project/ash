@@ -87,6 +87,26 @@ defmodule Ash.Test.Resource.IdentitiesTest do
              ] = Ash.Resource.Info.identities(Post)
     end
 
+    test "Identity field names are allowed" do
+      defposts do
+        actions do
+          default_accept :*
+
+          read :read do
+            primary? true
+          end
+        end
+
+        identities do
+          identity :foobar, [:name, :contents], field_names: [:contents]
+        end
+      end
+
+      assert [
+               %Ash.Resource.Identity{field_names: [:contents]}
+             ] = Ash.Resource.Info.identities(Post)
+    end
+
     test "enforce identity domain is inferred" do
       assert_raise Spark.Error.DslError,
                    ~r/Cannot infer eager_check_with, because the domain is not specified on this resource./,

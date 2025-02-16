@@ -6,7 +6,7 @@ defmodule Ash.MixProject do
   A declarative, extensible framework for building Elixir applications.
   """
 
-  @version "3.4.62"
+  @version "3.4.63"
 
   def project do
     [
@@ -97,6 +97,7 @@ defmodule Ash.MixProject do
         "documentation/topics/security/policies.md",
         "documentation/topics/reference/glossary.md",
         "documentation/topics/reference/expressions.md",
+        "documentation/how-to/write-queries.livemd",
         "documentation/how-to/polymorphic-relationships.livemd",
         "documentation/how-to/test-resources.livemd",
         "documentation/how-to/authorize-access-to-resources.livemd",
@@ -376,7 +377,7 @@ defmodule Ash.MixProject do
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Code Generators
-      {:igniter, "~> 0.4 and >= 0.4.8", optional: true},
+      {:igniter, "~> 0.5 and >= 0.5.24", optional: true},
 
       # IO Utilities
       {:owl, "~> 0.11"},

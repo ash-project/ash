@@ -3242,7 +3242,7 @@ defmodule Ash.Actions.Read do
             Ash.Resource.Info.primary_action!(agg_related_resource, :read).name
 
         with %{valid?: true} = aggregate_query <-
-               Ash.Query.for_read(agg_related_resource, read_action),
+               Ash.Query.for_read(agg_related_resource, read_action, %{}, actor: actor),
              %{valid?: true} = aggregate_query <-
                Ash.Query.Aggregate.build_query(
                  aggregate_query,

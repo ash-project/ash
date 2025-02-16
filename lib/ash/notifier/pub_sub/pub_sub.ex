@@ -65,6 +65,16 @@ defmodule Ash.Notifier.PubSub do
         type: :string,
         doc: "A delimiter for building topics. Default is a colon (:)"
       ],
+      filter: [
+        type: {:fun, 1},
+        doc:
+          "A filter for notifications. Receives a notification, and ignores it if the function returns a falsy value. Both this and filters on specific publications must return a truthy value for a notification to be emitted."
+      ],
+      transform: [
+        type: {:fun, 1},
+        doc:
+          "A transformer for notifications. Specific transformers on each publication *override* this option"
+      ],
       broadcast_type: [
         type: {:one_of, [:notification, :phoenix_broadcast, :broadcast]},
         default: :notification,
@@ -211,9 +221,15 @@ defmodule Ash.Notifier.PubSub do
 
   @doc false
   def notify(%Ash.Notifier.Notification{resource: resource} = notification) do
+    filter = Ash.Notifier.PubSub.Info.filter(resource)
+
     resource
     |> Ash.Notifier.PubSub.Info.publications()
-    |> Enum.filter(&matches?(&1, notification.action))
+    |> Enum.filter(
+      &(matches?(&1, notification.action) &&
+          (is_nil(&1.filter) || &1.filter.(notification)) &&
+          (is_nil(filter) || filter.(notification)))
+    )
     |> Enum.each(&publish_notification(&1, notification))
   end
 
@@ -258,14 +274,23 @@ defmodule Ash.Notifier.PubSub do
       """)
     end
 
+    transform = publish.transform || Ash.Notifier.PubSub.Info.transform(notification.resource)
+
+    value =
+      if transform do
+        transform.(notification)
+      else
+        notification
+      end
+
     Enum.each(topics, fn topic ->
       args =
         case Ash.Notifier.PubSub.Info.name(notification.resource) do
           nil ->
-            [topic, event, to_payload(topic, event, notification)]
+            [topic, event, to_payload(topic, event, notification, value)]
 
           pub_sub ->
-            payload = to_payload(topic, event, notification)
+            payload = to_payload(topic, event, notification, value)
 
             [pub_sub, topic, payload]
         end
@@ -283,25 +308,25 @@ defmodule Ash.Notifier.PubSub do
     end)
   end
 
-  def to_payload(topic, event, notification) do
+  def to_payload(topic, event, notification, value) do
     case Ash.Notifier.PubSub.Info.broadcast_type(notification.resource) do
       :phoenix_broadcast ->
         %{
           __struct__: Phoenix.Socket.Broadcast,
           topic: topic,
           event: event,
-          payload: notification
+          payload: value
         }
 
       :broadcast ->
         %{
           topic: topic,
           event: event,
-          payload: notification
+          payload: value
         }
 
       :notification ->
-        notification
+        value
     end
   end
 

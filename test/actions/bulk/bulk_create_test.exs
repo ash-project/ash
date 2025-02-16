@@ -1200,6 +1200,19 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   describe "streaming" do
+    test "a stream is returned when inputs are empty" do
+      assert [] =
+               []
+               |> Ash.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 authorize?: true,
+                 return_stream?: true,
+                 return_records?: true
+               )
+               |> Enum.to_list()
+    end
+
     test "by default nothing is returned in the stream" do
       org =
         Org
