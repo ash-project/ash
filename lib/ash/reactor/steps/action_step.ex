@@ -67,8 +67,8 @@ defmodule Ash.Reactor.ActionStep do
     |> ActionInput.set_context(arguments[:context] || %{})
     |> Ash.run_action(action_options)
     |> case do
-      :ok ->
-        {:ok, :ok}
+      {:ok, _} ->
+        :ok
 
       other ->
         other
