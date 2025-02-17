@@ -2,6 +2,33 @@
 
 <!-- changelog -->
 
+## [v3.4.64](https://github.com/ash-project/ash/compare/v3.4.63...v3.4.64) (2025-02-17)
+
+
+
+
+### Bug Fixes:
+
+* use undo action in generic action undo
+
+* handle generic actions with no return
+
+* ensure atomic `set_attribute` behaves the same as non-atomic
+
+* Missing actor on aggregate resource call (#1796)
+
+* Missing actor on aggregate call (#1793)
+
+### Improvements:
+
+* support receiving the inputs when undoing generic actions
+
+* simplify & unify sort/sort_input logic
+
+* support related sorts everywhere (not just sort_input)
+
+* add field names to identities (#1786)
+
 ## [v3.4.63](https://github.com/ash-project/ash/compare/v3.4.62...v3.4.63) (2025-02-11)
 
 
