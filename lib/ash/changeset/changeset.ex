@@ -953,7 +953,8 @@ defmodule Ash.Changeset do
         changeset.context
       )
 
-    with {:atomic, changeset, atomic_changes, validations} <-
+    with {:ok, change_opts} <- module.init(change_opts),
+         {:atomic, changeset, atomic_changes, validations} <-
            atomic_with_changeset(
              module.atomic(changeset, change_opts, struct(Ash.Resource.Change.Context, context)),
              changeset
@@ -1805,6 +1806,18 @@ defmodule Ash.Changeset do
       end
     end)
     |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
+    |> then(fn changeset ->
+      if changeset.action.type == :update do
+        attributes =
+          changeset.attributes
+          |> Map.keys()
+          |> Enum.reject(&Ash.Resource.Info.attribute(changeset.resource, &1).allow_nil?)
+
+        require_values(changeset, :update, false, attributes)
+      else
+        changeset
+      end
+    end)
   end
 
   @doc """

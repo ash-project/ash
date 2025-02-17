@@ -81,7 +81,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       update :set_private_attribute_to_nil do
         accept []
-        change set_attribute(:non_nil_private, nil)
+        change set_attribute(:non_nil_private, nil, set_when_nil?: true)
       end
 
       update :set_private_attribute_from_arg do

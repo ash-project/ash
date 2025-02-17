@@ -71,8 +71,7 @@ defmodule Ash.Resource.Change.SetAttribute do
         Changeset.force_change_attribute(changeset, opts[:attribute], value)
       end
     else
-      if opts[:set_when_nil?] or
-           Changeset.get_attribute(changeset, opts[:attribute]) != nil do
+      if value != nil or opts[:set_when_nil?] do
         Changeset.force_change_attribute(changeset, opts[:attribute], value)
       else
         changeset
@@ -81,13 +80,49 @@ defmodule Ash.Resource.Change.SetAttribute do
   end
 
   @impl true
-  def atomic(_changeset, opts, _context) do
+  def atomic(changeset, opts, context) do
     value =
       case opts[:value] do
         value when is_function(value) -> value.()
         value -> value
       end
 
-    {:atomic, %{opts[:attribute] => value}}
+    if Ash.Expr.expr?(value) do
+      if opts[:new?] do
+        {:atomic,
+         %{
+           opts[:attribute] =>
+             expr(
+               if is_nil(^atomic_ref(opts[:attribute])) do
+                 ^value
+               else
+                 ^atomic_ref(opts[:attribute])
+               end
+             )
+         }}
+      else
+        if opts[:set_when_nil?] do
+          {:atomic, %{opts[:attribute] => value}}
+        else
+          if is_nil(value) do
+            {:ok, changeset}
+          else
+            {:atomic,
+             %{
+               opts[:attribute] =>
+                 expr(
+                   if is_nil(^value) do
+                     ^atomic_ref(opts[:attribute])
+                   else
+                     ^value
+                   end
+                 )
+             }}
+          end
+        end
+      end
+    else
+      {:ok, change(changeset, opts, context)}
+    end
   end
 end
