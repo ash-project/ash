@@ -52,6 +52,11 @@ defmodule Ash.Reactor.ActionStep do
       |> maybe_set_kw(:tenant, arguments[:tenant])
       |> Keyword.take(Ash.ActionInput.Opts.schema() |> Keyword.keys())
       |> Keyword.drop([:resource])
+      |> Keyword.update(
+        :skip_unknown_inputs,
+        [:input_to_undo],
+        &[:input_to_undo | &1]
+      )
 
     action_options =
       []
@@ -59,8 +64,9 @@ defmodule Ash.Reactor.ActionStep do
       |> maybe_set_kw(:domain, options[:domain])
 
     inputs =
-      arguments[:input]
+      %{}
       |> Map.put(:result_to_undo, record)
+      |> Map.put(:input_to_undo, arguments[:input])
 
     options[:resource]
     |> ActionInput.for_action(options[:undo_action], inputs, action_input_options)
