@@ -29,6 +29,13 @@ defmodule Ash.Reactor.ActionStep do
     |> ActionInput.for_action(options[:action], arguments[:input], action_input_options)
     |> ActionInput.set_context(arguments[:context] || %{})
     |> Ash.run_action(action_options)
+    |> case do
+      :ok ->
+        {:ok, :ok}
+
+      other ->
+        other
+    end
   end
 
   @doc false
@@ -56,9 +63,16 @@ defmodule Ash.Reactor.ActionStep do
       |> Map.put(:result_to_undo, record)
 
     options[:resource]
-    |> ActionInput.for_action(options[:action], inputs, action_input_options)
+    |> ActionInput.for_action(options[:undo_action], inputs, action_input_options)
     |> ActionInput.set_context(arguments[:context] || %{})
     |> Ash.run_action(action_options)
+    |> case do
+      :ok ->
+        {:ok, :ok}
+
+      other ->
+        other
+    end
   end
 
   @doc false
