@@ -499,7 +499,12 @@ defmodule Ash.Actions.Update do
 
                       changeset.context.changed? ->
                         changeset =
-                          Ash.Changeset.set_defaults(changeset, :update, true)
+                          if Enum.empty?(changeset.attributes) &&
+                               Ash.DataLayer.data_layer_can?(changeset.resource, :atomic_update) do
+                            Ash.Changeset.atomic_defaults(changeset)
+                          else
+                            Ash.Changeset.set_defaults(changeset, :update, true)
+                          end
 
                         case Ash.Changeset.handle_allow_nil_atomics(changeset, opts[:actor]) do
                           %Ash.Changeset{valid?: true} = changeset ->

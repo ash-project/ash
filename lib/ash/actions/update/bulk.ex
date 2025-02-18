@@ -570,9 +570,6 @@ defmodule Ash.Actions.Update.Bulk do
          query <- handle_attribute_multitenancy(query),
          {:ok, data_layer_query} <-
            Ash.Query.data_layer_query(query) do
-      atomic_changeset =
-        Ash.Changeset.set_context(atomic_changeset, %{changed?: true})
-
       case Ash.DataLayer.update_query(
              data_layer_query,
              atomic_changeset,
@@ -585,7 +582,10 @@ defmodule Ash.Actions.Update.Bulk do
 
         {:ok, results} ->
           results =
-            Ash.Actions.Helpers.select(results, %{resource: query.resource, select: action_select})
+            Ash.Actions.Helpers.select(results, %{
+              resource: query.resource,
+              select: action_select
+            })
 
           results =
             case results do
@@ -2387,7 +2387,12 @@ defmodule Ash.Actions.Update.Bulk do
 
                       if changed? do
                         changeset =
-                          Ash.Changeset.set_defaults(changeset, :update, true)
+                          if Enum.empty?(changeset.attributes) &&
+                               Ash.DataLayer.data_layer_can?(changeset.resource, :atomic_update) do
+                            Ash.Changeset.atomic_defaults(changeset)
+                          else
+                            Ash.Changeset.set_defaults(changeset, :update, true)
+                          end
                           |> Ash.Changeset.set_action_select()
 
                         resource

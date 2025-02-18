@@ -661,8 +661,13 @@ defmodule Ash.Changeset do
            %Ash.Changeset{} = changeset <- set_argument_defaults(changeset, action),
            %Ash.Changeset{} = changeset <- require_arguments(changeset, action),
            %Ash.Changeset{} = changeset <- atomic_changes(changeset, action),
-           %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
            %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
+           %Ash.Changeset{} = changeset <-
+             Ash.Changeset.set_context(changeset, %{
+               changed?:
+                 not (Enum.empty?(changeset.atomics) and Enum.empty?(changeset.attributes))
+             }),
+           %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
            %Ash.Changeset{} = changeset <-
              hydrate_atomic_refs(
                changeset,
@@ -688,9 +693,13 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp atomic_defaults(changeset) do
-    with %__MODULE__{} <- atomic_static_update_defaults(changeset) do
-      atomic_lazy_update_defaults(changeset)
+  def atomic_defaults(changeset) do
+    if changeset.context.changed? do
+      with %__MODULE__{} <- atomic_static_update_defaults(changeset) do
+        atomic_lazy_update_defaults(changeset)
+      end
+    else
+      changeset
     end
   end
 
@@ -707,22 +716,40 @@ defmodule Ash.Changeset do
              attribute.constraints
            ) do
         {:atomic, atomic} ->
-          {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+          {_, atomic} = atomic_default_condition(changeset, attribute.name, atomic)
+
+          {:cont,
+           atomic_update(
+             changeset,
+             attribute.name,
+             {:atomic, atomic}
+           )}
 
         {:ok, value} ->
-          allow_nil? =
-            attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
+          case atomic_default_condition(changeset, attribute.name, value) do
+            {:atomic, atomic} ->
+              {:cont,
+               atomic_update(
+                 changeset,
+                 attribute.name,
+                 {:atomic, atomic}
+               )}
 
-          if is_nil(value) and !allow_nil? do
-            {:cont, add_required_attribute_error(changeset, attribute)}
-          else
-            {:cont,
-             %{
-               changeset
-               | attributes: Map.put(changeset.attributes, attribute.name, value),
-                 atomics: Keyword.delete(changeset.atomics, attribute.name)
-             }
-             |> store_casted_attribute(attribute.name, value, true)}
+            {:no_condition, value} ->
+              allow_nil? =
+                attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
+
+              if is_nil(value) and !allow_nil? do
+                {:cont, add_required_attribute_error(changeset, attribute)}
+              else
+                {:cont,
+                 %{
+                   changeset
+                   | attributes: Map.put(changeset.attributes, attribute.name, value),
+                     atomics: Keyword.delete(changeset.atomics, attribute.name)
+                 }
+                 |> store_casted_attribute(attribute.name, value, true)}
+              end
           end
 
         {:error, error} ->
@@ -747,16 +774,63 @@ defmodule Ash.Changeset do
     |> Enum.reduce_while(changeset, fn attribute, changeset ->
       cond do
         attribute.update_default == (&DateTime.utc_now/0) ->
-          {:cont, atomic_update(changeset, attribute.name, Ash.Expr.expr(now()))}
+          {_, atomic} = atomic_default_condition(changeset, attribute.name, Ash.Expr.expr(now()))
+          {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
 
         attribute.update_default == (&Ash.UUID.generate/0) ->
-          {:cont, atomic_update(changeset, attribute.name, Ash.Expr.expr(^Ash.UUID.generate()))}
+          {_, atomic} =
+            atomic_default_condition(
+              changeset,
+              attribute.name,
+              Ash.Expr.expr(^Ash.UUID.generate())
+            )
+
+          {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
 
         true ->
-          {:halt,
-           {:not_atomic,
-            "update_default for `#{inspect(attribute.name)}` cannot be done atomically: #{inspect(attribute.update_default)}"}}
+          {_, atomic} =
+            atomic_default_condition(changeset, attribute.name, attribute.update_default.())
+
+          {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
       end
+    end)
+  end
+
+  defp atomic_default_condition(changeset, key, value) do
+    if Enum.empty?(changeset.atomics) do
+      {:no_condition, value}
+    else
+      Enum.reduce(changeset.atomics, nil, fn {key, atomic}, expr ->
+        atomic = strip_errors(atomic)
+
+        if is_nil(expr) do
+          Ash.Expr.expr(^atomic != ^ref(key))
+        else
+          Ash.Expr.expr(^expr or ^atomic != ^ref(key))
+        end
+      end)
+      |> then(fn expr ->
+        {:atomic,
+         Ash.Expr.expr(
+           if ^expr do
+             ^value
+           else
+             ^ref(key)
+           end
+         )}
+      end)
+    end
+  end
+
+  defp strip_errors(atomic) do
+    Ash.Filter.map(atomic, fn
+      %Ash.Query.Function.If{
+        arguments: [_condition, left, %Ash.Query.Function.Error{}]
+      } ->
+        left
+
+      other ->
+        other
     end)
   end
 
