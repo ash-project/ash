@@ -570,11 +570,36 @@ defmodule Ash.Actions.Update.Bulk do
          query <- handle_attribute_multitenancy(query),
          {:ok, data_layer_query} <-
            Ash.Query.data_layer_query(query) do
-      case Ash.DataLayer.update_query(
-             data_layer_query,
-             atomic_changeset,
-             update_query_opts
-           ) do
+      update_query_result =
+        if atomic_changeset.context.changed? do
+          Ash.DataLayer.update_query(
+            data_layer_query,
+            atomic_changeset,
+            update_query_opts
+          )
+        else
+          atomic_validation_expr =
+            with [field | _] <- Ash.Resource.Info.primary_key(atomic_changeset.resource),
+                 {:ok, v} <- Keyword.fetch(atomic_changeset.atomics, field) do
+              v
+            else
+              _ ->
+                nil
+            end
+
+          if is_nil(atomic_validation_expr) && is_nil(query.filter) &&
+               !update_query_opts[:return_records?] do
+            :ok
+          else
+            Ash.DataLayer.update_query(
+              data_layer_query,
+              atomic_changeset,
+              update_query_opts
+            )
+          end
+        end
+
+      case update_query_result do
         :ok ->
           %Ash.BulkResult{
             status: :success
@@ -2252,7 +2277,11 @@ defmodule Ash.Actions.Update.Bulk do
               not Enum.empty?(changeset.atomics)
 
           changeset =
-            Ash.Changeset.put_context(changeset, :changed?, changed?)
+            Ash.Changeset.put_context(
+              changeset,
+              :changed?,
+              changeset.context[:changed?] || changed?
+            )
 
           new_notifications = store_notification(ref, new_notifications, opts)
 

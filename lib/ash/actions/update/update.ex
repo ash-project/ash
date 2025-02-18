@@ -412,14 +412,21 @@ defmodule Ash.Actions.Update do
 
     result =
       changeset
-      |> Ash.Changeset.before_action(
-        &Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
-          &1,
-          opts[:actor],
-          authorize?: opts[:authorize?],
-          actor: opts[:actor]
-        )
-      )
+      |> then(fn changeset ->
+        if Enum.empty?(changeset.relationships) do
+          changeset
+        else
+          Ash.Changeset.before_action(
+            changeset,
+            &Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
+              &1,
+              opts[:actor],
+              authorize?: opts[:authorize?],
+              actor: opts[:actor]
+            )
+          )
+        end
+      end)
       |> Ash.Changeset.with_hooks(
         fn
           %{atomics: atomics} when atomics != [] and not can_atomic_update? ->
@@ -535,7 +542,43 @@ defmodule Ash.Actions.Update do
                         end
 
                       true ->
-                        {:ok, changeset.data}
+                        result =
+                          if is_nil(changeset.filter) do
+                            {:ok, changeset.data}
+                          else
+                            {:ok, record_filter} =
+                              Ash.Filter.get_filter(changeset.resource, changeset.data)
+
+                            changeset.resource
+                            |> Ash.Query.do_filter(changeset.filter)
+                            |> Ash.Query.do_filter(record_filter)
+                            |> Ash.Query.select(changeset.action_select)
+                            |> Ash.Query.data_layer_query()
+                            |> case do
+                              {:ok, data_layer_query} ->
+                                data_layer_query
+                                |> Ash.DataLayer.run_query(changeset.resource)
+                                |> case do
+                                  {:ok, [record]} ->
+                                    {:ok, record}
+
+                                  _ ->
+                                    {:error,
+                                     Ash.Error.Changes.StaleRecord.exception(
+                                       resource: changeset.resource
+                                     )}
+                                end
+
+                              {:error, error} ->
+                                {:error, error}
+                            end
+                          end
+
+                        result
+                        |> Helpers.rollback_if_in_transaction(
+                          changeset.resource,
+                          changeset
+                        )
                         |> add_tenant(changeset)
                         |> manage_relationships(domain, changeset,
                           actor: opts[:actor],
