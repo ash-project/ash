@@ -2191,7 +2191,7 @@ defmodule Ash do
   defp do_read_one(query, action, opts) do
     query
     |> Ash.Actions.Read.unpaginated_read(action, opts)
-    |> Ash.Helpers.unwrap_one()
+    |> Ash.Helpers.unwrap_one_if(!action.get?)
     |> case do
       {:ok, nil} ->
         if opts[:not_found_error?] do
