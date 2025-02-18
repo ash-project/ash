@@ -48,6 +48,14 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       action :do_nothing do
         run fn _, _ -> :ok end
       end
+
+      action :action_without_return_type do
+        run fn _, _ -> {:ok, [:this, :will, :not, :be, :used]} end
+      end
+
+      action :action_with_return_type, {:array, :atom} do
+        run fn _, _ -> {:ok, [:this, :will, :be, :used]} end
+      end
     end
 
     attributes do
@@ -63,6 +71,14 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
 
       policy action(:hello_with_default) do
+        authorize_if always()
+      end
+
+      policy action(:action_without_return_type) do
+        authorize_if always()
+      end
+
+      policy action(:action_with_return_type) do
         authorize_if always()
       end
     end
@@ -107,6 +123,20 @@ defmodule Ash.Test.Actions.GenericActionsTest do
         |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
         |> Ash.run_action!()
       end
+    end
+
+    test "generic actions return :ok if they don't have a return type" do
+      assert :ok =
+               Post
+               |> Ash.ActionInput.for_action(:action_without_return_type, %{})
+               |> Ash.run_action!()
+    end
+
+    test "generic actions return the value if they have a return type" do
+      assert [:this, :will, :be, :used] =
+               Post
+               |> Ash.ActionInput.for_action(:action_with_return_type, %{})
+               |> Ash.run_action!()
     end
   end
 
