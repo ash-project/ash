@@ -63,6 +63,8 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :get_user_safely, action: :read, get_by: :id, not_found_error?: false
       define :read_users, action: :read
       define :get_by_id, action: :by_id, get?: true, args: [:id]
+      define :update_by_id, action: :update_by_id_without_filter, get?: true, args: [:id]
+      define :destroy_by_id, action: :destroy_by_id_without_filter, get?: true, args: [:id]
       define :create, args: [{:optional, :first_name}]
       define :hello, args: [:name]
       define :hello_actor, default_options: [actor: %{name: "William Shatner"}]
@@ -114,6 +116,16 @@ defmodule Ash.Test.CodeInterfaceTest do
         argument :id, :uuid, allow_nil?: false
 
         filter expr(id == ^arg(:id))
+      end
+
+      update :update_by_id_without_filter do
+        argument :id, :string, allow_nil?: false
+        # missing filter
+      end
+
+      destroy :destroy_by_id_without_filter do
+        argument :id, :string, allow_nil?: false
+        # missing filter
       end
 
       action :hello, :string do
@@ -449,6 +461,25 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     assert {:ok, user} = User.get_by_id(user.id)
     assert user.id == user.id
+  end
+
+  test "update/destroy returns error for get? true and missing filter" do
+    user =
+      User
+      |> Ash.Changeset.for_create(:create, %{first_name: "ted", last_name: "Danson"})
+      |> Ash.create!()
+
+    User
+    |> Ash.Changeset.for_create(:create, %{first_name: "fred", last_name: "Danson"})
+    |> Ash.create!()
+
+    assert_raise Ash.Error.Invalid, fn ->
+      User.update_by_id!(user.id, %{})
+    end
+
+    assert_raise Ash.Error.Invalid, fn ->
+      User.destroy_by_id!(user.id, %{})
+    end
   end
 
   test "optional arguments are optional" do

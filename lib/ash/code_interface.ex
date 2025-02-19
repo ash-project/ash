@@ -975,6 +975,14 @@ defmodule Ash.CodeInterface do
                             when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
 
+                            %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
+                            when unquote(interface.get?) ->
+                              {:error,
+                               Ash.Error.Invalid.MultipleResults.exception(
+                                 count: Enum.count(records),
+                                 query: query
+                               )}
+
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
                               if opts[:return_notifications?] do
                                 {:ok, record, result.notifications}
@@ -1052,6 +1060,15 @@ defmodule Ash.CodeInterface do
                             %Ash.BulkResult{} = result
                             when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
+
+                            %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
+                            when unquote(interface.get?) ->
+                              raise Ash.Error.to_error_class(
+                                      Ash.Error.Invalid.MultipleResults.exception(
+                                        count: Enum.count(records),
+                                        query: query
+                                      )
+                                    )
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
                               if opts[:return_notifications?] do
@@ -1222,6 +1239,14 @@ defmodule Ash.CodeInterface do
                             when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
 
+                            %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
+                            when unquote(interface.get?) ->
+                              {:error,
+                               Ash.Error.Invalid.MultipleResults.exception(
+                                 count: Enum.count(records),
+                                 query: query
+                               )}
+
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
                               if opts[:return_destroyed?] do
                                 if opts[:return_notifications?] do
@@ -1316,6 +1341,15 @@ defmodule Ash.CodeInterface do
                             %Ash.BulkResult{} = result
                             when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
+
+                            %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
+                            when unquote(interface.get?) ->
+                              raise Ash.Error.to_error_class(
+                                      Ash.Error.Invalid.MultipleResults.exception(
+                                        count: Enum.count(records),
+                                        query: query
+                                      )
+                                    )
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
                               if opts[:return_destroyed?] do
