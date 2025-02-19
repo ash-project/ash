@@ -156,19 +156,23 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
 
     test "generic actions raise if they have a return type but don't have a return value" do
-      assert_raise RuntimeError, ~r/Expected {:ok, result} or {:error, error}/, fn ->
-        Post
-        |> Ash.ActionInput.for_action(:typed_without_value, %{})
-        |> Ash.run_action!()
-      end
+      assert_raise Ash.Error.Framework.InvalidReturnType,
+                   ~r/Expected {:ok, result} or {:error, error}/,
+                   fn ->
+                     Post
+                     |> Ash.ActionInput.for_action(:typed_without_value, %{})
+                     |> Ash.run_action!()
+                   end
     end
 
     test "generic actions raise if they don't have a return type but have an return value" do
-      assert_raise RuntimeError, ~r/Expected :ok or {:error, error}/, fn ->
-        Post
-        |> Ash.ActionInput.for_action(:untyped_with_value, %{})
-        |> Ash.run_action!()
-      end
+      assert_raise Ash.Error.Framework.InvalidReturnType,
+                   ~r/Expected :ok or {:error, error}/,
+                   fn ->
+                     Post
+                     |> Ash.ActionInput.for_action(:untyped_with_value, %{})
+                     |> Ash.run_action!()
+                   end
     end
   end
 

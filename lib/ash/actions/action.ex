@@ -76,7 +76,7 @@ defmodule Ash.Actions.Action do
                         if input.action.returns do
                           {:ok, result, []}
                         else
-                          raise_invalid_manual_action_return!(input, result)
+                          raise_invalid_generic_action_return!(input, result)
                         end
 
                       {:ok, result, notifications} ->
@@ -86,7 +86,7 @@ defmodule Ash.Actions.Action do
                         Ash.DataLayer.rollback(resources, error)
 
                       other ->
-                        raise_invalid_manual_action_return!(input, other)
+                        raise_invalid_generic_action_return!(input, other)
                     end
 
                   {:error, error} ->
@@ -148,7 +148,7 @@ defmodule Ash.Actions.Action do
                   if input.action.returns do
                     {:ok, result}
                   else
-                    raise_invalid_manual_action_return!(input, result)
+                    raise_invalid_generic_action_return!(input, result)
                   end
 
                 {:ok, result, notifications} ->
@@ -168,7 +168,7 @@ defmodule Ash.Actions.Action do
                   {:error, error}
 
                 other ->
-                  raise_invalid_manual_action_return!(input, other)
+                  raise_invalid_generic_action_return!(input, other)
               end
 
             {:error, error} ->
@@ -208,16 +208,17 @@ defmodule Ash.Actions.Action do
     end
   end
 
-  defp raise_invalid_manual_action_return!(input, other) do
+  defp raise_invalid_generic_action_return!(input, other) do
     ok_or_ok_tuple = if input.action.returns, do: "{:ok, result}", else: ":ok"
 
-    raise """
-    Invalid return from generic action #{input.resource}.#{input.action.name}.
+    raise Ash.Error.Framework.InvalidReturnType,
+      message: """
+      Invalid return from generic action #{input.resource}.#{input.action.name}.
 
-    Expected #{ok_or_ok_tuple} or {:error, error}, got:
+      Expected #{ok_or_ok_tuple} or {:error, error}, got:
 
-    #{inspect(other)}
-    """
+      #{inspect(other)}
+      """
   end
 
   defp authorize(_domain, _actor, %{context: %{private: %{authorize?: false}}}) do
