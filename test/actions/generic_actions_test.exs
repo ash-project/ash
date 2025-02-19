@@ -49,12 +49,20 @@ defmodule Ash.Test.Actions.GenericActionsTest do
         run fn _, _ -> :ok end
       end
 
-      action :action_without_return_type do
-        run fn _, _ -> {:ok, [:this, :will, :not, :be, :used]} end
+      action :typed_with_value, :integer do
+        run fn _, _ -> {:ok, 100} end
       end
 
-      action :action_with_return_type, {:array, :atom} do
-        run fn _, _ -> {:ok, [:this, :will, :be, :used]} end
+      action :untyped_without_value do
+        run fn _, _ -> :ok end
+      end
+
+      action :typed_without_value, :integer do
+        run fn _, _ -> :ok end
+      end
+
+      action :untyped_with_value do
+        run fn _, _ -> {:ok, :unexpected} end
       end
     end
 
@@ -74,11 +82,19 @@ defmodule Ash.Test.Actions.GenericActionsTest do
         authorize_if always()
       end
 
-      policy action(:action_without_return_type) do
+      policy action(:typed_with_value) do
         authorize_if always()
       end
 
-      policy action(:action_with_return_type) do
+      policy action(:untyped_without_value) do
+        authorize_if always()
+      end
+
+      policy action(:typed_without_value) do
+        authorize_if always()
+      end
+
+      policy action(:untyped_with_value) do
         authorize_if always()
       end
     end
@@ -125,18 +141,34 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
     end
 
-    test "generic actions return :ok if they don't have a return type" do
-      assert :ok =
+    test "generic actions return the value if they have a return type and a return value" do
+      assert 100 =
                Post
-               |> Ash.ActionInput.for_action(:action_without_return_type, %{})
+               |> Ash.ActionInput.for_action(:typed_with_value, %{})
                |> Ash.run_action!()
     end
 
-    test "generic actions return the value if they have a return type" do
-      assert [:this, :will, :be, :used] =
+    test "generic actions return :ok if they don't have a return type and a return value" do
+      assert :ok =
                Post
-               |> Ash.ActionInput.for_action(:action_with_return_type, %{})
+               |> Ash.ActionInput.for_action(:untyped_without_value, %{})
                |> Ash.run_action!()
+    end
+
+    test "generic actions raise if they have a return type but don't have a return value" do
+      assert_raise RuntimeError, ~r/Expected {:ok, result} or {:error, error}/, fn ->
+        Post
+        |> Ash.ActionInput.for_action(:typed_without_value, %{})
+        |> Ash.run_action!()
+      end
+    end
+
+    test "generic actions raise if they don't have a return type but have an return value" do
+      assert_raise RuntimeError, ~r/Expected :ok or {:error, error}/, fn ->
+        Post
+        |> Ash.ActionInput.for_action(:untyped_with_value, %{})
+        |> Ash.run_action!()
+      end
     end
   end
 

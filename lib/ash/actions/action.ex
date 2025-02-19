@@ -73,7 +73,11 @@ defmodule Ash.Actions.Action do
                         {:ok, nil, []}
 
                       {:ok, result} ->
-                        {:ok, result, []}
+                        if input.action.returns do
+                          {:ok, result, []}
+                        else
+                          raise_invalid_manual_action_return!(input, result)
+                        end
 
                       {:ok, result, notifications} ->
                         {:ok, result, notifications}
@@ -144,7 +148,7 @@ defmodule Ash.Actions.Action do
                   if input.action.returns do
                     {:ok, result}
                   else
-                    :ok
+                    raise_invalid_manual_action_return!(input, result)
                   end
 
                 {:ok, result, notifications} ->
@@ -205,10 +209,12 @@ defmodule Ash.Actions.Action do
   end
 
   defp raise_invalid_manual_action_return!(input, other) do
+    ok_or_ok_tuple = if input.action.returns, do: "{:ok, result}", else: ":ok"
+
     raise """
     Invalid return from generic action #{input.resource}.#{input.action.name}.
 
-    Expected {:ok, result} or {:error, error}, got:
+    Expected #{ok_or_ok_tuple} or {:error, error}, got:
 
     #{inspect(other)}
     """
