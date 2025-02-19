@@ -473,8 +473,13 @@ defmodule Ash.Test.CodeInterfaceTest do
     |> Ash.Changeset.for_create(:create, %{first_name: "fred", last_name: "Danson"})
     |> Ash.create!()
 
-    assert {:error, %Ash.Error.Invalid.MultipleResults{}} = User.update_by_id(user.id, %{})
-    assert {:error, %Ash.Error.Invalid.MultipleResults{}} = User.destroy_by_id(user.id)
+    assert_raise Ash.Error.Invalid, fn ->
+      User.update_by_id!(user.id, %{})
+    end
+
+    assert_raise Ash.Error.Invalid, fn ->
+      User.destroy_by_id!(user.id, %{})
+    end
   end
 
   test "optional arguments are optional" do
