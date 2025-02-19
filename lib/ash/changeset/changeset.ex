@@ -704,6 +704,8 @@ defmodule Ash.Changeset do
   end
 
   defp atomic_static_update_defaults(changeset) do
+    initial_changeset = changeset
+
     changeset.resource
     |> Ash.Resource.Info.static_default_attributes(:update)
     |> Enum.reject(fn attribute ->
@@ -716,41 +718,20 @@ defmodule Ash.Changeset do
              attribute.constraints
            ) do
         {:atomic, atomic} ->
-          {_, atomic} = atomic_default_condition(changeset, attribute.name, atomic)
-
           {:cont,
            atomic_update(
              changeset,
              attribute.name,
-             {:atomic, atomic}
+             {:atomic, atomic_default_condition(initial_changeset, attribute.name, atomic)}
            )}
 
         {:ok, value} ->
-          case atomic_default_condition(changeset, attribute.name, value) do
-            {:atomic, atomic} ->
-              {:cont,
-               atomic_update(
-                 changeset,
-                 attribute.name,
-                 {:atomic, atomic}
-               )}
-
-            {:no_condition, value} ->
-              allow_nil? =
-                attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
-
-              if is_nil(value) and !allow_nil? do
-                {:cont, add_required_attribute_error(changeset, attribute)}
-              else
-                {:cont,
-                 %{
-                   changeset
-                   | attributes: Map.put(changeset.attributes, attribute.name, value),
-                     atomics: Keyword.delete(changeset.atomics, attribute.name)
-                 }
-                 |> store_casted_attribute(attribute.name, value, true)}
-              end
-          end
+          {:cont,
+           atomic_update(
+             changeset,
+             attribute.name,
+             {:atomic, atomic_default_condition(initial_changeset, attribute.name, value)}
+           )}
 
         {:error, error} ->
           {:cont,
@@ -763,6 +744,8 @@ defmodule Ash.Changeset do
   end
 
   defp atomic_lazy_update_defaults(changeset) do
+    initial_changeset = changeset
+
     changeset.resource
     |> Ash.Resource.Info.lazy_matching_default_attributes(:update)
     |> Enum.concat(
@@ -774,33 +757,46 @@ defmodule Ash.Changeset do
     |> Enum.reduce_while(changeset, fn attribute, changeset ->
       cond do
         attribute.update_default == (&DateTime.utc_now/0) ->
-          {_, atomic} = atomic_default_condition(changeset, attribute.name, Ash.Expr.expr(now()))
-          {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+          {:cont,
+           atomic_update(
+             changeset,
+             attribute.name,
+             {:atomic,
+              atomic_default_condition(initial_changeset, attribute.name, Ash.Expr.expr(now()))}
+           )}
 
         attribute.update_default == (&Ash.UUID.generate/0) ->
-          {_, atomic} =
-            atomic_default_condition(
-              changeset,
-              attribute.name,
-              Ash.Expr.expr(^Ash.UUID.generate())
-            )
-
-          {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+          {:cont,
+           atomic_update(
+             changeset,
+             attribute.name,
+             {:atomic,
+              atomic_default_condition(
+                initial_changeset,
+                attribute.name,
+                Ash.Expr.expr(^Ash.UUID.generate())
+              )}
+           )}
 
         true ->
-          {_, atomic} =
-            atomic_default_condition(changeset, attribute.name, attribute.update_default.())
-
-          {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+          {:cont,
+           atomic_update(
+             changeset,
+             attribute.name,
+             {:atomic,
+              atomic_default_condition(
+                initial_changeset,
+                attribute.name,
+                attribute.update_default.()
+              )}
+           )}
       end
     end)
   end
 
   defp atomic_default_condition(changeset, key, value) do
-    if Enum.empty?(changeset.atomics) do
-      {:no_condition, value}
-    else
-      Enum.reduce(changeset.atomics, nil, fn {key, atomic}, expr ->
+    Enum.reduce(changeset.atomics ++ Map.to_list(changeset.attributes), nil, fn
+      {key, atomic}, expr ->
         atomic = strip_errors(atomic)
 
         if is_nil(expr) do
@@ -808,18 +804,16 @@ defmodule Ash.Changeset do
         else
           Ash.Expr.expr(^expr or ^atomic != ^ref(key))
         end
-      end)
-      |> then(fn expr ->
-        {:atomic,
-         Ash.Expr.expr(
-           if ^expr do
-             ^value
-           else
-             ^ref(key)
-           end
-         )}
-      end)
-    end
+    end)
+    |> then(fn expr ->
+      Ash.Expr.expr(
+        if ^expr do
+          ^value
+        else
+          ^ref(key)
+        end
+      )
+    end)
   end
 
   defp strip_errors(atomic) do
@@ -5605,10 +5599,46 @@ defmodule Ash.Changeset do
              {:ok, casted} <- handle_change(changeset, attribute, casted, constraints),
              {:ok, casted} <-
                Ash.Type.apply_constraints(attribute.type, casted, constraints) do
-          %{
-            changeset
-            | attributes: Map.put(changeset.attributes, attribute.name, casted)
-          }
+          data_value =
+            if changeset.action_type != :create do
+              case changeset.data do
+                %Ash.Changeset.OriginalDataNotAvailable{} ->
+                  nil
+
+                data ->
+                  Map.get(data, attribute.name)
+              end
+            end
+
+          cond do
+            changeset.action_type == :create ->
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
+
+            is_nil(data_value) and is_nil(casted) ->
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
+
+            Ash.Type.equal?(attribute.type, casted, data_value) ->
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
+
+            true ->
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
+          end
           |> remove_default(attribute.name)
           |> record_attribute_change_for_atomic_upgrade(attribute.name, casted)
         else
