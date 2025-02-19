@@ -1063,11 +1063,12 @@ defmodule Ash.CodeInterface do
 
                             %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
                             when unquote(interface.get?) ->
-                              {:error,
-                               Ash.Error.Invalid.MultipleResults.exception(
-                                 count: Enum.count(records),
-                                 query: query
-                               )}
+                              raise Ash.Error.to_error_class(
+                                      Ash.Error.Invalid.MultipleResults.exception(
+                                        count: Enum.count(records),
+                                        query: query
+                                      )
+                                    )
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
                               if opts[:return_notifications?] do
@@ -1343,11 +1344,12 @@ defmodule Ash.CodeInterface do
 
                             %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
                             when unquote(interface.get?) ->
-                              {:error,
-                               Ash.Error.Invalid.MultipleResults.exception(
-                                 count: Enum.count(records),
-                                 query: query
-                               )}
+                              raise Ash.Error.to_error_class(
+                                      Ash.Error.Invalid.MultipleResults.exception(
+                                        count: Enum.count(records),
+                                        query: query
+                                      )
+                                    )
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
                               if opts[:return_destroyed?] do
