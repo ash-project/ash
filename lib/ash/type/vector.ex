@@ -1,16 +1,19 @@
 defmodule Ash.Type.Vector do
-  @moduledoc """
-  Represents a vector.
-
-  A builtin type that can be referenced via `:vector`
-  """
-
   @constraints [
     dimensions: [
       type: :integer,
       doc: "The dimensions of the vector"
     ]
   ]
+  @moduledoc """
+  Represents a vector.
+
+  A builtin type that can be referenced via `:vector`.
+
+  ### Constraints
+
+  #{Spark.Options.docs(@constraints)}
+  """
 
   use Ash.Type
 

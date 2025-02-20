@@ -1,10 +1,4 @@
 defmodule Ash.Type.DateTime do
-  @moduledoc """
-  Represents a datetime, with configurable precision and timezone.
-  """
-
-  @beginning_of_day Time.new!(0, 0, 0)
-
   @constraints [
     precision: [
       type: {:one_of, [:microsecond, :second]},
@@ -19,6 +13,16 @@ defmodule Ash.Type.DateTime do
       default: :utc
     ]
   ]
+
+  @moduledoc """
+  Represents a datetime, with configurable precision and timezone.
+
+  ### Constraints
+
+  #{Spark.Options.docs(@constraints)}
+  """
+
+  @beginning_of_day Time.new!(0, 0, 0)
 
   use Ash.Type
 
