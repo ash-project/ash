@@ -73,7 +73,11 @@ defmodule Ash.Actions.Action do
                         {:ok, nil, []}
 
                       {:ok, result} ->
-                        {:ok, result, []}
+                        if input.action.returns do
+                          {:ok, result, []}
+                        else
+                          raise_invalid_generic_action_return!(input, result)
+                        end
 
                       {:ok, result, notifications} ->
                         {:ok, result, notifications}
@@ -82,7 +86,7 @@ defmodule Ash.Actions.Action do
                         Ash.DataLayer.rollback(resources, error)
 
                       other ->
-                        raise_invalid_manual_action_return!(input, other)
+                        raise_invalid_generic_action_return!(input, other)
                     end
 
                   {:error, error} ->
@@ -144,7 +148,7 @@ defmodule Ash.Actions.Action do
                   if input.action.returns do
                     {:ok, result}
                   else
-                    :ok
+                    raise_invalid_generic_action_return!(input, result)
                   end
 
                 {:ok, result, notifications} ->
@@ -164,7 +168,7 @@ defmodule Ash.Actions.Action do
                   {:error, error}
 
                 other ->
-                  raise_invalid_manual_action_return!(input, other)
+                  raise_invalid_generic_action_return!(input, other)
               end
 
             {:error, error} ->
@@ -204,14 +208,17 @@ defmodule Ash.Actions.Action do
     end
   end
 
-  defp raise_invalid_manual_action_return!(input, other) do
-    raise """
-    Invalid return from generic action #{input.resource}.#{input.action.name}.
+  defp raise_invalid_generic_action_return!(input, other) do
+    ok_or_ok_tuple = if input.action.returns, do: "{:ok, result}", else: ":ok"
 
-    Expected {:ok, result} or {:error, error}, got:
+    raise Ash.Error.Framework.InvalidReturnType,
+      message: """
+      Invalid return from generic action #{input.resource}.#{input.action.name}.
 
-    #{inspect(other)}
-    """
+      Expected #{ok_or_ok_tuple} or {:error, error}, got:
+
+      #{inspect(other)}
+      """
   end
 
   defp authorize(_domain, _actor, %{context: %{private: %{authorize?: false}}}) do
