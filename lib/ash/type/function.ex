@@ -1,4 +1,10 @@
 defmodule Ash.Type.Function do
+  @constraints [
+    arity: [
+      type: :pos_integer,
+      doc: "Enforces a specific arity on the provided function"
+    ]
+  ]
   @moduledoc """
   Represents a function.
 
@@ -7,16 +13,13 @@ defmodule Ash.Type.Function do
   Please keep in mind, this is *NOT SAFE* to use with external input.
 
   More information available here: https://erlang.org/doc/man/erlang.html#binary_to_term-2
+
+  ### Constraints
+
+  #{Spark.Options.docs(@constraints)}
   """
 
   use Ash.Type
-
-  @constraints [
-    arity: [
-      type: :pos_integer,
-      doc: "Enforces a specific arity on the provided function"
-    ]
-  ]
 
   @impl true
   def storage_type(_), do: :binary
