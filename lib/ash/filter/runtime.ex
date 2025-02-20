@@ -641,10 +641,10 @@ defmodule Ash.Filter.Runtime do
       {:ok, ^pred} ->
         with {:ok, [left, right]} <-
                resolve_exprs([left, right], record, parent, resource, unknown_on_unknown_refs?),
-             {:op, {:ok, new_pred}} <-
+             {:op, {:ok, new_pred, evaluator}} <-
                {:op, Ash.Query.Operator.try_cast_with_ref(mod, left, right)},
              {:known, val} <-
-               evaluate(new_pred, record, parent, resource, unknown_on_unknown_refs?) do
+               evaluate(new_pred, record, parent, resource, unknown_on_unknown_refs?, evaluator) do
           {:ok, val}
         else
           {:op, {:error, error}} ->
@@ -735,7 +735,8 @@ defmodule Ash.Filter.Runtime do
                      record,
                      parent,
                      resource,
-                     unknown_on_unknown_refs?
+                     unknown_on_unknown_refs?,
+                     nil
                    ) do
               {:ok, val}
             else
@@ -1342,7 +1343,8 @@ defmodule Ash.Filter.Runtime do
          _record,
          _parent,
          _resource,
-         _unknown_on_unknown_refs?
+         _unknown_on_unknown_refs?,
+         _
        ),
        do: Ash.Query.Function.evaluate(func)
 
@@ -1351,11 +1353,17 @@ defmodule Ash.Filter.Runtime do
          _record,
          _parent,
          _resource,
-         _unknown_on_unknown_refs?
-       ),
-       do: Ash.Query.Operator.evaluate(op)
+         _unknown_on_unknown_refs?,
+         evaluator
+       ) do
+    if evaluator do
+      evaluator.(op)
+    else
+      Ash.Query.Operator.evaluate(op)
+    end
+  end
 
-  defp evaluate(other, record, parent, resource, unknown_on_unknown_refs?) do
+  defp evaluate(other, record, parent, resource, unknown_on_unknown_refs?, _evaluator) do
     case resolve_expr(other, record, parent, resource, unknown_on_unknown_refs?) do
       {:ok, value} -> {:known, value}
       other -> other

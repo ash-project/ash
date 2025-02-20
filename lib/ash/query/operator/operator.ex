@@ -6,7 +6,7 @@ defmodule Ash.Query.Operator do
   are there. An operator must meet both behaviours.
   """
 
-  alias Ash.Query.{Call, Expression, Not, Ref}
+  alias Ash.Query.Ref
 
   @doc """
   Create a new predicate. There are various return types possible:
@@ -103,53 +103,13 @@ defmodule Ash.Query.Operator do
   end
 
   @doc "Create a new operator. Pass the module and the left and right values"
-  def new(mod, %Ref{} = left, right) do
-    try_cast_with_ref(mod, left, right)
-  end
-
-  def new(mod, left, %Ref{} = right) do
-    try_cast_with_ref(mod, left, right)
-  end
-
-  def new(mod, %{__struct__: struct} = left, right)
-      when struct in [Call, Expression, Not] do
-    mod.new(left, right)
-  end
-
-  def new(mod, left, %{__struct__: struct} = right)
-      when struct in [Call, Expression, Not] do
-    mod.new(left, right)
-  end
-
-  def new(mod, %{__predicate__?: _} = left, right) do
-    mod.new(left, right)
-  end
-
-  def new(mod, left, %{__predicate__?: _} = right) do
-    mod.new(left, right)
-  end
-
   def new(mod, left, right) do
-    if Ash.Expr.expr?(left) or Ash.Expr.expr?(right) do
-      mod.new(left, right)
-    else
-      case mod.new(left, right) do
-        {:ok, val} ->
-          case val do
-            %mod{__predicate__?: _} ->
-              case mod.evaluate(val) do
-                {:known, value} -> {:ok, value}
-                {:error, error} -> {:error, error}
-                :unknown -> {:ok, val}
-              end
+    case try_cast_with_ref(mod, left, right) do
+      {:ok, operator, _} ->
+        {:ok, operator}
 
-            _ ->
-              {:ok, val}
-          end
-
-        {:error, error} ->
-          {:error, error}
-      end
+      _ ->
+        mod.new(left, right)
     end
   end
 
@@ -175,8 +135,27 @@ defmodule Ash.Query.Operator do
 
   @doc false
   def try_cast_with_ref(mod, left, right) do
-    Enum.find_value(mod.types(), fn type ->
-      try_cast(left, right, type)
+    mod.operator()
+    |> operator_overloads()
+    |> Enum.map(fn {types, mod} ->
+      {types,
+       fn operator ->
+         mod.evaluate_operator(operator)
+       end}
+    end)
+    |> Enum.concat(
+      Enum.map(mod.types(), fn types ->
+        {types, nil}
+      end)
+    )
+    |> Enum.find_value(fn {type, evaluator} ->
+      case try_cast(left, right, type) do
+        {:ok, left, right} ->
+          {:ok, left, right, evaluator}
+
+        _ ->
+          nil
+      end
     end)
     |> case do
       nil ->
@@ -189,8 +168,10 @@ defmodule Ash.Query.Operator do
       {:error, error} ->
         {:error, error}
 
-      {:ok, left, right} ->
-        mod.new(left, right)
+      {:ok, left, right, evaluator} ->
+        with {:ok, operator} <- mod.new(left, right) do
+          {:ok, operator, evaluator}
+        end
     end
   end
 

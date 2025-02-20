@@ -1192,6 +1192,27 @@ defmodule Ash.Expr do
         {type, returns}
 
       _ ->
+        results =
+          Enum.map(results, fn
+            {types, type, basis_adopters} ->
+              type =
+                case type do
+                  type when is_atom(type) ->
+                    {type, []}
+
+                  type ->
+                    type
+                end
+
+              {Enum.map(types, fn
+                 type when is_atom(type) ->
+                   {type, []}
+
+                 type ->
+                   type
+               end), type, basis_adopters}
+          end)
+
         results
         |> Enum.map(fn {types, {type, constraints}, _} ->
           types =
