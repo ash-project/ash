@@ -21,7 +21,7 @@ defmodule Ash.Actions.Read.Relationships do
   def load(records, query, lazy?, reuse_values?) do
     query.load
     |> with_related_queries(query, records, lazy?)
-    |> fetch_related_records(records, reuse_values?)
+    |> fetch_related_records(query, records, reuse_values?)
     |> attach_related_records(records)
   end
 
@@ -53,9 +53,9 @@ defmodule Ash.Actions.Read.Relationships do
     end)
   end
 
-  defp fetch_related_records(batch, records, reuse_values?, acc \\ [])
+  defp fetch_related_records(batch, query, records, reuse_values?, acc \\ [])
 
-  defp fetch_related_records([], _records, _reuse_values?, acc) do
+  defp fetch_related_records([], _query, _records, _reuse_values?, acc) do
     Enum.map(acc, fn
       {a, b, %Task{} = task} ->
         {a, b, Task.await(task, :infinity)}
@@ -68,7 +68,7 @@ defmodule Ash.Actions.Read.Relationships do
     end)
   end
 
-  defp fetch_related_records([first | rest], records, reuse_values?, acc) do
+  defp fetch_related_records([first | rest], query, records, reuse_values?, acc) do
     result =
       case first do
         {relationship, {:lazy, query}} ->
@@ -76,13 +76,13 @@ defmodule Ash.Actions.Read.Relationships do
            lazy_related_records(records, relationship, query, Enum.empty?(rest), reuse_values?)}
 
         {relationship, %{valid?: true} = related_query} ->
-          do_fetch_related_records(records, relationship, related_query, Enum.empty?(rest))
+          do_fetch_related_records(query, records, relationship, related_query, Enum.empty?(rest))
 
         {relationship, %{errors: errors} = related_query} ->
           {relationship, related_query, {:error, errors}}
       end
 
-    fetch_related_records(rest, records, reuse_values?, [result | acc])
+    fetch_related_records(rest, query, records, reuse_values?, [result | acc])
   end
 
   defp lazy_related_records(records, relationship, related_query, last?, reuse_values?) do
@@ -350,6 +350,7 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp do_fetch_related_records(
+         query,
          records,
          %{manual: {module, opts}} = relationship,
          related_query,
@@ -369,7 +370,10 @@ defmodule Ash.Actions.Read.Relationships do
               |> Ash.Query.do_filter(relationship.filter)
               |> Map.put(:load, [])
               |> Ash.Query.set_context(%{
-                accessing_from: %{source: relationship.source, name: relationship.name}
+                accessing_from: %{source: relationship.source, name: relationship.name},
+                parent_stack: [
+                  query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+                ]
               }),
             actor: related_query.context[:private][:actor],
             authorize?: related_query.context[:private][:authorize?],
@@ -408,6 +412,7 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp do_fetch_related_records(
+         query,
          _records,
          %{no_attributes?: true} = relationship,
          related_query,
@@ -422,7 +427,10 @@ defmodule Ash.Actions.Read.Relationships do
           related_query
           |> select_destination_attribute(relationship)
           |> Ash.Query.set_context(%{
-            accessing_from: %{source: relationship.source, name: relationship.name}
+            accessing_from: %{source: relationship.source, name: relationship.name},
+            parent_stack: [
+              query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+            ]
           })
           |> Ash.Actions.Read.unpaginated_read(nil,
             authorize_with: relationship.authorize_read_with
@@ -434,6 +442,7 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp do_fetch_related_records(
+         query,
          _records,
          relationship,
          %{context: %{data_layer: %{lateral_join_source: {_, _}}}} = related_query,
@@ -448,7 +457,10 @@ defmodule Ash.Actions.Read.Relationships do
           related_query
           |> select_destination_attribute(relationship)
           |> Ash.Query.set_context(%{
-            accessing_from: %{source: relationship.source, name: relationship.name}
+            accessing_from: %{source: relationship.source, name: relationship.name},
+            parent_stack: [
+              query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+            ]
           })
           |> Ash.Actions.Read.read_and_return_unpaged(nil,
             authorize_with: relationship.authorize_read_with
@@ -460,6 +472,7 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp do_fetch_related_records(
+         query,
          records,
          %{type: :many_to_many} = relationship,
          related_query,
@@ -478,7 +491,8 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.filter(^ref(relationship.source_attribute_on_join_resource) in ^record_ids)
       |> Ash.Query.do_filter(join_relationship.filter)
       |> Ash.Query.set_context(%{
-        accessing_from: %{source: relationship.source, name: relationship.join_relationship}
+        accessing_from: %{source: relationship.source, name: relationship.join_relationship},
+        parent_stack: [query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)]
       })
       |> Ash.Query.select(
         [
@@ -553,7 +567,10 @@ defmodule Ash.Actions.Read.Relationships do
             |> Ash.Query.do_filter(relationship.filter)
             |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_ids)
             |> Ash.Query.set_context(%{
-              accessing_from: %{source: relationship.source, name: relationship.name}
+              accessing_from: %{source: relationship.source, name: relationship.name},
+              parent_stack: [
+                query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+              ]
             })
             |> Map.put(:page, nil)
             |> Ash.Actions.Read.unpaginated_read(nil,
@@ -587,7 +604,7 @@ defmodule Ash.Actions.Read.Relationships do
     )
   end
 
-  defp do_fetch_related_records(records, relationship, related_query, last?) do
+  defp do_fetch_related_records(query, records, relationship, related_query, last?) do
     destination_attributes = Enum.map(records, &Map.get(&1, relationship.source_attribute))
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
@@ -601,7 +618,10 @@ defmodule Ash.Actions.Read.Relationships do
           |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_attributes)
           |> Ash.Query.unset([:limit, :offset, :distinct, :distinct_sort, :page])
           |> Ash.Query.set_context(%{
-            accessing_from: %{source: relationship.source, name: relationship.name}
+            accessing_from: %{source: relationship.source, name: relationship.name},
+            parent_stack: [
+              query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+            ]
           })
           |> Ash.Actions.Read.unpaginated_read(nil,
             authorize_with: relationship.authorize_read_with

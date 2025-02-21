@@ -183,7 +183,9 @@ defmodule Ash.Actions.Aggregate do
                 opts[:authorize?],
                 opts[:tenant],
                 opts[:tracer],
-                query.domain
+                query.domain,
+                query.resource,
+                []
               )
 
             {:cont, {:ok, [aggregate | aggregates]}}

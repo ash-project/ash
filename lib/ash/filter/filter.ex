@@ -1314,66 +1314,92 @@ defmodule Ash.Filter do
     end
   end
 
-  def update_aggregates(expression, mapper, nested_path \\ [], parent_paths \\ [])
+  @doc false
 
   def update_aggregates(
         %__MODULE__{expression: expression} = filter,
+        resource,
         mapper,
         nested_path,
         parent_paths
       ) do
-    %{filter | expression: update_aggregates(expression, mapper, nested_path, parent_paths)}
+    %{
+      filter
+      | expression: update_aggregates(expression, resource, mapper, nested_path, parent_paths)
+    }
   end
 
-  def update_aggregates(expression, mapper, nested_path, parent_paths) do
+  def update_aggregates(expression, resource, mapper, nested_path, parent_paths) do
     case expression do
       {key, value} when is_atom(key) ->
-        {key, update_aggregates(value, mapper, nested_path, parent_paths)}
+        {key, update_aggregates(value, resource, mapper, nested_path, parent_paths)}
 
       %Ash.Query.Exists{expr: expr, path: path, at_path: at_path} = exists ->
-        %{
-          exists
-          | expr: update_aggregates(expr, mapper, at_path ++ path, [nested_path | parent_paths])
-        }
+        related = Ash.Resource.Info.related(resource, nested_path)
 
-      %Ash.Query.Parent{expr: expr} = exists ->
         %{
           exists
           | expr:
               update_aggregates(
                 expr,
+                related,
                 mapper,
-                Enum.at(parent_paths, 0) || [],
+                at_path ++ path,
+                [
+                  {related, nested_path} | parent_paths
+                ]
+              )
+        }
+
+      %Ash.Query.Parent{expr: expr} = exists ->
+        {resource, parent_path} = Enum.at(parent_paths, 0) || []
+
+        %{
+          exists
+          | expr:
+              update_aggregates(
+                expr,
+                resource,
+                mapper,
+                parent_path,
                 Enum.drop(parent_paths, 1)
               )
         }
 
       %Not{expression: expression} = not_expr ->
-        %{not_expr | expression: update_aggregates(expression, mapper, nested_path, parent_paths)}
+        %{
+          not_expr
+          | expression: update_aggregates(expression, resource, mapper, nested_path, parent_paths)
+        }
 
       %BooleanExpression{left: left, right: right} = expression ->
         %{
           expression
-          | left: update_aggregates(left, mapper, nested_path, parent_paths),
-            right: update_aggregates(right, mapper, nested_path, parent_paths)
+          | left: update_aggregates(left, resource, mapper, nested_path, parent_paths),
+            right: update_aggregates(right, resource, mapper, nested_path, parent_paths)
         }
 
       %{__operator__?: true, left: left, right: right} = op ->
-        left = update_aggregates(left, mapper, nested_path)
-        right = update_aggregates(right, mapper, nested_path)
+        left = update_aggregates(left, resource, mapper, nested_path, parent_paths)
+        right = update_aggregates(right, resource, mapper, nested_path, parent_paths)
         %{op | left: left, right: right}
 
       %{__function__?: true, arguments: args} = func ->
         %{
           func
-          | arguments: Enum.map(args, &update_aggregates(&1, mapper, nested_path, parent_paths))
+          | arguments:
+              Enum.map(args, &update_aggregates(&1, resource, mapper, nested_path, parent_paths))
         }
 
       %Ref{attribute: %Aggregate{} = agg} = ref ->
         %{
           ref
           | attribute:
-              mapper.(agg, %{ref | relationship_path: nested_path ++ ref.relationship_path})
+              mapper.(
+                agg,
+                %{ref | relationship_path: nested_path ++ ref.relationship_path},
+                Enum.map(parent_paths, &elem(&1, 0))
+              )
         }
 
       other ->
@@ -3611,6 +3637,9 @@ defmodule Ash.Filter do
 
   def do_hydrate_refs(%BooleanExpression{left: left, right: right} = expr, context) do
     case do_hydrate_refs(left, context) do
+      {:error, error} ->
+        {:error, error}
+
       {:ok, true} ->
         if expr.op == :or do
           {:ok, true}

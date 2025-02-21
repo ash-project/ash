@@ -966,7 +966,9 @@ defmodule Ash.Actions.Read.Calculations do
             calculation.context.authorize?,
             calculation.context.tenant,
             calculation.context.tracer,
-            domain
+            domain,
+            ash_query.resource,
+            parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context)
           )
 
         case try_evaluate(
@@ -1109,7 +1111,9 @@ defmodule Ash.Actions.Read.Calculations do
                 calculation.context.authorize?,
                 calculation.context.tenant,
                 calculation.context.tracer,
-                ash_query.domain
+                ash_query.domain,
+                ash_query.resource,
+                parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context)
               )
 
           expression

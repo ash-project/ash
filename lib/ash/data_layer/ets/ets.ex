@@ -631,16 +631,6 @@ defmodule Ash.DataLayer.Ets do
                public?: false
              }) do
           {:ok, expression} ->
-            expression =
-              Ash.Actions.Read.add_calc_context_to_filter(
-                expression,
-                calculation.context.actor,
-                calculation.context.authorize?,
-                calculation.context.tenant,
-                calculation.context.tracer,
-                domain
-              )
-
             case Ash.Expr.eval_hydrated(expression,
                    record: record,
                    resource: resource,

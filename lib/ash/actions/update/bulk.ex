@@ -1034,7 +1034,9 @@ defmodule Ash.Actions.Update.Bulk do
               opts[:authorize?],
               opts[:tenant],
               opts[:tracer],
-              atomic_changeset.domain
+              atomic_changeset.domain,
+              atomic_changeset.resource,
+              []
             )
 
           [{calculation, where}]
