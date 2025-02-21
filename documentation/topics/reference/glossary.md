@@ -55,7 +55,7 @@ See `Ash.Changeset` for more.
 
 ## Domain
 
-A method of broadly separating resources into different [domains](<https://en.wikipedia.org/wiki/Domain_(software_engineering)>), A.K.A [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html).
+A method of broadly separating resources into different [domains](https://en.wikipedia.org/wiki/Domain_(software_engineering)), A.K.A [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html).
 
 See the [Domains guide](/documentation/topics/domains.md) for more.
 
