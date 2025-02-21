@@ -1212,7 +1212,7 @@ defmodule Ash.CodeInterface do
                               end
 
                             bulk_opts
-                            |> Keyword.put(:return_records?, opts[:return_destroyed?])
+                            |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
                             |> Keyword.put(:allow_stream_with, :full_read)
                             |> Keyword.put_new(:authorize_with, authorize_with)
@@ -1261,6 +1261,16 @@ defmodule Ash.CodeInterface do
                                   :ok
                                 end
                               end
+
+                            %Ash.BulkResult{status: :success, records: empty} = result
+                            when empty in [[], nil] and (unquote(interface.get?) or method == :id) ->
+                              {:error,
+                               Ash.Error.to_error_class(
+                                 Ash.Error.Query.NotFound.exception(
+                                   resource: unquote(resource),
+                                   primary_key: id
+                                 )
+                               )}
 
                             %Ash.BulkResult{status: :success, records: empty} = result
                             when empty in [[], nil] ->
@@ -1315,7 +1325,7 @@ defmodule Ash.CodeInterface do
                               end
 
                             bulk_opts
-                            |> Keyword.put(:return_records?, opts[:return_destroyed?])
+                            |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
                             |> Keyword.put(:allow_stream_with, :full_read)
                             |> Keyword.put_new(:authorize_with, authorize_with)
@@ -1365,6 +1375,15 @@ defmodule Ash.CodeInterface do
                                   :ok
                                 end
                               end
+
+                            %Ash.BulkResult{status: :success, records: empty} = result
+                            when empty in [[], nil] and (unquote(interface.get?) or method == :id) ->
+                              raise Ash.Error.to_error_class(
+                                      Ash.Error.Query.NotFound.exception(
+                                        resource: unquote(resource),
+                                        primary_key: id
+                                      )
+                                    )
 
                             %Ash.BulkResult{status: :success, records: empty} = result
                             when empty in [[], nil] ->

@@ -478,7 +478,7 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     assert_raise Ash.Error.Invalid, fn ->
-      User.destroy_by_id!(user.id, %{})
+      User.destroy_by_id!(user.id, %{}) |> IO.inspect()
     end
   end
 
