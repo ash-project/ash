@@ -107,6 +107,11 @@ defmodule Ash.Test.Actions.AggregateTest do
         public? false
       end
 
+      count :count_of_comments_matching_actor, :comments do
+        public? false
+        filter expr(thing == ^actor(:name))
+      end
+
       count :count_of_posts, [:comments, :post] do
         public? false
       end
@@ -275,6 +280,23 @@ defmodule Ash.Test.Actions.AggregateTest do
   end
 
   describe "aggregate loading" do
+    test "the actor can be used in aggregate filters" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
+        |> Ash.create!(authorize?: false)
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{post_id: post.id, thing: "foobar", public: true})
+      |> Ash.create!(authorize?: false)
+
+      count =
+        Ash.load!(post, :count_of_comments_matching_actor, actor: %{name: "foobar"})
+        |> Map.get(:count_of_comments_matching_actor)
+
+      assert count == 1
+    end
+
     test "loading aggregates can be authorized or not" do
       post =
         Post

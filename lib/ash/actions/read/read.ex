@@ -1232,44 +1232,73 @@ defmodule Ash.Actions.Read do
 
   defp hydrate_aggregates(query) do
     Enum.reduce_while(query.aggregates, {:ok, %{}}, fn {key, aggregate}, {:ok, aggregates} ->
-      case aggregate.field do
-        %Ash.Query.Calculation{} = calculation ->
-          if calculation.module.has_expression?() and
-               Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
-            expression = calculation.module.expression(calculation.opts, calculation.context)
+      aggregate = %{
+        aggregate
+        | query: %{
+            aggregate.query
+            | filter:
+                Ash.Expr.fill_template(
+                  aggregate.query.filter,
+                  query.context[:private][:actor],
+                  %{},
+                  query.context
+                )
+          }
+      }
 
-            expression =
-              Ash.Expr.fill_template(
-                expression,
-                query.context[:private][:actor],
-                calculation.context.arguments,
-                query.context
-              )
+      case hydrate_sort(
+             aggregate.query,
+             query.context[:private][:actor],
+             query.context[:private][:authorize?],
+             query.tenant,
+             query.context[:private][:tracer],
+             query.domain
+           ) do
+        {:ok, agg_query} ->
+          aggregate = %{aggregate | query: agg_query}
 
-            case Ash.Filter.hydrate_refs(expression, %{
-                   resource:
-                     Ash.Resource.Info.related(query.resource, aggregate.relationship_path),
-                   public?: false,
-                   parent_stack: parent_stack_from_context(query.context)
-                 }) do
-              {:ok, expression} ->
-                new_field = %{
-                  calculation
-                  | module: Ash.Resource.Calculation.Expression,
-                    opts: [expr: expression]
-                }
+          case aggregate.field do
+            %Ash.Query.Calculation{} = calculation ->
+              if calculation.module.has_expression?() and
+                   Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
+                expression = calculation.module.expression(calculation.opts, calculation.context)
 
-                {:cont, {:ok, Map.put(aggregates, key, %{aggregate | field: new_field})}}
+                expression =
+                  Ash.Expr.fill_template(
+                    expression,
+                    query.context[:private][:actor],
+                    calculation.context.arguments,
+                    query.context
+                  )
 
-              {:error, error} ->
-                {:halt, {:error, error}}
-            end
-          else
-            {:cont, {:ok, Map.put(aggregates, key, aggregate)}}
+                case Ash.Filter.hydrate_refs(expression, %{
+                       resource:
+                         Ash.Resource.Info.related(query.resource, aggregate.relationship_path),
+                       public?: false,
+                       parent_stack: parent_stack_from_context(query.context)
+                     }) do
+                  {:ok, expression} ->
+                    new_field = %{
+                      calculation
+                      | module: Ash.Resource.Calculation.Expression,
+                        opts: [expr: expression]
+                    }
+
+                    {:cont, {:ok, Map.put(aggregates, key, %{aggregate | field: new_field})}}
+
+                  {:error, error} ->
+                    {:halt, {:error, error}}
+                end
+              else
+                {:cont, {:ok, Map.put(aggregates, key, aggregate)}}
+              end
+
+            _other ->
+              {:cont, {:ok, Map.put(aggregates, key, aggregate)}}
           end
 
-        _other ->
-          {:cont, {:ok, Map.put(aggregates, key, aggregate)}}
+        {:error, error} ->
+          {:error, error}
       end
     end)
     |> case do
