@@ -267,14 +267,6 @@ defmodule Ash.Actions.Destroy.Bulk do
               end
             )
 
-          opts =
-            if has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) ||
-                 opts[:notify?] do
-              Keyword.put(opts, :return_records?, true)
-            else
-              opts
-            end
-
           context_key =
             case atomic_changeset.action.type do
               :update ->
@@ -289,7 +281,13 @@ defmodule Ash.Actions.Destroy.Bulk do
             Ash.DataLayer.transaction(
               List.wrap(atomic_changeset.resource) ++ action.touches_resources,
               fn ->
-                do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts)
+                do_atomic_destroy(
+                  query,
+                  atomic_changeset,
+                  has_after_batch_hooks?,
+                  input,
+                  opts
+                )
               end,
               opts[:timeout],
               %{
@@ -303,7 +301,14 @@ defmodule Ash.Actions.Destroy.Bulk do
               }
             )
           else
-            {:ok, do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts)}
+            {:ok,
+             do_atomic_destroy(
+               query,
+               atomic_changeset,
+               has_after_batch_hooks?,
+               input,
+               opts
+             )}
           end
           |> case do
             {:ok, bulk_result} ->
@@ -509,7 +514,13 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts) do
+  defp do_atomic_destroy(
+         query,
+         atomic_changeset,
+         has_after_batch_hooks?,
+         input,
+         opts
+       ) do
     atomic_changeset =
       if atomic_changeset.context[:data_layer][:use_atomic_destroy_data?] do
         atomic_changeset
@@ -556,8 +567,12 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     destroy_query_opts =
       opts
-      |> Keyword.take([:return_records?, :tenant, :select])
+      |> Keyword.take([:tenant, :select])
       |> Map.new()
+      |> Map.put(
+        :return_records?,
+        has_after_batch_hooks? || opts[:notify?] || opts[:return_records?]
+      )
       |> Map.put(:calculations, calculations)
       |> Map.put(
         :action_select,

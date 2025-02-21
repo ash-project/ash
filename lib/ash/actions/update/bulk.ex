@@ -224,17 +224,6 @@ defmodule Ash.Actions.Update.Bulk do
               end
             )
 
-          # There are performance implications here. We probably need to explicitly enable
-          # having after action hooks. Or perhaps we need to stream the ids and then bulk update
-          # them.
-          opts =
-            if has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) ||
-                 opts[:notify?] do
-              Keyword.put(opts, :return_records?, true)
-            else
-              opts
-            end
-
           context_key =
             case atomic_changeset.action.type do
               :update ->
@@ -550,8 +539,12 @@ defmodule Ash.Actions.Update.Bulk do
 
     update_query_opts =
       opts
-      |> Keyword.take([:return_records?, :tenant])
+      |> Keyword.take([:tenant])
       |> Map.new()
+      |> Map.put(
+        :return_records?,
+        has_after_batch_hooks? || opts[:notify?] || opts[:return_records?]
+      )
       |> Map.put(:calculations, calculations)
       |> Map.put(
         :action_select,
