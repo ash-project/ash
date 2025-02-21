@@ -25,11 +25,26 @@ end
 
 For a full list of all of the available options for configuring destroy actions, see [the Ash.Resource.Dsl documentation](dsl-ash-resource.html#actions-destroy).
 
+## Calling Destroy Actions
+
+The basic formula for calling a destroy action looks like this:
+
+```elixir
+record
+|> Ash.Query.for_destroy(:action_name, %{argument: :value}, ...opts)
+|> Ash.destroy!()
+```
+
+See below for variations on action calling, and see the [code interface guide](/documentation/topics/code-interfaces.md) guide for how to
+define idiomatic and convenient functions that call your actions.
+
+
 ## Returning the destroyed record
 
 You can use the `return_destroyed?` option to return the destroyed record.
 
 ```elixir
+# when a resource is passed, or a query w/ no action, the primary destroy action is used.
 ticket = Ash.get!(Ticket, 1)
 Ash.destroy!(ticket)
 # => :ok

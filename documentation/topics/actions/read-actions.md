@@ -21,18 +21,33 @@ end
 
 For a full list of all of the available options for configuring read actions, see [the Ash.Resource.Dsl documentation](dsl-ash-resource.html#actions-read).
 
+## Calling Read Actions
+
+The basic formula for calling a read action looks like this:
+
+```elixir
+Resource
+|> Ash.Query.for_read(:action_name, %{argument: :value}, ...opts)
+|> Ash.read!()
+```
+
+See below for variations on action calling, and see the [code interface guide](/documentation/topics/code-interfaces.md) guide for how to
+define idiomatic and convenient functions that call your actions.
+
 ## Ash.get!
 
 The `Ash.get!` function is a convenience function for running a read action, filtering by a unique identifier, and expecting only a single result. It is equivalent to the following code:
 
 ```elixir
-Ash.get!(Resource, 1)
+# action can be omitted to use the primary read action 
+Ash.get!(Resource, 1, action: :read_action)
 
 # is roughly equivalent to
 
 Resource
 |> Ash.Query.filter(id == 1)
 |> Ash.Query.limit(2)
+|> Ash.Query.for_read(:read_action, %{})
 |> Ash.read!()
 |> case do
   [] -> # raise not found error

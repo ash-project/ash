@@ -30,6 +30,19 @@ A generic action declares its arguments, return type, and implementation, as ill
 
 For a full list of all of the available options for configuring generic actions, see [the Ash.Resource.Dsl documentation](dsl-ash-resource.html#actions-action).
 
+## Calling Generic Actions
+
+The basic formula for calling a generic action looks like this:
+
+```elixir
+Resource
+|> Ash.ActionInput.for_action(:action_name, %{argument: :value}, ...opts)
+|> Ash.run_action!()
+```
+
+See the [code interface guide](/documentation/topics/code-interfaces.md) guide for how to
+define idiomatic and convenient functions that call your actions.
+
 ## Why use generic actions?
 
 The example above could be written as a normal function in elixir, i.e
