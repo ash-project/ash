@@ -58,7 +58,8 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
         |> Ash.Resource.Info.attributes()
         |> Enum.map(& &1.name)
 
-      if relationship.destination_attribute not in destination_attributes do
+      if not is_list(relationship.through) and
+           relationship.destination_attribute not in destination_attributes do
         raise Spark.Error.DslError,
           path: [:relationships, relationship.name],
           message:

@@ -587,6 +587,17 @@ defmodule Ash.Actions.Read.Relationships do
     )
   end
 
+  defp do_fetch_related_records(
+         records,
+         %{through: through} = relationship,
+         related_query,
+         _last?
+       )
+       when is_list(through) and through != [] do
+    result = load_related_records(records, through, relationship, related_query)
+    {relationship, related_query, result}
+  end
+
   defp do_fetch_related_records(records, relationship, related_query, last?) do
     destination_attributes = Enum.map(records, &Map.get(&1, relationship.source_attribute))
 
@@ -610,6 +621,31 @@ defmodule Ash.Actions.Read.Relationships do
         {relationship, related_query, result}
       end
     )
+  end
+
+  defp load_related_records(records, through, relationship, related_query) do
+    load_keys = [:actor, :authorize?, :tenant, :tracer]
+    opts = related_query.context[:private] |> Map.take(load_keys) |> Map.to_list()
+    [last_key | rest_of_through] = Enum.reverse(through)
+    load_statement = Enum.reduce(rest_of_through, [last_key], &[{&1, &2}])
+
+    case Ash.load(records, load_statement, opts) do
+      {:ok, records} ->
+        Enum.reduce(through, records, fn
+          key, loaded_records when is_list(loaded_records) ->
+            loaded_records |> Enum.map(fn record -> Map.get(record, key) end) |> List.flatten()
+
+          key, loaded_record ->
+            Map.get(loaded_record, key)
+        end)
+        |> then(fn result ->
+          result = if relationship.cardinality == :one, do: hd(result), else: result
+          {:ok, result}
+        end)
+
+      result ->
+        result
+    end
   end
 
   defp regroup_manual_results(records, %{cardinality: :many}) do
@@ -863,7 +899,7 @@ defmodule Ash.Actions.Read.Relationships do
     simple_equality? = Ash.Type.simple_equality?(attribute.type)
 
     related =
-      if simple_equality? do
+      if simple_equality? and not is_list(relationship.through) do
         if relationship.cardinality == :one do
           Map.new(
             Enum.reverse(related_records),
@@ -887,28 +923,33 @@ defmodule Ash.Actions.Read.Relationships do
       Enum.map(records, fn record ->
         value = Map.get(record, relationship.source_attribute)
 
-        if relationship.cardinality == :many do
-          Map.put(
-            record,
-            relationship.name,
-            apply_runtime_query_operations(
+        cond do
+          is_list(relationship.through) ->
+            Map.put(record, relationship.name, related_records)
+
+          relationship.cardinality == :many ->
+            Map.put(
               record,
-              relationship,
-              Map.get(related, value) || default,
-              related_query
+              relationship.name,
+              apply_runtime_query_operations(
+                record,
+                relationship,
+                Map.get(related, value) || default,
+                related_query
+              )
             )
-          )
-        else
-          Map.put(
-            record,
-            relationship.name,
-            apply_runtime_query_operations(
+
+          true ->
+            Map.put(
               record,
-              relationship,
-              Enum.at(List.wrap(Map.get(related, value) || default), 0),
-              related_query
+              relationship.name,
+              apply_runtime_query_operations(
+                record,
+                relationship,
+                Enum.at(List.wrap(Map.get(related, value) || default), 0),
+                related_query
+              )
             )
-          )
         end
       end)
     else
@@ -1191,6 +1232,9 @@ defmodule Ash.Actions.Read.Relationships do
       has_page? = query.page not in [nil, false]
 
       cond do
+        is_list(relationship.through) ->
+          false
+
         !Ash.DataLayer.data_layer_can?(
           relationship.source,
           {:lateral_join, resources}
