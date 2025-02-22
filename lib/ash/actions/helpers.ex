@@ -3,6 +3,119 @@ defmodule Ash.Actions.Helpers do
   require Logger
   require Ash.Flags
 
+  def split_and_run_simple(batch, action, opts, changes, all_changes, context_key, callback) do
+    {batch, must_be_simple} =
+      Enum.reduce(batch, {[], []}, fn changeset, {batch, must_be_simple} ->
+        if changeset.around_transaction in [[], nil] and changeset.after_transaction in [[], nil] and
+             changeset.around_action in [[], nil] do
+          changeset = Ash.Changeset.run_before_transaction_hooks(changeset)
+          {[changeset | batch], must_be_simple}
+        else
+          {batch, [%{changeset | __validated_for_action__: action.name} | must_be_simple]}
+        end
+      end)
+
+    context =
+      struct(
+        Ash.Resource.Change.Context,
+        %{
+          bulk?: true,
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          tracer: opts[:tracer],
+          authorize?: opts[:authorize?]
+        }
+      )
+
+    must_be_simple_results =
+      Enum.flat_map(must_be_simple, fn changeset ->
+        changeset =
+          all_changes
+          |> Enum.flat_map(fn
+            {%{change: {mod, change_opts}} = change, change_index} ->
+              index = changeset.context |> Map.get(context_key) |> Map.get(:index)
+
+              applicable = changes[change_index]
+
+              if applicable == :all || index in applicable do
+                change_opts =
+                  Ash.Actions.Helpers.templated_opts(
+                    change_opts,
+                    opts[:actor],
+                    changeset.arguments,
+                    changeset.context
+                  )
+
+                if mod.batch_callbacks?([changeset], change_opts, context) do
+                  [%{change | change: {mod, change_opts}}]
+                else
+                  []
+                end
+              else
+                []
+              end
+
+            _ ->
+              []
+          end)
+          |> Enum.reduce(changeset, fn %{change: {mod, change_opts}}, changeset ->
+            changeset =
+              if mod.has_after_batch?() do
+                Ash.Changeset.after_action(changeset, fn changeset, result ->
+                  case mod.after_batch([{changeset, result}], change_opts, context) do
+                    :ok ->
+                      {:ok, result}
+
+                    enumerable ->
+                      Enum.reduce_while(
+                        enumerable,
+                        {{:ok, result}, []},
+                        fn
+                          %Ash.Notifier.Notification{} = notification, {res, notifications} ->
+                            {:cont, {res, [notification | notifications]}}
+
+                          {:error, error}, {_res, notifications} ->
+                            {:halt, {{:error, error}, notifications}}
+
+                          {:ok, result}, {_res, notifications} ->
+                            {:cont, {{:ok, result}, notifications}}
+                        end
+                      )
+                  end
+                  |> case do
+                    {{:ok, res}, notifications} -> {:ok, res, notifications}
+                    {other, _} -> other
+                  end
+                end)
+              else
+                changeset
+              end
+
+            if mod.has_before_batch?() do
+              Ash.Changeset.before_action(changeset, fn changeset ->
+                mod.before_batch([changeset], change_opts, context)
+                |> Enum.reduce(
+                  {changeset, []},
+                  fn
+                    %Ash.Notifier.Notification{} = notification, {changeset, notifications} ->
+                      {changeset, [notification | notifications]}
+
+                    changeset, {_, notifications} ->
+                      {changeset, notifications}
+                  end
+                )
+              end)
+            else
+              changeset
+            end
+          end)
+
+        callback.(changeset)
+      end)
+
+    {batch, must_be_simple_results}
+  end
+
   def rollback_if_in_transaction(
         {:error, %Ash.Error.Changes.StaleRecord{} = error},
         _resource,

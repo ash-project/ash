@@ -1662,16 +1662,47 @@ defmodule Ash.Actions.Update.Bulk do
         context_key
       )
 
-    {batch, must_be_simple} =
-      Enum.reduce(batch, {[], []}, fn changeset, {batch, must_be_simple} ->
-        if changeset.around_transaction in [[], nil] and changeset.after_transaction in [[], nil] and
-             changeset.around_action in [[], nil] do
-          changeset = Ash.Changeset.run_before_transaction_hooks(changeset)
-          {[changeset | batch], must_be_simple}
-        else
-          {batch, [%{changeset | __validated_for_action__: action.name} | must_be_simple]}
+    {batch, must_be_simple_results} =
+      Ash.Actions.Helpers.split_and_run_simple(
+        batch,
+        action,
+        opts,
+        changes,
+        all_changes,
+        context_key,
+        fn changeset ->
+          case Ash.Actions.Update.run(
+                 domain,
+                 changeset,
+                 action,
+                 Keyword.put(opts, :atomic_upgrade?, false)
+               ) do
+            {:ok, result} ->
+              Process.put({:any_success?, ref}, true)
+
+              [
+                Ash.Resource.set_metadata(result, %{
+                  metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
+                })
+              ]
+
+            {:ok, result, notifications} ->
+              Process.put({:any_success?, ref}, true)
+
+              store_notification(ref, notifications, opts)
+
+              [
+                Ash.Resource.set_metadata(result, %{
+                  metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
+                })
+              ]
+
+            {:error, error} ->
+              store_error(ref, error, opts)
+              []
+          end
         end
-      end)
+      )
 
     batch =
       Enum.reject(batch, fn
@@ -1681,40 +1712,6 @@ defmodule Ash.Actions.Update.Bulk do
 
         _changeset ->
           false
-      end)
-
-    must_be_simple_results =
-      Enum.flat_map(must_be_simple, fn changeset ->
-        case Ash.Actions.Update.run(
-               domain,
-               changeset,
-               action,
-               Keyword.put(opts, :atomic_upgrade?, false)
-             ) do
-          {:ok, result} ->
-            Process.put({:any_success?, ref}, true)
-
-            [
-              Ash.Resource.set_metadata(result, %{
-                metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
-              })
-            ]
-
-          {:ok, result, notifications} ->
-            Process.put({:any_success?, ref}, true)
-
-            store_notification(ref, notifications, opts)
-
-            [
-              Ash.Resource.set_metadata(result, %{
-                metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
-              })
-            ]
-
-          {:error, error} ->
-            store_error(ref, error, opts)
-            []
-        end
       end)
 
     if opts[:transaction] == :batch &&

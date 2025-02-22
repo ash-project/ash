@@ -444,7 +444,7 @@ defmodule Ash.Actions.Create.Bulk do
         opts[:tenant]
       )
 
-    {batch, must_be_simple} =
+    {batch, must_be_simple_results} =
       batch
       |> Stream.map(fn changeset ->
         Ash.Changeset.require_values(
@@ -457,43 +457,49 @@ defmodule Ash.Actions.Create.Bulk do
           changeset.action.require_attributes
         )
       end)
-      |> Enum.reduce({[], []}, fn changeset, {batch, must_be_simple} ->
-        if changeset.around_transaction in [[], nil] and changeset.after_transaction in [[], nil] and
-             changeset.around_action in [[], nil] do
-          changeset = Ash.Changeset.run_before_transaction_hooks(changeset)
-          {[changeset | batch], must_be_simple}
-        else
-          {batch, [%{changeset | __validated_for_action__: action.name} | must_be_simple]}
+      |> Ash.Actions.Helpers.split_and_run_simple(
+        action,
+        opts,
+        changes,
+        all_changes,
+        :bulk_create,
+        fn changeset ->
+          case Ash.Actions.Create.run(domain, changeset, action, opts) do
+            {:ok, result} ->
+              Process.put({:any_success?, ref}, true)
+
+              [
+                Ash.Resource.set_metadata(result, %{
+                  bulk_create_index: changeset.context.bulk_create.index
+                })
+              ]
+
+            {:ok, result, notifications} ->
+              Process.put({:any_success?, ref}, true)
+
+              store_notification(ref, notifications, opts)
+
+              [
+                Ash.Resource.set_metadata(result, %{
+                  bulk_create_index: changeset.context.bulk_create.index
+                })
+              ]
+
+            {:error, error} ->
+              store_error(ref, error, opts)
+              []
+          end
         end
-      end)
+      )
 
-    must_be_simple_results =
-      Enum.flat_map(must_be_simple, fn changeset ->
-        case Ash.Actions.Create.run(domain, changeset, action, opts) do
-          {:ok, result} ->
-            Process.put({:any_success?, ref}, true)
+    batch =
+      Enum.reject(batch, fn
+        %{valid?: false} = changeset ->
+          store_error(ref, changeset, opts)
+          true
 
-            [
-              Ash.Resource.set_metadata(result, %{
-                bulk_create_index: changeset.context.bulk_create.index
-              })
-            ]
-
-          {:ok, result, notifications} ->
-            Process.put({:any_success?, ref}, true)
-
-            store_notification(ref, notifications, opts)
-
-            [
-              Ash.Resource.set_metadata(result, %{
-                bulk_create_index: changeset.context.bulk_create.index
-              })
-            ]
-
-          {:error, error} ->
-            store_error(ref, error, opts)
-            []
-        end
+        _changeset ->
+          false
       end)
 
     if opts[:transaction] == :batch &&

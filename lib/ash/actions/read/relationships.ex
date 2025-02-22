@@ -1198,7 +1198,7 @@ defmodule Ash.Actions.Read.Relationships do
 
   defp lateral_join?(%{action: action} = query, source_query, relationship, source_data) do
     if action.manual do
-      raise_if_parent_expr!(relationship, "manual actions")
+      raise_if_parent_expr!(relationship, query, "manual actions")
       false
     else
       {offset, limit} = offset_and_limit(query)
@@ -1220,6 +1220,7 @@ defmodule Ash.Actions.Read.Relationships do
         is_many_to_many_not_unique_on_join?(relationship, query, source_query) ->
           raise_if_parent_expr!(
             relationship,
+            query,
             "many to many relationships that don't have unique constraints on their join resource attributes"
           )
 
@@ -1230,13 +1231,13 @@ defmodule Ash.Actions.Read.Relationships do
 
         limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
           is_nil(relationship.sort) && relationship.cardinality != :many ->
-          has_parent_expr?(relationship)
+          has_parent_expr?(relationship, query.context, query.domain)
 
         limit == 1 && (source_data == :unknown || Enum.count_until(source_data, 2) == 1) &&
             relationship.type != :many_to_many ->
-          has_parent_expr?(relationship)
+          has_parent_expr?(relationship, query.context, query.domain)
 
-        has_parent_expr?(relationship) ->
+        has_parent_expr?(relationship, query.context, query.domain) ->
           true
 
         relationship.type == :many_to_many &&
@@ -1254,16 +1255,39 @@ defmodule Ash.Actions.Read.Relationships do
     end
   end
 
-  defp raise_if_parent_expr!(relationship, reason) do
-    if has_parent_expr?(relationship) do
+  defp raise_if_parent_expr!(relationship, query, reason) do
+    if has_parent_expr?(relationship, query.context, query.domain) do
       raise ArgumentError, "Found `parent_expr` in unsupported context: #{reason}"
     end
   end
 
   @doc false
-  def has_parent_expr?(%{destination: destination, filter: filter, sort: sort, context: context}) do
-    {:ok, sort} = Ash.Actions.Sort.process(destination, sort, %{}, context)
-    do_has_parent_expr?(filter) || has_parent_expr_in_sort?(sort)
+  def has_parent_expr?(
+        %{
+          destination: destination,
+          filter: filter,
+          source: source,
+          sort: sort,
+          context: rel_context
+        },
+        context,
+        domain
+      ) do
+    {:ok, sort} = Ash.Actions.Sort.process(destination, sort, %{}, rel_context)
+
+    has_parent_expr_in_sort?(sort) ||
+      filter
+      |> Ash.Actions.Read.add_calc_context_to_filter(
+        context[:private][:actor],
+        context[:private][:authorize],
+        context[:private][:tenant],
+        context[:private][:tracer],
+        domain,
+        destination,
+        expand?: true,
+        parent_stack: [source | Ash.Actions.Read.parent_stack_from_context(context)]
+      )
+      |> do_has_parent_expr?()
   end
 
   defp has_parent_expr_in_sort?(sort) do
@@ -1307,7 +1331,19 @@ defmodule Ash.Actions.Read.Relationships do
             do_has_parent_expr?(expr, depth - 1)
           end
 
-        _ ->
+        %Ash.Query.Ref{
+          attribute: %Ash.Query.Aggregate{
+            field: %Ash.Query.Calculation{module: module, opts: opts, context: context}
+          }
+        } ->
+          if module.has_expression?() do
+            module.expression(opts, context)
+            |> do_has_parent_expr?(depth + 1)
+          else
+            false
+          end
+
+        _other ->
           false
       end)
     )

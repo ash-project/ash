@@ -267,15 +267,6 @@ defmodule Ash.Actions.Destroy.Bulk do
               end
             )
 
-          context_key =
-            case atomic_changeset.action.type do
-              :update ->
-                :bulk_update
-
-              :destroy ->
-                :bulk_destroy
-            end
-
           if (has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action)) &&
                Keyword.get(opts, :transaction, true) do
             Ash.DataLayer.transaction(
@@ -291,7 +282,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               end,
               opts[:timeout],
               %{
-                type: context_key,
+                type: :bulk_destroy,
                 metadata: %{
                   resource: query.resource,
                   action: atomic_changeset.action.name,
@@ -1367,61 +1358,68 @@ defmodule Ash.Actions.Destroy.Bulk do
         :bulk_destroy
       )
 
-    {batch, must_be_simple} =
-      Enum.reduce(batch, {[], []}, fn changeset, {batch, must_be_simple} ->
-        if changeset.around_transaction in [[], nil] and changeset.after_transaction in [[], nil] and
-             changeset.around_action in [[], nil] do
-          changeset = Ash.Changeset.run_before_transaction_hooks(changeset)
-          {[changeset | batch], must_be_simple}
-        else
-          {batch, [%{changeset | __validated_for_action__: action.name} | must_be_simple]}
+    {batch, must_be_simple_results} =
+      Ash.Actions.Helpers.split_and_run_simple(
+        batch,
+        action,
+        opts,
+        changes,
+        all_changes,
+        :bulk_destroy,
+        fn changeset ->
+          case Ash.Actions.Destroy.run(
+                 domain,
+                 changeset,
+                 action,
+                 Keyword.put(opts, :return_destroyed?, opts[:return_records?])
+               ) do
+            :ok ->
+              Process.put({:any_success?, ref}, true)
+
+              []
+
+            {:ok, result} when not is_list(result) ->
+              Process.put({:any_success?, ref}, true)
+
+              [
+                Ash.Resource.set_metadata(result, %{
+                  bulk_destroy_index: changeset.context.bulk_destroy.index
+                })
+              ]
+
+            {:ok, notifications} ->
+              Process.put({:any_success?, ref}, true)
+
+              store_notification(ref, notifications, opts)
+
+              []
+
+            {:ok, result, notifications} ->
+              Process.put({:any_success?, ref}, true)
+
+              store_notification(ref, notifications, opts)
+
+              [
+                Ash.Resource.set_metadata(result, %{
+                  bulk_destroy_index: changeset.context.bulk_destroy.index
+                })
+              ]
+
+            {:error, error} ->
+              store_error(ref, error, opts)
+              []
+          end
         end
-      end)
+      )
 
-    must_be_simple_results =
-      Enum.flat_map(must_be_simple, fn changeset ->
-        case Ash.Actions.Destroy.run(
-               domain,
-               changeset,
-               action,
-               Keyword.put(opts, :return_destroyed?, opts[:return_records?])
-             ) do
-          :ok ->
-            Process.put({:any_success?, ref}, true)
+    batch =
+      Enum.reject(batch, fn
+        %{valid?: false} = changeset ->
+          store_error(ref, changeset, opts)
+          true
 
-            []
-
-          {:ok, result} when not is_list(result) ->
-            Process.put({:any_success?, ref}, true)
-
-            [
-              Ash.Resource.set_metadata(result, %{
-                bulk_destroy_index: changeset.context.bulk_destroy.index
-              })
-            ]
-
-          {:ok, notifications} ->
-            Process.put({:any_success?, ref}, true)
-
-            store_notification(ref, notifications, opts)
-
-            []
-
-          {:ok, result, notifications} ->
-            Process.put({:any_success?, ref}, true)
-
-            store_notification(ref, notifications, opts)
-
-            [
-              Ash.Resource.set_metadata(result, %{
-                bulk_destroy_index: changeset.context.bulk_destroy.index
-              })
-            ]
-
-          {:error, error} ->
-            store_error(ref, error, opts)
-            []
-        end
+        _changeset ->
+          false
       end)
 
     if opts[:transaction] == :batch &&

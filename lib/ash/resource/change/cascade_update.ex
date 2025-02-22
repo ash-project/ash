@@ -252,25 +252,31 @@ defmodule Ash.Resource.Change.CascadeUpdate do
   defp related_query(_records, opts) when opts.relationship.type == :many_to_many, do: :error
 
   defp related_query(records, opts) do
-    if Ash.Actions.Read.Relationships.has_parent_expr?(opts.relationship) do
+    related_query =
+      if opts.read_action do
+        Ash.Query.for_read(opts.relationship.destination, opts.read_action, %{})
+      else
+        Ash.Query.new(opts.relationship.destination)
+      end
+
+    related_query =
+      Ash.Actions.Read.Relationships.related_query(
+        opts.relationship.name,
+        records,
+        related_query,
+        Ash.Query.new(opts.relationship.source)
+      )
+      |> elem(1)
+      |> filter_by_keys(opts.relationship, records)
+
+    if Ash.Actions.Read.Relationships.has_parent_expr?(
+         opts.relationship,
+         related_query.context,
+         related_query.domain
+       ) do
       :error
     else
-      related_query =
-        if opts.read_action do
-          Ash.Query.for_read(opts.relationship.destination, opts.read_action, %{})
-        else
-          Ash.Query.new(opts.relationship.destination)
-        end
-
-      {:ok,
-       Ash.Actions.Read.Relationships.related_query(
-         opts.relationship.name,
-         records,
-         related_query,
-         Ash.Query.new(opts.relationship.source)
-       )
-       |> elem(1)
-       |> filter_by_keys(opts.relationship, records)}
+      {:ok, related_query}
     end
   end
 
