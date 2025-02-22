@@ -674,15 +674,15 @@ defmodule Ash.Filter do
   defp simple_eq?(_, _), do: false
 
   def find_value(expr, pred) do
-    do_find(expr, pred, true, true, true)
+    do_find(expr, pred, true, true, true, true)
   end
 
   @doc "Find an expression inside of a filter that matches the provided predicate"
-  def find(expr, pred, ors? \\ true, ands? \\ true) do
-    do_find(expr, pred, false, ors?, ands?)
+  def find(expr, pred, ors? \\ true, ands? \\ true, structures? \\ false) do
+    do_find(expr, pred, false, ors?, ands?, structures?)
   end
 
-  defp do_find(expr, pred, value?, ors?, ands?) do
+  defp do_find(expr, pred, value?, ors?, ands?, structures?) do
     if value = pred.(expr) do
       if value? do
         value
@@ -692,10 +692,10 @@ defmodule Ash.Filter do
     else
       case expr do
         %__MODULE__{expression: expression} ->
-          find(expression, pred, ors?, ands?)
+          find(expression, pred, ors?, ands?, structures?)
 
         %Not{expression: expression} ->
-          find(expression, pred, ors?, ands?)
+          find(expression, pred, ors?, ands?, structures?)
 
         %BooleanExpression{op: op, left: left, right: right} ->
           cond do
@@ -706,17 +706,32 @@ defmodule Ash.Filter do
               nil
 
             true ->
-              find(left, pred, ors?, ands?) || find(right, pred, ors?, ands?)
+              find(left, pred, ors?, ands?, structures?) ||
+                find(right, pred, ors?, ands?, structures?)
           end
 
         %Call{args: arguments} ->
-          Enum.find(arguments, &find(&1, pred, ors?, ands?))
+          Enum.find(arguments, &find(&1, pred, ors?, ands?, structures?))
 
         %{__operator__?: true, left: left, right: right} ->
-          find(left, pred, ors?, ands?) || find(right, pred, ors?, ands?)
+          find(left, pred, ors?, ands?, structures?) ||
+            find(right, pred, ors?, ands?, structures?)
 
         %{__function__?: true, arguments: arguments} ->
-          Enum.find(arguments, &find(&1, pred, ors?, ands?))
+          Enum.find(arguments, &find(&1, pred, ors?, ands?, structures?))
+
+        tuple when is_tuple(tuple) and structures? ->
+          tuple
+          |> Tuple.to_list()
+          |> find(pred, ors?, ands?, structures?)
+
+        list when is_list(list) and structures? ->
+          Enum.find(list, &find(&1, pred, ors?, ands?, structures?))
+
+        map when is_map(map) and structures? ->
+          map
+          |> Map.to_list()
+          |> find(pred, ors?, ands?, structures?)
 
         _ ->
           nil

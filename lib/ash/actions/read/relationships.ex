@@ -1274,9 +1274,15 @@ defmodule Ash.Actions.Read.Relationships do
         domain
       ) do
     {:ok, sort} = Ash.Actions.Sort.process(destination, sort, %{}, rel_context)
+    parent_stack = [source | Ash.Actions.Read.parent_stack_from_context(context)]
 
     has_parent_expr_in_sort?(sort) ||
       filter
+      |> Ash.Filter.hydrate_refs(%{
+        parent_stack: parent_stack,
+        resource: destination,
+        public?: false
+      })
       |> Ash.Actions.Read.add_calc_context_to_filter(
         context[:private][:actor],
         context[:private][:authorize],
@@ -1285,7 +1291,7 @@ defmodule Ash.Actions.Read.Relationships do
         domain,
         destination,
         expand?: true,
-        parent_stack: [source | Ash.Actions.Read.parent_stack_from_context(context)]
+        parent_stack: parent_stack
       )
       |> do_has_parent_expr?()
   end
@@ -1313,39 +1319,45 @@ defmodule Ash.Actions.Read.Relationships do
   @doc false
   def do_has_parent_expr?(filter, depth \\ 0) do
     not is_nil(
-      Ash.Filter.find(filter, fn
-        %Ash.Query.Call{name: :parent, args: [expr]} ->
-          if depth == 0 do
-            true
-          else
-            do_has_parent_expr?(expr, depth - 1)
-          end
+      Ash.Filter.find(
+        filter,
+        fn
+          %Ash.Query.Call{name: :parent, args: [expr]} ->
+            if depth == 0 do
+              true
+            else
+              do_has_parent_expr?(expr, depth - 1)
+            end
 
-        %Ash.Query.Exists{expr: expr} ->
-          do_has_parent_expr?(expr, depth + 1)
+          %Ash.Query.Exists{expr: expr} ->
+            do_has_parent_expr?(expr, depth + 1)
 
-        %Ash.Query.Parent{expr: expr} ->
-          if depth == 0 do
-            true
-          else
-            do_has_parent_expr?(expr, depth - 1)
-          end
+          %Ash.Query.Parent{expr: expr} ->
+            if depth == 0 do
+              true
+            else
+              do_has_parent_expr?(expr, depth - 1)
+            end
 
-        %Ash.Query.Ref{
-          attribute: %Ash.Query.Aggregate{
-            field: %Ash.Query.Calculation{module: module, opts: opts, context: context}
-          }
-        } ->
-          if module.has_expression?() do
-            module.expression(opts, context)
-            |> do_has_parent_expr?(depth + 1)
-          else
+          %Ash.Query.Ref{
+            attribute: %Ash.Query.Aggregate{
+              field: %Ash.Query.Calculation{module: module, opts: opts, context: context}
+            }
+          } ->
+            if module.has_expression?() do
+              module.expression(opts, context)
+              |> do_has_parent_expr?(depth + 1)
+            else
+              false
+            end
+
+          _other ->
             false
-          end
-
-        _other ->
-          false
-      end)
+        end,
+        true,
+        true,
+        true
+      )
     )
   end
 
