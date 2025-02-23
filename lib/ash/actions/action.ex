@@ -46,12 +46,6 @@ defmodule Ash.Actions.Action do
       Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :action],
                                 metadata do
         if input.action.transaction? do
-          resources =
-            input.resource
-            |> List.wrap()
-            |> Enum.concat(input.action.touches_resources)
-            |> Enum.uniq()
-
           notify? =
             if Process.get(:ash_started_transaction?) do
               false
@@ -61,7 +55,11 @@ defmodule Ash.Actions.Action do
             end
 
           try do
-            resources = Enum.reject(resources, &Ash.DataLayer.in_transaction?/1)
+            resources =
+              input.action.touches_resources
+              |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
+              |> Enum.concat([input.resource])
+              |> Enum.uniq()
 
             resources
             |> Ash.DataLayer.transaction(
