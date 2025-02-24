@@ -185,7 +185,7 @@ defmodule Ash.Resource.Calculation do
 
   @callback calculate(records :: [Ash.Resource.record()], opts :: opts, context :: Context.t()) ::
               {:ok, [term]} | [term] | {:error, term} | :unknown
-  @callback expression(opts :: opts, context :: Context.t()) :: Ash.Expr.t()
+  @callback expression(opts :: opts, context :: Context.t()) :: any
   @callback load(query :: Ash.Query.t(), opts :: opts, context :: Context.t()) ::
               atom | [atom] | Keyword.t()
   @callback strict_loads?() :: boolean()
