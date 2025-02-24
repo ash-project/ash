@@ -140,11 +140,7 @@ defmodule Ash.Query.Operator do
     |> Enum.map(fn {types, mod} ->
       {types,
        fn operator ->
-         if function_exported?(mod, :evaluate_operator, 1) do
-           mod.evaluate_operator(operator)
-         else
-           mod.evaluate(operator)
-         end
+         mod.evaluate_operator(operator)
        end}
     end)
     |> Enum.concat(
