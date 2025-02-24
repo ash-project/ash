@@ -1665,42 +1665,59 @@ defmodule Ash.Actions.Read do
         authorize?,
         tenant,
         tracer,
-        domain,
-        resource,
+        domain \\ nil,
+        resource \\ nil,
         opts \\ []
       ) do
+    # backward compatibility fix
+    # really need to stop these from being called elsewhere
+    {domain, resource, opts} =
+      if is_list(domain) and resource == nil and opts == [] do
+        {nil, nil, []}
+      else
+        {domain, resource, opts}
+      end
+
     Ash.Filter.map(filter, fn
       %Ash.Query.Parent{} = parent ->
-        %{
+        if List.wrap(opts[:parent_stack]) != [] do
+          %{
+            parent
+            | expr:
+                add_calc_context_to_filter(
+                  parent.expr,
+                  actor,
+                  authorize?,
+                  tenant,
+                  tracer,
+                  domain,
+                  hd(opts[:parent_stack]),
+                  Keyword.update!(opts, :parent_stack, &tl/1)
+                )
+          }
+        else
           parent
-          | expr:
-              add_calc_context_to_filter(
-                parent.expr,
-                actor,
-                authorize?,
-                tenant,
-                tracer,
-                domain,
-                hd(opts[:parent_stack]),
-                Keyword.update!(opts, :parent_stack, &tl/1)
-              )
-        }
+        end
 
       %Ash.Query.Exists{} = exists ->
-        %{
+        if List.wrap(opts[:parent_stack]) != [] do
+          %{
+            exists
+            | expr:
+                add_calc_context_to_filter(
+                  exists.expr,
+                  actor,
+                  authorize?,
+                  tenant,
+                  tracer,
+                  domain,
+                  Ash.Resource.Info.related(resource, exists.path),
+                  Keyword.update(opts, :parent_stack, [resource], &[resource, &1])
+                )
+          }
+        else
           exists
-          | expr:
-              add_calc_context_to_filter(
-                exists.expr,
-                actor,
-                authorize?,
-                tenant,
-                tracer,
-                domain,
-                Ash.Resource.Info.related(resource, exists.path),
-                Keyword.update(opts, :parent_stack, [resource], &[resource, &1])
-              )
-        }
+        end
 
       %Ash.Query.Ref{attribute: %Ash.Resource.Calculation{}} = ref ->
         raise Ash.Error.Framework.AssumptionFailed,
@@ -2223,6 +2240,17 @@ defmodule Ash.Actions.Read do
     }
   end
 
+  def add_calc_context(
+        item,
+        actor,
+        authorize?,
+        tenant,
+        tracer,
+        domain,
+        resource \\ nil,
+        opts \\ []
+      )
+
   @doc false
   def add_calc_context(
         %Ash.Query.Aggregate{} = agg,
@@ -2262,7 +2290,12 @@ defmodule Ash.Actions.Read do
           authorize?
       end
 
-    opts = Keyword.update(opts, :parent_stack, [resource], &[resource, &1])
+    opts =
+      if resource do
+        Keyword.update(opts, :parent_stack, [resource], &[resource, &1])
+      else
+        opts
+      end
 
     field =
       case agg.field do

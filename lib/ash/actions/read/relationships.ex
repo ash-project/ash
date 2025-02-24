@@ -1262,6 +1262,19 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   @doc false
+  def has_parent_expr?(%{
+        destination: destination,
+        filter: filter,
+        sort: sort,
+        context: rel_context
+      }) do
+    {:ok, sort} = Ash.Actions.Sort.process(destination, sort, %{}, rel_context)
+
+    has_parent_expr_in_sort?(sort) ||
+      do_has_parent_expr?(filter)
+  end
+
+  @doc false
   def has_parent_expr?(
         %{
           destination: destination,
