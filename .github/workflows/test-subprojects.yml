@@ -28,7 +28,7 @@ jobs:
             { org: "ash-project", name: "ash_paper_trail" },
             { org: "team-alembic", name: "ash_authentication" },
             { org: "team-alembic", name: "ash_authentication_phoenix" },
-            { org: "sevenseacat", name: "tunez", ref: "chapter-7" }
+            { org: "sevenseacat", name: "tunez", ref: "end-of-chapter-8" }
           ]
         otp: ["27.2"]
         elixir: ["1.18.1"]
@@ -44,6 +44,8 @@ jobs:
     env:
       ASH_CI: true
       ASH_VERSION: local
+      # data layers should be tested against main of `ash_sql`
+      ASH_SQL_VERSION: main
     steps:
       - run: sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@v2
