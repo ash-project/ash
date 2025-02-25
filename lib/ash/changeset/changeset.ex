@@ -4732,7 +4732,7 @@ defmodule Ash.Changeset do
     |> Ash.create!()
     |> Ash.Resource.put_metadata(:join_keys, %{type: "a"})
 
-  post1 =
+  post2 =
     changeset2
     |> Ash.create!()
     |> Ash.Resource.put_metadata(:join_keys, %{type: "b"})
