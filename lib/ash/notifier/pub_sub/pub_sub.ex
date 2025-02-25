@@ -418,7 +418,7 @@ defmodule Ash.Notifier.PubSub do
          previous_values?,
          trail
        ) do
-    pkey = notification.changeset.resource
+    pkey = Ash.Resource.Info.primary_key(notification.changeset.resource)
 
     all_combinations_of_values(rest, notification, action_type, previous_values?, [
       Enum.map_join(pkey, "-", &Map.get(notification.data, &1)) | trail
