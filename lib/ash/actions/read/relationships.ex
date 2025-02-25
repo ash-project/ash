@@ -356,6 +356,10 @@ defmodule Ash.Actions.Read.Relationships do
          related_query,
          last?
        ) do
+    parent_stack = [
+      query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+    ]
+
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
@@ -371,9 +375,7 @@ defmodule Ash.Actions.Read.Relationships do
               |> Map.put(:load, [])
               |> Ash.Query.set_context(%{
                 accessing_from: %{source: relationship.source, name: relationship.name},
-                parent_stack: [
-                  query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
-                ]
+                parent_stack: parent_stack
               }),
             actor: related_query.context[:private][:actor],
             authorize?: related_query.context[:private][:authorize?],
@@ -418,6 +420,10 @@ defmodule Ash.Actions.Read.Relationships do
          related_query,
          last?
        ) do
+    parent_stack = [
+      query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+    ]
+
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
@@ -428,9 +434,7 @@ defmodule Ash.Actions.Read.Relationships do
           |> select_destination_attribute(relationship)
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name},
-            parent_stack: [
-              query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
-            ]
+            parent_stack: parent_stack
           })
           |> Ash.Actions.Read.unpaginated_read(nil,
             authorize_with: relationship.authorize_read_with
@@ -448,6 +452,10 @@ defmodule Ash.Actions.Read.Relationships do
          %{context: %{data_layer: %{lateral_join_source: {_, _}}}} = related_query,
          last?
        ) do
+    parent_stack = [
+      query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+    ]
+
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
@@ -458,9 +466,7 @@ defmodule Ash.Actions.Read.Relationships do
           |> select_destination_attribute(relationship)
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name},
-            parent_stack: [
-              query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
-            ]
+            parent_stack: parent_stack
           })
           |> Ash.Actions.Read.read_and_return_unpaged(nil,
             authorize_with: relationship.authorize_read_with
@@ -516,6 +522,10 @@ defmodule Ash.Actions.Read.Relationships do
           )
       )
 
+    parent_stack = [
+      query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+    ]
+
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
@@ -568,9 +578,7 @@ defmodule Ash.Actions.Read.Relationships do
             |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_ids)
             |> Ash.Query.set_context(%{
               accessing_from: %{source: relationship.source, name: relationship.name},
-              parent_stack: [
-                query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
-              ]
+              parent_stack: parent_stack
             })
             |> Map.put(:page, nil)
             |> Ash.Actions.Read.unpaginated_read(nil,
@@ -607,6 +615,10 @@ defmodule Ash.Actions.Read.Relationships do
   defp do_fetch_related_records(query, records, relationship, related_query, last?) do
     destination_attributes = Enum.map(records, &Map.get(&1, relationship.source_attribute))
 
+    parent_stack = [
+      query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+    ]
+
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
@@ -619,9 +631,7 @@ defmodule Ash.Actions.Read.Relationships do
           |> Ash.Query.unset([:limit, :offset, :distinct, :distinct_sort, :page])
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name},
-            parent_stack: [
-              query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
-            ]
+            parent_stack: parent_stack
           })
           |> Ash.Actions.Read.unpaginated_read(nil,
             authorize_with: relationship.authorize_read_with
