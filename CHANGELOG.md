@@ -2,6 +2,39 @@
 
 <!-- changelog -->
 
+## [v3.4.65](https://github.com/ash-project/ash/compare/v3.4.64...v3.4.65) (2025-02-25)
+
+
+
+
+### Bug Fixes:
+
+* properly enumerate `:_pkey` in notifier
+
+* Always rollback input.resource when running generic actions. (#1817)
+
+* fix case where batch before/after action callbacks could be skipped
+
+* return NotFound error in proper cases on bulk intefaces
+
+* don't eagerly return records on bulk update/destroys
+
+* ensure actor templates are hydrated for aggregates
+
+* properly use operator overloads for evaluating operators at runtime
+
+* Missing case clause for bulk update/destroy with `get?: true` in interface (#1806)
+
+* always run update filter on skipped updates
+
+* don't change update defaults unless something changes
+
+### Improvements:
+
+* better parent resource tracking in expressions
+
+* Generic actions to raise if they don't have return type but have an return value (#1805)
+
 ## [v3.4.64](https://github.com/ash-project/ash/compare/v3.4.63...v3.4.64) (2025-02-17)
 
 
