@@ -298,6 +298,14 @@ defmodule Ash.Helpers do
     end
   end
 
+  def unwrap_one_if(result, condition) do
+    if condition do
+      unwrap_one(result)
+    else
+      result
+    end
+  end
+
   def unwrap_one({:error, error}) do
     {:error, error}
   end
@@ -337,6 +345,10 @@ defmodule Ash.Helpers do
       )
 
     {:error, error}
+  end
+
+  def unwrap_one(struct) when is_struct(struct) do
+    {:ok, struct}
   end
 
   def resource_from_data!(data, query, opts) do

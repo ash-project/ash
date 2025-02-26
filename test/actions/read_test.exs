@@ -81,10 +81,12 @@ defmodule Ash.Test.Actions.ReadTest do
       end
 
       read :get_by_id do
+        get?(true)
         get_by(:id)
       end
 
       read :get_by_id_and_uuid do
+        get?(true)
         get_by([:id, :uuid])
       end
     end
@@ -399,6 +401,25 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.limit(1)
                |> Ash.Query.offset(1)
+               |> Ash.read()
+    end
+
+    test "with get?: true actions, it returns the record instead of a list" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+        |> Ash.create!()
+
+      assert {:ok, %Post{}} =
+               Post
+               |> Ash.Query.for_read(:get_by_id, %{id: post.id})
+               |> Ash.read()
+    end
+
+    test "with get?: true actions, it returns nil for missing records" do
+      assert {:ok, nil} =
+               Post
+               |> Ash.Query.for_read(:get_by_id, %{id: Ash.UUID.generate()})
                |> Ash.read()
     end
   end
