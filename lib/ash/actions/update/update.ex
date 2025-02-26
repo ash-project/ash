@@ -162,8 +162,6 @@ defmodule Ash.Actions.Update do
               :filter
             end
 
-          raise "what on earf"
-
           case Ash.Actions.Update.Bulk.run(
                  domain,
                  query,
