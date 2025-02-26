@@ -265,6 +265,10 @@ defmodule Ash.Test.Actions.UpdateTest do
       attribute :contents, :string do
         public?(true)
       end
+
+      attribute :score, :decimal do
+        public? true
+      end
     end
 
     relationships do
@@ -432,6 +436,56 @@ defmodule Ash.Test.Actions.UpdateTest do
                post
                |> Ash.Changeset.for_update(:update, %{title: "bar", contents: "foo"})
                |> Ash.update!()
+    end
+  end
+
+  describe "updating unavailable data" do
+    test "can handle updating a not loaded field that has a custom equality check" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "foo",
+          contents: "bar",
+          score: Decimal.new("0")
+        })
+        |> Ash.create!()
+        |> Map.put(:score, %Ash.NotLoaded{})
+
+      assert %Post{title: "bar", contents: "foo", score: score} =
+               post
+               |> Ash.Changeset.for_update(:update, %{
+                 title: "bar",
+                 contents: "foo",
+                 score: Decimal.new("1")
+               })
+               |> Ash.update!()
+
+      assert Decimal.equal?(score, Decimal.new("1"))
+    end
+  end
+
+  describe "updating forbidden data" do
+    test "can handle updating a forbidden field that has a custom equality check" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "foo",
+          contents: "bar",
+          score: Decimal.new("0")
+        })
+        |> Ash.create!()
+        |> Map.put(:score, %Ash.ForbiddenField{})
+
+      assert %Post{title: "bar", contents: "foo", score: score} =
+               post
+               |> Ash.Changeset.for_update(:update, %{
+                 title: "bar",
+                 contents: "foo",
+                 score: Decimal.new("1")
+               })
+               |> Ash.update!()
+
+      assert Decimal.equal?(score, Decimal.new("1"))
     end
   end
 

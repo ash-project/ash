@@ -5483,6 +5483,11 @@ defmodule Ash.Changeset do
                   Map.get(data, attribute.name)
               end
             end
+            |> case do
+              %Ash.ForbiddenField{} -> nil
+              %Ash.NotLoaded{} -> nil
+              v -> v
+            end
 
           changeset = remove_default(changeset, attribute.name)
 
@@ -5608,6 +5613,11 @@ defmodule Ash.Changeset do
                 data ->
                   Map.get(data, attribute.name)
               end
+            end
+            |> case do
+              %Ash.ForbiddenField{} -> nil
+              %Ash.NotLoaded{} -> nil
+              v -> v
             end
 
           cond do
