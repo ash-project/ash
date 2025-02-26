@@ -162,6 +162,8 @@ defmodule Ash.Actions.Update do
               :filter
             end
 
+          raise "what on earf"
+
           case Ash.Actions.Update.Bulk.run(
                  domain,
                  query,
@@ -187,8 +189,6 @@ defmodule Ash.Actions.Update do
 
             %Ash.BulkResult{status: :success, records: []} ->
               primary_key = Ash.Resource.Info.primary_key(atomic_changeset.resource)
-
-              raise "what on earf"
 
               {:error,
                Ash.Error.to_error_class(
