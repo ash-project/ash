@@ -192,7 +192,7 @@ defmodule Ash.Actions.Update do
                Ash.Error.to_error_class(
                  Ash.Error.Changes.StaleRecord.exception(
                    resource: fully_atomic_changeset.resource,
-                   filters: Map.take(changeset.data, primary_key)
+                   filter: Map.take(changeset.data, primary_key)
                  ),
                  changeset: atomic_changeset
                )}
