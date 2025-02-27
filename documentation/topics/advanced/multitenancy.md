@@ -25,7 +25,7 @@ end
 
 In this case, if you were to try to run a query without specifying a tenant, you would get an error telling you that the tenant is required.
 
-Setting the tenant is done via `Ash.Query.set_tenant/2` and `Ash.Changeset.set_tenant/2`. If you are using a [code interface](/documentation/topics/resources/code-interfaces.md), you can pass `tenant: ` in the options list (the final parameter). If you are using an extension, such as `AshJsonMyDomain` or `AshGraphql` the method of setting tenant context is explained in that extension's documentation.
+Setting the tenant is done via `Ash.Query.set_tenant/2` and `Ash.Changeset.set_tenant/2`. If you are using a [code interface](/documentation/topics/resources/code-interfaces.md), you can pass `tenant: ` in the options list (the final parameter). If you are using an extension, such as `AshJsonApi` or `AshGraphql` the method of setting tenant context is explained in that extension's documentation.
 
 Example usage of the above:
 
