@@ -457,6 +457,17 @@ defmodule Ash.Actions.Read do
          query <- add_select_if_none_exists(query),
          pre_authorization_query <- query,
          {:ok, query} <- authorize_query(query, opts),
+         {:ok, sort} <-
+           add_calc_context_to_sort(
+             query,
+             opts[:actor],
+             opts[:authorize?],
+             query.tenant,
+             opts[:tracer],
+             query.resource,
+             query.domain,
+             parent_stack: parent_stack_from_context(query.context)
+           ),
          query <- %{
            query
            | filter:
@@ -470,17 +481,7 @@ defmodule Ash.Actions.Read do
                  query.resource,
                  parent_stack: parent_stack_from_context(query.context)
                ),
-             sort:
-               add_calc_context_to_sort(
-                 query,
-                 opts[:actor],
-                 opts[:authorize?],
-                 query.tenant,
-                 opts[:tracer],
-                 query.resource,
-                 query.domain,
-                 parent_stack: parent_stack_from_context(query.context)
-               )
+             sort: sort
          } do
       maybe_in_transaction(query, opts, fn notify_callback ->
         with query_before_pagination <- query,
@@ -2159,19 +2160,21 @@ defmodule Ash.Actions.Read do
   defp validate_get(_, _, _), do: :ok
 
   defp add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain, opts) do
+    {:ok, sort} =
+      add_calc_context_to_sort(
+        query,
+        actor,
+        authorize?,
+        tenant,
+        tracer,
+        query.resource,
+        domain,
+        opts
+      )
+
     %{
       query
-      | sort:
-          add_calc_context_to_sort(
-            query,
-            actor,
-            authorize?,
-            tenant,
-            tracer,
-            query.resource,
-            domain,
-            opts
-          ),
+      | sort: sort,
         aggregates:
           Map.new(query.aggregates, fn {key, agg} ->
             {key,
