@@ -1878,6 +1878,10 @@ defmodule Ash.Actions.Read do
       :bypass ->
         {:ok, %{query | tenant: nil, to_tenant: nil}}
     end
+    |> case do
+      {:ok, query} -> handle_aggregate_multitenancy(query)
+      other -> other
+    end
   end
 
   defp handle_attribute_multitenancy(query) do
@@ -1936,6 +1940,25 @@ defmodule Ash.Actions.Read do
       :ok
     else
       {:error, Ash.Error.Invalid.TenantRequired.exception(resource: query.resource)}
+    end
+  end
+
+  defp handle_aggregate_multitenancy(query) do
+    Enum.reduce_while(query.aggregates, {:ok, %{}}, fn {key, aggregate}, {:ok, acc} ->
+      case handle_multitenancy(aggregate.query) do
+        {:ok, %{valid?: true} = query} ->
+          {:cont, {:ok, Map.put(acc, key, %{aggregate | query: query})}}
+
+        {:ok, query} ->
+          {:halt, {:error, Ash.Error.set_path(query.errors, aggregate.name)}}
+
+        {:error, error} ->
+          {:halt, {:error, Ash.Error.set_path(error, aggregate.name)}}
+      end
+    end)
+    |> case do
+      {:ok, aggregates} -> {:ok, %{query | aggregates: aggregates}}
+      {:error, error} -> {:error, error}
     end
   end
 
