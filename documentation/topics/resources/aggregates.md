@@ -29,7 +29,7 @@ User
 
 users
 |> Ash.load!(:count_of_posts)
-|> Enum.map(&(&1.count_of_posts)
+|> Enum.map(&(&1.count_of_posts))
 # => [3, 5, 2]
 ```
 
