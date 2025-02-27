@@ -154,6 +154,7 @@ defmodule Ash.Actions.Read do
         for_read(
           query,
           action,
+          opts[:initial_data],
           actor: opts[:actor],
           authorize?: opts[:authorize?],
           timeout: opts[:timeout],
@@ -1905,11 +1906,20 @@ defmodule Ash.Actions.Read do
     Keyword.merge(opts, Map.get(query.context, :override_domain_params) || [])
   end
 
-  defp for_read(query, action, opts) do
+  defp for_read(query, action, initial_data, opts) do
     if query.__validated_for_action__ == action.name do
       query
     else
-      Ash.Query.for_read(query, action.name, %{}, opts)
+      if initial_data do
+        load = query.load
+        calculations = query.calculations
+        aggregates = query.aggregates
+        query = Ash.Query.for_read(query, action.name, %{}, opts)
+
+        %{query | load: load, aggregates: aggregates, calculations: calculations}
+      else
+        Ash.Query.for_read(query, action.name, %{}, opts)
+      end
     end
   end
 
