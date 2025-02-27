@@ -1787,69 +1787,75 @@ defmodule Ash.Actions.Read do
   end
 
   defp add_calc_context_to_sort(%{sort: empty}, _, _, _, _, _, _, _opts) when empty in [[], nil],
-    do: empty
+    do: {:ok, empty}
 
   defp add_calc_context_to_sort(query, actor, authorize?, tenant, tracer, resource, domain, opts) do
-    Enum.map(query.sort, fn
-      {%Ash.Query.Calculation{} = calc, order} ->
-        calc = add_calc_context(calc, actor, authorize?, tenant, tracer, domain, resource, opts)
-
-        calc =
-          if Keyword.get(opts, :expand?, true) && calc.module.has_expression?() do
-            expr =
-              case calc.module.expression(calc.opts, calc.context) do
-                %Ash.Query.Function.Type{} = expr ->
-                  expr
-
-                %Ash.Query.Call{name: :type} = expr ->
-                  expr
-
-                expr ->
-                  {:ok, expr} = Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
-                  expr
-              end
-
-            {:ok, expr} =
-              Ash.Filter.hydrate_refs(
-                expr,
-                %{
-                  resource: resource,
-                  public?: false,
-                  parent_stack: opts[:parent_stack]
-                }
-              )
-
-            expr =
-              add_calc_context_to_filter(
-                expr,
-                actor,
-                authorize?,
-                tenant,
-                tracer,
-                domain,
-                resource,
-                opts
-              )
-
-            %{calc | module: Ash.Resource.Calculation.Expression, opts: [expr: expr]}
-          else
-            calc
-          end
-
-        {calc, order}
-
-      {%struct{} = calc, direction}
+    query.sort
+    |> Enum.reduce_while({:ok, []}, fn
+      {%struct{} = calc, order}, {:ok, acc}
       when struct in [
+             Ash.Query.Calculation,
              Ash.Aggregate.Calculation,
              Ash.Resource.Calculation,
              Ash.Resource.Aggregate
            ] ->
-        {add_calc_context(calc, actor, authorize?, tenant, tracer, domain, resource, opts),
-         direction}
+        calc = add_calc_context(calc, actor, authorize?, tenant, tracer, domain, resource, opts)
 
-      {field, order} ->
-        {field, order}
+        if should_expand_expression?(struct, calc, opts) do
+          case expand_expression(calc, resource, opts[:parent_stack]) do
+            {:ok, expr} ->
+              expr =
+                add_calc_context_to_filter(
+                  expr,
+                  actor,
+                  authorize?,
+                  tenant,
+                  tracer,
+                  domain,
+                  resource,
+                  opts
+                )
+
+              module = Ash.Resource.Calculation.Expression
+              calc = %{calc | module: module, opts: [expr: expr]}
+              {:cont, {:ok, [{calc, order} | acc]}}
+
+            error ->
+              {:halt, error}
+          end
+        else
+          {:cont, {:ok, [{calc, order} | acc]}}
+        end
+
+      {calc, order}, {:ok, acc} ->
+        {:cont, {:ok, [{calc, order} | acc]}}
     end)
+    |> then(fn
+      {:ok, sort} -> {:ok, Enum.reverse(sort)}
+      result -> result
+    end)
+  end
+
+  defp should_expand_expression?(struct, calc, opts) do
+    struct == Ash.Query.Calculation &&
+      Keyword.get(opts, :expand?, true) &&
+      calc.module.has_expression?()
+  end
+
+  defp expand_expression(calc, resource, parent_stack) do
+    calc.module.expression(calc.opts, calc.context)
+    |> case do
+      %Ash.Query.Function.Type{} = expr ->
+        expr
+
+      %Ash.Query.Call{name: :type} = expr ->
+        expr
+
+      expr ->
+        {:ok, expr} = Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
+        expr
+    end
+    |> Ash.Filter.hydrate_refs(%{resource: resource, public?: false, parent_stack: parent_stack})
   end
 
   @doc false
