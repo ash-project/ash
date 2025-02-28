@@ -5500,6 +5500,14 @@ defmodule Ash.Changeset do
               }
               |> store_casted_attribute(attribute.name, casted, store_casted?)
 
+            match?(%OriginalDataNotAvailable{}, changeset.data) ->
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
+              |> store_casted_attribute(attribute.name, casted, store_casted?)
+
             is_nil(data_value) and is_nil(casted) ->
               %{
                 changeset
@@ -5622,6 +5630,13 @@ defmodule Ash.Changeset do
 
           cond do
             changeset.action_type == :create ->
+              %{
+                changeset
+                | attributes: Map.put(changeset.attributes, attribute.name, casted),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
+
+            match?(%OriginalDataNotAvailable{}, changeset.data) ->
               %{
                 changeset
                 | attributes: Map.put(changeset.attributes, attribute.name, casted),
