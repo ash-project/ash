@@ -63,6 +63,12 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         validate confirm(:name, :confirm_name)
       end
 
+      create :create_with_required_argument do
+        argument :confirm_name, :string do
+          allow_nil? false
+        end
+      end
+
       create :with_name_validation do
         validate present(:name), message: "this validates the name is present"
       end
@@ -1193,7 +1199,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "required arguments can't be nil" do
       assert_raise Ash.Error.Invalid, ~r/argument confirm_name is required/, fn ->
         Category
-        |> Ash.Changeset.for_create(:create_with_confirmation, %{"name" => "foo"})
+        |> Ash.Changeset.for_create(:create_with_required_argument, %{"name" => "foo"})
         |> Ash.create!()
       end
     end
