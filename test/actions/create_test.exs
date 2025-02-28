@@ -156,6 +156,20 @@ defmodule Ash.Test.Actions.CreateTest do
         end
       end
 
+      create :required_error_and_other_errors do
+        argument :required, :string, allow_nil?: false
+
+        change fn changeset, _ ->
+          Ash.Changeset.add_error(
+            changeset,
+            Ash.Error.Changes.InvalidChanges.exception(
+              fields: [:required],
+              message: "Invalid for some other reason"
+            )
+          )
+        end
+      end
+
       create :manual_create do
         manual fn _, _ ->
           {:ok,
@@ -727,6 +741,23 @@ defmodule Ash.Test.Actions.CreateTest do
                  %Ash.Error.Changes.Required{
                    class: :invalid,
                    field: :title
+                 }
+               ]
+             } = err
+    end
+
+    test "required errors are omitted when there are other errors" do
+      {:error, err} =
+        Author
+        |> Ash.Changeset.for_create(:required_error_and_other_errors, %{})
+        |> Ash.create()
+
+      assert %Ash.Error.Invalid{
+               class: :invalid,
+               errors: [
+                 %{
+                   fields: [:required],
+                   message: "Invalid for some other reason"
                  }
                ]
              } = err
