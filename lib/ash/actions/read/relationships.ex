@@ -1307,8 +1307,7 @@ defmodule Ash.Actions.Read.Relationships do
       {:ok, sort} ->
         sort
 
-      error ->
-        IO.inspect(error)
+      _ ->
         nil
     end
 
