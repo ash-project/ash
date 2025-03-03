@@ -249,8 +249,6 @@ defmodule Ash.Domain.Info do
   @doc """
   Returns `{:ok, resource}` if the resource can be used by the domain, or `{:error, error}`.
   """
-  @spec resource(Ash.Domain.t() | Spark.Dsl.t(), Ash.Resource.t()) ::
-          {:ok, Ash.Resource.t()} | {:error, Ash.Error.t()}
   def resource(domain, resource) do
     cond do
       allow_unregistered?(domain) ->
