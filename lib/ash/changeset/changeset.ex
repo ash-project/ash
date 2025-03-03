@@ -1145,8 +1145,14 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp atomic_with_changeset({:atomic, changeset, atomics}, _changeset),
+  defp atomic_with_changeset({:atomic, changeset, atomics, validations}, _changeset),
+    do: {:atomic, true, changeset, atomics, validations}
+
+  defp atomic_with_changeset({:atomic, %Ash.Changeset{} = changeset, atomics}, _changeset),
     do: {:atomic, true, changeset, atomics, []}
+
+  defp atomic_with_changeset({:atomic, atomics, validations}, changeset),
+    do: {:atomic, false, changeset, atomics, validations}
 
   defp atomic_with_changeset({:atomic, atomics}, changeset),
     do: {:atomic, false, changeset, atomics, []}
