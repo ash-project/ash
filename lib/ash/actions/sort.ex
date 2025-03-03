@@ -14,6 +14,8 @@ defmodule Ash.Actions.Sort do
     process(resource, sort)
   end
 
+  def process(_resource, nil), do: {:ok, nil}
+
   def process(resource, sort) when is_atom(sort) do
     process(resource, [sort])
   end
@@ -31,8 +33,6 @@ defmodule Ash.Actions.Sort do
       {:error, error} -> {:error, error}
     end
   end
-
-  def process(_resource, nil), do: {:ok, nil}
 
   def sorting_on_identity?(%{sort: nil}), do: false
 

@@ -1278,14 +1278,17 @@ defmodule Ash.Actions.Read.Relationships do
         sort: sort,
         context: rel_context
       }) do
-    case Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
-      {:ok, sort} ->
-        has_parent_expr_in_sort?(sort) ||
-          do_has_parent_expr?(filter)
+    sort =
+      case Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
+        {:ok, sort} ->
+          sort
 
-      _ ->
-        false
-    end
+        _ ->
+          nil
+      end
+
+    has_parent_expr_in_sort?(sort) ||
+      do_has_parent_expr?(filter)
   end
 
   @doc false
@@ -1302,30 +1305,33 @@ defmodule Ash.Actions.Read.Relationships do
       ) do
     case Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
       {:ok, sort} ->
-        parent_stack = [source | Ash.Actions.Read.parent_stack_from_context(context)]
+        sort
 
-        has_parent_expr_in_sort?(sort) ||
-          filter
-          |> Ash.Filter.hydrate_refs(%{
-            parent_stack: parent_stack,
-            resource: destination,
-            public?: false
-          })
-          |> Ash.Actions.Read.add_calc_context_to_filter(
-            context[:private][:actor],
-            context[:private][:authorize],
-            context[:private][:tenant],
-            context[:private][:tracer],
-            domain,
-            destination,
-            expand?: true,
-            parent_stack: parent_stack
-          )
-          |> do_has_parent_expr?()
-
-      _ ->
-        false
+      error ->
+        IO.inspect(error)
+        nil
     end
+
+    parent_stack = [source | Ash.Actions.Read.parent_stack_from_context(context)]
+
+    has_parent_expr_in_sort?(sort) ||
+      filter
+      |> Ash.Filter.hydrate_refs(%{
+        parent_stack: parent_stack,
+        resource: destination,
+        public?: false
+      })
+      |> Ash.Actions.Read.add_calc_context_to_filter(
+        context[:private][:actor],
+        context[:private][:authorize],
+        context[:private][:tenant],
+        context[:private][:tracer],
+        domain,
+        destination,
+        expand?: true,
+        parent_stack: parent_stack
+      )
+      |> do_has_parent_expr?()
   end
 
   defp has_parent_expr_in_sort?(sort) do
