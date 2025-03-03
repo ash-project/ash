@@ -1278,10 +1278,13 @@ defmodule Ash.Actions.Read.Relationships do
         sort: sort,
         context: rel_context
       }) do
-    {:ok, sort} = Ash.Actions.Sort.process(destination, sort, %{}, rel_context)
-
-    has_parent_expr_in_sort?(sort) ||
-      do_has_parent_expr?(filter)
+    with {:ok, sort} <- Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
+      has_parent_expr_in_sort?(sort) ||
+        do_has_parent_expr?(filter)
+    else
+      _ ->
+        false
+    end
   end
 
   @doc false
@@ -1296,27 +1299,31 @@ defmodule Ash.Actions.Read.Relationships do
         context,
         domain
       ) do
-    {:ok, sort} = Ash.Actions.Sort.process(destination, sort, %{}, rel_context)
-    parent_stack = [source | Ash.Actions.Read.parent_stack_from_context(context)]
+    with {:ok, sort} <- Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
+      parent_stack = [source | Ash.Actions.Read.parent_stack_from_context(context)]
 
-    has_parent_expr_in_sort?(sort) ||
-      filter
-      |> Ash.Filter.hydrate_refs(%{
-        parent_stack: parent_stack,
-        resource: destination,
-        public?: false
-      })
-      |> Ash.Actions.Read.add_calc_context_to_filter(
-        context[:private][:actor],
-        context[:private][:authorize],
-        context[:private][:tenant],
-        context[:private][:tracer],
-        domain,
-        destination,
-        expand?: true,
-        parent_stack: parent_stack
-      )
-      |> do_has_parent_expr?()
+      has_parent_expr_in_sort?(sort) ||
+        filter
+        |> Ash.Filter.hydrate_refs(%{
+          parent_stack: parent_stack,
+          resource: destination,
+          public?: false
+        })
+        |> Ash.Actions.Read.add_calc_context_to_filter(
+          context[:private][:actor],
+          context[:private][:authorize],
+          context[:private][:tenant],
+          context[:private][:tracer],
+          domain,
+          destination,
+          expand?: true,
+          parent_stack: parent_stack
+        )
+        |> do_has_parent_expr?()
+    else
+      _ ->
+        false
+    end
   end
 
   defp has_parent_expr_in_sort?(sort) do

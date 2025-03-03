@@ -10,8 +10,12 @@ defmodule Ash.Actions.Sort do
   def process(_, []), do: {:ok, []}
 
   def process(resource, sort) when is_binary(sort) do
-    sort = String.split(sort, ",")
+    sort = String.split(sort, ",", trim: true)
     process(resource, sort)
+  end
+
+  def process(resource, sort) when is_atom(sort) do
+    process(resource, [sort])
   end
 
   def process(resource, sort) when is_list(sort) do
