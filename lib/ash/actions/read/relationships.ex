@@ -1278,10 +1278,11 @@ defmodule Ash.Actions.Read.Relationships do
         sort: sort,
         context: rel_context
       }) do
-    with {:ok, sort} <- Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
-      has_parent_expr_in_sort?(sort) ||
-        do_has_parent_expr?(filter)
-    else
+    case Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
+      {:ok, sort} ->
+        has_parent_expr_in_sort?(sort) ||
+          do_has_parent_expr?(filter)
+
       _ ->
         false
     end
@@ -1299,28 +1300,29 @@ defmodule Ash.Actions.Read.Relationships do
         context,
         domain
       ) do
-    with {:ok, sort} <- Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
-      parent_stack = [source | Ash.Actions.Read.parent_stack_from_context(context)]
+    case Ash.Actions.Sort.process(destination, sort, %{}, rel_context) do
+      {:ok, sort} ->
+        parent_stack = [source | Ash.Actions.Read.parent_stack_from_context(context)]
 
-      has_parent_expr_in_sort?(sort) ||
-        filter
-        |> Ash.Filter.hydrate_refs(%{
-          parent_stack: parent_stack,
-          resource: destination,
-          public?: false
-        })
-        |> Ash.Actions.Read.add_calc_context_to_filter(
-          context[:private][:actor],
-          context[:private][:authorize],
-          context[:private][:tenant],
-          context[:private][:tracer],
-          domain,
-          destination,
-          expand?: true,
-          parent_stack: parent_stack
-        )
-        |> do_has_parent_expr?()
-    else
+        has_parent_expr_in_sort?(sort) ||
+          filter
+          |> Ash.Filter.hydrate_refs(%{
+            parent_stack: parent_stack,
+            resource: destination,
+            public?: false
+          })
+          |> Ash.Actions.Read.add_calc_context_to_filter(
+            context[:private][:actor],
+            context[:private][:authorize],
+            context[:private][:tenant],
+            context[:private][:tracer],
+            domain,
+            destination,
+            expand?: true,
+            parent_stack: parent_stack
+          )
+          |> do_has_parent_expr?()
+
       _ ->
         false
     end
