@@ -26,10 +26,15 @@ defmodule Ash.Resource.Validation.Builtins do
 
       validate changing(:first_name)
       validate changing(:comments)
+      validate changing(:comments, touching?: true)
+
+  ## Options
+
+  #{Ash.Resource.Validation.Changing.Opts.docs()}
   """
-  @spec changing(attribute_or_relationship :: atom) :: Validation.ref()
-  def changing(field) do
-    {Validation.Changing, field: field}
+  @spec changing(attribute_or_relationship :: atom, opts :: Keyword.t()) :: Validation.ref()
+  def changing(field, opts \\ []) do
+    {Validation.Changing, Keyword.merge(opts, field: field)}
   end
 
   @doc """

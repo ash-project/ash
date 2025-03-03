@@ -15,7 +15,15 @@ defmodule Ash.Resource.Validation.Changing do
         field: [
           type: :atom,
           required: true,
-          doc: "The attribute or relationship to check for changes."
+          doc:
+            "The attribute or relationship to check for changes. Using a relationship does not compare old and new value, returning `true` if the value is being touched)"
+        ],
+        touching?: [
+          type: :atom,
+          required: false,
+          default: false,
+          doc:
+            "Whether to consider a field as changing if it is just being touched (i.e consider it changed when it is being changed to its current value)"
         ]
       ]
   end
@@ -35,12 +43,28 @@ defmodule Ash.Resource.Validation.Changing do
 
   @impl Ash.Resource.Validation
   def validate(changeset, opts, context) do
-    if field_is_changing?(changeset, Keyword.fetch!(opts, :field)),
+    if field_is_changing?(changeset, Keyword.fetch!(opts, :field), opts[:touching?]),
       do: :ok,
       else: {:error, exception(opts, context)}
   end
 
-  defp field_is_changing?(changeset, field) do
+  defp field_is_changing?(changeset, field, true) do
+    case Ash.Resource.Info.relationship(changeset.resource, field) do
+      nil ->
+        Map.has_key?(changeset.casted_attributes, field) ||
+          Map.has_key?(changeset.attributes, field) || Keyword.has_key?(changeset.atomcis, field)
+
+      %{type: :belongs_to} = relationship ->
+        Map.has_key?(changeset.casted_attributes, field) ||
+          Map.has_key?(changeset.attributes, field) || Keyword.has_key?(changeset.atomcis, field) ||
+          changing_relationship?(changeset, relationship.name)
+
+      relationship ->
+        changing_relationship?(changeset, relationship.name)
+    end
+  end
+
+  defp field_is_changing?(changeset, field, _) do
     case Ash.Resource.Info.relationship(changeset.resource, field) do
       nil ->
         changing_attribute?(changeset, field)
@@ -56,23 +80,27 @@ defmodule Ash.Resource.Validation.Changing do
 
   @impl Ash.Resource.Validation
   def atomic(changeset, opts, context) do
-    case atomic_field(changeset, Keyword.fetch!(opts, :field)) do
-      {:changing, field} ->
-        {:atomic, [field], expr(^atomic_ref(field) == ^ref(field)),
-         expr(
-           error(^InvalidAttribute, %{
-             field: ^field,
-             value: ^atomic_ref(field),
-             message: ^(context.message || @default_error_message),
-             vars: %{field: ^field}
-           })
-         )}
+    if opts[:touching?] do
+      validate(changeset, opts, context)
+    else
+      case atomic_field(changeset, Keyword.fetch!(opts, :field)) do
+        {:changing, field} ->
+          {:atomic, [field], expr(^atomic_ref(field) == ^ref(field)),
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^field,
+               value: ^atomic_ref(field),
+               message: ^(context.message || @default_error_message),
+               vars: %{field: ^field}
+             })
+           )}
 
-      {:not_changing, _field} ->
-        {:error, exception(opts, context)}
+        {:not_changing, _field} ->
+          {:error, exception(opts, context)}
 
-      {:not_atomic, field} ->
-        {:not_atomic, "can't atomically check if #{field} relationship is changing"}
+        {:not_atomic, field} ->
+          {:not_atomic, "can't atomically check if #{field} relationship is changing"}
+      end
     end
   end
 

@@ -1022,21 +1022,25 @@ defmodule Ash.Changeset do
       )
 
     with {:ok, change_opts} <- module.init(change_opts),
-         {:atomic, changeset, atomic_changes, validations} <-
-           atomic_with_changeset(
-             module.atomic(changeset, change_opts, struct(Ash.Resource.Change.Context, context)),
-             changeset
-           ),
-         {:atomic, condition} <- atomic_condition(where, changeset, context) do
-      changeset =
-        case condition do
-          true ->
-            apply_atomic_update(changeset, atomic_changes)
+         {:atomic, condition} <-
+           atomic_condition(where, changeset, context),
+         {{:atomic, modified_changeset?, new_changeset, atomic_changes, validations}, condition} <-
+           {atomic_with_changeset(
+              module.atomic(changeset, change_opts, struct(Ash.Resource.Change.Context, context)),
+              changeset
+            ), condition} do
+      case condition do
+        true ->
+          {:atomic, apply_atomic_update(new_changeset, atomic_changes)}
 
-          false ->
-            changeset
+        false ->
+          {:atomic, changeset}
 
-          condition ->
+        condition ->
+          if modified_changeset? do
+            {:not_atomic,
+             "change `#{inspect(module)}` modified the changeset, but had a condition that could not be checked without running the action"}
+          else
             atomic_changes =
               Map.new(atomic_changes, fn {key, value} ->
                 new_value =
@@ -1051,24 +1055,33 @@ defmodule Ash.Changeset do
                 {key, new_value}
               end)
 
-            apply_atomic_update(changeset, atomic_changes)
-        end
+            {:atomic, apply_atomic_update(new_changeset, atomic_changes)}
+          end
+      end
+      |> case do
+        {:not_atomic, reason} ->
+          {:not_atomic, reason}
 
-      Enum.reduce(
-        List.wrap(validations),
-        changeset,
-        fn {:atomic, _, condition_expr, error_expr}, changeset ->
-          validate_atomically(changeset, condition_expr, error_expr)
-        end
-      )
+        {:atomic, changeset} ->
+          Enum.reduce(
+            List.wrap(validations),
+            changeset,
+            fn {:atomic, _, condition_expr, error_expr}, changeset ->
+              validate_atomically(changeset, condition_expr, error_expr)
+            end
+          )
+      end
     else
-      {:ok, changeset} ->
-        changeset
+      {{:ok, new_changeset}, _condition} ->
+        new_changeset
+
+      {{:not_atomic, reason}, _} ->
+        {:not_atomic, reason}
 
       {:not_atomic, reason} ->
         {:not_atomic, reason}
 
-      :ok ->
+      {:ok, _} ->
         changeset
     end
   end
@@ -1133,9 +1146,15 @@ defmodule Ash.Changeset do
   end
 
   defp atomic_with_changeset({:atomic, changeset, atomics}, _changeset),
-    do: {:atomic, changeset, atomics, []}
+    do: {:atomic, true, changeset, atomics, []}
 
-  defp atomic_with_changeset({:atomic, atomics}, changeset), do: {:atomic, changeset, atomics, []}
+  defp atomic_with_changeset({:atomic, atomics}, changeset),
+    do: {:atomic, false, changeset, atomics, []}
+
+  defp atomic_with_changeset({:ok, changeset}, _) do
+    {:atomic, true, changeset, %{}, []}
+  end
+
   defp atomic_with_changeset(other, _), do: other
 
   defp validate_atomically(changeset, condition_expr, error_expr) do
@@ -1207,6 +1226,22 @@ defmodule Ash.Changeset do
           |> then(&{:cont, {:atomic, &1}})
       end
     end)
+    |> case do
+      {:atomic, expr} ->
+        case Ash.Expr.eval(expr,
+               resource: changeset.resource,
+               unknown_on_unknown_refs?: true
+             ) do
+          {:ok, value} ->
+            {:atomic, value}
+
+          :unknown ->
+            {:atomic, expr}
+
+          {:error, _} ->
+            {:atomic, false}
+        end
+    end
   end
 
   # This is not expressly necessary as `expr(true and not ^new_expr)` would also
