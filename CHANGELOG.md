@@ -2,6 +2,35 @@
 
 <!-- changelog -->
 
+## [v3.4.66](https://github.com/ash-project/ash/compare/v3.4.65...v3.4.66) (2025-03-03)
+
+
+
+
+### Bug Fixes:
+
+* handle unparseable relationship sorts & single atom sorts
+
+* don't allow modifying changeset with atomic conditions
+
+* don't prevent changing values to `nil` when original data is not available
+
+* propagate invalid refrence error when adding calc context to sort (#1827)
+
+* ensure that we don't try to compare not loaded or forbidden values
+
+* use `filter` not `filters` in stale record error
+
+### Improvements:
+
+* add `touching?` option to changing validation
+
+* don't show required errors for fields with other errors
+
+* validate aggregate multitenancy
+
+* ignore action-defined loads when using `Ash.load`
+
 ## [v3.4.65](https://github.com/ash-project/ash/compare/v3.4.64...v3.4.65) (2025-02-25)
 
 
