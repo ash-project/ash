@@ -334,9 +334,12 @@ defmodule Ash.Generator do
         |> StreamData.fixed_map()
       end)
       |> StreamData.map(fn keys ->
-        Ash.Resource.set_metadata(struct(keys.__will_be_struct__, keys), %{
-          private: %{generator_after_action: opts[:after_action]}
-        })
+        Ash.Resource.set_metadata(
+          struct(keys.__will_be_struct__, keys),
+          opts
+          |> Keyword.take([:tenant])
+          |> Enum.into(%{private: %{generator_after_action: opts[:after_action]}})
+        )
       end)
     else
       if is_function(record) do
@@ -351,9 +354,12 @@ defmodule Ash.Generator do
       |> to_generators()
       |> StreamData.fixed_map()
       |> StreamData.map(fn keys ->
-        Ash.Resource.set_metadata(struct(resource, keys), %{
-          private: %{generator_after_action: opts[:after_action]}
-        })
+        Ash.Resource.set_metadata(
+          struct(resource, keys),
+          opts
+          |> Keyword.take([:tenant])
+          |> Enum.into(%{private: %{generator_after_action: opts[:after_action]}})
+        )
       end)
     end
   end

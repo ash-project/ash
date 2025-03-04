@@ -32,6 +32,8 @@ defmodule Ash.Seed do
       |> Enum.concat(Ash.Resource.Info.relationships(resource))
       |> Enum.map(& &1.name)
 
+    opts = Map.take(input.__metadata__, [:tenant]) |> Enum.into([])
+
     input =
       input
       |> Map.take(keys)
@@ -49,7 +51,7 @@ defmodule Ash.Seed do
           Map.put(acc, key, value)
       end)
 
-    seed!(resource, input)
+    seed!(resource, input, opts)
   end
 
   def seed!(records) when is_list(records) do
