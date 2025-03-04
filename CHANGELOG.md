@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.67](https://github.com/ash-project/ash/compare/v3.4.66...v3.4.67) (2025-03-04)
+
+
+
+
+### Bug Fixes:
+
+* Pass tenant option when seeding resource given by the generator (#1834)
+
 ## [v3.4.66](https://github.com/ash-project/ash/compare/v3.4.65...v3.4.66) (2025-03-03)
 
 
