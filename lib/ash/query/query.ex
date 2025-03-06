@@ -421,6 +421,8 @@ defmodule Ash.Query do
   Sorts added as user input (or filters constructed with `Ash.Filter.parse_input`)
   will honor any field policies on resources by replacing any references to the field
   with `nil` in cases where the actor should not be able to see the given field.
+
+  See `Ash.Query.sort/3` for more information on accepted formats.
   """
   def sort_input(query, sorts, opts \\ []) do
     query = new(query)
@@ -2921,25 +2923,89 @@ defmodule Ash.Query do
   @doc """
   Sort the results based on attributes, aggregates or calculations.
 
-  Calculations are supported if they are defined with expressions, which can be done one of two ways.
+  ## Format
 
-  1. with the shorthand `calculate :calc, :type, expr(a + b)`
-  2. By defining `expression/2` in a custom calculation module
+  Your sort can be an atom, list of atoms, a keyword list, or a string. When an order is not specified,
+  `:asc` is the default. See Sort Orders below for more on the available orders.
 
-  See the guide on calculations for more.
+  ```elixir
+  # sort by name ascending
+  Ash.Query.sort(query, :name)
 
-  Takes a list of fields to sort on, or a keyword list/mixed keyword list of fields and sort directions.
-  The default sort direction is `:asc`.
+  # sort by name descending
+  Ash.Query.sort(query, name: :desc)
 
-  Examples:
+  # sort by name descending with nils at the end
+  Ash.Query.sort(query, name: :desc_nils_last)
 
+  # sort by name descending, and title ascending
+  Ash.Query.sort(query, name: :desc, title: :asc)
+
+  # sort by name ascending
+  Ash.Query.sort(query, "name")
+
+  # sort by name descending, and title ascending
+  Ash.Query.sort(query, "-name,title")
+
+  # sort by name descending with nils at the end
+  Ash.Query.sort(query, "--name")
   ```
+
+  ## Sort Strings
+
+  A comma separated list of fields to sort on, each with an optional prefix.
+
+  The prefixes are:
+
+  * "+" - Same as no prefix. Sorts `:asc`.
+  * "++" - Sorts `:asc_nils_first`
+  * "-" - Sorts `:desc`
+  * "--" - Sorts `:desc_nils_last`
+
+  For example
+
+      "foo,-bar,++baz,--buz"
+
+  ## A list of sort strings
+
+  Same prefix rules as above, but provided as a list.
+
+  For example:
+
+      ["foo", "-bar", "++baz", "--buz"]
+
+
+  ## Calculations
+
+  Calculation inputs can be provided by providing a map. To provide both inputs and an order,
+  use a tuple with the first element being the inputs, and the second element being the order.
+
+  ```elixir
+  Ash.Query.sort(query, full_name: %{separator: " "})
+
+  Ash.Query.sort(query, full_name: {%{separator: " "}, :asc})
+  ```
+
+  ## Sort Orders
+
+  The available orders are:
+
+  - `:asc` - Sort values ascending, with lowest first and highest last, and `nil` values at the end
+  - `:desc` - Sort values descending, with highest first and lowest last, and `nil` values at the beginning
+  - `:asc_nils_first` - Sort values ascending, with lowest first and highest last, and `nil` values at the beginning
+  - `:desc_nils_last` - Sort values descending, with highest first and lowest last, and `nil` values at the end
+
+  ## Examples
+
+  ```elixir
   Ash.Query.sort(query, [:foo, :bar])
 
   Ash.Query.sort(query, [:foo, bar: :desc])
 
   Ash.Query.sort(query, [foo: :desc, bar: :asc])
   ```
+
+  See the guide on calculations for more.
 
   ## Options
 

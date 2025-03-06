@@ -71,31 +71,7 @@ defmodule Ash.Sort do
   @doc """
   A utility for parsing sorts provided from external input. Only allows sorting on public fields.
 
-  The supported formats are:
-
-  ### Sort Strings
-
-  A comma separated list of fields to sort on, each with an optional prefix.
-
-  The prefixes are:
-
-  * "+" - Same as no prefix. Sorts `:asc`.
-  * "++" - Sorts `:asc_nils_first`
-  * "-" - Sorts `:desc`
-  * "--" - Sorts `:desc_nils_last`
-
-  For example
-
-      "foo,-bar,++baz,--buz"
-
-  ### A list of sort strings
-
-  Same prefix rules as above, but provided as a list.
-
-  For example:
-
-      ["foo", "-bar", "++baz", "--buz"]
-
+  See `Ash.Query.sort/3` for supported formats.
 
   ## Handling specific values
 
