@@ -238,7 +238,7 @@ defmodule Ash.Helpers do
         end
 
       {:ok, action} ->
-        case Ash.Resource.Info.action(resource, action, type) do
+        case Ash.Resource.Info.action(resource, action) do
           nil ->
             {:error,
              Ash.Error.Invalid.NoSuchAction.exception(
@@ -248,7 +248,16 @@ defmodule Ash.Helpers do
              )}
 
           action ->
-            {:ok, action}
+            if action.type == type do
+              {:ok, action}
+            else
+              {:error,
+               Ash.Error.Invalid.InvalidActionType.exception(
+                 resource: resource,
+                 action: action,
+                 type: type
+               )}
+            end
         end
 
       :error ->
