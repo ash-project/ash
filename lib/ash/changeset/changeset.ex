@@ -2606,6 +2606,8 @@ defmodule Ash.Changeset do
     changes
     |> Enum.reduce(changeset, fn {location, change_or_validation}, changeset ->
       try do
+        context = %{ context | tenant: changeset.tenant }
+
         run_change_or_validation(
           change_or_validation,
           changeset,
