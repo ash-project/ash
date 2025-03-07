@@ -198,6 +198,11 @@ defmodule Ash.Actions.Read.Relationships do
 
     domain = Ash.Domain.Info.related_domain(related_query, relationship, query.domain)
 
+    parent_stack =
+      [
+        query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
+      ]
+
     related_query =
       related_query
       |> Ash.Query.set_context(%{
@@ -213,9 +218,7 @@ defmodule Ash.Actions.Read.Relationships do
         tracer: query.context[:private][:tracer]
       )
       |> Ash.Query.sort(relationship.sort)
-      |> Ash.Query.do_filter(relationship.filter,
-        parent_stack: List.wrap(query.context[:parent_stack]) ++ [query.resource]
-      )
+      |> Ash.Query.do_filter(relationship.filter, parent_stack: parent_stack)
       |> Ash.Query.set_context(relationship.context)
       |> Ash.Query.set_context(%{private: %{loading_relationship?: true}})
       |> hydrate_refs(query.context[:private][:actor], relationship.source)

@@ -361,6 +361,13 @@ defmodule Ash.Test.Actions.LoadTest do
         domain(Ash.Test.Actions.LoadTest.Domain2)
       end
 
+      has_many :ratings_after_creation, Ash.Test.Actions.LoadTest.Rating do
+        public?(true)
+        domain(Ash.Test.Actions.LoadTest.Domain2)
+        no_attributes? true
+        filter expr(parent(inserted_at) < made_at and parent(id) == post_id)
+      end
+
       has_many :posts_with_same_title, __MODULE__ do
         public?(true)
         no_attributes? true
@@ -474,6 +481,11 @@ defmodule Ash.Test.Actions.LoadTest do
     attributes do
       uuid_primary_key(:id)
       attribute(:rating, :integer, public?: true)
+      # calling it `made_at` is part of a regression 
+      # test that this attribute has no `timestamps` (specifically that
+      # `inserted_at` reference would not resolve for this resource
+      # while on `Post` it does).
+      create_timestamp :made_at, public?: true, writable?: true
     end
 
     actions do
@@ -531,6 +543,31 @@ defmodule Ash.Test.Actions.LoadTest do
                post1
                |> Ash.load!(:posts_in_same_category)
                |> Map.get(:posts_in_same_category)
+    end
+
+    test "parent references work with no_attributes? true" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
+        |> Ash.create!()
+
+      rating =
+        Rating
+        |> Ash.Changeset.for_create(:create, %{
+          rating: 1,
+          made_at: DateTime.shift(post.inserted_at, day: 1)
+        })
+        |> Ash.Changeset.manage_relationship(:post, post, type: :append_and_remove)
+        |> Ash.create!()
+
+      rating_id = rating.id
+
+      assert [%{id: ^rating_id}] =
+               Rating
+               |> Ash.Query.load(post: [:ratings_after_creation])
+               |> Ash.read_one!()
+               |> Map.get(:post)
+               |> Map.get(:ratings_after_creation)
     end
 
     test "parent expressions can be used for complex constraints" do
