@@ -39,7 +39,7 @@ defmodule Ash.Policy.Check do
   """
   @callback auto_filter(actor(), authorizer(), options()) :: Keyword.t() | Ash.Expr.t()
   @doc """
-  An optional callback, hat allows the check to work with policies set to `access_type :runtime`
+  An optional callback, that allows the check to work with policies set to `access_type :runtime`
 
   Takes a list of records, and returns the subset of authorized records.
   """
