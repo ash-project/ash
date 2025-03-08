@@ -3039,7 +3039,6 @@ defmodule Ash.Actions.Read do
         {:ok, result, extra_info} ->
           query =
             if extra_info[:full_count] do
-              IO.inspect(extra_info)
               Ash.Query.set_context(query, %{full_count: extra_info[:full_count]})
             else
               query

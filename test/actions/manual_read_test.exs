@@ -160,6 +160,5 @@ defmodule Ash.Test.Actions.ManualReadTest do
              |> Ash.Query.for_read(:read)
              |> Ash.Query.page(limit: 1)
              |> Ash.read!()
-             |> IO.inspect()
   end
 end
