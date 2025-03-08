@@ -62,8 +62,6 @@ defmodule MyApp.ManualRead do
   use Ash.Resource.ManualRead
 
   def read(ash_query, ecto_query, _opts, _context) do
-    return_count? = ash_query.page[:count]
-
     %{"data" => data, "count" => count} = make_some_api_request(...)
     if ash_query.page[:count] do
       {:ok, query_results}
