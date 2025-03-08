@@ -734,6 +734,7 @@ defmodule Ash.Actions.Read.Relationships do
               count,
               related_query.sort,
               related_query,
+              related_query,
               opts
             )
 

@@ -11,6 +11,10 @@ defmodule Ash.Resource.ManualRead do
           optional(any) => any
         }
 
+  @type extra_info :: %{
+          optional(:full_count) => non_neg_integer()
+        }
+
   @callback load_relationships(
               query :: Ash.Query.t(),
               results :: list(Ash.Resource.record()),
@@ -18,7 +22,9 @@ defmodule Ash.Resource.ManualRead do
               context :: context(),
               lazy? :: boolean()
             ) ::
-              {:ok, list(Ash.Resource.record())} | {:error, term}
+              {:ok, list(Ash.Resource.record())}
+              | {:ok, list(Ash.Resource.record()), extra_info()}
+              | {:error, term}
 
   @callback read(
               query :: Ash.Query.t(),
@@ -26,7 +32,9 @@ defmodule Ash.Resource.ManualRead do
               opts :: Keyword.t(),
               context :: context()
             ) ::
-              {:ok, list(Ash.Resource.record())} | {:error, term}
+              {:ok, list(Ash.Resource.record())}
+              | {:ok, list(Ash.Resource.record()), extra_info()}
+              | {:error, term}
 
   @optional_callbacks [
     load_relationships: 5

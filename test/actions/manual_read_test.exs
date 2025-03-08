@@ -13,7 +13,7 @@ defmodule Ash.Test.Actions.ManualReadTest do
     end
 
     def read(_query, _data_layer_query, _opts, _context) do
-      {:ok, []}
+      {:ok, [], %{full_count: 0}}
     end
   end
 
@@ -34,6 +34,7 @@ defmodule Ash.Test.Actions.ManualReadTest do
       read :read do
         primary? true
         manual ManualRead
+        pagination offset?: true, required?: false
       end
 
       read :all
@@ -62,7 +63,17 @@ defmodule Ash.Test.Actions.ManualReadTest do
         Ash.create!(Post, %{id: "4137893e-b28f-445e-9b63-e394953942e2", name: "post2"})
       ]
 
-      Ash.Query.apply_to(query, results)
+      case Ash.Query.apply_to(query, results) do
+        {:ok, results} ->
+          if query.page[:count] do
+            {:ok, results, %{full_count: 2}}
+          else
+            {:ok, results}
+          end
+
+        other ->
+          other
+      end
     end
   end
 
@@ -78,6 +89,7 @@ defmodule Ash.Test.Actions.ManualReadTest do
       read :read do
         primary? true
         manual QueryableManualRead
+        pagination offset?: true, required?: false
       end
     end
 
@@ -134,5 +146,20 @@ defmodule Ash.Test.Actions.ManualReadTest do
              Post
              |> Ash.Query.filter(name == "post2")
              |> Ash.read!()
+  end
+
+  test "the action can return the full conut for pagination" do
+    assert %{results: [_], count: 2} =
+             Post
+             |> Ash.Query.for_read(:read)
+             |> Ash.Query.page(limit: 1, count: true)
+             |> Ash.read!()
+
+    assert %{results: [_], count: nil} =
+             Post
+             |> Ash.Query.for_read(:read)
+             |> Ash.Query.page(limit: 1)
+             |> Ash.read!()
+             |> IO.inspect()
   end
 end

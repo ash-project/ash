@@ -328,7 +328,7 @@ defmodule Ash.Actions.Read do
             {data_result, query}
         end
 
-      with {:ok, data, count, calculations_at_runtime, calculations_in_query, _query} <-
+      with {:ok, data, count, calculations_at_runtime, calculations_in_query, new_query} <-
              data_result,
            data = add_tenant(data, query),
            {:ok, data} <-
@@ -378,6 +378,7 @@ defmodule Ash.Actions.Read do
           count,
           query.sort,
           query,
+          new_query,
           opts
         )
         |> add_query(query, opts)
@@ -593,7 +594,7 @@ defmodule Ash.Actions.Read do
              {:ok, query} <- paginate(query, action, opts[:skip_pagination?]),
              {:ok, data_layer_query} <-
                Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations),
-             {:ok, results} <-
+             {{:ok, results}, query} <-
                run_query(
                  set_phase(query, :executing),
                  data_layer_query,
@@ -621,8 +622,11 @@ defmodule Ash.Actions.Read do
             notify_callback.(query, before_notifications)
             {{:error, query}, query}
 
-          {{:error, %Ash.Query{} = query}, query} ->
+          {{:error, %Ash.Query{} = query}, _} ->
             {:error, query}
+
+          {{:error, error}, query} ->
+            {:error, Ash.Query.add_error(query, error)}
 
           {:ok, %Ash.Query{valid?: false} = query} ->
             {{:error, query}, query}
@@ -1135,7 +1139,7 @@ defmodule Ash.Actions.Read do
              data_layer_calculations,
              query.resource
            ),
-         {:ok, results} <-
+         {{:ok, results}, query} <-
            run_query(
              query,
              data_layer_query,
@@ -1981,7 +1985,7 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
-  def add_page(data, action, count, sort, original_query, opts) do
+  def add_page(data, action, count, sort, original_query, new_query, opts) do
     cond do
       opts[:skip_pagination?] ->
         data
@@ -1996,7 +2000,7 @@ defmodule Ash.Actions.Read do
         Ash.Page.Unpaged.new(data, opts)
 
       original_query.page[:limit] ->
-        to_page(data, action, count, sort, original_query, opts)
+        to_page(data, action, count, sort, original_query, new_query, opts)
 
       true ->
         data
@@ -2004,7 +2008,8 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
-  def to_page(data, action, count, sort, original_query, opts) do
+  def to_page(data, action, count, sort, original_query, new_query, opts) do
+    count = count || new_query.context[:full_count]
     page_opts = original_query.page
 
     {data, rest} =
@@ -2508,6 +2513,25 @@ defmodule Ash.Actions.Read do
   defp maybe_await(other), do: other
 
   defp fetch_count(
+         %{context: %{full_count: full_count}},
+         _,
+         _,
+         _
+       )
+       when not is_nil(full_count) do
+    {:ok, {:ok, full_count}}
+  end
+
+  defp fetch_count(
+         %{action: %{manual: {_mod, _opts}}},
+         _,
+         _,
+         _
+       ) do
+    {:ok, {:ok, nil}}
+  end
+
+  defp fetch_count(
          %{action: action, resource: resource, page: page} = query,
          query_before_pagination,
          relationship_path_filters,
@@ -2957,16 +2981,21 @@ defmodule Ash.Actions.Read do
          _context,
          load_attributes?
        ) do
-    result
-    |> Helpers.select(query)
-    |> Helpers.load_runtime_types(query, load_attributes?)
-    |> case do
-      {:ok, result} ->
-        Ash.load(result, query, domain: query.domain, reuse_values?: true)
+    if query.limit == 0 do
+      {:ok, []}
+    else
+      result
+      |> Helpers.select(query)
+      |> Helpers.load_runtime_types(query, load_attributes?)
+      |> case do
+        {:ok, result} ->
+          Ash.load(result, query, domain: query.domain, reuse_values?: true)
 
-      other ->
-        other
+        other ->
+          other
+      end
     end
+    |> then(&{&1, query})
   end
 
   defp run_query(
@@ -2994,6 +3023,7 @@ defmodule Ash.Actions.Read do
       |> Helpers.select(query)
       |> Helpers.load_runtime_types(query, load_attributes?)
     end
+    |> then(&{&1, query})
   end
 
   defp run_query(
@@ -3002,11 +3032,30 @@ defmodule Ash.Actions.Read do
          context,
          load_attributes?
        ) do
-    query
-    |> mod.read(data_layer_query, opts, context)
+    {result, query} =
+      query
+      |> mod.read(data_layer_query, opts, context)
+      |> case do
+        {:ok, result, extra_info} ->
+          query =
+            if extra_info[:full_count] do
+              IO.inspect(extra_info)
+              Ash.Query.set_context(query, %{full_count: extra_info[:full_count]})
+            else
+              query
+            end
+
+          {{:ok, result}, query}
+
+        other ->
+          {other, query}
+      end
+
+    result
     |> validate_manual_action_return_result!(query.resource, query.action)
     |> Helpers.select(query)
     |> Helpers.load_runtime_types(query, load_attributes?)
+    |> then(&{&1, query})
   end
 
   defp run_query(
@@ -3024,6 +3073,7 @@ defmodule Ash.Actions.Read do
       |> Helpers.select(query)
       |> Helpers.load_runtime_types(query, load_attributes?)
     end
+    |> then(&{&1, query})
   end
 
   defp validate_manual_action_return_result!({:ok, list} = result, _resource, _)

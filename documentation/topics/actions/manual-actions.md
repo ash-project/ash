@@ -54,6 +54,27 @@ defmodule MyApp.ManualRead do
 end
 ```
 
+In addition to returning query results, you can return a `t:Ash.Resource.ManualRead.extra_info()`.
+This contains a `full_count` key, which can be used when paginating to set the total count of records.
+
+```elixir
+defmodule MyApp.ManualRead do
+  use Ash.Resource.ManualRead
+
+  def read(ash_query, ecto_query, _opts, _context) do
+    return_count? = ash_query.page[:count]
+
+    %{"data" => data, "count" => count} = make_some_api_request(...)
+    if ash_query.page[:count] do
+      {:ok, query_results}
+    else
+      {:ok, query_results, %{full_count: count}} 
+    end
+  end
+end
+
+```
+
 ### Modifying the query
 
 As an alternative to manual read actions, you can also provide the `modify_query` option, which takes an `MFA` and allows low level manipulation of the query just before it is dispatched to the data layer.
