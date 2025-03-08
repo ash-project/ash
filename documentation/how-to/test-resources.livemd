@@ -3,6 +3,7 @@
 # Test Resources
 
 ```elixir
+Application.put_env(:stream_data, :max_runs, 10)
 Mix.install([{:ash, "~> 3.0"}, {:simple_sat, "~> 0.1"}],
   consolidate_protocols: false
 )
@@ -35,8 +36,6 @@ While you don't necessarily need to follow all steps below, we show the various 
 * Test policies "in isolation" using `Ash.can?` (or `Domain.can_*`, provided by code interfaces)
 
 ## Examples
-
-<!-- livebook:{"disable_formatting":true} -->
 
 ```elixir
 defmodule User do
@@ -138,16 +137,46 @@ end
 <!-- livebook:{"output":true} -->
 
 ```
-{:module, Domain, <<70, 79, 82, 49, 0, 2, 46, ...>>,
+{:module, Domain, <<70, 79, 82, 49, 0, 1, 110, ...>>,
  [
    Ash.Domain.Dsl.Resources.Resource,
    Ash.Domain.Dsl.Resources.Options,
-   Ash.Domain.Dsl,
-   %{opts: [], entities: [...]},
-   Ash.Domain.Dsl,
-   Ash.Domain.Dsl.Resources.Options,
-   ...
+   %{opts: [], entities: [%Ash.Domain.Dsl.ResourceReference{...}, ...]}
  ]}
+```
+
+## Create a generator
+
+See `Ash.Generator` documentation for more examples and docs.
+
+```elixir
+defmodule Generator do
+  use Ash.Generator
+
+  def user(opts \\ []) do
+    changeset_generator(
+      User,
+      :create,
+      overrides: opts,
+      actor: opts[:actor]
+    ) 
+  end
+
+  def tweet(opts \\ []) do
+    changeset_generator(
+      Tweet,
+      :create,
+      overrides: opts,
+      actor: opts[:actor]
+    ) 
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Generator, <<70, 79, 82, 49, 0, 0, 10, ...>>, {:tweet, 1}}
 ```
 
 ## Write some tests
@@ -156,11 +185,12 @@ end
 defmodule ActionInvocationTest do
   use ExUnit.Case
   import ExUnitProperties
+  import Generator
 
   describe "valid inputs" do
     # now if our action inputs are invalid when we think they should be valid, we will find out here
     property "accepts all valid input" do
-      user = Domain.create_user!()
+      user = generate(user())
 
       check all(input <- Ash.Generator.action_input(Tweet, :create)) do
         {text, other_inputs} = Map.pop!(input, :text)
@@ -177,7 +207,7 @@ defmodule ActionInvocationTest do
     # same as the above, but actually call the action. This tests the underlying action implementation
     # not just initial validation
     property "succeeds on all valid input" do
-      user = Domain.create_user!()
+      user = generate(user())
 
       check all(input <- Ash.Generator.action_input(Tweet, :create)) do
         {text, other_inputs} = Map.pop!(input, :text)
@@ -186,7 +216,7 @@ defmodule ActionInvocationTest do
     end
 
     test "can tweet some specific text, in addition to any other valid inputs" do
-      user = Domain.create_user!()
+      user = generate(user())
 
       check all(
               input <- Ash.Generator.action_input(Tweet, :create, %{text: "some specific text"})
@@ -199,33 +229,32 @@ defmodule ActionInvocationTest do
 
   describe "authorization" do
     test "allows a user to update their own tweet" do
-      user = Domain.create_user!()
-      tweet = Domain.create_tweet!("Hello world!", actor: user)
+      user = generate(user())
+      tweet = generate(tweet(text: "Hello world!", actor: user))
 
       assert Domain.can_update_tweet?(user, tweet, "Goodbye world!")
     end
 
     test "does not allow a user to update someone elses tweet" do
-      user = Domain.create_user!()
-      user2 = Domain.create_user!()
+      [user, user2] = generate_many(user(), 2)
       tweet = Domain.create_tweet!("Hello world!", actor: user)
 
       refute Domain.can_update_tweet?(user2, tweet, "Goodbye world!")
     end
 
     test "allows an admin user to update someone elses tweet" do
-      user = Domain.create_user!()
-      user2 = Domain.create_user!(%{admin?: true})
-      tweet = Domain.create_tweet!("Hello world!", actor: user)
+      user = generate(user())
+      admin = generate(user(admin?: true))
+      tweet = generate(tweet(actor: user))
 
-      assert Domain.can_update_tweet?(user2, tweet, "Goodbye world!")
+      assert Domain.can_update_tweet?(admin, tweet, "Goodbye world!")
     end
   end
 
   describe "calculations" do
     test "text length calculation computes the length of the text" do
-      user = Domain.create_user!()
-      tweet = Domain.create_tweet!("Hello world!", actor: user)
+      user = generate(user())
+      tweet = generate(tweet(text: "Hello world!", actor: user))
       assert Ash.calculate!(tweet, :tweet_length) == 12
     end
   end
@@ -237,15 +266,15 @@ ExUnit.run()
 <!-- livebook:{"output":true} -->
 
 ```
-.......
-Finished in 0.07 seconds (0.00s async, 0.07s sync)
-2 properties, 5 tests, 0 failures
+Running ExUnit with seed: 462155, max_cases: 28
 
-Randomized with seed 42546
+.......
+Finished in 0.08 seconds (0.00s async, 0.08s sync)
+2 properties, 5 tests, 0 failures
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```
-%{total: 7, failures: 0, skipped: 0, excluded: 0}
+%{total: 7, failures: 0, excluded: 0, skipped: 0}
 ```
