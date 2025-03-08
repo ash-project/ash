@@ -37,7 +37,7 @@ defmodule Ash.Actions.Helpers do
 
               applicable = changes[change_index]
 
-              if applicable == :all || index in applicable do
+              if applicable == :all || (applicable && index in applicable) do
                 change_opts =
                   Ash.Actions.Helpers.templated_opts(
                     change_opts,

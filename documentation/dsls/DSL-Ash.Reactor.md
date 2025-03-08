@@ -481,7 +481,7 @@ argument :three, value(3)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`description`](#reactor-ash_step-argument-description){: #reactor-ash_step-argument-description } | `String.t` |  | An optional description for the argument. |
+| [`description`](#reactor-ash_step-argument-description){: #reactor-ash_step-argument-description } | `String.t \| nil` |  | An optional description for the argument. |
 | [`transform`](#reactor-ash_step-argument-transform){: #reactor-ash_step-argument-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the argument before it is passed to the step. |
 
 
@@ -1470,7 +1470,7 @@ argument :three, value(3)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`description`](#reactor-change-argument-description){: #reactor-change-argument-description } | `String.t` |  | An optional description for the argument. |
+| [`description`](#reactor-change-argument-description){: #reactor-change-argument-description } | `String.t \| nil` |  | An optional description for the argument. |
 | [`transform`](#reactor-change-argument-transform){: #reactor-change-argument-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the argument before it is passed to the step. |
 
 

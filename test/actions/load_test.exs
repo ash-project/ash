@@ -481,7 +481,7 @@ defmodule Ash.Test.Actions.LoadTest do
     attributes do
       uuid_primary_key(:id)
       attribute(:rating, :integer, public?: true)
-      # calling it `made_at` is part of a regression 
+      # calling it `made_at` is part of a regression
       # test that this attribute has no `timestamps` (specifically that
       # `inserted_at` reference would not resolve for this resource
       # while on `Post` it does).
