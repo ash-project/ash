@@ -95,11 +95,7 @@ defmodule Ash.Type.NewType do
     end
 
     subtype_of =
-      if opts[:lazy_init?] do
-        Macro.escape(opts[:subtype_of])
-      else
-        Ash.Type.get_type(opts[:subtype_of])
-      end
+      Ash.Type.get_type(opts[:subtype_of])
 
     quote bind_quoted: [
             subtype_of: subtype_of,
@@ -108,7 +104,9 @@ defmodule Ash.Type.NewType do
             mod: __MODULE__
           ],
           generated: true do
-      Code.ensure_compiled!(subtype_of)
+      if !lazy_init? do
+        Code.ensure_compiled!(subtype_of)
+      end
 
       @compile {:inline, get_constraints: 1}
 

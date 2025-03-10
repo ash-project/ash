@@ -71,6 +71,43 @@ defmodule Ash.Type.Keyword do
   end
 
   @impl true
+  def init(constraints) do
+    if is_list(constraints[:fields]) do
+      constraints[:fields]
+      |> List.wrap()
+      |> Enum.reduce_while({:ok, []}, fn {name, config}, {:ok, fields} ->
+        type = config[:type]
+        constraints = config[:constraints] || []
+
+        if Keyword.get(config, :init?, true) do
+          case Ash.Type.init(type, constraints) do
+            {:ok, constraints} ->
+              {:cont, {:ok, [{name, Keyword.put(config, :constraints, constraints)} | fields]}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        else
+          {:cont, {:ok, [{name, config} | fields]}}
+        end
+      end)
+      |> case do
+        {:ok, fields} ->
+          {:ok, Keyword.put(constraints, :fields, Enum.reverse(fields))}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      if is_nil(constraints[:fields]) do
+        {:ok, constraints}
+      else
+        {:error, "fields must be a list, got `#{constraints[:fields]}`"}
+      end
+    end
+  end
+
+  @impl true
   def cast_input("", _), do: {:ok, nil}
 
   def cast_input(nil, _), do: {:ok, nil}
