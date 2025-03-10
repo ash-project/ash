@@ -5,7 +5,7 @@ defmodule Mix.Tasks.Ash.Codegen do
 ## Flags
 
   * `dry-run` - no files are created, instead the new generated code is printed to the console
-  * `check` - no files are created, returns an exit(1) code if the current snapshots and resources don't fit
+  * `check` - no files are created, returns an exit(1) code if any code would need to be generated
 
   """
   use Mix.Task
