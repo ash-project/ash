@@ -1,6 +1,12 @@
 defmodule Mix.Tasks.Ash.Codegen do
   @moduledoc """
   Runs all codegen tasks for any extension on any resource/domain in your application.
+
+  Flags:
+
+  * `dry-run` - no files are created, instead the new migration is printed
+  * `check` - no files are created, returns an exit(1) code if the current snapshots and resources don't fit
+
   """
   use Mix.Task
 
