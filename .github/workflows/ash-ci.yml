@@ -59,6 +59,7 @@ jobs:
     name: mix deps.get
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-deps-get@main
   auditor:
     name: audit
