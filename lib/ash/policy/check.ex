@@ -59,7 +59,7 @@ defmodule Ash.Policy.Check do
   @callback prefer_expanded_description?() :: boolean()
 
   @doc "Whether or not your check requires the original data of a changeset (if applicable)"
-  @callback requires_original_data?(actor(), options()) :: boolean()
+  @callback requires_original_data?(authorizer(), options()) :: boolean()
 
   @doc """
   The type of the check
