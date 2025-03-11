@@ -48,17 +48,37 @@ on:
       igniter-upgrade:
         type: boolean
         default: true
+      elixir-version:
+        type: string
+        default: "default"
 env:
   PG_VERSION: ${{inputs.postgres-version}}
   ASH_CI_BUILD: true
 jobs:
-  deps:
-    name: mix deps.get
+  set-tool-versions:
+    name: Set tool versions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Update Elixir version in .tool-versions
+        if: inputs.elixir-version != 'default'
+        run: |
+          if [ -f .tool-versions ]; then
+            if grep -q "^elixir " .tool-versions; then
+              sed -i "s/^elixir .*$/elixir ${{ inputs.elixir-version }}/" .tool-versions
+            else
+              echo "elixir ${{ inputs.elixir-version }}" >> .tool-versions
+            fi
+          else
+            echo "elixir ${{ inputs.elixir-version }}" > .tool-versions
+          fi
+  deps:
+    name: mix deps.get
+    runs-on: ubuntu-latest
+    needs:
+      - set-tool-versions
+    steps:
       - uses: team-alembic/staple-actions/actions/mix-deps-get@main
-
   auditor:
     name: audit
     runs-on: ubuntu-latest
