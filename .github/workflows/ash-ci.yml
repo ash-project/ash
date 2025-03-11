@@ -51,6 +51,9 @@ on:
       elixir-version:
         type: string
         default: "default"
+      erlang-version:
+        type: string
+        default: "default"
 env:
   PG_VERSION: ${{inputs.postgres-version}}
   ASH_CI_BUILD: true
@@ -88,6 +91,18 @@ jobs:
             fi
           else
             echo "elixir ${{ inputs.elixir-version }}" > .tool-versions
+          fi
+      - name: Update Erlang version in .tool-versions
+        if: inputs.erlang-version != 'default'
+        run: |
+          if [ -f .tool-versions ]; then
+            if grep -q "^erlang " .tool-versions; then
+              sed -i "s/^erlang .*$/erlang ${{ inputs.erlang-version }}/" .tool-versions
+            else
+              echo "erlang ${{ inputs.erlang-version }}" >> .tool-versions
+            fi
+          else
+            echo "erlang ${{ inputs.erlang-version }}" > .tool-versions
           fi
       - uses: team-alembic/staple-actions/actions/install-elixir@main
       - uses: team-alembic/staple-actions/actions/mix-compile@main
