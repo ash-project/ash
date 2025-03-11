@@ -58,8 +58,6 @@ jobs:
   deps:
     name: mix deps.get
     runs-on: ubuntu-latest
-    needs:
-      - set-tool-versions
     steps:
       - uses: team-alembic/staple-actions/actions/mix-deps-get@main
   auditor:
