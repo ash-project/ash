@@ -2,6 +2,27 @@
 
 <!-- changelog -->
 
+## [v3.4.68](https://github.com/ash-project/ash/compare/v3.4.67...v3.4.68) (2025-03-11)
+
+
+
+
+### Bug Fixes:
+
+* init nested types in map/keyword/struct types
+
+* properly handle change with `where` validations in bulk (#1843)
+
+* properly construct `parent_stack` for loaded relationships
+
+* update context tenant from changeset for each change (#1837)
+
+### Improvements:
+
+* allow manual reads return `full_count` for pagination
+
+* validate action types in `Ash` functions
+
 ## [v3.4.67](https://github.com/ash-project/ash/compare/v3.4.66...v3.4.67) (2025-03-04)
 
 
