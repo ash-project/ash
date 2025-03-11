@@ -353,7 +353,6 @@ jobs:
       - test
       - dialyzer
       - build-dev
-      - deps
      permissions:
        contents: write
      strategy:
