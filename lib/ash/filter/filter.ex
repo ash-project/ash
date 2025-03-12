@@ -3387,7 +3387,12 @@ defmodule Ash.Filter do
           end
         else
           {:func, nil} ->
-            {:error, NoSuchFunction.exception(function: name, resource: context.resource)}
+            {:error,
+             NoSuchFunction.exception(
+               function: name,
+               resource: context.resource,
+               could_be_calculation?: !!calculation(%{context | resource: resource}, name)
+             )}
 
           other ->
             other

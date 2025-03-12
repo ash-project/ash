@@ -136,6 +136,10 @@ defmodule Ash.Test.Filter.FilterTest do
       calculate :has_friend, :boolean, expr(true) do
         public? true
       end
+
+      calculate :name_plus_text, :string, expr(name <> ^arg(:text)) do
+        argument :text, :string, allow_nil?: false
+      end
     end
   end
 
@@ -383,6 +387,16 @@ defmodule Ash.Test.Filter.FilterTest do
         |> inspect()
 
       assert stringified_query =~ ~S(title == "bar")
+    end
+  end
+
+  describe "no such function errors" do
+    test "provide disambiguation" do
+      assert_raise Ash.Error.Invalid, ~r/calculation with the same name/, fn ->
+        User
+        |> Ash.Query.filter(name_plus_text("text") == "foobar")
+        |> Ash.read!()
+      end
     end
   end
 
