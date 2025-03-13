@@ -1677,6 +1677,11 @@ defmodule Ash.Actions.Update.Bulk do
                  action,
                  Keyword.put(opts, :atomic_upgrade?, false)
                ) do
+            :ok ->
+              Process.put({:any_success?, ref}, true)
+
+              []
+
             {:ok, result} ->
               Process.put({:any_success?, ref}, true)
 
