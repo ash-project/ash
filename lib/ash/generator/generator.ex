@@ -367,13 +367,22 @@ defmodule Ash.Generator do
   @doc """
   Generate globally unique values.
 
-  This is useful for generating values that are unique across all resources, such as email addresses,
+  This is useful for generating values that are unique within a given test or processes that it spawns, such as email addresses,
   or for generating values that are unique across a single resource, such as identifiers. The values will be unique
-  for anything using the same sequence name.
+  for anything using the same sequence name, **within the same test**.
 
-  The lifecycle of this generator is tied to the process that initially starts it. In general,
-  that will be the test. In the rare case where you are running async processes that need to share a sequence
-  that is not created in the test process, you can initialize a sequence in the test using `initialize_sequence/1`.
+  > ### Not Globally Unique {: .warning}
+  > The lifecycle of this generator is tied to the process that initially starts it. In general,
+  > that will be the test. In the rare case where you are running async processes that need to share a sequence
+  > that is not created in the test process, you can initialize a sequence in the test using `initialize_sequence/1`.
+  >
+  > If you need a globally unique value, use a value like `System.unique_integer([:positive])` in your values instead.
+  >
+  > For example:
+  >
+  > ```elixir
+  > StreamData.repeatedly(fn -> "email\#{System.unique_integer([:positive])}@example.com" end)
+  > ```
 
   Example:
 
@@ -401,15 +410,13 @@ defmodule Ash.Generator do
         initialize_sequence(identifier)
       end
 
-    StreamData.unshrinkable(
-      StreamData.repeatedly(fn ->
-        Agent.get_and_update(pid, fn state ->
-          next_in_sequence = sequencer.(state)
-          value = generator.(next_in_sequence)
-          {value, next_in_sequence}
-        end)
+    StreamData.repeatedly(fn ->
+      Agent.get_and_update(pid, fn state ->
+        next_in_sequence = sequencer.(state)
+        value = generator.(next_in_sequence)
+        {value, next_in_sequence}
       end)
-    )
+    end)
   end
 
   @doc """
