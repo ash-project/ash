@@ -401,13 +401,15 @@ defmodule Ash.Generator do
         initialize_sequence(identifier)
       end
 
-    StreamData.repeatedly(fn ->
-      Agent.get_and_update(pid, fn state ->
-        next_in_sequence = sequencer.(state)
-        value = generator.(next_in_sequence)
-        {value, next_in_sequence}
+    StreamData.unshrinkable(
+      StreamData.repeatedly(fn ->
+        Agent.get_and_update(pid, fn state ->
+          next_in_sequence = sequencer.(state)
+          value = generator.(next_in_sequence)
+          {value, next_in_sequence}
+        end)
       end)
-    end)
+    )
   end
 
   @doc """
