@@ -8,7 +8,8 @@ defmodule Ash.Actions.Update do
   import Ash.Expr
 
   @spec run(Ash.Domain.t(), Ash.Resource.record(), Ash.Resource.Actions.action(), Keyword.t()) ::
-          {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          :ok
+          | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:ok, Ash.Resource.record()}
           | {:error, Ash.Changeset.t()}
           | {:error, term}
