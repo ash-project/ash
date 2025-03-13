@@ -59,7 +59,7 @@ defmodule Ash.Resource.Validation.Match do
             if String.match?(value, opts[:match]) do
               :ok
             else
-              {:error, exception(opts)}
+              {:error, exception(value, opts)}
             end
 
           {:error, error} ->
@@ -127,11 +127,11 @@ defmodule Ash.Resource.Validation.Match do
     {:ok, to_string(value)}
   rescue
     _ ->
-      {:error, exception(opts)}
+      {:error, exception(value, opts)}
   end
 
-  defp exception(opts) do
-    [value: opts[:value], field: opts[:attribute]]
+  defp exception(string_value, opts) do
+    [value: string_value, field: opts[:attribute]]
     |> with_description(opts)
     |> InvalidAttribute.exception()
   end
