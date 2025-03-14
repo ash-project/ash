@@ -235,6 +235,7 @@ spark_locals_without_parens = [
   source: 1,
   source_attribute: 1,
   source_attribute_on_join_resource: 1,
+  stable_sort: 1,
   stop_on_error?: 1,
   strategy: 1,
   stream_batch_size: 1,

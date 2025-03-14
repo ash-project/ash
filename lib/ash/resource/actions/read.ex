@@ -121,6 +121,11 @@ defmodule Ash.Resource.Actions.Read do
       doc: "The maximum amount of records that can be requested in a single page",
       default: 250
     ],
+    stable_sort: [
+      type: :any,
+      doc:
+        "A stable sort statement to add to a query (after any existing sorts). Only added if the sort does not already contain a stable sort (sorting on fields that uniquely identify a record). Defaults to the primary key."
+    ],
     required?: [
       type: :boolean,
       doc:
@@ -135,6 +140,7 @@ defmodule Ash.Resource.Actions.Read do
       :default_limit,
       :max_page_size,
       countable: false,
+      stable_sort: nil,
       required?: false,
       keyset?: false,
       offset?: false

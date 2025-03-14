@@ -2836,7 +2836,10 @@ defmodule Ash.Actions.Read do
       if Ash.Actions.Sort.sorting_on_identity?(query) do
         query
       else
-        Ash.Query.sort(query, Ash.Resource.Info.primary_key(query.resource))
+        Ash.Query.sort(
+          query,
+          pagination.stable_sort || Ash.Resource.Info.primary_key(query.resource)
+        )
       end
 
     paginated =

@@ -1389,6 +1389,7 @@ Adds pagination options to a resource
 | [`default_limit`](#actions-read-pagination-default_limit){: #actions-read-pagination-default_limit } | `pos_integer` |  | The default page size to apply, if one is not supplied |
 | [`countable`](#actions-read-pagination-countable){: #actions-read-pagination-countable } | `true \| false \| :by_default` | `true` | Whether not a returned page will have a full count of all records. Use `:by_default` to do it automatically. |
 | [`max_page_size`](#actions-read-pagination-max_page_size){: #actions-read-pagination-max_page_size } | `pos_integer` | `250` | The maximum amount of records that can be requested in a single page |
+| [`stable_sort`](#actions-read-pagination-stable_sort){: #actions-read-pagination-stable_sort } | `any` |  | A stable sort statement to add to a query (after any existing sorts). Only added if the sort does not already contain a stable sort (sorting on fields that uniquely identify a record). Defaults to the primary key. |
 | [`required?`](#actions-read-pagination-required?){: #actions-read-pagination-required? } | `boolean` | `true` | Whether or not pagination can be disabled (by passing `page: false` to `Ash.Api.read!/2`, or by having `required?: false, default_limit: nil` set). Only relevant if some pagination configuration is supplied. |
 
 
