@@ -120,6 +120,7 @@ defmodule Ash.Type.Float do
     Ecto.Type.load(:float, value)
   end
 
+  @impl true
   def cast_atomic(expr, _constraints) do
     {:atomic, expr}
   end

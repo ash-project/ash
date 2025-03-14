@@ -3,6 +3,15 @@ defmodule Ash.Actions.Helpers do
   require Logger
   require Ash.Flags
 
+  @keep_read_action_loads_when_loading? Application.compile_env(
+                                          :ash,
+                                          :keep_read_action_loads_when_loading?,
+                                          true
+                                        )
+
+  @spec keep_read_action_loads_when_loading? :: boolean()
+  def keep_read_action_loads_when_loading?, do: @keep_read_action_loads_when_loading?
+
   def split_and_run_simple(batch, action, opts, changes, all_changes, context_key, callback) do
     {batch, must_be_simple} =
       Enum.reduce(batch, {[], []}, fn changeset, {batch, must_be_simple} ->

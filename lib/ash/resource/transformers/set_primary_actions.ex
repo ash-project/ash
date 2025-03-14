@@ -9,6 +9,12 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
   alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
 
+  @default_actions_require_atomic? Application.compile_env(
+                                     :ash,
+                                     :default_actions_require_atomic?,
+                                     false
+                                   )
+
   def after?(Ash.Resource.Transformers.DefaultAccept), do: true
   def after?(_), do: false
 
@@ -121,7 +127,7 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
         opts =
           if type in [:update, :destroy] do
             [
-              require_atomic?: false,
+              require_atomic?: @default_actions_require_atomic?,
               primary?: primary?,
               accept: accept,
               transaction?: transactions_enabled?

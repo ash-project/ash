@@ -729,6 +729,12 @@ defmodule Ash.EmbeddableType do
         end
       end
 
+      def may_support_atomic_update?(constraints) do
+        Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
+          constraints[:on_update] == :replace ||
+          update_action_allows_atomics?(constraints)
+      end
+
       defp update_action_allows_atomics?(constraints) do
         action =
           case constraints[:update_action] do

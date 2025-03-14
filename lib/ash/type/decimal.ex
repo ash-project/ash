@@ -78,6 +78,7 @@ defmodule Ash.Type.Decimal do
     end
   end
 
+  @impl true
   def cast_atomic(expr, _constraints), do: {:atomic, expr}
 
   def apply_atomic_constraints(expr, constraints) do

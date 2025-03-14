@@ -59,7 +59,7 @@ defmodule Ash.Type.String do
   def cast_atomic(expr, constraints) do
     # We can't support `match` currently, as we don't have a multi-target regex
     if constraints[:match] do
-      {:not_atomic, "cannot use the `match` string constraint atomically"}
+      {:not_atomic, "cannot use the `match` string constraint atomically with an expression"}
     else
       expr =
         if constraints[:trim?] do

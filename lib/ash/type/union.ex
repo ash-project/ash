@@ -390,11 +390,6 @@ defmodule Ash.Type.Union do
   end
 
   @impl true
-  def cast_atomic(_new_value, _constraints) do
-    {:not_atomic, "Unions do not support atomic updates"}
-  end
-
-  @impl true
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(%Ash.Union{value: value, type: type_name}, constraints) do

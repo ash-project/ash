@@ -11,12 +11,6 @@ defmodule Ash.Actions.Read do
   import Ash.Expr
   require Ash.Tracer
 
-  @keep_read_action_loads_when_loading? Application.compile_env(
-                                          :ash,
-                                          :keep_read_action_loads_when_loading?,
-                                          true
-                                        )
-
   def unpaginated_read(query, action \\ nil, opts \\ []) do
     run(query, action, Keyword.put(opts, :skip_pagination?, true))
   end
@@ -1931,7 +1925,7 @@ defmodule Ash.Actions.Read do
     if query.__validated_for_action__ == action.name do
       query
     else
-      if initial_data && !@keep_read_action_loads_when_loading? do
+      if strip_load?(initial_data) do
         load = query.load
         calculations = query.calculations
         aggregates = query.aggregates
@@ -1942,6 +1936,14 @@ defmodule Ash.Actions.Read do
         Ash.Query.for_read(query, action.name, %{}, opts)
       end
     end
+  end
+
+  # The function `keep_read_action_loads_when_loading?` always returns a constant value
+  # because its a compile attr
+  # So dialyzer always complains that `!false` can never be true
+  @dialyzer {:nowarn_function, strip_load?: 1}
+  defp strip_load?(initial_data) do
+    initial_data && !Ash.Actions.Helpers.keep_read_action_loads_when_loading?()
   end
 
   defp validate_multitenancy(query) do

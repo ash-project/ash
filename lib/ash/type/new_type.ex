@@ -407,6 +407,12 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
+      def may_support_atomic_update?(constraints) do
+        constraints = get_constraints(constraints)
+        unquote(subtype_of).may_support_atomic_update?(constraints)
+      end
+
+      @impl Ash.Type
       def cast_atomic_array(value, constraints) do
         constraints = get_constraints(constraints)
         unquote(subtype_of).cast_atomic_array(value, constraints)

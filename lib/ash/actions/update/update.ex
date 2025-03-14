@@ -91,7 +91,6 @@ defmodule Ash.Actions.Update do
                 params,
                 opts
                 |> Keyword.merge(
-                  assume_casted?: true,
                   context: changeset.context_changes,
                   notify?: true,
                   data: changeset.data,

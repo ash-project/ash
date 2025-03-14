@@ -519,6 +519,13 @@ defmodule Ash.Type do
   @callback apply_atomic_constraints(new_value :: Ash.Expr.t(), constraints) ::
               :ok | {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
 
+  @doc """
+  Whether or not a value with given constraints may support being cast atomic
+
+  Defaults to checking if `cast_atomic/2` is defined on the type.
+  """
+  @callback may_support_atomic_update?(constraints) :: boolean
+
   @doc "Applies type constraints to a list of values within an expression. See `c:apply_atomic_constraints/2` for more."
   @callback apply_atomic_constraints_array(new_value :: Ash.Expr.t(), constraints) ::
               :ok | {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
@@ -1958,11 +1965,6 @@ defmodule Ash.Type do
       end
 
       @impl true
-      def cast_atomic(_new_value, _constraints) do
-        {:not_atomic, "Type `#{inspect(__MODULE__)}` does not support atomic updates"}
-      end
-
-      @impl true
       def apply_atomic_constraints(new_value, _constraints) do
         {:ok, new_value}
       end
@@ -2018,15 +2020,29 @@ defmodule Ash.Type do
         raise "generator/1 unimplemented for #{inspect(__MODULE__)}"
       end
 
+      @impl true
+      def cast_atomic(new_value, constraints) do
+        if Ash.Expr.expr?(new_value) do
+          {:not_atomic,
+           "Type `#{inspect(__MODULE__)}` does not support atomic updates with expressions"}
+        else
+          cast_input(new_value, constraints)
+        end
+      end
+
+      @impl true
+      def may_support_atomic_update?(_), do: true
+
       defoverridable constraints: 0,
                      init: 1,
                      include_source: 2,
                      describe: 1,
                      generator: 1,
-                     cast_atomic: 2,
                      cast_atomic_array: 2,
                      apply_atomic_constraints: 2,
                      apply_atomic_constraints_array: 2,
+                     cast_atomic: 2,
+                     may_support_atomic_update?: 1,
                      coerce: 2,
                      cast_input_array: 2,
                      dump_to_native_array: 2,
