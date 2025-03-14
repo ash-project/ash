@@ -34,6 +34,8 @@ if Mix.env() == :test do
 
   config :ash, :custom_expressions, [Ash.Test.Expressions.JaroDistance]
 
+  config :ash, :keep_read_action_loads_when_loading?, false
+
   config :ash, :sat_testing, true
   config :ash, :no_join_mnesia_ets, :dynamic
 

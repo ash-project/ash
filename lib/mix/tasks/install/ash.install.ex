@@ -84,6 +84,12 @@ if Code.ensure_loaded?(Igniter) do
         [:policies, :no_filter_static_forbidden_reads?],
         false
       )
+      |> Igniter.Project.Config.configure(
+        "config.exs",
+        :ash,
+        [:keep_read_action_loads_when_loading?],
+        false
+      )
       |> then(fn igniter ->
         if "--example" in igniter.args.argv_flags do
           generate_example(igniter, igniter.args.argv_flags)

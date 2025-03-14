@@ -310,6 +310,10 @@ defmodule Ash.Test.Actions.LoadTest do
       read :all_access
     end
 
+    preparations do
+      prepare build(load: [:category_length])
+    end
+
     attributes do
       uuid_primary_key(:id)
       attribute(:title, :string, public?: true)
@@ -1981,6 +1985,24 @@ defmodule Ash.Test.Actions.LoadTest do
       assert post.title == loaded_post.title
       assert post.contents == loaded_post.contents
     end
+  end
+
+  test "read action loads are ignored with `Ash.load`" do
+    author =
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "a"})
+      |> Ash.create!()
+
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        title: "author post",
+        contents: "post content",
+        author_id: author.id
+      })
+      |> Ash.create!()
+
+    assert %Ash.NotLoaded{} = Ash.load!(post, :author).category_length
   end
 
   test "you can load data on create with no default read action" do

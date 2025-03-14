@@ -11,6 +11,12 @@ defmodule Ash.Actions.Read do
   import Ash.Expr
   require Ash.Tracer
 
+  @keep_read_action_loads_when_loading? Application.compile_env(
+                                          :ash,
+                                          :keep_read_action_loads_when_loading?,
+                                          true
+                                        )
+
   def unpaginated_read(query, action \\ nil, opts \\ []) do
     run(query, action, Keyword.put(opts, :skip_pagination?, true))
   end
@@ -1925,7 +1931,7 @@ defmodule Ash.Actions.Read do
     if query.__validated_for_action__ == action.name do
       query
     else
-      if initial_data do
+      if initial_data && !@keep_read_action_loads_when_loading? do
         load = query.load
         calculations = query.calculations
         aggregates = query.aggregates
