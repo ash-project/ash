@@ -79,7 +79,7 @@ defmodule Ash.Type.Struct do
 
   @impl true
   def init(constraints) do
-    if is_list([:fields]) do
+    if is_list(constraints[:fields]) do
       constraints[:fields]
       |> List.wrap()
       |> Enum.reduce_while({:ok, []}, fn {name, config}, {:ok, fields} ->
@@ -120,20 +120,7 @@ defmodule Ash.Type.Struct do
         fields
 
       :error ->
-        instance_of = constraints[:instance_of]
-
-        if instance_of && Spark.Dsl.is?(instance_of, Ash.Resource) do
-          instance_of
-          |> Ash.Resource.Info.public_attributes()
-          |> Enum.map(fn attribute ->
-            {attribute.name,
-             [
-               type: attribute.type,
-               constraints: attribute.constraints,
-               allow_nil?: attribute.allow_nil?
-             ]}
-          end)
-        end
+        nil
     end
   end
 
