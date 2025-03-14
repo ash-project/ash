@@ -130,31 +130,43 @@ defmodule Ash.Error do
   end
 
   defp remove_required_if_other_errors_exist(%{errors: errors} = class) do
-    %{
-      class
-      | errors:
-          Enum.reject(errors, fn
-            %required{field: field} = error
-            when required in [Ash.Error.Query.Required, Ash.Error.Changes.Required] ->
-              Enum.any?(errors, fn other_error ->
-                other_error != error && for_field?(other_error, field)
-              end)
-
-            _other ->
-              false
+    {required, errors} =
+      Enum.split_with(errors, fn
+        %required{field: field} = error
+        when required in [Ash.Error.Query.Required, Ash.Error.Changes.Required] ->
+          Enum.any?(errors, fn other_error ->
+            other_error != error && for_field?(other_error, field, error.path)
           end)
-    }
+
+        _other ->
+          false
+      end)
+
+    errors =
+      required
+      |> Enum.group_by(fn error -> {error.path, error.field} end)
+      |> Enum.reduce(errors, fn {{path, field}, required_errors}, errors ->
+        if Enum.any?(errors, fn other_error ->
+             for_field?(other_error, field, path)
+           end) do
+          errors
+        else
+          [Enum.max_by(required_errors, &Enum.count(&1.bread_crumbs))]
+        end
+      end)
+
+    %{class | errors: errors}
   end
 
   defp remove_required_if_other_errors_exist(class), do: class
 
-  defp for_field?(%{field: field}, field), do: true
+  defp for_field?(%{field: field, path: path}, field, path), do: true
 
-  defp for_field?(%{fields: fields}, field) do
+  defp for_field?(%{fields: fields, path: path}, field, path) do
     field in fields
   end
 
-  defp for_field?(_, _), do: false
+  defp for_field?(_, _, _), do: false
 
   @doc """
   Converts errors into a single `String.t`.
