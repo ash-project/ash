@@ -79,7 +79,7 @@ defmodule Ash.Type.Struct do
 
   @impl true
   def init(constraints) do
-    if is_list(constraints[:fields]) do
+    if is_list([:fields]) do
       constraints[:fields]
       |> List.wrap()
       |> Enum.reduce_while({:ok, []}, fn {name, config}, {:ok, fields} ->
@@ -114,6 +114,29 @@ defmodule Ash.Type.Struct do
     end
   end
 
+  defp fields(constraints) do
+    case Keyword.fetch(constraints, :fields) do
+      {:ok, fields} ->
+        fields
+
+      :error ->
+        instance_of = constraints[:instance_of]
+
+        if instance_of && Spark.Dsl.is?(instance_of, Ash.Resource) do
+          instance_of
+          |> Ash.Resource.Info.public_attributes()
+          |> Enum.map(fn attribute ->
+            {attribute.name,
+             [
+               type: attribute.type,
+               constraints: attribute.constraints,
+               allow_nil?: attribute.allow_nil?
+             ]}
+          end)
+        end
+    end
+  end
+
   @impl true
   def matches_type?(v, constraints) do
     if instance_of = constraints[:instance_of] do
@@ -145,7 +168,7 @@ defmodule Ash.Type.Struct do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, constraints) when is_map(value) do
-    if fields = constraints[:fields] do
+    if fields = fields(constraints) do
       if constraints[:instance_of] do
         nil_values = constraints[:store_nil_values?]
 
@@ -182,7 +205,7 @@ defmodule Ash.Type.Struct do
   def dump_to_native(nil, _), do: {:ok, nil}
 
   def dump_to_native(value, constraints) when is_map(value) do
-    if fields = constraints[:fields] do
+    if fields = fields(constraints) do
       if constraints[:instance_of] do
         Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
           case Map.fetch(value, key) do
@@ -211,7 +234,7 @@ defmodule Ash.Type.Struct do
 
   @impl true
   def cast_atomic(new_value, constraints) do
-    if constraints[:fields] do
+    if fields(constraints) do
       {:not_atomic, "Structs do not support atomic updates when using the `keys` constraint"}
     else
       {:atomic, new_value}
@@ -289,12 +312,10 @@ defmodule Ash.Type.Struct do
   end
 
   defp handle_fields(value, constraints) do
-    case Keyword.fetch(constraints, :fields) do
-      {:ok, fields} when is_list(fields) ->
-        check_fields(value, fields)
-
-      _ ->
-        {:ok, value}
+    if fields = fields(constraints) do
+      check_fields(value, fields)
+    else
+      {:ok, value}
     end
   end
 
@@ -311,7 +332,7 @@ defmodule Ash.Type.Struct do
             {:error, "is invalid"}
 
           true ->
-            if constraints[:fields] do
+            if fields(constraints) do
               {:ok, struct(struct, value)}
             else
               keys = Map.keys(value)
