@@ -96,6 +96,12 @@ if Code.ensure_loaded?(Igniter) do
         [:default_actions_require_atomic?],
         true
       )
+      |> Igniter.Project.Config.configure(
+        "config.exs",
+        :ash,
+        [:read_action_after_action_hooks_in_order?],
+        true
+      )
       |> then(fn igniter ->
         if "--example" in igniter.args.argv_flags do
           generate_example(igniter, igniter.args.argv_flags)

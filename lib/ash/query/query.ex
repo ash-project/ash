@@ -227,6 +227,12 @@ defmodule Ash.Query do
           valid?: boolean
         }
 
+  @read_action_after_action_hooks_in_order? Application.compile_env(
+                                              :ash,
+                                              :read_action_after_action_hooks_in_order?,
+                                              false
+                                            )
+
   @type around_result ::
           {:ok, list(Ash.Resource.record())}
           | {:error, Ash.Error.t()}
@@ -984,9 +990,15 @@ defmodule Ash.Query do
              | {:ok, [Ash.Resource.record()], list(Ash.Notifier.Notification.t())}
              | {:error, term})
         ) :: t()
+  # in 4.0, add an option to prepend hooks
   def after_action(query, func) do
     query = new(query)
-    %{query | after_action: [func | query.after_action]}
+
+    if @read_action_after_action_hooks_in_order? do
+      %{query | after_action: query.after_action ++ [func]}
+    else
+      %{query | after_action: [func | query.after_action]}
+    end
   end
 
   defp add_action_filters(query, %{filter: nil}, _actor), do: query
