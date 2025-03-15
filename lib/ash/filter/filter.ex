@@ -2545,15 +2545,23 @@ defmodule Ash.Filter do
     parse_expression([statement], context)
   end
 
-  defp add_expression_part(boolean, context, nil) do
+  defp add_expression_part(boolean, context, expression, could_be_function? \\ true)
+
+  defp add_expression_part(boolean, context, nil, _) do
     add_expression_part(boolean, context, true)
   end
 
-  defp add_expression_part(boolean, _context, expression) when is_boolean(boolean) do
+  defp add_expression_part(boolean, _context, expression, _could_be_function?)
+       when is_boolean(boolean) do
     {:ok, BooleanExpression.optimized_new(:and, expression, boolean)}
   end
 
-  defp add_expression_part(%__MODULE__{expression: adding_expression}, context, expression) do
+  defp add_expression_part(
+         %__MODULE__{expression: adding_expression},
+         context,
+         expression,
+         _could_be_function?
+       ) do
     {:ok,
      BooleanExpression.optimized_new(
        :and,
@@ -2562,7 +2570,7 @@ defmodule Ash.Filter do
      )}
   end
 
-  defp add_expression_part({not_key, nested_statement}, context, expression)
+  defp add_expression_part({not_key, nested_statement}, context, expression, _could_be_function?)
        when not_key in [:not, "not"] do
     case parse_expression(nested_statement, context) do
       {:ok, nested_expression} ->
@@ -2573,7 +2581,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part({or_key, nested_statements}, context, expression)
+  defp add_expression_part({or_key, nested_statements}, context, expression, _could_be_function?)
        when or_key in [:or, "or"] do
     with {:ok, nested_expression} <- parse_and_join(nested_statements, :or, context),
          :ok <- validate_data_layers_support_boolean_filters(nested_expression) do
@@ -2581,7 +2589,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part({and_key, nested_statements}, context, expression)
+  defp add_expression_part({and_key, nested_statements}, context, expression, _could_be_function?)
        when and_key in [:and, "and"] do
     case parse_and_join(nested_statements, :and, context) do
       {:ok, nested_expression} ->
@@ -2592,7 +2600,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part(%Call{} = call, context, expression) do
+  defp add_expression_part(%Call{} = call, context, expression, _could_be_function?) do
     case resolve_call(call, context) do
       {:ok, result} ->
         {:ok, BooleanExpression.optimized_new(:and, expression, result)}
@@ -2602,7 +2610,12 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part(%Ash.Query.Parent{expr: expr} = this, context, expression) do
+  defp add_expression_part(
+         %Ash.Query.Parent{expr: expr} = this,
+         context,
+         expression,
+         _could_be_function?
+       ) do
     case parse_expression(expr, %{context | resource: context.root_resource}) do
       {:ok, result} ->
         {:ok, BooleanExpression.optimized_new(:and, expression, %{this | expr: result})}
@@ -2612,14 +2625,20 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part(%Ash.CustomExpression{} = custom, _context, expression) do
+  defp add_expression_part(
+         %Ash.CustomExpression{} = custom,
+         _context,
+         expression,
+         _could_be_function?
+       ) do
     {:ok, BooleanExpression.optimized_new(:and, expression, custom)}
   end
 
   defp add_expression_part(
          %Ash.Query.Exists{at_path: at_path, path: path, expr: exists_expression} = exists,
          context,
-         expression
+         expression,
+         _could_be_function?
        ) do
     related = related(context, at_path ++ path)
 
@@ -2657,11 +2676,16 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part(%Ref{} = ref, _context, _expression) do
+  defp add_expression_part(%Ref{} = ref, _context, _expression, _could_be_function?) do
     {:ok, %{ref | bare?: true}}
   end
 
-  defp add_expression_part({%Ref{} = ref, nested_statement}, context, expression) do
+  defp add_expression_part(
+         {%Ref{} = ref, nested_statement},
+         context,
+         expression,
+         _could_be_function?
+       ) do
     case related(context, ref.relationship_path) do
       nil ->
         {:error,
@@ -2694,16 +2718,22 @@ defmodule Ash.Filter do
   defp add_expression_part(
          %BooleanExpression{op: op, left: left, right: right},
          context,
-         expression
+         expression,
+         _could_be_function?
        ) do
     add_expression_part({op, [left, right]}, context, expression)
   end
 
-  defp add_expression_part(%Not{expression: not_expression}, context, expression) do
+  defp add_expression_part(
+         %Not{expression: not_expression},
+         context,
+         expression,
+         _could_be_function?
+       ) do
     add_expression_part({:not, not_expression}, context, expression)
   end
 
-  defp add_expression_part(%_{__predicate__?: _} = pred, context, expression) do
+  defp add_expression_part(%_{__predicate__?: _} = pred, context, expression, _could_be_function?) do
     {:ok,
      BooleanExpression.optimized_new(
        :and,
@@ -2712,7 +2742,7 @@ defmodule Ash.Filter do
      )}
   end
 
-  defp add_expression_part(%_{} = record, context, expression) do
+  defp add_expression_part(%_{} = record, context, expression, _could_be_function?) do
     pkey_filter =
       record
       |> Map.take(Ash.Resource.Info.primary_key(context.resource))
@@ -2721,16 +2751,16 @@ defmodule Ash.Filter do
     add_expression_part(pkey_filter, context, expression)
   end
 
-  defp add_expression_part({:is_nil, attribute}, context, expression)
+  defp add_expression_part({:is_nil, attribute}, context, expression, true)
        when is_atom(attribute) or is_binary(attribute) do
     add_expression_part({attribute, [is_nil: true]}, context, expression)
   end
 
-  defp add_expression_part({:fragment, _}, _context, _expression) do
+  defp add_expression_part({:fragment, _}, _context, _expression, _could_be_function?) do
     raise "Cannot use fragment outside of expression syntax"
   end
 
-  defp add_expression_part({function, args}, context, expression)
+  defp add_expression_part({function, args}, context, expression, true)
        when is_tuple(args) and (is_atom(function) or is_binary(function)) do
     case get_function(function, context.resource, context.public?) do
       nil ->
@@ -2779,8 +2809,8 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part({field, nested_statement}, context, expression)
-       when is_atom(field) or is_binary(field) do
+  defp add_expression_part({field, nested_statement}, context, expression, _could_be_function?)
+       when is_atom(field) or (is_binary(field) and not is_tuple(nested_statement)) do
     cond do
       rel = relationship(context, field) ->
         with rel_type when rel_type != :many_to_many <- rel.type,
@@ -2942,7 +2972,12 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part({%{__struct__: field_struct} = calc, rest}, context, expression)
+  defp add_expression_part(
+         {%{__struct__: field_struct} = calc, rest},
+         context,
+         expression,
+         _could_be_function?
+       )
        when field_struct in [Ash.Query.Calculation, Ash.Query.Aggregate] do
     case parse_predicates(rest, calc, context) do
       {:ok, nested_statement} ->
@@ -2953,18 +2988,21 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part(%{__struct__: field_struct} = calc, _context, expression)
+  defp add_expression_part(
+         %{__struct__: field_struct} = calc,
+         _context,
+         expression,
+         _could_be_function?
+       )
        when field_struct in [Ash.Query.Calculation, Ash.Query.Aggregate] do
     {:ok, BooleanExpression.optimized_new(:and, calc, expression)}
   end
 
-  defp add_expression_part(value, context, expression) when is_map(value) do
+  defp add_expression_part(value, context, expression, _could_be_function?) when is_map(value) do
     # Can't call `parse_expression/2` here because it will loop
 
-    value
-    |> Map.to_list()
-    |> Enum.reduce_while({:ok, true}, fn {key, value}, {:ok, expression} ->
-      case add_expression_part({key, value}, context, expression) do
+    Enum.reduce_while(value, {:ok, true}, fn {key, value}, {:ok, expression} ->
+      case add_expression_part({key, value}, context, expression, false) do
         {:ok, new_expression} ->
           {:cont, {:ok, new_expression}}
 
@@ -2981,7 +3019,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part(value, context, expression) when is_list(value) do
+  defp add_expression_part(value, context, expression, _could_be_function?) when is_list(value) do
     Enum.reduce_while(value, {:ok, expression}, fn value, {:ok, expression} ->
       case add_expression_part(value, context, expression) do
         {:ok, expression} -> {:cont, {:ok, expression}}
@@ -2990,7 +3028,7 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp add_expression_part(value, _context, _expression) do
+  defp add_expression_part(value, _context, _expression, _could_be_function?) do
     {:error, InvalidFilterValue.exception(value: value)}
   end
 
@@ -4153,7 +4191,9 @@ defmodule Ash.Filter do
   end
 
   def get_predicate_function(key, resource, public?) do
-    case get_function(key, resource, public?) |> List.wrap() |> Enum.filter(& &1.predicate?()) do
+    case get_function(key, resource, public?)
+         |> List.wrap()
+         |> Enum.filter(& &1.predicate?()) do
       [] ->
         nil
 
@@ -4162,7 +4202,7 @@ defmodule Ash.Filter do
     end
   end
 
-  def get_function(key, resource, public?) when is_atom(key) do
+  defp get_function(key, resource, public?) when is_atom(key) do
     function = @builtin_functions[key]
 
     function =
@@ -4181,7 +4221,7 @@ defmodule Ash.Filter do
     end
   end
 
-  def get_function(key, resource, public?) when is_binary(key) do
+  defp get_function(key, resource, public?) when is_binary(key) do
     function =
       Map.get(@string_builtin_functions, key) ||
         Enum.find(Ash.DataLayer.data_layer_functions(resource), &(to_string(&1.name()) == key))
@@ -4193,17 +4233,17 @@ defmodule Ash.Filter do
     end
   end
 
-  def get_function(_, _, _), do: nil
+  defp get_function(_, _, _), do: nil
 
-  def get_operator(key) when is_atom(key) do
+  defp get_operator(key) when is_atom(key) do
     @builtin_operators[key]
   end
 
-  def get_operator(key) when is_binary(key) do
+  defp get_operator(key) when is_binary(key) do
     Map.get(@string_builtin_operators, key)
   end
 
-  def get_operator(_), do: nil
+  defp get_operator(_), do: nil
 
   defimpl Inspect do
     import Inspect.Algebra
