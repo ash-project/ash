@@ -4202,7 +4202,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp get_function(key, resource, public?) when is_atom(key) do
+  def get_function(key, resource, public?) when is_atom(key) do
     function = @builtin_functions[key]
 
     function =
@@ -4221,7 +4221,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp get_function(key, resource, public?) when is_binary(key) do
+  def get_function(key, resource, public?) when is_binary(key) do
     function =
       Map.get(@string_builtin_functions, key) ||
         Enum.find(Ash.DataLayer.data_layer_functions(resource), &(to_string(&1.name()) == key))
@@ -4233,17 +4233,17 @@ defmodule Ash.Filter do
     end
   end
 
-  defp get_function(_, _, _), do: nil
+  def get_function(_, _, _), do: nil
 
-  defp get_operator(key) when is_atom(key) do
+  def get_operator(key) when is_atom(key) do
     @builtin_operators[key]
   end
 
-  defp get_operator(key) when is_binary(key) do
+  def get_operator(key) when is_binary(key) do
     Map.get(@string_builtin_operators, key)
   end
 
-  defp get_operator(_), do: nil
+  def get_operator(_), do: nil
 
   defimpl Inspect do
     import Inspect.Algebra
