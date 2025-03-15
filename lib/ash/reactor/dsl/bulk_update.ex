@@ -3,6 +3,12 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
   The `bulk_update` entity for the `Ash.Reactor` reactor extension.
   """
 
+  @bulk_actions_default_to_errors? Application.compile_env(
+                                     :ash,
+                                     :bulk_actions_default_to_errors?,
+                                     false
+                                   )
+
   defstruct __identifier__: nil,
             action_step?: true,
             action: nil,
@@ -32,7 +38,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             page: [],
             read_action: nil,
             resource: nil,
-            return_errors?: false,
+            return_errors?: @bulk_actions_default_to_errors?,
             return_records?: false,
             return_stream?: false,
             reuse_values?: false,
@@ -40,7 +46,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             select: [],
             skip_unknown_inputs: [],
             sorted?: false,
-            stop_on_error?: false,
+            stop_on_error?: @bulk_actions_default_to_errors?,
             strategy: [:atomic],
             stream_batch_size: nil,
             stream_with: nil,
@@ -252,7 +258,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             doc:
               "Whether or not to return all of the errors that occur. Defaults to false to account for large inserts.",
             required: false,
-            default: false
+            default: @bulk_actions_default_to_errors?
           ],
           return_records?: [
             type: :boolean,
@@ -305,7 +311,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             doc:
               "If `true`, the first encountered error will stop the action and be returned. Otherwise, errors will be skipped.",
             required: false,
-            default: false
+            default: @bulk_actions_default_to_errors?
           ],
           strategy: [
             type: {:list, {:in, [:atomic, :atomic_batches, :stream]}},

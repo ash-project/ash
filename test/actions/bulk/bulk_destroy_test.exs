@@ -693,6 +693,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                  authorize?: true,
                  strategy: :stream,
                  resource: Post,
+                 stop_on_error?: false,
                  return_records?: true,
                  return_errors?: true
                )

@@ -2016,7 +2016,7 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp errors(result, {:error, error}, opts) do
     if opts[:return_errors?] do
-      {result.error_count + 1, [error | result.errors]}
+      {result.error_count + 1, [error | List.wrap(result.errors)]}
     else
       {result.error_count + 1, []}
     end
@@ -2117,7 +2117,7 @@ defmodule Ash.Actions.Update.Bulk do
     add = count || Enum.count(List.wrap(error))
 
     if opts[:stop_on_error?] && !opts[:return_stream?] do
-      throw({:error, Ash.Error.to_error_class(error), 0, []})
+      throw({:error, Ash.Error.to_error_class(error), 0})
     else
       if opts[:return_errors?] do
         {errors, count} = Process.get({:bulk_update_errors, ref}) || {[], 0}

@@ -402,7 +402,7 @@ defmodule Ash do
     ],
     return_errors?: [
       type: :boolean,
-      default: false,
+      default: Application.compile_env(:ash, :bulk_actions_default_to_errors?, false),
       doc:
         "Whether or not to return all of the errors that occur. Defaults to false to account for large inserts."
     ],
@@ -438,7 +438,7 @@ defmodule Ash do
     ],
     stop_on_error?: [
       type: :boolean,
-      default: false,
+      default: Application.compile_env(:ash, :bulk_actions_default_to_errors?, false),
       doc: """
       If true, the first encountered error will stop the action and be returned. Otherwise, errors
       will be skipped.

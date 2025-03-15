@@ -668,6 +668,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                :create_with_change,
                tenant: org.id,
                return_records?: true,
+               stop_on_error?: false,
+               return_errors?: false,
                sorted?: true,
                authorize?: false
              )
@@ -690,6 +692,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                :create_with_change,
                tenant: org.id,
                return_records?: true,
+               stop_on_error?: false,
                return_errors?: true,
                sorted?: true,
                authorize?: false
@@ -733,6 +736,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                :create_with_change,
                tenant: org.id,
                return_errors?: true,
+               stop_on_error?: false,
                sorted?: true,
                authorize?: false
              )
@@ -1122,6 +1126,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create_with_after_transaction,
                sorted?: true,
+               stop_on_error?: false,
                authorize?: false,
                tenant: org.id
              )
@@ -1183,16 +1188,18 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         |> Ash.Changeset.for_create(:create, %{})
         |> Ash.create!()
 
-      assert %Ash.BulkResult{errors: [_, _]} =
+      assert %Ash.BulkResult{errors: [%Ash.Error.Forbidden{}, %Ash.Error.Forbidden{}]} =
                Ash.bulk_create(
                  [
-                   %{title: "title1", authorize?: false, org_id: org.id},
-                   %{title: "title2", authorize?: false, org_id: org.id}
+                   %{title: "title1", authorize?: false},
+                   %{title: "title2", authorize?: false}
                  ],
                  Post,
                  :create_with_policy,
                  authorize?: true,
+                 tenant: org.id,
                  return_records?: true,
+                 stop_on_error?: false,
                  return_errors?: true,
                  sorted?: true
                )
@@ -1223,13 +1230,14 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         capture_log(fn ->
           assert [] =
                    [
-                     %{title: "title1", authorize?: true, org_id: org.id},
-                     %{title: "title2", authorize?: true, org_id: org.id}
+                     %{title: "title1", authorize?: true},
+                     %{title: "title2", authorize?: true}
                    ]
                    |> Ash.bulk_create!(
                      Post,
                      :create_with_policy,
                      authorize?: true,
+                     tenant: org.id,
                      return_stream?: true
                    )
                    |> Enum.to_list()
@@ -1242,13 +1250,14 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         capture_log(fn ->
           assert [] =
                    [
-                     %{title: "title1", authorize?: true, org_id: org.id},
-                     %{title: "title2", authorize?: true, org_id: org.id}
+                     %{title: "title1", authorize?: true},
+                     %{title: "title2", authorize?: true}
                    ]
                    |> Ash.bulk_create!(
                      Post,
                      :create_with_policy,
                      authorize?: true,
+                     tenant: org.id,
                      return_stream?: true,
                      return_nothing?: true
                    )

@@ -3,6 +3,12 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
   The `bulk_create` entity for the `Ash.Reactor` reactor extension.
   """
 
+  @bulk_actions_default_to_errors? Application.compile_env(
+                                     :ash,
+                                     :bulk_actions_default_to_errors?,
+                                     false
+                                   )
+
   defstruct __identifier__: nil,
             action_step?: true,
             action: nil,
@@ -25,14 +31,14 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             notify?: false,
             read_action: nil,
             resource: nil,
-            return_errors?: false,
+            return_errors?: @bulk_actions_default_to_errors?,
             return_records?: false,
             return_stream?: false,
             rollback_on_error?: true,
             select: [],
             skip_unknown_inputs: [],
             sorted?: false,
-            stop_on_error?: false,
+            stop_on_error?: @bulk_actions_default_to_errors?,
             success_state: :success,
             tenant: [],
             timeout: 30_000,
@@ -197,7 +203,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             doc:
               "Whether or not to return all of the errors that occur. Defaults to false to account for large inserts.",
             required: false,
-            default: false
+            default: @bulk_actions_default_to_errors?
           ],
           return_records?: [
             type: :boolean,
@@ -243,7 +249,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             doc:
               "If `true`, the first encountered error will stop the action and be returned. Otherwise, errors will be skipped.",
             required: false,
-            default: false
+            default: @bulk_actions_default_to_errors?
           ],
           success_state: [
             type: {:in, [:success, :partial_success]},

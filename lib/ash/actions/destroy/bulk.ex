@@ -1837,7 +1837,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     add = count || Enum.count(List.wrap(error))
 
     if opts[:stop_on_error?] && !opts[:return_stream?] do
-      throw({:error, Ash.Error.to_error_class(error), 0, []})
+      throw({:error, Ash.Error.to_error_class(error), 0})
     else
       if opts[:return_errors?] do
         {errors, count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}

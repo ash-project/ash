@@ -931,6 +931,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Ash.bulk_update(:update, %{title2: %{invalid: :value}},
                resource: Post,
                strategy: :stream,
+               stop_on_error?: false,
                return_records?: true,
                authorize?: false
              )
@@ -1073,6 +1074,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                strategy: :stream,
                return_records?: true,
                return_errors?: true,
+               stop_on_error?: false,
                authorize?: false
              )
 
@@ -1180,6 +1182,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  %{title2: "updated value", authorize?: false},
                  strategy: :atomic,
                  authorize?: true,
+                 stop_on_error?: false,
                  authorize_with: :error,
                  actor: %{foo: :bar},
                  resource: Post,
@@ -1205,6 +1208,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  strategy: :stream,
                  actor: %{foo: :bar},
                  authorize?: true,
+                 stop_on_error?: false,
                  resource: Post,
                  return_records?: true,
                  return_errors?: true
