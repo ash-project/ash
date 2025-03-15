@@ -144,28 +144,22 @@ defmodule Ash.Type.NewType do
         unquote(subtype_of).can_load?(constraints)
       end
 
-      if function_exported?(subtype_of, :merge_load, 4) do
-        @impl Ash.Type
-        def merge_load(left, right, constraints, context) do
-          constraints = get_constraints(constraints)
-          unquote(subtype_of).merge_load(left, right, constraints, context)
-        end
+      @impl Ash.Type
+      def merge_load(left, right, constraints, context) do
+        constraints = get_constraints(constraints)
+        Ash.Type.merge_load(unquote(subtype_of), left, right, constraints, context)
       end
 
-      if function_exported?(subtype_of, :get_rewrites, 4) do
-        @impl Ash.Type
-        def get_rewrites(merged_load, calculation, path, constraints) do
-          constraints = get_constraints(constraints)
-          unquote(subtype_of).get_rewrites(merged_load, calculation, path, constraints)
-        end
+      @impl Ash.Type
+      def get_rewrites(merged_load, calculation, path, constraints) do
+        constraints = get_constraints(constraints)
+        Ash.Type.get_rewrites(unquote(subtype_of), merged_load, calculation, path, constraints)
       end
 
-      if function_exported?(subtype_of, :rewrite, 3) do
-        @impl Ash.Type
-        def rewrite(value, rewrites, constraints) do
-          constraints = get_constraints(constraints)
-          unquote(subtype_of).rewrite(value, rewrites, constraints)
-        end
+      @impl Ash.Type
+      def rewrite(value, rewrites, constraints) do
+        constraints = get_constraints(constraints)
+        Ash.Type.rewrite(unquote(subtype_of), value, rewrites, constraints)
       end
 
       @impl Ash.Type
@@ -195,7 +189,7 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       if lazy_init? do
         def init(constraints) do
-          constraints
+          {:ok, constraints}
         end
       else
         def init(constraints) do
@@ -213,42 +207,22 @@ defmodule Ash.Type.NewType do
         )
       end
 
-      if function_exported?(subtype_of, :cast_stored_array, 2) do
-        @impl Ash.Type
-        def cast_stored_array(value, constraints) do
-          constraints = get_constraints(constraints)
-
-          unquote(subtype_of).cast_stored_array(
-            value,
-            constraints
-          )
-        end
-
-        defoverridable cast_stored_array: 2
+      @impl Ash.Type
+      def cast_stored_array(value, constraints) do
+        constraints = get_constraints(constraints)
+        Ash.Type.cast_stored({:array, unquote(subtype_of)}, value, items: constraints)
       end
 
-      if function_exported?(subtype_of, :include_source, 2) do
-        @impl Ash.Type
-        def include_source(constraints, source) do
-          constraints = get_constraints(constraints)
-
-          unquote(subtype_of).include_source(
-            constraints,
-            source
-          )
-        end
+      @impl Ash.Type
+      def include_source(constraints, source) do
+        constraints = get_constraints(constraints)
+        Ash.Type.include_source(unquote(subtype_of), source, constraints)
       end
 
-      if function_exported?(subtype_of, :dump_to_embedded, 2) do
-        @impl Ash.Type
-        def dump_to_embedded(value, constraints) do
-          constraints = get_constraints(constraints)
-
-          unquote(subtype_of).dump_to_embedded(
-            value,
-            constraints
-          )
-        end
+      @impl Ash.Type
+      def dump_to_embedded(value, constraints) do
+        constraints = get_constraints(constraints)
+        Ash.Type.dump_to_embedded(unquote(subtype_of), value, constraints)
       end
 
       @impl Ash.Type
@@ -263,42 +237,26 @@ defmodule Ash.Type.NewType do
         unquote(subtype_of).composite_types(constraints)
       end
 
-      if function_exported?(subtype_of, :dump_to_embedded_array, 2) do
-        @impl Ash.Type
-        def dump_to_embedded_array(value, constraints) do
-          constraints = get_constraints(constraints)
-
-          unquote(subtype_of).dump_to_embedded_array(
-            value,
-            constraints
-          )
-        end
+      @impl Ash.Type
+      def dump_to_embedded_array(value, constraints) do
+        constraints = get_constraints(constraints)
+        Ash.Type.dump_to_embedded({:array, unquote(subtype_of)}, value, items: constraints)
       end
 
-      if function_exported?(subtype_of, :dump_to_native, 2) do
-        @impl Ash.Type
-        def dump_to_native(value, constraints) do
-          constraints = get_constraints(constraints)
+      @impl Ash.Type
+      def dump_to_native(value, constraints) do
+        constraints = get_constraints(constraints)
 
-          unquote(subtype_of).dump_to_native(
-            value,
-            constraints
-          )
-        end
+        unquote(subtype_of).dump_to_native(
+          value,
+          constraints
+        )
       end
 
-      if function_exported?(subtype_of, :dump_to_native_array, 2) do
-        @impl Ash.Type
-        def dump_to_native_array(value, constraints) do
-          constraints = get_constraints(constraints)
-
-          unquote(subtype_of).dump_to_native_array(
-            value,
-            constraints
-          )
-        end
-
-        defoverridable dump_to_native_array: 2
+      @impl Ash.Type
+      def dump_to_native_array(value, constraints) do
+        constraints = get_constraints(constraints)
+        Ash.Type.dump_to_native({:array, unquote(subtype_of)}, value, items: constraints)
       end
 
       @impl Ash.Type
@@ -309,74 +267,52 @@ defmodule Ash.Type.NewType do
         )
       end
 
-      if function_exported?(subtype_of, :generator, 1) do
-        @impl Ash.Type
-        def generator(constraints) do
-          constraints = get_constraints(constraints)
-          unquote(subtype_of).generator(constraints)
-        end
-
-        defoverridable generator: 1
+      @impl Ash.Type
+      def generator(constraints) do
+        Ash.Type.generator(unquote(subtype_of), constraints)
       end
 
-      if function_exported?(subtype_of, :handle_change, 3) do
-        @impl Ash.Type
-        def handle_change(old_term, new_term, constraints) do
-          constraints = get_constraints(constraints)
+      @impl Ash.Type
+      def handle_change(old_term, new_term, constraints) do
+        constraints = get_constraints(constraints)
 
-          unquote(subtype_of).handle_change(
-            old_term,
-            new_term,
-            constraints
-          )
-        end
-
-        defoverridable handle_change: 3
+        Ash.Type.handle_change(unquote(subtype_of), old_term, new_term, constraints)
       end
 
-      if function_exported?(subtype_of, :handle_change_array, 3) do
-        @impl Ash.Type
-        def handle_change_array(old_term, new_term, constraints) do
-          constraints = get_constraints(constraints)
+      @impl Ash.Type
+      def handle_change_array(old_term, new_term, constraints) do
+        constraints = get_constraints(constraints)
 
-          unquote(subtype_of).handle_change_array(
-            old_term,
-            new_term,
-            constraints
-          )
-        end
-
-        defoverridable handle_change_array: 3
+        Ash.Type.handle_change(
+          {:array, unquote(subtype_of)},
+          old_term,
+          new_term,
+          items: constraints
+        )
       end
 
-      if function_exported?(subtype_of, :prepare_change, 3) do
-        @impl Ash.Type
-        def prepare_change(old_term, new_term, constraints) do
-          constraints = get_constraints(constraints)
+      @impl Ash.Type
+      def prepare_change(old_term, new_term, constraints) do
+        constraints = get_constraints(constraints)
 
-          unquote(subtype_of).prepare_change(
-            old_term,
-            new_term,
-            constraints
-          )
-        end
-
-        defoverridable prepare_change: 3
+        Ash.Type.prepare_change(
+          unquote(subtype_of),
+          old_term,
+          new_term,
+          constraints
+        )
       end
 
-      if function_exported?(subtype_of, :prepare_change_array, 3) do
-        @impl Ash.Type
-        def prepare_change_array(old_term, new_term, constraints) do
-          constraints = get_constraints(constraints)
+      @impl Ash.Type
+      def prepare_change_array(old_term, new_term, constraints) do
+        constraints = get_constraints(constraints)
 
-          unquote(subtype_of).prepare_change_array(
-            old_term,
-            new_term,
-            constraints
-          )
-        end
-
-        defoverridable prepare_change_array: 3
+        Ash.Type.prepare_change(
+          {:array, unquote(subtype_of)},
+          old_term,
+          new_term,
+          items: constraints
+        )
       end
 
       @impl Ash.Type
@@ -435,12 +371,10 @@ defmodule Ash.Type.NewType do
         {:ok, value}
       end
 
-      if function_exported?(subtype_of, :apply_constraints_array, 3) do
-        @impl Ash.Type
-        def apply_constraints_array(value, constraints) do
-          constraints = get_constraints(constraints)
-          unquote(subtype_of).apply_constraints_array(value, constraints)
-        end
+      @impl Ash.Type
+      def apply_constraints_array(value, constraints) do
+        constraints = get_constraints(constraints)
+        Ash.Type.apply_constraints({:array, unquote(subtype_of)}, value, items: constraints)
       end
 
       @impl Ash.Type
@@ -473,8 +407,19 @@ defmodule Ash.Type.NewType do
 
       defoverridable storage_type: 1,
                      cast_input: 2,
+                     prepare_change: 3,
+                     dump_to_embedded: 2,
+                     handle_change: 3,
+                     dump_to_embedded_array: 2,
+                     include_source: 2,
+                     apply_constraints_array: 2,
+                     handle_change_array: 3,
+                     cast_stored_array: 2,
+                     prepare_change_array: 3,
                      cast_stored: 2,
+                     generator: 1,
                      dump_to_native: 2,
+                     dump_to_native_array: 2,
                      type_constraints: 2
     end
   end

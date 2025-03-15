@@ -1216,7 +1216,7 @@ defmodule Ash.Type do
         |> case do
           {terms, []} ->
             if type.custom_apply_constraints_array?() do
-              case type.apply_constraints_array(Enum.reverse(terms), constraints) do
+              case type.apply_constraints_array(Enum.reverse(terms), item_constraints) do
                 :ok -> {:ok, term}
                 other -> other
               end
