@@ -311,6 +311,14 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.create!()
     end
 
+    test "a simple write works when tenant is se per-process", %{tenant1: tenant1} do
+      Process.put(:ash_tenant, tenant1)
+
+      User
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+    end
+
     test "an error is produced when a tenant is not specified" do
       assert_raise Ash.Error.Invalid, ~r/require a tenant to be specified/, fn ->
         User
@@ -419,6 +427,18 @@ defmodule Ash.Actions.MultitenancyTest do
       assert User |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
     end
 
+    test "a record can be updated in a per-process tenant", %{tenant1: tenant1, tenant2: tenant2} do
+      Process.put(:ash_tenant, tenant1)
+
+      User
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:update, %{})
+      |> Ash.update!()
+
+      assert User |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
+    end
+
     test "updates require a tenant as well", %{tenant1: tenant1} do
       assert_raise Ash.Error.Invalid, ~r/require a tenant to be specified/, fn ->
         User
@@ -448,6 +468,16 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Ash.create!()
       |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
+      |> Ash.destroy!()
+    end
+
+    test "a record can be destroyed when tenant is set for process", %{tenant1: tenant1} do
+      Process.put(:ash_tenant, tenant1)
+
+      User
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:update, %{})
       |> Ash.destroy!()
     end
 
@@ -485,6 +515,14 @@ defmodule Ash.Actions.MultitenancyTest do
     test "a simple write works when a tenant is specified", %{tenant1: tenant1} do
       Comment
       |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+      |> Ash.create!()
+    end
+
+    test "a simple write works when a per-process tenant is specified", %{tenant1: tenant1} do
+      Process.put(:ash_tenant, tenant1)
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{})
       |> Ash.create!()
     end
 
@@ -529,6 +567,18 @@ defmodule Ash.Actions.MultitenancyTest do
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
     end
 
+    test "a record can be read with per-process tenant", %{
+      tenant1: tenant1
+    } do
+      Process.put(:ash_tenant, tenant1)
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
+      Comment |> Ash.read!()
+    end
+
     test "an aggregate can be used with a tenant specified", %{
       tenant1: tenant1
     } do
@@ -545,6 +595,18 @@ defmodule Ash.Actions.MultitenancyTest do
 
       result = User |> Ash.count()
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
+    end
+
+    test "an aggregate can be used with per-process tenant specified", %{
+      tenant1: tenant1
+    } do
+      Process.put(:ash_tenant, tenant1)
+
+      Comment
+      |> Ash.Changeset.new()
+      |> Ash.create!()
+
+      assert 1 = Comment |> Ash.count!()
     end
 
     test "supports :allow_global multitenancy on the read action", %{
