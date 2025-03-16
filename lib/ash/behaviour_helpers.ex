@@ -1,4 +1,6 @@
 defmodule Ash.BehaviourHelpers do
+  @moduledoc false
+
   defmacro check_type!(module, result, patterns) do
     {function, arity} = __CALLER__.function
 
