@@ -3731,6 +3731,9 @@ defmodule Ash.Filter do
           {:ok, right} ->
             {:ok, %{expr | left: left, right: right}}
         end
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
