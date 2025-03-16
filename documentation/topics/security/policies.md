@@ -158,8 +158,12 @@ policies do
       authorize_if expr(owner_id == ^actor(:id))
     end
 
-    policy action_type([:create, :update, :destroy]) do
+    policy action_type([:update, :destroy]) do
       authorize_if expr(owner_id == ^actor(:id))
+    end
+
+    policy action_type(:create) do
+      authorize_if always()
     end
   end
 end
