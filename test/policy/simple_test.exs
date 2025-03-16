@@ -322,6 +322,20 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  test "relating_to_actor/1 works when creating, using per-process actor", %{user: user} do
+    Process.put(:ash_actor, user)
+
+    Tweet
+    |> Ash.Changeset.for_create(:create, %{user_id: user.id})
+    |> Ash.create!(authorize?: true)
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Tweet
+      |> Ash.Changeset.for_create(:create, %{user_id: Ash.UUID.generate()})
+      |> Ash.create!(authorize?: true)
+    end
+  end
+
   test "relating_to_actor/1 works when updating", %{user: user} do
     Tweet
     |> Ash.Changeset.for_create(:create, %{user_id: user.id})

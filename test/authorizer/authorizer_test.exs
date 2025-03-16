@@ -84,6 +84,25 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       assert post.title == "true"
     end
 
+    test "authorize :by_default authorizes if actor is set for process" do
+      Application.put_env(:ash, Domain,
+        authorization: [
+          authorize: :by_default
+        ]
+      )
+
+      start_supervised({Ash.Test.Authorizer, strict_check: :authorized})
+
+      Process.put(:ash_actor, :an_actor)
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:title_is_authorization, %{})
+        |> Ash.create!()
+
+      assert post.title == "true"
+    end
+
     test "require_actor? requires an actor for all requests" do
       Application.put_env(:ash, Domain,
         authorization: [
