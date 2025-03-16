@@ -196,7 +196,7 @@ defmodule Ash.Resource.Validation.Compare do
            )}
 
         {:is_nil, false} ->
-          {:atomic, [opts[:attribute]], expr(^atomic_ref(opts[:attribute]) == nil),
+          {:atomic, [opts[:attribute]], expr(is_nil(^atomic_ref(opts[:attribute]))),
            expr(
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
