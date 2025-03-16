@@ -3,6 +3,8 @@ defmodule Ash.Resource.Calculation do
   The behaviour for defining a module calculation, and the struct for storing a defined calculation.
   """
 
+  require Ash.BehaviourHelpers
+
   defstruct allow_nil?: true,
             arguments: [],
             calculation: nil,
@@ -195,6 +197,15 @@ defmodule Ash.Resource.Calculation do
 
   def schema, do: @schema
 
+  @spec init(module(), opts) :: {:ok, opts} | {:error, term}
+  def init(module, opts) do
+    Ash.BehaviourHelpers.check_type!(module, module.init(opts), [
+      {:ok, opts},
+      {:error, error}
+    ])
+  end
+
+  @doc false
   def expr_calc(expr) when is_function(expr) do
     {:error,
      "Inline function calculations expect a function with arity 2. Got #{Function.info(expr)[:arity]}"}

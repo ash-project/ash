@@ -101,7 +101,7 @@ defmodule Ash.Query.Calculation do
         opts \\ []
       ) do
     with {:ok, opts} <- Opts.validate(opts),
-         {:ok, calc_opts} <- module.init(calc_opts) do
+         {:ok, calc_opts} <- Ash.Resource.Calculation.init(module, calc_opts) do
       authorize? =
         if :authorize? in opts.__set__ do
           opts.authorize?
