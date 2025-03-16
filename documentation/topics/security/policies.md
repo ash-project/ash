@@ -163,7 +163,7 @@ policies do
     end
 
     policy action_type(:create) do
-      authorize_if always()
+      authorize_if relating_to_actor(:owner)
     end
   end
 end
