@@ -154,3 +154,16 @@ end
 ```
 
 This allows you to pass an `%Organization{}` or an organization_id around, and have that `organization_id` properly used with attribute and context-based multitenancy.
+
+## Per-process tenants
+
+In web applications, the tenant is typically determined when authenticating a request,
+and each request runs in a separate process. You can set default tenant for current process by calling
+
+```elixir
+Process.put(:ash_tenant, tenant)
+```
+
+The tenant will be used by default for all queries and changesets, and can be overriden using options.
+
+

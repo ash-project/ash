@@ -249,6 +249,8 @@ defmodule Ash.Changeset do
     :around_transaction
   ]
 
+  @sentinel_value :"$ash_sentinel_value"
+
   @type phase :: unquote(Enum.reduce(@phases, &{:|, [], [&1, &2]}))
 
   @type t :: %__MODULE__{
@@ -404,12 +406,13 @@ defmodule Ash.Changeset do
     tenant =
       record
       |> Map.get(:__metadata__, %{})
-      |> Map.get(:tenant, nil)
+      |> Map.get(:tenant, @sentinel_value)
 
     context = Ash.Resource.Info.default_context(resource) || %{}
 
     if Ash.Resource.Info.resource?(resource) do
       %__MODULE__{resource: resource, data: record, action_type: action_type}
+      |> set_perprocess_options()
       |> set_context(context)
       |> set_tenant(tenant)
     else
@@ -419,6 +422,7 @@ defmodule Ash.Changeset do
         data: struct(resource)
       }
       |> add_error(NoSuchResource.exception(resource: resource))
+      |> set_perprocess_options()
       |> set_tenant(tenant)
       |> set_context(context)
     end
@@ -644,7 +648,7 @@ defmodule Ash.Changeset do
         |> Map.put(:no_atomic_constraints, opts[:no_atomic_constraints] || [])
         |> Map.put(:action_type, action.type)
         |> Map.put(:atomics, opts[:atomics] || [])
-        |> Ash.Changeset.set_tenant(opts[:tenant])
+        |> set_tenant(Keyword.get(opts, :tenant, @sentinel_value))
 
       {changeset, _opts} =
         Ash.Actions.Helpers.set_context_and_get_opts(
@@ -1725,7 +1729,7 @@ defmodule Ash.Changeset do
                 |> set_actor(opts)
                 |> set_authorize(opts)
                 |> set_tracer(opts)
-                |> set_tenant(opts[:tenant] || changeset.tenant)
+                |> set_tenant(opts[:tenant] || changeset.tenant || @sentinel_value)
                 |> cast_params(action, params, opts)
                 |> set_argument_defaults(action)
                 |> require_arguments(action)
@@ -4359,6 +4363,10 @@ defmodule Ash.Changeset do
   end
 
   @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
+  def set_tenant(changeset, @sentinel_value) do
+    changeset
+  end
+
   def set_tenant(changeset, tenant) do
     %{changeset | tenant: tenant, to_tenant: Ash.ToTenant.to_tenant(tenant, changeset.resource)}
   end
@@ -6312,6 +6320,19 @@ defmodule Ash.Changeset do
         end)
       end
     end)
+  end
+
+  defp set_perprocess_options(changeset) do
+    changeset =
+      case Process.get(:ash_actor, @sentinel_value) do
+        @sentinel_value -> changeset
+        actor -> set_actor(changeset, actor: actor)
+      end
+
+    case Process.get(:ash_tenant, @sentinel_value) do
+      @sentinel_value -> changeset
+      tenant -> set_tenant(changeset, tenant)
+    end
   end
 
   defp set_phase(changeset, phase) when changeset.phase == phase, do: changeset

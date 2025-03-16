@@ -45,6 +45,18 @@ MyDomain.create_post!(Post, authorize?: true)
 > |> Ash.read!(actor: current_user)
 > ```
 
+## Per-process actors
+
+In web applications, the actor is typically the current user that is determined when authenticating a request,
+and each request runs in a separate process. You can set default actor for current process by calling
+
+```elixir
+Process.put(:ash_actor, actor)
+```
+
+The actor will be used by default for all queries and changesets, and can be overriden using options.
+
+
 ## Default value of `authorize?`
 
 The default value of `authorize?` is determined by the `authorization` configuration of the relevant domain. By default, `authorize?` is set to `true` (and so can be ommitted in all of the examples above). If a resource has no authorizers, then all requests will be allowed.

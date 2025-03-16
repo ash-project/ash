@@ -232,6 +232,7 @@ defmodule Ash.Query do
                                               :read_action_after_action_hooks_in_order?,
                                               false
                                             )
+  @sentinel_value :"$ash_sentinel_value"
 
   @type around_result ::
           {:ok, list(Ash.Resource.record())}
@@ -592,6 +593,7 @@ defmodule Ash.Query do
     context = Process.get(:ash_context, %{}) || %{}
 
     query
+    |> set_perprocess_options()
     |> set_context(context)
     |> Ash.DataLayer.transform_query()
   end
@@ -766,6 +768,19 @@ defmodule Ash.Query do
       put_context(query, :private, %{tracer: opts[:tracer]})
     else
       query
+    end
+  end
+
+  defp set_perprocess_options(query) do
+    query =
+      case Process.get(:ash_actor, @sentinel_value) do
+        @sentinel_value -> query
+        actor -> set_actor(query, actor: actor)
+      end
+
+    case Process.get(:ash_tenant, @sentinel_value) do
+      @sentinel_value -> query
+      tenant -> set_tenant(query, tenant)
     end
   end
 
@@ -2169,6 +2184,10 @@ defmodule Ash.Query do
   def struct?(_), do: false
 
   @spec set_tenant(t() | Ash.Resource.t(), Ash.ToTenant.t()) :: t()
+  def set_tenant(query, @sentinel_value) do
+    query
+  end
+
   def set_tenant(query, tenant) do
     query = new(query)
     %{query | tenant: tenant, to_tenant: Ash.ToTenant.to_tenant(tenant, query.resource)}
