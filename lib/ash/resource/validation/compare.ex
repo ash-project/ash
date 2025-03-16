@@ -78,15 +78,18 @@ defmodule Ash.Resource.Validation.Compare do
       end
 
     case value do
-      {:ok, value} ->
-        validate_value(changeset, opts, value)
-
-      _ ->
+      {:ok, nil} ->
         if opts[:is_nil] == false do
           invalid_attribute_error(opts, nil)
         else
           :ok
         end
+
+      {:ok, value} ->
+        validate_value(changeset, opts, value)
+
+      _ ->
+        :ok
     end
   end
 

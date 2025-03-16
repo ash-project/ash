@@ -82,6 +82,13 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
       changeset = create_changeset(%{nil_value: nil})
       assert_validation_error(changeset, opts, "must not be nil")
     end
+
+    test "allows nil value when is_nil option is not specified" do
+      {:ok, opts} = Compare.init(attribute: :nil_value)
+
+      changeset = create_changeset(%{nil_value: nil})
+      assert_validation_success(changeset, opts)
+    end
   end
 
   describe "is_equal validation" do
@@ -376,6 +383,15 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
       opts,
       "must be greater than 0 and must be less than or equal to 10"
     )
+  end
+
+  describe "error handling" do
+    test "returns :ok when attribute cannot be fetched" do
+      {:ok, opts} = Compare.init(attribute: :non_existent_attribute)
+
+      changeset = create_changeset(%{})
+      assert_validation_success(changeset, opts)
+    end
   end
 
   describe "edge cases" do
