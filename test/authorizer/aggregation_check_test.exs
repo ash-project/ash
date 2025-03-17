@@ -117,7 +117,7 @@ defmodule ThisTest do
     post = Changeset.for_update(post, :append_comment, params) |> Ash.update!()
 
     post = Ash.get!(ThisTest.Post, post.id)
-    assert {:ok, false} = assert(Ash.can({post, :update_if_no_comment}, nil))
+    assert {:ok, false} = Ash.can({post, :update_if_no_comment}, nil)
   end
 
   test "policy can check inline count aggregation", %{post: post} do
@@ -127,7 +127,7 @@ defmodule ThisTest do
     post = Changeset.for_update(post, :append_comment, params) |> Ash.update!()
 
     post = Ash.get!(ThisTest.Post, post.id)
-    assert {:ok, false} = assert(Ash.can({post, :update_if_no_comment_inline}, nil))
+    assert {:ok, false} = Ash.can({post, :update_if_no_comment_inline}, nil)
   end
 
   test "policy can check exist aggregation", %{post: post} do
@@ -135,13 +135,13 @@ defmodule ThisTest do
     post = Changeset.for_update(post, :append_comment, params) |> Ash.update!()
 
     post = Ash.get!(ThisTest.Post, post.id)
-    assert {:ok, true} = assert(Ash.can({post, :update_unless_invalid_comment}, nil))
+    assert {:ok, true} = Ash.can({post, :update_unless_invalid_comment}, nil)
 
     params = %{comment: %{content: "invalid"}}
     post = Changeset.for_update(post, :append_comment, params) |> Ash.update!()
 
     post = Ash.get!(ThisTest.Post, post.id)
-    assert {:ok, false} = assert(Ash.can({post, :update_unless_invalid_comment}, nil))
+    assert {:ok, false} = Ash.can({post, :update_unless_invalid_comment}, nil)
   end
 
   test "policy can check inline exist aggregation", %{post: post} do
@@ -149,13 +149,13 @@ defmodule ThisTest do
     post = Changeset.for_update(post, :append_comment, params) |> Ash.update!()
 
     post = Ash.get!(ThisTest.Post, post.id)
-    assert {:ok, true} = assert(Ash.can({post, :update_unless_invalid_comment_inline}, nil))
+    assert {:ok, true} = Ash.can({post, :update_unless_invalid_comment_inline}, nil)
 
     params = %{comment: %{content: "invalid"}}
     post = Changeset.for_update(post, :append_comment, params) |> Ash.update!()
 
     post = Ash.get!(ThisTest.Post, post.id)
     # bug
-    assert {:ok, false} = assert(Ash.can({post, :update_unless_invalid_comment_inline}, nil))
+    assert {:ok, false} = Ash.can({post, :update_unless_invalid_comment_inline}, nil)
   end
 end
