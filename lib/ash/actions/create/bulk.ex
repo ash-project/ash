@@ -1206,9 +1206,6 @@ defmodule Ash.Actions.Create.Bulk do
                   })
                   |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
                   |> case do
-                    {:ok, results} ->
-                      results
-
                     :ok ->
                       if opts[:return_records?] do
                         raise "`#{inspect(mod)}.bulk_create/3` returned :ok without a result when `return_records?` is true"
@@ -1220,9 +1217,22 @@ defmodule Ash.Actions.Create.Bulk do
                       store_error(ref, error, opts)
                       []
 
-                    {:notifications, notifications} ->
-                      store_notification(ref, notifications, opts)
-                      []
+                    results when is_list(results) ->
+                      ok_results =
+                        Enum.reduce(results, [], fn
+                          {:ok, result}, results ->
+                            [result | results]
+
+                          {:ok, result, notification}, results ->
+                            store_notification(ref, notification, opts)
+                            [result | results]
+
+                          {:error, error}, results ->
+                            store_error(ref, error, opts)
+                            results
+                        end)
+
+                      {:ok, ok_results}
                   end
                 else
                   [changeset] = batch
