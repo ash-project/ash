@@ -159,8 +159,9 @@ defmodule Ash.Type.Struct do
       if constraints[:instance_of] do
         nil_values = constraints[:store_nil_values?]
 
-        Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
-          case Map.fetch(value, key) do
+        Enum.reduce_while(fields, {:ok, struct(constraints[:instance_of], [])}, fn {key, config},
+                                                                                   {:ok, acc} ->
+          case fetch_field(value, key) do
             {:ok, value} ->
               case Ash.Type.cast_stored(config[:type], value, config[:constraints] || []) do
                 {:ok, value} ->

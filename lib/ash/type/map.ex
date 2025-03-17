@@ -127,9 +127,36 @@ defmodule Ash.Type.Map do
   def cast_input(_, _), do: :error
 
   @impl true
+
   def cast_stored(nil, _), do: {:ok, nil}
 
-  def cast_stored(value, _) when is_map(value), do: {:ok, value}
+  def cast_stored(value, constraints) when is_map(value) do
+    if fields = constraints[:fields] do
+      nil_values = constraints[:store_nil_values?]
+
+      Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
+        case fetch_field(value, key) do
+          {:ok, value} ->
+            case Ash.Type.cast_stored(config[:type], value, config[:constraints] || []) do
+              {:ok, value} ->
+                if is_nil(value) && !nil_values do
+                  {:cont, {:ok, acc}}
+                else
+                  {:cont, {:ok, Map.put(acc, key, value)}}
+                end
+
+              other ->
+                {:halt, other}
+            end
+
+          :error ->
+            {:cont, {:ok, acc}}
+        end
+      end)
+    else
+      {:ok, value}
+    end
+  end
 
   def cast_stored(_, _), do: :error
 

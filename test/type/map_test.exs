@@ -49,6 +49,23 @@ defmodule Type.MapTest do
     end
   end
 
+  defmodule MapWithFields do
+    use Ash.Type.NewType,
+      subtype_of: :map,
+      constraints: [
+        fields: [
+          foo: [type: :string, allow_nil?: false]
+        ]
+      ]
+  end
+
+  test "cast_stored honors string keys" do
+    {:ok, constraints} = Ash.Type.init(MapWithFields, [])
+
+    assert {:ok, %{foo: "bar"}} =
+             Ash.Type.cast_stored(MapWithFields, %{"foo" => "bar"}, constraints)
+  end
+
   test "it handles valid maps" do
     changeset =
       Post
