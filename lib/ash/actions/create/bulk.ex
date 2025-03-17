@@ -1220,12 +1220,19 @@ defmodule Ash.Actions.Create.Bulk do
                     results when is_list(results) ->
                       ok_results =
                         Enum.reduce(results, [], fn
+                          :ok, results ->
+                            results
+
                           {:ok, result}, results ->
                             [result | results]
 
-                          {:ok, result, notification}, results ->
-                            store_notification(ref, notification, opts)
+                          {:ok, result, %{notifications: notifications}}, results ->
+                            store_notification(ref, notifications, opts)
                             [result | results]
+
+                          {:notifications, notifications}, results ->
+                            store_notification(ref, notifications, opts)
+                            results
 
                           {:error, error}, results ->
                             store_error(ref, error, opts)
