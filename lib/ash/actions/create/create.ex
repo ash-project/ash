@@ -231,7 +231,7 @@ defmodule Ash.Actions.Create do
           Ash.Resource.Info.primary_key(changeset.resource)
 
         identity ->
-          keys =
+          identity =
             changeset.resource
             |> Ash.Resource.Info.identities()
             |> Enum.find(&(&1.name == identity))
@@ -240,7 +240,8 @@ defmodule Ash.Actions.Create do
                 resource: changeset.resource,
                 identity: identity
             )
-            |> Map.get(:keys)
+
+          keys = identity |> Map.get(:keys)
 
           if changeset.tenant && !identity.all_tenants? &&
                Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
