@@ -225,6 +225,7 @@ defmodule Ash.Resource.Validation.Compare do
         |> Enum.map(fn {k, v} ->
           case v do
             fun when is_function(fun, 0) -> {k, fun.()}
+            v when is_struct(v) -> {k, v}
             v when is_list(v) -> {k, format_value(v)}
             v when is_map(v) -> {k, format_value(v)}
             v when is_tuple(v) -> {k, format_value(v)}
