@@ -154,7 +154,7 @@ defmodule ThisTest do
     post = Changeset.for_update(post, :append_comment, params) |> Ash.update!()
 
     post = Ash.get!(ThisTest.Post, post.id)
-    # bug
+
     assert {:ok, false} = Ash.can({post, :update_unless_invalid_comment_inline}, nil)
   end
 end

@@ -775,7 +775,7 @@ defmodule Ash.Can do
 
   defp run_queries(subject, actor, opts, authorizers, query) do
     case subject do
-      %Ash.Query{} ->
+      %Ash.Query{tenant: tenant} ->
         if opts[:data] do
           data = List.wrap(opts[:data])
 
@@ -790,6 +790,7 @@ defmodule Ash.Can do
             query
             |> Ash.Query.do_filter(or: pkey_values)
             |> Ash.Query.select([])
+            |> Ash.Query.set_tenant(tenant)
             |> Ash.Query.data_layer_query()
             |> case do
               {:ok, data_layer_query} ->

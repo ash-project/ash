@@ -2,9 +2,6 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Expr
-  import ExUnit.CaptureLog
-
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -30,24 +27,23 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
       opts = Ash.Context.to_opts(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        result =
-          changeset.resource
-          |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
-          |> Ash.create(opts ++ [return_notifications?: true])
-          |> case do
-            {:ok, record, notification} ->
-              record =
-                Ash.Resource.put_metadata(
-                  record,
-                  :bulk_create_index,
-                  changeset.context.bulk_create.index
-                )
+        changeset.resource
+        |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
+        |> Ash.create(opts ++ [return_notifications?: true])
+        |> case do
+          {:ok, record, notification} ->
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_create_index,
+                changeset.context.bulk_create.index
+              )
 
-              [{:ok, record, notification} | results]
+            [{:ok, record, notification} | results]
 
-            {:error, error} ->
-              [{:error, error} | results]
-          end
+          {:error, error} ->
+            [{:error, error} | results]
+        end
       end)
     end
   end

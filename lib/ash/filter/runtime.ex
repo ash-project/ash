@@ -127,7 +127,7 @@ defmodule Ash.Filter.Runtime do
   defp matches(record, expression, opts) do
     relationship_paths =
       expression
-      |> Ash.Filter.relationship_paths(true)
+      |> Ash.Filter.relationship_paths()
 
     record
     |> flatten_relationships(relationship_paths)
