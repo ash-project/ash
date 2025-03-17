@@ -227,6 +227,16 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
       assert_validation_error(changeset, opts, "must not be equal to number_two")
     end
 
+    test "validates inequality with decimals" do
+      {:ok, opts} = Compare.init(attribute: :number_three, is_not_equal: Decimal.new(1))
+      changeset = create_changeset(%{number_three: Decimal.new(100)})
+      assert_validation_success(changeset, opts)
+
+      {:ok, opts} = Compare.init(attribute: :number_one, is_not_equal: Decimal.new(1))
+      changeset = create_changeset(%{number_one: 1})
+      assert_validation_error(changeset, opts, "must not be equal to 1")
+    end
+
     test "validates inequality with complex data types" do
       {:ok, opts} = Compare.init(attribute: :list_value, is_not_equal: [1, 2, 3])
       assert_validation_success(create_changeset(%{list_value: [4, 5, 6]}), opts)
