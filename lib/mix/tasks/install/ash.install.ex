@@ -130,10 +130,14 @@ if Code.ensure_loaded?(Igniter) do
         Igniter.Project.Module.module_name(igniter, "Support.Ticket.Types.Status")
 
       igniter
-      |> Igniter.compose_task("ash.gen.domain", [inspect(domain_module_name)])
+      |> Igniter.compose_task("ash.gen.domain", [
+        inspect(domain_module_name),
+        "--ignore-if-exists"
+      ])
       |> Igniter.compose_task("ash.gen.enum", [
         inspect(ticket_status_module_name),
         "open,closed",
+        "--ignore-if-exists",
         "--short-name",
         "ticket_status"
       ])
@@ -141,6 +145,7 @@ if Code.ensure_loaded?(Igniter) do
         "ash.gen.resource",
         [
           inspect(ticket_resource),
+          "--ignore-if-exists",
           "--domain",
           inspect(domain_module_name),
           "--default-actions",
@@ -157,6 +162,7 @@ if Code.ensure_loaded?(Igniter) do
         "ash.gen.resource",
         [
           inspect(representative_resource),
+          "--ignore-if-exists",
           "--domain",
           inspect(domain_module_name),
           "--default-actions",
@@ -169,18 +175,18 @@ if Code.ensure_loaded?(Igniter) do
           "has_many:tickets:#{inspect(ticket_resource)}:public"
         ] ++ argv
       )
-      |> Ash.Resource.Igniter.add_attribute(ticket_resource, """
+      |> Ash.Resource.Igniter.add_new_attribute(ticket_resource, :status, """
       attribute :status, :ticket_status do
         default :open
         allow_nil? false
       end
       """)
-      |> Ash.Resource.Igniter.add_action(ticket_resource, """
+      |> Ash.Resource.Igniter.add_new_action(ticket_resource, :open, """
       create :open do
         accept [:subject]
       end
       """)
-      |> Ash.Resource.Igniter.add_action(ticket_resource, """
+      |> Ash.Resource.Igniter.add_new_action(ticket_resource, :close, """
       update :close do
         accept []
 
@@ -191,7 +197,7 @@ if Code.ensure_loaded?(Igniter) do
         change set_attribute(:status, :closed)
       end
       """)
-      |> Ash.Resource.Igniter.add_action(ticket_resource, """
+      |> Ash.Resource.Igniter.add_new_action(ticket_resource, :assign, """
       update :assign do
         accept [:representative_id]
       end

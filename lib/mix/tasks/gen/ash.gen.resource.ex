@@ -32,6 +32,7 @@ if Code.ensure_loaded?(Igniter) do
     * `--extend` or `-e` - A comma separated list of modules or builtins to extend the resource with. i.e `-e postgres,Some.Extension`
     * `--base` or `-b` - The base module to use for the resource. i.e `-b Ash.Resource`. Requires that the module is in `config :your_app, :base_resources`
     * `--timestamps` or `-t` - If set adds `inserted_at` and `updated_at` timestamps to the resource.
+    * `--ignore-if-exists` - Does nothing if the resource already exists
     """
 
     @shortdoc "Generate and configure an Ash.Resource."
@@ -65,7 +66,8 @@ if Code.ensure_loaded?(Igniter) do
           base: :string,
           timestamps: :boolean,
           da: :string,
-          u7: :string
+          u7: :string,
+          ignore_if_exists: :boolean
         ],
         aliases: [
           a: :attribute,
@@ -89,154 +91,160 @@ if Code.ensure_loaded?(Igniter) do
       resource = Igniter.Project.Module.parse(arguments.resource)
       app_name = Igniter.Project.Application.app_name(igniter)
 
-      domain =
-        case options[:domain] do
-          nil ->
-            resource
-            |> Module.split()
-            |> :lists.droplast()
-            |> Module.concat()
+      {exists?, igniter} = Igniter.Project.Module.module_exists(igniter, resource)
 
-          domain ->
-            Igniter.Project.Module.parse(domain)
-        end
+      if "--ignore-if-exists" in igniter.args.argv_flags && exists? do
+        igniter
+      else
+        domain =
+          case options[:domain] do
+            nil ->
+              resource
+              |> Module.split()
+              |> :lists.droplast()
+              |> Module.concat()
 
-      options =
-        options
-        |> Keyword.update(
-          :default_actions,
-          [],
-          fn defaults -> Enum.sort_by(defaults, &(&1 in ["create", "update"])) end
-        )
-        |> Keyword.put_new(:base, "Ash.Resource")
-
-      base =
-        if options[:base] == "Ash.Resource" do
-          "Ash.Resource"
-        else
-          base =
-            Igniter.Project.Module.parse(options[:base])
-
-          if base not in List.wrap(Application.get_env(app_name, :base_resources)) do
-            raise """
-            The base module #{inspect(base)} is not in the list of base resources.
-
-            If it exists but is not in the base resource list, add it like so:
-
-            `config #{inspect(app_name)}, base_resources: [#{inspect(base)}]`
-
-            If it does not exist, you can generate a base resource with `mix ash.gen.base_resource #{inspect(base)}`
-            """
+            domain ->
+              Igniter.Project.Module.parse(domain)
           end
 
-          inspect(base)
-        end
+        options =
+          options
+          |> Keyword.update(
+            :default_actions,
+            [],
+            fn defaults -> Enum.sort_by(defaults, &(&1 in ["create", "update"])) end
+          )
+          |> Keyword.put_new(:base, "Ash.Resource")
 
-      attributes = attributes(options)
-
-      relationships =
-        if !Enum.empty?(options[:relationship]) do
-          """
-          relationships do
-          #{relationships(options)}
-          end
-          """
-        end
-
-      default_accept =
-        Enum.flat_map(options[:attribute], fn attribute ->
-          [name, _type | modifiers] = String.split(attribute, ":", trim: true)
-
-          if "public" in modifiers do
-            [String.to_atom(name)]
+        base =
+          if options[:base] == "Ash.Resource" do
+            "Ash.Resource"
           else
-            []
+            base =
+              Igniter.Project.Module.parse(options[:base])
+
+            if base not in List.wrap(Application.get_env(app_name, :base_resources)) do
+              raise """
+              The base module #{inspect(base)} is not in the list of base resources.
+
+              If it exists but is not in the base resource list, add it like so:
+
+              `config #{inspect(app_name)}, base_resources: [#{inspect(base)}]`
+
+              If it does not exist, you can generate a base resource with `mix ash.gen.base_resource #{inspect(base)}`
+              """
+            end
+
+            inspect(base)
           end
-        end)
 
-      actions =
-        case options[:default_actions] do
-          [] ->
-            ""
+        attributes = attributes(options)
 
-          defaults ->
-            default_contents =
-              Enum.map_join(defaults, ", ", fn
-                type when type in ["read", "destroy"] ->
-                  ":#{type}"
-
-                type when type in ["create", "update"] ->
-                  "#{type}: #{inspect(default_accept)}"
-
-                type ->
-                  raise """
-                  Invalid default action type given to `--default-actions`: #{inspect(type)}.
-                  """
-              end)
-
+        relationships =
+          if !Enum.empty?(options[:relationship]) do
             """
-            actions do
-              defaults [#{default_contents}]
+            relationships do
+            #{relationships(options)}
             end
             """
-        end
-
-      attributes =
-        if options[:uuid_primary_key] || options[:integer_primary_key] ||
-             options[:uuid_v7_primary_key] ||
-             !Enum.empty?(options[:attribute]) || options[:timestamps] do
-          uuid_primary_key =
-            if options[:uuid_primary_key] do
-              pkey_builder("uuid_primary_key", options[:uuid_primary_key])
-            end
-
-          uuid_v7_primary_key =
-            if options[:uuid_v7_primary_key] do
-              pkey_builder("uuid_v7_primary_key", options[:uuid_v7_primary_key])
-            end
-
-          integer_primary_key =
-            if options[:integer_primary_key] do
-              pkey_builder("integer_primary_key", options[:integer_primary_key])
-            end
-
-          timestamps =
-            if options[:timestamps] do
-              "timestamps()"
-            end
-
-          """
-          attributes do
-            #{uuid_primary_key}
-            #{uuid_v7_primary_key}
-            #{integer_primary_key}
-            #{attributes}
-            #{timestamps}
           end
+
+        default_accept =
+          Enum.flat_map(options[:attribute], fn attribute ->
+            [name, _type | modifiers] = String.split(attribute, ":", trim: true)
+
+            if "public" in modifiers do
+              [String.to_atom(name)]
+            else
+              []
+            end
+          end)
+
+        actions =
+          case options[:default_actions] do
+            [] ->
+              ""
+
+            defaults ->
+              default_contents =
+                Enum.map_join(defaults, ", ", fn
+                  type when type in ["read", "destroy"] ->
+                    ":#{type}"
+
+                  type when type in ["create", "update"] ->
+                    "#{type}: #{inspect(default_accept)}"
+
+                  type ->
+                    raise """
+                    Invalid default action type given to `--default-actions`: #{inspect(type)}.
+                    """
+                end)
+
+              """
+              actions do
+                defaults [#{default_contents}]
+              end
+              """
+          end
+
+        attributes =
+          if options[:uuid_primary_key] || options[:integer_primary_key] ||
+               options[:uuid_v7_primary_key] ||
+               !Enum.empty?(options[:attribute]) || options[:timestamps] do
+            uuid_primary_key =
+              if options[:uuid_primary_key] do
+                pkey_builder("uuid_primary_key", options[:uuid_primary_key])
+              end
+
+            uuid_v7_primary_key =
+              if options[:uuid_v7_primary_key] do
+                pkey_builder("uuid_v7_primary_key", options[:uuid_v7_primary_key])
+              end
+
+            integer_primary_key =
+              if options[:integer_primary_key] do
+                pkey_builder("integer_primary_key", options[:integer_primary_key])
+              end
+
+            timestamps =
+              if options[:timestamps] do
+                "timestamps()"
+              end
+
+            """
+            attributes do
+              #{uuid_primary_key}
+              #{uuid_v7_primary_key}
+              #{integer_primary_key}
+              #{attributes}
+              #{timestamps}
+            end
+            """
+          end
+
+        igniter
+        |> Igniter.compose_task("ash.gen.domain", [inspect(domain), "--ignore-if-exists"])
+        |> Ash.Domain.Igniter.add_resource_reference(
+          domain,
+          resource
+        )
+        |> Igniter.Project.Module.create_module(
+          resource,
           """
-        end
+          use #{base},
+            otp_app: #{inspect(app_name)},
+            domain: #{inspect(domain)}
 
-      igniter
-      |> Igniter.compose_task("ash.gen.domain", [inspect(domain), "--ignore-if-exists"])
-      |> Ash.Domain.Igniter.add_resource_reference(
-        domain,
-        resource
-      )
-      |> Igniter.Project.Module.create_module(
-        resource,
-        """
-        use #{base},
-          otp_app: #{inspect(app_name)},
-          domain: #{inspect(domain)}
+          #{actions}
 
-        #{actions}
+          #{attributes}
 
-        #{attributes}
-
-        #{relationships}
-        """
-      )
-      |> extend(resource, options[:extend], argv)
+          #{relationships}
+          """
+        )
+        |> extend(resource, options[:extend], argv)
+      end
     end
 
     defp extend(igniter, _, [], _) do

@@ -13,6 +13,7 @@ if Code.ensure_loaded?(Igniter) do
     ## Options
 
     - `--short-name`, `-s`: Register the type under the provided shortname, so it can be referenced like `:short_name` instead of the module name.
+    - `--ignore-if-exists` - Does nothing if the resource already exists
     """
 
     @shortdoc "Generates an Ash.Type.Enum"
@@ -22,7 +23,8 @@ if Code.ensure_loaded?(Igniter) do
     def info(_argv, _parent) do
       %Igniter.Mix.Task.Info{
         schema: [
-          short_name: :string
+          short_name: :string,
+          ignore_if_exists: :boolean
         ],
         example: @example,
         positional: [:module_name, :types],
@@ -41,35 +43,41 @@ if Code.ensure_loaded?(Igniter) do
       enum = Igniter.Project.Module.parse(module_name)
       file_name = Igniter.Project.Module.proper_location(igniter, enum)
 
-      short_name =
-        if opts[:short_name] do
-          String.to_atom(opts[:short_name])
+      {exists?, igniter} = Igniter.Project.Module.module_exists(igniter, enum)
+
+      if "--ignore-if-exists" in igniter.args.argv_flags && exists? do
+        igniter
+      else
+        short_name =
+          if opts[:short_name] do
+            String.to_atom(opts[:short_name])
+          end
+
+        types =
+          types
+          |> String.split(",")
+          |> Enum.map(&String.to_atom/1)
+
+        igniter
+        |> Igniter.create_new_file(file_name, """
+        defmodule #{inspect(enum)} do
+          use Ash.Type.Enum, values: #{inspect(types)}
         end
-
-      types =
-        types
-        |> String.split(",")
-        |> Enum.map(&String.to_atom/1)
-
-      igniter
-      |> Igniter.create_new_file(file_name, """
-      defmodule #{inspect(enum)} do
-        use Ash.Type.Enum, values: #{inspect(types)}
+        """)
+        |> then(fn igniter ->
+          if short_name do
+            Igniter.Project.Config.configure(
+              igniter,
+              "config.exs",
+              :ash,
+              [:custom_types, short_name],
+              enum
+            )
+          else
+            igniter
+          end
+        end)
       end
-      """)
-      |> then(fn igniter ->
-        if short_name do
-          Igniter.Project.Config.configure(
-            igniter,
-            "config.exs",
-            :ash,
-            [:custom_types, short_name],
-            enum
-          )
-        else
-          igniter
-        end
-      end)
     end
   end
 else
