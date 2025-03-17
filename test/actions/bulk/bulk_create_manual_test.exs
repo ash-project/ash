@@ -107,7 +107,7 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
         return_records?: true
       )
 
-    assert Enum.count(result.records) == 0
+    assert Enum.empty?(result.records)
     assert result.notifications == nil
     assert result.error_count == 1
   end
