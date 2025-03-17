@@ -1,4 +1,3 @@
-
 alias Ash.Test.AggregationCheckTest, as: ThisTest
 alias Ash.Changeset
 
