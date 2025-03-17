@@ -1,8 +1,16 @@
 if Code.ensure_loaded?(Igniter) do
   defmodule Mix.Tasks.Ash.Install do
-    @moduledoc "Installs Ash into a project. Should be called with `mix igniter.install ash`"
+    @shortdoc "Installs Ash into a project. Should be called with `mix igniter.install ash`"
 
-    @shortdoc @moduledoc
+    @moduledoc """
+    #{@shortdoc}
+
+    ## Options
+
+    - `--example` - Creates some example resources. When used, will pass 
+      through options to `mix ash.gen.resource`. See that task docs for more.
+    """
+
     use Igniter.Mix.Task
 
     # I know for a fact that this will spark lots of conversation, debate and bike shedding.
