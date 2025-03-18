@@ -1563,7 +1563,6 @@ defmodule Ash do
       |> Ash.Query.new(domain: domain)
       |> Ash.Query.set_tenant(opts[:tenant])
       |> Ash.Query.filter(^filter)
-      |> Ash.Query.load(opts[:load] || [])
       |> Ash.Query.set_context(opts[:context] || %{})
       |> Ash.Query.lock(opts[:lock])
 
