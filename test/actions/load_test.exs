@@ -311,7 +311,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     preparations do
-      prepare build(load: [:category_length])
+      prepare build(load: [:category_length, :sum])
     end
 
     attributes do
@@ -348,6 +348,12 @@ defmodule Ash.Test.Actions.LoadTest do
 
     calculations do
       calculate :category_length, :string, expr(string_length(category))
+
+      calculate :sum, :integer do
+        argument :a, :integer, default: 1
+        argument :b, :integer, default: 2
+        calculation expr(^arg(:a) + ^arg(:b))
+      end
     end
 
     relationships do
@@ -2003,6 +2009,19 @@ defmodule Ash.Test.Actions.LoadTest do
       |> Ash.create!()
 
     assert %Ash.NotLoaded{} = Ash.load!(post, :author).category_length
+  end
+
+  test "calculation arguments should be respected" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        title: "author post",
+        contents: "post content"
+      })
+      |> Ash.create!()
+
+    post = Ash.load!(post, sum: [a: 3, b: 4])
+    assert 7 == post.sum
   end
 
   test "you can load data on create with no default read action" do
