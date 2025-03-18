@@ -2025,9 +2025,49 @@ defmodule Ash.Actions.Destroy.Bulk do
                         must_return_records_for_changes?,
                     tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
                   })
-                  |> Enum.flat_map(fn
+                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                  |> case do
                     {:ok, result} ->
                       [result]
+
+                    :ok ->
+                      if opts[:return_records?] do
+                        raise "`#{inspect(mod)}.bulk_destroy/3` returned :ok without a result when `return_records?` is true"
+                      else
+                        []
+                      end
+
+                    results when is_list(results) ->
+                      ok_results =
+                        Enum.reduce(results, [], fn
+                          :ok, results ->
+                            if opts[:return_records?] do
+                              raise "`#{inspect(mod)}.bulk_destroy/3` returned :ok without a result when `return_records?` is true"
+                            else
+                              results
+                            end
+
+                          {:ok, result}, results ->
+                            [result | results]
+
+                          {:ok, result, %{notifications: notifications}}, results ->
+                            store_notification(ref, notifications, opts)
+                            [result | results]
+
+                          {:ok, result, notifications}, results ->
+                            store_notification(ref, notifications, opts)
+                            [result | results]
+
+                          {:notifications, notifications}, results ->
+                            store_notification(ref, notifications, opts)
+                            results
+
+                          {:error, error}, results ->
+                            store_error(ref, error, opts)
+                            results
+                        end)
+
+                      {:ok, ok_results}
 
                     {:error, error} ->
                       store_error(ref, error, opts)
@@ -2036,7 +2076,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                     {:notifications, notifications} ->
                       store_notification(ref, notifications, opts)
                       []
-                  end)
+                  end
                 else
                   [changeset] = batch
 

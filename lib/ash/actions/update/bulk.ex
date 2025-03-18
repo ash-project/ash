@@ -2361,6 +2361,38 @@ defmodule Ash.Actions.Update.Bulk do
                           []
                         end
 
+                      results when is_list(results) ->
+                        ok_results =
+                          Enum.reduce(results, [], fn
+                            :ok, results ->
+                              if opts[:return_records?] do
+                                raise "`#{inspect(mod)}.#{context_key}/3` returned :ok without a result when `return_records?` is true"
+                              else
+                                results
+                              end
+
+                            {:ok, result}, results ->
+                              [result | results]
+
+                            {:ok, result, %{notifications: notifications}}, results ->
+                              store_notification(ref, notifications, opts)
+                              [result | results]
+
+                            {:ok, result, notifications}, results ->
+                              store_notification(ref, notifications, opts)
+                              [result | results]
+
+                            {:notifications, notifications}, results ->
+                              store_notification(ref, notifications, opts)
+                              results
+
+                            {:error, error}, results ->
+                              store_error(ref, error, opts)
+                              results
+                          end)
+
+                        {:ok, ok_results}
+
                       {:error, error} ->
                         store_error(ref, error, opts)
                         []
@@ -2465,7 +2497,6 @@ defmodule Ash.Actions.Update.Bulk do
             case result do
               {:ok, result} ->
                 Process.put({:any_success?, ref}, true)
-
                 result
 
               {:error, error} ->
