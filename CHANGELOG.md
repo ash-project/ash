@@ -2,6 +2,77 @@
 
 <!-- changelog -->
 
+## [v3.4.69](https://github.com/ash-project/ash/compare/v3.4.68...v3.4.69) (2025-03-18)
+
+
+
+
+### Bug Fixes:
+
+* apply strict load in `Ash.get` properly (#1881)
+
+* honor tenant in `Ash.Seed.update!`
+
+* pattern match error in bulk result
+
+* match on `{:not_atomic` pattern in update actions
+
+* fix typo: `atomcis` -> `atomics`
+
+* properly evaluate `Exists{}` expressions in runtime filter
+
+* Fix upsert identity type error (#1872)
+
+* Fix bulk_create for manual create actions with bulk_create/3 (#1869)
+
+* ensure loading maps & structs properly load as keyword
+
+* make the --example installer flag idempotent
+
+* don't add tenant attribute for `all_tenant?` identities upsert keys
+
+* handle case clause error in `Ash.Filter`
+
+* validate return type of `Ash.Resource.Calculation.init/1`
+
+* make `lazy_init` work on `NewTypes`
+
+* properly parse maps with tuple values in filter parser
+
+* dump values to native storage type when doing atomic upgrades
+
+* fix required error deduplication logic
+
+* undo breaking change, use primary read action loads in `Ash.load!`
+
+* don't derive fields for resources in map types
+
+* make sequence unshrinkable in generators
+
+* properly handle bulk soft destroy (#1854)
+
+### Improvements:
+
+* support a resource & attrs tuple in `seed_generator`
+
+* allow is_equal and is_not_equal for compare validation (#1853)
+
+* return errors and stop on errors by default in bulk actions
+
+* add config to do read after_action hooks in order
+
+* add compile flag requiring atomic for default actions
+
+* types support atomic update by default for non-expr values
+
+* add `actions.read.pagination.stable_sort` customization
+
+* support inferring struct types from a resource
+
+* show value in match validation errors
+
+* disambiguation message on NoSuchFunction
+
 ## [v3.4.68](https://github.com/ash-project/ash/compare/v3.4.67...v3.4.68) (2025-03-11)
 
 
