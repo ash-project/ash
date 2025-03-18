@@ -274,7 +274,7 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
       )
 
     assert Enum.count(result.records) == 3
-    assert Enum.count(result.notifications) == 0
+    assert Enum.empty?(result.notifications)
     assert result.error_count == 0
   end
 
@@ -337,7 +337,7 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
       )
 
     assert Enum.count(result.records) == 3
-    assert Enum.count(result.notifications) == 0
+    assert Enum.empty?(result.notifications)
     assert result.error_count == 0
   end
 
@@ -400,7 +400,7 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
       )
 
     assert Enum.count(result.records) == 3
-    assert Enum.count(result.notifications) == 0
+    assert Enum.empty?(result.notifications)
     assert result.error_count == 0
   end
 
@@ -441,7 +441,7 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
         strategy: :stream
       )
 
-    assert Enum.count(result.records) == 0
+    assert Enum.empty?(result.records)
     assert Enum.count(result.notifications) == 3
     assert result.error_count == 0
   end
@@ -462,8 +462,8 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
         strategy: :stream
       )
 
-    assert Enum.count(result.records) == 0
-    assert Enum.count(result.notifications) == 0
+    assert Enum.empty?(result.records)
+    assert Enum.empty?(result.notifications)
     assert result.error_count == 0
   end
 
@@ -504,8 +504,8 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
         strategy: :stream
       )
 
-    assert Enum.count(result.records) == 0
-    assert Enum.count(result.notifications) == 0
+    assert Enum.empty?(result.records)
+    assert Enum.empty?(result.notifications)
     assert result.error_count == 0
   end
 
