@@ -707,7 +707,10 @@ defmodule Ash.CodeInterface do
                     Ash.read_one(query, Keyword.drop(opts, [:stream?, :stream_options]))
                     |> case do
                       {:ok, nil} when not_found_error? ->
-                        {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
+                        {:error,
+                         Ash.Error.to_error_class(
+                           Ash.Error.Query.NotFound.exception(resource: query.resource)
+                         )}
 
                       result ->
                         result
@@ -725,7 +728,10 @@ defmodule Ash.CodeInterface do
                     Ash.read_one!(query, Keyword.drop(opts, [:stream?, :stream_options]))
                     |> case do
                       nil when not_found_error? ->
-                        raise Ash.Error.Query.NotFound, resource: query.resource
+                        raise Ash.Error.to_error_class(
+                                Ash.Error.Query.NotFound,
+                                resource: query.resource
+                              )
 
                       result ->
                         result
