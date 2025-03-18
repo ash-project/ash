@@ -52,11 +52,11 @@ defmodule Ash.Resource.Validation.Changing do
     case Ash.Resource.Info.relationship(changeset.resource, field) do
       nil ->
         Map.has_key?(changeset.casted_attributes, field) ||
-          Map.has_key?(changeset.attributes, field) || Keyword.has_key?(changeset.atomcis, field)
+          Map.has_key?(changeset.attributes, field) || Keyword.has_key?(changeset.atomics, field)
 
       %{type: :belongs_to} = relationship ->
         Map.has_key?(changeset.casted_attributes, field) ||
-          Map.has_key?(changeset.attributes, field) || Keyword.has_key?(changeset.atomcis, field) ||
+          Map.has_key?(changeset.attributes, field) || Keyword.has_key?(changeset.atomics, field) ||
           changing_relationship?(changeset, relationship.name)
 
       relationship ->
