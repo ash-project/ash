@@ -1230,6 +1230,10 @@ defmodule Ash.Actions.Create.Bulk do
                             store_notification(ref, notifications, opts)
                             [result | results]
 
+                          {:ok, result, notifications}, results ->
+                            store_notification(ref, notifications, opts)
+                            [result | results]
+
                           {:notifications, notifications}, results ->
                             store_notification(ref, notifications, opts)
                             results
