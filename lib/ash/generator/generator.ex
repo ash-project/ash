@@ -272,11 +272,18 @@ defmodule Ash.Generator do
   See `changeset_generator/3` for the equivalent construct for cases when you want to call resource
   actions as opposed to seed directly to the data layer.
 
+  When a struct is given, only exactly the given values/generators will be used. If you
+  pass a tuple, i.e `{Resource, %{field: :value}}`, all values not provided will be generated
+  automatically.
+
   ## Examples
 
   ```elixir
   iex> seed_generator(%MyApp.Blog.Post{name: sequence(:blog_post_title, &"My Blog Post \#{&1}")}) |> generate() 
   %Tunez.Music.Artist{name: "Artist 1"}
+
+  iex> seed_generator({MyApp.Blog.Post, %{}}) |> generate() 
+  %Tunez.Music.Artist{name: "A random name"}
   ```
 
   ## Usage in tests
@@ -309,7 +316,9 @@ defmodule Ash.Generator do
     a new result to run after the record is creatd.
   """
   @spec seed_generator(
-          Ash.Resource.record() | (map -> Ash.Resource.record()),
+          Ash.Resource.record()
+          | {Ash.Resource.t(), map()}
+          | (map -> Ash.Resource.record() | {Ash.Resource.t(), %{}}),
           opts :: Keyword.t()
         ) :: stream_data()
   def seed_generator(record, opts \\ []) do
@@ -322,16 +331,41 @@ defmodule Ash.Generator do
       |> to_generators()
       |> StreamData.fixed_map()
       |> StreamData.bind(fn uses ->
-        %resource{} =
-          record =
+        resource_or_record =
           record.(uses)
 
-        record
-        |> Map.take(Enum.to_list(Ash.Resource.Info.attribute_names(resource)))
-        |> Map.merge(Map.new(opts[:overrides] || %{}))
-        |> to_generators()
-        |> Map.put(:__will_be_struct__, resource)
-        |> StreamData.fixed_map()
+        resource =
+          case resource_or_record do
+            {resource, _record} -> resource
+            %resource{} -> resource
+          end
+
+        resource_or_record
+        |> case do
+          %_{} = record ->
+            record
+            |> Map.take(Enum.to_list(Ash.Resource.Info.attribute_names(resource)))
+            |> Map.merge(Map.new(opts[:overrides] || %{}))
+            |> to_generators()
+            |> Map.put(:__will_be_struct__, resource)
+            |> StreamData.fixed_map()
+
+          {resource, attributes} ->
+            resource
+            |> Ash.Resource.Info.attributes()
+            |> generate_attributes(
+              to_generators(
+                Map.put(
+                  Map.merge(attributes, Map.new(opts[:overrides] || %{})),
+                  :__will_be_struct__,
+                  resource
+                )
+              ),
+              false,
+              :create,
+              []
+            )
+        end
       end)
       |> StreamData.map(fn keys ->
         Ash.Resource.set_metadata(
@@ -346,13 +380,31 @@ defmodule Ash.Generator do
         raise ArgumentError, "The `uses` option must be provided if `record` is a function"
       end
 
-      %resource{} = record
+      resource =
+        case record do
+          {resource, _record} -> resource
+          %resource{} -> resource
+        end
 
       record
-      |> Map.take(Enum.to_list(Ash.Resource.Info.attribute_names(resource)))
-      |> Map.merge(Map.new(opts[:overrides] || %{}))
-      |> to_generators()
-      |> StreamData.fixed_map()
+      |> case do
+        %_{} = record ->
+          record
+          |> Map.take(Enum.to_list(Ash.Resource.Info.attribute_names(resource)))
+          |> Map.merge(Map.new(opts[:overrides] || %{}))
+          |> to_generators()
+          |> StreamData.fixed_map()
+
+        {_resource, attributes} ->
+          resource
+          |> Ash.Resource.Info.attributes()
+          |> generate_attributes(
+            to_generators(Map.merge(attributes, Map.new(opts[:overrides] || %{}))),
+            false,
+            :create,
+            []
+          )
+      end
       |> StreamData.map(fn keys ->
         Ash.Resource.set_metadata(
           struct(resource, keys),
