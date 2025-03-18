@@ -279,12 +279,19 @@ defmodule Ash.Seed do
     end
   end
 
-  def update!(record, input) when is_map(input) do
+  @doc """
+  Usage is the same as `seed!/2`, but it will update an existing record.
+
+  For multitenant resources, tenant will be extracted from the record if
+  not provided in opts.
+  """
+  def update!(record, input, opts \\ []) when is_map(input) do
     record
     |> Ash.Changeset.new()
     |> change_attributes(input)
     |> change_relationships(input)
     |> Ash.Changeset.set_defaults(:update, true)
+    |> Ash.Changeset.set_tenant(opts[:tenant] || record.__metadata__[:tenant])
     |> update_via_data_layer()
     |> case do
       {:ok, result, _, _} ->

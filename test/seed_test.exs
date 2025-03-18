@@ -373,6 +373,26 @@ defmodule Ash.Test.SeedTest do
       assert {:error, %{errors: [%Ash.Error.Query.NotFound{}]}} =
                Ash.get(AttributeUser, user_id, tenant: "random")
     end
+
+    test "attribute multitenancy works on update" do
+      tenant = seed!(%Tenant{name: "Tenant"})
+      tenant_id = tenant.id
+
+      user = seed!(AttributeUser, %{name: "User"}, tenant: tenant_id)
+      user_id = user.id
+
+      update!(user, %{name: "User1"})
+
+      assert {:ok, %AttributeUser{id: ^user_id, name: "User1"}} =
+               Ash.get(AttributeUser, user_id, tenant: tenant_id)
+
+      update!(%{user | __metadata__: Map.delete(user.__metadata__, :tenant)}, %{name: "User2"},
+        tenant: tenant_id
+      )
+
+      assert {:ok, %AttributeUser{id: ^user_id, name: "User2"}} =
+               Ash.get(AttributeUser, user_id, tenant: tenant_id)
+    end
   end
 
   describe "upsert!/2" do
