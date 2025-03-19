@@ -5,6 +5,8 @@ to your application. However, we *highly* encourage setting as many of
 them as possible. In 4.0, some will be removed entirely, and any that remain
 will have their defaults changed to the new value.
 
+The ash installer automatically sets all of these.
+
 ## allow_forbidden_field_for_relationships_by_default?
 
 ```elixir
