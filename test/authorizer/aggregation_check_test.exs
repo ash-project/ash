@@ -1,19 +1,11 @@
 alias Ash.Test.AggregationCheckTest, as: ThisTest
 alias Ash.Changeset
 
-defmodule ThisTest.Domain do
-  use Ash.Domain
-
-  resources do
-    allow_unregistered? true
-  end
-end
-
 defmodule ThisTest.Post do
   use Ash.Resource,
     authorizers: [Ash.Policy.Authorizer],
     data_layer: Ash.DataLayer.Ets,
-    domain: ThisTest.Domain
+    domain: Ash.Test.Domain
 
   actions do
     defaults [:read, create: :*, update: :*]
@@ -85,7 +77,7 @@ end
 defmodule ThisTest.Comment do
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets,
-    domain: ThisTest.Domain
+    domain: Ash.Test.Domain
 
   actions do
     defaults [:read, create: :*]
