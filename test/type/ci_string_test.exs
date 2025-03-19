@@ -130,4 +130,26 @@ defmodule Ash.Test.Type.CiString do
              |> Ash.Query.filter(string_f == "FoObAr")
              |> Ash.read!()
   end
+
+  test "updates if force_change_attribute" do
+    p =
+      Post
+      |> Ash.Changeset.for_create(:create, %{string_f: "foobar"})
+      |> Ash.create!()
+
+    p =
+      p
+      |> Ash.Changeset.for_update(:update, %{string_f: "FOOBAR"})
+      |> Ash.update!()
+
+    assert Ash.CiString.value(p.string_f) == "foobar"
+
+    p =
+      p
+      |> Ash.Changeset.for_update(:update)
+      |> Ash.Changeset.force_change_attribute(:string_f, "FOOBAR")
+      |> Ash.update!()
+
+    assert Ash.CiString.value(p.string_f) == "FOOBAR"
+  end
 end
