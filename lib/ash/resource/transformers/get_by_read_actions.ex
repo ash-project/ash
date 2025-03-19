@@ -65,7 +65,11 @@ defmodule Ash.Resource.Transformers.GetByReadActions do
             ]
           end
 
-        filter = List.wrap(action.filter) ++ [expr(^ref(field) == ^arg(field))]
+        filter =
+          case action.filter do
+            nil -> expr(^ref(field) == ^arg(field))
+            filter -> expr(^filter and ^ref(field) == ^arg(field))
+          end
 
         %{action | arguments: arguments, filter: filter}
       end)
