@@ -5,7 +5,7 @@ to your application. However, we *highly* encourage setting as many of
 them as possible. In 4.0, some will be removed entirely, and any that remain
 will have their defaults changed to the new value.
 
-## `allow_forbidden_field_for_relationships_by_default?`
+## allow_forbidden_field_for_relationships_by_default?
 
 ```elixir
 config :ash, allow_forbidden_field_for_relationships_by_default?: true
@@ -22,7 +22,7 @@ a `Forbidden` error, the entire request would fail with a forbidden error.
 Now the relationships that produced a forbidden error are instead populated
 with `%Ash.ForbiddenField{}`.
 
-## `include_embedded_source_by_default?`
+## include_embedded_source_by_default?
 
 ```elixir
 config :ash, include_embedded_source_by_default?: false
@@ -39,7 +39,7 @@ large sets of embedded resources.
 Now, the source is only included when you say `constraints: [include_source?: true]` on
 the embedded resource's usage.
 
-## `show_keysets_for_all_actions?`
+## show_keysets_for_all_actions?
 
 ```elixir
 config :ash, show_keysets_for_all_actions?: false
@@ -56,7 +56,7 @@ is expensive as it requires loading all things that are used by the sort.
 Only when actually performing keyset pagination will the `__metadata__.keyset` be
 computed.
 
-## `default_page_type`
+## default_page_type
 
 ```elixir
 config :ash, default_page_type: :keyset
@@ -73,7 +73,7 @@ Now we will return a `%Ash.Page.Keyset{}` choosing it whenever it is ambiguous.
 You can always force returning an `%Ash.Page.Offset{}` by providing the offset option,
 i.e `page: [offset: 0]`
 
-## `policies.no_filter_static_forbidden_reads?`
+## policies.no_filter_static_forbidden_reads?
 
 ```elixir
 config :ash, policies: [no_filter_static_forbidden_reads?: false]
@@ -117,7 +117,7 @@ would yield `filter: false`. This makes the behavior consistent and predictable.
 You can always annotate that a given policy should result in a forbidden error
 by setting `access_type :strict` in the policy.
 
-## `keep_read_action_loads_when_loading?`
+## keep_read_action_loads_when_loading?
 
 ```elixir
 config :ash, keep_read_action_loads_when_loading?: false
@@ -141,7 +141,7 @@ passed in.
 
 When using `Ash.load` *only* the explicitly provided load statement is applied.
 
-## `default_actions_require_atomic?`
+## default_actions_require_atomic?
 
 ```elixir
 config :ash, default_actions_require_atomic?: true
@@ -157,7 +157,7 @@ actions that cannot safely be done asynchronously.
 
 The default generated actions are generated with `require_atomic? true`
 
-## `read_action_after_action_hooks_in_order?`
+## read_action_after_action_hooks_in_order?
 
 ```elixir
 config :ash, read_action_after_action_hooks_in_order?: true
