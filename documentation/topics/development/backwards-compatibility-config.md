@@ -13,13 +13,13 @@ The ash installer automatically sets all of these.
 config :ash, allow_forbidden_field_for_relationships_by_default?: true
 ```
 
-## Old Behavior
+### Old Behavior
 
 Loaded relationships that produced a `Forbidden` error would fail the entire
 request. i.e in `Ash.load(post, [:comments, :author])`, if `author` returned
 a `Forbidden` error, the entire request would fail with a forbidden error.
 
-## New Behavior
+### New Behavior
 
 Now the relationships that produced a forbidden error are instead populated
 with `%Ash.ForbiddenField{}`.
@@ -30,13 +30,13 @@ with `%Ash.ForbiddenField{}`.
 config :ash, include_embedded_source_by_default?: false
 ```
 
-## Old Behavior
+### Old Behavior
 
 When working with embedded types, the `__source__` constraint is populated with
 the original changeset. This can be very costly in terms of memory when working with 
 large sets of embedded resources.
 
-## New Behavior
+### New Behavior
 
 Now, the source is only included when you say `constraints: [include_source?: true]` on
 the embedded resource's usage.
@@ -47,13 +47,13 @@ the embedded resource's usage.
 config :ash, show_keysets_for_all_actions?: false
 ```
 
-## Old Behavior
+### Old Behavior
 
 For all actions, the records would be returned with `__metadata__.keyset` populated
 with a keyset computed for the `sort` that was used to produce those records. This
 is expensive as it requires loading all things that are used by the sort.
 
-## New Behavior
+### New Behavior
 
 Only when actually performing keyset pagination will the `__metadata__.keyset` be
 computed.
@@ -64,12 +64,12 @@ computed.
 config :ash, default_page_type: :keyset
 ```
 
-## Old Behavior
+### Old Behavior
 
 When an action supports `offset` and `keyset` pagination, and a page is requested
 with only `limit` set, i.e `page: [limit: 10]`, you would get back an `%Ash.Page.Offset{}`.
 
-## New Behavior
+### New Behavior
 
 Now we will return a `%Ash.Page.Keyset{}` choosing it whenever it is ambiguous.
 You can always force returning an `%Ash.Page.Offset{}` by providing the offset option,
@@ -81,7 +81,7 @@ i.e `page: [offset: 0]`
 config :ash, policies: [no_filter_static_forbidden_reads?: false]
 ```
 
-## Old Behavior
+### Old Behavior
 
 On read action policies, we can often tell statically that they cannot pass, for example:
 
@@ -104,7 +104,7 @@ You would get a filter. This made it difficult to predict when you would get a f
 error and when the query results would  be filtered.
 
 
-## New Behavior
+### New Behavior
 
 Now, we always filter the query even if we know statically that the request would be
 forbidden. For example the following policy:
@@ -125,7 +125,7 @@ by setting `access_type :strict` in the policy.
 config :ash, keep_read_action_loads_when_loading?: false
 ```
 
-## Old Behavior
+### Old Behavior
 
 If you had an action with a preparation, or a global preparation that loaded data, i.e
 
@@ -139,7 +139,7 @@ loading `:comments` even if you only intended to load something else, and could 
 unpredictable because it could "overwrite" the already loaded `comments` on the data you
 passed in.
 
-## New Behavior
+### New Behavior
 
 When using `Ash.load` *only* the explicitly provided load statement is applied.
 
@@ -149,13 +149,13 @@ When using `Ash.load` *only* the explicitly provided load statement is applied.
 config :ash, default_actions_require_atomic?: true
 ```
 
-## Old Behavior
+### Old Behavior
 
 When building actions like so: `defaults [:read, create: :*, update: :*]` the default
 action is generated with `require_atomic? false`. This could make it difficult to spot
 actions that cannot safely be done asynchronously.
 
-## New Behavior
+### New Behavior
 
 The default generated actions are generated with `require_atomic? true`
 
@@ -165,7 +165,7 @@ The default generated actions are generated with `require_atomic? true`
 config :ash, read_action_after_action_hooks_in_order?: true
 ```
 
-## Old Behavior
+### Old Behavior
 
 In 3.0, we modified hooks on changesets to always be added in order instead of in
 reverse order. This was missed for `Ash.Query`. Meaning if you had something like this:
@@ -190,6 +190,6 @@ end
 
 running that action would print `hook 2` before `hook 1`.
 
-## New Behavior
+### New Behavior
 
 Read action hooks are now run in the order they were added
