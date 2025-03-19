@@ -1940,9 +1940,6 @@ defmodule Ash.Actions.Read do
             load_through: load_through
         }
       else
-        query =
-          Ash.Query.for_read(query, action.name, %{}, opts)
-
         %{
           query
           | load: Keyword.merge(query.load, load),
