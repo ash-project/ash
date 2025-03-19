@@ -1675,7 +1675,10 @@ defmodule Ash.Actions.Update.Bulk do
                  domain,
                  changeset,
                  action,
-                 Keyword.put(opts, :atomic_upgrade?, false)
+                 Keyword.merge(opts,
+                   atomic_upgrade?: false,
+                   return_destroyed?: opts[:return_records?]
+                 )
                ) do
             :ok ->
               Process.put({:any_success?, ref}, true)
