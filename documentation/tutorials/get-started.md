@@ -163,12 +163,11 @@ To ensure that your code stays formatted like the examples here, you can add `:a
 > ### Picosat installation issues? {: .info}
 >
 > If you have trouble compiling `picosat_elixir`, then replace `{:picosat_elixir, "~> 0.2"}` with `{:simple_sat, "~> 0.1"}` to use a simpler (but mildly slower) solver. You can always switch back to `picosat_elixir` later once you're done with the tutorial.
+> And run `mix deps.get`, to install the dependency.
 
 > #### Note {: .neutral}
 >
 > For more auto-formatting options, see the [Development Utilities guide](/documentation/topics/development/development-utilities.md).
-
-And run `mix deps.get`, to install the dependency.
 
 ### Building your first Ash Domain
 
