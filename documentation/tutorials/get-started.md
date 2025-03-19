@@ -106,7 +106,7 @@ Open the project in your text editor, and we'll get started.
 >   --example
 > ```
 >
-> Afterwards change the active directory to the newly created folder `helpdesk`, edit `devs.exs` to reflect your database credentials and run ```mix ash.setup``` which will setup your postgres database.
+> Afterwards change the active directory to the newly created folder `helpdesk`, edit `config/dev.exs` to reflect your database credentials and run ```mix ash.setup``` which will setup your postgres database.
 > If you like you can now browse the rest of the guide, but the code shown will already be present in your application 🥳
 
 ### Using Mix
