@@ -73,7 +73,12 @@ defmodule Ash.Type.NewType do
 
   def constraints(type, constraints) do
     if new_type?(type) do
-      constraints = Keyword.merge(constraints, type.subtype_constraints())
+      constraints =
+        if constraints[:lazy_init?] do
+          Ash.Type.init(type, Keyword.merge(constraints, type.subtype_constraints()))
+        else
+          constraints
+        end
 
       if new_type?(type.subtype_of()) do
         constraints(type.subtype_of(), constraints)

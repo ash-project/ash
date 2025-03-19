@@ -729,8 +729,8 @@ defmodule Ash.CodeInterface do
                     |> case do
                       nil when not_found_error? ->
                         raise Ash.Error.to_error_class(
-                                Ash.Error.Query.NotFound,
-                                resource: query.resource
+                                Ash.Error.Query.NotFound.exception(
+                                resource: query.resource)
                               )
 
                       result ->

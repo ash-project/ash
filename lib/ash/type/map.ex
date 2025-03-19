@@ -72,13 +72,15 @@ defmodule Ash.Type.Map do
       constraints[:fields]
       |> List.wrap()
       |> Enum.reduce_while({:ok, []}, fn {name, config}, {:ok, fields} ->
-        type = config[:type]
+        type = Ash.Type.get_type(config[:type])
         constraints = config[:constraints] || []
 
         if Keyword.get(config, :init?, true) do
           case Ash.Type.init(type, constraints) do
             {:ok, constraints} ->
-              {:cont, {:ok, [{name, Keyword.put(config, :constraints, constraints)} | fields]}}
+              {:cont,
+               {:ok,
+                [{name, Keyword.merge(config, constraints: constraints, type: type)} | fields]}}
 
             {:error, error} ->
               {:halt, {:error, error}}

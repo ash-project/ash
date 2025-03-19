@@ -231,11 +231,11 @@ defmodule Ash.Test.CodeInterfaceTest do
 
   describe "read get actions" do
     test "raise on not found by default" do
-      assert_raise Ash.Error.Query.NotFound, fn ->
+      assert_raise Ash.Error.Invalid, ~r/not found/, fn ->
         User.get_user!(Ash.UUID.generate())
       end
 
-      assert_raise Ash.Error.Query.NotFound, fn ->
+      assert_raise Ash.Error.Invalid, ~r/not found/, fn ->
         Domain.get_user!(Ash.UUID.generate())
       end
     end
@@ -251,7 +251,7 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     test "raise on not found if option `not_found_error?: true` is passed" do
-      assert_raise Ash.Error.Query.NotFound, fn ->
+      assert_raise Ash.Error.Invalid, ~r/not found/, fn ->
         User.get_user_safely!(Ash.UUID.generate(), not_found_error?: true)
       end
     end
