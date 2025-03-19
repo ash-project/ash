@@ -1925,15 +1925,42 @@ defmodule Ash.Actions.Read do
     if query.__validated_for_action__ == action.name do
       query
     else
-      if strip_load?(initial_data) do
-        load = query.load
-        calculations = query.calculations
-        aggregates = query.aggregates
-        query = Ash.Query.for_read(query, action.name, %{}, opts)
+      load = query.load
+      calculations = query.calculations
+      aggregates = query.aggregates
+      load_through = query.load_through
+      query = Ash.Query.for_read(query, action.name, %{}, opts)
 
-        %{query | load: load, aggregates: aggregates, calculations: calculations}
+      if strip_load?(initial_data) do
+        %{
+          query
+          | load: load,
+            aggregates: aggregates,
+            calculations: calculations,
+            load_through: load_through
+        }
       else
-        Ash.Query.for_read(query, action.name, %{}, opts)
+        query =
+          Ash.Query.for_read(query, action.name, %{}, opts)
+
+        %{
+          query
+          | load: Keyword.merge(query.load, load),
+            aggregates: Map.merge(query.aggregates, aggregates),
+            calculations: Map.merge(query.calculations, calculations),
+            load_through: %{
+              calculation:
+                Map.merge(
+                  query.load_through[:calculation] || %{},
+                  load_through[:calculation] || %{}
+                ),
+              attribute:
+                Map.merge(
+                  query.load_through[:attribute] || %{},
+                  load_through[:attribute] || %{}
+                )
+            }
+        }
       end
     end
   end
