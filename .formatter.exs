@@ -47,6 +47,7 @@ spark_locals_without_parens = [
   belongs_to: 2,
   belongs_to: 3,
   broadcast_type: 1,
+  by: 1,
   bypass: 0,
   bypass: 1,
   bypass: 2,
