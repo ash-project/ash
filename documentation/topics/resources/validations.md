@@ -129,7 +129,7 @@ The validations section allows you to add validations across multiple actions of
 validations do
   validate present([:foo, :bar]), on: :update
   validate present([:foo, :bar, :baz], at_least: 2), on: :create
-  validate present([:foo, :bar, :baz], at_least: 2), where: [action_is(:action1, :action2)]
+  validate present([:foo, :bar, :baz], at_least: 2), where: [action_is([:action1, :action2])]
   validate absent([:foo, :bar, :baz], exactly: 1), on: [:update, :destroy]
   validate {MyCustomValidation, [foo: :bar]}, on: :create
 end

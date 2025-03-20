@@ -79,13 +79,15 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
-  Validates that the action is a specific action. Primarily meant for use in `where`.
+  Validates that the action name matches the provided action name or names. Primarily meant for use in `where`.
 
   ## Examples
 
       validate present(:foo), where: [action_is(:bar)]
+
+      validate present(:foo), where: action_is([:bar, :baz])
   """
-  @spec action_is(action :: atom) :: Validation.ref()
+  @spec action_is(action :: atom | list(atom)) :: Validation.ref()
   def action_is(action) do
     {Validation.ActionIs, action: action}
   end
