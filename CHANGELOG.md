@@ -2,6 +2,29 @@
 
 <!-- changelog -->
 
+## [v3.4.70](https://github.com/ash-project/ash/compare/v3.4.69...v3.4.70) (2025-03-20)
+
+
+
+
+### Bug Fixes:
+
+* compose get_by and action filters properly
+
+* `fields` could be nil on exceptions
+
+* apply runtime supplied loads over top of action loads
+
+* return records from bulk soft destroy if requested (#1884)
+
+* ensure error classes are used in code interfaces
+
+### Improvements:
+
+* validate multitenancy earlier in bulk actions
+
+* initialize all types propertly at compile time
+
 ## [v3.4.69](https://github.com/ash-project/ash/compare/v3.4.68...v3.4.69) (2025-03-18)
 
 
