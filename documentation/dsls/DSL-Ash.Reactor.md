@@ -2285,6 +2285,369 @@ Target: `Ash.Reactor.Dsl.Destroy`
 
 
 
+### reactor.get
+```elixir
+get name, resource, action \\ nil
+```
+
+
+Declares a step that will call a read action on a resource returning a single record.
+
+### Nested DSLs
+ * [actor](#reactor-get-actor)
+ * [context](#reactor-get-context)
+ * [guard](#reactor-get-guard)
+ * [where](#reactor-get-where)
+ * [inputs](#reactor-get-inputs)
+ * [load](#reactor-get-load)
+ * [tenant](#reactor-get-tenant)
+ * [wait_for](#reactor-get-wait_for)
+
+
+### Examples
+```
+get :post, MyApp.Post, :read do
+  by [:id]
+  inputs %{id: input(:post_id)}
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-get-name){: #reactor-get-name .spark-required} | `atom` |  | A unique name for the step. |
+| [`resource`](#reactor-get-resource){: #reactor-get-resource .spark-required} | `module` |  | The resource to call the action on. |
+| [`action`](#reactor-get-action){: #reactor-get-action } | `atom` |  | The name of the action to call on the resource. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`by`](#reactor-get-by){: #reactor-get-by .spark-required} | `atom \| list(atom)` |  | The fields to filter by |
+| [`fail_on_not_found?`](#reactor-get-fail_on_not_found?){: #reactor-get-fail_on_not_found? } | `boolean` | `false` | When set to true the step will fail if the resource is not found. |
+| [`domain`](#reactor-get-domain){: #reactor-get-domain } | `module` |  | The Domain to use when calling the action.  Defaults to the Domain set on the resource or in the `ash` section. |
+| [`async?`](#reactor-get-async?){: #reactor-get-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`authorize?`](#reactor-get-authorize?){: #reactor-get-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
+| [`description`](#reactor-get-description){: #reactor-get-description } | `String.t` |  | A description for the step |
+
+
+### reactor.get.actor
+```elixir
+actor source
+```
+
+
+Specifies the action actor
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-get-actor-source){: #reactor-get-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-get-actor-transform){: #reactor-get-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Actor`
+
+### reactor.get.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-get-context-context){: #reactor-get-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-get-context-transform){: #reactor-get-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
+
+### reactor.get.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-get-guard-fun){: #reactor-get-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-get-guard-description){: #reactor-get-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.get.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-get-where-predicate){: #reactor-get-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-get-where-description){: #reactor-get-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
+
+### reactor.get.inputs
+```elixir
+inputs template
+```
+
+
+Specify the inputs for an action
+
+
+
+### Examples
+```
+inputs %{
+  author: result(:get_user),
+  title: input(:title),
+  body: input(:body)
+}
+
+```
+
+```
+inputs(author: result(:get_user))
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`template`](#reactor-get-inputs-template){: #reactor-get-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-get-inputs-transform){: #reactor-get-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Inputs`
+
+### reactor.get.load
+```elixir
+load source
+```
+
+
+Allows the addition of an Ash load statement to the action
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-get-load-source){: #reactor-get-load-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the load |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-get-load-transform){: #reactor-get-load-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the load before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.ActionLoad`
+
+### reactor.get.tenant
+```elixir
+tenant source
+```
+
+
+Specifies the action tenant
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-get-tenant-source){: #reactor-get-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-get-tenant-transform){: #reactor-get-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Tenant`
+
+### reactor.get.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-get-wait_for-names){: #reactor-get-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-get-wait_for-description){: #reactor-get-wait_for-description } | `String.t` |  | An optional description. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Get`
+
+
+
 ### reactor.load
 ```elixir
 load name, records, load
