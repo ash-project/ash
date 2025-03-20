@@ -570,11 +570,13 @@ defmodule Ash.Actions.Destroy.Bulk do
         action_select
       )
 
-    with {:ok, query} <-
+    with :ok <- validate_multitenancy(atomic_changeset.resource, opts),
+         {:ok, query} <-
            authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
            authorize_atomic_changeset(query, atomic_changeset, opts),
          {query, atomic_changeset} <- add_changeset_filters(query, atomic_changeset),
+         {:ok, query} <- Ash.Actions.Read.handle_multitenancy(query),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
       case Ash.DataLayer.destroy_query(
              data_layer_query,
@@ -846,48 +848,94 @@ defmodule Ash.Actions.Destroy.Bulk do
     {context_cs, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
-    fully_atomic_changeset =
-      cond do
-        :atomic_batches not in opts[:strategy] ->
-          {:not_atomic, "Not in requested strategies"}
+    case validate_multitenancy(resource, opts) do
+      {:error, error} ->
+        %Ash.BulkResult{
+          status: :error,
+          error_count: 1,
+          errors: [
+            Ash.Error.to_error_class(error)
+          ]
+        }
 
-        Enum.empty?(Ash.Resource.Info.primary_key(resource)) ->
-          {:not_atomic, "cannot atomically destroy a stream without a primary key"}
+      :ok ->
+        fully_atomic_changeset =
+          cond do
+            :atomic_batches not in opts[:strategy] ->
+              {:not_atomic, "Not in requested strategies"}
 
-        !Ash.Resource.Info.primary_action(resource, :read) ->
-          {:not_atomic, "cannot atomically destroy a stream without a primary read action"}
+            Enum.empty?(Ash.Resource.Info.primary_key(resource)) ->
+              {:not_atomic, "cannot atomically destroy a stream without a primary key"}
 
-        read_action.manual ->
-          {:not_atomic, "Manual read actions cannot be updated atomically"}
+            !Ash.Resource.Info.primary_action(resource, :read) ->
+              {:not_atomic, "cannot atomically destroy a stream without a primary read action"}
 
-        Ash.DataLayer.data_layer_can?(resource, :destroy_query) ->
-          opts =
-            Keyword.update(
-              opts,
-              :context,
-              %{private: context_cs.context.private},
-              &Map.put(&1, :private, context_cs.context.private)
-            )
+            read_action.manual ->
+              {:not_atomic, "Manual read actions cannot be updated atomically"}
 
-          Ash.Changeset.fully_atomic_changeset(resource, action, input, opts)
+            Ash.DataLayer.data_layer_can?(resource, :destroy_query) ->
+              opts =
+                Keyword.update(
+                  opts,
+                  :context,
+                  %{private: context_cs.context.private},
+                  &Map.put(&1, :private, context_cs.context.private)
+                )
 
-        true ->
-          {:not_atomic, "data layer does not support destroying a query"}
-      end
+              Ash.Changeset.fully_atomic_changeset(resource, action, input, opts)
 
-    case fully_atomic_changeset do
-      %Ash.Changeset{} = atomic_changeset ->
-        query =
-          resource
-          |> Ash.Query.new()
-          |> Map.put(:action, Ash.Resource.Info.primary_action!(resource, :read))
+            true ->
+              {:not_atomic, "data layer does not support destroying a query"}
+          end
 
-        case Ash.Actions.Read.Stream.stream_strategy(
-               query,
-               nil,
-               opts[:allow_stream_with] || :keyset
-             ) do
-          {:error, exception} ->
+        case fully_atomic_changeset do
+          %Ash.Changeset{} = atomic_changeset ->
+            query =
+              resource
+              |> Ash.Query.new()
+              |> Map.put(:action, Ash.Resource.Info.primary_action!(resource, :read))
+
+            case Ash.Actions.Read.Stream.stream_strategy(
+                   query,
+                   nil,
+                   opts[:allow_stream_with] || :keyset
+                 ) do
+              {:error, exception} ->
+                if :stream in opts[:strategy] do
+                  do_stream_batches(domain, stream, action, input, opts)
+                else
+                  %Ash.BulkResult{
+                    status: :error,
+                    error_count: 1,
+                    errors: [
+                      Ash.Error.to_error_class(
+                        Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
+                          resource: resource,
+                          action: action.name,
+                          requested_strategies: opts[:strategy],
+                          not_atomic_batches_reason: "could not stream the query",
+                          not_atomic_reason: not_atomic_reason,
+                          not_stream_reason: "could not stream the query",
+                          footer: "Non stream reason:\n\n" <> Exception.message(exception)
+                        )
+                      )
+                    ]
+                  }
+                end
+
+              _ ->
+                do_atomic_batches(
+                  atomic_changeset,
+                  domain,
+                  stream,
+                  action,
+                  input,
+                  opts,
+                  not_atomic_reason
+                )
+            end
+
+          {:not_atomic, not_atomic_batches_reason} ->
             if :stream in opts[:strategy] do
               do_stream_batches(domain, stream, action, input, opts)
             else
@@ -900,48 +948,23 @@ defmodule Ash.Actions.Destroy.Bulk do
                       resource: resource,
                       action: action.name,
                       requested_strategies: opts[:strategy],
-                      not_atomic_batches_reason: "could not stream the query",
-                      not_atomic_reason: not_atomic_reason,
-                      not_stream_reason: "could not stream the query",
-                      footer: "Non stream reason:\n\n" <> Exception.message(exception)
+                      not_atomic_batches_reason: not_atomic_batches_reason,
+                      not_atomic_reason: not_atomic_reason
                     )
                   )
                 ]
               }
             end
-
-          _ ->
-            do_atomic_batches(
-              atomic_changeset,
-              domain,
-              stream,
-              action,
-              input,
-              opts,
-              not_atomic_reason
-            )
         end
+    end
+  end
 
-      {:not_atomic, not_atomic_batches_reason} ->
-        if :stream in opts[:strategy] do
-          do_stream_batches(domain, stream, action, input, opts)
-        else
-          %Ash.BulkResult{
-            status: :error,
-            error_count: 1,
-            errors: [
-              Ash.Error.to_error_class(
-                Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
-                  resource: resource,
-                  action: action.name,
-                  requested_strategies: opts[:strategy],
-                  not_atomic_batches_reason: not_atomic_batches_reason,
-                  not_atomic_reason: not_atomic_reason
-                )
-              )
-            ]
-          }
-        end
+  defp validate_multitenancy(resource, opts) do
+    if Ash.Resource.Info.multitenancy_strategy(resource) &&
+         !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] do
+      {:error, Ash.Error.Invalid.TenantRequired.exception(resource: resource)}
+    else
+      :ok
     end
   end
 
