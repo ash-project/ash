@@ -394,8 +394,8 @@ defmodule MyApp.Checks.ActorOverAgeLimit do
   # A description is not necessary, as it will be derived from the filter, but one could be added
   # def describe(_opts), do: "actor is over the age limit"
 
-  def filter(_options, _authorizer, _opts) do
-    expr(age_limit <= ^actor(:age))
+  def filter(actor, _authorizer, _opts) do
+    expr(age_limit <= ^actor.age)
   end
 end
 ```
