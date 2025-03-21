@@ -2011,6 +2011,26 @@ defmodule Ash.Test.Actions.LoadTest do
     assert %Ash.NotLoaded{} = Ash.load!(post, :author).category_length
   end
 
+  test "read action loads of nested relationships are respected with `Ash.load`" do
+    author =
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "a"})
+      |> Ash.create!()
+
+    _post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        title: "author post",
+        contents: "post content",
+        category: "category 1",
+        author_id: author.id
+      })
+      |> Ash.create!()
+
+    %{posts: [post]} = Ash.load!(author, [:posts])
+    assert "10" == post.category_length
+  end
+
   test "calculation arguments should be respected" do
     post =
       Post
