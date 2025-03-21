@@ -74,16 +74,24 @@ defmodule Ash.Reactor.Notifications do
         {:error, reason}
 
       notifications when is_list(notifications) ->
-        {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+        if Process.get(:ash_started_transaction?) do
+          Process.put(
+            :ash_notifications,
+            List.wrap(Process.get(:ash_notifications)) ++
+              notifications
+          )
+        else
+          {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
 
-        Logger.warning("""
-          Missed #{Enum.count(notifications)} notifications in Reactor complete hook.
+          Logger.warning("""
+            Missed #{Enum.count(notifications)} notifications in Reactor complete hook.
 
-          This happens when your steps return notifications but they are unable to be published
-          upon successful completion of the reactor.
+            This happens when your steps return notifications but they are unable to be published
+            upon successful completion of the reactor.
 
-          #{Exception.format_stacktrace(stacktrace)}
-        """)
+            #{Exception.format_stacktrace(stacktrace)}
+          """)
+        end
 
         {:ok, result}
     end
