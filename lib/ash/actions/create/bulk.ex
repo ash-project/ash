@@ -1177,9 +1177,9 @@ defmodule Ash.Actions.Create.Bulk do
         |> Enum.flat_map(fn {_atomics, batch} ->
           result =
             case action.manual do
-              {mod, opts} ->
+              {mod, manual_opts} ->
                 if function_exported?(mod, :bulk_create, 3) do
-                  mod.bulk_create(batch, opts, %Ash.Resource.ManualCreate.Context{
+                  mod.bulk_create(batch, manual_opts, %Ash.Resource.ManualCreate.Context{
                     actor: opts[:actor],
                     select: opts[:select],
                     batch_size: opts[:batch_size],
@@ -1221,7 +1221,11 @@ defmodule Ash.Actions.Create.Bulk do
                       ok_results =
                         Enum.reduce(results, [], fn
                           :ok, results ->
-                            results
+                            if opts[:return_records?] do
+                              raise "`#{inspect(mod)}.bulk_create/3` returned :ok without a result when `return_records?` is true"
+                            else
+                              results
+                            end
 
                           {:ok, result}, results ->
                             [result | results]
