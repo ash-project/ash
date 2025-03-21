@@ -174,14 +174,14 @@ reverse order. This was missed for `Ash.Query`. Meaning if you had something lik
 read :read do
   prepare fn query, _ -> 
     Ash.Query.after_action(query, fn query, results -> 
-      IO.inspect("hook 1")
+      IO.puts("hook 1")
       {:ok, results}
     end)
   end
 
   prepare fn query, _ -> 
     Ash.Query.after_action(query, fn query, results -> 
-      IO.inspect("hook 2")
+      IO.puts("hook 2")
       {:ok, results}
     end)
   end
