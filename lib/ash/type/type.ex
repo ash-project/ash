@@ -86,6 +86,10 @@ defmodule Ash.Type do
   Generally you add `use Ash.Type` to your module (it is possible to add `@behaviour
   Ash.Type` and define everything yourself, but this is more work and error-prone).
 
+  Another option is to use `Ash.Type.NewType`, which supports defining a new type that
+  is the combination of an existing type and custom constraints.
+  This can be helpful when defining a custom attribute (e.g. struct) for a resource.
+
   Simple example of a float custom type
 
   ```elixir
@@ -378,8 +382,8 @@ defmodule Ash.Type do
   ## Coercion vs Casting
 
   Coercion can be summed up as a more "insistent" form of casting. It means "we really want to use
-  this value as this type, so please try to convert it to that type". This is used in expressions as 
-  opposed to `cast_input`. For example, the value `10`, if passed into `Ash.Type.cast_input(:string, 10)` 
+  this value as this type, so please try to convert it to that type". This is used in expressions as
+  opposed to `cast_input`. For example, the value `10`, if passed into `Ash.Type.cast_input(:string, 10)`
   would fail to cast. However, if used in the following expression: `expr(type(10, :string) <> " minutes")`
   the `10` would be "coerced" (using `to_string/1`) into `"10"`.
 

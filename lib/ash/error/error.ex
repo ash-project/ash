@@ -163,7 +163,7 @@ defmodule Ash.Error do
   defp for_field?(%{field: field, path: path}, field, path), do: true
 
   defp for_field?(%{fields: fields, path: path}, field, path) do
-    field in fields
+    field in List.wrap(fields)
   end
 
   defp for_field?(_, _, _), do: false

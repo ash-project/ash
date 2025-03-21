@@ -84,6 +84,11 @@ defmodule Ash.Test.Actions.ReadTest do
         get_by(:id)
       end
 
+      read :get_fred_by_id do
+        get_by(:id)
+        filter expr(title == "fred")
+      end
+
       read :get_by_id_and_uuid do
         get_by([:id, :uuid])
       end
@@ -684,6 +689,20 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it succeeds when the record exists", %{post_id: post_id} do
       assert {:ok, %{id: ^post_id}} =
                Post |> Ash.Query.for_read(:get_by_id, %{id: post_id}) |> Ash.read_one()
+    end
+
+    test "it composes with existing filters", %{post_id: post_id} do
+      assert {:ok, nil} =
+               Post |> Ash.Query.for_read(:get_fred_by_id, %{id: post_id}) |> Ash.read_one()
+
+      assert %{id: freds_id} =
+               Post
+               |> Ash.Changeset.for_create(:create, %{title: "fred", contents: "yeet"})
+               |> Ash.create!()
+               |> strip_metadata()
+
+      assert {:ok, %{id: ^freds_id}} =
+               Post |> Ash.Query.for_read(:get_fred_by_id, %{id: freds_id}) |> Ash.read_one()
     end
 
     test "it fails when the record does not exist" do

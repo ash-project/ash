@@ -84,6 +84,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 - [Generators](documentation/topics/development/generators.md)
 - [Testing](documentation/topics/development/testing.md)
 - [Development Utilities](documentation/topics/development/development-utilities.md)
+- [Backwards Compatibility Config](documentation/topics/development/backwards-compatibility-config.md)
 - [Upgrading to 3.0](documentation/topics/development/upgrading-to-3.0.md)
 - [Error Handling](documentation/topics/development/error-handling.md)
 
