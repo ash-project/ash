@@ -145,6 +145,37 @@ You can use the `transaction` step type to wrap a group of steps inside a data l
   inside the transaction will only ever be executed synchronously.
 - Notifications will be sent only when the transaction is committed.
 
+#### Example
+
+```elixir
+input :blog_title
+input :blog_body
+input :author_email
+
+read :get_author, MyBlog.Author, :get_author_by_email do
+  inputs %{email: input(:author_email)}
+end
+
+transaction :create_post_transaction, [MyBlog.Post, MyBlog.Author] do
+  create :create_post, MyBlog.Post, :create do
+    inputs %{
+      title: input(:blog, [:title]),
+      body: input(:blog, [:body]),
+      author_id: result(:get_author, [:email])
+    }
+  end
+
+  update :author_post_count, MyBlog.Author, :update_post_count do
+    wait_for :create_post
+    initial result(:get_author)
+  end
+
+  return :create_post
+end
+
+return :create_post_transaction
+```
+
 ## Notifications
 
 Because a reactor has transaction-like semantics notifications are automatically batched and only sent upon successful completion of the reactor.
