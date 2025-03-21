@@ -46,7 +46,10 @@ defmodule Ash.Resource.ManualDestroy do
               context :: Context.t()
             ) ::
               list(
-                {:ok, Ash.Resource.record()}
+                :ok
+                | {:ok, Ash.Resource.record()}
+                | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
+                | {:ok, Ash.Resource.record(), [Ash.Notifier.Notification.t()]}
                 | {:error, Ash.Error.t()}
                 | {:notifications, list(Ash.Notifier.Notification.t())}
               )

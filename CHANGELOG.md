@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.4.71](https://github.com/ash-project/ash/compare/v3.4.70...v3.4.71) (2025-03-21)
+
+
+
+
+### Bug Fixes:
+
+* prefer new loads when loading relationships
+
+* put notifications in process context when inside an action
+
+* consider query tenant when validating aggregate multitenancy
+
+* update Validations.ActionIs to accept atom or list(atom) (#1893)
+
+### Improvements:
+
+* set `bulk_actions_default_to_errors?` to `true` in installer
+
 ## [v3.4.70](https://github.com/ash-project/ash/compare/v3.4.69...v3.4.70) (2025-03-20)
 
 

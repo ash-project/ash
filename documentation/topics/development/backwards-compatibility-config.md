@@ -174,14 +174,14 @@ reverse order. This was missed for `Ash.Query`. Meaning if you had something lik
 read :read do
   prepare fn query, _ -> 
     Ash.Query.after_action(query, fn query, results -> 
-      IO.inspect("hook 1")
+      IO.puts("hook 1")
       {:ok, results}
     end)
   end
 
   prepare fn query, _ -> 
     Ash.Query.after_action(query, fn query, results -> 
-      IO.inspect("hook 2")
+      IO.puts("hook 2")
       {:ok, results}
     end)
   end
@@ -193,3 +193,19 @@ running that action would print `hook 2` before `hook 1`.
 ### New Behavior
 
 Read action hooks are now run in the order they were added
+
+## bulk_actions_default_to_errors?
+
+```elixir
+config :ash, bulk_actions_default_to_errors?: true
+```
+
+### Old Behavior
+
+Bulk action options defaulted to `return_errors?: false`, and `stop_on_error?: false`,
+which was often a footgun for users unfamiliar to bulk actions, wondering "why did I not
+get an error even though nothing was created?"
+
+### New Behavior
+
+Now, `return_errors?` and `stop_on_error?` default to `true`
