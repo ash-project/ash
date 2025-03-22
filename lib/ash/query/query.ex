@@ -2954,13 +2954,13 @@ defmodule Ash.Query do
   Ash.Query.sort(query, name: :desc, title: :asc)
 
   # sort by name ascending
-  Ash.Query.sort(query, "name")
+  Ash.Query.sort_input(query, "name")
 
   # sort by name descending, and title ascending
-  Ash.Query.sort(query, "-name,title")
+  Ash.Query.sort_input(query, "-name,title")
 
   # sort by name descending with nils at the end
-  Ash.Query.sort(query, "--name")
+  Ash.Query.sort_input(query, "--name")
   ```
 
   ## Sort Strings
