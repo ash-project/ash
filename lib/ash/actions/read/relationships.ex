@@ -183,17 +183,20 @@ defmodule Ash.Actions.Read.Relationships do
   def related_query(relationship_name, records, related_query, query) do
     relationship = Ash.Resource.Info.relationship(query.resource, relationship_name)
 
-    {read_action_name, arguments} =
+    {read_action, arguments} =
       case related_query do
-        %Ash.Query{action: %{name: name}, arguments: arguments} ->
-          {name, arguments}
+        %Ash.Query{action: read_action, arguments: arguments} when not is_nil(read_action) ->
+          {read_action, arguments}
 
         _ ->
-          read_action_name =
-            relationship.read_action ||
-              Ash.Resource.Info.primary_action!(relationship.destination, :read).name
+          read_action =
+            if relationship.read_action do
+              Ash.Resource.Info.action(relationship.destination, relationship.read_action)
+            else
+              Ash.Resource.Info.primary_action!(relationship.destination, :read)
+            end
 
-          {read_action_name, %{}}
+          {read_action, %{}}
       end
 
     domain = Ash.Domain.Info.related_domain(related_query, relationship, query.domain)
@@ -206,12 +209,13 @@ defmodule Ash.Actions.Read.Relationships do
     related_query =
       related_query
       |> Ash.Query.set_context(%{
-        private: %{async_limiter: query.context[:private][:async_limiter]}
+        private: %{
+          loading_relationships?: true,
+          async_limiter: query.context[:private][:async_limiter]
+        }
       })
       |> Ash.Query.set_tenant(query.tenant)
-      |> Ash.Query.for_read(
-        read_action_name,
-        arguments,
+      |> Ash.Actions.Read.for_read(read_action, nil, arguments,
         domain: domain,
         authorize?: query.context[:private][:authorize?],
         actor: query.context[:private][:actor],
@@ -220,7 +224,6 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.sort(relationship.sort)
       |> Ash.Query.do_filter(relationship.filter, parent_stack: parent_stack)
       |> Ash.Query.set_context(relationship.context)
-      |> Ash.Query.set_context(%{private: %{loading_relationship?: true}})
       |> hydrate_refs(query.context[:private][:actor], relationship.source)
       |> with_lateral_join_query(query, relationship, records)
 

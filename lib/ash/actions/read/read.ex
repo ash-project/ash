@@ -1921,7 +1921,8 @@ defmodule Ash.Actions.Read do
     Keyword.merge(opts, Map.get(query.context, :override_domain_params) || [])
   end
 
-  defp for_read(query, action, initial_data, opts) do
+  @doc false
+  def for_read(query, action, initial_data, args \\ %{}, opts) do
     if query.__validated_for_action__ == action.name do
       query
     else
@@ -1929,7 +1930,7 @@ defmodule Ash.Actions.Read do
       calculations = query.calculations
       aggregates = query.aggregates
       load_through = query.load_through
-      query = Ash.Query.for_read(query, action.name, %{}, opts)
+      query = Ash.Query.for_read(query, action.name, args, opts)
 
       if strip_load?(initial_data) do
         %{
@@ -1940,24 +1941,45 @@ defmodule Ash.Actions.Read do
             load_through: load_through
         }
       else
-        %{
-          query
-          | load: Keyword.merge(query.load, load),
-            aggregates: Map.merge(query.aggregates, aggregates),
-            calculations: Map.merge(query.calculations, calculations),
-            load_through: %{
-              calculation:
-                Map.merge(
-                  query.load_through[:calculation] || %{},
-                  load_through[:calculation] || %{}
-                ),
-              attribute:
-                Map.merge(
-                  query.load_through[:attribute] || %{},
-                  load_through[:attribute] || %{}
-                )
-            }
-        }
+        if prefer_existing_loads?(query) do
+          %{
+            query
+            | load: Keyword.merge(load, query.load),
+              aggregates: Map.merge(aggregates, query.aggregates),
+              calculations: Map.merge(calculations, query.calculations),
+              load_through: %{
+                calculation:
+                  Map.merge(
+                    load_through[:calculation] || %{},
+                    query.load_through[:calculation] || %{}
+                  ),
+                attribute:
+                  Map.merge(
+                    load_through[:attribute] || %{},
+                    query.load_through[:attribute] || %{}
+                  )
+              }
+          }
+        else
+          %{
+            query
+            | load: Keyword.merge(query.load, load),
+              aggregates: Map.merge(query.aggregates, aggregates),
+              calculations: Map.merge(query.calculations, calculations),
+              load_through: %{
+                calculation:
+                  Map.merge(
+                    query.load_through[:calculation] || %{},
+                    load_through[:calculation] || %{}
+                  ),
+                attribute:
+                  Map.merge(
+                    query.load_through[:attribute] || %{},
+                    load_through[:attribute] || %{}
+                  )
+              }
+          }
+        end
       end
     end
   end
@@ -1968,6 +1990,12 @@ defmodule Ash.Actions.Read do
   @dialyzer {:nowarn_function, strip_load?: 1}
   defp strip_load?(initial_data) do
     initial_data && !Ash.Actions.Helpers.keep_read_action_loads_when_loading?()
+  end
+
+  @dialyzer {:nowarn_function, prefer_existing_loads?: 1}
+  defp prefer_existing_loads?(query) do
+    query.context[:loading_relationships?] &&
+      !Ash.Actions.Helpers.keep_read_action_loads_when_loading?()
   end
 
   defp validate_multitenancy(query) do

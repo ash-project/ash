@@ -2,12 +2,6 @@ defmodule Ash.Policy.FilterCheck do
   @moduledoc """
   A type of check that is represented by a filter statement
 
-  That filter statement can be templated, currently only supporting `{:_actor, field}`
-  which will replace that portion of the filter with the appropriate field value from the actor and
-  `{:_actor, :_primary_key}` which will replace the value with a keyword list of the primary key
-  fields of an actor to their values, like `[id: 1]`. If the actor is not present `{:_actor, field}`
-  becomes `nil`, and `{:_actor, :_primary_key}` becomes `false`.
-
   You can customize what the "negative" filter looks like by defining `c:reject/3`. This is important for
   filters over related data. For example, given an `owner` relationship and a data layer like `ash_postgres`
   where `column != NULL` does *not* evaluate to true (see postgres docs on NULL for more):

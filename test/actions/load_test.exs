@@ -2011,16 +2011,44 @@ defmodule Ash.Test.Actions.LoadTest do
     assert %Ash.NotLoaded{} = Ash.load!(post, :author).category_length
   end
 
-  test "calculation arguments should be respected" do
-    post =
+  test "read action loads of nested relationships are respected with `Ash.load`" do
+    author =
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "a"})
+      |> Ash.create!()
+
+    _post =
       Post
       |> Ash.Changeset.for_create(:create, %{
         title: "author post",
-        contents: "post content"
+        contents: "post content",
+        category: "category 1",
+        author_id: author.id
       })
       |> Ash.create!()
 
-    post = Ash.load!(post, sum: [a: 3, b: 4])
+    %{posts: [post]} = Ash.load!(author, [:posts])
+    assert "10" == post.category_length
+  end
+
+  test "calculation arguments should be respected for root loads" do
+    post = Post |> Ash.Changeset.for_create(:create, %{}) |> Ash.create!()
+
+    post = post |> Ash.load!(sum: [])
+    assert 3 == post.sum
+
+    post = post |> Ash.load!(sum: [a: 3, b: 4])
+    assert 7 == post.sum
+  end
+
+  test "calculation arguments should be respected for nested loads" do
+    author = Author |> Ash.Changeset.for_create(:create, %{}) |> Ash.create!()
+    Post |> Ash.Changeset.for_create(:create, %{author_id: author.id}) |> Ash.create!()
+
+    %{posts: [post]} = author |> Ash.load!(posts: [sum: []])
+    assert 3 = post.sum
+
+    %{posts: [post]} = author |> Ash.load!(posts: [sum: [a: 3, b: 4]])
     assert 7 == post.sum
   end
 
