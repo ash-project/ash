@@ -2031,16 +2031,24 @@ defmodule Ash.Test.Actions.LoadTest do
     assert "10" == post.category_length
   end
 
-  test "calculation arguments should be respected" do
-    post =
-      Post
-      |> Ash.Changeset.for_create(:create, %{
-        title: "author post",
-        contents: "post content"
-      })
-      |> Ash.create!()
+  test "calculation arguments should be respected for root loads" do
+    post = Post |> Ash.Changeset.for_create(:create, %{}) |> Ash.create!()
 
-    post = Ash.load!(post, sum: [a: 3, b: 4])
+    post = post |> Ash.load!(sum: [])
+    assert 3 == post.sum
+
+    post = post |> Ash.load!(sum: [a: 3, b: 4])
+    assert 7 == post.sum
+  end
+
+  test "calculation arguments should be respected for nested loads" do
+    author = Author |> Ash.Changeset.for_create(:create, %{}) |> Ash.create!()
+    Post |> Ash.Changeset.for_create(:create, %{author_id: author.id}) |> Ash.create!()
+
+    %{posts: [post]} = author |> Ash.load!(posts: [sum: []])
+    assert 3 = post.sum
+
+    %{posts: [post]} = author |> Ash.load!(posts: [sum: [a: 3, b: 4]])
     assert 7 == post.sum
   end
 
