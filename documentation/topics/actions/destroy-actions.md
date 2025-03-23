@@ -31,13 +31,12 @@ The basic formula for calling a destroy action looks like this:
 
 ```elixir
 record
-|> Ash.Query.for_destroy(:action_name, %{argument: :value}, ...opts)
+|> Ash.Changeset.for_destroy(:action_name, %{argument: :value}, ...opts)
 |> Ash.destroy!()
 ```
 
 See below for variations on action calling, and see the [code interface guide](/documentation/topics/code-interfaces.md) guide for how to
 define idiomatic and convenient functions that call your actions.
-
 
 ## Returning the destroyed record
 
