@@ -73,7 +73,7 @@ defmodule Ash.Resource.Actions.SharedOptions do
       """
     ],
     error_handler: [
-      type: :mfa,
+      type: {:or, [:mfa, {:fun, 2}]},
       doc: "Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more"
     ],
     notifiers: [

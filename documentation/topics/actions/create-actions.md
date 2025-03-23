@@ -127,22 +127,74 @@ create :upsert_article_by_slug do
 end
 ```
 
-and there was a different user's article with the same slug, the upsert would fail.
+And one way it could be called is like so:
 
-What we must do instead is use a `filter` change to further scope the upsert:
+```elixir
+Article
+|> Ash.Changeset.for_create(
+  :upsert_article_by_slug, 
+  %{slug: "foo", title: "new title", slug: "new slug"},
+  actor: current_user
+)
+|> Ash.create!()
+```
+
+This would create an article, unless there is an article with a matching slug in which case it would
+update the title and the body to match the provided input. Let's add the "only if it is their article"
+functionality.
+
+For this we use a `filter` change to further scope the upsert:
 
 ```elixir
 create :upsert_article_by_slug do
   upsert? true
   accept [:slug, :title, :body]
   upsert_identity :unique_slug
-
-  change filter(expr(user_id == ^actor(:id)))
+  upsert_condition expr(user_id == ^actor(:id))
 end
 ```
 
-With this in place, the user can upsert against their _own_ article's slugs, but if someone else has an article with that slug,
-they will get an error about slug being taken.
+> ### What is `^actor(:id)` ? {: .info}
+>
+> Many places in Ash that support expression support *templates*. These are ways to refer
+> to certain things that are commonly available, like the actor, or action argument values.
+>
+> For more information, see [the expressions guide](/documentation/topics/reference/expressions.md#templates)
+
+Now, when we perform this upsert, there are three possible outcomes:
+
+- There is no article with that `slug`, in which case the article is created
+- There is an article with that `slug`, and the `user_id` matches the provided actor's `id`, so
+  it is updated with the new title and body.
+- There is an article with that `slug`, and the `user_id`  does not match the provided actor's,
+  `id`, in which case the action results in a `Ash.Error.Changes.StaleRecord` error. This is
+  the same error that would occur if the actor attempted to update something that had changed
+  in some unexpected way in the database.
+
+
+> ### Improving the stale record error {: .info}
+> You may wish to transform this into an error message that can be displayed to the user, using
+> the `d:actions.create.error_handler` option. For example:
+>
+> ```elixir
+> create :upsert_article_by_slug do
+>   upsert? true
+>   accept [:slug, :title, :body]
+>   upsert_identity :unique_slug
+>   upsert_condition expr(user_id == ^actor(:id))
+>   error_handler fn 
+>     _changeset, %Ash.Error.Changes.StaleRecord{} ->
+>       Ash.Error.Changes.InvalidChanges.exception(field: :slug, message: "has already been taken")"
+> 
+>     _ changeset, other ->
+>       # leave other errors untouched
+>       other
+>   end
+> end
+> ```
+
+
+
 
 ### Atomic Updates
 
