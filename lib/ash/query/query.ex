@@ -983,6 +983,9 @@ defmodule Ash.Query do
     %{query | authorize_results: [func | query.authorize_results]}
   end
 
+  # remove when 4.0 happens and `@read_action_after_action_hooks_in_order?` goes away
+  @dialyzer {:nowarn_function, after_action: 2}
+
   @spec after_action(
           t(),
           (t(), [Ash.Resource.record()] ->
@@ -2954,13 +2957,13 @@ defmodule Ash.Query do
   Ash.Query.sort(query, name: :desc, title: :asc)
 
   # sort by name ascending
-  Ash.Query.sort(query, "name")
+  Ash.Query.sort_input(query, "name")
 
   # sort by name descending, and title ascending
-  Ash.Query.sort(query, "-name,title")
+  Ash.Query.sort_input(query, "-name,title")
 
   # sort by name descending with nils at the end
-  Ash.Query.sort(query, "--name")
+  Ash.Query.sort_input(query, "--name")
   ```
 
   ## Sort Strings

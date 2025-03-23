@@ -130,6 +130,7 @@ jobs:
     if: ${{inputs.publish-docs}}
     needs:
       - build-test
+      - spark-cheat-sheets
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-docs@main
@@ -188,6 +189,11 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        if: ${{inputs.spark-cheat-sheets}}
+        with:
+          mix-env: test
+          task: spark.cheat_sheets --dry-run --yes
       - uses: team-alembic/staple-actions/actions/mix-task@main
         if: ${{inputs.spark-cheat-sheets}}
         with:

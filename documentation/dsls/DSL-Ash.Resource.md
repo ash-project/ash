@@ -1050,7 +1050,7 @@ end
 | [`allow_nil_input`](#actions-create-allow_nil_input){: #actions-create-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
 | [`delay_global_validations?`](#actions-create-delay_global_validations?){: #actions-create-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
 | [`skip_global_validations?`](#actions-create-skip_global_validations?){: #actions-create-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
-| [`error_handler`](#actions-create-error_handler){: #actions-create-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
+| [`error_handler`](#actions-create-error_handler){: #actions-create-error_handler } | `mfa \| (any, any -> any)` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`notifiers`](#actions-create-notifiers){: #actions-create-notifiers } | `list(module)` |  | Notifiers that will be called specifically for this action. |
 | [`manual?`](#actions-create-manual?){: #actions-create-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 
@@ -1536,7 +1536,7 @@ update :flag_for_review, primary?: true
 | [`allow_nil_input`](#actions-update-allow_nil_input){: #actions-update-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
 | [`delay_global_validations?`](#actions-update-delay_global_validations?){: #actions-update-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
 | [`skip_global_validations?`](#actions-update-skip_global_validations?){: #actions-update-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
-| [`error_handler`](#actions-update-error_handler){: #actions-update-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
+| [`error_handler`](#actions-update-error_handler){: #actions-update-error_handler } | `mfa \| (any, any -> any)` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`notifiers`](#actions-update-notifiers){: #actions-update-notifiers } | `list(module)` |  | Notifiers that will be called specifically for this action. |
 | [`manual?`](#actions-update-manual?){: #actions-update-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 
@@ -1780,7 +1780,7 @@ end
 | [`allow_nil_input`](#actions-destroy-allow_nil_input){: #actions-destroy-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
 | [`delay_global_validations?`](#actions-destroy-delay_global_validations?){: #actions-destroy-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
 | [`skip_global_validations?`](#actions-destroy-skip_global_validations?){: #actions-destroy-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
-| [`error_handler`](#actions-destroy-error_handler){: #actions-destroy-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
+| [`error_handler`](#actions-destroy-error_handler){: #actions-destroy-error_handler } | `mfa \| (any, any -> any)` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`notifiers`](#actions-destroy-notifiers){: #actions-destroy-notifiers } | `list(module)` |  | Notifiers that will be called specifically for this action. |
 | [`manual?`](#actions-destroy-manual?){: #actions-destroy-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 

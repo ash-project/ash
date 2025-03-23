@@ -27,8 +27,8 @@ jobs:
             { org: "ash-project", name: "ash_sqlite" },
             { org: "ash-project", name: "ash_paper_trail" },
             { org: "team-alembic", name: "ash_authentication" },
-            { org: "team-alembic", name: "ash_authentication_phoenix" },
-            { org: "sevenseacat", name: "tunez", ref: "end-of-chapter-8" }
+            { org: "team-alembic", name: "ash_authentication_phoenix" }
+            # { org: "sevenseacat", name: "tunez", ref: "end-of-chapter-8" }
           ]
         otp: ["27.2"]
         elixir: ["1.18.1"]

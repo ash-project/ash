@@ -17,35 +17,33 @@ if Mix.env() == :dev do
     version_tag_prefix: "v"
 end
 
-if Mix.env() == :test do
-  config :logger, level: :warning
+config :logger, level: :warning
 
-  config :ash, :default_page_type, :keyset
+config :ash, :default_page_type, :keyset
 
-  config :ash, :ash_domains, [
-    Ash.Test.Flow.Domain,
-    Ash.Test.Support.PolicyRbac.Domain,
-    Ash.Test.Support.PolicyComplex.Domain,
-    Ash.Test.Support.PolicySimple.Domain
-  ]
+config :ash, :ash_domains, [
+  Ash.Test.Flow.Domain,
+  Ash.Test.Support.PolicyRbac.Domain,
+  Ash.Test.Support.PolicyComplex.Domain,
+  Ash.Test.Support.PolicySimple.Domain
+]
 
-  config :ash, :show_keysets_for_all_actions?, false
-  config :ash, :policies, no_filter_static_forbidden_reads?: false
+config :ash, :show_keysets_for_all_actions?, false
+config :ash, :policies, no_filter_static_forbidden_reads?: false
 
-  config :ash, :custom_expressions, [Ash.Test.Expressions.JaroDistance]
+config :ash, :custom_expressions, [Ash.Test.Expressions.JaroDistance]
 
-  config :ash, :keep_read_action_loads_when_loading?, false
-  config :ash, :read_action_after_action_hooks_in_order?, true
-  config :ash, :bulk_actions_default_to_errors?, true
+config :ash, :keep_read_action_loads_when_loading?, false
+config :ash, :read_action_after_action_hooks_in_order?, true
+config :ash, :bulk_actions_default_to_errors?, true
 
-  config :ash, :sat_testing, true
-  config :ash, :no_join_mnesia_ets, :dynamic
+config :ash, :sat_testing, true
+config :ash, :no_join_mnesia_ets, :dynamic
 
-  config :ash, :validate_domain_resource_inclusion?, false
-  config :ash, :validate_domain_config_inclusion?, false
-  config :ash, :policies, show_policy_breakdowns?: true
+config :ash, :validate_domain_resource_inclusion?, false
+config :ash, :validate_domain_config_inclusion?, false
+config :ash, :policies, show_policy_breakdowns?: true
 
-  config :ash, :compatible_foreign_key_types, [
-    {Ash.Type.CiString, Ash.Type.UUID}
-  ]
-end
+config :ash, :compatible_foreign_key_types, [
+  {Ash.Type.CiString, Ash.Type.UUID}
+]

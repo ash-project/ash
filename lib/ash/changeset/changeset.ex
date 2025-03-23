@@ -6064,14 +6064,15 @@ defmodule Ash.Changeset do
   Sets a custom error handler on the changeset.
 
   The error handler should be a two argument function or an mfa, in which case the first two arguments will be set
-  to the changeset and the error, w/ the supplied arguments following those.
+  to the changeset and the error, w/ the supplied arguments following those. The changeset will be marked
+  as invalid regardless of the outcome of this callback.
 
   Any errors generated are passed to `handle_errors`, which can return any of the following:
 
-  * `:ignore` - the error is discarded, and the changeset is not marked as invalid
-  * `changeset` - a new (or the same) changeset. The error is not added (you'll want to add an error yourself), but the changeset *is* marked as invalid.
-  * `{changeset, error}` - a new (or the same) error and changeset. The error is added to the changeset, and the changeset is marked as invalid.
-  * `anything_else` - is treated as a new, transformed version of the error. The result is added as an error to the changeset, and the changeset is marked as invalid.
+  * `:ignore` - the error is discarded.
+  * `changeset` - a new (or the same) changeset. The error is not added.
+  * `{changeset, error}` - a new (or the same) error and changeset. The error is added to the changeset.
+  * `anything_else` - is treated as a new, transformed version of the error. The result is added as an error to the changeset.
   """
   @spec handle_errors(
           t(),
@@ -6199,10 +6200,10 @@ defmodule Ash.Changeset do
     |> changeset.handle_errors.(error)
     |> case do
       :ignore ->
-        changeset
+        %{changeset | valid?: false}
 
       {:ignore, changeset} ->
-        changeset
+        %{changeset | valid?: false}
 
       %__MODULE__{} = changeset ->
         %{changeset | valid?: false}

@@ -58,6 +58,31 @@ rescue
 end
 ```
 
+## Error Handlers
+
+Create, update and destroy actions can be provided with an `error_handler`, which can be used to modify the errors
+before they are returned. This is not an error *recovery* mechanism, rather a way to control the shape of
+errors that are returned. For more information on the callback itself, see `Ash.Changeset.handle_errors/2`.
+
+Example usage:
+
+```elixir
+create :upsert_article_by_slug do
+  upsert? true
+  accept [:slug, :title, :body]
+  upsert_identity :unique_slug
+  upsert_condition expr(user_id == ^actor(:id))
+  error_handler fn 
+    _changeset, %Ash.Error.Changes.StaleRecord{} ->
+      Ash.Error.Changes.InvalidChanges.exception(field: :slug, message: "has already been taken")"
+
+    _ changeset, other ->
+      # leave other errors untouched
+      other
+  end
+end
+```
+
 ## Generating Errors
 
 When returning errors from behaviors or adding errors to a

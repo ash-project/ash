@@ -415,7 +415,7 @@ MyApp.Posts.Post
 # use `sort_input` to sort based on user input
 # it only allows accessing public fields
 MyApp.Posts.Post
-|> Ash.Query.sort("text,-count_of_comments")
+|> Ash.Query.sort_input("text,-count_of_comments")
 |> Ash.read!()
 ```
 
