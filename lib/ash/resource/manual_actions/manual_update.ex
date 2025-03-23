@@ -13,7 +13,33 @@ defmodule Ash.Resource.ManualUpdate do
       :tracer,
       :authorize?,
       :domain,
+      :return_notifications?
+    ]
+
+    @type t :: %__MODULE__{
+            actor: any(),
+            select: list(atom),
+            tenant: any(),
+            tracer: list(module),
+            authorize?: boolean(),
+            domain: Ash.Domain.t(),
+            return_notifications?: boolean()
+          }
+  end
+
+  defmodule BulkContext do
+    @moduledoc "The context passed into manual update action functions"
+
+    defstruct [
+      :actor,
+      :select,
+      :tenant,
+      :tracer,
+      :authorize?,
+      :domain,
       :return_records?,
+      :return_notifications?,
+      :return_errors?,
       :batch_size
     ]
 
@@ -25,6 +51,8 @@ defmodule Ash.Resource.ManualUpdate do
             authorize?: boolean(),
             domain: Ash.Domain.t(),
             return_records?: boolean(),
+            return_notifications?: boolean(),
+            return_errors?: boolean(),
             batch_size: pos_integer()
           }
   end

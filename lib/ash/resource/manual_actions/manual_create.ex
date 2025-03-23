@@ -4,7 +4,7 @@ defmodule Ash.Resource.ManualCreate do
   """
 
   defmodule Context do
-    @moduledoc "The context passed into manual update action functions"
+    @moduledoc "The context passed into manual create action functions"
 
     defstruct [
       :actor,
@@ -17,8 +17,42 @@ defmodule Ash.Resource.ManualCreate do
       :upsert_keys,
       :identity,
       :upsert_fields,
-      :return_records?,
-      :batch_size
+      :return_notifications?
+    ]
+
+    @type t :: %__MODULE__{
+            actor: any(),
+            select: list(atom),
+            tenant: any(),
+            tracer: list(module),
+            authorize?: boolean(),
+            domain: Ash.Domain.t(),
+            identity: Ash.Resource.Identity.t() | nil,
+            upsert?: boolean(),
+            upsert_keys: list(atom),
+            upsert_fields: list(atom),
+            return_notifications?: boolean()
+          }
+  end
+
+  defmodule BulkContext do
+    @moduledoc "The context passed into manual bulk_create action functions"
+
+    defstruct [
+      :actor,
+      :select,
+      :tenant,
+      :tracer,
+      :authorize?,
+      :domain,
+      :upsert?,
+      :upsert_keys,
+      :identity,
+      :upsert_fields,
+      :batch_size,
+      :return_errors?,
+      :return_notifications?,
+      :return_records?
     ]
 
     @type t :: %__MODULE__{
@@ -33,6 +67,8 @@ defmodule Ash.Resource.ManualCreate do
             upsert_keys: list(atom),
             upsert_fields: list(atom),
             return_records?: boolean(),
+            return_notifications?: boolean(),
+            return_errors?: boolean(),
             batch_size: pos_integer()
           }
   end
