@@ -193,6 +193,11 @@ jobs:
         if: ${{inputs.spark-cheat-sheets}}
         with:
           mix-env: test
+          task: spark.cheat_sheets --dry-run --yes
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        if: ${{inputs.spark-cheat-sheets}}
+        with:
+          mix-env: test
           task: spark.cheat_sheets --check
   sobelow:
     name: mix sobelow
