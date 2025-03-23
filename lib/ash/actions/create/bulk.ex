@@ -113,7 +113,7 @@ defmodule Ash.Actions.Create.Bulk do
     batch_size =
       cond do
         action.manual != nil and manual_action_can_bulk? -> opts[:batch_size] || 100
-        data_layer_can_bulk? -> opts[:batch_size] || 100
+        action.manual == nil and data_layer_can_bulk? -> opts[:batch_size] || 100
         true -> 1
       end
 
@@ -1252,7 +1252,7 @@ defmodule Ash.Actions.Create.Bulk do
                   [
                     mod.create(changeset, manual_opts, ctx)
                     |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
-                      batch,
+                      changeset,
                       :bulk_create
                     )
                   ]
