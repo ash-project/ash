@@ -130,6 +130,7 @@ jobs:
     if: ${{inputs.publish-docs}}
     needs:
       - build-test
+      - spark-cheat-sheets
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-docs@main
