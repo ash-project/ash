@@ -198,7 +198,7 @@ jobs:
         if: ${{inputs.spark-cheat-sheets}}
         with:
           mix-env: test
-          task: spark.cheat_sheets_without_reactor --check
+          task: spark.cheat_sheets --check
   sobelow:
     name: mix sobelow
     runs-on: ubuntu-latest

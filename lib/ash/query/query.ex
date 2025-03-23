@@ -983,6 +983,9 @@ defmodule Ash.Query do
     %{query | authorize_results: [func | query.authorize_results]}
   end
 
+  # remove when 4.0 happens and `@read_action_after_action_hooks_in_order?` goes away
+  @dialyzer {:nowarn_function, after_action: 2}
+
   @spec after_action(
           t(),
           (t(), [Ash.Resource.record()] ->

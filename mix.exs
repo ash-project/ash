@@ -410,11 +410,6 @@ defmodule Ash.MixProject do
       format: "format --migrate",
       "spark.formatter":
         "spark.formatter --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
-      # stupid workaround because `--check` is warning on files changing but not outputting any change
-      # There is some kind of phantom ghost character somewhere or something, but I don't have the
-      # spoons to figure out why
-      "spark.cheat_sheets_without_reactor":
-        "--extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer",
       "spark.cheat_sheets":
         "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
     ]
