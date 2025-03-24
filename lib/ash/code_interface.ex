@@ -1677,6 +1677,25 @@ defmodule Ash.CodeInterface do
               Ash.can?(unquote(subject), actor, opts)
 
             {:atomic, _, %Ash.Query{} = query} = subj ->
+              query =
+                if query && !query.__validated_for_action__ do
+                  Ash.Query.for_read(
+                    query,
+                    Ash.Resource.Info.primary_action!(query.resource, :read).name,
+                    %{},
+                    Keyword.take(opts, [
+                      :actor,
+                      :tenant,
+                      :authorize?,
+                      :tracer,
+                      :context,
+                      :skip_unknown_inputs
+                    ])
+                  )
+                else
+                  query
+                end
+
               changeset_result =
                 case Ash.Changeset.fully_atomic_changeset(
                        query.resource,
