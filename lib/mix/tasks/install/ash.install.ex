@@ -54,6 +54,7 @@ if Code.ensure_loaded?(Igniter) do
       igniter
       |> Igniter.compose_task("spark.install")
       |> Igniter.Project.Formatter.import_dep(:ash)
+      |> Igniter.Project.Formatter.import_dep(:reactor)
       |> Spark.Igniter.prepend_to_section_order(
         :"Ash.Resource",
         @resource_default_section_order
