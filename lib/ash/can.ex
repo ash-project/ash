@@ -511,6 +511,25 @@ defmodule Ash.Can do
           opts[:base_query]
       end
 
+    base_query =
+      if base_query && !base_query.__validated_for_action__ do
+        Ash.Query.for_read(
+          base_query,
+          Ash.Resource.Info.primary_action!(base_query.resource, :read).name,
+          %{},
+          Keyword.take(opts, [
+            :actor,
+            :tenant,
+            :authorize?,
+            :tracer,
+            :context,
+            :skip_unknown_inputs
+          ])
+        )
+      else
+        base_query
+      end
+
     case authorizers do
       [] ->
         {:ok, true}
