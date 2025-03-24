@@ -159,15 +159,6 @@ defmodule Ash.Type.Keyword do
   end
 
   @impl true
-  def cast_atomic(new_value, constraints) do
-    if constraints[:keys] do
-      {:not_atomic, "Keywords do not support atomic updates when using the `keys` constraint"}
-    else
-      {:atomic, new_value}
-    end
-  end
-
-  @impl true
   def apply_constraints(value, constraints) do
     Enum.reduce(constraints, {:ok, value}, fn
       {:fields, fields}, {:ok, value} ->

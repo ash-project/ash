@@ -168,15 +168,6 @@ defmodule Ash.Type.Map do
   def dump_to_native(_, _), do: :error
 
   @impl true
-  def cast_atomic(new_value, constraints) do
-    if constraints[:fields] do
-      {:not_atomic, "Maps do not support atomic updates when using the `fields` constraint"}
-    else
-      {:atomic, new_value}
-    end
-  end
-
-  @impl true
   def apply_constraints(value, constraints) do
     Enum.reduce(constraints, {:ok, value}, fn
       {:fields, fields}, {:ok, value} ->
