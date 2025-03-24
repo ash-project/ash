@@ -221,6 +221,13 @@ defmodule Ash.Actions.Read.Relationships do
         actor: query.context[:private][:actor],
         tracer: query.context[:private][:tracer]
       )
+      |> then(fn query ->
+        if relationship.cardinality == :one && Map.get(relationship, :from_many?) do
+          Ash.Query.limit(query, 1)
+        else
+          query
+        end
+      end)
       |> Ash.Query.sort(relationship.sort)
       |> Ash.Query.do_filter(relationship.filter, parent_stack: parent_stack)
       |> Ash.Query.set_context(relationship.context)
