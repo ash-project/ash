@@ -1444,8 +1444,7 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  @doc false
-  def authorize_bulk_query(query, atomic_changeset, opts) do
+  defp authorize_bulk_query(query, atomic_changeset, opts) do
     if opts[:authorize?] && opts[:authorize_query?] do
       case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
