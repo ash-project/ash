@@ -1676,7 +1676,71 @@ defmodule Ash.CodeInterface do
             %struct{} when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] ->
               Ash.can?(unquote(subject), actor, opts)
 
-            {:atomic, _, input} ->
+            {:atomic, _, %Ash.Query{} = query} = subj ->
+              changeset_result =
+                case Ash.Changeset.fully_atomic_changeset(
+                       query.resource,
+                       unquote(action.name),
+                       params,
+                       Keyword.take(opts, [
+                         :actor,
+                         :tenant,
+                         :authorize?,
+                         :tracer,
+                         :context,
+                         :skip_unknown_inputs
+                       ])
+                     ) do
+                  {:not_atomic, _} ->
+                    if opts[:data] && opts[:data] != [] do
+                      {:each_data, List.wrap(opts[:data])}
+                    else
+                      raise ArgumentError, """
+                      The action #{unquote(action.name)} could not be done atomically with the provided inputs. 
+                      You must pass the `data` option, containing records you are checking for authorization.
+                      """
+                    end
+
+                  changeset ->
+                    changeset
+                end
+
+              case changeset_result do
+                {:each_data, data} ->
+                  Enum.all?(data, fn record ->
+                    changeset =
+                      Ash.Changeset.for_action(
+                        record,
+                        unquote(action.name),
+                        params,
+                        Keyword.take(opts, [
+                          :actor,
+                          :tenant,
+                          :authorize?,
+                          :tracer,
+                          :context,
+                          :skip_unknown_inputs
+                        ])
+                      )
+
+                    Ash.can?(changeset, actor, Keyword.merge(opts, base_query: query))
+                  end)
+
+                changeset ->
+                  case Ash.Actions.Update.Bulk.authorize_bulk_query(query, changeset,
+                         authorize?: true,
+                         authorize_query?: true,
+                         actor: actor
+                       ) do
+                    {:ok, query} ->
+                      Ash.can?(changeset, actor, Keyword.merge(opts, base_query: query))
+
+                    {:error, _} ->
+                      false
+                  end
+              end
+
+            {:atomic, _, input} = subj ->
               raise "Ash.can_#{unquote(interface.name)}? does not support #{inspect(input)} as input."
 
             {:bulk, input} ->

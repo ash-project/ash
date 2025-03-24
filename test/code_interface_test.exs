@@ -482,6 +482,20 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
   end
 
+  test "update/destroy with `get? true` work with `can_`" do
+    user =
+      User
+      |> Ash.Changeset.for_create(:create, %{first_name: "ted", last_name: "Danson"})
+      |> Ash.create!()
+
+    User
+    |> Ash.Changeset.for_create(:create, %{first_name: "fred", last_name: "Danson"})
+    |> Ash.create!()
+
+    assert User.can_update_by_id?(user, user.id, %{})
+    assert User.can_destroy_by_id?(user, user.id, %{})
+  end
+
   test "optional arguments are optional" do
     assert User.create!().first_name == "fred"
     assert User.create!("joe").first_name == "joe"
