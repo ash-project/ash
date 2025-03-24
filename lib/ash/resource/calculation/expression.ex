@@ -7,6 +7,7 @@ defmodule Ash.Resource.Calculation.Expression do
       Ash.Expr.fill_template(
         opts[:expr],
         context.actor,
+        context.tenant,
         context.arguments,
         context.source_context
       )
@@ -40,6 +41,7 @@ defmodule Ash.Resource.Calculation.Expression do
     expression =
       Ash.Expr.fill_template(
         opts[:expr],
+        context.tenant,
         context.actor,
         context.arguments,
         context.source_context || %{}
@@ -99,6 +101,7 @@ defmodule Ash.Resource.Calculation.Expression do
       Ash.Expr.fill_template(
         opts[:expr],
         context.actor,
+        context.tenant,
         context.arguments,
         context.source_context || %{}
       )

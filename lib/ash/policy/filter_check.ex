@@ -77,7 +77,12 @@ defmodule Ash.Policy.FilterCheck do
 
         actor
         |> filter(authorizer, opts)
-        |> Ash.Expr.fill_template(actor, Ash.Policy.FilterCheck.args(authorizer), context)
+        |> Ash.Expr.fill_template(
+          actor,
+          authorizer.subject.tenant,
+          Ash.Policy.FilterCheck.args(authorizer),
+          context
+        )
         |> then(fn expr ->
           no_filter_static_forbidden_reads? =
             Keyword.get(
@@ -124,6 +129,7 @@ defmodule Ash.Policy.FilterCheck do
           Ash.Expr.fill_template(
             expression,
             actor,
+            tenant,
             action_input.arguments,
             action_input.context
           )
@@ -181,6 +187,7 @@ defmodule Ash.Policy.FilterCheck do
           Ash.Expr.fill_template(
             expression,
             actor,
+            tenant,
             changeset.arguments,
             changeset.context,
             changeset
@@ -215,6 +222,7 @@ defmodule Ash.Policy.FilterCheck do
           Ash.Expr.fill_template(
             expression,
             actor,
+            tenant,
             changeset.arguments,
             changeset.context,
             changeset
@@ -289,6 +297,7 @@ defmodule Ash.Policy.FilterCheck do
         Ash.Expr.fill_template(
           filter(actor, authorizer, opts),
           actor,
+          authorizer.subject.tenant,
           Ash.Policy.FilterCheck.args(authorizer),
           context
         )
@@ -306,6 +315,7 @@ defmodule Ash.Policy.FilterCheck do
         Ash.Expr.fill_template(
           reject(actor, authorizer, opts),
           actor,
+          authorizer.subject.tenant,
           Ash.Policy.FilterCheck.args(authorizer),
           context
         )
@@ -357,6 +367,7 @@ defmodule Ash.Policy.FilterCheck do
          |> filter(authorizer, opts)
          |> Ash.Expr.fill_template(
            actor,
+           authorizer.subject.tenant,
            authorizer.subject.arguments,
            authorizer.subject.context,
            changeset

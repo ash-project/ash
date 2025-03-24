@@ -897,6 +897,7 @@ defmodule Ash.Query do
                 Ash.Expr.fill_template(
                   opts,
                   actor,
+                  query.tenant,
                   query.arguments,
                   query.context
                 )
@@ -1014,6 +1015,7 @@ defmodule Ash.Query do
         Ash.Expr.fill_template(
           action.filter,
           actor,
+          query.tenant,
           query.arguments,
           query.context
         )

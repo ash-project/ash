@@ -123,7 +123,14 @@ defmodule Ash.Actions.Create.Bulk do
     base_changeset = base_changeset(resource, domain, opts, action)
 
     all_changes =
-      pre_template_all_changes(action, resource, action.type, base_changeset, opts[:actor])
+      pre_template_all_changes(
+        action,
+        resource,
+        action.type,
+        base_changeset,
+        opts[:actor],
+        opts[:tenant]
+      )
 
     argument_names = Enum.map(action.arguments, & &1.name)
 
@@ -301,7 +308,7 @@ defmodule Ash.Actions.Create.Bulk do
               __STACKTRACE__
   end
 
-  defp pre_template_all_changes(action, resource, :create, base, actor) do
+  defp pre_template_all_changes(action, resource, :create, base, actor, tenant) do
     action.changes
     |> then(fn changes ->
       if action.skip_global_validations? do
@@ -313,10 +320,10 @@ defmodule Ash.Actions.Create.Bulk do
     |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
     |> Enum.map(fn
       %{change: {module, opts}} = change ->
-        %{change | change: {module, pre_template(opts, base, actor)}}
+        %{change | change: {module, pre_template(opts, base, actor, tenant)}}
 
       %{validation: {module, opts}} = validation ->
-        %{validation | validation: {module, pre_template(opts, base, actor)}}
+        %{validation | validation: {module, pre_template(opts, base, actor, tenant)}}
     end)
     |> Enum.map(fn
       %{where: where} = change ->
@@ -324,7 +331,9 @@ defmodule Ash.Actions.Create.Bulk do
           if where do
             where
             |> List.wrap()
-            |> Enum.map(fn {module, opts} -> {module, pre_template(opts, base, actor)} end)
+            |> Enum.map(fn {module, opts} ->
+              {module, pre_template(opts, base, actor, tenant)}
+            end)
           end
 
         %{change | where: new_where}
@@ -335,7 +344,7 @@ defmodule Ash.Actions.Create.Bulk do
     |> Enum.with_index()
   end
 
-  defp pre_template(opts, changeset, actor) do
+  defp pre_template(opts, changeset, actor, tenant) do
     if Ash.Expr.template_references_argument?(opts) ||
          Ash.Expr.template_references_context?(opts) do
       opts
@@ -344,8 +353,10 @@ defmodule Ash.Actions.Create.Bulk do
        Ash.Expr.fill_template(
          opts,
          actor,
+         tenant,
          %{},
-         changeset.context
+         changeset.context,
+         changeset
        )}
     end
   end
@@ -1693,12 +1704,13 @@ defmodule Ash.Actions.Create.Bulk do
     }
   end
 
-  defp templated_opts({:templated, opts}, _actor, _arguments, _context), do: opts
+  defp templated_opts({:templated, opts}, _actor, _tenant, _arguments, _context), do: opts
 
-  defp templated_opts(opts, actor, arguments, context) do
+  defp templated_opts(opts, actor, tenant, arguments, context) do
     Ash.Expr.fill_template(
       opts,
       actor,
+      tenant,
       arguments,
       context
     )
@@ -1747,7 +1759,9 @@ defmodule Ash.Actions.Create.Bulk do
                   changeset
 
                 Enum.all?(validation.where || [], fn {module, opts} ->
-                  opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+                  opts =
+                      templated_opts(opts, actor, tenant, changeset.arguments, changeset.context)
+
                   {:ok, opts} = module.init(opts)
 
                   module.validate(
@@ -1756,7 +1770,8 @@ defmodule Ash.Actions.Create.Bulk do
                     struct(Ash.Resource.Validation.Context, context)
                   ) == :ok
                 end) ->
-                  opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+                  opts =
+                    templated_opts(opts, actor, tenant, changeset.arguments, changeset.context)
 
                   {:ok, opts} = module.init(opts)
 
@@ -1822,7 +1837,8 @@ defmodule Ash.Actions.Create.Bulk do
               |> Enum.split_with(fn changeset ->
                 applies_from_where? =
                   Enum.all?(change.where || [], fn {module, opts} ->
-                    opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+                    opts =
+                      templated_opts(opts, actor, tenant, changeset.arguments, changeset.context)
 
                     {:ok, opts} = module.init(opts)
 
@@ -1905,7 +1921,13 @@ defmodule Ash.Actions.Create.Bulk do
           batch
           |> Enum.map(fn changeset ->
             change_opts =
-              templated_opts(change_opts, actor, changeset.arguments, changeset.context)
+              templated_opts(
+                change_opts,
+                actor,
+                context.tenant,
+                changeset.arguments,
+                changeset.context
+              )
 
             {:ok, change_opts} = module.init(change_opts)
 
@@ -1919,7 +1941,13 @@ defmodule Ash.Actions.Create.Bulk do
         else
           Enum.map(batch, fn changeset ->
             change_opts =
-              templated_opts(change_opts, actor, changeset.arguments, changeset.context)
+              templated_opts(
+                change_opts,
+                actor,
+                context.tenant,
+                changeset.arguments,
+                changeset.context
+              )
 
             {:ok, change_opts} = module.init(change_opts)
 

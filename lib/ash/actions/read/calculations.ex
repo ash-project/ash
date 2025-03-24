@@ -503,6 +503,7 @@ defmodule Ash.Actions.Read.Calculations do
       Ash.Expr.fill_template(
         calculation.opts,
         calculation.context.actor,
+        calculation.context.tenant,
         calculation.context.arguments,
         calculation.context.source_context
       )
@@ -952,12 +953,14 @@ defmodule Ash.Actions.Read.Calculations do
           calculation.opts
           |> Ash.Expr.fill_template(
             calculation.context.actor,
+            calculation.context.tenant,
             calculation.context.arguments,
             calculation.context.source_context
           )
           |> calculation.module.expression(calculation.context)
           |> Ash.Expr.fill_template(
             calculation.context.actor,
+            calculation.context.tenant,
             calculation.context.arguments,
             calculation.context.source_context
           )
@@ -1103,6 +1106,7 @@ defmodule Ash.Actions.Read.Calculations do
               |> calculation.module.expression(calculation.context)
               |> Ash.Expr.fill_template(
                 calculation.context.actor,
+                calculation.context.tenant,
                 calculation.context.arguments,
                 calculation.context.source_context
               )

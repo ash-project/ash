@@ -1283,6 +1283,7 @@ defmodule Ash.Actions.Read do
                 Ash.Expr.fill_template(
                   aggregate.query.filter,
                   query.context[:private][:actor],
+                  query.tenant,
                   %{},
                   query.context
                 )
@@ -1310,6 +1311,7 @@ defmodule Ash.Actions.Read do
                   Ash.Expr.fill_template(
                     expression,
                     query.context[:private][:actor],
+                    query.tenant,
                     calculation.context.arguments,
                     query.context
                   )
@@ -3177,6 +3179,7 @@ defmodule Ash.Actions.Read do
           Ash.Expr.fill_template(
             expression,
             calculation.context.actor,
+            calculation.context.tenant,
             calculation.context.arguments,
             calculation.context.source_context
           )

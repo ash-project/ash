@@ -906,7 +906,13 @@ defmodule Ash.Changeset do
       ) do
     if module.has_validate?() do
       opts =
-        Ash.Actions.Helpers.templated_opts(opts, actor, changeset.arguments, changeset.context)
+        Ash.Actions.Helpers.templated_opts(
+          opts,
+          actor,
+          changeset.tenant,
+          changeset.arguments,
+          changeset.context
+        )
 
       {:ok, opts} = module.init(opts)
 
@@ -1017,6 +1023,7 @@ defmodule Ash.Changeset do
       Ash.Expr.fill_template(
         change_opts,
         changeset.context.private[:actor],
+        changeset.tenant,
         changeset.arguments,
         changeset.context
       )
@@ -2723,6 +2730,7 @@ defmodule Ash.Changeset do
                      Ash.Expr.fill_template(
                        opts,
                        actor,
+                       changeset.tenant,
                        changeset.arguments,
                        changeset.context
                      )
@@ -2750,6 +2758,7 @@ defmodule Ash.Changeset do
                   Ash.Expr.fill_template(
                     opts,
                     actor,
+                    changeset.tenant,
                     changeset.arguments,
                     changeset.context
                   )
@@ -2824,6 +2833,7 @@ defmodule Ash.Changeset do
           Ash.Expr.fill_template(
             expr,
             actor,
+            changeset.tenant,
             changeset.arguments,
             changeset.context,
             changeset
@@ -2959,6 +2969,7 @@ defmodule Ash.Changeset do
             Ash.Expr.fill_template(
               condition_expr,
               actor,
+              changeset.tenant,
               changeset.arguments,
               changeset.context,
               changeset
@@ -2968,6 +2979,7 @@ defmodule Ash.Changeset do
             Ash.Expr.fill_template(
               error_expr,
               actor,
+              changeset.tenant,
               changeset.arguments,
               changeset.context,
               changeset
@@ -3298,6 +3310,7 @@ defmodule Ash.Changeset do
            Ash.Expr.fill_template(
              opts,
              actor,
+             changeset.tenant,
              changeset.arguments,
              changeset.context
            )
@@ -3324,6 +3337,7 @@ defmodule Ash.Changeset do
             Ash.Expr.fill_template(
               validation.opts,
               actor,
+              changeset.tenant,
               changeset.arguments,
               changeset.context
             )
@@ -6111,6 +6125,7 @@ defmodule Ash.Changeset do
           Ash.Expr.fill_template(
             expression,
             actor,
+            changeset.tenant,
             changeset.arguments,
             changeset.context
           )

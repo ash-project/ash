@@ -160,6 +160,7 @@ defmodule Ash.Expr do
   def fill_template(
         template,
         actor \\ nil,
+        tenant \\ nil,
         args \\ %{},
         context \\ %{},
         changeset \\ nil
@@ -175,6 +176,10 @@ defmodule Ash.Expr do
 
       {:_actor, path} when is_list(path) ->
         get_path(actor || %{}, path)
+
+      :_tenant ->
+        tenant
+        |> Ash.ToTenant.to_tenant(Map.get(changeset || %{}, :resource))
 
       {:_arg, field} ->
         case Map.fetch(args, field) do
@@ -200,8 +205,8 @@ defmodule Ash.Expr do
 
       {:_ref, path, name} ->
         %Ash.Query.Ref{
-          attribute: fill_template(name, actor, args, context),
-          relationship_path: fill_template(path, actor, args, context)
+          attribute: fill_template(name, actor, tenant, args, context),
+          relationship_path: fill_template(path, actor, tenant, args, context)
         }
 
       other ->

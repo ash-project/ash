@@ -548,6 +548,7 @@ defmodule Ash.Can do
                     Ash.Expr.fill_template(
                       filter,
                       actor,
+                      subject.tenant,
                       opts[:atomic_changeset].arguments,
                       opts[:atomic_changeset].context,
                       opts[:atomic_changeset]
@@ -574,6 +575,7 @@ defmodule Ash.Can do
                     Ash.Expr.fill_template(
                       filter,
                       actor,
+                      subject.tenant,
                       opts[:atomic_changeset].arguments,
                       opts[:atomic_changeset].context,
                       opts[:atomic_changeset]
@@ -650,6 +652,7 @@ defmodule Ash.Can do
                     Ash.Expr.fill_template(
                       filter,
                       actor,
+                      subject.tenant,
                       %{},
                       %{},
                       opts[:atomic_changeset]
@@ -838,6 +841,7 @@ defmodule Ash.Can do
             Ash.Expr.fill_template(
               filter,
               actor,
+              changeset.tenant,
               changeset.arguments,
               changeset.context,
               changeset

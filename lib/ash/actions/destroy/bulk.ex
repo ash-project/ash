@@ -1075,7 +1075,14 @@ defmodule Ash.Actions.Destroy.Bulk do
     base_changeset = base_changeset(resource, domain, opts, action, input)
 
     all_changes =
-      pre_template_all_changes(action, resource, action.type, base_changeset, opts[:actor])
+      pre_template_all_changes(
+        action,
+        resource,
+        action.type,
+        base_changeset,
+        opts[:actor],
+        opts[:tenant]
+      )
 
     argument_names = Enum.map(action.arguments, & &1.name)
 
@@ -1303,7 +1310,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp pre_template_all_changes(action, resource, :destroy, base, actor) do
+  defp pre_template_all_changes(action, resource, :destroy, base, actor, tenant) do
     action.changes
     |> then(fn changes ->
       if action.skip_global_validations? do
@@ -1315,10 +1322,10 @@ defmodule Ash.Actions.Destroy.Bulk do
     |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
     |> Enum.map(fn
       %{change: {module, opts}} = change ->
-        %{change | change: {module, pre_template(opts, base, actor)}}
+        %{change | change: {module, pre_template(opts, base, actor, tenant)}}
 
       %{validation: {module, opts}} = validation ->
-        %{validation | validation: {module, pre_template(opts, base, actor)}}
+        %{validation | validation: {module, pre_template(opts, base, actor, tenant)}}
     end)
     |> Enum.map(fn
       %{where: where} = change ->
@@ -1326,7 +1333,9 @@ defmodule Ash.Actions.Destroy.Bulk do
           if where do
             where
             |> List.wrap()
-            |> Enum.map(fn {module, opts} -> {module, pre_template(opts, base, actor)} end)
+            |> Enum.map(fn {module, opts} ->
+              {module, pre_template(opts, base, actor, tenant)}
+            end)
           end
 
         %{change | where: new_where}
@@ -1337,7 +1346,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     |> Enum.with_index()
   end
 
-  defp pre_template(opts, changeset, actor) do
+  defp pre_template(opts, changeset, actor, tenant) do
     if Ash.Expr.template_references_context?(opts) do
       opts
     else
@@ -1345,8 +1354,10 @@ defmodule Ash.Actions.Destroy.Bulk do
        Ash.Expr.fill_template(
          opts,
          actor,
+         tenant,
          changeset.arguments,
-         changeset.context
+         changeset.context,
+         changeset
        )}
     end
   end
