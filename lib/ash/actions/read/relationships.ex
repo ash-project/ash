@@ -214,7 +214,7 @@ defmodule Ash.Actions.Read.Relationships do
           async_limiter: query.context[:private][:async_limiter]
         }
       })
-      |> Ash.Query.set_tenant(query.tenant)
+      |> Ash.Query.set_tenant(query.tenant || related_query.tenant)
       |> Ash.Actions.Read.for_read(read_action, nil, arguments,
         domain: domain,
         authorize?: query.context[:private][:authorize?],

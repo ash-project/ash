@@ -206,18 +206,21 @@ defmodule Ash.Resource.Change.CascadeUpdate do
 
     context = Map.merge(relationship.context || %{}, %{cascade_destroy: true})
 
-    case related_query(data, opts) do
+    context_opts =
+      Keyword.update(
+        context_opts,
+        :context,
+        context,
+        &Map.merge(&1, context)
+      )
+
+    case related_query(data, opts, context_opts) do
       {:ok, query} ->
         Ash.bulk_update(
           query,
           action.name,
           inputs,
-          Keyword.update(
-            context_opts,
-            :context,
-            context,
-            &Map.merge(&1, context)
-          )
+          context_opts
         )
 
       :error ->
@@ -249,25 +252,36 @@ defmodule Ash.Resource.Change.CascadeUpdate do
     end
   end
 
-  defp related_query(_records, opts) when opts.relationship.type == :many_to_many, do: :error
+  defp related_query(_data, opts, _context_opts) when opts.relationship.type == :many_to_many,
+    do: :error
 
-  defp related_query(records, opts) do
-    related_query =
-      if opts.read_action do
-        Ash.Query.for_read(opts.relationship.destination, opts.read_action, %{})
+  defp related_query(data, opts, context_opts) do
+    read_action_name = opts.read_action || opts.relationship.read_action
+
+    read_action =
+      if read_action_name do
+        Ash.Resource.Info.action(opts.relationship.destination, read_action_name)
       else
-        Ash.Query.new(opts.relationship.destination)
+        Ash.Resource.Info.primary_action!(opts.relationship.destination, :read)
       end
+
+    related_query =
+      Ash.Query.for_read(
+        opts.relationship.destination,
+        read_action.name,
+        %{},
+        context_opts
+      )
 
     related_query =
       Ash.Actions.Read.Relationships.related_query(
         opts.relationship.name,
-        records,
+        data,
         related_query,
         Ash.Query.new(opts.relationship.source)
       )
       |> elem(1)
-      |> filter_by_keys(opts.relationship, records)
+      |> filter_by_keys(opts.relationship, data)
 
     if Ash.Actions.Read.Relationships.has_parent_expr?(
          opts.relationship,
