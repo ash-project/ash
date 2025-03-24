@@ -1469,7 +1469,8 @@ defmodule Ash.Changeset do
   ### Params
   `params` may be attributes, relationships, or arguments. You can safely pass user/form input directly into this function.
   Only public attributes and relationships are supported. If you want to change private attributes as well, see the
-  Customization section below. `params` are stored directly as given in the `params` field of the changeset, which is used
+  Customization section below. `params` are stored directly as given in the `params` field of the changeset, which can be
+  used to retrieve the originally input value.
 
   ### Opts
 
