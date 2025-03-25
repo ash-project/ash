@@ -2,6 +2,7 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  alias Ash.Test.Actions.BulkCreateManualTest.Helpers
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -16,22 +17,20 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
     use Ash.Resource.ManualCreate
 
     def create(changeset, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+      opts = Helpers.build_create_opts(ctx)
 
       changeset.resource
       |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
       |> Ash.create(opts)
     end
 
-    def bulk_create(changesets, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+    def bulk_create(changesets, module_opts, ctx) do
+      create_ctx = Helpers.build_create_ctx(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        changeset.resource
-        |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
-        |> Ash.create(opts ++ [return_notifications?: true])
+        create(changeset, module_opts, create_ctx)
         |> case do
-          {:ok, record, notification} ->
+          {:ok, record} ->
             record =
               Ash.Resource.put_metadata(
                 record,
@@ -39,7 +38,17 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
                 changeset.context.bulk_create.index
               )
 
-            [{:ok, record, notification} | results]
+            [{:ok, record} | results]
+
+          {:ok, record, notifications} ->
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_create_index,
+                changeset.context.bulk_create.index
+              )
+
+            [{:ok, record, notifications} | results]
 
           {:error, error} ->
             [{:error, error} | results]
@@ -52,21 +61,29 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
     use Ash.Resource.ManualCreate
 
     def create(changeset, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+      opts = Helpers.build_create_opts(ctx)
 
       changeset.resource
       |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
       |> Ash.create(opts)
     end
 
-    def bulk_create(changesets, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+    def bulk_create(changesets, module_opts, ctx) do
+      create_ctx = Helpers.build_create_ctx(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        changeset.resource
-        |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
-        |> Ash.create(opts ++ [return_notifications?: true])
+        create(changeset, module_opts, create_ctx)
         |> case do
+          {:ok, record} ->
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_create_index,
+                changeset.context.bulk_create.index
+              )
+
+            [{:ok, record} | results]
+
           {:ok, record, notifications} ->
             record =
               Ash.Resource.put_metadata(
@@ -88,20 +105,18 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
     use Ash.Resource.ManualCreate
 
     def create(changeset, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+      opts = Helpers.build_create_opts(ctx)
 
       changeset.resource
       |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
       |> Ash.create(opts)
     end
 
-    def bulk_create(changesets, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+    def bulk_create(changesets, module_opts, ctx) do
+      create_ctx = Helpers.build_create_ctx(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        changeset.resource
-        |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
-        |> Ash.create(opts)
+        create(changeset, module_opts, create_ctx)
         |> case do
           {:ok, record} ->
             record =
@@ -124,21 +139,22 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
     use Ash.Resource.ManualCreate
 
     def create(changeset, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+      opts = Helpers.build_create_opts(ctx)
 
       changeset.resource
       |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
       |> Ash.create(opts)
     end
 
-    def bulk_create(changesets, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+    def bulk_create(changesets, module_opts, ctx) do
+      create_ctx = Helpers.build_create_ctx(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        changeset.resource
-        |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
-        |> Ash.create(opts ++ [return_notifications?: true])
+        create(changeset, module_opts, create_ctx)
         |> case do
+          {:ok, _record} ->
+            results
+
           {:ok, _record, notifications} ->
             [{:notifications, notifications} | results]
 
@@ -153,22 +169,23 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
     use Ash.Resource.ManualCreate
 
     def create(changeset, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+      opts = Helpers.build_create_opts(ctx)
 
       changeset.resource
       |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
       |> Ash.create(opts)
     end
 
-    def bulk_create(changesets, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+    def bulk_create(changesets, module_opts, ctx) do
+      create_ctx = Helpers.build_create_ctx(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        changeset.resource
-        |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
-        |> Ash.create(opts)
+        create(changeset, module_opts, create_ctx)
         |> case do
           {:ok, _record} ->
+            [:ok | results]
+
+          {:ok, _record, _notificiations} ->
             [:ok | results]
 
           {:error, error} ->
@@ -230,6 +247,29 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
     end
   end
 
+  defmodule Helpers do
+    def build_create_ctx(ctx) do
+      %Ash.Resource.ManualCreate.Context{
+        actor: ctx.actor,
+        tenant: ctx.tenant,
+        select: ctx.select,
+        tracer: ctx.tracer,
+        authorize?: ctx.authorize?,
+        domain: ctx.domain,
+        upsert?: ctx.upsert?,
+        upsert_keys: ctx.upsert_keys,
+        upsert_fields: ctx.upsert_fields,
+        identity: ctx.identity,
+        return_notifications?: ctx.return_notifications?
+      }
+    end
+
+    def build_create_opts(ctx) do
+      Ash.Context.to_opts(ctx)
+      |> Keyword.put(:return_notifications?, ctx.return_notifications?)
+    end
+  end
+
   test "bulk_create works on manual action returning notifications as list" do
     result =
       [%{name: "Author1"}, %{name: "Author2"}, %{name: "Author3"}]
@@ -254,8 +294,23 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
       )
 
     assert Enum.count(result.records) == 3
-    assert Enum.empty?(result.notifications)
+    assert result.notifications == nil
     assert result.error_count == 0
+  end
+
+  test "bulk_create with return_errors?: false works on manual action returning notifications as list" do
+    result =
+      [%{name: "Author1"}, %{name: "Author2"}, %{name: "Author3"}]
+      |> Ash.bulk_create(Author, :create_manual_notification_list,
+        return_notifications?: true,
+        return_errors?: false,
+        return_records?: true
+      )
+
+    assert Enum.count(result.records) == 3
+    assert Enum.count(result.notifications) == 6
+    assert result.error_count == 0
+    assert result.errors == nil
   end
 
   test "bulk_create with return_records?: false works on manual action returning notifications as list" do
@@ -296,7 +351,7 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
       )
 
     assert Enum.count(result.records) == 3
-    assert Enum.empty?(result.notifications)
+    assert result.notifications == nil
     assert result.error_count == 0
   end
 
@@ -323,8 +378,9 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
       )
 
     assert Enum.count(result.records) == 3
-    assert Enum.empty?(result.notifications)
+    assert result.notifications == nil
     assert result.error_count == 0
+    assert result.errors == []
   end
 
   test "bulk_create with return_records?: false works on manual action not returning notifications at all" do
@@ -336,22 +392,20 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
       )
 
     assert result.records == nil
-    assert Enum.empty?(result.notifications)
+    assert result.notifications == nil
     assert result.error_count == 0
+    assert result.errors == []
   end
 
-  test "bulk_create works on manual action returning notifications in tuple" do
-    result =
+  test "bulk_create raises error when manual action returns only notifications and return_records?: true" do
+    assert_raise(Ash.Error.Unknown, fn ->
       [%{name: "Author1"}, %{name: "Author2"}, %{name: "Author3"}]
       |> Ash.bulk_create(Author, :create_manual_tupled_notifications,
         return_errors?: true,
         return_records?: true,
         return_notifications?: true
       )
-
-    assert Enum.empty?(result.records)
-    assert Enum.count(result.notifications) == 3
-    assert result.error_count == 0
+    end)
   end
 
   test "bulk_create with return_notifications?: false works on manual action returning notifications in tuple" do
@@ -359,12 +413,12 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
       [%{name: "Author1"}, %{name: "Author2"}, %{name: "Author3"}]
       |> Ash.bulk_create(Author, :create_manual_tupled_notifications,
         return_errors?: true,
-        return_records?: true,
+        return_records?: false,
         return_notifications?: false
       )
 
-    assert Enum.empty?(result.records)
-    assert Enum.empty?(result.notifications)
+    assert result.records == nil
+    assert result.notifications == nil
     assert result.error_count == 0
   end
 
@@ -378,7 +432,7 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
       )
 
     assert result.records == nil
-    assert result.notifications == nil
+    assert result.notifications == []
     assert result.error_count == 0
   end
 
@@ -386,9 +440,9 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
     assert_raise(Ash.Error.Unknown, fn ->
       [%{name: "Author1"}, %{name: "Author2"}, %{name: "Author3"}]
       |> Ash.bulk_create(Author, :create_manual_ok,
-        return_errors?: true,
+        return_errors?: false,
         return_records?: true,
-        return_notifications?: true
+        return_notifications?: false
       )
     end)
   end

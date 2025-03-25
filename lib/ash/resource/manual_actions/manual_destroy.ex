@@ -15,7 +15,35 @@ defmodule Ash.Resource.ManualDestroy do
       :tracer,
       :authorize?,
       :domain,
+      :return_notifications?,
+      :return_destroyed?
+    ]
+
+    @type t :: %__MODULE__{
+            actor: any(),
+            select: list(atom),
+            tenant: any(),
+            tracer: list(module),
+            authorize?: boolean(),
+            domain: Ash.Domain.t(),
+            return_notifications?: boolean(),
+            return_destroyed?: boolean()
+          }
+  end
+
+  defmodule BulkContext do
+    @moduledoc "The context passed into manual bulk_update action functions"
+
+    defstruct [
+      :actor,
+      :tenant,
+      :select,
+      :tracer,
+      :authorize?,
+      :domain,
       :return_records?,
+      :return_notifications?,
+      :return_errors?,
       :batch_size
     ]
 
@@ -27,6 +55,8 @@ defmodule Ash.Resource.ManualDestroy do
             authorize?: boolean(),
             domain: Ash.Domain.t(),
             return_records?: boolean(),
+            return_notifications?: boolean(),
+            return_errors?: boolean(),
             batch_size: pos_integer()
           }
   end

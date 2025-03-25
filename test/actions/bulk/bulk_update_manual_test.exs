@@ -2,6 +2,7 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  alias Ash.Test.Actions.BulkUpdateManualTest.Helpers
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -16,22 +17,20 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
     use Ash.Resource.ManualUpdate
 
     def update(changeset, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+      opts = Helpers.build_update_opts(ctx)
 
       changeset.data
       |> Ash.Changeset.for_update(:update, Map.take(changeset.attributes, [:name]), opts)
       |> Ash.update(opts)
     end
 
-    def bulk_update(changesets, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+    def bulk_update(changesets, module_opts, ctx) do
+      update_ctx = Helpers.build_update_ctx(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        changeset.data
-        |> Ash.Changeset.for_update(:update, Map.take(changeset.attributes, [:name]), opts)
-        |> Ash.update(opts ++ [return_notifications?: true])
+        update(changeset, module_opts, update_ctx)
         |> case do
-          {:ok, record, notification} ->
+          {:ok, record} ->
             record =
               Ash.Resource.put_metadata(
                 record,
@@ -39,7 +38,17 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
                 changeset.context.bulk_update.index
               )
 
-            [{:ok, record, notification} | results]
+            [{:ok, record} | results]
+
+          {:ok, record, notifications} ->
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_update_index,
+                changeset.context.bulk_update.index
+              )
+
+            [{:ok, record, notifications} | results]
 
           {:error, error} ->
             [{:error, error} | results]
@@ -52,21 +61,29 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
     use Ash.Resource.ManualUpdate
 
     def update(changeset, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+      opts = Helpers.build_update_opts(ctx)
 
       changeset.data
       |> Ash.Changeset.for_update(:update, Map.take(changeset.attributes, [:name]), opts)
       |> Ash.update(opts)
     end
 
-    def bulk_update(changesets, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+    def bulk_update(changesets, module_opts, ctx) do
+      update_ctx = Helpers.build_update_ctx(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        changeset.data
-        |> Ash.Changeset.for_update(:update, Map.take(changeset.attributes, [:name]), opts)
-        |> Ash.update(opts ++ [return_notifications?: true])
+        update(changeset, module_opts, update_ctx)
         |> case do
+          {:ok, record} ->
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_update_index,
+                changeset.context.bulk_update.index
+              )
+
+            [{:ok, record} | results]
+
           {:ok, record, notifications} ->
             record =
               Ash.Resource.put_metadata(
@@ -88,22 +105,30 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
     use Ash.Resource.ManualUpdate
 
     def update(changeset, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+      opts = Helpers.build_update_opts(ctx)
 
       changeset.data
       |> Ash.Changeset.for_update(:update, Map.take(changeset.attributes, [:name]), opts)
       |> Ash.update(opts)
     end
 
-    def bulk_update(changesets, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+    def bulk_update(changesets, module_opts, ctx) do
+      update_ctx = Helpers.build_update_ctx(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        changeset.data
-        |> Ash.Changeset.for_update(:update, Map.take(changeset.attributes, [:name]), opts)
-        |> Ash.update(opts)
+        update(changeset, module_opts, update_ctx)
         |> case do
           {:ok, record} ->
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_update_index,
+                changeset.context.bulk_update.index
+              )
+
+            [{:ok, record} | results]
+
+          {:ok, record, _notifications} ->
             record =
               Ash.Resource.put_metadata(
                 record,
@@ -124,21 +149,22 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
     use Ash.Resource.ManualUpdate
 
     def update(changeset, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+      opts = Helpers.build_update_opts(ctx)
 
       changeset.data
       |> Ash.Changeset.for_update(:update, Map.take(changeset.attributes, [:name]), opts)
       |> Ash.update(opts)
     end
 
-    def bulk_update(changesets, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+    def bulk_update(changesets, module_opts, ctx) do
+      update_ctx = Helpers.build_update_ctx(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        changeset.data
-        |> Ash.Changeset.for_update(:update, Map.take(changeset.attributes, [:name]), opts)
-        |> Ash.update(opts ++ [return_notifications?: true])
+        update(changeset, module_opts, update_ctx)
         |> case do
+          {:ok, _record} ->
+            results
+
           {:ok, _record, notifications} ->
             [{:notifications, notifications} | results]
 
@@ -153,20 +179,18 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
     use Ash.Resource.ManualUpdate
 
     def update(changeset, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+      opts = Helpers.build_update_opts(ctx)
 
       changeset.data
       |> Ash.Changeset.for_update(:update, Map.take(changeset.attributes, [:name]), opts)
       |> Ash.update(opts)
     end
 
-    def bulk_update(changesets, _module_opts, ctx) do
-      opts = Ash.Context.to_opts(ctx)
+    def bulk_update(changesets, module_opts, ctx) do
+      update_ctx = Helpers.build_update_ctx(ctx)
 
       Enum.reduce(changesets, [], fn changeset, results ->
-        changeset.data
-        |> Ash.Changeset.for_update(:update, Map.take(changeset.attributes, [:name]), opts)
-        |> Ash.update(opts ++ [return_notifications?: true])
+        update(changeset, module_opts, update_ctx)
         |> case do
           {:ok, _record, _notifications} ->
             [:ok | results]
@@ -240,18 +264,37 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
     end
   end
 
+  defmodule Helpers do
+    def build_update_ctx(ctx) do
+      %Ash.Resource.ManualUpdate.Context{
+        actor: ctx.actor,
+        tenant: ctx.tenant,
+        select: ctx.select,
+        tracer: ctx.tracer,
+        authorize?: ctx.authorize?,
+        domain: ctx.domain,
+        return_notifications?: ctx.return_notifications?
+      }
+    end
+
+    def build_update_opts(ctx) do
+      Ash.Context.to_opts(ctx)
+      |> Keyword.put(:return_notifications?, ctx.return_notifications?)
+    end
+  end
+
   def create_author(name) do
     Author
     |> Ash.Changeset.for_create(:create, %{name: name})
     |> Ash.create!()
   end
 
+  def create_authors do
+    [create_author("Author1"), create_author("Author2"), create_author("Author3")]
+  end
+
   test "bulk_update works on manual action returning notifications as list" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -268,11 +311,7 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
   end
 
   test "bulk_update with return_notifications?: false works on manual action returning notifications as list" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -284,16 +323,12 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
       )
 
     assert Enum.count(result.records) == 3
-    assert Enum.empty?(result.notifications)
+    assert assert result.notifications == nil
     assert result.error_count == 0
   end
 
   test "bulk_update with return_records?: false works on manual action returning notifications as list" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -310,11 +345,7 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
   end
 
   test "bulk_update works on manual action returning notifications in map" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -331,11 +362,7 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
   end
 
   test "bulk_update with return_notifications?: false works on manual action returning notifications in map" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -347,16 +374,13 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
       )
 
     assert Enum.count(result.records) == 3
-    assert Enum.empty?(result.notifications)
+    assert result.notifications == nil
     assert result.error_count == 0
+    assert result.errors == []
   end
 
   test "bulk_update with return_records?: false works on manual action returning notifications in map" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -373,11 +397,7 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
   end
 
   test "bulk_update works on manual action not returning notifications at all" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -394,11 +414,7 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
   end
 
   test "bulk_update with return_notifications?: false works on manual action not returning notifications at all" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -410,16 +426,12 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
       )
 
     assert Enum.count(result.records) == 3
-    assert Enum.empty?(result.notifications)
+    assert result.notifications == nil
     assert result.error_count == 0
   end
 
   test "bulk_update with return_records?: false works on manual action not returning notifications at all" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -435,14 +447,10 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
     assert result.error_count == 0
   end
 
-  test "bulk_update works on manual action returning notifications as tuple" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+  test "bulk_update raises on manual action returning only notifications when return_records?: true" do
+    authors = create_authors()
 
-    result =
+    assert_raise Ash.Error.Unknown, fn ->
       authors
       |> Ash.bulk_update(:update_manual_tupled_notifications, %{name: "updated name"},
         return_notifications?: true,
@@ -450,39 +458,29 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
         return_records?: true,
         strategy: :stream
       )
-
-    assert Enum.empty?(result.records)
-    assert Enum.count(result.notifications) == 3
-    assert result.error_count == 0
+    end
   end
 
   test "bulk_update return_notifications?: false works on manual action returning notifications as tuple" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
       |> Ash.bulk_update(:update_manual_tupled_notifications, %{name: "updated name"},
         return_notifications?: false,
         return_errors?: true,
-        return_records?: true,
+        return_records?: false,
         strategy: :stream
       )
 
-    assert Enum.empty?(result.records)
-    assert Enum.empty?(result.notifications)
+    assert result.records == nil
+    assert result.notifications == nil
     assert result.error_count == 0
+    assert result.errors == []
   end
 
   test "bulk_update return_records?: false works on manual action returning notifications as tuple" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -499,11 +497,7 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
   end
 
   test "bulk_update works on manual action returning :ok" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     result =
       authors
@@ -515,16 +509,12 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
       )
 
     assert result.records == nil
-    assert result.notifications == nil
+    assert result.notifications == []
     assert result.error_count == 0
   end
 
   test "bulk_update raises when manual action returns :ok when return_records?: true" do
-    authors = [
-      create_author("Author1"),
-      create_author("Author2"),
-      create_author("Author3")
-    ]
+    authors = create_authors()
 
     assert_raise(Ash.Error.Unknown, fn ->
       authors

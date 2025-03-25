@@ -1124,35 +1124,51 @@ defmodule Ash.Actions.Destroy.Bulk do
           end
 
         notifications =
-          if opts[:notify?] && opts[:return_notifications?] do
-            Process.delete({:bulk_destroy_notifications, ref})
+          if opts[:notify?] do
+            Process.delete({:bulk_destroy_notifications, ref}) || []
           else
-            if opts[:notify?] do
-              Ash.Notifier.notify(Process.delete({:bulk_destroy_notifications, ref}))
-            else
-              []
-            end
+            []
           end
 
+        # Unless return_notifications? is true, we always want to end up with nil.
         notifications =
-          if Process.get(:ash_started_transaction?) && !opts[:return_notifications?] do
-            Process.put(:ash_notifications, Process.get(:ash_notifications, []) ++ notifications)
-            []
-          else
-            notifications
+          cond do
+            Enum.empty?(notifications) ->
+              if opts[:return_notifications?], do: [], else: nil
+
+            opts[:return_notifications?] ->
+              notifications
+
+            true ->
+              if opts[:notify?] do
+                Ash.Notifier.notify(notifications)
+              end
+
+              if Process.get(:ash_started_transaction?) do
+                Process.put(
+                  :ash_notifications,
+                  Process.get(:ash_notifications, []) ++ notifications
+                )
+              end
+
+              nil
           end
 
         {errors, error_count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
 
         errors =
-          Enum.map(
-            errors,
-            &Ash.Error.to_ash_error(&1, [],
-              bread_crumbs: [
-                "Returned from bulk destroy: #{inspect(resource)}.#{action_name}"
-              ]
+          if opts[:return_errors?] do
+            Enum.map(
+              errors,
+              &Ash.Error.to_ash_error(&1, [],
+                bread_crumbs: [
+                  "Returned from bulk destroy: #{inspect(resource)}.#{action_name}"
+                ]
+              )
             )
-          )
+          else
+            nil
+          end
 
         bulk_result = %Ash.BulkResult{
           records: records,
@@ -2046,88 +2062,44 @@ defmodule Ash.Actions.Destroy.Bulk do
                     return_records?:
                       opts[:return_records?] || must_return_records? ||
                         must_return_records_for_changes?,
+                    return_notifications?: opts[:return_notifications?] || false,
+                    return_errors?: opts[:return_errors?] || false,
                     tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
                   })
-                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                  |> case do
-                    {:ok, result} ->
-                      [result]
-
-                    :ok ->
-                      if opts[:return_records?] do
-                        raise "`#{inspect(mod)}.bulk_destroy/3` returned :ok without a result when `return_records?` is true"
-                      else
-                        []
-                      end
-
-                    results when is_list(results) ->
-                      ok_results =
-                        Enum.reduce(results, [], fn
-                          :ok, results ->
-                            if opts[:return_records?] do
-                              raise "`#{inspect(mod)}.bulk_destroy/3` returned :ok without a result when `return_records?` is true"
-                            else
-                              results
-                            end
-
-                          {:ok, result}, results ->
-                            [result | results]
-
-                          {:ok, result, %{notifications: notifications}}, results ->
-                            store_notification(ref, notifications, opts)
-                            [result | results]
-
-                          {:ok, result, notifications}, results ->
-                            store_notification(ref, notifications, opts)
-                            [result | results]
-
-                          {:notifications, notifications}, results ->
-                            store_notification(ref, notifications, opts)
-                            results
-
-                          {:error, error}, results ->
-                            store_error(ref, error, opts)
-                            results
-                        end)
-
-                      {:ok, ok_results}
-
-                    {:error, error} ->
-                      store_error(ref, error, opts)
-                      []
-
-                    {:notifications, notifications} ->
-                      store_notification(ref, notifications, opts)
-                      []
-                  end
                 else
-                  [changeset] = batch
-
-                  result =
-                    mod.destroy(changeset, opts, %Ash.Resource.ManualDestroy.Context{
+                  ctx =
+                    %Ash.Resource.ManualDestroy.Context{
                       select: opts[:select],
                       actor: opts[:actor],
                       tenant: opts[:tenant],
                       authorize?: opts[:authorize?],
                       tracer: opts[:tracer],
+                      return_notifications?: opts[:return_notifications?] || false,
+                      return_destroyed?:
+                        opts[:return_records?] || must_return_records? ||
+                          must_return_records_for_changes?,
                       domain: domain
-                    })
+                    }
 
-                  case result do
-                    {:ok, result} ->
-                      {:ok,
-                       [
-                         Ash.Resource.put_metadata(
-                           result,
-                           :bulk_destroy_index,
-                           changeset.context.bulk_destroy.index
-                         )
-                       ]}
+                  [changeset] = batch
 
-                    {:error, error} ->
-                      {:error, error}
-                  end
+                  [
+                    mod.destroy(changeset, manual_opts, ctx)
+                    |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
+                      changeset,
+                      :bulk_destroy
+                    )
+                  ]
                 end
+                |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
+                  mod,
+                  :bulk_destroy,
+                  &store_notification/3,
+                  &store_error/3,
+                  ref,
+                  opts
+                )
 
               _ ->
                 [changeset] = batch

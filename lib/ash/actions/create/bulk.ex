@@ -111,10 +111,10 @@ defmodule Ash.Actions.Create.Bulk do
     data_layer_can_bulk? = Ash.DataLayer.data_layer_can?(resource, :bulk_create)
 
     batch_size =
-      if data_layer_can_bulk? || manual_action_can_bulk? do
-        opts[:batch_size] || 100
-      else
-        1
+      cond do
+        action.manual != nil and manual_action_can_bulk? -> opts[:batch_size] || 100
+        action.manual == nil and data_layer_can_bulk? -> opts[:batch_size] || 100
+        true -> 1
       end
 
     ref = make_ref()
@@ -209,26 +209,43 @@ defmodule Ash.Actions.Create.Bulk do
           end
 
         notifications =
-          if opts[:notify?] && opts[:return_notifications?] do
-            Process.delete({:bulk_create_notifications, ref})
+          if opts[:notify?] do
+            Process.delete({:bulk_create_notifications, ref}) || []
           else
-            if opts[:notify?] do
-              Ash.Notifier.notify(Process.delete({:bulk_create_notifications, ref}))
-            else
-              []
-            end
+            []
+          end
+
+        # Unless return_notifications? is true, we always want to end up with nil.
+        notifications =
+          cond do
+            Enum.empty?(notifications) ->
+              if opts[:return_notifications?], do: [], else: nil
+
+            opts[:return_notifications?] ->
+              notifications
+
+            opts[:notify?] ->
+              Ash.Notifier.notify(notifications)
+              nil
+
+            true ->
+              nil
           end
 
         {errors, error_count} = Process.get({:bulk_create_errors, ref}) || {[], 0}
 
         errors =
-          Enum.map(errors, fn error ->
-            Ash.Error.to_ash_error(error, [],
-              bread_crumbs: [
-                "Exception raised in bulk create: #{inspect(resource)}.#{action.name}"
-              ]
-            )
-          end)
+          if opts[:return_errors?] do
+            Enum.map(errors, fn error ->
+              Ash.Error.to_ash_error(error, [],
+                bread_crumbs: [
+                  "Exception raised in bulk create: #{inspect(resource)}.#{action.name}"
+                ]
+              )
+            end)
+          else
+            nil
+          end
 
         bulk_result = %Ash.BulkResult{
           records: records,
@@ -1179,7 +1196,7 @@ defmodule Ash.Actions.Create.Bulk do
             case action.manual do
               {mod, manual_opts} ->
                 if function_exported?(mod, :bulk_create, 3) do
-                  mod.bulk_create(batch, manual_opts, %Ash.Resource.ManualCreate.Context{
+                  mod.bulk_create(batch, manual_opts, %Ash.Resource.ManualCreate.BulkContext{
                     actor: opts[:actor],
                     select: opts[:select],
                     batch_size: opts[:batch_size],
@@ -1202,82 +1219,53 @@ defmodule Ash.Actions.Create.Bulk do
                     return_records?:
                       opts[:return_records?] || must_return_records? ||
                         must_return_records_for_changes?,
+                    return_notifications?: opts[:return_notifications?] || false,
+                    return_errors?: opts[:return_errors?] || false,
                     tenant: opts[:tenant]
                   })
-                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                  |> case do
-                    :ok ->
-                      if opts[:return_records?] do
-                        raise "`#{inspect(mod)}.bulk_create/3` returned :ok without a result when `return_records?` is true"
-                      else
-                        []
-                      end
-
-                    {:error, error} ->
-                      store_error(ref, error, opts)
-                      []
-
-                    results when is_list(results) ->
-                      ok_results =
-                        Enum.reduce(results, [], fn
-                          :ok, results ->
-                            if opts[:return_records?] do
-                              raise "`#{inspect(mod)}.bulk_create/3` returned :ok without a result when `return_records?` is true"
-                            else
-                              results
-                            end
-
-                          {:ok, result}, results ->
-                            [result | results]
-
-                          {:ok, result, %{notifications: notifications}}, results ->
-                            store_notification(ref, notifications, opts)
-                            [result | results]
-
-                          {:ok, result, notifications}, results ->
-                            store_notification(ref, notifications, opts)
-                            [result | results]
-
-                          {:notifications, notifications}, results ->
-                            store_notification(ref, notifications, opts)
-                            results
-
-                          {:error, error}, results ->
-                            store_error(ref, error, opts)
-                            results
-                        end)
-
-                      {:ok, ok_results}
-                  end
                 else
+                  ctx = %Ash.Resource.ManualCreate.Context{
+                    actor: opts[:actor],
+                    select: opts[:select],
+                    authorize?: opts[:authorize?],
+                    tracer: opts[:tracer],
+                    domain: domain,
+                    upsert?: opts[:upsert?] || action.upsert?,
+                    upsert_keys: upsert_keys,
+                    identity:
+                      (opts[:upsert_identity] || action.upsert_identity) &&
+                        Ash.Resource.Info.identity(
+                          resource,
+                          opts[:upsert_identity] || action.upsert_identity
+                        ),
+                    upsert_fields:
+                      Ash.Changeset.expand_upsert_fields(
+                        opts[:upsert_fields] || action.upsert_fields,
+                        resource
+                      ),
+                    return_notifications?: opts[:return_notifications?] || false,
+                    tenant: opts[:tenant]
+                  }
+
                   [changeset] = batch
 
-                  result =
-                    mod.create(changeset, opts, %Ash.Resource.ManualCreate.Context{
-                      select: opts[:select],
-                      actor: opts[:actor],
-                      tenant: opts[:tenant],
-                      authorize?: opts[:authorize?],
-                      tracer: opts[:tracer],
-                      domain: domain
-                    })
-                    |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-
-                  case result do
-                    {:ok, result} ->
-                      {:ok,
-                       [
-                         Ash.Resource.put_metadata(
-                           result,
-                           :bulk_create_index,
-                           changeset.context.bulk_create.index
-                         )
-                       ]}
-
-                    {:error, error} ->
-                      {:error, error}
-                  end
+                  [
+                    mod.create(changeset, manual_opts, ctx)
+                    |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
+                      changeset,
+                      :bulk_create
+                    )
+                  ]
                 end
+                |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
+                  mod,
+                  :bulk_create,
+                  &store_notification/3,
+                  &store_error/3,
+                  ref,
+                  opts
+                )
 
               _ ->
                 if data_layer_can_bulk? do
