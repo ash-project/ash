@@ -195,9 +195,14 @@ defmodule Ash.Actions.Action do
         |> Ash.Context.to_opts()
         |> Map.new()
 
+      arguments =
+        Enum.reduce(module.reactor().inputs, input.arguments, fn input, arguments ->
+          Map.put_new(arguments, input, nil)
+        end)
+
       Reactor.run(
         module,
-        input.arguments,
+        arguments,
         context,
         run_opts
       )

@@ -204,6 +204,19 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
     end
 
+    defmodule EchoReactorWithOptionalInput do
+      @moduledoc false
+      use Reactor
+
+      input :input
+      input :something_else
+
+      step :echo do
+        argument :echo, input(:input)
+        run &Map.fetch(&1, :echo)
+      end
+    end
+
     defmodule EchoResource do
       @moduledoc false
       use Ash.Resource, domain: Domain
@@ -214,15 +227,27 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
           run EchoReactor
         end
+
+        action :echo2, :string do
+          argument :input, :string, allow_nil?: false
+          argument :something_else, :string
+
+          run EchoReactorWithOptionalInput
+        end
       end
 
       code_interface do
         define :echo, args: [:input]
+        define :echo2, args: [:input]
       end
     end
 
     test "it automatically runs the reactor" do
       assert {:ok, "Marty"} = EchoResource.echo("Marty")
+    end
+
+    test "it does not require setting optional inputs" do
+      assert {:ok, "Marty"} = EchoResource.echo2("Marty")
     end
   end
 end
