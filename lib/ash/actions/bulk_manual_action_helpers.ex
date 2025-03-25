@@ -72,6 +72,7 @@ defmodule Ash.Actions.BulkManualActionHelpers do
   @doc """
   Used when a manual action does not export a bulk version of the action.
   """
+  # sobelow_skip ["DOS.BinToAtom"]
   def process_non_bulk_result(
         result,
         changeset,
