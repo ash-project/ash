@@ -51,7 +51,7 @@ defmodule Ash.Actions.Helpers do
                   Ash.Actions.Helpers.templated_opts(
                     change_opts,
                     opts[:actor],
-                    opts[:tenant],
+                    changeset.to_tenant,
                     changeset.arguments,
                     changeset.context,
                     changeset
@@ -523,11 +523,11 @@ defmodule Ash.Actions.Helpers do
   def templated_opts(opts, actor, tenant, arguments, context, changeset) do
     Ash.Expr.fill_template(
       opts,
-      actor,
-      tenant,
-      arguments,
-      context,
-      changeset
+      actor: actor,
+      tenant: tenant,
+      args: arguments,
+      context: context,
+      changeset: changeset
     )
   end
 

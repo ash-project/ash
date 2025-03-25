@@ -47,11 +47,11 @@ defmodule Ash.Reactor.ChangeStep do
     opts =
       Ash.Expr.fill_template(
         opts,
-        context[:actor],
-        context[:tenant],
-        changeset.arguments,
-        changeset.context,
-        changeset
+        actor: context[:actor],
+        tenant: changeset.to_tenant,
+        args: changeset.arguments,
+        context: changeset.context,
+        changeset: changeset
       )
 
     module.validate(changeset, opts, context)
@@ -66,11 +66,11 @@ defmodule Ash.Reactor.ChangeStep do
     opts =
       Ash.Expr.fill_template(
         opts,
-        context[:actor],
-        context[:tenant],
-        changeset.arguments,
-        changeset.context,
-        changeset
+        actor: context[:actor],
+        tenant: changeset.to_tenant,
+        args: changeset.arguments,
+        context: changeset.context,
+        changeset: changeset
       )
 
     with {:ok, opts} <- module.init(opts) do

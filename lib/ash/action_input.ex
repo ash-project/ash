@@ -12,6 +12,7 @@ defmodule Ash.ActionInput do
     :domain,
     :resource,
     :tenant,
+    :to_tenant,
     invalid_keys: MapSet.new(),
     arguments: %{},
     params: %{},
@@ -138,7 +139,7 @@ defmodule Ash.ActionInput do
 
   @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(input, tenant) do
-    %{input | tenant: tenant}
+    %{input | tenant: tenant, to_tenant: Ash.ToTenant.to_tenant(tenant, input.resource)}
   end
 
   defp require_arguments(input) do

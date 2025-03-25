@@ -1081,7 +1081,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         action.type,
         base_changeset,
         opts[:actor],
-        opts[:tenant]
+        base_changeset.to_tenant
       )
 
     argument_names = Enum.map(action.arguments, & &1.name)
@@ -1353,11 +1353,11 @@ defmodule Ash.Actions.Destroy.Bulk do
       {:templated,
        Ash.Expr.fill_template(
          opts,
-         actor,
-         tenant,
-         changeset.arguments,
-         changeset.context,
-         changeset
+         actor: actor,
+         tenant: tenant,
+         args: changeset.arguments,
+         context: changeset.context,
+         changeset: changeset
        )}
     end
   end

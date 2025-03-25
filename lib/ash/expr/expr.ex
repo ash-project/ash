@@ -162,29 +162,29 @@ defmodule Ash.Expr do
   @doc false
   def fill_template(
         template,
-        actor \\ nil,
-        tenant \\ nil,
-        args \\ %{},
-        context \\ %{},
-        changeset_or_query_or_input \\ nil
-      ) do
+        opts
+      )
+      when is_list(opts) do
     walk_template(template, fn
       {:_actor, :_primary_key} ->
+        actor = opts[:actor]
+
         if actor do
           Map.take(actor, Ash.Resource.Info.primary_key(actor.__struct__))
         end
 
       {:_actor, field} when is_atom(field) or is_binary(field) ->
-        Map.get(actor || %{}, field)
+        Map.get(opts[:actor] || %{}, field)
 
       {:_actor, path} when is_list(path) ->
-        get_path(actor || %{}, path)
+        get_path(opts[:actor] || %{}, path)
 
       :_tenant ->
-        tenant
-        |> Ash.ToTenant.to_tenant(Map.get(changeset_or_query_or_input || %{}, :resource))
+        opts[:tenant]
 
       {:_arg, field} ->
+        args = opts[:args]
+
         case Map.fetch(args, field) do
           :error ->
             Map.get(args, to_string(field))
@@ -194,27 +194,46 @@ defmodule Ash.Expr do
         end
 
       {:_atomic_ref, field} when is_atom(field) ->
-        if is_struct(changeset_or_query_or_input, Ash.Changeset) do
-          Ash.Changeset.atomic_ref(changeset_or_query_or_input, field)
+        changeset = opts[:changeset]
+
+        if changeset do
+          Ash.Changeset.atomic_ref(changeset, field)
         else
           {:_atomic_ref, field}
         end
 
       {:_context, fields} when is_list(fields) ->
-        get_path(context, fields)
+        get_path(opts[:context], fields)
 
       {:_context, field} ->
-        Map.get(context, field)
+        Map.get(opts[:context], field)
 
       {:_ref, path, name} ->
         %Ash.Query.Ref{
-          attribute: fill_template(name, actor, tenant, args, context),
-          relationship_path: fill_template(path, actor, tenant, args, context)
+          attribute: fill_template(name, Keyword.take(opts, [:actor, :tenant, :args, :context])),
+          relationship_path:
+            fill_template(path, Keyword.take(opts, [:actor, :tenant, :args, :context]))
         }
 
       other ->
         other
     end)
+  end
+
+  @doc false
+  def fill_template(
+        template,
+        actor \\ nil,
+        args \\ %{},
+        context \\ %{},
+        changeset \\ nil
+      ) do
+    fill_template(template,
+      actor: actor,
+      args: args,
+      context: context,
+      changeset: changeset
+    )
   end
 
   @doc false

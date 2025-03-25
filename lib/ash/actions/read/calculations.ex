@@ -502,11 +502,10 @@ defmodule Ash.Actions.Read.Calculations do
     opts =
       Ash.Expr.fill_template(
         calculation.opts,
-        calculation.context.actor,
-        calculation.context.tenant,
-        calculation.context.arguments,
-        calculation.context.source_context,
-        ash_query
+        actor: calculation.context.actor,
+        tenant: ash_query.to_tenant,
+        args: calculation.context.arguments,
+        context: calculation.context.source_context
       )
 
     records
@@ -953,19 +952,17 @@ defmodule Ash.Actions.Read.Calculations do
         expression =
           calculation.opts
           |> Ash.Expr.fill_template(
-            calculation.context.actor,
-            calculation.context.tenant,
-            calculation.context.arguments,
-            calculation.context.source_context,
-            ash_query
+            actor: calculation.context.actor,
+            tenant: ash_query.to_tenant,
+            args: calculation.context.arguments,
+            context: calculation.context.source_context
           )
           |> calculation.module.expression(calculation.context)
           |> Ash.Expr.fill_template(
-            calculation.context.actor,
-            calculation.context.tenant,
-            calculation.context.arguments,
-            calculation.context.source_context,
-            ash_query
+            actor: calculation.context.actor,
+            tenant: ash_query.to_tenant,
+            args: calculation.context.arguments,
+            context: calculation.context.source_context
           )
           |> Ash.Actions.Read.add_calc_context_to_filter(
             calculation.context.actor,
@@ -1108,11 +1105,10 @@ defmodule Ash.Actions.Read.Calculations do
               calculation.opts
               |> calculation.module.expression(calculation.context)
               |> Ash.Expr.fill_template(
-                calculation.context.actor,
-                calculation.context.tenant,
-                calculation.context.arguments,
-                calculation.context.source_context,
-                ash_query
+                actor: calculation.context.actor,
+                tenant: ash_query.to_tenant,
+                args: calculation.context.arguments,
+                context: calculation.context.source_context
               )
               |> Ash.Actions.Read.add_calc_context_to_filter(
                 calculation.context.actor,

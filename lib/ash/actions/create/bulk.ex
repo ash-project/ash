@@ -129,7 +129,7 @@ defmodule Ash.Actions.Create.Bulk do
         action.type,
         base_changeset,
         opts[:actor],
-        opts[:tenant]
+        base_changeset.to_tenant
       )
 
     argument_names = Enum.map(action.arguments, & &1.name)
@@ -352,11 +352,11 @@ defmodule Ash.Actions.Create.Bulk do
       {:templated,
        Ash.Expr.fill_template(
          opts,
-         actor,
-         tenant,
-         %{},
-         changeset.context,
-         changeset
+         actor: actor,
+         tenant: tenant,
+         args: %{},
+         context: changeset.context,
+         changeset: changeset
        )}
     end
   end
@@ -1710,11 +1710,11 @@ defmodule Ash.Actions.Create.Bulk do
   defp templated_opts(opts, actor, tenant, arguments, context, changeset) do
     Ash.Expr.fill_template(
       opts,
-      actor,
-      tenant,
-      arguments,
-      context,
-      changeset
+      actor: actor,
+      tenant: tenant,
+      args: arguments,
+      context: context,
+      changeset: changeset
     )
   end
 
@@ -1765,7 +1765,7 @@ defmodule Ash.Actions.Create.Bulk do
                       templated_opts(
                         opts,
                         actor,
-                        tenant,
+                        changeset.to_tenant,
                         changeset.arguments,
                         changeset.context,
                         changeset
@@ -1783,7 +1783,7 @@ defmodule Ash.Actions.Create.Bulk do
                     templated_opts(
                       opts,
                       actor,
-                      tenant,
+                      changeset.to_tenant,
                       changeset.arguments,
                       changeset.context,
                       changeset
@@ -1857,7 +1857,7 @@ defmodule Ash.Actions.Create.Bulk do
                       templated_opts(
                         opts,
                         actor,
-                        tenant,
+                        changeset.to_tenant,
                         changeset.arguments,
                         changeset.context,
                         changeset
@@ -1947,7 +1947,7 @@ defmodule Ash.Actions.Create.Bulk do
               templated_opts(
                 change_opts,
                 actor,
-                context.tenant,
+                changeset.to_tenant,
                 changeset.arguments,
                 changeset.context,
                 changeset
@@ -1968,7 +1968,7 @@ defmodule Ash.Actions.Create.Bulk do
               templated_opts(
                 change_opts,
                 actor,
-                context.tenant,
+                changeset.to_tenant,
                 changeset.arguments,
                 changeset.context,
                 changeset

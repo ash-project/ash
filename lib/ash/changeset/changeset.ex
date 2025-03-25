@@ -1023,11 +1023,11 @@ defmodule Ash.Changeset do
     change_opts =
       Ash.Expr.fill_template(
         change_opts,
-        changeset.context.private[:actor],
-        changeset.tenant,
-        changeset.arguments,
-        changeset.context,
-        changeset
+        actor: changeset.context.private[:actor],
+        tenant: changeset.to_tenant,
+        args: changeset.arguments,
+        context: changeset.context,
+        changeset: changeset
       )
 
     with {:ok, change_opts} <- module.init(change_opts),
@@ -2731,11 +2731,11 @@ defmodule Ash.Changeset do
                    opts =
                      Ash.Expr.fill_template(
                        opts,
-                       actor,
-                       changeset.tenant,
-                       changeset.arguments,
-                       changeset.context,
-                       changeset
+                       actor: actor,
+                       tenant: changeset.to_tenant,
+                       args: changeset.arguments,
+                       context: changeset.context,
+                       changeset: changeset
                      )
 
                    module.validate(
@@ -2760,11 +2760,11 @@ defmodule Ash.Changeset do
                 opts =
                   Ash.Expr.fill_template(
                     opts,
-                    actor,
-                    changeset.tenant,
-                    changeset.arguments,
-                    changeset.context,
-                    changeset
+                    actor: actor,
+                    tenant: changeset.to_tenant,
+                    args: changeset.arguments,
+                    context: changeset.context,
+                    changeset: changeset
                   )
 
                 module.change(
@@ -2836,11 +2836,11 @@ defmodule Ash.Changeset do
         expr =
           Ash.Expr.fill_template(
             expr,
-            actor,
-            changeset.tenant,
-            changeset.arguments,
-            changeset.context,
-            changeset
+            actor: actor,
+            tenant: changeset.to_tenant,
+            args: changeset.arguments,
+            context: changeset.context,
+            changeset: changeset
           )
 
         case Ash.Filter.hydrate_refs(expr, %{resource: changeset.resource, public?: false}) do
@@ -2972,21 +2972,21 @@ defmodule Ash.Changeset do
           condition_expr =
             Ash.Expr.fill_template(
               condition_expr,
-              actor,
-              changeset.tenant,
-              changeset.arguments,
-              changeset.context,
-              changeset
+              actor: actor,
+              tenant: changeset.to_tenant,
+              args: changeset.arguments,
+              context: changeset.context,
+              changeset: changeset
             )
 
           error_expr =
             Ash.Expr.fill_template(
               error_expr,
-              actor,
-              changeset.tenant,
-              changeset.arguments,
-              changeset.context,
-              changeset
+              actor: actor,
+              tenant: changeset.to_tenant,
+              args: changeset.arguments,
+              context: changeset.context,
+              changeset: changeset
             )
 
           with {:expr, {:ok, condition_expr}, _expr} <-
@@ -3313,11 +3313,11 @@ defmodule Ash.Changeset do
          opts =
            Ash.Expr.fill_template(
              opts,
-             actor,
-             changeset.tenant,
-             changeset.arguments,
-             changeset.context,
-             changeset
+             actor: actor,
+             tenant: changeset.to_tenant,
+             args: changeset.arguments,
+             context: changeset.context,
+             changeset: changeset
            )
 
          case module.init(opts) do
@@ -3341,11 +3341,11 @@ defmodule Ash.Changeset do
           opts =
             Ash.Expr.fill_template(
               validation.opts,
-              actor,
-              changeset.tenant,
-              changeset.arguments,
-              changeset.context,
-              changeset
+              actor: actor,
+              tenant: changeset.to_tenant,
+              args: changeset.arguments,
+              context: changeset.context,
+              changeset: changeset
             )
 
           with {:ok, opts} <- validation.module.init(opts),
@@ -6130,11 +6130,11 @@ defmodule Ash.Changeset do
         expression =
           Ash.Expr.fill_template(
             expression,
-            actor,
-            changeset.tenant,
-            changeset.arguments,
-            changeset.context,
-            changeset
+            actor: actor,
+            tenant: changeset.to_tenant,
+            args: changeset.arguments,
+            context: changeset.context,
+            changeset: changeset
           )
 
         with {:ok, expression} <-

@@ -896,11 +896,10 @@ defmodule Ash.Query do
               opts =
                 Ash.Expr.fill_template(
                   opts,
-                  actor,
-                  query.tenant,
-                  query.arguments,
-                  query.context,
-                  query
+                  actor: actor,
+                  tenant: query.to_tenant,
+                  args: query.arguments,
+                  context: query.context
                 )
 
               case module.prepare(query, opts, %Ash.Resource.Preparation.Context{
@@ -1015,11 +1014,10 @@ defmodule Ash.Query do
       built_filter =
         Ash.Expr.fill_template(
           action.filter,
-          actor,
-          query.tenant,
-          query.arguments,
-          query.context,
-          query
+          actor: actor,
+          tenant: query.to_tenant,
+          args: query.arguments,
+          context: query.context
         )
 
       do_filter(query, built_filter)
