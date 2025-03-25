@@ -1532,7 +1532,8 @@ defmodule Ash.DataLayer.Ets do
              resource,
              changeset.context[:private][:actor]
            ),
-         {:ok, record} <- cast_record(record, resource) do
+         {:ok, record} <- cast_record(record, resource),
+         record <- retain_fields(record, changeset) do
       new_pkey = pkey_map(resource, record)
 
       if new_pkey != pkey do
@@ -1550,6 +1551,16 @@ defmodule Ash.DataLayer.Ets do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp retain_fields(%struct{} = record, %{data: %struct{} = data}) do
+    attributes = Ash.Resource.Info.attributes(struct)
+    take = [:__metadata__, :__meta__ | attributes]
+    Map.merge(data, Map.take(record, take))
+  end
+
+  defp retain_fields(record, _) do
+    record
   end
 
   @impl true
