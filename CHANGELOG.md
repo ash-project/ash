@@ -2,6 +2,43 @@
 
 <!-- changelog -->
 
+## [v3.4.72](https://github.com/ash-project/ash/compare/v3.4.71...v3.4.72) (2025-03-25)
+
+
+
+
+### Bug Fixes:
+
+* retain loaded fields on ETS data layer update
+
+* Fixes processing of manual bulk actions, with tests. (#1903)
+
+* Ensure batch_size is correctly set, return values are nil if not requested.
+
+* batch_size cond statement, fix batch -> changeset typo.
+
+* ensure consistent bulk result for `return_records?` and `return_errors?` types.
+
+* add action to base query if not present
+
+* update spark to get missing builders in `spark.formatter`
+
+* handle tenancy for built query in cascade destroy/update
+
+* Improve processing of manual actions during bulk operations (#1883)
+
+### Improvements:
+
+* attach a limit to related queries if `from_many?: true`
+
+* support atomic actions in `can_` code interfaces
+
+* import the `:reactor` dep in `.formatter.exs` on install
+
+* maps,structs,keywords can be atomically updated
+
+* support anonymous functions in `error_handler` option
+
 ## [v3.4.71](https://github.com/ash-project/ash/compare/v3.4.70...v3.4.71) (2025-03-21)
 
 
