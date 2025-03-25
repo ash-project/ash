@@ -83,6 +83,9 @@ defmodule Ash.Expr do
   @doc "A template helper for using actor values in filter templates"
   def actor(value), do: {:_actor, value}
 
+  @doc "A template helper for using the tenant in filter templates"
+  def tenant, do: :_tenant
+
   @doc "A template helper for using action arguments in filter templates"
   def arg(name), do: {:_arg, name}
 
