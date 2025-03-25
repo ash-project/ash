@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.4.73](https://github.com/ash-project/ash/compare/v3.4.72...v3.4.73) (2025-03-25)
+
+
+
+
+### Bug Fixes:
+
+* use attribute names, not structs, for retaining ets update attrs
+
+* supply reactor with `nil` values for non-supplied arguments
+
 ## [v3.4.72](https://github.com/ash-project/ash/compare/v3.4.71...v3.4.72) (2025-03-25)
 
 
