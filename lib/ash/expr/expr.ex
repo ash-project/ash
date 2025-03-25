@@ -534,6 +534,10 @@ defmodule Ash.Expr do
     expr_with_at_path(path, at_path, expr, Ash.Query.Exists, escape?)
   end
 
+  def do_expr({{:., _, [at_path, :exists]}, _, [path]}, escape?) do
+    expr_with_at_path(path, at_path, true, Ash.Query.Exists, escape?)
+  end
+
   def do_expr({{:., _, [_, _]} = left, _, args}, escape?) do
     args = Enum.map(args, &do_expr(&1, false))
 
@@ -689,6 +693,10 @@ defmodule Ash.Expr do
 
   def do_expr({:exists, _, [path, original_expr]}, escape?) do
     expr_with_at_path(path, [], original_expr, Ash.Query.Exists, escape?)
+  end
+
+  def do_expr({:exists, _, [path]}, escape?) do
+    expr_with_at_path(path, [], true, Ash.Query.Exists, escape?)
   end
 
   def do_expr({left, _, [{op, _, [right]}]}, escape?)
