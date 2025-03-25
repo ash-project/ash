@@ -594,6 +594,29 @@ defmodule Ash.Test.Actions.UpdateTest do
   end
 
   describe "load" do
+    test "should not unload already loaded relationships when load option is not provided" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "Name"})
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "Post 1"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      author = author |> Ash.load!(:posts)
+
+      assert [%Post{}] = author.posts
+
+      author =
+        author
+        |> Ash.Changeset.for_update(:update, %{name: "Updated Name"})
+        |> Ash.update!()
+
+      assert [%Post{}] = author.posts
+    end
+
     test "allows loading has_many relationship on the changeset" do
       author =
         Author
