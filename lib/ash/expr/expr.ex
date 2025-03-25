@@ -221,6 +221,7 @@ defmodule Ash.Expr do
   end
 
   @doc false
+  @deprecated "Use `fill_template/2` instead"
   def fill_template(
         template,
         actor \\ nil,
