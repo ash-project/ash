@@ -229,7 +229,18 @@ defmodule GetAccountImplementation do
   def strict_loads?, do: false
 
   def calculate(records, _, _) do
-    Enum.map(records, &(&1.checking_account || &1.savings_account))
+    Enum.map(records, fn record -> 
+      cond do
+        record.checking_account ->
+          %Ash.Union{type: :checking_account, value: record.checking_account}
+
+        record.savings_account ->
+          %Ash.Union{type: :savings_account, value: record.savings_account}
+
+        true ->
+          nil
+      end
+    end)
   end
 end
 ```
@@ -254,7 +265,7 @@ bank_account2 = Ash.create!(BankAccount, %{account_number: 2, type: :savings})
 checking_account = Ash.create!(CheckingAccount, %{bank_account_id: bank_account1.id})
 savings_account = Ash.create!(SavingsAccount, %{bank_account_id: bank_account2.id})
 
-[bank_account1, bank_account2] |> Ash.load!([:implementation])
+[%Ash.Union{value: bank_account1}, %Ash.Union{value: bank_account2}] |> Ash.load!([:implementation])
 ```
 
 <!-- livebook:{"output":true} -->
