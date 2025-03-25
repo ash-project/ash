@@ -899,7 +899,8 @@ defmodule Ash.Query do
                   actor,
                   query.tenant,
                   query.arguments,
-                  query.context
+                  query.context,
+                  query
                 )
 
               case module.prepare(query, opts, %Ash.Resource.Preparation.Context{
@@ -1017,7 +1018,8 @@ defmodule Ash.Query do
           actor,
           query.tenant,
           query.arguments,
-          query.context
+          query.context,
+          query
         )
 
       do_filter(query, built_filter)

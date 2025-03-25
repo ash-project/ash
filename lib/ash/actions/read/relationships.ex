@@ -343,7 +343,7 @@ defmodule Ash.Actions.Read.Relationships do
 
   defp hydrate_refs(query, actor, parent) do
     query.filter
-    |> Ash.Expr.fill_template(actor, query.tenant, %{}, query.context)
+    |> Ash.Expr.fill_template(actor, query.tenant, %{}, query.context, query)
     |> Ash.Filter.hydrate_refs(%{
       resource: query.resource,
       parent_stack: [parent],

@@ -1704,15 +1704,17 @@ defmodule Ash.Actions.Create.Bulk do
     }
   end
 
-  defp templated_opts({:templated, opts}, _actor, _tenant, _arguments, _context), do: opts
+  defp templated_opts({:templated, opts}, _actor, _tenant, _arguments, _context, _changeset),
+    do: opts
 
-  defp templated_opts(opts, actor, tenant, arguments, context) do
+  defp templated_opts(opts, actor, tenant, arguments, context, changeset) do
     Ash.Expr.fill_template(
       opts,
       actor,
       tenant,
       arguments,
-      context
+      context,
+      changeset
     )
   end
 
@@ -1760,7 +1762,14 @@ defmodule Ash.Actions.Create.Bulk do
 
                 Enum.all?(validation.where || [], fn {module, opts} ->
                   opts =
-                      templated_opts(opts, actor, tenant, changeset.arguments, changeset.context)
+                      templated_opts(
+                        opts,
+                        actor,
+                        tenant,
+                        changeset.arguments,
+                        changeset.context,
+                        changeset
+                      )
 
                   {:ok, opts} = module.init(opts)
 
@@ -1771,7 +1780,14 @@ defmodule Ash.Actions.Create.Bulk do
                   ) == :ok
                 end) ->
                   opts =
-                    templated_opts(opts, actor, tenant, changeset.arguments, changeset.context)
+                    templated_opts(
+                      opts,
+                      actor,
+                      tenant,
+                      changeset.arguments,
+                      changeset.context,
+                      changeset
+                    )
 
                   {:ok, opts} = module.init(opts)
 
@@ -1838,7 +1854,14 @@ defmodule Ash.Actions.Create.Bulk do
                 applies_from_where? =
                   Enum.all?(change.where || [], fn {module, opts} ->
                     opts =
-                      templated_opts(opts, actor, tenant, changeset.arguments, changeset.context)
+                      templated_opts(
+                        opts,
+                        actor,
+                        tenant,
+                        changeset.arguments,
+                        changeset.context,
+                        changeset
+                      )
 
                     {:ok, opts} = module.init(opts)
 
@@ -1926,7 +1949,8 @@ defmodule Ash.Actions.Create.Bulk do
                 actor,
                 context.tenant,
                 changeset.arguments,
-                changeset.context
+                changeset.context,
+                changeset
               )
 
             {:ok, change_opts} = module.init(change_opts)
@@ -1946,7 +1970,8 @@ defmodule Ash.Actions.Create.Bulk do
                 actor,
                 context.tenant,
                 changeset.arguments,
-                changeset.context
+                changeset.context,
+                changeset
               )
 
             {:ok, change_opts} = module.init(change_opts)

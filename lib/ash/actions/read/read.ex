@@ -1285,7 +1285,8 @@ defmodule Ash.Actions.Read do
                   query.context[:private][:actor],
                   query.tenant,
                   %{},
-                  query.context
+                  query.context,
+                  query
                 )
           }
       }
@@ -1313,7 +1314,8 @@ defmodule Ash.Actions.Read do
                     query.context[:private][:actor],
                     query.tenant,
                     calculation.context.arguments,
-                    query.context
+                    query.context,
+                    query
                   )
 
                 case Ash.Filter.hydrate_refs(expression, %{
@@ -3181,7 +3183,8 @@ defmodule Ash.Actions.Read do
             calculation.context.actor,
             calculation.context.tenant,
             calculation.context.arguments,
-            calculation.context.source_context
+            calculation.context.source_context,
+            query
           )
 
         case Ash.Filter.hydrate_refs(expression, %{

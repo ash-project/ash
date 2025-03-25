@@ -50,7 +50,8 @@ defmodule Ash.Reactor.ChangeStep do
         context[:actor],
         context[:tenant],
         changeset.arguments,
-        changeset.context
+        changeset.context,
+        changeset
       )
 
     module.validate(changeset, opts, context)

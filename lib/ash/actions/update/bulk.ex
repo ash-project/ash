@@ -2841,7 +2841,8 @@ defmodule Ash.Actions.Update.Bulk do
                         actor,
                         changeset.tenant,
                         changeset.arguments,
-                        changeset.context
+                        changeset.context,
+                        changeset
                       )
 
                     {:ok, opts} = module.init(opts)
@@ -2923,7 +2924,8 @@ defmodule Ash.Actions.Update.Bulk do
                actor,
                validation_context.tenant,
                changeset.arguments,
-               changeset.context
+               changeset.context,
+               changeset
              )
 
            {:ok, opts} = module.init(opts)
@@ -2940,7 +2942,8 @@ defmodule Ash.Actions.Update.Bulk do
             actor,
             validation_context.tenant,
             changeset.arguments,
-            changeset.context
+            changeset.context,
+            changeset
           )
 
         {:ok, opts} = module.init(opts)
@@ -3023,7 +3026,8 @@ defmodule Ash.Actions.Update.Bulk do
                        actor,
                        context.tenant,
                        changeset.arguments,
-                       changeset.context
+                       changeset.context,
+                       changeset
                      )}
               }
 
@@ -3058,7 +3062,8 @@ defmodule Ash.Actions.Update.Bulk do
                     actor,
                     context.tenant,
                     changeset.arguments,
-                    changeset.context
+                    changeset.context,
+                    changeset
                   )
 
                 {:ok, change_opts} = module.init(change_opts)
@@ -3082,7 +3087,8 @@ defmodule Ash.Actions.Update.Bulk do
                   actor,
                   context.tenant,
                   changeset.arguments,
-                  changeset.context
+                  changeset.context,
+                  changeset
                 )
 
               {:ok, change_opts} = module.init(change_opts)
@@ -3109,7 +3115,8 @@ defmodule Ash.Actions.Update.Bulk do
                        actor,
                        context.tenant,
                        changeset.arguments,
-                       changeset.context
+                       changeset.context,
+                       changeset
                      )}
               }
 
@@ -3135,15 +3142,17 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp templated_opts({:templated, opts}, _actor, _tenant, _arguments, _context), do: opts
+  defp templated_opts({:templated, opts}, _actor, _tenant, _arguments, _context, _changeset),
+    do: opts
 
-  defp templated_opts(opts, actor, tenant, arguments, context) do
+  defp templated_opts(opts, actor, tenant, arguments, context, changeset) do
     Ash.Expr.fill_template(
       opts,
       actor,
       tenant,
       arguments,
-      context
+      context,
+      changeset
     )
   end
 

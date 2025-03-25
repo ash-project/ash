@@ -505,7 +505,8 @@ defmodule Ash.Actions.Read.Calculations do
         calculation.context.actor,
         calculation.context.tenant,
         calculation.context.arguments,
-        calculation.context.source_context
+        calculation.context.source_context,
+        ash_query
       )
 
     records
@@ -955,14 +956,16 @@ defmodule Ash.Actions.Read.Calculations do
             calculation.context.actor,
             calculation.context.tenant,
             calculation.context.arguments,
-            calculation.context.source_context
+            calculation.context.source_context,
+            ash_query
           )
           |> calculation.module.expression(calculation.context)
           |> Ash.Expr.fill_template(
             calculation.context.actor,
             calculation.context.tenant,
             calculation.context.arguments,
-            calculation.context.source_context
+            calculation.context.source_context,
+            ash_query
           )
           |> Ash.Actions.Read.add_calc_context_to_filter(
             calculation.context.actor,
@@ -1108,7 +1111,8 @@ defmodule Ash.Actions.Read.Calculations do
                 calculation.context.actor,
                 calculation.context.tenant,
                 calculation.context.arguments,
-                calculation.context.source_context
+                calculation.context.source_context,
+                ash_query
               )
               |> Ash.Actions.Read.add_calc_context_to_filter(
                 calculation.context.actor,

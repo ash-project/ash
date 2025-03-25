@@ -81,7 +81,8 @@ defmodule Ash.Policy.FilterCheck do
           actor,
           authorizer.subject.tenant,
           Ash.Policy.FilterCheck.args(authorizer),
-          context
+          context,
+          authorizer.subject
         )
         |> then(fn expr ->
           no_filter_static_forbidden_reads? =
@@ -131,7 +132,8 @@ defmodule Ash.Policy.FilterCheck do
             actor,
             tenant,
             action_input.arguments,
-            action_input.context
+            action_input.context,
+            action_input
           )
 
         case Ash.Filter.hydrate_refs(expression, %{
@@ -299,7 +301,8 @@ defmodule Ash.Policy.FilterCheck do
           actor,
           authorizer.subject.tenant,
           Ash.Policy.FilterCheck.args(authorizer),
-          context
+          context,
+          authorizer.subject
         )
       end
 
@@ -317,7 +320,8 @@ defmodule Ash.Policy.FilterCheck do
           actor,
           authorizer.subject.tenant,
           Ash.Policy.FilterCheck.args(authorizer),
-          context
+          context,
+          authorizer.subject
         )
       end
 

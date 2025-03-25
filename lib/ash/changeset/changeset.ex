@@ -911,7 +911,8 @@ defmodule Ash.Changeset do
           actor,
           changeset.tenant,
           changeset.arguments,
-          changeset.context
+          changeset.context,
+          changeset
         )
 
       {:ok, opts} = module.init(opts)
@@ -1025,7 +1026,8 @@ defmodule Ash.Changeset do
         changeset.context.private[:actor],
         changeset.tenant,
         changeset.arguments,
-        changeset.context
+        changeset.context,
+        changeset
       )
 
     with {:ok, change_opts} <- module.init(change_opts),
@@ -2732,7 +2734,8 @@ defmodule Ash.Changeset do
                        actor,
                        changeset.tenant,
                        changeset.arguments,
-                       changeset.context
+                       changeset.context,
+                       changeset
                      )
 
                    module.validate(
@@ -2760,7 +2763,8 @@ defmodule Ash.Changeset do
                     actor,
                     changeset.tenant,
                     changeset.arguments,
-                    changeset.context
+                    changeset.context,
+                    changeset
                   )
 
                 module.change(
@@ -3312,7 +3316,8 @@ defmodule Ash.Changeset do
              actor,
              changeset.tenant,
              changeset.arguments,
-             changeset.context
+             changeset.context,
+             changeset
            )
 
          case module.init(opts) do
@@ -3339,7 +3344,8 @@ defmodule Ash.Changeset do
               actor,
               changeset.tenant,
               changeset.arguments,
-              changeset.context
+              changeset.context,
+              changeset
             )
 
           with {:ok, opts} <- validation.module.init(opts),
@@ -6127,7 +6133,8 @@ defmodule Ash.Changeset do
             actor,
             changeset.tenant,
             changeset.arguments,
-            changeset.context
+            changeset.context,
+            changeset
           )
 
         with {:ok, expression} <-

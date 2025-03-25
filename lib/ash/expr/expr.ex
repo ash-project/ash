@@ -163,7 +163,7 @@ defmodule Ash.Expr do
         tenant \\ nil,
         args \\ %{},
         context \\ %{},
-        changeset \\ nil
+        changeset_or_query_or_input \\ nil
       ) do
     walk_template(template, fn
       {:_actor, :_primary_key} ->
@@ -179,7 +179,7 @@ defmodule Ash.Expr do
 
       :_tenant ->
         tenant
-        |> Ash.ToTenant.to_tenant(Map.get(changeset || %{}, :resource))
+        |> Ash.ToTenant.to_tenant(Map.get(changeset_or_query_or_input || %{}, :resource))
 
       {:_arg, field} ->
         case Map.fetch(args, field) do
@@ -191,8 +191,8 @@ defmodule Ash.Expr do
         end
 
       {:_atomic_ref, field} when is_atom(field) ->
-        if changeset do
-          Ash.Changeset.atomic_ref(changeset, field)
+        if is_struct(changeset_or_query_or_input, Ash.Changeset) do
+          Ash.Changeset.atomic_ref(changeset_or_query_or_input, field)
         else
           {:_atomic_ref, field}
         end
