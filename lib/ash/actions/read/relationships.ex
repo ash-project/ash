@@ -214,13 +214,20 @@ defmodule Ash.Actions.Read.Relationships do
           async_limiter: query.context[:private][:async_limiter]
         }
       })
-      |> Ash.Query.set_tenant(query.tenant)
+      |> Ash.Query.set_tenant(query.tenant || related_query.tenant)
       |> Ash.Actions.Read.for_read(read_action, nil, arguments,
         domain: domain,
         authorize?: query.context[:private][:authorize?],
         actor: query.context[:private][:actor],
         tracer: query.context[:private][:tracer]
       )
+      |> then(fn query ->
+        if relationship.cardinality == :one && Map.get(relationship, :from_many?) do
+          Ash.Query.limit(query, 1)
+        else
+          query
+        end
+      end)
       |> Ash.Query.sort(relationship.sort)
       |> Ash.Query.do_filter(relationship.filter, parent_stack: parent_stack)
       |> Ash.Query.set_context(relationship.context)

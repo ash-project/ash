@@ -1998,16 +1998,23 @@ defmodule Ash.Type do
         new_value
         |> Enum.reduce_while({:atomic, []}, fn val, {:atomic, vals} ->
           case cast_atomic(val, constraints) do
+            {:ok, value} ->
+              {:cont, {:atomic, [value | vals]}}
+
             {:atomic, atomic} ->
               {:cont, {:atomic, [atomic | vals]}}
 
             {:not_atomic, reason} ->
               {:halt, {:not_atomic, reason}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
           end
         end)
         |> case do
           {:atomic, vals} -> {:atomic, Enum.reverse(vals)}
           {:not_atomic, reason} -> {:not_atomic, reason}
+          {:error, error} -> {:error, error}
         end
       end
 

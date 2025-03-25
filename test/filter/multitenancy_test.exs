@@ -19,7 +19,45 @@ defmodule Ash.Test.MultitenancyTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create]
+      defaults [:read]
+
+      create :create do
+        argument :multitenant_related, {:array, :map}
+
+        change manage_relationship(:multitenant_related, type: :direct_control)
+      end
+
+      destroy :destroy do
+        primary? true
+        change cascade_destroy(:multitenant_related)
+      end
+    end
+
+    relationships do
+      has_many :multitenant_related, Ash.Test.MultitenancyTest.MultiTenantRelated
+    end
+  end
+
+  defmodule MultiTenantRelated do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    multitenancy do
+      strategy :attribute
+      attribute :owner
+    end
+
+    attributes do
+      attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
+      attribute :owner, :integer, allow_nil?: false, public?: true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :create, :update, :destroy]
+    end
+
+    relationships do
+      belongs_to :multi_tenant, MultiTenant, public?: true, attribute_type: :integer
     end
   end
 
@@ -30,6 +68,20 @@ defmodule Ash.Test.MultitenancyTest do
 
     MultiTenant
     |> Ash.get!(1000, tenant: 1)
+  end
+
+  test "cascade destroy works" do
+    MultiTenant
+    |> Ash.Changeset.for_create(:create, %{
+      id: 1000,
+      owner: 1,
+      multitenant_related: [%{owner: 1, id: 1}, %{owner: 1, id: 2}, %{owner: 1, id: 3}]
+    })
+    |> Ash.create!(tenant: 1)
+
+    MultiTenant
+    |> Ash.get!(1000, tenant: 1)
+    |> Ash.destroy!(tenant: 1)
   end
 
   defmodule NonMultiTenant do

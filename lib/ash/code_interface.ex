@@ -1619,6 +1619,16 @@ defmodule Ash.CodeInterface do
             %struct{} when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] ->
               Ash.can(unquote(subject), actor, opts)
 
+            {:atomic, _, %Ash.Query{} = query} = subj ->
+              Ash.CodeInterface.atomic_can(
+                query,
+                unquote(action.name),
+                actor,
+                opts,
+                params,
+                false
+              )
+
             {:atomic, _, input} ->
               raise "Ash.can_#{unquote(interface.name)} does not support #{inspect(input)} as input."
 
@@ -1676,7 +1686,17 @@ defmodule Ash.CodeInterface do
             %struct{} when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] ->
               Ash.can?(unquote(subject), actor, opts)
 
-            {:atomic, _, input} ->
+            {:atomic, _, %Ash.Query{} = query} = subj ->
+              Ash.CodeInterface.atomic_can(
+                query,
+                unquote(action.name),
+                actor,
+                opts,
+                params,
+                true
+              )
+
+            {:atomic, _, input} = subj ->
               raise "Ash.can_#{unquote(interface.name)}? does not support #{inspect(input)} as input."
 
             {:bulk, input} ->
@@ -1687,6 +1707,115 @@ defmodule Ash.CodeInterface do
           end
         end
       end
+    end
+  end
+
+  @doc false
+  def atomic_can(query, action_name, actor, opts, params, question_mark?) do
+    action_opts =
+      opts
+      |> Keyword.take([
+        :tenant,
+        :authorize?,
+        :tracer,
+        :context,
+        :skip_unknown_inputs
+      ])
+      |> Keyword.put(:actor, actor)
+
+    query =
+      if query && !query.__validated_for_action__ do
+        Ash.Query.for_read(
+          query,
+          Ash.Resource.Info.primary_action!(query.resource, :read).name,
+          %{},
+          action_opts
+        )
+      else
+        query
+      end
+
+    changeset =
+      case Ash.Changeset.fully_atomic_changeset(
+             query.resource,
+             action_name,
+             params,
+             action_opts
+           ) do
+        {:not_atomic, _} ->
+          if !opts[:data] or Enum.count_until(List.wrap(opts[:data]), 2) == 2 do
+            raise ArgumentError, """
+            The action #{action_name} could not be done atomically with the provided inputs. 
+            You must pass the `data` option, containing a single record you are checking for authorization.
+            """
+          else
+            Ash.Changeset.for_action(
+              Enum.at(List.wrap(opts[:data]), 0),
+              action_name,
+              params,
+              action_opts
+            )
+          end
+
+        changeset ->
+          changeset
+      end
+
+    case Ash.can(
+           query,
+           actor,
+           Keyword.merge(opts,
+             return_forbidden_error?: true,
+             maybe_is: false,
+             atomic_changeset: changeset,
+             filter_with: :filter,
+             alter_source?: true,
+             no_check?: true
+           )
+         ) do
+      {:ok, true} ->
+        if question_mark? do
+          Ash.can?(
+            changeset,
+            actor,
+            opts
+          )
+        else
+          Ash.can(
+            changeset,
+            actor,
+            opts
+          )
+        end
+
+      {:ok, true, _query} ->
+        if question_mark? do
+          Ash.can?(
+            changeset,
+            actor,
+            opts
+          )
+        else
+          Ash.can(
+            changeset,
+            actor,
+            opts
+          )
+        end
+
+      {:ok, false, error} ->
+        if question_mark? do
+          false
+        else
+          {:error, error}
+        end
+
+      {:error, error} ->
+        if question_mark? do
+          false
+        else
+          {:error, error}
+        end
     end
   end
 

@@ -223,15 +223,6 @@ defmodule Ash.Type.Struct do
   def dump_to_native(_, _), do: :error
 
   @impl true
-  def cast_atomic(new_value, constraints) do
-    if fields(constraints) do
-      {:not_atomic, "Structs do not support atomic updates when using the `keys` constraint"}
-    else
-      {:atomic, new_value}
-    end
-  end
-
-  @impl true
   def generator(constraints) do
     if !constraints[:instance_of] do
       raise ArgumentError,
