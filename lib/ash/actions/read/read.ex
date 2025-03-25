@@ -472,7 +472,7 @@ defmodule Ash.Actions.Read do
          {:ok, query} <- authorize_query(query, opts),
          {:ok, sort} <-
            add_calc_context_to_sort(
-             query,
+             query.sort,
              opts[:actor],
              opts[:authorize?],
              query.tenant,
@@ -1821,11 +1821,11 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  defp add_calc_context_to_sort(%{sort: empty}, _, _, _, _, _, _, _opts) when empty in [[], nil],
+  defp add_calc_context_to_sort(empty, _, _, _, _, _, _, _opts) when empty in [[], nil],
     do: {:ok, empty}
 
-  defp add_calc_context_to_sort(query, actor, authorize?, tenant, tracer, resource, domain, opts) do
-    query.sort
+  defp add_calc_context_to_sort(sort, actor, authorize?, tenant, tracer, resource, domain, opts) do
+    sort
     |> Enum.reduce_while({:ok, []}, fn
       {%struct{} = calc, order}, {:ok, acc}
       when struct in [
@@ -2342,7 +2342,7 @@ defmodule Ash.Actions.Read do
   def add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain, opts) do
     {:ok, sort} =
       add_calc_context_to_sort(
-        query,
+        query.sort,
         actor,
         authorize?,
         tenant,
@@ -2355,6 +2355,37 @@ defmodule Ash.Actions.Read do
     %{
       query
       | sort: sort,
+        union_of:
+          Enum.map(query.union_of, fn
+            %Ash.Query.Union{} = union ->
+              {:ok, sort} =
+                add_calc_context_to_sort(
+                  union.sort,
+                  actor,
+                  authorize?,
+                  tenant,
+                  tracer,
+                  query.resource,
+                  domain,
+                  opts
+                )
+
+              %{
+                union
+                | filter:
+                    add_calc_context_to_filter(
+                      union.filter,
+                      actor,
+                      authorize?,
+                      tenant,
+                      tracer,
+                      domain,
+                      query.resource,
+                      opts
+                    ),
+                  sort: sort
+              }
+          end),
         aggregates:
           Map.new(query.aggregates, fn {key, agg} ->
             {key,

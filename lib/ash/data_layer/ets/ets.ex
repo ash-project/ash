@@ -57,6 +57,7 @@ defmodule Ash.DataLayer.Ets do
       :domain,
       :distinct,
       :distinct_sort,
+      union_of: [],
       context: %{},
       calculations: [],
       aggregates: [],
@@ -177,6 +178,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(resource, :async_engine), do: not Ash.DataLayer.Ets.Info.private?(resource)
   def can?(_, {:lateral_join, _}), do: true
   def can?(_, :bulk_create), do: true
+  def can?(_, :union_of), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :expression_calculation), do: true
   def can?(_, :expression_calculation_sort), do: true
@@ -371,6 +373,12 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  def union_of(unions, resource, domain) do
+    {:ok, %Query{union_of: unions, resource: resource, domain: domain}}
+  end
+
+  @doc false
+  @impl true
   def run_query(
         %Query{
           resource: resource,
@@ -378,6 +386,7 @@ defmodule Ash.DataLayer.Ets do
           offset: offset,
           limit: limit,
           sort: sort,
+          union_of: union_of,
           distinct: distinct,
           distinct_sort: distinct_sort,
           tenant: tenant,
@@ -389,7 +398,7 @@ defmodule Ash.DataLayer.Ets do
         _resource,
         parent \\ nil
       ) do
-    with {:ok, records} <- get_records(resource, tenant),
+    with {:ok, records} <- get_records(resource, union_of, parent, tenant),
          {:ok, records} <-
            filter_matches(
              records,
@@ -966,11 +975,43 @@ defmodule Ash.DataLayer.Ets do
     Map.get(record, name)
   end
 
-  defp get_records(resource, tenant) do
+  defp get_records(resource, [], _parent, tenant) do
     with {:ok, table} <- wrap_or_create_table(resource, tenant),
          {:ok, record_tuples} <- ETS.Set.to_list(table),
          records <- Enum.map(record_tuples, &elem(&1, 1)) do
       cast_records(records, resource)
+    end
+  end
+
+  defp get_records(resource, unions_of, parent, tenant) do
+    unique_keys = Ash.Resource.Info.primary_key(resource)
+
+    case unique_keys do
+      [] ->
+        {:error,
+         "Cannot use `unions_of` with the `ETS` data layer unless there is a primary key."}
+
+      unique_keys ->
+        unions_of
+        |> Enum.reduce_while({:ok, []}, fn union_query, {:ok, records} ->
+          case run_query(%{union_query | tenant: tenant}, resource, parent) do
+            {:ok, results} ->
+              {:cont, {:ok, Enum.reverse(results, records)}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+        |> case do
+          {:ok, records} ->
+            records
+            |> Enum.reverse()
+            |> Enum.uniq_by(&Map.take(&1, unique_keys))
+            |> then(&{:ok, &1})
+
+          {:error, error} ->
+            {:error, error}
+        end
     end
   end
 

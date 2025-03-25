@@ -169,6 +169,7 @@ defmodule Ash.Query do
     invalid_keys: MapSet.new(),
     load_through: %{},
     action_failed?: false,
+    union_of: [],
     after_action: [],
     authorize_results: [],
     aggregates: %{},
@@ -197,6 +198,7 @@ defmodule Ash.Query do
           filter: Ash.Filter.t() | nil,
           resource: module,
           tenant: term(),
+          union_of: [t()],
           timeout: pos_integer() | nil,
           action_failed?: boolean,
           after_action: [
@@ -297,6 +299,7 @@ defmodule Ash.Query do
       distinct? = query.distinct not in [[], nil]
       lock? = not is_nil(query.lock)
       page? = not is_nil(query.page)
+      union_of? = query.union_of != []
 
       container_doc(
         "#Ash.Query<",
@@ -304,6 +307,7 @@ defmodule Ash.Query do
           concat("resource: ", inspect(query.resource)),
           or_empty(concat("tenant: ", to_doc(query.to_tenant, opts)), tenant?),
           arguments(query, opts),
+          or_empty(concat("union_of: ", to_doc(query.union_of, opts)), union_of?),
           or_empty(concat("filter: ", to_doc(query.filter, opts)), filter?),
           or_empty(concat("sort: ", to_doc(query.sort, opts)), sort?),
           or_empty(concat("distinct_sort: ", to_doc(query.distinct_sort, opts)), distinct_sort?),
@@ -389,6 +393,37 @@ defmodule Ash.Query do
     end
   end
 
+  defmodule Union do
+    defstruct [:filter, :sort, :limit, :offset]
+
+    defimpl Inspect do
+      import Inspect.Algebra
+
+      def inspect(union, opts) do
+        sort? = union.sort != []
+        filter? = !!union.filter
+        limit? = !!union.limit
+        offset? = !!union.offset
+
+        container_doc(
+          "#Ash.Query<",
+          [
+            or_empty(concat("filter: ", to_doc(union.filter, opts)), filter?),
+            or_empty(concat("sort: ", to_doc(union.sort, opts)), sort?),
+            or_empty(concat("offset: ", to_doc(union.offset, opts)), offset?),
+            or_empty(concat("limit: ", to_doc(union.limit, opts)), limit?)
+          ],
+          ">",
+          opts,
+          fn str, _ -> str end
+        )
+      end
+
+      defp or_empty(value, true), do: value
+      defp or_empty(_, false), do: empty()
+    end
+  end
+
   @doc """
   Attach a filter statement to the query labelled as user input.
 
@@ -419,6 +454,42 @@ defmodule Ash.Query do
       {:error, error} ->
         add_error(query, :filter, error)
     end
+  end
+
+  @doc """
+  Produces a query that is the union of multiple statements.
+
+  All aspects of the parent query are applied to the combination
+  of all of the unions.
+
+  See `Ash.Query.Union` for what keys can be specified on each union.
+
+  ### Examples
+
+  ```elixir
+  # Top ten and bottom ten users who are not on the upswing or downswing
+  User
+  |> Ash.Query.filter(active == true)
+  |> Ash.Query.union_of([
+    %Ash.Query.Union{
+      sort: [score: :desc],
+      filter: expr(not(on_a_losing_streak)),
+      limit: 10
+    },
+    %Ash.Query.Union{
+      sort: [score: :asc],
+      filter: expr(not(on_a_winning_streak)),
+      limit: 10
+    }
+  ])
+  |> Ash.read!()
+  ```
+  """
+  @spec union_of(t(), Keyword.t() | t()) :: t()
+  def union_of(query, unions) do
+    query = new(query)
+
+    %{query | union_of: query.union_of ++ List.wrap(unions)}
   end
 
   @doc """
@@ -3252,15 +3323,14 @@ defmodule Ash.Query do
   end
 
   def data_layer_query(%{resource: resource, domain: domain} = ash_query, opts) do
-    query = opts[:initial_query] || Ash.DataLayer.resource_to_query(resource, domain)
-
     context =
       ash_query.context
       |> Map.put(:action, ash_query.action)
       |> Map.put_new(:private, %{})
       |> put_in([:private, :tenant], ash_query.tenant)
 
-    with {:ok, query} <-
+    with {:ok, query} <- initial_data_layer_query(ash_query, domain, opts),
+         {:ok, query} <-
            Ash.DataLayer.set_context(
              resource,
              query,
@@ -3302,6 +3372,57 @@ defmodule Ash.Query do
     else
       {:error, error} -> {:error, error}
     end
+  end
+
+  defp initial_data_layer_query(ash_query, domain, opts) do
+    cond do
+      opts[:initial_query] ->
+        {:ok, opts[:initial_query]}
+
+      ash_query.union_of != [] ->
+        case union_queries(ash_query) do
+          {:ok, unions} ->
+            Ash.DataLayer.union_of(unions, ash_query.resource, domain)
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      true ->
+        {:ok, opts[:initial_query] || Ash.DataLayer.resource_to_query(ash_query.resource, domain)}
+    end
+  end
+
+  defp union_queries(query) do
+    base_query = Ash.Query.new(query.resource)
+
+    Enum.reduce_while(query.union_of, {:ok, []}, fn union, {:ok, union_of} ->
+      base_query
+      |> limit(union.limit)
+      |> offset(union.offset)
+      |> do_filter(union.filter)
+      |> sort(union.sort)
+      |> then(fn
+        %{valid?: true} = union_query ->
+          case data_layer_query(union_query) do
+            {:ok, union_query} ->
+              {:cont, {:ok, [union_query | union_of]}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+
+        %{valid?: false, errors: errors} ->
+          {:halt, {:error, errors}}
+      end)
+    end)
+    |> then(fn
+      {:ok, unions} ->
+        {:ok, Enum.reverse(unions)}
+
+      {:error, error} ->
+        {:error, error}
+    end)
   end
 
   defp maybe_return_query(query, resource, opts) do

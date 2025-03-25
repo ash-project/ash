@@ -106,6 +106,12 @@ defmodule Ash.DataLayer do
           {Ash.Resource.t(), atom, atom, Ash.Resource.Relationships.relationship()}
 
   @callback functions(Ash.Resource.t()) :: [module]
+  @callback union_of(
+              union_of :: [data_layer_query()],
+              resource :: Ash.Resource.t(),
+              domain :: Ash.Domain.t()
+            ) ::
+              {:ok, data_layer_query()} | {:error, term}
   @callback filter(data_layer_query(), Ash.Filter.t(), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
   @callback sort(data_layer_query(), Ash.Sort.t(), resource :: Ash.Resource.t()) ::
@@ -296,6 +302,7 @@ defmodule Ash.DataLayer do
                       return_query: 2,
                       lock: 3,
                       run_query_with_lateral_join: 4,
+                      union_of: 3,
                       create: 2,
                       update: 2,
                       set_context: 3,
@@ -620,6 +627,18 @@ defmodule Ash.DataLayer do
       end
     else
       {:error, "Data layer does not support filtering"}
+    end
+  end
+
+  @spec union_of([data_layer_query], resource :: Ash.Resource.t(), domain :: Ash.Domain.t()) ::
+          {:ok, data_layer_query()} | {:error, term}
+  def union_of(unions, resource, domain) do
+    data_layer = Ash.DataLayer.data_layer(resource)
+
+    if data_layer.can?(resource, :union_of) do
+      data_layer.union_of(unions, resource, domain)
+    else
+      {:error, "Data layer does not support union_of"}
     end
   end
 

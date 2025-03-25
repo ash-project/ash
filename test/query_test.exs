@@ -3,6 +3,7 @@ defmodule Ash.Test.QueryTest do
   use ExUnit.Case, async: true
 
   require Ash.Query
+  import Ash.Expr
 
   alias Ash.Test.Domain, as: Domain
 
@@ -99,6 +100,62 @@ defmodule Ash.Test.QueryTest do
              |> Ash.Query.load(:best_friend)
              |> Ash.Query.loading?(:best_friend)
     end
+  end
+
+  describe "union" do
+    test "it combines multiple queries into one result set" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "fred", email: "b@bar.com"})
+      Ash.create!(User, %{name: "fred", email: "c@bar.com"})
+      Ash.create!(User, %{name: "fred", email: "d@baz.com"})
+      Ash.create!(User, %{name: "george"})
+
+      assert [%User{email: "c@bar.com"}, %User{email: "a@bar.com"}] =
+               User
+               |> Ash.Query.filter(name == "fred")
+               |> Ash.Query.union_of([
+                 %Ash.Query.Union{
+                   filter: expr(contains(email, "bar.com")),
+                   limit: 1,
+                   sort: [email: :desc]
+                 },
+                 %Ash.Query.Union{
+                   filter: expr(contains(email, "bar.com")),
+                   limit: 1,
+                   sort: [email: :asc]
+                 }
+               ])
+               |> Ash.read!()
+    end
+
+    # test "you can compute new values for properties" do
+    #   Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+    #   Ash.create!(User, %{name: "fred", email: "b@bar.com"})
+    #   Ash.create!(User, %{name: "fred", email: "c@bar.com"})
+    #   Ash.create!(User, %{name: "fred", email: "d@baz.com"})
+    #   Ash.create!(User, %{name: "george"})
+    #
+    #   assert [%User{email: "c@bar.com"}, %User{email: "a@bar.com"}] =
+    #            User
+    #            |> Ash.Query.filter(name == "fred")
+    #            # have to add a placeholder?
+    #            |> Ash.Query.calculate(:match_score, :integer, expr(nil))
+    #            |> Ash.Query.union_of([
+    #              %Ash.Query.Union{
+    #                filter: expr(contains(email, "bar.com")),
+    #                limit: 1,
+    #                sort: [email: :desc],
+    #                calculate: [match_score: expr(...)]
+    #              },
+    #              %Ash.Query.Union{
+    #                filter: expr(contains(email, "bar.com")),
+    #                limit: 1,
+    #                sort: [email: :asc],
+    #                calculate: [match_score: expr(...)]
+    #              }
+    #            ])
+    #            |> Ash.read!()
+    # end
   end
 
   describe "filter" do
