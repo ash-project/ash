@@ -1554,7 +1554,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp retain_fields(%struct{} = record, %{data: %struct{} = data}) do
-    attributes = Ash.Resource.Info.attributes(struct)
+    attributes = Enum.map(Ash.Resource.Info.attributes(struct), & &1.name)
     take = [:__metadata__, :__meta__ | attributes]
     Map.merge(data, Map.take(record, take))
   end
