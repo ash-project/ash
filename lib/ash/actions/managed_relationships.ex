@@ -208,12 +208,6 @@ defmodule Ash.Actions.ManagedRelationships do
 
                         keys ->
                           relationship.destination
-                          |> Ash.Query.set_context(%{
-                            accessing_from: %{
-                              source: relationship.source,
-                              name: relationship.name
-                            }
-                          })
                           |> Ash.Query.for_read(read, %{},
                             actor: actor,
                             authorize?: opts[:authorize?],
@@ -901,9 +895,6 @@ defmodule Ash.Actions.ManagedRelationships do
                   {:ok, input}
                 else
                   relationship.destination
-                  |> Ash.Query.set_context(%{
-                    accessing_from: %{source: relationship.source, name: relationship.name}
-                  })
                   |> Ash.Query.for_read(read, %{},
                     actor: actor,
                     authorize?: opts[:authorize?],
