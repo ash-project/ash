@@ -3,6 +3,12 @@ defmodule Ash.Type.Atom do
     one_of: [
       type: :any,
       doc: "Allows constraining the value of an atom to a pre-defined list"
+    ],
+    unsafe_to_atom?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Allows casting to atoms that don't yet exist in the system. See https://security.erlef.org/secure_coding_and_deployment_hardening/atom_exhaustion.html for more."
     ]
   ]
   @moduledoc """
@@ -72,8 +78,12 @@ defmodule Ash.Type.Atom do
 
   def cast_input("", _), do: {:ok, nil}
 
-  def cast_input(value, _) when is_binary(value) do
-    {:ok, String.to_existing_atom(value)}
+  def cast_input(value, constraints) when is_binary(value) do
+    if constraints[:unsafe_to_atom?] do
+      {:ok, String.to_atom(value)}
+    else
+      {:ok, String.to_existing_atom(value)}
+    end
   rescue
     ArgumentError ->
       :error
