@@ -2,7 +2,7 @@
 
 <!-- changelog -->
 
-## [v3.4.74](https://github.com/ash-project/ash/compare/v3.4.73...v3.4.74) (2025-03-26)
+## [v3.5.0](https://github.com/ash-project/ash/compare/v3.4.73...v3.5.0) (2025-03-26)
 
 
 
