@@ -58,6 +58,9 @@ defmodule Ash.Type.Atom do
               | errors
             ]
           end
+
+        _, errors ->
+          errors
       end)
 
     case errors do
