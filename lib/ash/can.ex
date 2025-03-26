@@ -547,10 +547,11 @@ defmodule Ash.Can do
                   if opts[:atomic_changeset] do
                     Ash.Expr.fill_template(
                       filter,
-                      actor,
-                      opts[:atomic_changeset].arguments,
-                      opts[:atomic_changeset].context,
-                      opts[:atomic_changeset]
+                      actor: actor,
+                      tenant: opts[:atomic_changeset].to_tenant,
+                      args: opts[:atomic_changeset].arguments,
+                      context: opts[:atomic_changeset].context,
+                      changeset: opts[:atomic_changeset]
                     )
                   else
                     filter
@@ -573,10 +574,11 @@ defmodule Ash.Can do
                   if opts[:atomic_changeset] do
                     Ash.Expr.fill_template(
                       filter,
-                      actor,
-                      opts[:atomic_changeset].arguments,
-                      opts[:atomic_changeset].context,
-                      opts[:atomic_changeset]
+                      actor: actor,
+                      tenant: opts[:atomic_changeset].to_tenant,
+                      args: opts[:atomic_changeset].arguments,
+                      context: opts[:atomic_changeset].context,
+                      changeset: opts[:atomic_changeset]
                     )
                   else
                     filter
@@ -649,10 +651,11 @@ defmodule Ash.Can do
                   if opts[:atomic_changeset] do
                     Ash.Expr.fill_template(
                       filter,
-                      actor,
-                      %{},
-                      %{},
-                      opts[:atomic_changeset]
+                      actor: actor,
+                      tenant: opts[:atomic_changeset].to_tenant,
+                      args: %{},
+                      context: %{},
+                      changeset: opts[:atomic_changeset]
                     )
                   else
                     filter
@@ -837,10 +840,11 @@ defmodule Ash.Can do
           Map.update!(query, :filter, fn filter ->
             Ash.Expr.fill_template(
               filter,
-              actor,
-              changeset.arguments,
-              changeset.context,
-              changeset
+              actor: actor,
+              actor: changeset.to_tenant,
+              args: changeset.arguments,
+              context: changeset.context,
+              changeset: changeset
             )
           end)
 

@@ -51,8 +51,10 @@ defmodule Ash.Actions.Helpers do
                   Ash.Actions.Helpers.templated_opts(
                     change_opts,
                     opts[:actor],
+                    changeset.to_tenant,
                     changeset.arguments,
-                    changeset.context
+                    changeset.context,
+                    changeset
                   )
 
                 if mod.batch_callbacks?([changeset], change_opts, context) do
@@ -515,14 +517,17 @@ defmodule Ash.Actions.Helpers do
 
   def process_errors(changeset, error), do: process_errors(changeset, [error])
 
-  def templated_opts({:templated, opts}, _actor, _arguments, _context), do: opts
+  def templated_opts({:templated, opts}, _actor, _tenant, _arguments, _context, _changeset),
+    do: opts
 
-  def templated_opts(opts, actor, arguments, context) do
+  def templated_opts(opts, actor, tenant, arguments, context, changeset) do
     Ash.Expr.fill_template(
       opts,
-      actor,
-      arguments,
-      context
+      actor: actor,
+      tenant: tenant,
+      args: arguments,
+      context: context,
+      changeset: changeset
     )
   end
 

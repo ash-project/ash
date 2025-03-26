@@ -6,9 +6,10 @@ defmodule Ash.Resource.Calculation.Expression do
     expr =
       Ash.Expr.fill_template(
         opts[:expr],
-        context.actor,
-        context.arguments,
-        context.source_context
+        actor: context.actor,
+        tenant: context.tenant,
+        args: context.arguments,
+        context: context.source_context
       )
 
     if type = context.type do
@@ -40,9 +41,10 @@ defmodule Ash.Resource.Calculation.Expression do
     expression =
       Ash.Expr.fill_template(
         opts[:expr],
-        context.actor,
-        context.arguments,
-        context.source_context || %{}
+        actor: context.actor,
+        tenant: context.tenant,
+        args: context.arguments,
+        context: context.source_context || %{}
       )
 
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, values} ->
@@ -98,9 +100,10 @@ defmodule Ash.Resource.Calculation.Expression do
     expr =
       Ash.Expr.fill_template(
         opts[:expr],
-        context.actor,
-        context.arguments,
-        context.source_context || %{}
+        actor: context.actor,
+        tenant: context.tenant,
+        args: context.arguments,
+        context: context.source_context || %{}
       )
 
     case Ash.Filter.hydrate_refs(expr, %{

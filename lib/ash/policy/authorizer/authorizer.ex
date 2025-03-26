@@ -742,7 +742,11 @@ defmodule Ash.Policy.Authorizer do
     %{
       stack: [{resource, [], context.query.action, context.query.domain}],
       authorizers: %{
-        {resource, context.query.action} => %{authorizer | query: context.query}
+        {resource, context.query.action} => %{
+          authorizer
+          | query: context.query,
+            subject: context.query
+        }
       },
       actor: authorizer.actor
     }
@@ -1274,13 +1278,13 @@ defmodule Ash.Policy.Authorizer do
          authorizer,
          %Ash.Query{} = query
        ),
-       do: %{authorizer | query: query}
+       do: %{authorizer | query: query, subject: query}
 
   defp add_query_or_changeset(
          authorizer,
          %Ash.Changeset{} = changeset
        ),
-       do: %{authorizer | changeset: changeset}
+       do: %{authorizer | changeset: changeset, subject: changeset}
 
   defp add_query_or_changeset(
          authorizer,

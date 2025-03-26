@@ -9,6 +9,12 @@ defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
+    multitenancy do
+      strategy :attribute
+      attribute :tenant
+      global? true
+    end
+
     attributes do
       uuid_primary_key :id
 
@@ -21,6 +27,10 @@ defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
       end
 
       attribute :other_other_name, :string do
+        public?(true)
+      end
+
+      attribute :tenant, :string do
         public?(true)
       end
     end
@@ -49,6 +59,10 @@ defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
       field_policy :other_other_name, expr(name == ^actor(:name)) do
         forbid_if always()
       end
+
+      field_policy :tenant, expr(tenant == ^tenant()) do
+        authorize_if always()
+      end
     end
 
     policies do
@@ -70,29 +84,37 @@ defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
   end
 
   test "multiple field policies for the same field with different conditions work" do
-    ResourceWithMultiplePoliciesForOneField.create!(%{
-      name: "foo",
-      other_name: "foo",
-      other_other_name: "foo"
-    })
+    ResourceWithMultiplePoliciesForOneField.create!(
+      %{
+        name: "foo",
+        other_name: "foo",
+        other_other_name: "foo"
+      },
+      tenant: "foo"
+    )
 
-    ResourceWithMultiplePoliciesForOneField.create!(%{
-      name: "baz",
-      other_name: "baz",
-      other_other_name: "bar"
-    })
+    ResourceWithMultiplePoliciesForOneField.create!(
+      %{
+        name: "baz",
+        other_name: "baz",
+        other_other_name: "bar"
+      },
+      tenant: "foo"
+    )
 
     assert [
              %{
                name: "baz",
                other_name: %Ash.ForbiddenField{},
-               other_other_name: %Ash.ForbiddenField{}
+               other_other_name: %Ash.ForbiddenField{},
+               tenant: "foo"
              },
              %{name: "foo", other_name: %Ash.ForbiddenField{}, other_other_name: "foo"}
            ] =
              ResourceWithMultiplePoliciesForOneField.read!(
                actor: %{name: "baz", admin: true},
-               query: ResourceWithMultiplePoliciesForOneField |> Ash.Query.sort([:name])
+               query: ResourceWithMultiplePoliciesForOneField |> Ash.Query.sort([:name]),
+               tenant: "foo"
              )
   end
 end

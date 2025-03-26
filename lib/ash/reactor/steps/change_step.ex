@@ -44,7 +44,15 @@ defmodule Ash.Reactor.ChangeStep do
   end
 
   defp apply_validation(changeset, {module, opts}, context) do
-    opts = Ash.Expr.fill_template(opts, context[:actor], changeset.arguments, changeset.context)
+    opts =
+      Ash.Expr.fill_template(
+        opts,
+        actor: context[:actor],
+        tenant: changeset.to_tenant,
+        args: changeset.arguments,
+        context: changeset.context,
+        changeset: changeset
+      )
 
     module.validate(changeset, opts, context)
   rescue
@@ -58,10 +66,11 @@ defmodule Ash.Reactor.ChangeStep do
     opts =
       Ash.Expr.fill_template(
         opts,
-        context[:actor],
-        changeset.arguments,
-        changeset.context,
-        changeset
+        actor: context[:actor],
+        tenant: changeset.to_tenant,
+        args: changeset.arguments,
+        context: changeset.context,
+        changeset: changeset
       )
 
     with {:ok, opts} <- module.init(opts) do

@@ -1314,7 +1314,14 @@ defmodule Ash.Actions.Update.Bulk do
     base_changeset = base_changeset(resource, domain, opts, action, input)
 
     all_changes =
-      pre_template_all_changes(action, resource, action.type, base_changeset, opts[:actor])
+      pre_template_all_changes(
+        action,
+        resource,
+        action.type,
+        base_changeset,
+        opts[:actor],
+        base_changeset.to_tenant
+      )
 
     argument_names = Enum.map(action.arguments, & &1.name)
 
@@ -1575,7 +1582,7 @@ defmodule Ash.Actions.Update.Bulk do
     end)
   end
 
-  defp pre_template_all_changes(action, resource, _type, base, actor) do
+  defp pre_template_all_changes(action, resource, _type, base, actor, tenant) do
     action.changes
     |> then(fn changes ->
       if action.skip_global_validations? do
@@ -1587,10 +1594,10 @@ defmodule Ash.Actions.Update.Bulk do
     |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
     |> Enum.map(fn
       %{change: {module, opts}} = change ->
-        %{change | change: {module, pre_template(opts, base, actor)}}
+        %{change | change: {module, pre_template(opts, base, actor, tenant)}}
 
       %{validation: {module, opts}} = validation ->
-        %{validation | validation: {module, pre_template(opts, base, actor)}}
+        %{validation | validation: {module, pre_template(opts, base, actor, tenant)}}
     end)
     |> Enum.map(fn
       %{where: where} = change ->
@@ -1598,7 +1605,9 @@ defmodule Ash.Actions.Update.Bulk do
           if where do
             where
             |> List.wrap()
-            |> Enum.map(fn {module, opts} -> {module, pre_template(opts, base, actor)} end)
+            |> Enum.map(fn {module, opts} ->
+              {module, pre_template(opts, base, actor, tenant)}
+            end)
           end
 
         %{change | where: new_where}
@@ -1613,16 +1622,18 @@ defmodule Ash.Actions.Update.Bulk do
     {Ash.Query.do_filter(query, changeset.filter), %{changeset | filter: nil}}
   end
 
-  defp pre_template(opts, changeset, actor) do
+  defp pre_template(opts, changeset, actor, tenant) do
     if Ash.Expr.template_references_context?(opts) do
       opts
     else
       {:templated,
        Ash.Expr.fill_template(
          opts,
-         actor,
-         changeset.arguments,
-         changeset.context
+         actor: actor,
+         tenant: tenant,
+         args: changeset.arguments,
+         context: changeset.context,
+         changeset: changeset
        )}
     end
   end
@@ -2828,8 +2839,10 @@ defmodule Ash.Actions.Update.Bulk do
                       Ash.Actions.Helpers.templated_opts(
                         opts,
                         actor,
+                        changeset.tenant,
                         changeset.arguments,
-                        changeset.context
+                        changeset.context,
+                        changeset
                       )
 
                     {:ok, opts} = module.init(opts)
@@ -2909,8 +2922,10 @@ defmodule Ash.Actions.Update.Bulk do
              Ash.Actions.Helpers.templated_opts(
                opts,
                actor,
+               changeset.to_tenant,
                changeset.arguments,
-               changeset.context
+               changeset.context,
+               changeset
              )
 
            {:ok, opts} = module.init(opts)
@@ -2925,8 +2940,10 @@ defmodule Ash.Actions.Update.Bulk do
           Ash.Actions.Helpers.templated_opts(
             opts,
             actor,
+            changeset.to_tenant,
             changeset.arguments,
-            changeset.context
+            changeset.context,
+            changeset
           )
 
         {:ok, opts} = module.init(opts)
@@ -3004,7 +3021,14 @@ defmodule Ash.Actions.Update.Bulk do
                     end),
                   change:
                     {module,
-                     templated_opts(change_opts, actor, changeset.arguments, changeset.context)}
+                     templated_opts(
+                       change_opts,
+                       actor,
+                       changeset.to_tenant,
+                       changeset.arguments,
+                       changeset.context,
+                       changeset
+                     )}
               }
 
               case Ash.Changeset.run_atomic_change(changeset, change, context) do
@@ -3033,7 +3057,14 @@ defmodule Ash.Actions.Update.Bulk do
             Enum.flat_map(batch, fn changeset ->
               if module.batch_callbacks?(batch, change_opts, context) do
                 change_opts =
-                  templated_opts(change_opts, actor, changeset.arguments, changeset.context)
+                  templated_opts(
+                    change_opts,
+                    actor,
+                    changeset.to_tenant,
+                    changeset.arguments,
+                    changeset.context,
+                    changeset
+                  )
 
                 {:ok, change_opts} = module.init(change_opts)
                 module.batch_change(batch, change_opts, context)
@@ -3051,7 +3082,14 @@ defmodule Ash.Actions.Update.Bulk do
           !must_be_atomic? && module.has_change?() ->
             Enum.map(batch, fn changeset ->
               change_opts =
-                templated_opts(change_opts, actor, changeset.arguments, changeset.context)
+                templated_opts(
+                  change_opts,
+                  actor,
+                  changeset.to_tenant,
+                  changeset.arguments,
+                  changeset.context,
+                  changeset
+                )
 
               {:ok, change_opts} = module.init(change_opts)
 
@@ -3072,7 +3110,14 @@ defmodule Ash.Actions.Update.Bulk do
                     end),
                   change:
                     {module,
-                     templated_opts(change_opts, actor, changeset.arguments, changeset.context)}
+                     templated_opts(
+                       change_opts,
+                       actor,
+                       changeset.to_tenant,
+                       changeset.arguments,
+                       changeset.context,
+                       changeset
+                     )}
               }
 
               case Ash.Changeset.run_atomic_change(changeset, change, context) do
@@ -3097,14 +3142,17 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp templated_opts({:templated, opts}, _actor, _arguments, _context), do: opts
+  defp templated_opts({:templated, opts}, _actor, _tenant, _arguments, _context, _changeset),
+    do: opts
 
-  defp templated_opts(opts, actor, arguments, context) do
+  defp templated_opts(opts, actor, tenant, arguments, context, changeset) do
     Ash.Expr.fill_template(
       opts,
-      actor,
-      arguments,
-      context
+      actor: actor,
+      tenant: tenant,
+      args: arguments,
+      context: context,
+      changeset: changeset
     )
   end
 

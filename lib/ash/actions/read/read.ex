@@ -1282,9 +1282,10 @@ defmodule Ash.Actions.Read do
             | filter:
                 Ash.Expr.fill_template(
                   aggregate.query.filter,
-                  query.context[:private][:actor],
-                  %{},
-                  query.context
+                  actor: query.context[:private][:actor],
+                  tenant: query.to_tenant,
+                  args: %{},
+                  context: query.context
                 )
           }
       }
@@ -1309,9 +1310,10 @@ defmodule Ash.Actions.Read do
                 expression =
                   Ash.Expr.fill_template(
                     expression,
-                    query.context[:private][:actor],
-                    calculation.context.arguments,
-                    query.context
+                    actor: query.context[:private][:actor],
+                    tenant: query.to_tenant,
+                    args: calculation.context.arguments,
+                    context: query.context
                   )
 
                 case Ash.Filter.hydrate_refs(expression, %{
@@ -3176,9 +3178,10 @@ defmodule Ash.Actions.Read do
         expression =
           Ash.Expr.fill_template(
             expression,
-            calculation.context.actor,
-            calculation.context.arguments,
-            calculation.context.source_context
+            actor: calculation.context.actor,
+            tenant: query.to_tenant,
+            args: calculation.context.arguments,
+            context: calculation.context.source_context
           )
 
         case Ash.Filter.hydrate_refs(expression, %{
