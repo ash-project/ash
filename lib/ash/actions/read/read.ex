@@ -930,13 +930,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp maybe_in_transaction(query, opts, func) do
-    notify? =
-      if Process.get(:ash_started_transaction?) do
-        false
-      else
-        Process.put(:ash_started_transaction?, true)
-        true
-      end
+    notify? = !Process.put(:ash_started_transaction?, true)
 
     try do
       cond do

@@ -32,17 +32,7 @@ defmodule Ash.Actions.Create.Bulk do
 
     if opts[:transaction] == :all &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
-      notify? =
-        if opts[:notify?] do
-          if Process.get(:ash_started_transaction?) do
-            false
-          else
-            Process.put(:ash_started_transaction?, true)
-            true
-          end
-        else
-          false
-        end
+      notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
 
       Ash.DataLayer.transaction(
         List.wrap(resource) ++ action.touches_resources,
@@ -534,17 +524,7 @@ defmodule Ash.Actions.Create.Bulk do
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
 
-      notify? =
-        if opts[:notify?] do
-          if Process.get(:ash_started_transaction?) do
-            false
-          else
-            Process.put(:ash_started_transaction?, true)
-            true
-          end
-        else
-          false
-        end
+      notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
 
       try do
         Ash.DataLayer.transaction(

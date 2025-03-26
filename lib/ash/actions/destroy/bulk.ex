@@ -240,13 +240,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             atomic_changeset
           end
 
-        notify? =
-          if Process.get(:ash_started_transaction?) do
-            false
-          else
-            Process.put(:ash_started_transaction?, true)
-            true
-          end
+        notify? = !Process.put(:ash_started_transaction?, true)
 
         try do
           context =
@@ -404,17 +398,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     if opts[:transaction] == :all &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
-      notify? =
-        if opts[:notify?] do
-          if Process.get(:ash_started_transaction?) do
-            false
-          else
-            Process.put(:ash_started_transaction?, true)
-            true
-          end
-        else
-          false
-        end
+      notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
 
       try do
         Ash.DataLayer.transaction(
@@ -1483,17 +1467,7 @@ defmodule Ash.Actions.Destroy.Bulk do
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
 
-      notify? =
-        if opts[:notify?] do
-          if Process.get(:ash_started_transaction?) do
-            false
-          else
-            Process.put(:ash_started_transaction?, true)
-            true
-          end
-        else
-          false
-        end
+      notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
 
       try do
         Ash.DataLayer.transaction(
