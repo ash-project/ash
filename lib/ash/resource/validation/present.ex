@@ -73,11 +73,7 @@ defmodule Ash.Resource.Validation.Present do
           if count == 1 do
             attribute_error(changeset, opts, count)
           else
-            changes_error(
-              changeset,
-              opts,
-              count
-            )
+            changes_error(opts, count)
           end
         end
 
