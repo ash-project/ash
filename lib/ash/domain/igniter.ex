@@ -44,16 +44,73 @@ if Code.ensure_loaded?(Igniter) do
                      Igniter.Code.Function.move_to_function_call_in_current_scope(
                        zipper,
                        :resource,
-                       1,
-                       fn call ->
-                         Igniter.Code.Function.argument_matches_predicate?(
-                           call,
-                           0,
-                           &Igniter.Code.Common.nodes_equal?(&1, resource)
-                         )
-                       end
+                       [1, 2],
+                       &Igniter.Code.Function.argument_equals?(&1, 0, resource)
                      ) do
                 {:ok, Igniter.Code.Common.add_code(zipper, "resource #{inspect(resource)}")}
+              else
+                _ ->
+                  {:ok, zipper}
+              end
+          end
+        end)
+      else
+        igniter
+        |> Igniter.add_warning(
+          "Domain #{inspect(domain)} was not an `Ash.Domain`, so could not add `#{inspect(resource)}` to its resource list."
+        )
+      end
+    end
+
+    @doc "Adds a code interface if not present to the given resource on the given domain"
+    def add_new_code_interface(igniter, domain, resource, name, definition) do
+      {igniter, domains} = Ash.Domain.Igniter.list_domains(igniter)
+
+      if domain in domains do
+        Igniter.Project.Module.find_and_update_module!(igniter, domain, fn zipper ->
+          case Igniter.Code.Function.move_to_function_call_in_current_scope(
+                 zipper,
+                 :resources,
+                 1
+               ) do
+            :error ->
+              {:ok, zipper}
+
+            {:ok, zipper} ->
+              with {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper),
+                   {:ok, zipper} <-
+                     Igniter.Code.Function.move_to_function_call_in_current_scope(
+                       zipper,
+                       :resource,
+                       [1, 2],
+                       &Igniter.Code.Function.argument_equals?(&1, 0, resource)
+                     ) do
+                case Igniter.Code.Common.move_to_do_block(zipper) do
+                  {:ok, zipper} ->
+                    case Igniter.Code.Function.move_to_function_call_in_current_scope(
+                           zipper,
+                           :define,
+                           [1, 2],
+                           &Igniter.Code.Function.argument_equals?(&1, 0, name)
+                         ) do
+                      {:ok, _} ->
+                        {:ok, zipper}
+
+                      :error ->
+                        {:ok, Igniter.Code.Common.add_code(zipper, definition, placement: :after)}
+                    end
+
+                  :error ->
+                    {:ok,
+                     Igniter.Code.Common.replace_code(
+                       zipper,
+                       Sourceror.parse_string!("""
+                       resource #{inspect(resource)} do
+                         #{definition}
+                       end
+                       """)
+                     )}
+                end
               else
                 _ ->
                   {:ok, zipper}
