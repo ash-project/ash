@@ -79,7 +79,8 @@ defmodule Ash.Actions.Destroy.Bulk do
             Ash.Resource.Info.primary_action!(query.resource, :read).name,
             %{},
             actor: opts[:actor],
-            tenant: opts[:tenant]
+            tenant: opts[:tenant],
+            context: %{query_for: :bulk_destroy}
           )
 
         {query, opts}
@@ -95,11 +96,17 @@ defmodule Ash.Actions.Destroy.Bulk do
         :atomic not in opts[:strategy] ->
           {:not_atomic, "Not in requested strategies"}
 
+        query.action.manual ->
+          {:not_atomic, "Manual read actions cannot be destroyed atomically"}
+
+        !Enum.empty?(query.before_action) ->
+          {:not_atomic, "cannot atomically update a query if it has `before_action` hooks"}
+
+        !Enum.empty?(query.after_action) ->
+          {:not_atomic, "cannot atomically update a query if it has `after_action` hooks"}
+
         changeset = opts[:atomic_changeset] ->
           changeset
-
-        query.action.manual ->
-          {:not_atomic, "Manual read actions cannot be updated atomically"}
 
         Ash.DataLayer.data_layer_can?(query.resource, :destroy_query) ->
           private_context = Map.new(Keyword.take(opts, [:actor, :tenant, :authorize]))
@@ -989,7 +996,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         |> Ash.Query.for_read(read_action, %{},
           actor: opts[:actor],
           authorize?: false,
-          context: atomic_changeset.context,
+          context: Map.put(atomic_changeset.context, :query_for, :bulk_destroy),
           tenant: atomic_changeset.tenant,
           tracer: opts[:tracer]
         )

@@ -4,6 +4,8 @@ defmodule Ash.Actions.Read.Stream do
   def run!(domain, query, opts) do
     query = Ash.Query.new(query)
 
+    {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
+
     query =
       if query.action do
         query

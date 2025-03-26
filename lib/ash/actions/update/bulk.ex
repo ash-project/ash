@@ -34,7 +34,8 @@ defmodule Ash.Actions.Update.Bulk do
             get_read_action(query.resource, action, opts).name,
             %{},
             actor: opts[:actor],
-            tenant: opts[:tenant]
+            tenant: opts[:tenant],
+            context: %{query_for: :bulk_update}
           )
 
         {query, opts}
@@ -44,9 +45,6 @@ defmodule Ash.Actions.Update.Bulk do
 
     fully_atomic_changeset =
       cond do
-        !Enum.empty?(query.before_action) ->
-          {:not_atomic, "cannot atomically update a query if it has `before_action` hooks"}
-
         not_atomic_reason ->
           {:not_atomic, not_atomic_reason}
 
@@ -55,6 +53,12 @@ defmodule Ash.Actions.Update.Bulk do
 
         query.action.manual ->
           {:not_atomic, "Manual read actions cannot be updated atomically"}
+
+        !Enum.empty?(query.before_action) ->
+          {:not_atomic, "cannot atomically update a query if it has `before_action` hooks"}
+
+        !Enum.empty?(query.after_action) ->
+          {:not_atomic, "cannot atomically update a query if it has `after_action` hooks"}
 
         changeset = opts[:atomic_changeset] ->
           changeset
@@ -1221,7 +1225,7 @@ defmodule Ash.Actions.Update.Bulk do
         |> Ash.Query.for_read(read_action, %{},
           actor: opts[:actor],
           authorize?: false,
-          context: atomic_changeset.context,
+          context: Map.put(atomic_changeset.context, :query_for, :bulk_update),
           tenant: atomic_changeset.tenant,
           tracer: opts[:tracer]
         )
@@ -3167,7 +3171,7 @@ defmodule Ash.Actions.Update.Bulk do
           action when is_atom(action) and not is_nil(action) ->
             action =
               Ash.Resource.Info.action(resource, action) ||
-                raise "No such destroy action #{inspect(resource)}.#{action}"
+                raise "No such update action #{inspect(resource)}.#{action}"
 
             if read_action = action.atomic_upgrade_with do
               Ash.Resource.Info.action(resource, read_action) ||
