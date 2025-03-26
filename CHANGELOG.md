@@ -2,6 +2,33 @@
 
 <!-- changelog -->
 
+## [v3.4.74](https://github.com/ash-project/ash/compare/v3.4.73...v3.4.74) (2025-03-26)
+
+
+
+
+### Bug Fixes:
+
+* don't set `accessing_from` on lookups for managed relationships
+
+This *may* be a breaking change for some cases, but ultimately we
+felt it was too confusing to leave as it was. The semantics of
+`accessing_from` meant that "all actions done as part of `manage_relationship`
+were allowed to be performed. This was the intended design, but made it easy
+to implement an authorization related bug. Specifcaly, the `on_lookup` behavior
+would set that context as well, potentially allowing a user to relate something
+to a resource that you did not intend them to be able to see.
+
+### Improvements:
+
+* add `tenant()` filter template expression (#1909)
+
+* `Ash.Domain.Igniter.add_new_code_interface/5`
+
+* add `unsafe_to_atom?` constraint for `Ash.Type.Atom`
+
+* support `expr(exists(relation))` (#1912)
+
 ## [v3.4.73](https://github.com/ash-project/ash/compare/v3.4.72...v3.4.73) (2025-03-25)
 
 
