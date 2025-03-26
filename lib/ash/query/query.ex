@@ -3328,13 +3328,29 @@ defmodule Ash.Query do
       |> Map.put(:action, ash_query.action)
       |> Map.put_new(:private, %{})
       |> put_in([:private, :tenant], ash_query.tenant)
+      |> Map.put_new(:data_layer, %{})
 
-    with {:ok, query} <- initial_data_layer_query(ash_query, domain, opts),
+    context =
+      if opts[:previous_union_of] do
+        Map.update!(
+          context,
+          :data_layer,
+          &Map.put(&1, :previous_union_of, opts[:previous_union_of])
+        )
+      else
+        context
+      end
+
+    with {:ok, query, new_context} <- initial_data_layer_query(ash_query, domain, opts),
          {:ok, query} <-
            Ash.DataLayer.set_context(
              resource,
              query,
-             context
+             Map.update!(
+               context,
+               :data_layer,
+               &Map.merge(&1, new_context)
+             )
            ),
          {:ok, query} <- add_tenant(query, ash_query),
          {:ok, query} <- Ash.DataLayer.select(query, ash_query.select, ash_query.resource),
@@ -3377,36 +3393,42 @@ defmodule Ash.Query do
   defp initial_data_layer_query(ash_query, domain, opts) do
     cond do
       opts[:initial_query] ->
-        {:ok, opts[:initial_query]}
+        {:ok, opts[:initial_query], %{}}
 
       ash_query.union_of != [] ->
         case union_queries(ash_query) do
-          {:ok, unions} ->
-            Ash.DataLayer.union_of(unions, ash_query.resource, domain)
+          {:ok, unions, previous} ->
+            with {:ok, query} <- Ash.DataLayer.union_of(unions, ash_query.resource, domain) do
+              {:ok, query, %{previous_union_of: previous, union_of_queries?: true}}
+            end
 
           {:error, error} ->
             {:error, error}
         end
 
       true ->
-        {:ok, opts[:initial_query] || Ash.DataLayer.resource_to_query(ash_query.resource, domain)}
+        {:ok, opts[:initial_query] || Ash.DataLayer.resource_to_query(ash_query.resource, domain),
+         %{}}
     end
   end
 
   defp union_queries(query) do
     base_query = Ash.Query.new(query.resource)
 
-    Enum.reduce_while(query.union_of, {:ok, []}, fn union, {:ok, union_of} ->
+    Enum.reduce_while(query.union_of, {:ok, [], nil}, fn union, {:ok, union_of, previous} ->
       base_query
       |> limit(union.limit)
       |> offset(union.offset)
       |> do_filter(union.filter)
       |> sort(union.sort)
+      |> Ash.Query.set_context(query.context)
+      |> Ash.Query.set_context(%{data_layer: %{union_query?: true}})
       |> then(fn
         %{valid?: true} = union_query ->
-          case data_layer_query(union_query) do
+          case data_layer_query(union_query, previous_union_of: previous) do
             {:ok, union_query} ->
-              {:cont, {:ok, [union_query | union_of]}}
+              IO.inspect(union_query)
+              {:cont, {:ok, [union_query | union_of], union_query}}
 
             {:error, error} ->
               {:halt, {:error, error}}
@@ -3417,8 +3439,8 @@ defmodule Ash.Query do
       end)
     end)
     |> then(fn
-      {:ok, unions} ->
-        {:ok, Enum.reverse(unions)}
+      {:ok, unions, previous} ->
+        {:ok, Enum.reverse(unions), previous}
 
       {:error, error} ->
         {:error, error}

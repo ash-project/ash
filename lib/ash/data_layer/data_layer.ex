@@ -68,6 +68,7 @@ defmodule Ash.DataLayer do
   @type feature() ::
           :transact
           | :multitenancy
+          | :union_of
           | {:atomic, :update}
           | {:atomic, :upsert}
           | {:lateral_join, list(Ash.Resource.t())}
