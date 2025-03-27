@@ -564,7 +564,11 @@ defmodule Ash.Actions.Update do
                                 |> Ash.DataLayer.run_query(changeset.resource)
                                 |> case do
                                   {:ok, [record]} ->
-                                    {:ok, record}
+                                    attribute_names =
+                                      Ash.Resource.Info.attribute_names(changeset.resource)
+
+                                    {:ok,
+                                     Map.merge(changeset.data, Map.take(record, Enum.to_list(attribute_names)))}
 
                                   _ ->
                                     {:error,
