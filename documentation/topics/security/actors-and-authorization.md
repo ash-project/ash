@@ -2,7 +2,7 @@
 
 Authorization in Ash involves three things:
 
-* actor - the entity (i.e user, organization, device) performing a given action
+* actor - the entity (i.e user, organization, device) performing a given action. See [the glossary](/documentation/topics/reference/glossary.md#actor) for more.
 * authorize? - a flag that tells Ash to run authorization.
 * authorizers - the extensions on a resource that can modify or forbid the action.
 

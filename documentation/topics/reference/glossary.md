@@ -15,7 +15,18 @@ See the [Actions guide](/documentation/topics/actions/actions.md) for more.
 
 ## Actor
 
-The entity that performs an action. Most actions are run on direct user request, eg. if a user presses a Create button on a page then the actor is the user; but an actor might also be an organization, a group, or even a device.
+The entity that performs an action. 
+
+Most actions are run on direct user request, eg. if a user presses a Create button on a page then the actor is the user.
+
+The actor can be anything that you want it to be. It is most typically a map or a struct containing information about the "entity" that is performing the action.
+In the vast majority of cases, the actor will be something like `%MyApp.Accounts.User{}`. We recommend that the actor be a struct, but it could also be a map or even a value.
+
+Some example actor types used in practice:
+
+- `%MyApp.Accounts.User{}`
+- `%MyApp.Accounts.Device{}`
+- `%MyApp.SystemUser{}`
 
 Actors can be used in a number of places, from modifying the behavior of an action to auditing who did what in your system. They are most prominent, however, when writing [policies](#policy).
 
