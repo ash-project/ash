@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.5.1](https://github.com/ash-project/ash/compare/v3.5.0...v3.5.1) (2025-03-27)
+
+
+
+
+### Bug Fixes:
+
+* when reading a record to simulate an update, merge with data
+
+* more consistent error messaging from present validation
+
+* can't atomically update a query w/ after_action hooks
+
+### Improvements:
+
+* add `Ash.transaction(resources, func, opts)` (#1914)
+
+* set `query_for` context on queries
+
 ## [v3.5.0](https://github.com/ash-project/ash/compare/v3.4.73...v3.5.0) (2025-03-26)
 
 
