@@ -20,7 +20,7 @@ The entity that performs an action.
 Most actions are run on direct user request, eg. if a user presses a Create button on a page then the actor is the user.
 
 The actor can be anything that you want it to be. It is most typically a map or a struct containing information about the "entity" that is performing the action.
-In the vast majority of cases, the actor will be something like `%MyApp.Accounts.User{}`. We recommend that the actor be a struct, but it could also be a map or even a value.
+In the vast majority of cases, the actor will be something like `%MyApp.Accounts.User{}`. We recommend that the actor be a struct, but it could also be a map or any other kind of value.
 
 Some example actor types used in practice:
 
