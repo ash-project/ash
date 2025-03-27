@@ -770,6 +770,7 @@ defmodule Ash do
     ]
   ]
 
+  @doc false
   def calculate_opts, do: @calculate_opts
 
   @run_action_opts [
