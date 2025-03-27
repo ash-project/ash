@@ -91,11 +91,12 @@ defmodule Ash.Type.NewType do
   end
 
   defmacro __using__(opts) do
-    with {:ok, type, constraints} <- validate_opts(opts),
-         :ok <- validate_constraints(type, constraints) do
-      :ok
-    else
-      {:error, error} -> raise ArgumentError, error
+    case Keyword.keys(opts) -- [:subtype_of, :constraints, :lazy_init?] do
+      [] ->
+        []
+
+      keys ->
+        raise ArgumentError, "Unknown options given to `use Ash.Type.NewType`: #{inspect(keys)}"
     end
 
     subtype_of =
@@ -193,11 +194,21 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       if lazy_init? do
         def init(constraints) do
-          {:ok, constraints}
+          case validate_constraints(unquote(subtype_of), constraints) do
+            :ok -> {:ok, constraints}
+            {:error, error} -> raise ArgumentError, error
+          end
         end
       else
         def init(constraints) do
-          unquote(subtype_of).init(type_constraints(constraints, unquote(subtype_constraints)))
+          case validate_constraints(unquote(subtype_of), constraints) do
+            :ok ->
+              type_constraints = type_constraints(constraints, unquote(subtype_constraints))
+              unquote(subtype_of).init(type_constraints)
+
+            {:error, error} ->
+              raise ArgumentError, error
+          end
         end
       end
 
@@ -409,6 +420,40 @@ defmodule Ash.Type.NewType do
         end
       end
 
+      defp validate_constraints(type, constraints) do
+        constraint_keys = constraints |> List.wrap() |> Keyword.keys()
+        valid_constraint_keys = type |> Ash.Type.constraints() |> Keyword.keys()
+
+        case constraint_keys -- valid_constraint_keys do
+          [] ->
+            case constraints[:fields] do
+              nil ->
+                :ok
+
+              fields ->
+                fields
+                |> Enum.reduce_while(:ok, fn
+                  {key, field}, :ok ->
+                    field_keys = field |> List.wrap() |> Keyword.keys()
+
+                    case field_keys -- [:type, :constraints, :allow_nil?] do
+                      [] ->
+                        {:cont, validate_constraints(field[:type], field[:constraints])}
+
+                      keys ->
+                        {:halt, {:error, "Unknown options given to #{key}: #{inspect(keys)}"}}
+                    end
+
+                  _, acc ->
+                    {:halt, acc}
+                end)
+            end
+
+          keys ->
+            {:error, "Unknown options given to `#{type}`: #{inspect(keys)}"}
+        end
+      end
+
       defoverridable storage_type: 1,
                      cast_input: 2,
                      prepare_change: 3,
@@ -425,54 +470,6 @@ defmodule Ash.Type.NewType do
                      dump_to_native: 2,
                      dump_to_native_array: 2,
                      type_constraints: 2
-    end
-  end
-
-  defp validate_opts(opts) do
-    case Keyword.keys(opts) -- [:subtype_of, :constraints, :lazy_init?] do
-      [] ->
-        {:ok, opts[:subtype_of], opts[:constraints]}
-
-      keys ->
-        {:error, "Unknown options given to `use Ash.Type.NewType`: #{inspect(keys)}"}
-    end
-  end
-
-  defp validate_constraints({:__aliases__, _, _}, _constraints) do
-    :ok
-  end
-
-  defp validate_constraints(type, constraints) do
-    constraint_keys = constraints |> List.wrap() |> Keyword.keys()
-    valid_constraint_keys = type |> Ash.Type.constraints() |> Keyword.keys()
-
-    case constraint_keys -- valid_constraint_keys do
-      [] ->
-        case constraints[:fields] do
-          nil ->
-            :ok
-
-          fields ->
-            fields
-            |> Enum.reduce_while(:ok, fn
-              {key, field}, :ok ->
-                field_keys = field |> List.wrap() |> Keyword.keys()
-
-                case field_keys -- [:type, :constraints, :allow_nil?] do
-                  [] ->
-                    {:cont, validate_constraints(field[:type], field[:constraints])}
-
-                  keys ->
-                    {:halt, {:error, "Unknown options given to #{key}: #{inspect(keys)}"}}
-                end
-
-              _, acc ->
-                {:halt, acc}
-            end)
-        end
-
-      keys ->
-        {:error, "Unknown options given to `#{type}`: #{inspect(keys)}"}
     end
   end
 end

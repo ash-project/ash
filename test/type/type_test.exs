@@ -94,4 +94,30 @@ defmodule Ash.Test.Type.TypeTest do
       |> Ash.create!()
     end)
   end
+
+  test "returns error for invalid keys" do
+    foo = {:foo, [type: :string]}
+    bar = {:bar, [type: :integer]}
+    constraints = [fields: [foo, bar]]
+    invalid_key = {:something, :invalid}
+
+    assert {:error, error} = Ash.Type.init(:map, constraints ++ [invalid_key])
+    assert error =~ "unknown options [:something], valid options are: [:fields]"
+
+    invalid_foo = {:foo, [type: :string, instance_of: "invalid"]}
+    invalid_constraints = [fields: [invalid_foo, bar]]
+
+    assert {:error, error} = Ash.Type.init(:map, invalid_constraints)
+
+    assert error =~
+             "unknown options [:instance_of], valid options are: [:type, :allow_nil?, :constraints] (in options [:fields, :foo])"
+
+    invalid_foo = {:foo, [type: :string, constraints: [invalid_key]]}
+    invalid_constraints = [fields: [invalid_foo, bar]]
+
+    assert {:error, error} = Ash.Type.init(:map, invalid_constraints)
+
+    assert error =~
+             "unknown options [:something], valid options are: [:max_length, :min_length, :match, :trim?, :allow_empty?]"
+  end
 end

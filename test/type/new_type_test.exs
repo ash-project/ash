@@ -68,58 +68,16 @@ defmodule Ash.Test.Type.NewTypeTest do
              )
   end
 
-  test "raises error for invalid keys" do
+  test "returns error for invalid keys" do
+    foo = {:foo, [type: :string]}
+    bar = {:bar, [type: :integer]}
+
     assert_raise ArgumentError, ~r/Unknown options given/, fn ->
       defmodule InvalidTypeBySubtype do
         use Ash.Type.NewType,
           subtype_of: :map,
           something: :invalid,
-          constraints: [
-            fields: [
-              foo: [
-                type: :string
-              ],
-              bar: [
-                type: :integer
-              ]
-            ]
-          ]
-      end
-    end
-
-    assert_raise ArgumentError, ~r/Unknown options given/, fn ->
-      defmodule InvalidTypeBySubtype do
-        use Ash.Type.NewType,
-          subtype_of: :map,
-          constraints: [
-            fields: [
-              foo: [
-                instance_of: "invalid",
-                type: :string
-              ],
-              bar: [
-                type: :integer
-              ]
-            ]
-          ]
-      end
-    end
-
-    assert_raise ArgumentError, ~r/Unknown options given/, fn ->
-      defmodule InvalidTypeBySubtype do
-        use Ash.Type.NewType,
-          subtype_of: :map,
-          constraints: [
-            fields: [
-              foo: [
-                type: :string,
-                constraints: [something: :invalid]
-              ],
-              bar: [
-                type: :integer
-              ]
-            ]
-          ]
+          constraints: [fields: [foo, bar]] ++ [{:something, :invalid}]
       end
     end
   end
