@@ -568,7 +568,10 @@ defmodule Ash.Actions.Update do
                                       Ash.Resource.Info.attribute_names(changeset.resource)
 
                                     {:ok,
-                                     Map.merge(changeset.data, Map.take(record, Enum.to_list(attribute_names)))}
+                                     Map.merge(
+                                       changeset.data,
+                                       Map.take(record, Enum.to_list(attribute_names))
+                                     )}
 
                                   _ ->
                                     {:error,
