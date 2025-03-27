@@ -67,4 +67,18 @@ defmodule Ash.Test.Type.NewTypeTest do
                %{"custom_map" => [%{"foo" => "baz", "bar" => "42", "other" => "ignored"}]}
              )
   end
+
+  test "returns error for invalid keys" do
+    foo = {:foo, [type: :string]}
+    bar = {:bar, [type: :integer]}
+
+    assert_raise ArgumentError, ~r/Unknown options given/, fn ->
+      defmodule InvalidTypeBySubtype do
+        use Ash.Type.NewType,
+          subtype_of: :map,
+          something: :invalid,
+          constraints: [fields: [foo, bar]] ++ [{:something, :invalid}]
+      end
+    end
+  end
 end

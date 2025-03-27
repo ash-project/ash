@@ -40,10 +40,10 @@ defmodule Ash.Resource.Actions.Action do
   def transform(%{returns: original_type, constraints: constraints} = thing) do
     type = Ash.Type.get_type!(original_type)
 
-    with {:ok, constraints} <- Ash.Type.validate_constraints(type, constraints),
-         {:ok, constraints} <- Ash.Type.init(type, constraints) do
-      {:ok, %{thing | returns: type, constraints: constraints}}
-    else
+    case Ash.Type.init(type, constraints) do
+      {:ok, constraints} ->
+        {:ok, %{thing | returns: type, constraints: constraints}}
+
       {:error, error} ->
         {:error, error}
     end

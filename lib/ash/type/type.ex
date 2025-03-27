@@ -897,7 +897,14 @@ defmodule Ash.Type do
 
   def init(type, constraints) do
     type = get_type(type)
-    type.init(constraints)
+
+    case validate_constraints(type, constraints) do
+      {:ok, constraints} ->
+        type.init(constraints)
+
+      {:error, error} ->
+        {:error, Exception.format(:error, error)}
+    end
   end
 
   @doc """
