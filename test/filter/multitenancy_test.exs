@@ -19,7 +19,7 @@ defmodule Ash.Test.MultitenancyTest do
 
     actions do
       default_accept :*
-      defaults [:read]
+      defaults [:read, update: :*]
 
       create :create do
         argument :multitenant_related, {:array, :map}
@@ -82,6 +82,22 @@ defmodule Ash.Test.MultitenancyTest do
     MultiTenant
     |> Ash.get!(1000, tenant: 1)
     |> Ash.destroy!(tenant: 1)
+  end
+
+  test "should preserve loaded relationships when performing no-op update" do
+    multi_tenant =
+      MultiTenant
+      |> Ash.Changeset.for_create(:create, %{id: 1000, owner: 1})
+      |> Ash.create!(load: [:multitenant_related], tenant: 1)
+
+    assert [] = multi_tenant.multitenant_related
+
+    multi_tenant =
+      multi_tenant
+      |> Ash.Changeset.for_update(:update, %{})
+      |> Ash.update!(tenant: 1)
+
+    assert [] = multi_tenant.multitenant_related
   end
 
   defmodule NonMultiTenant do
