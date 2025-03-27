@@ -46,13 +46,7 @@ defmodule Ash.Actions.Action do
       Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :action],
                                 metadata do
         if input.action.transaction? do
-          notify? =
-            if Process.get(:ash_started_transaction?) do
-              false
-            else
-              Process.put(:ash_started_transaction?, true)
-              true
-            end
+          notify? = !Process.put(:ash_started_transaction?, true)
 
           try do
             resources =

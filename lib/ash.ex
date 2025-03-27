@@ -2838,6 +2838,103 @@ defmodule Ash do
     end
   end
 
+  @transaction_opts_schema [
+    timeout: [
+      type: :timeout,
+      doc: """
+      The time in milliseconds (as an integer) to wait for the transaction to finish or `:infinity` to wait indefinitely.
+
+      If not specified then default behaviour is adapter specific - for `Ecto`-based data layers it will be `15_000`.
+      """
+    ],
+    return_notifications?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Use this if you want to manually handle sending notifications.
+
+      If true the returned tuple will contain notifications list as the last element.
+
+      To send notifications use `Ash.Notifier.notify(notifications)`. It sends any notifications that can be sent, and returns the rest.
+      """
+    ]
+  ]
+
+  transaction_opts = @transaction_opts_schema
+
+  defmodule TransactionOpts do
+    @moduledoc false
+
+    use Spark.Options.Validator, schema: transaction_opts
+  end
+
+  @doc """
+  Wraps the execution of the function in a transaction with the resource's data_layer.
+  Collects notifications during the function's execution and sends them if the transaction was successful.
+
+  #{Spark.Options.docs(@transaction_opts_schema)}
+  """
+  @spec transaction(
+          resource_or_resources :: Ash.Resource.t() | [Ash.Resource.t()],
+          func :: (-> term),
+          opts :: Keyword.t()
+        ) ::
+          {:ok, term}
+          | {:ok, term, list(Ash.Notifier.Notification.t())}
+          | {:error, term}
+  @doc spark_opts: [{2, @transaction_opts_schema}]
+  def transaction(resource_or_resources, func, opts \\ []) do
+    notify? = !Process.put(:ash_started_transaction?, true)
+    old_notifications = Process.delete(:ash_notifications)
+
+    try do
+      with {:ok, opts} <- TransactionOpts.validate(opts),
+           opts <- TransactionOpts.to_options(opts),
+           {:ok, result} <-
+             Ash.DataLayer.transaction(resource_or_resources, func, opts[:timeout], opts[:reason]) do
+        if opts[:return_notifications?] do
+          notifications = Process.delete(:ash_notifications) || []
+
+          {:ok, result, notifications}
+        else
+          if notify? do
+            notifications = Process.delete(:ash_notifications) || []
+
+            remaining = Ash.Notifier.notify(notifications)
+
+            remaining
+            |> Enum.group_by(&{&1.resource, &1.action})
+            |> Enum.each(fn {{resource, action}, remaining} ->
+              Ash.Actions.Helpers.warn_missed!(resource, action, %{notifications: remaining})
+            end)
+          end
+
+          {:ok, result}
+        end
+      else
+        {:error, error} ->
+          Process.delete(:ash_notifications)
+
+          {:error, Ash.Error.to_ash_error(error)}
+      end
+    rescue
+      error ->
+        Process.delete(:ash_notifications)
+
+        reraise error, __STACKTRACE__
+    after
+      if notify? do
+        Process.delete(:ash_started_transaction?)
+      end
+
+      if old_notifications do
+        notifications = Process.get(:ash_notifications) || []
+
+        Process.put(:ash_notifications, old_notifications ++ notifications)
+      end
+    end
+  end
+
   @doc deprecated: """
        Converts a context map to opts to be passed into an action.
        """

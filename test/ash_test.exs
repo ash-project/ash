@@ -373,4 +373,96 @@ defmodule Ash.Test.AshTest do
                Ash.update!(user, %{state: :awake}, action: :update_state)
     end
   end
+
+  describe "transaction/3" do
+    defmodule Notifier do
+      use Ash.Notifier
+
+      def notify(notification) do
+        send(self(), {:notification, notification})
+      end
+    end
+
+    defmodule Item do
+      use Ash.Resource,
+        domain: Domain,
+        data_layer: Ash.DataLayer.Mnesia,
+        notifiers: [Notifier]
+
+      mnesia do
+        table :ash_transations
+      end
+
+      attributes do
+        uuid_primary_key :id
+
+        attribute :title, :string, allow_nil?: false, public?: true
+
+        timestamps()
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, :create, :update]
+      end
+    end
+
+    setup do
+      import ExUnit.CaptureLog
+
+      capture_log(fn ->
+        Ash.DataLayer.Mnesia.start(Domain, [Item])
+      end)
+
+      on_exit(fn ->
+        capture_log(fn ->
+          :mnesia.stop()
+          :mnesia.delete_schema([node()])
+        end)
+      end)
+    end
+
+    test "returns ok tuple with last value from the transaction" do
+      result = Ash.transaction(Item, fn -> :yep end)
+
+      assert {:ok, :yep} == result
+    end
+
+    test "collects and sends notifications after the transaction is done" do
+      Ash.transaction(Item, fn ->
+        Ash.create!(Item, %{title: "it"})
+
+        refute_received {:notification, %{action: %{type: :create}, resource: Item}}
+      end)
+
+      assert_receive {:notification, %{action: %{type: :create}, resource: Item}}
+    end
+
+    test "does not send notifications if the transaction has failed" do
+      result =
+        Ash.transaction(Item, fn ->
+          Ash.create!(Item, %{title: "it"})
+          Ash.create!(Item, %{title: nil})
+        end)
+
+      assert {:error, %Ash.Error.Invalid{}} = result
+
+      refute_received {:notification, %{action: %{type: :create}, resource: Item}}
+    end
+
+    test "returns notifications instead of sending them if `return_notifications?` is true" do
+      result =
+        Ash.transaction(
+          Item,
+          fn ->
+            Ash.create!(Item, %{title: "it"})
+          end,
+          return_notifications?: true
+        )
+
+      assert {:ok, _, [%{action: %{type: :create}, resource: Item}]} = result
+
+      refute_received {:notification, %{action: %{type: :create}, resource: Item}}
+    end
+  end
 end

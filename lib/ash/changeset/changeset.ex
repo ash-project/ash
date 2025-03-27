@@ -3680,13 +3680,7 @@ defmodule Ash.Changeset do
           |> Enum.concat(changeset.action.touches_resources)
           |> Enum.uniq()
 
-        notify? =
-          if Process.get(:ash_started_transaction?) do
-            false
-          else
-            Process.put(:ash_started_transaction?, true)
-            true
-          end
+        notify? = !Process.put(:ash_started_transaction?, true)
 
         resources = Enum.reject(resources, &Ash.DataLayer.in_transaction?/1)
 
