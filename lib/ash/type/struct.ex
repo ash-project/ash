@@ -326,11 +326,9 @@ defmodule Ash.Type.Struct do
                            attribute.type,
                            value,
                            attribute.constraints
-                         )
-                         |> IO.inspect(),
+                         ),
                        {:ok, casted} <-
-                         Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints)
-                         |> IO.inspect() do
+                         Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
                     if is_nil(casted) and attribute.allow_nil? == false do
                       {:halt, {:error, "is invalid"}}
                     else
