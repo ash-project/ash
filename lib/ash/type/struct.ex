@@ -312,27 +312,11 @@ defmodule Ash.Type.Struct do
           is_struct(value) ->
             {:error, "is invalid"}
 
-          true ->
-            if fields(constraints) do
-              {:ok, struct(struct, value)}
-            else
-              keys = Map.keys(value)
+          fields(constraints) ->
+            {:ok, struct(struct, value)}
 
-              if Enum.all?(keys, &is_atom/1) do
-                {:ok, struct(struct, value)}
-              else
-                Map.delete(struct.__struct__(), :__struct__)
-                |> Enum.reduce({:ok, struct(struct)}, fn {key, _value}, {:ok, acc} ->
-                  with :error <- Map.fetch(value, key),
-                       :error <- Map.fetch(value, to_string(key)) do
-                    {:ok, acc}
-                  else
-                    {:ok, val} ->
-                      {:ok, Map.put(acc, key, val)}
-                  end
-                end)
-              end
-            end
+          true ->
+            {:error, "is invalid"}
         end
 
       :error ->
