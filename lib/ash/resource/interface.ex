@@ -13,6 +13,7 @@ defmodule Ash.Resource.Interface do
     :get_by,
     :get_by_identity,
     :not_found_error?,
+    arguments: [],
     default_options: [],
     require_reference?: true
   ]

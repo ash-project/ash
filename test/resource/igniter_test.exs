@@ -3,6 +3,8 @@ defmodule Ash.Resource.IgniterTest do
 
   import Igniter.Test
 
+  @moduletag :igniter
+
   describe "add_new_attribute" do
     test "adds an attribute if it doesnt exists" do
       test_project()

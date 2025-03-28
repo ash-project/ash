@@ -2,6 +2,8 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
   use ExUnit.Case
   import Igniter.Test
 
+  @moduletag :igniter
+
   test "generates a basic resource" do
     test_project()
     |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post"])

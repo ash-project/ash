@@ -1,6 +1,7 @@
 defmodule Mix.Tasks.Ash.ExtendTest do
   use ExUnit.Case
   import Igniter.Test
+  @moduletag :igniter
 
   test "ets extension can be added" do
     test_project()
