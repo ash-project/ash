@@ -11,8 +11,8 @@ defmodule Type.StructTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      attribute :name, :string, allow_nil?: false
-      attribute :title, :string, allow_nil?: false
+      attribute :name, :string, allow_nil?: false, public?: true
+      attribute :title, :string, allow_nil?: false, public?: true
     end
   end
 
@@ -76,6 +76,13 @@ defmodule Type.StructTest do
     attributes do
       uuid_primary_key :id
     end
+  end
+
+  test "an embedded resource can be used" do
+    assert {:ok, %Embedded{name: "fred", title: "title"}} =
+             Ash.Type.apply_constraints(Ash.Type.Struct, %{"name" => "fred", :title => "title"},
+               instance_of: Embedded
+             )
   end
 
   test "it handles valid maps" do

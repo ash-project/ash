@@ -315,6 +315,44 @@ defmodule Ash.Type.Struct do
           fields(constraints) ->
             {:ok, struct(struct, value)}
 
+          Ash.Resource.Info.resource?(struct) ->
+            struct
+            |> Ash.Resource.Info.public_attributes()
+            |> Enum.reduce_while({:ok, struct.__struct__()}, fn attribute, {:ok, record} ->
+              case fetch_field(value, attribute.name) do
+                {:ok, value} ->
+                  with {:ok, casted} <-
+                         Ash.Type.cast_input(
+                           attribute.type,
+                           value,
+                           attribute.constraints
+                         )
+                         |> IO.inspect(),
+                       {:ok, casted} <-
+                         Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints)
+                         |> IO.inspect() do
+                    if is_nil(casted) and attribute.allow_nil? == false do
+                      {:halt, {:error, "is invalid"}}
+                    else
+                      {:cont, {:ok, Map.put(record, attribute.name, casted)}}
+                    end
+                  else
+                    :error ->
+                      {:halt, {:error, "is invalid"}}
+
+                    {:error, error} ->
+                      {:halt, {:error, error}}
+                  end
+
+                :error ->
+                  if attribute.allow_nil? == false do
+                    {:halt, {:error, "is invalid"}}
+                  else
+                    {:cont, {:ok, record}}
+                  end
+              end
+            end)
+
           true ->
             {:error, "is invalid"}
         end
