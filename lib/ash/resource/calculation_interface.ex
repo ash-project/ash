@@ -2,7 +2,7 @@ defmodule Ash.Resource.CalculationInterface do
   @moduledoc """
   Represents a function that evaluates a calculation in a resource's code interface
   """
-  defstruct [:name, :calculation, :args]
+  defstruct [:name, :calculation, args: [], exclude_inputs: []]
 
   @type t :: %__MODULE__{}
 
@@ -16,6 +16,11 @@ defmodule Ash.Resource.CalculationInterface do
       type: :atom,
       doc:
         "The name of the calculation that will be evaluated. Defaults to the same name as the function."
+    ],
+    exclude_inputs: [
+      type: {:list, :atom},
+      default: [],
+      doc: "A list of calculation inputs to not accept in the defined interface"
     ],
     args: [
       type: :any,

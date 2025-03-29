@@ -450,7 +450,7 @@ defmodule Ash.CodeInterface do
         @doc """
              #{calculation.description || "Calculates #{calculation.name} action on #{inspect(resource)}."}
 
-             #{Ash.CodeInterface.describe_calculation(resource, calculation, interface.args)}
+             #{Ash.CodeInterface.describe_calculation(resource, calculation, interface.args, interface.exclude_inputs)}
 
              ### Options
 
@@ -464,7 +464,7 @@ defmodule Ash.CodeInterface do
           {refs, arguments, record} =
             Enum.reduce(
               [unquote_splicing(arg_access)],
-              {%{}, %{}, nil},
+              {opts[:refs] || %{}, opts[:args] || %{}, nil},
               fn config, {refs, arguments, record} ->
                 case config[:type] do
                   :_record ->
@@ -483,6 +483,17 @@ defmodule Ash.CodeInterface do
               end
             )
 
+          case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
+                 Map.has_key?(arguments, input) || Map.has_key?(arguments, to_string(input))
+               end) do
+            [] ->
+              :ok
+
+            inputs ->
+              raise ArgumentError,
+                    "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.calculation)}/#{unquote(Enum.count(arg_bindings) + 1)}"
+          end
+
           opts = [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
           Ash.calculate!(unquote(resource), unquote(interface.calculation), opts)
         end
@@ -490,7 +501,7 @@ defmodule Ash.CodeInterface do
         @doc """
              #{calculation.description || "Calculates #{calculation.name} action on #{inspect(resource)}."}
 
-             #{Ash.CodeInterface.describe_calculation(resource, calculation, interface.args)}
+             #{Ash.CodeInterface.describe_calculation(resource, calculation, interface.args, interface.exclude_inputs)}
 
              ### Options
 
@@ -504,7 +515,7 @@ defmodule Ash.CodeInterface do
           {refs, arguments, record} =
             Enum.reduce(
               [unquote_splicing(arg_access)],
-              {%{}, %{}, nil},
+              {opts[:refs] || %{}, opts[:args] || %{}, nil},
               fn config, {refs, arguments, record} ->
                 case config[:type] do
                   :_record ->
@@ -522,6 +533,17 @@ defmodule Ash.CodeInterface do
                 end
               end
             )
+
+          case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
+                 Map.has_key?(arguments, input) || Map.has_key?(arguments, to_string(input))
+               end) do
+            [] ->
+              :ok
+
+            inputs ->
+              raise ArgumentError,
+                    "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.calculation)}/#{unquote(Enum.count(arg_bindings) + 1)}"
+          end
 
           opts = [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
           Ash.calculate(unquote(resource), unquote(interface.calculation), opts)
@@ -1885,9 +1907,10 @@ defmodule Ash.CodeInterface do
   end
 
   @doc false
-  def describe_calculation(resource, calculation, args) do
+  def describe_calculation(resource, calculation, args, exclude_inputs) do
     calculation.arguments
     |> Enum.map(& &1.name)
+    |> Enum.reject(&(&1 in exclude_inputs))
     |> case do
       [] ->
         ""

@@ -1,6 +1,6 @@
 defmodule Ash.Test.Actions.DestroyTest do
   @moduledoc false
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   require Ash.Query
 

@@ -8,11 +8,11 @@ defmodule Ash.Resource.Interface do
   defstruct [
     :name,
     :action,
-    :args,
     :get?,
     :get_by,
     :get_by_identity,
     :not_found_error?,
+    args: [],
     arguments: [],
     exclude_inputs: [],
     default_options: [],

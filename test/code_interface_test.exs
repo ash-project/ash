@@ -83,6 +83,11 @@ defmodule Ash.Test.CodeInterfaceTest do
 
       define_calculation(:full_name, args: [:first_name, :last_name])
 
+      define_calculation(:full_name_excluded,
+        exclude_inputs: [:first_name],
+        calculation: :full_name
+      )
+
       define_calculation(:full_name_opt,
         calculation: :full_name,
         args: [:first_name, :last_name, {:optional, :separator}]
@@ -209,6 +214,12 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert_raise ArgumentError,
                    ~r/`name` not accepted by Ash\.Test\.CodeInterfaceTest\.User\.hello_excluded\/2/,
                    fn -> User.hello_excluded(%{name: "fred"}) end
+
+      assert_raise ArgumentError,
+                   ~r/`first_name` not accepted by Ash\.Test\.CodeInterfaceTest\.User\.full_name\/1/,
+                   fn ->
+                     User.full_name_excluded!(args: %{first_name: "Zach"})
+                   end
     end
   end
 
