@@ -67,6 +67,12 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :destroy_by_id, action: :destroy_by_id_without_filter, get?: true, args: [:id]
       define :create, args: [{:optional, :first_name}]
       define :hello, args: [:name]
+
+      define :hello_excluded do
+        action :hello
+        exclude_inputs([:name])
+      end
+
       define :hello_actor, default_options: [actor: %{name: "William Shatner"}]
       define :create_with_map, args: [:map]
       define :update_with_map, args: [:map]
@@ -196,6 +202,14 @@ defmodule Ash.Test.CodeInterfaceTest do
     Application.put_env(Notifier, :notifier_test_pid, self())
 
     :ok
+  end
+
+  describe "exclude_inputs" do
+    test "raises an error when used" do
+      assert_raise ArgumentError,
+                   ~r/`name` not accepted by Ash\.Test\.CodeInterfaceTest\.User\.hello_excluded\/2/,
+                   fn -> User.hello_excluded(%{name: "fred"}) end
+    end
   end
 
   describe "generic actions" do

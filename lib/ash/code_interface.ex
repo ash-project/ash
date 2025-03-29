@@ -603,6 +603,17 @@ defmodule Ash.CodeInterface do
               if is_list(params),
                 do: Enum.map(params, &Map.merge(&1, arg_params)),
                 else: Map.merge(params, arg_params)
+
+            case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
+                   Map.has_key?(params, input) || Map.has_key?(params, to_string(input))
+                 end) do
+              [] ->
+                :ok
+
+              inputs ->
+                raise ArgumentError,
+                      "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.name)}/#{unquote(Enum.count(interface.args || []) + 2)}"
+            end
           end
 
         {subject, subject_args, resolve_subject, act, act!} =
@@ -1475,7 +1486,7 @@ defmodule Ash.CodeInterface do
         @doc """
              #{action.description || "Calls the #{action.name} action on #{inspect(resource)}."}
 
-             #{Ash.CodeInterface.describe_action(resource, action, interface.args)}
+             #{Ash.CodeInterface.describe_action(resource, action, interface.args, interface.exclude_inputs)}
 
              ## Options
 
@@ -1507,7 +1518,7 @@ defmodule Ash.CodeInterface do
 
              Raises any errors instead of returning them
 
-             #{Ash.CodeInterface.describe_action(resource, action, interface.args)}
+             #{Ash.CodeInterface.describe_action(resource, action, interface.args, interface.exclude_inputs)}
 
              ## Options
 
@@ -1820,10 +1831,11 @@ defmodule Ash.CodeInterface do
   end
 
   @doc false
-  def describe_action(resource, action, args) do
+  def describe_action(resource, action, args, exclude_inputs) do
     resource
     |> Ash.Resource.Info.action_inputs(action.name)
     |> Enum.filter(&is_atom/1)
+    |> Enum.reject(&(&1 in exclude_inputs))
     |> Enum.uniq()
     |> case do
       [] ->

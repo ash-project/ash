@@ -14,6 +14,7 @@ defmodule Ash.Resource.Interface do
     :get_by_identity,
     :not_found_error?,
     arguments: [],
+    exclude_inputs: [],
     default_options: [],
     require_reference?: true
   ]
@@ -302,6 +303,11 @@ defmodule Ash.Resource.Interface do
       default: true,
       doc:
         "For update and destroy actions, require a resource or identifier to be passed in as the first argument. Not relevant for other action types."
+    ],
+    exclude_inputs: [
+      type: {:list, :atom},
+      default: [],
+      doc: "A list of action inputs to not accept in the defined interface"
     ],
     get?: [
       type: :boolean,
