@@ -117,6 +117,7 @@ spark_locals_without_parens = [
   error_handler: 1,
   event: 1,
   except: 1,
+  exclude_inputs: 1,
   exists: 2,
   exists: 3,
   fail_if_invalid?: 1,

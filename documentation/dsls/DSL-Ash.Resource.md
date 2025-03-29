@@ -2037,6 +2037,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 | [`args`](#code_interface-define-args){: #code_interface-define-args } | `list(atom \| {:optional, atom})` |  | Map specific arguments to named inputs. Can provide any argument/attributes that the action allows. |
 | [`not_found_error?`](#code_interface-define-not_found_error?){: #code_interface-define-not_found_error? } | `boolean` | `true` | If the action or interface is configured with `get?: true`, this determines whether or not an error is raised or `nil` is returned. |
 | [`require_reference?`](#code_interface-define-require_reference?){: #code_interface-define-require_reference? } | `boolean` | `true` | For update and destroy actions, require a resource or identifier to be passed in as the first argument. Not relevant for other action types. |
+| [`exclude_inputs`](#code_interface-define-exclude_inputs){: #code_interface-define-exclude_inputs } | `list(atom)` | `[]` | A list of action inputs to not accept in the defined interface |
 | [`get?`](#code_interface-define-get?){: #code_interface-define-get? } | `boolean` | `false` | Expects to only receive a single result from a read action or a bulk update/destroy, and returns a single result instead of a list. Sets `require_reference?` to false automatically. |
 | [`get_by`](#code_interface-define-get_by){: #code_interface-define-get_by } | `atom \| list(atom)` |  | Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true and `require_reference?` to false automatically. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
 | [`get_by_identity`](#code_interface-define-get_by_identity){: #code_interface-define-get_by_identity } | `atom` |  | Takes an identity, gets its field list, and performs the same logic as `get_by` with those fields. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
@@ -2082,6 +2083,7 @@ define_calculation :referral_link, args: [{:arg, :id}, {:ref, :id}]
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`calculation`](#code_interface-define_calculation-calculation){: #code_interface-define_calculation-calculation } | `atom` |  | The name of the calculation that will be evaluated. Defaults to the same name as the function. |
+| [`exclude_inputs`](#code_interface-define_calculation-exclude_inputs){: #code_interface-define_calculation-exclude_inputs } | `list(atom)` | `[]` | A list of calculation inputs to not accept in the defined interface |
 | [`args`](#code_interface-define_calculation-args){: #code_interface-define_calculation-args } | `any` | `[]` | Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more. |
 
 

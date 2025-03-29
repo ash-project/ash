@@ -81,6 +81,7 @@ defmodule Ash.Type.Atom do
 
   def cast_input("", _), do: {:ok, nil}
 
+  # sobelow_skip ["DOS.StringToAtom"]
   def cast_input(value, constraints) when is_binary(value) do
     if constraints[:unsafe_to_atom?] do
       {:ok, String.to_atom(value)}
