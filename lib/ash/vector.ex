@@ -12,6 +12,14 @@ defmodule Ash.Vector do
           dimensions: pos_integer()
         }
 
+  defimpl Jason.Encoder do
+    def encode(vector, opts) do
+      vector
+      |> Ash.Vector.to_list()
+      |> Jason.Encode.list(opts)
+    end
+  end
+
   @doc """
   Creates a new vector from a list or tensor
   """
