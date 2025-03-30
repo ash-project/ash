@@ -138,7 +138,7 @@ pub_sub do
   prefix "post"
 
   publish :destroy, ["foo", :id]
-  publish :update, ["bar", :name] event: "name_change"
+  publish :update, ["bar", :name], event: "name_change"
   publish_all :create, "created"
 end
 
