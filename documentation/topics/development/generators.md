@@ -42,6 +42,7 @@ Ash can be installed into a project using `igniter`. Some examples of how this c
 - `mix ash.gen.domain` - Generates a new `Ash.Domain`
 - `mix ash.gen.enum` - Generates a new `Ash.Type.Enum`
 - `mix ash.gen.base_resource` - Generates a new base resource.
+- `mix ash.gen.change` - Generates a custom change module.
 
 ## Patchers
 
