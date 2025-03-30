@@ -276,3 +276,35 @@ Ash.Query.filter(User, full_name == "Hob Goblin")
 
 Ash.Query.filter(User, full_name(delimiter: "~") == "Hob~Goblin")
 ```
+
+
+
+## Case vs Cond Expressions
+
+When working with conditional expressions in Ash, you should use `cond` instead of `case` statements. Here's an example:
+
+```elixir
+# This works - using cond
+calculations do
+  calculate :user_order, :integer, expr(
+    cond do
+      role == :principal -> 1
+      role == :teacher -> 2
+      role == :student -> 3
+    end
+  )
+end
+
+# This doesn't work - using case
+calculations do
+  calculate :user_order, :integer, expr(
+    case role do
+      :principal -> 1
+      :teacher -> 2
+      :student -> 3
+    end
+  )
+end
+```
+
+The `cond` expression is the correct way to handle conditional logic in Ash expressions.

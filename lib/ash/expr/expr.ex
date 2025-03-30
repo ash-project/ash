@@ -746,6 +746,27 @@ defmodule Ash.Expr do
     |> do_expr(escape?)
   end
 
+  def do_expr({:case, _, _}, _escape?) do
+    raise ArgumentError, message: """
+      `case` expressions are not supported in Ash expressions.
+      Please use `cond` expressions instead. For example:
+
+      # Instead of:
+      case role do
+        :principal -> 1
+        :teacher -> 2
+        :student -> 3
+      end
+
+      # Use:
+      cond do
+        role == :principal -> 1
+        role == :teacher -> 2
+        role == :student -> 3
+      end
+      """
+  end
+
   def do_expr({:lazy, _, args}, escape?) do
     soft_escape(%Ash.Query.Call{name: :lazy, args: args, operator?: false}, escape?)
   end
@@ -1290,16 +1311,14 @@ defmodule Ash.Expr do
                     {arg_types, single}
 
                   _ ->
-                    {arg_types, nil}
-                end
+                    case Enum.uniq_by(all_returns, &elem(&1, 0)) do
+                      [single] ->
+                        {arg_types,
+                         Enum.find(all_returns, single, fn {_, constraints} -> constraints != [] end)}
 
-                case Enum.uniq_by(all_returns, &elem(&1, 0)) do
-                  [single] ->
-                    {arg_types,
-                     Enum.find(all_returns, single, fn {_, constraints} -> constraints != [] end)}
-
-                  _ ->
-                    {arg_types, nil}
+                      _ ->
+                        {arg_types, nil}
+                    end
                 end
 
               returns ->
