@@ -119,14 +119,14 @@ defmodule Ash.Type.Enum do
   @callback match(term) :: {:ok, atom} | :error
 
   defmacro __using__(opts) do
-    quote location: :keep, generated: true, bind_quoted: [opts: opts, behaviour: __MODULE__] do
+    quote location: :keep, generated: true, bind_quoted: [opts: opts] do
       use Ash.Type
 
       require Ash.Expr
 
-      @behaviour behaviour
+      @behaviour Ash.Type.Enum
 
-      @values_map behaviour.build_values_map(opts[:values])
+      @values_map Ash.Type.Enum.build_values_map(opts[:values])
       @values Map.keys(@values_map)
 
       atom_typespec =
@@ -158,24 +158,24 @@ defmodule Ash.Type.Enum do
 
       @any_not_downcase? Enum.any?(@string_values, fn value -> String.downcase(value) != value end)
 
-      @impl behaviour
+      @impl Ash.Type.Enum
       def values, do: @values
 
-      @impl behaviour
+      @impl Ash.Type.Enum
       def label(value) when value in @values do
         value
         |> details()
         |> Map.get(:label)
       end
 
-      @impl behaviour
+      @impl Ash.Type.Enum
       def description(value) when value in @values do
         value
         |> details()
         |> Map.get(:description)
       end
 
-      @impl behaviour
+      @impl Ash.Type.Enum
       def details(value) when value in @values do
         Map.get(@values_map, value)
       end
@@ -277,7 +277,7 @@ defmodule Ash.Type.Enum do
         end
       end
 
-      @impl behaviour
+      @impl Ash.Type.Enum
       @spec match?(term) :: boolean
       def match?(term) do
         case match(term) do
@@ -286,7 +286,7 @@ defmodule Ash.Type.Enum do
         end
       end
 
-      @impl behaviour
+      @impl Ash.Type.Enum
       @spec match(term) :: {:ok, atom} | :error
       def match(value) when value in @values, do: {:ok, value}
       def match(value) when value in @string_values, do: {:ok, String.to_existing_atom(value)}
