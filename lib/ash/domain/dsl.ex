@@ -94,6 +94,11 @@ defmodule Ash.Domain.Dsl do
     examples: [
       "define :get_user_by_id, action: :get_by_id, args: [:id], get?: true"
     ],
+    entities: [
+      custom_inputs: [
+        Ash.Resource.Dsl.custom_input_dsl()
+      ]
+    ],
     target: Ash.Resource.Interface,
     schema: Ash.Resource.Interface.schema(),
     transform: {Ash.Resource.Interface, :transform, []},
@@ -108,6 +113,11 @@ defmodule Ash.Domain.Dsl do
     examples: [
       "define_calculation :referral_link, User, args: [:id]",
       "define_calculation :referral_link, User, args: [{:arg, :id}, {:ref, :id}]"
+    ],
+    entities: [
+      custom_inputs: [
+        Ash.Resource.Dsl.custom_input_dsl()
+      ]
     ],
     target: Ash.Resource.CalculationInterface,
     schema: Ash.Resource.CalculationInterface.schema(),

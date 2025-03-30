@@ -206,6 +206,16 @@ defmodule Ash.Test.CodeInterfaceTest do
       resource User do
         define :get_user, action: :read, get_by: :id
 
+        define :hello_to_user do
+          action :hello
+          args [:user]
+
+          custom_input :user, :map do
+            allow_nil? false
+            transform to: :name, using: &Map.fetch(&1, :name)
+          end
+        end
+
         define_calculation(:full_name, args: [:first_name, :last_name])
       end
     end
@@ -238,16 +248,25 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert_raise ArgumentError, ~r/`name` not accepted/, fn ->
         User.hello_to_user(%{name: "name"}, %{name: "name"})
       end
+
+      assert_raise ArgumentError, ~r/`name` not accepted/, fn ->
+        Domain.hello_to_user(%{name: "name"}, %{name: "name"})
+      end
     end
 
     test "are validated" do
       assert_raise Ash.Error.Invalid, ~r/custom_input user is required/, fn ->
-        assert "Hello name" == User.hello_to_user!(nil)
+        User.hello_to_user!(nil)
+      end
+
+      assert_raise Ash.Error.Invalid, ~r/custom_input user is required/, fn ->
+        Domain.hello_to_user!(nil)
       end
     end
 
     test "are suppled and transformed" do
       assert "Hello name" == User.hello_to_user!(%{name: "name"})
+      assert "Hello name" == Domain.hello_to_user!(%{name: "name"})
     end
   end
 

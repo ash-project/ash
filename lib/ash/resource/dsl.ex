@@ -936,6 +936,9 @@ defmodule Ash.Resource.Dsl do
     transform: {Ash.Type, :set_type_transformation, []}
   }
 
+  @doc false
+  def custom_input_dsl, do: @custom_input
+
   @define_calculation %Spark.Dsl.Entity{
     name: :define_calculation,
     describe: """
