@@ -79,7 +79,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
         custom_input :user, :map do
           allow_nil? false
-          transform to: :name, using: &Map.fetch(&1, :name)
+          transform to: :name, using: &Map.fetch!(&1, :name)
         end
       end
 
@@ -212,7 +212,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
           custom_input :user, :map do
             allow_nil? false
-            transform to: :name, using: &Map.fetch(&1, :name)
+            transform to: :name, using: &Map.fetch!(&1, :name)
           end
         end
 

@@ -2139,13 +2139,8 @@ defmodule Ash.CodeInterface do
 
               {params, [error | errors]}
             else
-              case apply_custom_input_transform(params, casted, key, custom_input) do
-                {:ok, params} ->
-                  {params, errors}
-
-                {:error, error} ->
-                  {:error, [Ash.Error.to_ash_error(error) | errors]}
-              end
+              params = apply_custom_input_transform(params, casted, key, custom_input)
+              {params, errors}
             end
           else
             :error ->
@@ -2222,43 +2217,31 @@ defmodule Ash.CodeInterface do
   end
 
   defp apply_custom_input_transform(params, casted, key, %{transform: nil}) do
-    {:ok, Map.put(params, key, casted)}
+    Map.put(params, key, casted)
   end
 
   defp apply_custom_input_transform(params, casted, key, %{
          transform: %{to: nil, using: nil}
        }) do
-    {:ok, Map.put(params, key, casted)}
+    Map.put(params, key, casted)
   end
 
   defp apply_custom_input_transform(params, casted, key, %{
          transform: %{to: to, using: nil}
        }) do
-    {:ok, params |> Map.delete(key) |> Map.put(to, casted)}
+    params |> Map.delete(key) |> Map.put(to, casted)
   end
 
   defp apply_custom_input_transform(params, casted, key, %{
          transform: %{to: nil, using: using}
        }) do
-    case using.(casted) do
-      {:ok, casted} ->
-        {:ok, Map.put(params, key, casted)}
-
-      {:error, error} ->
-        {:error, error}
-    end
+    Map.put(params, key, using.(casted))
   end
 
   defp apply_custom_input_transform(params, casted, key, %{
          transform: %{to: to, using: using}
        }) do
-    case using.(casted) do
-      {:ok, casted} ->
-        {:ok, params |> Map.delete(key) |> Map.put(to, casted)}
-
-      {:error, error} ->
-        {:error, error}
-    end
+    params |> Map.delete(key) |> Map.put(to, using.(casted))
   end
 
   defp fetch_key(map, key) do
