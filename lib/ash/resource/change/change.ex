@@ -207,6 +207,22 @@ defmodule Ash.Resource.Change do
 
   defmacro __before_compile__(_) do
     quote do
+      if !Module.defines?(__MODULE__, {:change, 3}, :def) &&
+           !Module.defines?(__MODULE__, {:atomic, 3}, :def) &&
+           !Module.defines?(__MODULE__, {:batch_change, 3}, :def) do
+        raise """
+        Must define at least one of the following functions in #{inspect(__MODULE__)}:
+
+            def change(changeset, opts, context)
+
+            def batch_change(changeset, opts, context)
+
+            def atomic(changeset, opts, context)
+
+        Perhaps you have a typo or have incorrectly defined one of the above functions?
+        """
+      end
+
       if Module.defines?(__MODULE__, {:change, 3}, :def) do
         @impl true
         def has_change?, do: true
