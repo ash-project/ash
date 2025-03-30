@@ -215,7 +215,7 @@ defmodule Ash.Resource.Change do
 
             def change(changeset, opts, context)
 
-            def batch_change(changeset, opts, context)
+            def batch_change(changesets, opts, context)
 
             def atomic(changeset, opts, context)
 
