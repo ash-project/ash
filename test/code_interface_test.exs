@@ -68,6 +68,16 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :create, args: [{:optional, :first_name}]
       define :hello, args: [:name]
 
+      define :update_by_id_map do
+        action :update_by_id_without_filter
+        get? true
+        args [:map]
+
+        custom_input :map, :map do
+          transform to: :id, using: &Map.fetch!(&1, :id)
+        end
+      end
+
       define :hello_excluded do
         action :hello
         exclude_inputs([:name])
@@ -257,6 +267,14 @@ defmodule Ash.Test.CodeInterfaceTest do
     test "are validated" do
       assert_raise Ash.Error.Invalid, ~r/custom_input user is required/, fn ->
         User.hello_to_user!(nil)
+      end
+
+      assert_raise Ash.Error.Invalid, ~r/custom_input user is required/, fn ->
+        Domain.hello_to_user!(nil)
+      end
+
+      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for map: is invalid/, fn ->
+        User.update_by_id_map!(10)
       end
 
       assert_raise Ash.Error.Invalid, ~r/custom_input user is required/, fn ->

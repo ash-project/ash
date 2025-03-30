@@ -870,6 +870,7 @@ defmodule Ash.CodeInterface do
                         changeset ->
                           changeset
                       end
+                      |> Ash.Changeset.new()
                       |> Ash.Changeset.add_error(custom_input_errors)
                       |> Ash.Changeset.for_create(unquote(action.name), params, changeset_opts)
                     else
