@@ -16,7 +16,7 @@ defmodule Ash.Test.ExprTest do
         )
         |> Ash.Filter.hydrate_refs(%{})
 
-        determine_types(func, args)
+      determine_types(func, args)
     end
   end
 
@@ -41,6 +41,7 @@ defmodule Ash.Test.ExprTest do
         Code.eval_quoted(
           quote do
             import Ash.Expr
+
             expr(
               case :role do
                 :principal -> 1

@@ -747,7 +747,8 @@ defmodule Ash.Expr do
   end
 
   def do_expr({:case, _, _}, _escape?) do
-    raise ArgumentError, message: """
+    raise ArgumentError,
+      message: """
       `case` expressions are not supported in Ash expressions.
       Please use `cond` expressions instead. For example:
 
@@ -1314,7 +1315,9 @@ defmodule Ash.Expr do
                     case Enum.uniq_by(all_returns, &elem(&1, 0)) do
                       [single] ->
                         {arg_types,
-                         Enum.find(all_returns, single, fn {_, constraints} -> constraints != [] end)}
+                         Enum.find(all_returns, single, fn {_, constraints} ->
+                           constraints != []
+                         end)}
 
                       _ ->
                         {arg_types, nil}
