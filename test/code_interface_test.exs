@@ -73,6 +73,16 @@ defmodule Ash.Test.CodeInterfaceTest do
         exclude_inputs([:name])
       end
 
+      define :hello_to_user do
+        action :hello
+        args [:user]
+
+        custom_input :user, :map do
+          allow_nil? false
+          transform to: :name, using: &Map.fetch(&1, :name)
+        end
+      end
+
       define :hello_actor, default_options: [actor: %{name: "William Shatner"}]
       define :create_with_map, args: [:map]
       define :update_with_map, args: [:map]
@@ -220,6 +230,24 @@ defmodule Ash.Test.CodeInterfaceTest do
                    fn ->
                      User.full_name_excluded!(args: %{first_name: "Zach"})
                    end
+    end
+  end
+
+  describe "custom_input" do
+    test "exclude inputs from required positional arguments" do
+      assert_raise ArgumentError, ~r/`name` not accepted/, fn ->
+        User.hello_to_user(%{name: "name"}, %{name: "name"})
+      end
+    end
+
+    test "are validated" do
+      assert_raise Ash.Error.Invalid, ~r/custom_input user is required/, fn ->
+        assert "Hello name" == User.hello_to_user!(nil)
+      end
+    end
+
+    test "are suppled and transformed" do
+      assert "Hello name" == User.hello_to_user!(%{name: "name"})
     end
   end
 

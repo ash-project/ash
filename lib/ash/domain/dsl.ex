@@ -174,7 +174,11 @@ defmodule Ash.Domain.Dsl do
     Ash.Domain.Verifiers.ValidateArgumentsToCodeInterface
   ]
 
+  @transformers [
+    Ash.Domain.Transformers.SetInterfaceExcludeInputs
+  ]
+
   @moduledoc false
 
-  use Spark.Dsl.Extension, sections: @sections, verifiers: @verifiers
+  use Spark.Dsl.Extension, sections: @sections, verifiers: @verifiers, transformers: @transformers
 end

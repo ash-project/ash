@@ -159,3 +159,48 @@ For example:
 MyApp.Blog.my_posts(stream?: true, actor: me)
 # => #Stream<...>
 ```
+
+### Customizing the generated function
+
+Often we want to have a slightly different interface when calling actions with functions,
+or we want to maintain backwards compatibility for callers of our code interface while 
+changing the underlying action implementation.
+
+You can define `custom_input`s on your code interfaces to massage arguments from the function
+into a shape expected by the action.
+
+For example, lets say we have an action that accepts an `artist_id` as an argument. We want
+it to use `artist_id` for two reasons: it is the only part of the artist required to perform
+the action, and accepting ids is better for an action supporting usage over an API. However,
+we want the function itself to accept either an artist *or* an artist_id.
+
+```elixir
+define :follow_artist do
+  action :follow
+
+  # `artist` (from the custom input below) is a positional argument to the function
+  args [:artist]
+
+  # make a custom input called `artist`, that is a union type
+  custom_input :artist, :union do
+    # allow passing either an artist or an artist_id
+    constraints types: [
+      artist: [type: :struct, constraints: [instance_of: Artist]],
+      artist_id: [type: :uuid]
+    ]
+
+    transform do
+      # Pass it to the action as `artist_id`
+      to :artist_id
+
+      # Extracting the value using this function
+      using fn 
+        %Ash.Union{type: :artist, value: value} -> 
+          {:ok, value.id}
+        %Ash.Union{type: :artist_id, value: value} ->
+          {:ok, value}
+      end
+    end
+  end
+end
+```

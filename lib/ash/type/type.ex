@@ -1173,7 +1173,7 @@ defmodule Ash.Type do
   @doc """
   Confirms if a casted value matches the provided constraints.
   """
-  @spec apply_constraints(t(), term, constraints()) :: {:ok, term} | {:error, String.t()}
+  @spec apply_constraints(t(), term, constraints()) :: {:ok, term} | {:error, term()}
   def apply_constraints({:array, {:array, type}}, term, constraints) do
     type = get_type(type)
     map_while_ok(term, &apply_constraints({:array, type}, &1, item_constraints(constraints)))

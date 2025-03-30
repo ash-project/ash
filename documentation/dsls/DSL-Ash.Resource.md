@@ -1982,7 +1982,11 @@ Functions that will be defined on the resource. See the [code interface guide](/
 
 ### Nested DSLs
  * [define](#code_interface-define)
+   * custom_input
+     * transform
  * [define_calculation](#code_interface-define_calculation)
+   * custom_input
+     * transform
 
 
 ### Examples
@@ -2015,6 +2019,9 @@ define name
 Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
 
 
+### Nested DSLs
+ * [custom_input](#code_interface-define-custom_input)
+   * transform
 
 
 ### Examples
@@ -2044,6 +2051,100 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 | [`default_options`](#code_interface-define-default_options){: #code_interface-define-default_options } | `keyword` | `[]` | Default options to be merged with client-provided options. These can override domain or action defaults. `:load`, `:bulk_options`, and `:page` options will be deep merged. |
 
 
+### code_interface.define.custom_input
+```elixir
+custom_input name, type
+```
+
+
+Define or customize an input to the action. 
+
+See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
+
+
+### Nested DSLs
+ * [transform](#code_interface-define-custom_input-transform)
+
+
+### Examples
+```
+custom_input :artist, :struct do
+  transform to: :artist_id, with: &{:ok, &1.id}
+
+  constraints instance_of: Artist
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#code_interface-define-custom_input-name){: #code_interface-define-custom_input-name .spark-required} | `atom` |  | The name of the argument |
+| [`type`](#code_interface-define-custom_input-type){: #code_interface-define-custom_input-type .spark-required} | `module` |  | The type of the argument. See `Ash.Type` for more. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#code_interface-define-custom_input-description){: #code_interface-define-custom_input-description } | `String.t` |  | An optional description for the argument. |
+| [`constraints`](#code_interface-define-custom_input-constraints){: #code_interface-define-custom_input-constraints } | `keyword` | `[]` | Constraints to provide to the type when casting the value. For more information, see `Ash.Type`. |
+| [`allow_nil?`](#code_interface-define-custom_input-allow_nil?){: #code_interface-define-custom_input-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
+| [`sensitive?`](#code_interface-define-custom_input-sensitive?){: #code_interface-define-custom_input-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
+| [`default`](#code_interface-define-custom_input-default){: #code_interface-define-custom_input-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+
+
+### code_interface.define.custom_input.transform
+
+
+A transformation to be applied to the custom input.
+
+
+
+
+### Examples
+```
+transform do 
+  to :artist_id
+  with &{:ok, &1.id}
+end
+
+```
+
+```
+transform do 
+  to :points
+  with &try_parse_integer/1
+end
+
+```
+
+
+
+
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`to`](#code_interface-define-custom_input-transform-to){: #code_interface-define-custom_input-transform-to } | `atom` |  | A key to rewrite the argument to. If the custom input is also a required positional argument, then the `to` is automatically added to the `exclude_inputs` list. |
+| [`using`](#code_interface-define-custom_input-transform-using){: #code_interface-define-custom_input-transform-using } | `(any -> any)` |  | A function to use to transform the value. Must return `{:ok, value}` or `{:error, error}` |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Interface.CustomInput.Transform`
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Interface.CustomInput`
+
 
 
 
@@ -2060,6 +2161,9 @@ define_calculation name
 Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
 
 
+### Nested DSLs
+ * [custom_input](#code_interface-define_calculation-custom_input)
+   * transform
 
 
 ### Examples
@@ -2086,6 +2190,100 @@ define_calculation :referral_link, args: [{:arg, :id}, {:ref, :id}]
 | [`exclude_inputs`](#code_interface-define_calculation-exclude_inputs){: #code_interface-define_calculation-exclude_inputs } | `list(atom)` | `[]` | A list of calculation inputs to not accept in the defined interface |
 | [`args`](#code_interface-define_calculation-args){: #code_interface-define_calculation-args } | `any` | `[]` | Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more. |
 
+
+### code_interface.define_calculation.custom_input
+```elixir
+custom_input name, type
+```
+
+
+Define or customize an input to the action. 
+
+See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
+
+
+### Nested DSLs
+ * [transform](#code_interface-define_calculation-custom_input-transform)
+
+
+### Examples
+```
+custom_input :artist, :struct do
+  transform to: :artist_id, with: &{:ok, &1.id}
+
+  constraints instance_of: Artist
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#code_interface-define_calculation-custom_input-name){: #code_interface-define_calculation-custom_input-name .spark-required} | `atom` |  | The name of the argument |
+| [`type`](#code_interface-define_calculation-custom_input-type){: #code_interface-define_calculation-custom_input-type .spark-required} | `module` |  | The type of the argument. See `Ash.Type` for more. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#code_interface-define_calculation-custom_input-description){: #code_interface-define_calculation-custom_input-description } | `String.t` |  | An optional description for the argument. |
+| [`constraints`](#code_interface-define_calculation-custom_input-constraints){: #code_interface-define_calculation-custom_input-constraints } | `keyword` | `[]` | Constraints to provide to the type when casting the value. For more information, see `Ash.Type`. |
+| [`allow_nil?`](#code_interface-define_calculation-custom_input-allow_nil?){: #code_interface-define_calculation-custom_input-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
+| [`sensitive?`](#code_interface-define_calculation-custom_input-sensitive?){: #code_interface-define_calculation-custom_input-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
+| [`default`](#code_interface-define_calculation-custom_input-default){: #code_interface-define_calculation-custom_input-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
+
+
+### code_interface.define_calculation.custom_input.transform
+
+
+A transformation to be applied to the custom input.
+
+
+
+
+### Examples
+```
+transform do 
+  to :artist_id
+  with &{:ok, &1.id}
+end
+
+```
+
+```
+transform do 
+  to :points
+  with &try_parse_integer/1
+end
+
+```
+
+
+
+
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`to`](#code_interface-define_calculation-custom_input-transform-to){: #code_interface-define_calculation-custom_input-transform-to } | `atom` |  | A key to rewrite the argument to. If the custom input is also a required positional argument, then the `to` is automatically added to the `exclude_inputs` list. |
+| [`using`](#code_interface-define_calculation-custom_input-transform-using){: #code_interface-define_calculation-custom_input-transform-using } | `(any -> any)` |  | A function to use to transform the value. Must return `{:ok, value}` or `{:error, error}` |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Interface.CustomInput.Transform`
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Interface.CustomInput`
 
 
 

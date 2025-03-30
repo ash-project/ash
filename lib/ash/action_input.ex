@@ -406,6 +406,10 @@ defmodule Ash.ActionInput do
   @spec add_error(t(), Ash.Error.error_input() | list(Ash.Error.error_input())) :: t()
   def add_error(input, errors, path \\ [])
 
+  def add_error(input, [], _path) do
+    input
+  end
+
   def add_error(input, errors, path) when is_list(errors) do
     if Keyword.keyword?(errors) do
       errors

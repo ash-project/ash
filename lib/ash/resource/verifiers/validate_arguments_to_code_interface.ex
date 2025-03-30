@@ -44,6 +44,8 @@ defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
 
     action_accepts = MapSet.new(action_accepts || [])
 
+    custom_input_names = MapSet.new(interface.custom_inputs, & &1.name)
+
     errors =
       interface_args
       |> Enum.reduce(
@@ -55,6 +57,9 @@ defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
           interface_arg = to_non_optional_arg(interface_arg)
 
           cond do
+            interface_arg in custom_input_names ->
+              errors
+
             is_attribute?(attribute_names, interface_arg) &&
               not is_argument?(action_arguments, interface_arg) &&
               not is_accepted?(action_accepts, interface_arg) &&
@@ -81,13 +86,13 @@ defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
         message(
           "attributes",
           attribute_not_writable,
-          "as args because they are not defined in the `accept` list of the `#{inspect(action.name)}` action",
+          "as args because they are not defined in the `accept` list of the `#{inspect(action.name)}` action, and are not listed as a custom input",
           [:code_interface, interface_name]
         ),
         message(
           "args",
           arguments_not_supported,
-          "because they are not arguments or attributes supported by the `#{inspect(action.name)}` action",
+          "because they are not arguments or attributes supported by the `#{inspect(action.name)}` action, and are not listed as a custom input",
           [:code_interface, interface_name]
         )
       ]

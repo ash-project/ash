@@ -874,6 +874,68 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @transform %Spark.Dsl.Entity{
+    name: :transform,
+    describe: """
+    A transformation to be applied to the custom input.
+    """,
+    examples: [
+      """
+      transform do 
+        to :artist_id
+        with &{:ok, &1.id}
+      end
+      """,
+      """
+      transform do 
+        to :points
+        with &try_parse_integer/1
+      end
+      """
+    ],
+    target: Ash.Resource.Interface.CustomInput.Transform,
+    schema: [
+      to: [
+        type: :atom,
+        doc:
+          "A key to rewrite the argument to. If the custom input is also a required positional argument, then the `to` is automatically added to the `exclude_inputs` list."
+      ],
+      using: [
+        type: {:fun, 1},
+        doc:
+          "A function to use to transform the value. Must return `{:ok, value}` or `{:error, error}`"
+      ]
+    ]
+  }
+
+  @custom_input %Spark.Dsl.Entity{
+    name: :custom_input,
+    describe: """
+    Define or customize an input to the action. 
+
+    See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
+    """,
+    examples: [
+      """
+      custom_input :artist, :struct do
+        transform to: :artist_id, with: &{:ok, &1.id}
+
+        constraints instance_of: Artist
+      end
+      """
+    ],
+    entities: [
+      transform: [
+        @transform
+      ]
+    ],
+    singleton_entity_keys: [:transform],
+    target: Ash.Resource.Interface.CustomInput,
+    args: [:name, :type],
+    schema: Ash.Resource.Interface.CustomInput.schema(),
+    transform: {Ash.Type, :set_type_transformation, []}
+  }
+
   @define_calculation %Spark.Dsl.Entity{
     name: :define_calculation,
     describe: """
@@ -886,6 +948,11 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.CalculationInterface,
     schema: Ash.Resource.CalculationInterface.schema(),
     transform: {Ash.Resource.CalculationInterface, :transform, []},
+    entities: [
+      custom_inputs: [
+        @custom_input
+      ]
+    ],
     args: [:name]
   }
 
@@ -896,6 +963,11 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       "define :get_user_by_id, action: :get_by_id, args: [:id], get?: true"
+    ],
+    entities: [
+      custom_inputs: [
+        @custom_input
+      ]
     ],
     target: Ash.Resource.Interface,
     schema: Ash.Resource.Interface.schema(),
@@ -1490,6 +1562,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.SetPrimaryActions,
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
+    Ash.Resource.Transformers.SetInterfaceExcludeInputs,
     Ash.Resource.Transformers.SetDefineFor,
     Ash.Resource.Transformers.SetEagerCheckWith,
     Ash.Resource.Transformers.SetPreCheckWith,

@@ -3311,6 +3311,10 @@ defmodule Ash.Query do
 
   def add_error(query, path \\ [], error)
 
+  def add_error(query, _path, []) do
+    query
+  end
+
   def add_error(query, path, errors) when is_list(errors) do
     if Keyword.keyword?(errors) do
       error =

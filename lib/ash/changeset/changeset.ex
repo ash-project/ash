@@ -6179,6 +6179,10 @@ defmodule Ash.Changeset do
 
   def add_error(changeset, errors, path \\ [])
 
+  def add_error(changeset, [], _path) do
+    changeset
+  end
+
   def add_error(changeset, errors, path) when is_list(errors) do
     if Keyword.keyword?(errors) do
       errors
