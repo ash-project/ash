@@ -16,7 +16,8 @@ defmodule DescriptiveEnum do
       {:bar, "Obviously a bar"},
       {:baz, "Undoubtedly a baz"},
       :a_thing_with_no_description,
-      {:another_thing_with_no_description, nil}
+      {:another_thing_with_no_description, nil},
+      with_details: [description: "Look I have a description", label: "I have a label"]
     ]
 end
 
@@ -29,5 +30,14 @@ end
 defmodule MixedEnum do
   @moduledoc false
 
-  use Ash.Type.Enum, values: [:foo, "bar", "baz"]
+  use Ash.Type.Enum,
+    values: [
+      :foo,
+      "bar",
+      "baz",
+      {"Foo", "Awesome Description"},
+      {"StringWithDetails", [description: "Look I have a description", label: "Awesome Label"]},
+      {:another_one, "Another Awesome Description"},
+      with_details: [description: "Look I have a description", label: "I have a label"]
+    ]
 end

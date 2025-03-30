@@ -62,19 +62,22 @@ defmodule Ash.Type.Enum do
   `"HaLf_emPty"` would not be accepted by the code provided earlier. If case normalization is
   needed for additional values, it must be explicitly implemented.
 
-  ## Value descriptions
-  It's possible to associate a description with a value by passing a `{value, description}` tuple
-  inside the values list, which becomes a keyword list:
+  ## Value labels and descriptions
+  It's possible to associate a label and/or description for each value.
 
   ```elixir
   defmodule MyApp.TicketStatus do
     use Ash.Type.Enum,
       values: [
-        open: "An open ticket",
-        closed: "A closed ticket"
+        open: "An open ticket", # <- description only,
+        escalated: [description: gettext("An escalated ticket")],
+        follow_up: [label: gettext("Follow up")],
+        closed: [description: gettext("A closed ticket"), label: gettext("Closed")]
       ]
   end
   ```
+
+  Adding labels and descriptions can be helpful when displaying the Enum values to users.
 
   This can be used by extensions to provide detailed descriptions of enum values.
 
@@ -84,11 +87,32 @@ defmodule Ash.Type.Enum do
   MyApp.TicketStatus.description(:open)
   iex> "An open ticket"
   ```
+
+  The label of a value can be retrieved with `label/1`:
+
+  ```elixir
+  MyApp.TicketStatus.label(:closed)
+  iex> "Closed"
+  ```
+
+  Both the description and label can be retrieved with `details/1`
+
+  ```elixir
+  MyApp.TicketStatus.details(:closed)
+  iex> %{description: "A closed ticket", label: "Closed"}
+  ```
   """
   @doc "The list of valid values (not all input types that match them)"
   @callback values() :: [atom | String.t()]
+  @doc "The label of the value, if existing"
+  @callback label(atom | String.t()) :: String.t() | nil
   @doc "The description of the value, if existing"
   @callback description(atom | String.t()) :: String.t() | nil
+  @doc "The value detail map, if existing"
+  @callback details(atom | String.t()) :: %{
+              description: String.t() | nil,
+              label: String.t() | nil
+            }
   @doc "true if a given term matches a value"
   @callback match?(term) :: boolean
   @doc "finds the valid value that matches a given input term"
@@ -102,7 +126,8 @@ defmodule Ash.Type.Enum do
 
       @behaviour behaviour
 
-      @values behaviour.build_values(opts[:values])
+      @values_map behaviour.build_values_map(opts[:values])
+      @values Map.keys(@values_map)
 
       atom_typespec =
         if Enum.any?(@values, &is_atom/1) do
@@ -129,8 +154,6 @@ defmodule Ash.Type.Enum do
 
       @type t() :: unquote(typespec)
 
-      @description_map behaviour.build_description_map(opts[:values])
-
       @string_values @values |> Enum.map(&to_string/1)
 
       @any_not_downcase? Enum.any?(@string_values, fn value -> String.downcase(value) != value end)
@@ -139,7 +162,23 @@ defmodule Ash.Type.Enum do
       def values, do: @values
 
       @impl behaviour
-      def description(value) when value in @values, do: Map.get(@description_map, value)
+      def label(value) when value in @values do
+        value
+        |> details()
+        |> Map.get(:label)
+      end
+
+      @impl behaviour
+      def description(value) when value in @values do
+        value
+        |> details()
+        |> Map.get(:description)
+      end
+
+      @impl behaviour
+      def details(value) when value in @values do
+        Map.get(@values_map, value)
+      end
 
       @impl Ash.Type
       def storage_type, do: :string
@@ -285,24 +324,44 @@ defmodule Ash.Type.Enum do
   end
 
   @doc false
-  def build_description_map(values) do
+  def build_values_map(values) do
     values
     |> verify_values!()
     |> Enum.reduce(%{}, fn
-      {value, description}, acc when is_binary(description) -> Map.put(acc, value, description)
-      _value_with_no_description, acc -> acc
+      {value, details}, acc when is_list(details) ->
+        details =
+          if Keyword.has_key?(details, :label) do
+            details
+          else
+            Keyword.put(details, :label, humanize(value))
+          end
+
+        Map.put(acc, value, Map.new(details))
+
+      {value, description}, acc ->
+        Map.put(acc, value, %{description: description, label: humanize(value)})
+
+      value_with_no_description, acc ->
+        Map.put(acc, value_with_no_description, %{
+          description: nil,
+          label: humanize(value_with_no_description)
+        })
     end)
   end
 
-  @doc false
-  def build_values(values) do
-    values
-    |> verify_values!()
-    |> Enum.map(fn
-      {value, _description} -> value
-      value -> value
-    end)
+  defp humanize(value) when is_atom(value) do
+    value
+    |> to_string()
+    |> humanize()
   end
+
+  defp humanize(value) when is_binary(value) do
+    value
+    |> String.replace(~r([^A-Za-z]), " ")
+    |> String.capitalize()
+  end
+
+  defp humanize(value), do: value
 
   @doc false
   def verify_values!(values) when is_list(values) do
@@ -316,9 +375,19 @@ defmodule Ash.Type.Enum do
       {value, description} when (is_atom(value) or is_binary(value)) and is_binary(description) ->
         :ok
 
+      {value, details} when (is_atom(value) or is_binary(value)) and is_list(details) ->
+        unsupported_opts =
+          Enum.filter(details, fn {key, _} -> key not in [:description, :label] end)
+
+        if Enum.empty?(unsupported_opts) do
+          :ok
+        else
+          raise "Invalid value details for #{inspect(value)}: #{inspect(unsupported_opts)}.  Only `:description` and `:label` are supported."
+        end
+
       other ->
         raise(
-          "`values` must be a list of `atom | string` or {`atom | string`, string} tuples, got #{inspect(other)}"
+          "`values` must be a list of `atom | string` or {`atom | string`, string} or {`atom | string`, [description: string, label: string]} tuples, got #{inspect(other)}"
         )
     end)
 
