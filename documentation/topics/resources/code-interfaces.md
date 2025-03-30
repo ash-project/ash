@@ -204,3 +204,35 @@ define :follow_artist do
   end
 end
 ```
+
+The example above is a bit verbose. In practice we might create a type, called `ArtistOrId`,
+for example, and extract that logic like so:
+
+```elixir
+defmodule MyApp.Types.ArtistOrId do
+  use Ash.Type.NewType, subtype_of: :union, constraints: [
+    types: [
+      artist: [type: :struct, constraints: [instance_of: Artist]],
+      artist_id: [type: :uuid]
+    ]
+  ]
+
+  def to_artist_id(%Ash.Union{type: :artist, value: artist}), do: {:ok, artist.id}
+  def to_artist_id(%Ash.Union{type: :artist_id, value: artist_id}), do: {:ok, artist_id}
+end
+```
+
+And then we can refactor the above example like so:
+
+```elixir
+define :follow_artist do
+  action :follow
+  args [:artist]
+
+  custom_input :artist, MyApp.Types.ArtistOrId do
+    transform do
+      to :artist_id
+      using &MyApp.Types.ArtistOrId.to_artist_id/1
+    end
+  end
+end
