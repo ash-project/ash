@@ -34,4 +34,24 @@ defmodule Ash.Test.ExprTest do
       assert eval!(expr) == "foo2024"
     end
   end
+
+  describe "case expressions" do
+    test "raises error when using case expressions" do
+      assert_raise ArgumentError, ~r/`case` expressions are not supported/, fn ->
+        Code.eval_quoted(
+          quote do
+            import Ash.Expr
+
+            expr(
+              case :role do
+                :principal -> 1
+                :teacher -> 2
+                :student -> 3
+              end
+            )
+          end
+        )
+      end
+    end
+  end
 end
