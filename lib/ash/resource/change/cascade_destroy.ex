@@ -168,6 +168,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
           {%{notifications: notifications}, true} ->
             Enum.concat(changesets, notifications)
+
+          {:ok, _} ->
+            changesets
         end
       else
         changesets

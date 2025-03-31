@@ -93,9 +93,6 @@ defmodule Ash.Resource.Change.CascadeUpdate do
          {:ok, opts} <- validate_relationship_and_action(opts, changeset) do
       Ash.Changeset.after_action(changeset, fn _changeset, result ->
         case {update_related(changeset, [result], opts, context), opts.return_notifications?} do
-          {{:error, error}, _} ->
-            {:error, error}
-
           {_, false} ->
             {:ok, result}
 
@@ -128,6 +125,7 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         {_, false} -> result
         {%{notifications: empty}, true} when empty in [nil, []] -> result
         {%{notifications: notifications}, true} -> Enum.concat(result, notifications)
+        {:ok, _} -> result
       end
     else
       {:error, reason} -> [{:error, reason}]
