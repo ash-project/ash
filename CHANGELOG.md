@@ -2,6 +2,43 @@
 
 <!-- changelog -->
 
+## [v3.5.2](https://github.com/ash-project/ash/compare/v3.5.1...v3.5.2) (2025-03-31)
+
+
+
+
+### Bug Fixes:
+
+* match errors on cascade destroy/update
+
+* handle templated opts in bulk update after batch results
+
+* support `refs` and `args` option for `define_calculation`
+
+* don't cast arbitrary maps to structs in struct type
+
+### Improvements:
+
+* add `default_sort` on relationships and queries (#1928)
+
+* new type recursive validation (#1913)
+
+* task for generating custom changes module (#1926)
+
+* better error on `case` in ash expressions (#1927)
+
+* helpful error on incorrectly implemented change modules
+
+* support `custom_input`s in code interfaces
+
+* Ash.Type.Enum - Add optional description and label value â¦ (#1925)
+
+* support `exclude_inputs` for `define_calculation`
+
+* add `exclude_inputs` to code interface definitions
+
+* fix hint for read/generic actions in `NoSuchInput`
+
 ## [v3.5.1](https://github.com/ash-project/ash/compare/v3.5.0...v3.5.1) (2025-03-27)
 
 
