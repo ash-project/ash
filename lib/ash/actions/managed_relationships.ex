@@ -211,12 +211,12 @@ defmodule Ash.Actions.ManagedRelationships do
                           |> Ash.Query.for_read(read, %{},
                             actor: actor,
                             authorize?: opts[:authorize?],
-                            domain: domain(changeset, relationship)
+                            domain: domain(changeset, relationship),
+                            tenant: changeset.tenant
                           )
                           |> Ash.Query.filter(^keys)
                           |> sort_and_filter(relationship)
                           |> Ash.Query.set_context(relationship.context)
-                          |> Ash.Query.set_tenant(changeset.tenant)
                           |> Ash.read_one()
                           |> case do
                             {:ok, nil} ->
@@ -898,12 +898,12 @@ defmodule Ash.Actions.ManagedRelationships do
                   |> Ash.Query.for_read(read, %{},
                     actor: actor,
                     authorize?: opts[:authorize?],
-                    domain: domain(changeset, relationship)
+                    domain: domain(changeset, relationship),
+                    tenant: changeset.tenant
                   )
                   |> Ash.Query.filter(^keys)
                   |> sort_and_filter(relationship)
                   |> Ash.Query.set_context(relationship.context)
-                  |> Ash.Query.set_tenant(changeset.tenant)
                   |> Ash.Query.limit(1)
                   |> Ash.read_one()
                 end
