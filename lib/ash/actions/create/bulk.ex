@@ -1575,7 +1575,17 @@ defmodule Ash.Actions.Create.Bulk do
             )
 
           change_opts ->
-            Enum.flat_map(results, fn result ->
+            Enum.flat_map(results, fn {changeset, _} = result ->
+              change_opts =
+                templated_opts(
+                  change_opts,
+                  opts[:actor],
+                  changeset.to_tenant,
+                  changeset.arguments,
+                  changeset.context,
+                  changeset
+                )
+
               module.after_batch(
                 [result],
                 change_opts,

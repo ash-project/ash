@@ -2669,11 +2669,33 @@ defmodule Ash.Actions.Update.Bulk do
             {changesets_by_index[result.__metadata__[metadata_key]], result}
           end)
 
-        module.after_batch(
-          results,
-          change_opts,
-          context
-        )
+        case change_opts do
+          {:templated, change_opts} ->
+            module.after_batch(
+              results,
+              change_opts,
+              context
+            )
+
+          change_opts ->
+            Enum.flat_map(results, fn {changeset, _} = result ->
+              change_opts =
+                templated_opts(
+                  change_opts,
+                  opts[:actor],
+                  changeset.to_tenant,
+                  changeset.arguments,
+                  changeset.context,
+                  changeset
+                )
+
+              module.after_batch(
+                [result],
+                change_opts,
+                context
+              )
+            end)
+        end
         |> handle_after_batch_results(records, ref, resource, opts)
       else
         {matches, non_matches} =
