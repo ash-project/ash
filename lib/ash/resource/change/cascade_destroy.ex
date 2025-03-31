@@ -112,6 +112,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       else
         Ash.Changeset.after_action(changeset, fn changeset, result ->
           case {destroy_related([result], opts, context, changeset), opts.return_notifications?} do
+            {{:error, error}, _} ->
+              {:error, error}
+
             {_, false} ->
               {:ok, result}
 
@@ -120,9 +123,6 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
             {%{notifications: notifications}, true} ->
               {:ok, result, notifications}
-
-            {{:error, error}, _} ->
-              {:error, error}
           end
         end)
       end
