@@ -96,6 +96,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         Ash.Changeset.before_action(changeset, fn changeset ->
           case {destroy_related([changeset.data], opts, context, changeset),
                 opts.return_notifications?} do
+            {{:error, error}, _} ->
+              Ash.Changeset.add_error(changeset, error)
+
             {_, false} ->
               changeset
 
@@ -104,9 +107,6 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
             {%{notifications: notifications}, true} ->
               {changeset, %{notifications: notifications}}
-
-            {{:error, error}, _} ->
-              Ash.Changeset.add_error(changeset, error)
           end
         end)
       else
@@ -159,6 +159,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       if not opts.after_action? and
            opts.relationship.type in [:many_to_many, :has_many, :has_one] do
         case {destroy_related(records, opts, context, changeset), opts.return_notifications?} do
+          {{:error, error}, _} ->
+            Enum.map(changesets, &Ash.Changeset.add_error(&1, error))
+
           {_, false} ->
             changesets
 
@@ -167,9 +170,6 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
           {%{notifications: notifications}, true} ->
             Enum.concat(changesets, notifications)
-
-          {{:error, error}, _} ->
-            Enum.map(changesets, &Ash.Changeset.add_error(&1, error))
         end
       else
         changesets
@@ -196,6 +196,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         result
       else
         case {destroy_related(records, opts, context, changeset), opts.return_notifications?} do
+          {{:error, error}, _} ->
+            Enum.map(result, fn _ -> {:error, error} end)
+
           {_, false} ->
             result
 
@@ -204,9 +207,6 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
           {%{notifications: notifications}, true} ->
             Enum.concat(result, notifications)
-
-          {{:error, error}, _} ->
-            Enum.map(result, fn _ -> {:error, error} end)
         end
       end
     else
