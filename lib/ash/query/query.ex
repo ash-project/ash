@@ -26,7 +26,7 @@ defmodule Ash.Query do
   |> Ash.read!()
   ```
 
-  To see more examples of what you can do with `Ash.Query` and read actions in general, 
+  To see more examples of what you can do with `Ash.Query` and read actions in general,
   see the [writing queries how-to guide](/documentation/how-to/write-queries.livemd).
 
   ## Capabilities & Limitations
@@ -82,7 +82,7 @@ defmodule Ash.Query do
 
   Fragments only barely count as an escape hatch. You will often find yourself
   wanting to use a function or operator specific to your data layer, and fragments
-  are purpose built to this end. You can use data-layer-specific expressions in your 
+  are purpose built to this end. You can use data-layer-specific expressions in your
   expressions for filters, calculations, etc. For example:
 
   ```elixir
@@ -103,7 +103,7 @@ defmodule Ash.Query do
   ```elixir
   actions do
     read :complex_search do
-      argument 
+      argument
       modify_query {SearchMod, :modify, []}
     end
   end
@@ -127,7 +127,7 @@ defmodule Ash.Query do
   ```elixir
   import Ecto.Query
 
-  query = 
+  query =
     from p in MyApp.Post,
       where: p.likes > 100,
       select: p
@@ -146,7 +146,7 @@ defmodule Ash.Query do
       ecto_query
       |> Ecto.Query.where([p], p.likes > 100)
       |> MyApp.Repo.all()
-      
+
     {:error, error} ->
       {:error, error}
   end
@@ -2300,6 +2300,11 @@ defmodule Ash.Query do
       type: :any,
       doc: "A sort list or keyword, provided as input from an external source"
     ],
+    default_sort: [
+      type: :any,
+      doc:
+        "A sort list or keyword to apply only if no other sort is specified, So if you apply any `sort`, this will be ignored."
+    ],
     distinct_sort: [
       type: :any,
       doc: "A distinct_sort list or keyword"
@@ -2399,6 +2404,9 @@ defmodule Ash.Query do
 
       {:sort_input, value}, query ->
         sort_input(query, value)
+
+      {:default_sort, value}, query ->
+        default_sort(query, value)
 
       {:distinct_sort, value}, query ->
         distinct_sort(query, value)
@@ -2628,6 +2636,32 @@ defmodule Ash.Query do
 
       {:error, error} ->
         add_error(query, :calculations, error)
+    end
+  end
+
+  @doc """
+  Apply a sort only if no sort has been specified yet.
+
+  This is useful for providing default sorts that can be overridden.
+
+  ## Examples
+
+  ```elixir
+  # This will sort by name if no sort has been specified
+  Ash.Query.default_sort(query, :name)
+
+  # This will sort by name descending if no sort has been specified
+  Ash.Query.default_sort(query, name: :desc)
+  ```
+  """
+  @spec default_sort(t() | Ash.Resource.t(), Ash.Sort.t(), opts :: Keyword.t()) :: t()
+  def default_sort(query, sorts, opts \\ []) do
+    query = new(query)
+
+    if query.sort == [] do
+      sort(query, sorts, opts)
+    else
+      query
     end
   end
 
