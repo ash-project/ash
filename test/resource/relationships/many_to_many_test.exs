@@ -33,7 +33,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
             through: SomeResource,
             source_attribute_on_join_resource: :post_id,
             destination_attribute_on_join_resource: :related_post_id,
-            public?: true
+            public?: true,
+            default_sort: [inserted_at: :desc]
 
           many_to_many :unrelated_posts, __MODULE__,
             through: Tabloid,
@@ -74,7 +75,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source_attribute_on_join_resource: :post_id,
                  through: SomeResource,
                  type: :many_to_many,
-                 public?: true
+                 public?: true,
+                 default_sort: [inserted_at: :desc]
                },
                %ManyToMany{
                  cardinality: :many,

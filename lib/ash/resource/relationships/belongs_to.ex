@@ -18,6 +18,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :allow_nil?,
     :filter,
     :sort,
+    :default_sort,
     :writable?,
     :context,
     :description,
@@ -55,7 +56,9 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           filterable?: boolean,
           sortable?: boolean,
           source_attribute: atom | nil,
-          description: String.t()
+          description: String.t(),
+          sort: Keyword.t() | nil,
+          default_sort: Keyword.t() | nil
         }
 
   import Ash.Resource.Relationships.SharedOptions

@@ -11,6 +11,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :description,
     :filter,
     :sort,
+    :default_sort,
     :read_action,
     :not_found_message,
     :violation_message,
@@ -48,6 +49,8 @@ defmodule Ash.Resource.Relationships.HasMany do
           filterable?: boolean,
           sortable?: true,
           source_attribute: atom,
+          sort: Keyword.t() | nil,
+          default_sort: Keyword.t() | nil,
           description: String.t(),
           manual: atom | {atom, Keyword.t()} | nil
         }

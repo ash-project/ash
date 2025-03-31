@@ -29,6 +29,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
         relationships do
           has_one :foo, Foo, destination_attribute: :post_id, public?: true
           has_one :bar, Bar, destination_attribute: :post_id
+          has_one :sorted, Bazzinga, default_sort: [inserted_at: :desc]
         end
       end
 
@@ -50,6 +51,16 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
                  source_attribute: :id,
                  type: :has_one,
                  public?: false
+               },
+               %HasOne{
+                 cardinality: :one,
+                 destination: Bazzinga,
+                 destination_attribute: :post_id,
+                 name: :sorted,
+                 source_attribute: :id,
+                 type: :has_one,
+                 public?: false,
+                 default_sort: [inserted_at: :desc]
                }
              ] = Ash.Resource.Info.relationships(Post)
 
