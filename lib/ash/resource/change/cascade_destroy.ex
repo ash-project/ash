@@ -94,11 +94,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       if not opts.after_action? and
            opts.relationship.type in [:many_to_many, :has_many, :has_one] do
         Ash.Changeset.before_action(changeset, fn changeset ->
+          # can't produce `{:error, error}` because `changeset.phase` is before_action
           case {destroy_related([changeset.data], opts, context, changeset),
                 opts.return_notifications?} do
-            {{:error, error}, _} ->
-              Ash.Changeset.add_error(changeset, error)
-
             {_, false} ->
               changeset
 
