@@ -236,3 +236,4 @@ define :follow_artist do
     end
   end
 end
+```
