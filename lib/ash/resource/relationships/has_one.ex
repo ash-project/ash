@@ -14,6 +14,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :filter,
     :domain,
     :sort,
+    :default_sort,
     :read_action,
     :not_found_message,
     :violation_message,
@@ -53,7 +54,9 @@ defmodule Ash.Resource.Relationships.HasOne do
           source_attribute: atom,
           allow_orphans?: boolean,
           description: String.t(),
-          manual: atom | {atom, Keyword.t()} | nil
+          manual: atom | {atom, Keyword.t()} | nil,
+          sort: Keyword.t() | nil,
+          default_sort: Keyword.t() | nil
         }
 
   import Ash.Resource.Relationships.SharedOptions

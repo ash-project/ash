@@ -15,6 +15,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :domain,
     :public?,
     :sort,
+    :default_sort,
     :read_action,
     :description,
     :context,
@@ -50,6 +51,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           destination_attribute: atom,
           source_attribute_on_join_resource: atom,
           destination_attribute_on_join_resource: atom,
+          sort: Keyword.t() | nil,
+          default_sort: Keyword.t() | nil,
           description: String.t()
         }
 

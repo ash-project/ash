@@ -30,6 +30,7 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
         relationships do
           has_many :foo, Foo, public?: true
           has_many :bar, Bar, destination_attribute: :bazz
+          has_many :sorted, Bazzinga, default_sort: [inserted_at: :desc]
         end
       end
 
@@ -51,6 +52,16 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
                  source_attribute: :id,
                  type: :has_many,
                  public?: false
+               },
+               %HasMany{
+                 cardinality: :many,
+                 destination: Bazzinga,
+                 destination_attribute: :post_id,
+                 name: :sorted,
+                 source_attribute: :id,
+                 type: :has_many,
+                 public?: false,
+                 default_sort: [inserted_at: :desc]
                }
              ] = Ash.Resource.Info.relationships(Post)
 

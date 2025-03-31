@@ -229,6 +229,7 @@ defmodule Ash.Actions.Read.Relationships do
         end
       end)
       |> Ash.Query.sort(relationship.sort)
+      |> Ash.Query.default_sort(relationship.default_sort)
       |> Ash.Query.do_filter(relationship.filter, parent_stack: parent_stack)
       |> Ash.Query.set_context(relationship.context)
       |> hydrate_refs(query.context[:private][:actor], relationship.source)

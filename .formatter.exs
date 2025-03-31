@@ -96,6 +96,7 @@ spark_locals_without_parens = [
   default_domain: 1,
   default_limit: 1,
   default_options: 1,
+  default_sort: 1,
   defaults: 1,
   define: 1,
   define: 2,

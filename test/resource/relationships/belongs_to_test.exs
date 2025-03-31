@@ -65,8 +65,9 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          belongs_to(:foo, Foo, public?: true)
-          belongs_to(:bar, Bar, source_attribute: :bazz)
+          belongs_to :foo, Foo, public?: true
+          belongs_to :bar, Bar, source_attribute: :bazz
+          belongs_to :sorted, Bazzinga, default_sort: [inserted_at: :desc]
         end
       end
 
@@ -94,6 +95,16 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  source_attribute: :bazz,
                  type: :belongs_to,
                  public?: false
+               },
+               %BelongsTo{
+                 cardinality: :one,
+                 destination: Bazzinga,
+                 destination_attribute: :id,
+                 name: :sorted,
+                 source_attribute: :sorted_id,
+                 type: :belongs_to,
+                 public?: false,
+                 default_sort: [inserted_at: :desc]
                }
              ] = Ash.Resource.Info.relationships(Post)
 
