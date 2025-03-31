@@ -78,7 +78,7 @@ defmodule Ash.Test.Query.DefaultSortInRelationshipTest do
     end
   end
 
-  alias Ash.Test.Query.DefaultSortInRelationshipTest.{Post, Author, Comment}
+  alias Ash.Test.Query.DefaultSortInRelationshipTest.{Author, Comment, Post}
 
   describe "default_sort in relationship" do
     test "applies default sort when loading relationship" do

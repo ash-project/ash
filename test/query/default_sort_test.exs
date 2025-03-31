@@ -92,7 +92,7 @@ defmodule Ash.Test.Query.DefaultSortTest do
     end
   end
 
-  alias Ash.Test.Query.DefaultSortTest.{Post, Author, Comment, PostWithPreparation}
+  alias Ash.Test.Query.DefaultSortTest.{Author, Comment, Post, PostWithPreparation}
 
   describe "default_sort/2" do
     test "applies sort when no sort is specified" do
