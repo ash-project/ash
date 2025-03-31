@@ -9,7 +9,10 @@ However, when working with api extensions like `AshGraphql` and `AshJsonApi`, th
 ## Public & Private Arguments
 
 Public/private arguments work the same way as public/private fields, except that they default to `public?: true`.  
-This is because arguments to an action being used in a public interface would naturally be expected to be `public`. If an argument is marked as `public?: false`, it can only be set with `Ash.Query.set_argument/3` or `Ash.Changeset.set_argument/3`
+This is because arguments to an action being used in a public interface would naturally be expected to be `public`. If an argument is marked as `public?: false`, it can only be set using one of the following methods:
+1. `Ash.Query.set_argument/3`
+2. `Ash.Changeset.set_argument/3`
+3. By setting `private_argument` option when creating a changeset. For eg., `Ash.Changeset.for_create(:create_with_private_argument, %{public_title: "title"}, private_arguments: %{private_name: "private"}`
 
 ## Sensitive Attributes
 
