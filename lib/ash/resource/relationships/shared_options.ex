@@ -88,9 +88,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     default_sort: [
       type: :any,
       doc: """
-        A default sort statement to be applied when loading the relationship.
-
-        If no other sorting is provided, this sorting is used.
+      A default sort statement to be applied when loading the relationship.
       """
     ],
     could_be_related_at_creation?: [
