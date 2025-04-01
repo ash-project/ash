@@ -74,7 +74,7 @@ create :upsert_article_by_slug do
   upsert_condition expr(user_id == ^actor(:id))
   error_handler fn 
     _changeset, %Ash.Error.Changes.StaleRecord{} ->
-      Ash.Error.Changes.InvalidChanges.exception(field: :slug, message: "has already been taken")"
+      Ash.Error.Changes.InvalidChanges.exception(field: :slug, message: "has already been taken")
 
     _ changeset, other ->
       # leave other errors untouched
