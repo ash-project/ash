@@ -137,8 +137,8 @@ pub_sub do
   module MyEndpoint
   prefix "post"
 
-  publish :destroy, ["foo", :id]
-  publish :update, ["bar", :name], event: "name_change"
+  publish :destroy, ["destroyed", :id]
+  publish :update, ["updated", :name], event: "name_change"
   publish_all :create, "created"
 end
 

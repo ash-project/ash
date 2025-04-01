@@ -71,7 +71,7 @@ defmodule Ash.Query.Aggregate do
         "A base query to use for the aggregate, or a keyword list to be passed to `Ash.Query.build/2`"
     ],
     field: [
-      type: {:or, [:atom, {:struct, Ash.Query.Calculation}, {:struct, Ash.Query.Calculation}]},
+      type: {:or, [:atom, {:struct, Ash.Query.Calculation}, {:struct, Ash.Query.Aggregate}]},
       doc: "The field to use for the aggregate. Not necessary for all aggregate types."
     ],
     expr: [
