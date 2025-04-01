@@ -279,4 +279,8 @@ defmodule Ash.Test.Policy.ComplexTest do
 
     assert_received {:runtime_check_executed, [_]}
   end
+
+  test "calculations get context and actor", %{me: me, post_by_me: post} do
+    assert %{text: "[deleted]"} = Post.erase!(post, actor: me, context: %{post_id: post.id})
+  end
 end
