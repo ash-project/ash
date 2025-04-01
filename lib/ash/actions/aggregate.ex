@@ -185,7 +185,7 @@ defmodule Ash.Actions.Aggregate do
                 opts[:tracer],
                 query.domain,
                 query.resource,
-                []
+                source_context: query.context
               )
 
             {:cont, {:ok, [aggregate | aggregates]}}

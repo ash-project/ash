@@ -403,11 +403,27 @@ defmodule Ash.Can do
                   domain
                 )
 
-              context = %{domain: domain, query: nil, changeset: nil, action_input: nil}
+              context = %{
+                actor: actor,
+                tenant: subject.to_tenant,
+                domain: domain,
+                resource: subject.resource,
+                query: nil,
+                changeset: nil,
+                action_input: nil,
+                subject: subject
+              }
+
+              context =
+                case subject do
+                  %Ash.Query{} -> Map.put(context, :query, subject)
+                  %Ash.Changeset{} -> Map.put(context, :changeset, subject)
+                  %Ash.ActionInput{} -> Map.put(context, :action_input, subject)
+                end
 
               case subject do
                 %Ash.Query{} = query ->
-                  alter_query(query, authorizer, authorizer_state, context)
+                  alter_query(query, authorizer, authorizer_state, context, opts)
 
                 %Ash.Changeset{} = changeset ->
                   context = Map.put(context, :changeset, changeset)
@@ -420,7 +436,13 @@ defmodule Ash.Can do
                            context
                          ) do
                     if opts[:base_query] do
-                      case alter_query(opts[:base_query], authorizer, authorizer_state, context) do
+                      case alter_query(
+                             opts[:base_query],
+                             authorizer,
+                             authorizer_state,
+                             context,
+                             opts
+                           ) do
                         {:ok, true, query} ->
                           {:ok, true, changeset, query}
 
@@ -445,7 +467,7 @@ defmodule Ash.Can do
 
   defp alter_source(other, _, _, _, _), do: other
 
-  defp alter_query(query, authorizer, authorizer_state, context) do
+  defp alter_query(query, authorizer, authorizer_state, context, opts) do
     context = Map.put(context, :query, query)
 
     with {:ok, query, _} <-
@@ -467,6 +489,7 @@ defmodule Ash.Can do
              resource: query.resource,
              public?: false
            }),
+         hydrated <- fill_template(hydrated, context, opts),
          {:ok, new_sort} <-
            Ash.Authorizer.alter_sort(
              authorizer,
@@ -475,6 +498,41 @@ defmodule Ash.Can do
              context
            ) do
       {:ok, true, %{query | filter: hydrated, sort: new_sort}}
+    end
+  end
+
+  defp fill_template(expr, context, opts) do
+    {:ok, expr} =
+      Ash.Filter.hydrate_refs(expr, %{
+        resource: context.resource,
+        public?: false
+      })
+
+    if opts[:atomic_changeset] do
+      Ash.Expr.fill_template(
+        expr,
+        actor: context.actor,
+        tenant: opts[:atomic_changeset].to_tenant,
+        args: opts[:atomic_changeset].arguments,
+        context: opts[:atomic_changeset].context,
+        changeset: opts[:atomic_changeset]
+      )
+    else
+      expr
+      # if context.subject do
+      #   Ash.Expr.fill_template(
+      #     expr,
+      #     actor: context.actor,
+      #     tenant: context.subject.tenant,
+      #     args: context.subject.arguments,
+      #     context: context.subject.context
+      #   )
+      # else
+      #   Ash.Expr.fill_template(
+      #     expr,
+      #     actor: context.actor
+      #   )
+      # end
     end
   end
 
@@ -490,7 +548,16 @@ defmodule Ash.Can do
             domain
           )
 
-        context = %{domain: domain, query: nil, changeset: nil, action_input: nil}
+        context = %{
+          actor: actor,
+          tenant: subject.to_tenant,
+          domain: domain,
+          resource: subject.resource,
+          query: nil,
+          changeset: nil,
+          action_input: nil,
+          subject: subject
+        }
 
         context =
           case subject do
@@ -543,19 +610,7 @@ defmodule Ash.Can do
                 """
 
               {:filter, authorizer_state, filter} ->
-                filter =
-                  if opts[:atomic_changeset] do
-                    Ash.Expr.fill_template(
-                      filter,
-                      actor: actor,
-                      tenant: opts[:atomic_changeset].to_tenant,
-                      args: opts[:atomic_changeset].arguments,
-                      context: opts[:atomic_changeset].context,
-                      changeset: opts[:atomic_changeset]
-                    )
-                  else
-                    filter
-                  end
+                filter = fill_template(filter, context, opts)
 
                 {:cont,
                  {true,
@@ -570,19 +625,7 @@ defmodule Ash.Can do
                   ), [{authorizer, authorizer_state, context} | authorizers]}}
 
               {:filter, filter} ->
-                filter =
-                  if opts[:atomic_changeset] do
-                    Ash.Expr.fill_template(
-                      filter,
-                      actor: actor,
-                      tenant: opts[:atomic_changeset].to_tenant,
-                      args: opts[:atomic_changeset].arguments,
-                      context: opts[:atomic_changeset].context,
-                      changeset: opts[:atomic_changeset]
-                    )
-                  else
-                    filter
-                  end
+                filter = fill_template(filter, context, opts)
 
                 {:cont,
                  {true,
@@ -647,19 +690,7 @@ defmodule Ash.Can do
                 end
 
               {:filter_and_continue, filter, authorizer_state} ->
-                filter =
-                  if opts[:atomic_changeset] do
-                    Ash.Expr.fill_template(
-                      filter,
-                      actor: actor,
-                      tenant: opts[:atomic_changeset].to_tenant,
-                      args: %{},
-                      context: %{},
-                      changeset: opts[:atomic_changeset]
-                    )
-                  else
-                    filter
-                  end
+                filter = fill_template(filter, context, opts)
 
                 if opts[:no_check?] || !match?(%Ash.Query{}, subject) do
                   {:error, {authorizer, authorizer_state, context},

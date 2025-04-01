@@ -547,6 +547,17 @@ defmodule Ash.Actions.Update.Bulk do
            authorize_atomic_changeset(query, atomic_changeset, opts),
          {query, atomic_changeset} <-
            add_changeset_filters(query, atomic_changeset),
+         query =
+           Ash.Actions.Read.add_calc_context_to_query(
+             query,
+             opts[:actor],
+             opts[:authorize?],
+             query.tenant,
+             opts[:tracer],
+             query.domain,
+             expand?: true,
+             source_context: query.context
+           ),
          %Ash.Changeset{valid?: true} = atomic_changeset <-
            Ash.Changeset.handle_allow_nil_atomics(atomic_changeset, opts[:actor]),
          atomic_changeset <- sort_atomic_changes(atomic_changeset),
@@ -1035,7 +1046,7 @@ defmodule Ash.Actions.Update.Bulk do
               opts[:tracer],
               atomic_changeset.domain,
               atomic_changeset.resource,
-              []
+              source_context: atomic_changeset.context
             )
 
           [{calculation, where}]

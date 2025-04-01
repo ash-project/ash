@@ -879,6 +879,15 @@ defmodule Ash.Filter.Runtime do
         if module.has_expression?() do
           expression = module.expression(opts, context)
 
+          expression =
+            Ash.Expr.fill_template(
+              expression,
+              actor: context.actor,
+              tenant: context.tenant,
+              args: context.arguments,
+              context: context.source_context
+            )
+
           hydrated =
             Ash.Filter.hydrate_refs(expression, %{
               resource: resource,

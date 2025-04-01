@@ -14,6 +14,7 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
     end
 
     policy [action_type(:read)] do
+      authorize_if action(:erasable)
       authorize_if relates_to_actor_via(:author)
       authorize_if relates_to_actor_via([:author, :friends])
     end
@@ -22,7 +23,7 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
       authorize_if always()
     end
 
-    policy action(:erase) do
+    policy action([:erase, :erasable]) do
       authorize_if expr(has_context)
     end
   end
@@ -53,6 +54,8 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
       accept [:text]
       change relate_actor(:author)
     end
+
+    read :erasable
 
     update :erase do
       change set_attribute(:text, "[deleted]")
@@ -91,6 +94,7 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
   code_interface do
     define :create, args: [:text]
     define :erase
+    define :erasable
   end
 
   relationships do

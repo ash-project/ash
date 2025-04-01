@@ -191,7 +191,8 @@ defmodule Ash.Actions.Read do
         opts[:tracer],
         query.domain,
         expand?: false,
-        parent_stack: parent_stack_from_context(query.context)
+        parent_stack: parent_stack_from_context(query.context),
+        source_context: query.context
       )
 
     relationship? = Map.has_key?(query.context, :accessing_from)
@@ -245,7 +246,8 @@ defmodule Ash.Actions.Read do
         opts[:tracer],
         query.domain,
         expand?: false,
-        parent_stack: parent_stack_from_context(query.context)
+        parent_stack: parent_stack_from_context(query.context),
+        source_context: query.context
       )
 
     calculations_at_runtime =
@@ -259,7 +261,8 @@ defmodule Ash.Actions.Read do
           opts[:tracer],
           query.domain,
           query.resource,
-          parent_stack: parent_stack_from_context(query.context)
+          parent_stack: parent_stack_from_context(query.context),
+          source_context: query.context
         )
       )
 
@@ -274,7 +277,8 @@ defmodule Ash.Actions.Read do
           opts[:tracer],
           query.domain,
           query.resource,
-          parent_stack: parent_stack_from_context(query.context)
+          parent_stack: parent_stack_from_context(query.context),
+          source_context: query.context
         )
       )
 
@@ -475,7 +479,8 @@ defmodule Ash.Actions.Read do
              opts[:tracer],
              query.resource,
              query.domain,
-             parent_stack: parent_stack_from_context(query.context)
+             parent_stack: parent_stack_from_context(query.context),
+             source_context: query.context
            ),
          query <- %{
            query
@@ -488,7 +493,8 @@ defmodule Ash.Actions.Read do
                  opts[:tracer],
                  query.domain,
                  query.resource,
-                 parent_stack: parent_stack_from_context(query.context)
+                 parent_stack: parent_stack_from_context(query.context),
+                 source_context: query.context
                ),
              sort: sort
          } do
@@ -531,7 +537,8 @@ defmodule Ash.Actions.Read do
                  query.tenant,
                  opts[:tracer],
                  query.domain,
-                 parent_stack_from_context(query.context)
+                 parent_stack_from_context(query.context),
+                 query.context
                ),
              query <-
                authorize_loaded_aggregates(
@@ -574,7 +581,8 @@ defmodule Ash.Actions.Read do
                  query.domain,
                  query.resource,
                  expand?: true,
-                 parent_stack: parent_stack_from_context(query.context)
+                 parent_stack: parent_stack_from_context(query.context),
+                 source_context: query.context
                ),
              filter <-
                update_aggregate_filters(
@@ -586,7 +594,8 @@ defmodule Ash.Actions.Read do
                  query.tenant,
                  opts[:tracer],
                  query.domain,
-                 parent_stack_from_context(query.context)
+                 parent_stack_from_context(query.context),
+                 query.context
                ),
              query <- Map.put(query, :filter, filter),
              query <- Ash.Query.unset(query, :calculations),
@@ -1116,7 +1125,8 @@ defmodule Ash.Actions.Read do
              query.tenant,
              opts[:tracer],
              query.domain,
-             parent_stack_from_context(query.context)
+             parent_stack_from_context(query.context),
+             query.context
            ),
          query <-
            authorize_loaded_aggregates(
@@ -1259,7 +1269,8 @@ defmodule Ash.Actions.Read do
                    tracer,
                    domain,
                    query.resource,
-                   parent_stack: parent_stack_from_context(query.context)
+                   parent_stack: parent_stack_from_context(query.context),
+                   source_context: query.context
                  ), direction}
 
               field ->
@@ -1682,7 +1693,13 @@ defmodule Ash.Actions.Read do
     # really need to stop these from being called elsewhere
     {domain, resource, opts} =
       if is_list(domain) and resource == nil and opts == [] do
-        {nil, nil, []}
+        case filter do
+          %Ash.Filter{resource: resource} ->
+            {nil, resource, opts}
+
+          _ ->
+            {nil, nil, []}
+        end
       else
         {domain, resource, opts}
       end
@@ -1767,6 +1784,15 @@ defmodule Ash.Actions.Read do
             )
 
           expr =
+            Ash.Expr.fill_template(
+              expr,
+              actor: actor,
+              tenant: tenant,
+              args: calc.context.arguments,
+              context: opts[:source_context] || %{}
+            )
+
+          expr =
             Ash.Filter.move_to_relationship_path(expr, relationship_path)
 
           add_calc_context_to_filter(
@@ -1813,6 +1839,21 @@ defmodule Ash.Actions.Read do
         if should_expand_expression?(struct, calc, opts) do
           case expand_expression(calc, resource, opts[:parent_stack]) do
             {:ok, expr} ->
+              args =
+                case calc do
+                  %Ash.Query.Calculation{context: %{arguments: arguments}} -> arguments
+                  _ -> %{}
+                end
+
+              expr =
+                Ash.Expr.fill_template(
+                  expr,
+                  actor: actor,
+                  tenant: tenant,
+                  args: args,
+                  context: query.context
+                )
+
               expr =
                 add_calc_context_to_filter(
                   expr,
@@ -2262,7 +2303,8 @@ defmodule Ash.Actions.Read do
 
   defp validate_get(_, _, _), do: :ok
 
-  defp add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain, opts) do
+  @doc false
+  def add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain, opts) do
     {:ok, sort} =
       add_calc_context_to_sort(
         query,
@@ -2470,7 +2512,7 @@ defmodule Ash.Actions.Read do
     }
   end
 
-  def add_calc_context(calc, actor, authorize?, tenant, tracer, _domain, _resource, _opts) do
+  def add_calc_context(calc, actor, authorize?, tenant, tracer, _domain, _resource, opts) do
     authorize? =
       case calc.name do
         {:__calc_dep__, _} ->
@@ -2487,7 +2529,8 @@ defmodule Ash.Actions.Read do
           | actor: actor,
             authorize?: authorize?,
             tenant: tenant,
-            tracer: tracer
+            tracer: tracer,
+            source_context: opts[:source_context] || %{}
         }
     }
   end
@@ -2502,7 +2545,8 @@ defmodule Ash.Actions.Read do
         tenant,
         tracer,
         domain,
-        parent_stack
+        parent_stack,
+        source_context
       ) do
     if authorize? do
       Filter.update_aggregates(
@@ -2520,7 +2564,8 @@ defmodule Ash.Actions.Read do
               domain,
               resource,
               ref.relationship_path,
-              parent_stack
+              parent_stack,
+              source_context
             )
           else
             aggregate
@@ -3226,7 +3271,8 @@ defmodule Ash.Actions.Read do
          tenant,
          tracer,
          domain,
-         parent_stack
+         parent_stack,
+         source_context
        ) do
     Enum.map(hydrated_calculations, fn {calculation, expression} ->
       {calculation,
@@ -3239,7 +3285,8 @@ defmodule Ash.Actions.Read do
          tenant,
          tracer,
          domain,
-         parent_stack
+         parent_stack,
+         source_context
        )}
     end)
   end
@@ -3265,7 +3312,8 @@ defmodule Ash.Actions.Read do
             query.domain,
             query.resource,
             [],
-            parent_stack_from_context(query.context)
+            parent_stack_from_context(query.context),
+            query.context
           )
         else
           add_calc_context(
@@ -3276,7 +3324,8 @@ defmodule Ash.Actions.Read do
             tracer,
             query.domain,
             query.resource,
-            parent_stack: parent_stack_from_context(query.context)
+            parent_stack: parent_stack_from_context(query.context),
+            source_context: query.context
           )
         end
 
@@ -3299,7 +3348,8 @@ defmodule Ash.Actions.Read do
               query.domain,
               query.resource,
               [],
-              parent_stack_from_context(query.context)
+              parent_stack_from_context(query.context),
+              query.context
             )
           else
             add_calc_context(
@@ -3310,7 +3360,8 @@ defmodule Ash.Actions.Read do
               tracer,
               query.domain,
               query.resource,
-              parent_stack: parent_stack_from_context(query.context)
+              parent_stack: parent_stack_from_context(query.context),
+              source_context: query.context
             )
           end
 
@@ -3331,7 +3382,8 @@ defmodule Ash.Actions.Read do
             tenant,
             tracer,
             query.domain,
-            parent_stack_from_context(query.context)
+            parent_stack_from_context(query.context),
+            query.context
           )
 
         new_calc = %{calc | opts: [expr: new_expr]}
@@ -3410,11 +3462,13 @@ defmodule Ash.Actions.Read do
          domain,
          resource,
          ref_path,
-         parent_stack
+         parent_stack,
+         source_context
        ) do
     aggregate =
       add_calc_context(aggregate, actor, authorize?, tenant, tracer, domain, aggregate.resource,
-        parent_stack: parent_stack
+        parent_stack: parent_stack,
+        source_context: source_context
       )
 
     last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
@@ -3443,7 +3497,8 @@ defmodule Ash.Actions.Read do
              tenant,
              tracer,
              domain,
-             [resource | parent_stack]
+             [resource | parent_stack],
+             source_context
            ),
          {:ok, field} <-
            aggregate_field_with_related_filters(
@@ -3455,7 +3510,8 @@ defmodule Ash.Actions.Read do
              tracer,
              domain,
              ref_path,
-             parent_stack
+             parent_stack,
+             source_context
            ) do
       %{
         aggregate
@@ -3484,7 +3540,8 @@ defmodule Ash.Actions.Read do
          _tracer,
          _domain,
          _ref_path,
-         _parent_stack
+         _parent_stack,
+         _source_context
        ),
        do: {:ok, nil}
 
@@ -3497,11 +3554,13 @@ defmodule Ash.Actions.Read do
          tracer,
          domain,
          ref_path,
-         parent_stack
+         parent_stack,
+         source_context
        ) do
     calc =
       add_calc_context(field, actor, authorize?, tenant, tracer, domain, agg.resource,
-        parent_stack: parent_stack
+        parent_stack: parent_stack,
+        source_context: source_context
       )
 
     related_resource = Ash.Resource.Info.related(agg.resource, agg.relationship_path)
@@ -3537,7 +3596,8 @@ defmodule Ash.Actions.Read do
           tenant,
           tracer,
           domain,
-          agg.query.resource
+          agg.query.resource,
+          source_context: agg.query.context
         )
 
       case do_filter_with_related(related_resource, expr, path_filters, ref_path) do
@@ -3561,11 +3621,13 @@ defmodule Ash.Actions.Read do
          tracer,
          domain,
          ref_path,
-         parent_stack
+         parent_stack,
+         source_context
        ) do
     field =
       add_calc_context(field, actor, authorize?, tenant, tracer, domain, agg.resource,
-        parent_stack: parent_stack
+        parent_stack: parent_stack,
+        source_context: source_context
       )
 
     if authorize? && field.authorize? do
@@ -3580,7 +3642,8 @@ defmodule Ash.Actions.Read do
          domain,
          agg.resource,
          ref_path,
-         [agg.resource | parent_stack]
+         [agg.resource | parent_stack],
+         source_context
        )}
     else
       {:ok, agg}
@@ -3596,7 +3659,8 @@ defmodule Ash.Actions.Read do
          tracer,
          domain,
          ref_path,
-         parent_stack
+         parent_stack,
+         source_context
        )
        when is_atom(aggregate.field) do
     related_resource = Ash.Resource.Info.related(aggregate.resource, aggregate.relationship_path)
@@ -3618,7 +3682,8 @@ defmodule Ash.Actions.Read do
               tracer,
               domain,
               ref_path,
-              parent_stack
+              parent_stack,
+              source_context
             )
 
           {:error, error} ->
@@ -3674,7 +3739,8 @@ defmodule Ash.Actions.Read do
             tracer,
             domain,
             ref_path,
-            parent_stack
+            parent_stack,
+            source_context
           )
         else
           {:error, error} ->
@@ -3698,7 +3764,8 @@ defmodule Ash.Actions.Read do
          _tracer,
          _domain,
          _ref_path,
-         _parent_stack
+         _parent_stack,
+         _source_context
        )
        when is_atom(aggregate.field) do
     {:ok, aggregate.field}

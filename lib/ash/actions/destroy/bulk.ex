@@ -567,6 +567,17 @@ defmodule Ash.Actions.Destroy.Bulk do
          {:ok, atomic_changeset, query} <-
            authorize_atomic_changeset(query, atomic_changeset, opts),
          {query, atomic_changeset} <- add_changeset_filters(query, atomic_changeset),
+         query =
+           Ash.Actions.Read.add_calc_context_to_query(
+             query,
+             opts[:actor],
+             opts[:authorize?],
+             query.tenant,
+             opts[:tracer],
+             query.domain,
+             expand?: true,
+             source_context: query.context
+           ),
          {:ok, query} <- Ash.Actions.Read.handle_multitenancy(query),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
       case Ash.DataLayer.destroy_query(

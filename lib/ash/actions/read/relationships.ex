@@ -1348,7 +1348,8 @@ defmodule Ash.Actions.Read.Relationships do
         domain,
         destination,
         expand?: true,
-        parent_stack: parent_stack
+        parent_stack: parent_stack,
+        source_context: context
       )
       |> do_has_parent_expr?()
   end

@@ -75,13 +75,28 @@ defmodule Ash.Policy.FilterCheck do
             _ -> %{}
           end
 
-        actor
-        |> filter(authorizer, opts)
-        |> Ash.Expr.fill_template(
-          actor: actor,
-          tenant: authorizer.subject.to_tenant,
-          args: Ash.Policy.FilterCheck.args(authorizer),
-          context: context
+        filter = filter(actor, authorizer, opts)
+
+        filter =
+          Ash.Expr.fill_template(
+            filter,
+            actor: actor,
+            tenant: authorizer.subject.to_tenant,
+            args: Ash.Policy.FilterCheck.args(authorizer),
+            context: context
+          )
+
+        {:ok, filter} = Ash.Filter.hydrate_refs(filter, %{resource: authorizer.resource})
+
+        filter
+        |> Ash.Actions.Read.add_calc_context_to_filter(
+          actor,
+          true,
+          authorizer.subject.tenant,
+          context[:private][:tracer],
+          authorizer.domain,
+          authorizer.resource,
+          source_context: context
         )
         |> then(fn expr ->
           no_filter_static_forbidden_reads? =
