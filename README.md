@@ -13,28 +13,24 @@ Welcome! Here you will find everything you need to know to get started with and 
 ## Dive In
 
 - [What is Ash?](documentation/topics/about_ash/what-is-ash.md)
-- [Get Started](documentation/tutorials/get-started.md)
+- [Get Started Livebook](documentation/tutorials/get-started.md)
 - [See the roadmap](https://github.com/orgs/ash-project/projects/3)
 
 ## About the Documentation
 
-[**Tutorials**](#tutorials) walk you through a series of steps to accomplish a goal. These are **learning-oriented**, and are a great place for beginners to start.
+The [Get Started Livebook](documentation/tutorials/get-started.md) **Tutorial** introduces you to the core concepts of Ash like resources, actions, and relationships. It’s a great place to start if you are a beginner.
 
 ---
 
-[**Topics**](#topics) provide a high level overview of a specific concept or feature. These are **understanding-oriented**, and are perfect for discovering design patterns, features, and tools related to a given topic.
+[**Topics**](#topics) provide a high level overview of a specific concept or feature of Ash. These are **understanding-oriented**, and are perfect for discovering design patterns, features, and tools.
 
 ---
 
-[**How-to**](#how-to) guides are **goal-oriented** recipes for accomplishing specific tasks. These are also good to browse to get an idea of how Ash works and what is possible with it.
+[**How-to**](#how-to) guides are **goal-oriented** recipes for accomplishing specific popular tasks. Browse to get an idea of how Ash works and what is possible with it.
 
 ---
 
-[**Reference**](#reference) documentation is produced automatically from our source code. It comes in the form of module documentation and DSL documentation. This documentation is **information-oriented**. Use the sidebar and the search bar to find relevant reference information.
-
-## Tutorials
-
-- [Get Started](documentation/tutorials/get-started.md)
+[**Reference**](#reference) documentation is **information-oriented**, covering every Ash module, function, expression, and DSL. It is produced automatically from our source code. Use the sidebar and the top search bar to find relevant reference information. The `dsl:` prefix lets you quickly jump to a particular DSL — e.g. try `dsl: actions.create.accept`
 
 ---
 
