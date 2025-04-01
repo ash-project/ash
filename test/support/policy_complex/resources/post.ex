@@ -21,6 +21,10 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
     policy action_type(:create) do
       authorize_if always()
     end
+
+    policy action(:erase) do
+      authorize_if expr(has_context)
+    end
   end
 
   ets do
@@ -49,6 +53,10 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
       accept [:text]
       change relate_actor(:author)
     end
+
+    update :erase do
+      change set_attribute(:text, "[deleted]")
+    end
   end
 
   aggregates do
@@ -76,10 +84,13 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
     calculate :count_of_comments_calc, :integer, expr(count_of_comments) do
       public?(true)
     end
+
+    calculate :has_context, :boolean, expr(id == ^context(:post_id) and author_id == ^actor(:id))
   end
 
   code_interface do
     define :create, args: [:text]
+    define :erase
   end
 
   relationships do
