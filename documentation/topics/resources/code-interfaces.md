@@ -163,7 +163,7 @@ MyApp.Blog.my_posts(stream?: true, actor: me)
 ### Customizing the generated function
 
 Often we want to have a slightly different interface when calling actions with functions,
-or we want to maintain backwards compatibility for callers of our code interface while 
+or we want to maintain backwards compatibility for callers of our code interface while
 changing the underlying action implementation.
 
 You can define `custom_input`s on your code interfaces to massage arguments from the function
@@ -194,11 +194,11 @@ define :follow_artist do
       to :artist_id
 
       # Extracting the value using this function
-      using fn 
-        %Ash.Union{type: :artist, value: value} -> 
-          {:ok, value.id}
+      using fn
+        %Ash.Union{type: :artist, value: value} ->
+          value.id
         %Ash.Union{type: :artist_id, value: value} ->
-          {:ok, value}
+          value
       end
     end
   end
@@ -217,8 +217,8 @@ defmodule MyApp.Types.ArtistOrId do
     ]
   ]
 
-  def to_artist_id(%Ash.Union{type: :artist, value: artist}), do: {:ok, artist.id}
-  def to_artist_id(%Ash.Union{type: :artist_id, value: artist_id}), do: {:ok, artist_id}
+  def to_artist_id(%Ash.Union{type: :artist, value: artist}), do: artist.id
+  def to_artist_id(%Ash.Union{type: :artist_id, value: artist_id}), do: artist_id
 end
 ```
 
