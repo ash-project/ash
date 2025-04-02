@@ -30,14 +30,8 @@ if Code.ensure_loaded?(Igniter) do
     def igniter(igniter) do
       expression = igniter.args.positional.expression
       options = igniter.args.options
-      name = name(expression, options[:name])
-
-      args =
-        case options[:args] do
-          nil -> ""
-          args -> Enum.map_join(args, ",", &":#{&1}")
-        end
-
+      name = fetch_name(expression, options)
+      args = fetch_args(options)
       expression = Igniter.Project.Module.parse(expression)
 
       igniter
@@ -53,18 +47,24 @@ if Code.ensure_loaded?(Igniter) do
       """)
     end
 
-    defp name(_expression, name) when is_binary(name), do: name
+    defp fetch_name(expression, options) do
+      case options[:name] do
+        nil ->
+          expression
+          |> String.split(".")
+          |> List.last()
+          |> Macro.underscore()
 
-    defp name(expression, _name) do
-      expression
-      |> String.split(".")
-      |> List.last()
-      |> then(fn <<first::utf8, rest::binary>> ->
-        String.downcase(<<first::utf8>>) <>
-          (rest
-           |> String.split(~r/(?=[A-Z])/)
-           |> Enum.map_join("_", &String.downcase(&1)))
-      end)
+        name ->
+          name
+      end
+    end
+
+    defp fetch_args(options) do
+      case options[:args] do
+        nil -> ""
+        args -> Enum.map_join(args, ",", &":#{&1}")
+      end
     end
   end
 else

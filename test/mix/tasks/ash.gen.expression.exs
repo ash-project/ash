@@ -21,7 +21,9 @@ defmodule Mix.Tasks.Ash.Gen.CustomExpressionTest do
       end
     end
     """)
+  end
 
+  test "generates a custom expression module with options given" do
     test_project()
     |> Igniter.compose_task("ash.gen.custom_expression", [
       "MyApp.Expressions.MyExpression",
