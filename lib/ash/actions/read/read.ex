@@ -2263,7 +2263,7 @@ defmodule Ash.Actions.Read do
         end)
       else
         if Ash.Resource.Info.primary_key_simple_equality?(original_query.resource) do
-          key_fun = 
+          key_fun =
             case Ash.Resource.Info.primary_key(original_query.resource) do
               [field] -> &{Map.get(&1, field), &1}
               fields -> &{Map.take(&1, fields), &1}
@@ -2271,9 +2271,9 @@ defmodule Ash.Actions.Read do
 
           data_with_selected = Map.new(data_with_selected, key_fun)
 
-          Enum.map(data, fn record -> 
+          Enum.map(data, fn record ->
             case Map.fetch(data_with_selected, elem(key_fun.(record), 0)) do
-              {:ok, match} -> 
+              {:ok, match} ->
                 record
                 |> Map.merge(Map.take(match, fields_from_data))
                 |> Map.update!(
