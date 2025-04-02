@@ -35,7 +35,7 @@ if Code.ensure_loaded?(Igniter) do
       args =
         case options[:args] do
           nil -> ""
-          args -> args |> Enum.map(&":#{&1}") |> Enum.join(",")
+          args -> Enum.map_join(args, &":#{&1}", ",")
         end
 
       expression = Igniter.Project.Module.parse(expression)
@@ -63,8 +63,7 @@ if Code.ensure_loaded?(Igniter) do
         String.downcase(<<first::utf8>>) <>
           (rest
            |> String.split(~r/(?=[A-Z])/)
-           |> Enum.map(&String.downcase(&1))
-           |> Enum.join("_"))
+           |> Enum.map_join(&String.downcase(&1), "_"))
       end)
     end
   end
