@@ -6,9 +6,9 @@ defmodule Mix.Tasks.Ash.Gen.ChangeTest do
 
   test "generates a basic custom change module" do
     test_project()
-    |> Igniter.compose_task("ash.gen.change", ["MyApp.Changes.Slugify"])
-    |> assert_creates("lib/my_app/changes/slugify.ex", """
-    defmodule MyApp.Changes.Slugify do
+    |> Igniter.compose_task("ash.gen.change", ["MyApp.Changes.MyChange"])
+    |> assert_creates("lib/my_app/changes/my_change.ex", """
+    defmodule MyApp.Changes.MyChange do
       use Ash.Resource.Change
 
       @impl true
