@@ -208,7 +208,7 @@ defmodule Ash.Notifier.PubSub do
 
   - `:notification` just sends the notification
   - `:phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}` (see above)
-  - `:broadcast` sends `%{topic: (topic), event: (event), notification: (notification)}`
+  - `:broadcast` sends `%{topic: (topic), event: (event), payload: (notification)}`
   """
 
   use Spark.Dsl.Extension,
