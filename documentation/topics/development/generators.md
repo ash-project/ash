@@ -43,6 +43,9 @@ Ash can be installed into a project using `igniter`. Some examples of how this c
 - `mix ash.gen.enum` - Generates a new `Ash.Type.Enum`
 - `mix ash.gen.base_resource` - Generates a new base resource.
 - `mix ash.gen.change` - Generates a custom change module.
+- `mix ash.gen.validation` - Generates a custom validation module.
+- `mix ash.gen.preparation` - Generates a custom preparation module.
+- `mix ash.gen.custom_expression` - Generates a custom expression module.
 
 ## Patchers
 
