@@ -119,7 +119,7 @@ Configured with `broadcast_type`.
 
 - `:notification` just sends the notification
 - `:phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}` (see above)
-- `:broadcast` sends `%{topic: (topic), event: (event), notification: (notification)}`
+- `:broadcast` sends `%{topic: (topic), event: (event), payload: (notification)}`
 
 
 ## pub_sub
