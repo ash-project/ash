@@ -137,7 +137,7 @@ defmodule Ash.Test.Type.EnumTest do
                    {:type, 0, :union,
                     [
                       {:type, 0, :union,
-                       [{:atom, 0, :another_one}, {:atom, 0, :with_details}, {:atom, 0, :foo}]},
+                       [{:atom, 0, :with_details}, {:atom, 0, :another_one}, {:atom, 0, :foo}]},
                       {:remote_type, 0, [{:atom, 0, String}, {:atom, 0, :t}, []]}
                     ]}, []}
               ]} = Code.Typespec.fetch_types(MixedEnum)

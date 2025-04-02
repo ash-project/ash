@@ -127,7 +127,7 @@ defmodule Ash.Type.Enum do
       @behaviour Ash.Type.Enum
 
       @values_map Ash.Type.Enum.build_values_map(opts[:values])
-      @values Map.keys(@values_map)
+      @values Ash.Type.Enum.build_values_list(opts[:values])
 
       atom_typespec =
         if Enum.any?(@values, &is_atom/1) do
@@ -154,9 +154,9 @@ defmodule Ash.Type.Enum do
 
       @type t() :: unquote(typespec)
 
-      @string_values @values |> Enum.map(&to_string/1)
+      @string_values Enum.map(@values, &to_string/1)
 
-      @any_not_downcase? Enum.any?(@string_values, fn value -> String.downcase(value) != value end)
+      @any_not_downcase? Enum.any?(@string_values, &(String.downcase(&1) != &1))
 
       @impl Ash.Type.Enum
       def values, do: @values
@@ -346,6 +346,16 @@ defmodule Ash.Type.Enum do
           description: nil,
           label: humanize(value_with_no_description)
         })
+    end)
+  end
+
+  @doc false
+  def build_values_list(values) do
+    values
+    |> verify_values!()
+    |> Enum.map(fn
+      {value, _} -> value
+      value -> value
     end)
   end
 
