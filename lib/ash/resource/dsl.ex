@@ -881,15 +881,15 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       """
-      transform do 
+      transform do
         to :artist_id
-        with &{:ok, &1.id}
+        using &(&1.id)
       end
       """,
       """
-      transform do 
+      transform do
         to :points
-        with &try_parse_integer/1
+        using &try_parse_integer/1
       end
       """
     ],
@@ -902,8 +902,7 @@ defmodule Ash.Resource.Dsl do
       ],
       using: [
         type: {:fun, 1},
-        doc:
-          "A function to use to transform the value. Must return `{:ok, value}` or `{:error, error}`"
+        doc: "A function to use to transform the value. Must return `value` or `nil`"
       ]
     ]
   }
@@ -911,14 +910,14 @@ defmodule Ash.Resource.Dsl do
   @custom_input %Spark.Dsl.Entity{
     name: :custom_input,
     describe: """
-    Define or customize an input to the action. 
+    Define or customize an input to the action.
 
     See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
     """,
     examples: [
       """
       custom_input :artist, :struct do
-        transform to: :artist_id, with: &{:ok, &1.id}
+        transform to: :artist_id, using: &(&1.id)
 
         constraints instance_of: Artist
       end

@@ -147,7 +147,7 @@ custom_input name, type
 ```
 
 
-Define or customize an input to the action. 
+Define or customize an input to the action.
 
 See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
 
@@ -159,7 +159,7 @@ See the [code interface guide](/documentation/topics/resources/code-interfaces.m
 ### Examples
 ```
 custom_input :artist, :struct do
-  transform to: :artist_id, with: &{:ok, &1.id}
+  transform to: :artist_id, using: &(&1.id)
 
   constraints instance_of: Artist
 end
@@ -195,17 +195,17 @@ A transformation to be applied to the custom input.
 
 ### Examples
 ```
-transform do 
+transform do
   to :artist_id
-  with &{:ok, &1.id}
+  using &(&1.id)
 end
 
 ```
 
 ```
-transform do 
+transform do
   to :points
-  with &try_parse_integer/1
+  using &try_parse_integer/1
 end
 
 ```
@@ -218,7 +218,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`to`](#resources-resource-define-custom_input-transform-to){: #resources-resource-define-custom_input-transform-to } | `atom` |  | A key to rewrite the argument to. If the custom input is also a required positional argument, then the `to` is automatically added to the `exclude_inputs` list. |
-| [`using`](#resources-resource-define-custom_input-transform-using){: #resources-resource-define-custom_input-transform-using } | `(any -> any)` |  | A function to use to transform the value. Must return `{:ok, value}` or `{:error, error}` |
+| [`using`](#resources-resource-define-custom_input-transform-using){: #resources-resource-define-custom_input-transform-using } | `(any -> any)` |  | A function to use to transform the value. Must return `value` or `nil` |
 
 
 
@@ -287,7 +287,7 @@ custom_input name, type
 ```
 
 
-Define or customize an input to the action. 
+Define or customize an input to the action.
 
 See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
 
@@ -299,7 +299,7 @@ See the [code interface guide](/documentation/topics/resources/code-interfaces.m
 ### Examples
 ```
 custom_input :artist, :struct do
-  transform to: :artist_id, with: &{:ok, &1.id}
+  transform to: :artist_id, using: &(&1.id)
 
   constraints instance_of: Artist
 end
@@ -335,17 +335,17 @@ A transformation to be applied to the custom input.
 
 ### Examples
 ```
-transform do 
+transform do
   to :artist_id
-  with &{:ok, &1.id}
+  using &(&1.id)
 end
 
 ```
 
 ```
-transform do 
+transform do
   to :points
-  with &try_parse_integer/1
+  using &try_parse_integer/1
 end
 
 ```
@@ -358,7 +358,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`to`](#resources-resource-define_calculation-custom_input-transform-to){: #resources-resource-define_calculation-custom_input-transform-to } | `atom` |  | A key to rewrite the argument to. If the custom input is also a required positional argument, then the `to` is automatically added to the `exclude_inputs` list. |
-| [`using`](#resources-resource-define_calculation-custom_input-transform-using){: #resources-resource-define_calculation-custom_input-transform-using } | `(any -> any)` |  | A function to use to transform the value. Must return `{:ok, value}` or `{:error, error}` |
+| [`using`](#resources-resource-define_calculation-custom_input-transform-using){: #resources-resource-define_calculation-custom_input-transform-using } | `(any -> any)` |  | A function to use to transform the value. Must return `value` or `nil` |
 
 
 
