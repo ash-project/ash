@@ -2262,32 +2262,67 @@ defmodule Ash.Actions.Read do
           )
         end)
       else
-        Enum.map(data, fn record ->
-          case Enum.find(data_with_selected, fn selected_record ->
-                 record.__struct__.primary_key_matches?(record, selected_record)
-               end) do
-            nil ->
-              Ash.Resource.put_metadata(record, :private, %{missing_from_data_layer: true})
+        if Ash.Resource.Info.primary_key_simple_equality?(original_query.resource) do
+          key_fun = 
+            case Ash.Resource.Info.primary_key(original_query.resource) do
+              [field] -> &{Map.get(&1, field), &1}
+              fields -> &{Map.take(&1, fields), &1}
+            end
 
-            match ->
-              record
-              |> Map.merge(Map.take(match, fields_from_data))
-              |> Map.update!(
-                :aggregates,
-                &Map.merge(
-                  &1,
-                  Map.take(match.aggregates, fields_from_aggregates)
+          data_with_selected = Map.new(data_with_selected, key_fun)
+
+          Enum.map(data, fn record -> 
+            case Map.fetch(data_with_selected, elem(key_fun.(record), 0)) do
+              {:ok, match} -> 
+                record
+                |> Map.merge(Map.take(match, fields_from_data))
+                |> Map.update!(
+                  :aggregates,
+                  &Map.merge(
+                    &1,
+                    Map.take(match.aggregates, fields_from_aggregates)
+                  )
                 )
-              )
-              |> Map.update!(
-                :calculations,
-                &Map.merge(
-                  &1,
-                  Map.take(match.calculations, fields_from_calculations)
+                |> Map.update!(
+                  :calculations,
+                  &Map.merge(
+                    &1,
+                    Map.take(match.calculations, fields_from_calculations)
+                  )
                 )
-              )
-          end
-        end)
+
+              :error ->
+                Ash.Resource.put_metadata(record, :private, %{missing_from_data_layer: true})
+            end
+          end)
+        else
+          Enum.map(data, fn record ->
+            case Enum.find(data_with_selected, fn selected_record ->
+                   record.__struct__.primary_key_matches?(record, selected_record)
+                 end) do
+              nil ->
+                Ash.Resource.put_metadata(record, :private, %{missing_from_data_layer: true})
+
+              match ->
+                record
+                |> Map.merge(Map.take(match, fields_from_data))
+                |> Map.update!(
+                  :aggregates,
+                  &Map.merge(
+                    &1,
+                    Map.take(match.aggregates, fields_from_aggregates)
+                  )
+                )
+                |> Map.update!(
+                  :calculations,
+                  &Map.merge(
+                    &1,
+                    Map.take(match.calculations, fields_from_calculations)
+                  )
+                )
+            end
+          end)
+        end
       end
     end
   end
