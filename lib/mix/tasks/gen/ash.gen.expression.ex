@@ -1,5 +1,5 @@
 if Code.ensure_loaded?(Igniter) do
-  defmodule Mix.Tasks.Ash.Gen.Expression do
+  defmodule Mix.Tasks.Ash.Gen.CustomExpression do
     @moduledoc """
     Generates a custom expression
 
@@ -8,7 +8,7 @@ if Code.ensure_loaded?(Igniter) do
     ## Example
 
     ```bash
-    mix ash.gen.expression MyApp.Expressions.LevenshteinDistance --args string,string
+    mix ash.gen.custom_expression MyApp.Expressions.LevenshteinDistance --args string,string
     ```
 
     ## Options
@@ -35,7 +35,7 @@ if Code.ensure_loaded?(Igniter) do
       args =
         case options[:args] do
           nil -> ""
-          args -> Enum.map_join(args, &":#{&1}", ",")
+          args -> Enum.map_join(args, ",", &":#{&1}")
         end
 
       expression = Igniter.Project.Module.parse(expression)
@@ -63,12 +63,12 @@ if Code.ensure_loaded?(Igniter) do
         String.downcase(<<first::utf8>>) <>
           (rest
            |> String.split(~r/(?=[A-Z])/)
-           |> Enum.map_join(&String.downcase(&1), "_"))
+           |> Enum.map_join("_", &String.downcase(&1)))
       end)
     end
   end
 else
-  defmodule Mix.Tasks.Ash.Gen.Expression do
+  defmodule Mix.Tasks.Ash.Gen.CustomExpression do
     @moduledoc """
     Generates a custom expression
 

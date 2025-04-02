@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.Ash.Gen.ExpressionTest do
+defmodule Mix.Tasks.Ash.Gen.CustomExpressionTest do
   use ExUnit.Case
   import Igniter.Test
 
@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Ash.Gen.ExpressionTest do
 
   test "generates a basic custom expression module" do
     test_project()
-    |> Igniter.compose_task("ash.gen.expression", [
+    |> Igniter.compose_task("ash.gen.custom_expression", [
       "MyApp.Expressions.MyExpression"
     ])
     |> assert_creates("lib/my_app/expressions/my_expression.ex", """
@@ -23,7 +23,7 @@ defmodule Mix.Tasks.Ash.Gen.ExpressionTest do
     """)
 
     test_project()
-    |> Igniter.compose_task("ash.gen.expression", [
+    |> Igniter.compose_task("ash.gen.custom_expression", [
       "MyApp.Expressions.MyExpression",
       "--name",
       "my_name",
