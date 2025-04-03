@@ -391,6 +391,8 @@ defmodule Ash.Test.CalculationTest do
                     at(names, 0)
                   end
                 )
+
+      calculate :active_string, :string, expr("Is active: #{is_active}")
     end
 
     relationships do
@@ -450,6 +452,7 @@ defmodule Ash.Test.CalculationTest do
       attribute(:special, :boolean, public?: true)
       attribute(:is_active, :boolean, public?: true)
       attribute(:bio, Bio, public?: true)
+      attribute :year_of_birth, :integer, public?: true
     end
 
     changes do
@@ -684,6 +687,8 @@ defmodule Ash.Test.CalculationTest do
         argument :first_name, :string
         constraints instance_of: __MODULE__
       end
+
+      calculate :yob_string, :string, expr("Born in: " <> year_of_birth)
     end
 
     aggregates do
@@ -904,7 +909,8 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.Changeset.for_create(:create, %{
         first_name: "zach",
         last_name: "daniel",
-        bio: %{greeting: "Yo! "}
+        bio: %{greeting: "Yo! "},
+        year_of_birth: 1990
       })
       |> Ash.create!()
 
@@ -1669,5 +1675,13 @@ defmodule Ash.Test.CalculationTest do
 
     # Loaded with the additional load statement
     assert first_result.said_hello_to.full_name_with_select == "Rebecca "
+  end
+
+  test "string interpolation works for non string attributes", %{
+    user1: user1,
+    admin_role: admin_role
+  } do
+    assert %{yob_string: "Born in: 1990"} = Ash.load!(user1, :yob_string)
+    assert %{active_string: "Is active: false"} = Ash.load!(admin_role, :active_string)
   end
 end
