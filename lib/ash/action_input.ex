@@ -299,7 +299,7 @@ defmodule Ash.ActionInput do
       | params: Map.merge(input.params, Enum.into(params, %{}))
     }
 
-    skip_unknown_inputs = opts[:skip_unknown_inputs] || []
+    skip_unknown_inputs = opts[:skip_unknown_inputs] || input.action.skip_unknown_inputs
 
     Enum.reduce(params, input, fn {name, value}, input ->
       cond do
