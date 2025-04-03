@@ -280,7 +280,11 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         return_notifications?: opts.return_notifications?
       )
 
-    context = Map.merge(relationship.context || %{}, %{cascade_destroy: true})
+    context =
+      Map.merge(relationship.context || %{}, %{
+        cascade_destroy: true,
+        accessing_from: %{source: relationship.source, name: relationship.name}
+      })
 
     context_opts =
       Keyword.update(
@@ -309,9 +313,11 @@ defmodule Ash.Resource.Change.CascadeDestroy do
           |> Ash.load!(
             [
               {relationship.name,
-               Ash.Query.set_context(relationship.destination, %{cascade_destroy: true})}
+               Ash.Query.set_context(relationship.destination, %{
+                 cascade_destroy: true,
+                 accessing_from: %{source: relationship.source, name: relationship.name}
+               })}
             ],
-            authorize?: false,
             tenant: tenant
           )
           |> Enum.flat_map(fn record ->
