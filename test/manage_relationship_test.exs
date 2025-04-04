@@ -11,6 +11,7 @@ defmodule Ash.Test.ManageRelationshipTest do
       defaults [:read, :destroy]
 
       create :create do
+        primary? true
         accept [:name]
         argument :related_resource, :map
         argument :other_resources, {:array, :map}
@@ -28,6 +29,7 @@ defmodule Ash.Test.ManageRelationshipTest do
 
       update :update do
         require_atomic? false
+        primary? true
         accept [:name]
         argument :related_resource, :map
         argument :other_resources, {:array, :map}
@@ -66,6 +68,19 @@ defmodule Ash.Test.ManageRelationshipTest do
 
     actions do
       defaults [:read, :destroy, create: :*, update: :*]
+
+      create :create_with_parent do
+        accept [:required_attribute]
+        argument :parent_resource, :map, allow_nil?: false
+        change manage_relationship(:parent_resource, type: :direct_control)
+        change after_action(fn changeset, result, context -> 
+          if !changeset.attributes[:parent_resource_id] do
+            raise "should have a parent_resource_id"
+          end
+
+          {:ok, result}
+        end)
+      end
     end
 
     attributes do
@@ -139,6 +154,21 @@ defmodule Ash.Test.ManageRelationshipTest do
                ]
              })
              |> Ash.create!()
+  end
+
+  test "can create a belongs_to relationship, and observe the attribute change" do
+    assert {:ok, related} =
+             RelatedResource
+             |> Ash.Changeset.for_create(:create_with_parent, %{
+               required_attribute: "string",
+               parent_resource: %{
+                 name: "Test Parent Resource",
+               }
+             })
+             |> Ash.create!()
+             |> Ash.load(:parent_resource)
+
+    assert related.parent_resource.name == "Test Parent Resource"
   end
 
   test "can create and update a related resource" do

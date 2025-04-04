@@ -4157,7 +4157,7 @@ defmodule Ash.Changeset do
           {:ok, result, instructions} ->
             run_after_actions(
               result,
-              changeset,
+              instructions[:new_changeset] || changeset,
               List.wrap(instructions[:notifications]) ++ List.wrap(before_action_notifications)
             )
 
