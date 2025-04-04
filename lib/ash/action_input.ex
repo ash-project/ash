@@ -1,6 +1,10 @@
 defmodule Ash.ActionInput do
   @moduledoc """
   Input for a custom action
+
+  Much like an `Ash.Query` and `Ash.Changeset` are used to provide inputs into
+  CRUD actions, this struct provides the inputs required to execute a generic
+  action.
   """
 
   alias Ash.Error.Action.InvalidArgument
@@ -32,6 +36,19 @@ defmodule Ash.ActionInput do
           domain: Ash.Domain.t(),
           valid?: boolean()
         }
+
+  @doc """
+  Create a new action input from a resource.
+
+  ## Examples
+
+      iex> Ash.ActionInput.new(Post)
+      %Ash.ActionInput{resource: Post}
+
+      iex> Ash.ActionInput.new(Post, Domain)
+      %Ash.ActionInput{resource: Post, domain: Domain}
+  """
+  @spec new(Ash.Resource.t(), Ash.Domain.t()) :: t
   def new(resource, domain \\ nil) do
     %__MODULE__{resource: resource, domain: domain}
   end
@@ -87,6 +104,13 @@ defmodule Ash.ActionInput do
   ## Options
 
   #{Opts.docs()}
+
+  ## Examples
+
+      iex> Post
+      ...> |> Ash.ActionInput.for_action(:example, %{})
+      ...> |> then(& &1.action.name)
+      :example
   """
   @doc spark_opts: [{4, @for_action_opts}]
   @spec for_action(
@@ -96,47 +120,82 @@ defmodule Ash.ActionInput do
           opts :: Keyword.t()
         ) :: t()
   def for_action(resource_or_input, action, params, opts \\ []) do
-    case Opts.validate(opts) do
-      {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+    with {:ok, opts} <- Opts.validate(opts),
+         {:ok, input} <- set_action_for_input(resource_or_input, action),
+         opts <- Opts.to_options(opts),
+         {:ok, input} <- set_domain_for_input(input, opts) do
+      {input, _opts} = Ash.Actions.Helpers.set_context_and_get_opts(input.domain, input, opts)
 
-      {:ok, opts} ->
-        opts = Opts.to_options(opts)
+      input =
+        Enum.reduce(opts[:private_arguments] || %{}, input, fn {k, v}, input ->
+          Ash.ActionInput.set_private_argument(input, k, v)
+        end)
 
-        input =
-          case resource_or_input do
-            resource when is_atom(resource) ->
-              action = Ash.Resource.Info.action(resource, action)
-              %__MODULE__{resource: resource, action: action}
-
-            input ->
-              action = Ash.Resource.Info.action(input.resource, action)
-              %{input | action: action}
-          end
-
-        domain =
-          input.domain || opts[:domain] || Ash.Resource.Info.domain(input.resource) ||
-            Ash.Actions.Helpers.maybe_embedded_domain(input.resource) ||
-            raise ArgumentError,
-              message:
-                "Could not determine domain for action. Provide the `domain` option or configure a domain in the resource directly."
-
-        input = %{input | domain: domain}
-
-        {input, _opts} = Ash.Actions.Helpers.set_context_and_get_opts(input.domain, input, opts)
-
-        input =
-          Enum.reduce(opts[:private_arguments] || %{}, input, fn {k, v}, input ->
-            Ash.ActionInput.set_private_argument(input, k, v)
-          end)
-
-        input
-        |> cast_params(params, opts)
-        |> set_defaults()
-        |> require_arguments()
+      input
+      |> cast_params(params, opts)
+      |> set_defaults()
+      |> require_arguments()
+    else
+      {:error, reason} -> raise Ash.Error.to_error_class(reason)
     end
   end
 
+  defp set_action_for_input(%Ash.ActionInput{resource: resource} = input, action_name)
+       when is_atom(resource) do
+    case Ash.Resource.Info.action(resource, action_name) do
+      nil ->
+        {:error,
+         Ash.Error.Invalid.NoSuchAction.exception(
+           resource: resource,
+           action: action_name,
+           type: :action
+         )}
+
+      action when action.type == :action ->
+        {:ok, %{input | action: action}}
+
+      action ->
+        {:error,
+         Ash.Error.Invalid.NoSuchAction.exception(
+           resource: resource,
+           action: action,
+           type: :action
+         )}
+    end
+  end
+
+  defp set_action_for_input(resource, action) when is_atom(resource) do
+    resource
+    |> new()
+    |> set_action_for_input(action)
+  end
+
+  defp set_domain_for_input(input, opts) do
+    domain =
+      input.domain || opts[:domain] || Ash.Resource.Info.domain(input.resource) ||
+        Ash.Actions.Helpers.maybe_embedded_domain(input.resource)
+
+    if domain do
+      {:ok, %{input | domain: domain}}
+    else
+      {:error,
+       ArgumentError.exception(
+         "Could not determine domain for action. Provide the `domain` option or configure a domain in the resource directly."
+       )}
+    end
+  end
+
+  @doc """
+  Set the tenant to use when calling the action.
+
+  ## Example
+
+      iex> Post
+      ...> |> Ash.ActionInput.new()
+      ...> |> Ash.ActionInput.set_tenant("banana")
+      ...> |> then(& &1.tenant)
+      "banana"
+  """
   @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(input, tenant) do
     %{input | tenant: tenant, to_tenant: Ash.ToTenant.to_tenant(tenant, input.resource)}
@@ -189,7 +248,16 @@ defmodule Ash.ActionInput do
   defp default(%{default: function}) when is_function(function, 0), do: function.()
   defp default(%{default: value}), do: value
 
-  @doc "Gets the value of an argument provided to the input."
+  @doc """
+  Gets the value of an argument provided to the input.
+
+  ## Example
+
+      iex> Post
+      ...> |> Ash.ActionInput.for_action(:example, %{arg: "banana"})
+      ...> |> Ash.ActionInput.get_argument(:arg)
+      "banana"
+  """
   @spec get_argument(t, atom | String.t()) :: term
   def get_argument(input, argument) when is_atom(argument) or is_binary(argument) do
     case fetch_argument(input, argument) do
@@ -198,7 +266,21 @@ defmodule Ash.ActionInput do
     end
   end
 
-  @doc "Fetches the value of an argument provided to the input or `:error`."
+  @doc """
+  Fetches the value of an argument provided to the input or `:error`.
+
+  ## Examples
+
+      iex> Post
+      ...> |> Ash.ActionInput.for_action(:example, %{arg: "banana"})
+      ...> |> Ash.ActionInput.fetch_argument(:arg)
+      {:ok, "banana"}
+
+      iex> Post
+      ...> |> Ash.ActionInput.for_action(:example, %{})
+      ...> |> Ash.ActionInput.fetch_argument(:banana)
+      :error
+  """
   @spec fetch_argument(t, atom | String.t()) :: {:ok, term()} | :error
   def fetch_argument(input, argument) when is_atom(argument) or is_binary(argument) do
     with :error <- Map.fetch(input.arguments, argument) do
@@ -206,7 +288,17 @@ defmodule Ash.ActionInput do
     end
   end
 
-  @doc "Set an argument value"
+  @doc """
+  Set an argument value
+
+  ## Example
+
+      iex> Post
+      ...> |> Ash.ActionInput.for_action(:example, %{})
+      ...> |> Ash.ActionInput.set_argument(:arg, "banana")
+      ...> |> Ash.ActionInput.get_argument(:arg)
+      "banana"
+  """
   @spec set_argument(input :: t(), name :: atom, value :: term()) :: t()
   def set_argument(input, argument, value) do
     if input.action do
@@ -255,6 +347,14 @@ defmodule Ash.ActionInput do
 
   @doc """
   Sets a private argument value
+
+  ## Example
+
+      iex> Post
+      ...> |> Ash.ActionInput.for_action(:example, %{})
+      ...> |> Ash.ActionInput.set_private_argument(:private_arg, "banana")
+      ...> |> Ash.ActionInput.get_argument(:private_arg)
+      "banana"
   """
   @spec set_private_argument(input :: t(), name :: atom, value :: term()) :: t()
   def set_private_argument(input, name, value) do
@@ -284,7 +384,16 @@ defmodule Ash.ActionInput do
   @doc """
   Deep merges the provided map into the input context that can be used later
 
-  Do not use the `private` key in your custom context, as that is reserved for internal use.
+  Do not use the `private` key in your custom context, as that is reserved for
+  internal use.
+
+  ## Example
+
+      iex> Post
+      ...> |> Ash.ActionInput.new()
+      ...> |> Ash.ActionInput.set_context(%{favourite_fruit: :banana})
+      ...> |> then(& &1.context.favourite_fruit)
+      :banana
   """
   @spec set_context(t(), map | nil) :: t()
   def set_context(input, nil), do: input
