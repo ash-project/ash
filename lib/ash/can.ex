@@ -825,6 +825,16 @@ defmodule Ash.Can do
             |> Ash.Query.do_filter(or: pkey_values)
             |> Ash.Query.select([])
             |> Ash.Query.set_tenant(tenant)
+            |> Ash.Actions.Read.add_calc_context_to_query(
+              actor,
+              true,
+              query.tenant,
+              opts[:tracer],
+              query.domain,
+              expand?: false,
+              parent_stack: Ash.Actions.Read.parent_stack_from_context(subject.context),
+              source_context: subject.context
+            )
             |> Ash.Query.data_layer_query()
             |> case do
               {:ok, data_layer_query} ->
@@ -886,6 +896,16 @@ defmodule Ash.Can do
           |> Ash.Query.do_filter(pkey_value)
           |> Ash.Query.set_tenant(tenant)
           |> Ash.Query.select([])
+          |> Ash.Actions.Read.add_calc_context_to_query(
+            actor,
+            true,
+            query.tenant,
+            opts[:tracer],
+            query.domain,
+            expand?: false,
+            parent_stack: Ash.Actions.Read.parent_stack_from_context(subject.context),
+            source_context: subject.context
+          )
           |> Ash.Query.data_layer_query()
           |> case do
             {:ok, data_layer_query} ->
