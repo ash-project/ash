@@ -73,13 +73,14 @@ defmodule Ash.Test.ManageRelationshipTest do
         accept [:required_attribute]
         argument :parent_resource, :map, allow_nil?: false
         change manage_relationship(:parent_resource, type: :direct_control)
-        change after_action(fn changeset, result, context -> 
-          if !changeset.attributes[:parent_resource_id] do
-            raise "should have a parent_resource_id"
-          end
 
-          {:ok, result}
-        end)
+        change after_action(fn changeset, result, context ->
+                 if !changeset.attributes[:parent_resource_id] do
+                   raise "should have a parent_resource_id"
+                 end
+
+                 {:ok, result}
+               end)
       end
     end
 
@@ -162,7 +163,7 @@ defmodule Ash.Test.ManageRelationshipTest do
              |> Ash.Changeset.for_create(:create_with_parent, %{
                required_attribute: "string",
                parent_resource: %{
-                 name: "Test Parent Resource",
+                 name: "Test Parent Resource"
                }
              })
              |> Ash.create!()
