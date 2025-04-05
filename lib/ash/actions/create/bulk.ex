@@ -187,7 +187,10 @@ defmodule Ash.Actions.Create.Bulk do
             )
           after
             if opts[:notify?] && !opts[:return_notifications?] do
-              Ash.Notifier.notify(Process.delete({:bulk_create_notifications, ref}))
+              Process.put(
+                {:bulk_update_notifications, ref},
+                Ash.Notifier.notify(Process.delete({:bulk_update_notifications, ref}) || [])
+              )
             end
           end
         end
@@ -221,11 +224,18 @@ defmodule Ash.Actions.Create.Bulk do
             opts[:return_notifications?] ->
               notifications
 
-            opts[:notify?] ->
-              Ash.Notifier.notify(notifications)
-              nil
-
             true ->
+              if opts[:notify?] do
+                Ash.Notifier.notify(notifications)
+              end
+
+              if Process.get(:ash_started_transaction?) do
+                Process.put(
+                  :ash_notifications,
+                  Process.get(:ash_notifications, []) ++ notifications
+                )
+              end
+
               nil
           end
 
