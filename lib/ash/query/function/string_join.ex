@@ -19,11 +19,10 @@ defmodule Ash.Query.Function.StringJoin do
       [{:array, :string}, :string],
       [{:array, :string}, :ci_string],
       [{:array, :ci_string}],
-      [{:array, :ci_string}, :ci_string],
       [{:array, :ci_string}, :ci_string]
     ]
 
-  def returns, do: [:string, :string, :ci_string, :ci_string, :ci_string, :ci_string]
+  def returns, do: [:string, :string, :ci_string, :ci_string, :ci_string]
 
   def evaluate(%{arguments: [values, joiner]}) do
     join(values, joiner)
