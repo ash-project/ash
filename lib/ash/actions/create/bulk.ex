@@ -464,7 +464,7 @@ defmodule Ash.Actions.Create.Bulk do
 
     {batch, must_be_simple_results} =
       batch
-      |> Stream.map(fn changeset ->
+      |> Enum.map(fn changeset ->
         Ash.Changeset.require_values(
           changeset,
           :create
@@ -1468,61 +1468,56 @@ defmodule Ash.Actions.Create.Bulk do
       ref
     )
     |> then(fn records ->
-      if opts[:return_records?], do: records, else: []
-    end)
-    |> then(fn records ->
-      select =
-        if opts[:select] do
-          List.wrap(opts[:select])
-        else
-          resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
-        end
-
-      case Ash.load(
-             records,
-             select,
-             context: %{private: %{just_created_by_action: action.name}},
-             reuse_values?: true,
-             domain: domain,
-             action: Ash.Resource.Info.primary_action(resource, :read) || action,
-             tenant: opts[:tenant],
-             actor: opts[:actor],
-             authorize?: opts[:authorize?],
-             tracer: opts[:tracer]
-           ) do
-        {:ok, records} ->
-          Ash.load(
-            records,
-            List.wrap(opts[:load]),
-            context: %{private: %{just_created_by_action: action.name}},
-            domain: domain,
-            tenant: opts[:tenant],
-            action: Ash.Resource.Info.primary_action(resource, :read) || action,
-            reuse_values?: true,
-            actor: opts[:actor],
-            authorize?: opts[:authorize?],
-            tracer: opts[:tracer]
-          )
-          |> case do
-            {:ok, records} ->
-              {:ok, Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])}
-
-            {:error, error} ->
-              {:error, error}
+      if opts[:return_records?] do
+        select =
+          if opts[:select] do
+            List.wrap(opts[:select])
+          else
+            resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
           end
 
-        other ->
-          other
+        case Ash.load(
+               records,
+               select,
+               context: %{private: %{just_created_by_action: action.name}},
+               reuse_values?: true,
+               domain: domain,
+               action: Ash.Resource.Info.primary_action(resource, :read) || action,
+               tenant: opts[:tenant],
+               actor: opts[:actor],
+               authorize?: opts[:authorize?],
+               tracer: opts[:tracer]
+             ) do
+          {:ok, records} ->
+            Ash.load(
+              records,
+              List.wrap(opts[:load]),
+              context: %{private: %{just_created_by_action: action.name}},
+              domain: domain,
+              tenant: opts[:tenant],
+              action: Ash.Resource.Info.primary_action(resource, :read) || action,
+              reuse_values?: true,
+              actor: opts[:actor],
+              authorize?: opts[:authorize?],
+              tracer: opts[:tracer]
+            )
+            |> case do
+              {:ok, records} ->
+                Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])
+
+              {:error, error} ->
+                store_error(ref, error, opts)
+                []
+            end
+
+          {:error, error} ->
+            store_error(ref, error, opts)
+            []
+        end
+      else
+        []
       end
     end)
-    |> case do
-      {:ok, records} ->
-        records
-
-      {:error, error} ->
-        store_error(ref, error, opts)
-        []
-    end
   end
 
   defp run_bulk_after_changes(
