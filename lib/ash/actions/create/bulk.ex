@@ -188,8 +188,8 @@ defmodule Ash.Actions.Create.Bulk do
           after
             if opts[:notify?] && !opts[:return_notifications?] do
               Process.put(
-                {:bulk_update_notifications, ref},
-                Ash.Notifier.notify(Process.delete({:bulk_update_notifications, ref}) || [])
+                {:bulk_create_notifications, ref},
+                Ash.Notifier.notify(Process.delete({:bulk_create_notifications, ref}) || [])
               )
             end
           end
