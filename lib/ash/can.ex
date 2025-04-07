@@ -196,6 +196,15 @@ defmodule Ash.Can do
 
   defp resource_subject_input(action_or_query_or_changeset, domain, actor, opts) do
     case action_or_query_or_changeset do
+      %Ash.Query{} = query ->
+        {query.resource, query, nil}
+
+      %Ash.Changeset{} = changeset ->
+        {changeset.resource, changeset, nil}
+
+      %Ash.ActionInput{} = input ->
+        {input.resource, input, nil}
+
       {resource, name} when is_atom(name) and is_atom(resource) ->
         action =
           Ash.Resource.Info.action(resource, name) ||
@@ -276,14 +285,6 @@ defmodule Ash.Can do
           opts
         )
 
-      %Ash.Query{} = query ->
-        {query.resource, query, nil}
-
-      %Ash.Changeset{} = changeset ->
-        {changeset.resource, changeset, nil}
-
-      %Ash.ActionInput{} = input ->
-        {input.resource, input, nil}
 
       {resource, %struct{} = action}
       when struct in [
