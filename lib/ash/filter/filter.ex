@@ -2132,7 +2132,7 @@ defmodule Ash.Filter do
             field
         end
 
-      field_ref = field_to_ref(aggregate.resource, field_ref)
+      field_ref = field_to_ref(related, field_ref)
 
       query_rel_paths ++ do_relationship_paths(field_ref, include_exists?, with_refs?, true)
     else
