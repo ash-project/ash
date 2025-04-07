@@ -225,9 +225,12 @@ defmodule Ash.Actions.Create.Bulk do
               notifications
 
             true ->
-              if opts[:notify?] do
-                Ash.Notifier.notify(notifications)
-              end
+              notifications =
+                if opts[:notify?] do
+                  Ash.Notifier.notify(notifications)
+                else
+                  notifications
+                end
 
               if Process.get(:ash_started_transaction?) do
                 Process.put(
