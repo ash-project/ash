@@ -822,6 +822,10 @@ defmodule Ash.CodeInterface do
                 else
                   quote do
                     if opts[:stream?] do
+                      opts =
+                        Keyword.merge(opts, opts[:stream_options] || [])
+                        |> Keyword.drop([:stream?, :stream_options])
+
                       Ash.stream!(query, Keyword.drop(opts, [:stream?, :stream_options]))
                     else
                       Ash.read!(query, Keyword.drop(opts, [:stream?, :stream_options]))
