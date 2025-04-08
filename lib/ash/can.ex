@@ -285,7 +285,6 @@ defmodule Ash.Can do
           opts
         )
 
-
       {resource, %struct{} = action}
       when struct in [
              Ash.Resource.Actions.Create,
