@@ -97,6 +97,17 @@ defmodule Ash do
                           """,
                           default: false
                         ],
+                        return_records?: [
+                          type: :boolean,
+                          doc: """
+                          If `true`, the the query will not be executed and not records will be returned.
+
+                          This can be used with `return_query?: true` to get the query without the records.
+
+                          Useful for using the code interface to get the query for aggregate functions like `Ash.exists?`
+                          """,
+                          default: true
+                        ],
                         skip_unknown_inputs: [
                           type: {:wrap_list, {:or, [:atom, :string]}},
                           doc:

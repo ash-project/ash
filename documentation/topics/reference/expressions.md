@@ -89,6 +89,8 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 ## DateTime Functions
 
 - `now/0` | Evaluates to the current time when the expression is evaluated
+- `now/1` | Evaluates to the current time for a specific timezone when the expression is evaluated.
+- `now/2` | Evaluates to the current time for a specific timezone and timezone database when the expression is evaluated.
 - `today/0` | Evaluates to the current date when the expression is evaluated
 - `ago/2` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in `Ash.Type.DurationName`
 - `from_now/2` | Same as `ago` but adds instead of subtracting
