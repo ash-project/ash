@@ -34,7 +34,7 @@ All functions will have an optional last argument that accepts options. See `Ash
 
 For reads:
 
-- `:query` - a query to start the action with, can be used to filter/sort the results of the action.
+- `:query` - a query to start the action with, can be used to filter/sort the results of the action. This can be a keyword list of any of the options that `Ash.Query.build/3` supports.
 
 For creates:
 
