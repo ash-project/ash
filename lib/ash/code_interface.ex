@@ -602,6 +602,7 @@ defmodule Ash.CodeInterface do
         args = List.wrap(filter_keys) ++ Ash.CodeInterface.without_optional(interface.args || [])
 
         arg_vars = Enum.map(args, &{&1, [], Elixir})
+        arg_params = {:%{}, [], Enum.map(args, fn arg -> {arg, {arg, [], Elixir}} end)}
 
         arg_vars_function =
           filter_keys
@@ -649,10 +650,7 @@ defmodule Ash.CodeInterface do
                 end
               )
 
-            arg_params =
-              unquote(args)
-              |> Enum.zip([unquote_splicing(arg_vars)])
-              |> Map.new()
+            arg_params = unquote(arg_params)
 
             params =
               if is_list(params),
@@ -1731,10 +1729,7 @@ defmodule Ash.CodeInterface do
               |> Keyword.put(:actor, actor)
             end)
 
-          arg_params =
-            unquote(args)
-            |> Enum.zip([unquote_splicing(arg_vars)])
-            |> Map.new()
+          arg_params = unquote(arg_params)
 
           params =
             if is_list(params),
@@ -1816,10 +1811,7 @@ defmodule Ash.CodeInterface do
               |> Keyword.put(:actor, actor)
             end)
 
-          arg_params =
-            unquote(args)
-            |> Enum.zip([unquote_splicing(arg_vars)])
-            |> Map.new()
+          arg_params = unquote(arg_params)
 
           params =
             if is_list(params),

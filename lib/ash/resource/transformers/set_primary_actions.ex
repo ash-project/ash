@@ -55,8 +55,12 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
     default_defaults =
       if Transformer.get_persisted(dsl_state, :embedded?) do
         [{:create, :*}, :read, {:update, :*}, :destroy]
-        |> Enum.reject(fn action_name ->
-          Enum.any?(actions, &(&1.name == action_name))
+        |> Enum.reject(fn
+          {action_name, _} ->
+            Enum.any?(actions, &(&1.name == action_name))
+
+          action_name ->
+            Enum.any?(actions, &(&1.name == action_name))
         end)
         |> Enum.reverse()
       else
