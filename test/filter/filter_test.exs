@@ -1045,6 +1045,55 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Ash.Query.filter(approved_at > now())
                |> Ash.read!()
     end
+
+    test "start_of_day() respects timezone" do
+      approved_at = ~U[2025-04-09 12:00:00Z]
+
+      nz_start_of_day =
+        approved_at
+        |> DateTime.shift_zone!("Pacific/Auckland")
+        |> DateTime.to_date()
+        |> DateTime.new!(Time.new!(0, 0, 0), "Pacific/Auckland")
+        |> DateTime.shift_zone!("Etc/UTC")
+
+      just_before_nz_start_of_day =
+        nz_start_of_day
+        |> DateTime.shift(second: -1)
+
+      post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "title1",
+          approved_at: nz_start_of_day
+        })
+        |> Ash.create!()
+
+      post2 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "title2",
+          approved_at: just_before_nz_start_of_day
+        })
+        |> Ash.create!()
+
+      post1_id = post1.id
+
+      assert [%Post{id: ^post1_id}] =
+               Post
+               |> Ash.Query.filter(
+                 approved_at >= start_of_day(^nz_start_of_day, "Pacific/Auckland")
+               )
+               |> Ash.read!()
+
+      post2_id = post2.id
+
+      assert [%Post{id: ^post2_id}] =
+               Post
+               |> Ash.Query.filter(
+                 approved_at < start_of_day(^nz_start_of_day, "Pacific/Auckland")
+               )
+               |> Ash.read!()
+    end
   end
 
   test "using tuple instead of keyword list does not raise an error" do

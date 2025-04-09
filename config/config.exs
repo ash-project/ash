@@ -47,3 +47,7 @@ config :ash, :policies, show_policy_breakdowns?: true
 config :ash, :compatible_foreign_key_types, [
   {Ash.Type.CiString, Ash.Type.UUID}
 ]
+
+if config_env() == :test do
+  config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+end
