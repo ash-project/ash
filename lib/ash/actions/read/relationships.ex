@@ -3,6 +3,8 @@ defmodule Ash.Actions.Read.Relationships do
   require Ash.Query
   import Ash.Expr
 
+  require Logger
+
   def load([], _query, _lazy?, _reuse_values?) do
     {:ok, []}
   end
@@ -704,7 +706,27 @@ defmodule Ash.Actions.Read.Relationships do
             related
 
           :one ->
-            Enum.at(related, 0)
+            case related do
+              [related_record] ->
+                related_record
+
+              [] ->
+                nil
+
+              [related_record | _] ->
+                if !Map.get(relationship, :from_many?, false) do
+                  # 4.0
+                  Logger.warning("""
+                  Got more than one result while loading relationship `#{relationship.source}.#{relationship.name}`.
+
+                  In the future this will be an error. If you have a `has_one` relationship that could produce multiple
+                  related records, you must specify `from_many? true` on the relationship, *or* specify a `sort` (which
+                  implicitly sets `from_many?` to `true`.
+                  """)
+                end
+
+                related_record
+            end
         end
 
       case Map.get(record, relationship.name) do
@@ -914,14 +936,7 @@ defmodule Ash.Actions.Read.Relationships do
 
     related =
       if simple_equality? do
-        if relationship.cardinality == :one do
-          Map.new(
-            Enum.reverse(related_records),
-            &{Map.get(&1, relationship.destination_attribute), &1}
-          )
-        else
-          Enum.group_by(related_records, &Map.get(&1, relationship.destination_attribute))
-        end
+        Enum.group_by(related_records, &Map.get(&1, relationship.destination_attribute))
       else
         related_records
       end
@@ -949,13 +964,34 @@ defmodule Ash.Actions.Read.Relationships do
             )
           )
         else
+          related_record =
+            case Map.fetch(related, value) do
+              :error ->
+                default
+
+              {:ok, [record]} ->
+                record
+
+              {:ok, [record | _]} ->
+                # 4.0
+                Logger.warning("""
+                Got more than one result while loading relationship `#{relationship.source}.#{relationship.name}`.
+
+                In the future this will be an error. If you have a `has_one` relationship that could produce multiple
+                related records, you must specify `from_many? true` on the relationship, *or* specify a `sort` (which
+                implicitly sets `from_many?` to `true`.
+                """)
+
+                record
+            end
+
           Map.put(
             record,
             relationship.name,
             apply_runtime_query_operations(
               record,
               relationship,
-              Enum.at(List.wrap(Map.get(related, value) || default), 0),
+              related_record,
               related_query
             )
           )
