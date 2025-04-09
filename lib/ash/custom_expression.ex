@@ -13,7 +13,7 @@ defmodule Ash.CustomExpression do
       ]
 
     def expression(AshPostgres.DataLayer, [left, right]) do
-      {:ok, expr(fragment("levenshtein(?, ?)", left, right))}
+      {:ok, expr(fragment("levenshtein(?, ?)", ^left, ^right))}
     end
 
     # It is good practice to always define an expression for `Ash.DataLayer.Simple`,
@@ -24,7 +24,7 @@ defmodule Ash.CustomExpression do
       Ash.DataLayer.Ets,
       Ash.DataLayer.Simple
     ] do
-      {:ok, expr(fragment(&__MODULE__.levenshtein/2, left, right))}
+      {:ok, expr(fragment(&__MODULE__.levenshtein/2, ^left, ^right))}
     end
 
     # always define this fallback clause as well
