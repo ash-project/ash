@@ -23,7 +23,12 @@ defmodule Ash.Query.Function.StartOfDay do
   end
 
   def evaluate(%{arguments: [%DateTime{} = date, timezone]}) do
-    with {:ok, term} <- DateTime.new(DateTime.to_date(date), Time.new!(0, 0, 0), timezone) do
+    with {:ok, term} <-
+           DateTime.new(
+             DateTime.to_date(DateTime.shift_zone!(date, timezone)),
+             Time.new!(0, 0, 0),
+             timezone
+           ) do
       {:known, DateTime.shift_zone!(term, "Etc/UTC")}
     end
   end
