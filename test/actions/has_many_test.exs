@@ -278,6 +278,24 @@ defmodule Ash.Test.Actions.HasManyTest do
     assert length(post.meow_comments) == 1
   end
 
+  test "raise on an invalid manual relationship query" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        title: "buz"
+      })
+      |> Ash.create!()
+
+    assert_raise Ash.Error.Invalid, ~r/Invalid query/, fn ->
+      post
+      |> Ash.load!(
+        meow_comments:
+          Comment
+          |> Ash.Query.limit(1)
+      )
+    end
+  end
+
   test "expr within relationship - 2" do
     tenant_id = Ash.UUID.generate()
 

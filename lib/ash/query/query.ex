@@ -244,6 +244,7 @@ defmodule Ash.Query do
   alias Ash.Actions.Sort
 
   alias Ash.Error.Invalid.TimeoutNotSupported
+  alias Ash.Error.Load.NoSuchRelationship
 
   alias Ash.Error.Query.{
     AggregatesNotSupported,
@@ -258,7 +259,6 @@ defmodule Ash.Query do
     Required
   }
 
-  alias Ash.Error.Load.{InvalidQuery, NoSuchRelationship}
   alias Ash.Query.{Aggregate, Calculation}
 
   require Ash.Tracer
@@ -3406,7 +3406,7 @@ defmodule Ash.Query do
       %__MODULE__{resource: query_resource} = destination_query
       when query_resource != relationship_resource ->
         [
-          InvalidQuery.exception(
+          Ash.Error.Load.InvalidQuery.exception(
             resource: resource,
             relationship: key,
             query: destination_query,
@@ -3419,7 +3419,7 @@ defmodule Ash.Query do
              (destination_query.limit ||
                 (destination_query.offset && destination_query.offset != 0)) do
           [
-            InvalidQuery.exception(
+            Ash.Error.Load.InvalidQuery.exception(
               resource: resource,
               relationship: key,
               query: destination_query,
