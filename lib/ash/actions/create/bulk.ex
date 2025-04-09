@@ -87,7 +87,11 @@ defmodule Ash.Actions.Create.Bulk do
     end
 
     {_, opts} =
-      Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
+      Ash.Actions.Helpers.set_context_and_get_opts(
+        domain,
+        %{Ash.Changeset.new(resource) | action: action},
+        opts
+      )
 
     manual_action_can_bulk? =
       case action.manual do
