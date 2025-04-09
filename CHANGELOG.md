@@ -2,6 +2,45 @@
 
 <!-- changelog -->
 
+## [v3.5.3](https://github.com/ash-project/ash/compare/v3.5.2...v3.5.3) (2025-04-09)
+
+
+
+
+### Bug Fixes:
+
+* avoid defining default actions when actions w/ that name exist
+
+* use the notification logic from bulk update in create (#1951)
+
+* honor stream_options in read code interfaces
+
+* Fix filtering with aggregates refers calculation error (#1954)
+
+* properly provide the changeset to after action hooks
+
+* set calculation context in `Ash.can`
+
+* honor `:*` in skip_unknown_inputs in generic actions
+
+* honor action's `skip_unknown_inputs` in generic actions
+
+* set access_from in cascade_<update/destroy> (#1948)
+
+* maintain order of enum values (#1942)
+
+* carry context around to nested calculations better
+
+* fill templates in more necessary places
+
+* set tenant when building query in managed_relationships
+
+### Improvements:
+
+* optimize args handling in code interfaces
+
+* tasks for generating custom modules (#1940)
+
 ## [v3.5.2](https://github.com/ash-project/ash/compare/v3.5.1...v3.5.2) (2025-03-31)
 
 
