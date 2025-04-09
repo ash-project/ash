@@ -12,7 +12,7 @@ defmodule Ash.Query.Function.StartOfDay do
 
   use Ash.Query.Function, name: :start_of_day
 
-  def args, do: [[:date], [:date, :string], [:datetime], [:datetime, :string]]
+  def args, do: [[:datetime], [:datetime, :string], [:date], [:date, :string]]
 
   def returns, do: [:utc_datetime, :utc_datetime, :utc_datetime, :utc_datetime]
 
