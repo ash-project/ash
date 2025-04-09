@@ -12,7 +12,11 @@ defmodule Ash.Test.ManageRelationshipTest do
 
       create :create do
         primary? true
+
         upsert? true
+        upsert_identity :uniqe_value
+        upsert_fields [:name]
+
         accept [:name]
         argument :related_resource, :map
         argument :other_resources, {:array, :map}
@@ -47,9 +51,18 @@ defmodule Ash.Test.ManageRelationshipTest do
       end
     end
 
+    identities do
+      identity :uniqe_value, [:unique_value], pre_check_with: Ash.Test.Domain
+    end
+
     attributes do
       uuid_primary_key :id
       attribute :name, :string
+
+      attribute :unique_value, :uuid do
+        allow_nil? false
+        default &Ash.UUIDv7.generate/0
+      end
     end
 
     relationships do
@@ -245,6 +258,7 @@ defmodule Ash.Test.ManageRelationshipTest do
     assert {:ok, parent} =
              ParentResource
              |> Ash.Changeset.for_create(:create, %{
+               unique_value: parent.unique_value,
                name: "Test Parent Resource",
                related_resource: %{
                  required_attribute: "string2"
@@ -253,7 +267,7 @@ defmodule Ash.Test.ManageRelationshipTest do
              |> Ash.create!()
              |> Ash.load(:related_resource)
 
-    # assert parent.related_resource.required_attribute == "string"
+    assert parent.related_resource.required_attribute == "string"
 
     assert {:ok, [_related]} =
              RelatedResource
