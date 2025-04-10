@@ -1445,6 +1445,10 @@ defmodule Ash.Changeset do
       doc:
         "A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys."
     ],
+    load: [
+      type: :any,
+      doc: "Data to load on the result after running the action."
+    ],
     context: [
       type: :map,
       doc: "Context to set on the query, changeset, or input"
@@ -1735,6 +1739,7 @@ defmodule Ash.Changeset do
                 |> set_actor(opts)
                 |> set_authorize(opts)
                 |> set_tracer(opts)
+                |> load(opts[:load])
                 |> set_tenant(opts[:tenant] || changeset.tenant)
                 |> cast_params(action, params, opts)
                 |> set_argument_defaults(action)
@@ -2211,6 +2216,7 @@ defmodule Ash.Changeset do
     |> set_actor(opts)
     |> set_authorize(opts)
     |> set_tracer(opts)
+    |> load(opts[:load])
     |> timeout(changeset.timeout || opts[:timeout])
     |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
     |> Map.put(:action_type, action.type)
