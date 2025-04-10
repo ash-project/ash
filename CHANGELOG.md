@@ -2,6 +2,21 @@
 
 <!-- changelog -->
 
+## [v3.5.4](https://github.com/ash-project/ash/compare/v3.5.3...v3.5.4) (2025-04-10)
+
+
+
+
+### Bug Fixes:
+
+* ensure after hooks force return_records on bulk update/destroy
+
+* add action to changeset for opts fetching in bulk create
+
+* avoid coercion of datetime to date in start_of_day function (#1958)
+
+* incorrect start_of_day value when timezone specified
+
 ## [v3.5.3](https://github.com/ash-project/ash/compare/v3.5.2...v3.5.3) (2025-04-09)
 
 
