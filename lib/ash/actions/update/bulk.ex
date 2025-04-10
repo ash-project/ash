@@ -532,7 +532,8 @@ defmodule Ash.Actions.Update.Bulk do
       |> Map.new()
       |> Map.put(
         :return_records?,
-        has_after_batch_hooks? || opts[:notify?] || opts[:return_records?]
+        has_after_batch_hooks? || opts[:notify?] || opts[:return_records?] ||
+          !Enum.empty?(atomic_changeset.after_action)
       )
       |> Map.put(:calculations, calculations)
       |> Map.put(
