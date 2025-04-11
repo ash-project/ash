@@ -166,7 +166,7 @@ defmodule Ash.Generator do
           action_input(
             MyApp.Blog.Post,
             :create,
-            title: sequence(:title, &"Post #{&1}")
+            title: sequence(:title, &"Post \#{&1}")
           )
       ],
       defaults: fn inputs ->
