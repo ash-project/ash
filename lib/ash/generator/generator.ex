@@ -131,7 +131,7 @@ defmodule Ash.Generator do
   ## Examples
 
   ```elixir
-  iex> changeset_generator(MyApp.Blog.Post, :create, defaults: [title: sequence(:blog_post_title, &"My Blog Post \#{&1}")]) |> generate() 
+  iex> changeset_generator(MyApp.Blog.Post, :create, defaults: [title: sequence(:blog_post_title, &"My Blog Post \#{&1}")]) |> generate()
   %Ash.Changeset{...}
   ```
 
@@ -153,6 +153,30 @@ defmodule Ash.Generator do
   end
   ```
 
+  When you only allow child resource to be created through a managed relationship, e.g. an update action on a parent resource,
+  this pattern could be expanded, yielding a resource with a new child resource:
+
+  ```elixir
+  def attachment_for(post, opts \\ []) do
+    changeset_generator(
+      post,
+      :add_attachments,
+      uses: [
+        attachment_input:
+          action_input(
+            MyApp.Blog.Attachment,
+            :create,
+            name: sequence(:attachment_name, &"My Attachment \#{&1}")
+          )
+      ],
+      defaults: fn inputs ->
+        [attachments: [inputs[:attachment_inputs]]]
+      end,
+      overrides: opts
+    )
+  end
+  ``
+
   See the `Ash.Generator` moduledocs for more information.
 
   ## Options
@@ -162,12 +186,12 @@ defmodule Ash.Generator do
   * `:overrides` - A keyword list or map of `t:overrides()`
   * `:actor` - Passed through to the changeset
   * `:tenant` - Passed through to the changeset
-  * `:uses` - A map of generators that are passed into your `defaults`. `defaults` must be a 
+  * `:uses` - A map of generators that are passed into your `defaults`. `defaults` must be a
     function. This is useful when multiple things in your `defaults` need to use the same generated
     value.
   * `:authorize?` - Passed through to the changeset
   * `:context` - Passed through to the changeset
-  * `:after_action` - A one argument function that takes the result and returns 
+  * `:after_action` - A one argument function that takes the result and returns
     a new result to run after the record is creatd.
 
   ## The `uses` option
@@ -180,12 +204,12 @@ defmodule Ash.Generator do
       uses: [
         author: author() # A function using `changeset_generator` just like this one.
       ],
-      defaults: fn %{author: author} -> 
+      defaults: fn %{author: author} ->
         author = generate(author)
 
         [
           name: sequence(:blog_post_title, &"My Blog Post \#{&1}")
-          author_name: author.name, 
+          author_name: author.name,
           text: StreamData.repeatedly(fn -> Faker.Lorem.paragraph() end)
         ]
       end
@@ -279,10 +303,10 @@ defmodule Ash.Generator do
   ## Examples
 
   ```elixir
-  iex> seed_generator(%MyApp.Blog.Post{name: sequence(:blog_post_title, &"My Blog Post \#{&1}")}) |> generate() 
+  iex> seed_generator(%MyApp.Blog.Post{name: sequence(:blog_post_title, &"My Blog Post \#{&1}")}) |> generate()
   %Tunez.Music.Artist{name: "Artist 1"}
 
-  iex> seed_generator({MyApp.Blog.Post, %{}}) |> generate() 
+  iex> seed_generator({MyApp.Blog.Post, %{}}) |> generate()
   %Tunez.Music.Artist{name: "A random name"}
   ```
 
@@ -312,7 +336,7 @@ defmodule Ash.Generator do
   * `:uses` - A map of generators that are passed into the first argument, if it is a function.
   * `:authorize?` - Passed through to the changeset
   * `:context` - Passed through to the changeset
-  * `:after_action` - A one argument function that takes the result and returns 
+  * `:after_action` - A one argument function that takes the result and returns
     a new result to run after the record is creatd.
   """
   @spec seed_generator(
@@ -482,12 +506,12 @@ defmodule Ash.Generator do
 
   Example:
 
-      iex> Ash.Generator.once(:user, fn -> 
+      iex> Ash.Generator.once(:user, fn ->
              register_user(...)
            end) |> Enum.at(0)
       %User{id: 1} # created the user
 
-      iex> Ash.Generator.once(:user, fn -> 
+      iex> Ash.Generator.once(:user, fn ->
              register_user(...)
            end) |> Enum.at(0)
       %User{id: 1} # reused the last user
@@ -638,7 +662,7 @@ defmodule Ash.Generator do
   end
 
   @doc """
-  Takes one value from a changeset or seed generator and calls `Ash.create!` on it.
+  Takes one value from a changeset or seed generator and calls `Ash.create!` or `Ash.update!` on it.
 
   Passes through resource structs without doing anything.
   Creates a changeset if given
@@ -649,8 +673,12 @@ defmodule Ash.Generator do
           | Ash.Resource.record()
         ) ::
           Ash.Resource.record()
-  def generate(%Ash.Changeset{} = changeset) do
+  def generate(%Ash.Changeset{action_type: :create} = changeset) do
     Ash.create!(changeset)
+  end
+
+  def generate(%Ash.Changeset{action_type: :update} = changeset) do
+    Ash.update!(changeset)
   end
 
   def generate(changeset_generator) do
