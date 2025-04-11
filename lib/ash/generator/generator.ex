@@ -157,25 +157,25 @@ defmodule Ash.Generator do
   this pattern could be expanded, yielding a resource with a new child resource:
 
   ```elixir
-  def attachment_for(post, opts \\ []) do
+  def post_for(author, opts \\ []) do
     changeset_generator(
-      post,
-      :add_attachments,
+      author,
+      :new_post,
       uses: [
-        attachment_input:
+        post_input:
           action_input(
-            MyApp.Blog.Attachment,
+            MyApp.Blog.Post,
             :create,
-            name: sequence(:attachment_name, &"My Attachment \#{&1}")
+            title: sequence(:title, &"Post #{&1}")
           )
       ],
       defaults: fn inputs ->
-        [attachments: [inputs[:attachment_inputs]]]
+        [posts: [inputs.post_input]]
       end,
       overrides: opts
     )
   end
-  ``
+  ```
 
   See the `Ash.Generator` moduledocs for more information.
 
