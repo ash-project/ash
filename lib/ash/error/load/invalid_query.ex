@@ -2,7 +2,7 @@ defmodule Ash.Error.Load.InvalidQuery do
   @moduledoc "Used when an invalid query is provided in a load"
   use Ash.Error.Exception
 
-  use Splode.Error, fields: [:load_path], class: :invalid
+  use Splode.Error, fields: [:resource, :relationship, :query, :load_path], class: :invalid
 
   def message(%{query: query, load_path: load_path}) do
     errors_by_path =

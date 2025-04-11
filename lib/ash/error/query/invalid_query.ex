@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.InvalidQuery do
   """
   use Ash.Error.Exception
 
-  use Splode.Error, fields: [:field, :message], class: :invalid
+  use Splode.Error, fields: [:field, :fields, :message, :value], class: :invalid
 
   def message(error) do
     error.message

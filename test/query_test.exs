@@ -120,4 +120,14 @@ defmodule Ash.Test.QueryTest do
       end)
     end
   end
+
+  describe "adding errors" do
+    test "it generates an appropriate exception when adding an error" do
+      query = Ash.Query.add_error(User, "", fields: [])
+      assert [%Ash.Error.Query.InvalidQuery{}] = query.errors
+
+      query = Ash.Query.add_error(User, "", field: [])
+      assert [%Ash.Error.Query.InvalidArgument{}] = query.errors
+    end
+  end
 end
