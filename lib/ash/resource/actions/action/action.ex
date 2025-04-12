@@ -75,7 +75,10 @@ defmodule Ash.Resource.Actions.Action do
                        {:spark_function_behaviour, Ash.Resource.Actions.Implementation,
                         {Ash.Resource.Action.ImplementationFunction, 2}},
                        {:spark, Reactor}
-                     ]}
+                     ]},
+                  doc: """
+                  Module may be an `Ash.Resource.Actions.Implementation` or `Reactor`.
+                  """
                 ]
               ]
               |> Spark.Options.merge(

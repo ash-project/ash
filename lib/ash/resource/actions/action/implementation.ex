@@ -1,6 +1,18 @@
 defmodule Ash.Resource.Actions.Implementation do
   @moduledoc """
-  An implementation of a generic action.
+  An implementation of a [generic action](generic-actions.md).
+
+
+  ### Example
+  ```
+  defmodule YourModule do
+    use Ash.Resource.Actions.Implementation
+
+    def run(input, opts, context) do
+      {:ok, "Hello"}
+    end
+  end
+  ```
   """
 
   defmodule Context do
