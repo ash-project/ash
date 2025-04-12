@@ -202,6 +202,36 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
+    @doc "Returns true if the given resource defines a calculation with the provided name"
+    @spec defines_calculation(Igniter.t(), Ash.Resource.t(), atom()) ::
+            {Igniter.t(), true | false}
+    def defines_calculation(igniter, resource, name) do
+      Spark.Igniter.find(igniter, resource, fn _, zipper ->
+        with {:ok, zipper} <- enter_section(zipper, :calculations),
+             {:ok, _zipper} <-
+               move_to_one_of_function_call_in_current_scope(
+                 zipper,
+                 [
+                   :calculate
+                 ],
+                 [3],
+                 &Igniter.Code.Function.argument_equals?(&1, 0, name)
+               ) do
+          {:ok, true}
+        else
+          _ ->
+            :error
+        end
+      end)
+      |> case do
+        {:ok, igniter, _module, _value} ->
+          {igniter, true}
+
+        {:error, igniter} ->
+          {igniter, false}
+      end
+    end
+
     @doc "Returns true if the given resource defines an identity with the provided name"
     @spec defines_identity(Igniter.t(), Ash.Resource.t(), atom()) :: {Igniter.t(), true | false}
     def defines_identity(igniter, resource, name) do
@@ -336,6 +366,17 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
+    @doc "Adds the given code block to the resource's `calculations` block if there is no existing calculation with the given name"
+    def add_new_calculation(igniter, resource, name, attribute) do
+      {igniter, defines?} = defines_calculation(igniter, resource, name)
+
+      if defines? do
+        igniter
+      else
+        add_calculation(igniter, resource, attribute)
+      end
+    end
+
     @doc "Adds the given code block to the resource's `identities` block if there is no existing identity with the given name"
     def add_new_identity(igniter, resource, name, identity) do
       {igniter, defines?} = defines_identity(igniter, resource, name)
@@ -355,6 +396,11 @@ if Code.ensure_loaded?(Igniter) do
     @doc "Adds the given code block to the resource's `attributes` block"
     def add_attribute(igniter, resource, attribute) do
       add_block(igniter, resource, :attributes, attribute)
+    end
+
+    @doc "Adds the given code block to the resource's `calculations` block"
+    def add_calculation(igniter, resource, calculation) do
+      add_block(igniter, resource, :calculations, calculation)
     end
 
     @doc "Adds an action if it doesn't already exist"
