@@ -140,15 +140,15 @@ defmodule Ash.Query.Operator.Basic do
         end
 
         defp do_evaluate(:<>, %Ash.CiString{string: left}, %Ash.CiString{string: right}) do
-          %Ash.CiString{string: left <> right}
+          {:known, %Ash.CiString{string: left <> right}}
         end
 
         defp do_evaluate(:<>, %Ash.CiString{string: left}, right) do
-          %Ash.CiString{string: left <> right}
+          {:known, %Ash.CiString{string: left <> right}}
         end
 
         defp do_evaluate(:<>, left, %Ash.CiString{string: right}) do
-          %Ash.CiString{string: left <> right}
+          {:known, %Ash.CiString{string: left <> right}}
         end
 
         defp do_evaluate(:<>, left, right) do
