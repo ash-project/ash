@@ -12,22 +12,34 @@ jobs:
       fail-fast: false
       matrix:
         project: [
-            { org: "ash-project", name: "ash_postgres" },
+            {
+              org: "ash-project",
+              name: "ash_postgres",
+              migrate: true,
+              migrate_tenants: true,
+              generate_migrations: true,
+            },
             { org: "ash-project", name: "ash_csv" },
-            { org: "ash-project", name: "ash_double_entry" },
+            { org: "ash-project", name: "ash_double_entry", migrate: true },
             { org: "ash-project", name: "ash_money" },
             { org: "ash-project", name: "ash_graphql" },
             { org: "ash-project", name: "ash_json_api" },
             { org: "ash-project", name: "ash_phoenix" },
             { org: "ash-project", name: "ash_admin" },
-            { org: "ash-project", name: "ash_archival" },
+            { org: "ash-project", name: "ash_archival", migrate: true },
             { org: "ash-project", name: "ash_state_machine" },
             { org: "ash-project", name: "ash_appsignal" },
-            { org: "ash-project", name: "ash_oban" },
-            { org: "ash-project", name: "ash_sqlite" },
+            { org: "ash-project", name: "ash_oban", migrate: true },
+            {
+              org: "ash-project",
+              name: "ash_sqlite",
+              migrate: true,
+
+              generate_migrations: true,
+            },
             { org: "ash-project", name: "ash_paper_trail" },
             { org: "team-alembic", name: "ash_authentication" },
-            { org: "team-alembic", name: "ash_authentication_phoenix" }
+            { org: "team-alembic", name: "ash_authentication_phoenix" },
             # { org: "sevenseacat", name: "tunez", ref: "end-of-chapter-8" }
           ]
         otp: ["27.2"]
@@ -77,13 +89,13 @@ jobs:
         run: mix deps.get
         working-directory: ./${{matrix.project.name}}
       - run: mix test.create
-        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite' || matrix.project.name == 'ash_archival' || matrix.project.name == 'ash_oban'}}
+        if: ${{matrix.project.migrate}}
         working-directory: ./${{matrix.project.name}}
       - run: mix test.migrate
-        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite' || matrix.project.name == 'ash_archival' || matrix.project.name == 'ash_oban'}}
+        if: ${{matrix.project.migrate}}
         working-directory: ./${{matrix.project.name}}
       - run: mix test.migrate_tenants
-        if: ${{matrix.project.name == 'ash_postgres'}}
+        if: ${{matrix.project.migrate_tenants}}
         working-directory: ./${{matrix.project.name}}
       - name: mix compile --force --warnings-as-errors inside ./${{matrix.project.name}}
         run: mix compile --force --warnings-as-errors
@@ -96,4 +108,4 @@ jobs:
       - name: test.generate_migrations --check
         run: mix test.generate_migrations --check
         working-directory: ./${{matrix.project.name}}
-        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite'}}
+        if: ${{matrix.project.generate_migrations}}
