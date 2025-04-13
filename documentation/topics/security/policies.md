@@ -226,7 +226,7 @@ end
 
 A non-admin using the `:read_hidden` action would see a forbidden error.
 
-### Relationships and Policies 
+### Relationships and Policies
 
 A common point of confusion when working with relationships is when they return less results or no results due to policies.
 Additionally, when requesting related data that produces a forbidden error, it forbids the *entire request*.
@@ -566,6 +566,80 @@ If you want to overwrite the default option that is `:show`, you can do that by 
 ```elixir
 config :ash, :policies, private_fields: :include
 ```
+
+## References to related data & fields
+
+### Calculations
+
+The dependencies of a calculation do not have any authorization applied to them. This includes the dependencies loaded with `c:Ash.Resource.Calculation.load/3`, as well as any dependencies referenced in a calculation expression. The primary reason for this is that
+
+To understand why this is the case, take the following calculation:
+
+```elixir
+calculate :users_ssn_last_4, :string, expr(fragment("RIGHT(?, 4)", user.ssn))
+```
+
+The `user` record may not be visible to the actor loading this calculation, and if it is, the `ssn` field may not be visible due to field policies. If calculations authorized access to their dependencies, you would *never* be able to write a calculation like the above.
+
+#### Aggregates in calculations
+
+Aggregates are the one exception to the above. Aggregates referenced *anywhere* will *always* authorize access to the related data they reference (unless `authorize?: false` is set when running the action)
+
+### Fields annotated as `input`
+
+When you use `Ash.Query.filter_input` or `Ash.Query.sort_input` (which extensions like `AshGraphql` and `AshJsonApi` do when filters/sorts are provided by the user), the contained field references are annotated as `input`. The following rules are honored for field references annotated as `input` only. Per the above section, the *contents* of a calculation's expression referenced in filters are never annotated as `input`, although the calculation itself will be, so that you can write field policies on calculations.
+
+#### Relationship paths in filters
+
+When a field is referenced at a relationship path, the authorization rules for that related resource's primary read action (or the relationship's configured `:read_action`) will be applied to the filter as well. For example, say that you have a `User` resource, and a `Post` resource. The `User` resource can only be read by the actor if their id matches the user's id (i.e they can only read themselves).
+
+These policies might look like this:
+
+```elixir
+# on `User`
+policy action_type(:read) do
+  authorize_if expr(id == ^actor(:id))
+end
+```
+
+Given a filter like `Ash.Query.filter_input(Post, %{user: %{email: "example@example.com"}})`, the resulting filter expression would be:
+
+```elixir
+expr(
+  user.email == "example@example.com" and
+    user.id == ^actor(:id)
+)
+```
+
+This prevents a common security vulnerability that would allow malicious actors to "sniff" related data by providing filters over `User`, and seeing what `Post` records are returned.
+
+#### Field references in filters & sorts
+
+When a field is referenced in filters or sorts, the field reference is replaced with a conditional, that evalutes to the field value if the actor is authorized to view the field, or `nil` otherwise (causing all conditions to evaluate to `false`).
+
+Lets say that users have a field policy that only allows viewing the email address if the user's id matches the actor's id, similar to the abvoe example.
+
+```elixir
+field_policies do
+  field_policy :email, always() do
+    authorize_if expr(user.id == ^actor(:id))
+  end
+end
+```
+
+When that field is referenced in filters or sorts, like so: `Ash.Query.filter_input(Post, %{user: %{email: "example@example.com"}})`, the resulting expression would become:
+
+```elixir
+expr(
+  if user.id == ^actor(:id) do
+    user.email
+  else
+    nil
+  end == "example@example.com"
+)
+```
+
+This prevents the same security vulnerability as described above, which would allow malicious actors to "sniff" field values that should not be visible to them by providing filters and/or sorts that reference that field.
 
 ## Debugging and Logging
 
