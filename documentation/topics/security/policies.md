@@ -571,9 +571,7 @@ config :ash, :policies, private_fields: :include
 
 ### Calculations
 
-The dependencies of a calculation do not have any authorization applied to them. This includes the dependencies loaded with `c:Ash.Resource.Calculation.load/3`, as well as any dependencies referenced in a calculation expression. The primary reason for this is that
-
-To understand why this is the case, take the following calculation:
+The dependencies of a calculation do not have any authorization applied to them. This includes the dependencies loaded with `c:Ash.Resource.Calculation.load/3`, as well as any dependencies referenced in a calculation expression. To understand why this is the case, take the following calculation:
 
 ```elixir
 calculate :users_ssn_last_4, :string, expr(fragment("RIGHT(?, 4)", user.ssn))
