@@ -243,10 +243,11 @@ defmodule Ash.Filter do
   end
 
   @doc """
-  Parses a filter statement, accepting only public attributes/relationships,
-  honoring field policies & related resource policies.
+  Parses a filter statement, accepting *only public attributes/relationships* and
+  honoring field policies & related resource policies, raising on errors.
 
-  See `parse/2` for more
+  See `parse/2` for more on filter parsing, and the [policies guide](/documentation/topics/security/policies.md)
+  for more on input references.
   """
   def parse_input(
         resource,
@@ -269,7 +270,7 @@ defmodule Ash.Filter do
   end
 
   @doc """
-  Parses a filter statement, accepting only public attributes/relationships,
+  Parses a filter statement, accepting *only public attributes/relationships* and
   honoring field policies & related resource policies, raising on errors.
 
   See `parse_input/2` for more
@@ -310,8 +311,7 @@ defmodule Ash.Filter do
   ### Important
 
   If you are trying to validate a filter supplied from an external/untrusted source,
-  be sure to use `parse_input/2` instead! The only difference is that it only accepts
-  filters over public attributes/relationships.
+  be sure to use `parse_input/2` instead!
   """
   def parse(resource, statement, context \\ %{})
 
