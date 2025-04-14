@@ -205,7 +205,7 @@ defmodule Ash.Type.String do
   end
 
   defp return_value(false, false, value, constraints) do
-    if value == "" do
+    if String.trim(value) == "" do
       {nil, []}
     else
       {value, validate(value, constraints)}
