@@ -2,6 +2,27 @@
 
 <!-- changelog -->
 
+## [v3.5.5](https://github.com/ash-project/ash/compare/v3.5.4...v3.5.5) (2025-04-14)
+
+
+
+
+### Bug Fixes:
+
+* don't trim strings when `trim?: false` is set
+
+* remove flawed optimization about `is_nil: false`
+
+* properly evaluate ci_string concatenation in Elixir
+
+* don't validate types in gen.resource task.
+
+### Improvements:
+
+* add calculation tools to `Ash.Resource.Igniter`
+
+* support a `load` option on changeset building
+
 ## [v3.5.4](https://github.com/ash-project/ash/compare/v3.5.3...v3.5.4) (2025-04-10)
 
 
