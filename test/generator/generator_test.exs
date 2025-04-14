@@ -40,6 +40,12 @@ defmodule Ash.Test.GeneratorTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      update :new_post do
+        require_atomic? false
+        argument :posts, {:array, :map}, allow_nil?: false
+        change manage_relationship(:posts, type: :create)
+      end
     end
 
     attributes do
@@ -212,6 +218,10 @@ defmodule Ash.Test.GeneratorTest do
   defmodule Generator do
     use Ash.Generator
 
+    def author(opts \\ []) do
+      changeset_generator(Author, :create, overrides: opts)
+    end
+
     def seed_post(opts \\ []) do
       seed_generator(
         %Post{
@@ -235,6 +245,25 @@ defmodule Ash.Test.GeneratorTest do
         },
         defaults: fn uses ->
           [title: uses.name, title_again: uses.name]
+        end,
+        overrides: opts
+      )
+    end
+
+    def post_for(author, opts \\ []) do
+      changeset_generator(author, :new_post,
+        uses: [
+          post_input:
+            action_input(
+              Post,
+              :create,
+              name: sequence(:title, &"Post #{&1}")
+            )
+        ],
+        defaults: fn inputs ->
+          [
+            posts: [inputs.post_input]
+          ]
         end,
         overrides: opts
       )
@@ -296,6 +325,14 @@ defmodule Ash.Test.GeneratorTest do
                %Post{title: "Post 3", title_again: "Post 3"}
              ] =
                generate_many(seed_post_with_double_name(), 2)
+    end
+
+    test "can generate managed" do
+      import Generator
+      author = generate(author())
+
+      author_with_posts = generate(post_for(author))
+      assert [%Post{}] = author_with_posts.posts
     end
 
     test "errors are raised when generating invalid single items" do
