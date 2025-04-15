@@ -25,6 +25,6 @@ defmodule Ash.Resource.Change.SetContext do
 
   @impl true
   def atomic(changeset, opts, context) do
-    {:atomic, change(changeset, opts, context), %{}}
+    {:ok, change(changeset, opts, context)}
   end
 end
