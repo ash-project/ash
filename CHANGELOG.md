@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.5.6](https://github.com/ash-project/ash/compare/v3.5.5...v3.5.6) (2025-04-15)
+
+
+
+
+### Bug Fixes:
+
+* properly deduplicate on lazy relationship loading
+
+* use correct exceptions and add missing fields to them (#1960)
+
+* undo incorrect change to trimmed string casting
+
+### Improvements:
+
+* add `:__skip__` value to seed
+
+* Allow update action types in Ash.Generator.generate (#1967)
+
 ## [v3.5.5](https://github.com/ash-project/ash/compare/v3.5.4...v3.5.5) (2025-04-14)
 
 
