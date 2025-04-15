@@ -515,6 +515,11 @@ defmodule Ash.Test.GeneratorTest do
       assert %Author{metadata: nil} =
                Ash.Generator.seed!(Author, %{meta: %{}, metadata: keep_nil()})
     end
+
+    test "it works with the value :__skip__" do
+      assert %Author{metadata: nil} =
+               Ash.Generator.seed!(Author, %{meta: %{}, metadata: skip()})
+    end
   end
 
   describe "built in generators" do

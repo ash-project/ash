@@ -47,6 +47,9 @@ defmodule Ash.Seed do
         {key, :__keep_nil__}, acc ->
           Map.put(acc, key, nil)
 
+        {_key, :__skip__}, acc ->
+          acc
+
         {key, value}, acc ->
           Map.put(acc, key, value)
       end)
@@ -91,12 +94,15 @@ defmodule Ash.Seed do
     attr_input =
       record
       |> Map.take(attrs)
-      |> Map.new(fn {key, value} ->
-        if value == :__keep_nil__ do
-          {key, nil}
-        else
-          {key, value}
-        end
+      |> Enum.reduce(%{}, fn
+        {key, :__keep_nil__}, acc ->
+          Map.put(acc, key, nil)
+
+        {_key, :__skip__}, acc ->
+          acc
+
+        {key, value}, acc ->
+          Map.put(acc, key, value)
       end)
 
     resource
@@ -119,13 +125,15 @@ defmodule Ash.Seed do
 
   def seed!(resource, input, opts) when is_map(input) do
     attr_input =
-      input
-      |> Map.new(fn {key, value} ->
-        if value == :__keep_nil__ do
-          {key, nil}
-        else
-          {key, value}
-        end
+      Enum.reduce(input, %{}, fn
+        {key, :__keep_nil__}, acc ->
+          Map.put(acc, key, nil)
+
+        {_key, :__skip__}, acc ->
+          acc
+
+        {key, value}, acc ->
+          Map.put(acc, key, value)
       end)
 
     resource
@@ -178,6 +186,9 @@ defmodule Ash.Seed do
         {key, :__keep_nil__}, acc ->
           Map.put(acc, key, nil)
 
+        {_key, :__skip__}, acc ->
+          acc
+
         {key, value}, acc ->
           Map.put(acc, key, value)
       end)
@@ -225,12 +236,15 @@ defmodule Ash.Seed do
     attr_input =
       record
       |> Map.take(attrs)
-      |> Map.new(fn {key, value} ->
-        if value == :__keep_nil__ do
-          {key, nil}
-        else
-          {key, value}
-        end
+      |> Enum.reduce(%{}, fn
+        {key, :__keep_nil__}, acc ->
+          Map.put(acc, key, nil)
+
+        {_key, :__skip__}, acc ->
+          acc
+
+        {key, value}, acc ->
+          Map.put(acc, key, value)
       end)
 
     resource
@@ -254,12 +268,15 @@ defmodule Ash.Seed do
   def upsert!(resource, input, opts) when is_map(input) do
     attr_input =
       input
-      |> Map.new(fn {key, value} ->
-        if value == :__keep_nil__ do
-          {key, nil}
-        else
-          {key, value}
-        end
+      |> Enum.reduce(%{}, fn
+        {key, :__keep_nil__}, acc ->
+          Map.put(acc, key, nil)
+
+        {_key, :__skip__}, acc ->
+          acc
+
+        {key, value}, acc ->
+          Map.put(acc, key, value)
       end)
 
     resource
@@ -306,6 +323,11 @@ defmodule Ash.Seed do
   Returns `:__keep_nil__`, allowing to ensure a default value is not used when you want the value to be `nil`.
   """
   def keep_nil, do: :__keep_nil__
+
+  @doc """
+  Returns `:__skip__`, allowing to ensure no value is generated for a given field when used with generators.
+  """
+  def skip, do: :__skip__
 
   defp create_via_data_layer(changeset) do
     Ash.Changeset.with_hooks(changeset, fn changeset ->
