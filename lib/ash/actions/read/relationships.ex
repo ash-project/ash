@@ -88,27 +88,102 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp lazy_related_records(records, relationship, related_query, last?, reuse_values?) do
-    primary_key = Ash.Resource.Info.primary_key(relationship.source)
-
     related_records_with_lazy_join_source =
-      Enum.flat_map(records, fn record ->
-        record_pkey = Map.take(record, primary_key)
+      if Ash.Resource.Info.primary_key_simple_equality?(relationship.destination) do
+        primary_key = Ash.Resource.Info.primary_key(relationship.source)
 
-        record
-        |> Map.get(relationship.name)
-        |> case do
-          %Ash.NotLoaded{} ->
-            []
+        records
+        |> Enum.reduce(%{}, fn record, acc ->
+          record_pkey = Map.take(record, primary_key)
 
-          %Ash.ForbiddenField{} ->
-            []
+          record
+          |> Map.get(relationship.name)
+          |> case do
+            %Ash.NotLoaded{} ->
+              []
 
-          record_or_records ->
-            record_or_records
-        end
-        |> List.wrap()
-        |> Enum.map(&Ash.Resource.set_metadata(&1, %{lazy_join_source: record_pkey}))
-      end)
+            %Ash.ForbiddenField{} ->
+              []
+
+            record_or_records ->
+              List.wrap(record_or_records)
+          end
+          |> Enum.reduce(acc, fn related_record, acc ->
+            related_record_pkey =
+              Map.take(related_record, Ash.Resource.Info.primary_key(relationship.destination))
+
+            if Map.has_key?(acc, related_record_pkey) do
+              Map.update!(
+                acc,
+                related_record_pkey,
+                fn related_record ->
+                  Map.update!(related_record, :__metadata__, fn metadata ->
+                    Map.update!(metadata, :__lazy_join_sources__, &MapSet.put(&1, record_pkey))
+                  end)
+                end
+              )
+            else
+              related_record =
+                Ash.Resource.set_metadata(related_record, %{
+                  __lazy_join_sources__: MapSet.new([record_pkey])
+                })
+
+              Map.put(
+                acc,
+                related_record_pkey,
+                related_record
+              )
+            end
+          end)
+        end)
+        |> Map.values()
+      else
+        primary_key = Ash.Resource.Info.primary_key(relationship.destination)
+
+        records
+        |> Enum.reduce([], fn record, acc ->
+          record_pkey = Map.take(record, primary_key)
+
+          record
+          |> Map.get(relationship.name)
+          |> case do
+            %Ash.NotLoaded{} ->
+              []
+
+            %Ash.ForbiddenField{} ->
+              []
+
+            record_or_records ->
+              List.wrap(record_or_records)
+          end
+          |> Enum.reduce(acc, fn related_record, acc ->
+            {acc, updated?} =
+              Enum.reduce(acc, {acc, false}, fn existing_record, {acc, updated?} ->
+                if relationship.destination.primary_key_matches?(existing_record, related_record) do
+                  related_record =
+                    Map.update!(related_record, :__metadata__, fn metadata ->
+                      Map.update!(metadata, :__lazy_join_sources__, &[record_pkey | &1])
+                    end)
+
+                  {[related_record | acc], true}
+                else
+                  {acc, updated?}
+                end
+              end)
+
+            if updated? do
+              acc
+            else
+              related_record =
+                Ash.Resource.set_metadata(related_record, %{
+                  __lazy_join_sources__: MapSet.new([record_pkey])
+                })
+
+              [related_record | acc]
+            end
+          end)
+        end)
+      end
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
@@ -457,6 +532,13 @@ defmodule Ash.Actions.Read.Relationships do
             accessing_from: %{source: relationship.source, name: relationship.name},
             parent_stack: parent_stack
           })
+          |> then(fn query ->
+            if relationship.cardinality == :one && Map.get(relationship, :from_many?) do
+              Ash.Query.limit(query, 1)
+            else
+              query
+            end
+          end)
           |> Ash.Actions.Read.unpaginated_read(nil,
             authorize_with: relationship.authorize_read_with
           )
@@ -694,47 +776,98 @@ defmodule Ash.Actions.Read.Relationships do
          related_records,
          {:lazy, _related_query}
        ) do
-    pkey = Ash.Resource.Info.primary_key(resource)
+    if Ash.Resource.Info.primary_key_simple_equality?(relationship.source) do
+      pkey = Ash.Resource.Info.primary_key(resource)
 
-    Enum.map(records, fn record ->
-      record_pkey = Map.take(record, pkey)
-      related = Enum.filter(related_records, &(&1.__metadata__.lazy_join_source == record_pkey))
+      records_by_pkey =
+        Enum.reduce(related_records, %{}, fn related, acc ->
+          Enum.reduce(related.__metadata__.__lazy_join_sources__, acc, fn source, acc ->
+            Map.update(acc, source, [related], &[related | &1])
+          end)
+        end)
 
-      related =
-        case relationship.cardinality do
-          :many ->
-            related
+      Enum.map(records, fn record ->
+        record_pkey = Map.take(record, pkey)
 
-          :one ->
-            case related do
-              [related_record] ->
-                related_record
+        related = Enum.reverse(Map.get(records_by_pkey, record_pkey, []))
 
-              [] ->
-                nil
+        related =
+          case relationship.cardinality do
+            :many ->
+              related
 
-              [related_record | _] ->
-                if !Map.get(relationship, :from_many?, false) do
+            :one ->
+              case related do
+                [related_record] ->
+                  related_record
+
+                [] ->
+                  nil
+
+                [related_record | _] ->
                   # 4.0
                   Logger.warning("""
-                  Got more than one result while loading relationship `#{relationship.source}.#{relationship.name}`.
+                  Got more than one result while loading relationship `#{inspect(relationship.source)}.#{relationship.name}`.
 
                   In the future this will be an error. If you have a `has_one` relationship that could produce multiple
                   related records, you must specify `from_many? true` on the relationship, *or* specify a `sort` (which
                   implicitly sets `from_many?` to `true`.
                   """)
-                end
 
-                related_record
-            end
+                  related_record
+              end
+          end
+
+        case Map.get(record, relationship.name) do
+          %Ash.ForbiddenField{} -> record
+          %Ash.NotLoaded{} -> record
+          _ -> Map.put(record, relationship.name, related)
         end
+      end)
+    else
+      Enum.map(records, fn record ->
+        related =
+          Enum.filter(related_records, fn related_record ->
+            Enum.any?(
+              related_record.__metadata__.__lazy_join_sources__,
+              &resource.primary_key_matches?(&1, record)
+            )
+          end)
 
-      case Map.get(record, relationship.name) do
-        %Ash.ForbiddenField{} -> record
-        %Ash.NotLoaded{} -> record
-        _ -> Map.put(record, relationship.name, related)
-      end
-    end)
+        related =
+          case relationship.cardinality do
+            :many ->
+              related
+
+            :one ->
+              case related do
+                [related_record] ->
+                  related_record
+
+                [] ->
+                  nil
+
+                [related_record | _] ->
+                  # 4.0
+                  Logger.warning("""
+                  Got more than one result while loading relationship `#{inspect(relationship.source)}.#{relationship.name}`.
+
+                  In the future this will be an error. If you have a `has_one` relationship that could produce multiple
+                  related records, you must specify `from_many? true` on the relationship, *or* specify a `sort` (which
+                  implicitly sets `from_many?` to `true`.
+                  """)
+
+                  related_record
+              end
+          end
+
+        case Map.get(record, relationship.name) do
+          %Ash.ForbiddenField{} -> record
+          %Ash.NotLoaded{} -> record
+          _ -> Map.put(record, relationship.name, related)
+        end
+      end)
+    end
   end
 
   defp do_attach_related_records(
@@ -964,36 +1097,48 @@ defmodule Ash.Actions.Read.Relationships do
             )
           )
         else
-          related_record =
+          related_records =
             case Map.fetch(related, value) do
               :error ->
-                default
+                []
 
-              {:ok, [record]} ->
-                record
+              {:ok, records} ->
+                List.wrap(records)
+            end
 
-              {:ok, [record | _]} ->
+          related_records =
+            apply_runtime_query_operations(
+              record,
+              relationship,
+              related_records,
+              related_query
+            )
+
+          related_record =
+            case related_records do
+              [] ->
+                nil
+
+              [single] ->
+                single
+
+              [single | _] ->
                 # 4.0
                 Logger.warning("""
-                Got more than one result while loading relationship `#{relationship.source}.#{relationship.name}`.
+                Got more than one result while loading relationship `#{inspect(relationship.source)}.#{relationship.name}`.
 
                 In the future this will be an error. If you have a `has_one` relationship that could produce multiple
                 related records, you must specify `from_many? true` on the relationship, *or* specify a `sort` (which
                 implicitly sets `from_many?` to `true`.
                 """)
 
-                record
+                single
             end
 
           Map.put(
             record,
             relationship.name,
-            apply_runtime_query_operations(
-              record,
-              relationship,
-              related_record,
-              related_query
-            )
+            related_record
           )
         end
       end)
