@@ -61,6 +61,12 @@ defmodule Ash.Test.Actions.GenericActionsTest do
         run fn _, _ -> :ok end
       end
 
+      action :returns_context, :string do
+        run fn %{context: %{thing: thing}}, _ ->
+          {:ok, thing}
+        end
+      end
+
       action :untyped_with_value do
         run fn _, _ -> {:ok, :unexpected} end
       end
@@ -71,6 +77,10 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       attribute(:title, :string, allow_nil?: false, public?: true)
 
       timestamps()
+    end
+
+    code_interface do
+      define :returns_context
     end
 
     policies do
@@ -91,6 +101,10 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
 
       policy action(:typed_without_value) do
+        authorize_if always()
+      end
+
+      policy action(:returns_context) do
         authorize_if always()
       end
 
@@ -173,6 +187,12 @@ defmodule Ash.Test.Actions.GenericActionsTest do
                      |> Ash.ActionInput.for_action(:untyped_with_value, %{})
                      |> Ash.run_action!()
                    end
+    end
+  end
+
+  describe "code interfaces" do
+    test "accept context" do
+      assert "thing" == Post.returns_context!(context: %{thing: "thing"})
     end
   end
 

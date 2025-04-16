@@ -802,6 +802,10 @@ defmodule Ash do
       type: {:spark, Ash.Domain},
       doc: "The domain to use for the action"
     ],
+    context: [
+      type: :map,
+      doc: "Context to set on the action input"
+    ],
     skip_unknown_inputs: [
       type: {:wrap_list, {:or, [:atom, :string]}},
       doc:
