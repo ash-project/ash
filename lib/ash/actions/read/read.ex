@@ -2487,22 +2487,23 @@ defmodule Ash.Actions.Read do
       end
 
     field =
-      case agg.field do
-        %Ash.Query.Aggregate{} = nested_aggregate ->
-          add_calc_context(
-            nested_aggregate,
-            actor,
-            authorize?,
-            tenant,
-            tracer,
-            domain,
-            query.resource,
-            opts
-          )
+      if is_atom(agg.field) do
+        Ash.Resource.Info.field(agg.resource, agg.field)
+      else
+        agg.field
+      end
 
-        %Ash.Query.Calculation{} = nested_calculation ->
+    field =
+      case field do
+        %struct{} = nested
+        when struct in [
+               Ash.Query.Aggregate,
+               Ash.Query.Calculation,
+               Ash.Resource.Aggregate,
+               Ash.Resource.Calculation
+             ] ->
           add_calc_context(
-            nested_calculation,
+            nested,
             actor,
             authorize?,
             tenant,
@@ -2545,6 +2546,52 @@ defmodule Ash.Actions.Read do
              )}
           end)
     }
+  end
+
+  def add_calc_context(
+        %Ash.Resource.Aggregate{} = agg,
+        actor,
+        authorize?,
+        tenant,
+        tracer,
+        domain,
+        resource,
+        opts
+      ) do
+    agg_opts = [
+      actor: actor,
+      authorize?: authorize?,
+      tenant: tenant,
+      tracer: tracer,
+      domain: domain
+    ]
+
+    {:ok, aggregate} = resource_aggregate_to_query_aggregate(resource, agg, agg_opts)
+
+    add_calc_context(aggregate, actor, authorize?, tenant, tracer, domain, resource, opts)
+  end
+
+  def add_calc_context(
+        %Ash.Resource.Calculation{} = calc,
+        actor,
+        authorize?,
+        tenant,
+        tracer,
+        domain,
+        resource,
+        opts
+      ) do
+    calc_opts = [
+      actor: actor,
+      authorize?: authorize?,
+      tenant: tenant,
+      tracer: tracer,
+      domain: domain
+    ]
+
+    {:ok, calc} = Ash.Query.Calculation.from_resource_calculation(resource, calc.name, calc_opts)
+
+    add_calc_context(calc, actor, authorize?, tenant, tracer, domain, resource, opts)
   end
 
   def add_calc_context(calc, actor, authorize?, tenant, tracer, _domain, _resource, opts) do
@@ -3726,63 +3773,31 @@ defmodule Ash.Actions.Read do
         end
 
       %Ash.Resource.Aggregate{} = resource_aggregate ->
-        agg_related_resource =
-          Ash.Resource.Info.related(related_resource, resource_aggregate.relationship_path)
+        opts = [
+          actor: actor,
+          authorize?: authorize?,
+          tenant: tenant,
+          tracer: tracer,
+          domain: domain
+        ]
 
-        read_action =
-          resource_aggregate.read_action ||
-            Ash.Resource.Info.primary_action!(agg_related_resource, :read).name
+        case resource_aggregate_to_query_aggregate(related_resource, resource_aggregate, opts) do
+          {:ok, aggregate} ->
+            aggregate_field_with_related_filters(
+              %{aggregate | field: aggregate},
+              path_filters,
+              actor,
+              authorize?,
+              tenant,
+              tracer,
+              domain,
+              ref_path,
+              parent_stack,
+              source_context
+            )
 
-        opts = [actor: actor, authorize?: authorize?, tenant: tenant]
-
-        with %{valid?: true} = aggregate_query <-
-               Ash.Query.for_read(agg_related_resource, read_action, %{}, opts),
-             %{valid?: true} = aggregate_query <-
-               Ash.Query.Aggregate.build_query(
-                 aggregate_query,
-                 related_resource,
-                 filter: resource_aggregate.filter,
-                 sort: resource_aggregate.sort
-               ),
-             {:ok, query_aggregate} <-
-               Ash.Query.Aggregate.new(
-                 related_resource,
-                 resource_aggregate.name,
-                 resource_aggregate.kind,
-                 agg_name: resource_aggregate.name,
-                 path: resource_aggregate.relationship_path,
-                 query: aggregate_query,
-                 field: resource_aggregate.field,
-                 default: resource_aggregate.default,
-                 filterable?: resource_aggregate.filterable?,
-                 type: resource_aggregate.type,
-                 constraints: resource_aggregate.constraints,
-                 include_nil?: resource_aggregate.include_nil?,
-                 implementation: resource_aggregate.implementation,
-                 uniq?: resource_aggregate.uniq?,
-                 read_action: read_action,
-                 authorize?: resource_aggregate.authorize?,
-                 join_filters:
-                   Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
-               ) do
-          aggregate_field_with_related_filters(
-            %{aggregate | field: query_aggregate},
-            path_filters,
-            actor,
-            authorize?,
-            tenant,
-            tracer,
-            domain,
-            ref_path,
-            parent_stack,
-            source_context
-          )
-        else
           {:error, error} ->
             {:error, error}
-
-          %{errors: errors} ->
-            {:error, errors}
         end
 
       _ ->
@@ -3804,6 +3819,45 @@ defmodule Ash.Actions.Read do
        )
        when is_atom(aggregate.field) do
     {:ok, aggregate.field}
+  end
+
+  defp resource_aggregate_to_query_aggregate(resource, resource_aggregate, opts) do
+    agg_related_resource =
+      Ash.Resource.Info.related(resource, resource_aggregate.relationship_path)
+
+    read_action =
+      resource_aggregate.read_action ||
+        Ash.Resource.Info.primary_action!(agg_related_resource, :read).name
+
+    with %{valid?: true} = aggregate_query <-
+           Ash.Query.for_read(agg_related_resource, read_action, %{}, opts),
+         %{valid?: true} = aggregate_query <-
+           Ash.Query.Aggregate.build_query(
+             aggregate_query,
+             resource,
+             filter: resource_aggregate.filter,
+             sort: resource_aggregate.sort
+           ) do
+      Ash.Query.Aggregate.new(
+        resource,
+        resource_aggregate.name,
+        resource_aggregate.kind,
+        agg_name: resource_aggregate.name,
+        path: resource_aggregate.relationship_path,
+        query: aggregate_query,
+        field: resource_aggregate.field,
+        default: resource_aggregate.default,
+        filterable?: resource_aggregate.filterable?,
+        type: resource_aggregate.type,
+        constraints: resource_aggregate.constraints,
+        include_nil?: resource_aggregate.include_nil?,
+        implementation: resource_aggregate.implementation,
+        uniq?: resource_aggregate.uniq?,
+        read_action: read_action,
+        authorize?: resource_aggregate.authorize?,
+        join_filters: Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
+      )
+    end
   end
 
   defp filter_with_related(

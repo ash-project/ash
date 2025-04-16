@@ -579,9 +579,19 @@ calculate :users_ssn_last_4, :string, expr(fragment("RIGHT(?, 4)", user.ssn))
 
 The `user` record may not be visible to the actor loading this calculation, and if it is, the `ssn` field may not be visible due to field policies. If calculations authorized access to their dependencies, you would *never* be able to write a calculation like the above.
 
-#### Aggregates in calculations
+#### Aggregates
 
-Aggregates are the one exception to the above. Aggregates referenced *anywhere* will *always* authorize access to the related data they reference (unless `authorize?: false` is set when running the action)
+Aggregates are the one exception to the above. Aggregates referenced *anywhere* will *always* authorize access to the related data they reference (unless `authorize?: false` is set when running the action). They will not, however, authorize references to the
+actual field that they refer to. For example, you may not allow managers to see the email
+of their team members, but they are allowed to know something like "how many team members
+have set up their email". So in an aggregate like the following:
+
+```elixir
+aggregate :users_with_email, :count, :email
+```
+
+if the field policies were applied to `:email`, that number would always show `0`,
+because all `:email` attributes would appear to be `nil` to the manager.
 
 ### Fields annotated as `input`
 
