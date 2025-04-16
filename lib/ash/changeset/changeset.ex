@@ -2379,6 +2379,9 @@ defmodule Ash.Changeset do
             {:ok, nil} ->
               changeset
 
+            {:ok, []} ->
+              changeset
+
             {:ok, _} ->
               error =
                 Ash.Error.Changes.InvalidChanges.exception(
