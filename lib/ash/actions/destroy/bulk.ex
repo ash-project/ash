@@ -1112,7 +1112,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           |> handle_batch(domain, resource, action, all_changes, opts, ref, base_changeset)
         after
           if opts[:notify?] && !opts[:return_notifications?] do
-            Ash.Notifier.notify(Process.delete({:bulk_destroy_notifications, ref}))
+            Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}))
           end
         end
       end
@@ -1135,7 +1135,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
         notifications =
           if opts[:notify?] do
-            Process.delete({:bulk_destroy_notifications, ref}) || []
+            Process.delete({:bulk_notifications, ref}) || []
           else
             []
           end
@@ -1167,7 +1167,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               nil
           end
 
-        {errors, error_count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
+        {errors, error_count} = Process.get({:bulk_errors, ref}) || {[], 0}
 
         errors =
           if opts[:return_errors?] do
@@ -1206,15 +1206,15 @@ defmodule Ash.Actions.Destroy.Bulk do
 
           result = %Ash.BulkResult{
             status: status,
-            notifications: Process.delete({:bulk_destroy_notifications, ref})
+            notifications: Process.delete({:bulk_notifications, ref})
           }
 
           {error_count, errors} = errors(result, error, opts)
 
           %{result | errors: errors, error_count: error_count}
       after
-        Process.delete({:bulk_destroy_errors, ref})
-        Process.delete({:bulk_destroy_notifications, ref})
+        Process.delete({:bulk_errors, ref})
+        Process.delete({:bulk_notifications, ref})
       end
     end
   end
@@ -1370,7 +1370,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp error_stream(ref) do
     Stream.resource(
-      fn -> Process.delete({:bulk_destroy_errors, ref}) end,
+      fn -> Process.delete({:bulk_errors, ref}) end,
       fn
         {errors, _count} ->
           {Stream.map(errors || [], &{:error, &1}), []}
@@ -1384,7 +1384,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp notification_stream(ref) do
     Stream.resource(
-      fn -> Process.delete({:bulk_destroy_notifications, ref}) end,
+      fn -> Process.delete({:bulk_notifications, ref}) end,
       fn
         [] ->
           {:halt, []}
@@ -1506,11 +1506,11 @@ defmodule Ash.Actions.Destroy.Bulk do
               )
 
             {new_errors, new_error_count} =
-              Process.delete({:bulk_destroy_errors, tmp_ref}) || {[], 0}
+              Process.delete({:bulk_errors, tmp_ref}) || {[], 0}
 
             store_error(ref, new_errors, opts, new_error_count)
 
-            notifications = Process.get({:bulk_destroy_notifications, tmp_ref}) || []
+            notifications = Process.get({:bulk_notifications, tmp_ref}) || []
             store_notification(ref, notifications, opts)
 
             result
@@ -1588,11 +1588,12 @@ defmodule Ash.Actions.Destroy.Bulk do
       batch
       |> authorize(opts)
       |> Enum.to_list()
-      |> run_bulk_before_batches(
+      |> Ash.Actions.Update.Bulk.run_bulk_before_batches(
         changes,
         all_changes,
         opts,
-        ref
+        ref,
+        :bulk_destroy_index
       )
 
     changesets_by_index = index_changesets(batch)
@@ -1687,12 +1688,12 @@ defmodule Ash.Actions.Destroy.Bulk do
             Ash.ProcessHelpers.transfer_context(ash_context, opts)
             Process.put(:ash_started_transaction?, true)
             batch_result = callback.(batch)
-            {errors, _} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
+            {errors, _} = Process.get({:bulk_errors, ref}) || {[], 0}
 
             notifications =
               if opts[:notify?] do
                 process_notifications = Process.get(:ash_notifications, [])
-                bulk_notifications = Process.get({:bulk_destroy_notifications, ref}) || []
+                bulk_notifications = Process.get({:bulk_notifications, ref}) || []
 
                 if opts[:return_notifications?] do
                   process_notifications ++ bulk_notifications
@@ -1771,112 +1772,11 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp run_bulk_before_batches(
-         batch,
-         changes,
-         all_changes,
-         opts,
-         ref
-       ) do
-    all_changes
-    |> Enum.filter(fn
-      {%{change: {module, _opts}}, _} ->
-        module.has_before_batch?()
-
-      _ ->
-        false
-    end)
-    |> Enum.reduce(batch, fn {%{change: {module, change_opts}}, index}, batch ->
-      if changes[index] == :all do
-        case change_opts do
-          {:templated, change_opts} ->
-            module.before_batch(
-              batch,
-              change_opts,
-              struct(Ash.Resource.Change.Context, %{
-                bulk?: true,
-                actor: opts[:actor],
-                tenant: opts[:tenant],
-                tracer: opts[:tracer],
-                authorize?: opts[:authorize?]
-              })
-            )
-
-          change_opts ->
-            Enum.flat_map(batch, fn record ->
-              module.before_batch(
-                [record],
-                change_opts,
-                struct(Ash.Resource.Change.Context, %{
-                  bulk?: true,
-                  actor: opts[:actor],
-                  tenant: opts[:tenant],
-                  tracer: opts[:tracer],
-                  authorize?: opts[:authorize?]
-                })
-              )
-            end)
-        end
-      else
-        {matches, non_matches} =
-          batch
-          |> Enum.split_with(fn
-            %{valid?: false} ->
-              false
-
-            changeset ->
-              changeset.context.bulk_destroy.index in List.wrap(changes[index])
-          end)
-
-        before_batch_results =
-          case change_opts do
-            {:templated, change_opts} ->
-              module.before_batch(
-                matches,
-                change_opts,
-                struct(Ash.Resource.Change.Context, %{
-                  bulk?: true,
-                  actor: opts[:actor],
-                  tenant: opts[:tenant],
-                  tracer: opts[:tracer],
-                  authorize?: opts[:authorize?]
-                })
-              )
-
-            change_opts ->
-              Enum.flat_map(matches, fn record ->
-                module.before_batch(
-                  [record],
-                  change_opts,
-                  struct(Ash.Resource.Change.Context, %{
-                    bulk?: true,
-                    actor: opts[:actor],
-                    tenant: opts[:tenant],
-                    tracer: opts[:tracer],
-                    authorize?: opts[:authorize?]
-                  })
-                )
-              end)
-          end
-
-        Enum.concat([before_batch_results, non_matches])
-      end
-    end)
-    |> Enum.reject(fn
-      %Ash.Notifier.Notification{} = notification ->
-        store_notification(ref, notification, opts)
-        true
-
-      _changeset ->
-        false
-    end)
-  end
-
   defp store_error(ref, errors, opts, count \\ nil)
 
   defp store_error(ref, empty, _opts, error_count) when empty in [[], nil] do
-    {errors, count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
-    Process.put({:bulk_destroy_errors, ref}, {errors, count + error_count})
+    {errors, count} = Process.get({:bulk_errors, ref}) || {[], 0}
+    Process.put({:bulk_errors, ref}, {errors, count + error_count})
   end
 
   defp store_error(ref, error, opts, count) do
@@ -1886,7 +1786,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       throw({:error, Ash.Error.to_error_class(error), 0})
     else
       if opts[:return_errors?] do
-        {errors, count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
+        {errors, count} = Process.get({:bulk_errors, ref}) || {[], 0}
 
         new_errors =
           error
@@ -1894,12 +1794,12 @@ defmodule Ash.Actions.Destroy.Bulk do
           |> Enum.map(&Ash.Error.to_ash_error/1)
 
         Process.put(
-          {:bulk_destroy_errors, ref},
+          {:bulk_errors, ref},
           {new_errors ++ errors, count + add}
         )
       else
-        {errors, count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
-        Process.put({:bulk_destroy_errors, ref}, {errors, count + add})
+        {errors, count} = Process.get({:bulk_errors, ref}) || {[], 0}
+        Process.put({:bulk_errors, ref}, {errors, count + add})
       end
     end
   end
@@ -1908,7 +1808,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp store_notification(ref, notification, opts) do
     if opts[:notify?] || opts[:return_notifications?] do
-      notifications = Process.get({:bulk_destroy_notifications, ref}) || []
+      notifications = Process.get({:bulk_notifications, ref}) || []
 
       new_notifications =
         if is_list(notification) do
@@ -1917,7 +1817,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           [notification | List.wrap(notifications)]
         end
 
-      Process.put({:bulk_destroy_notifications, ref}, new_notifications)
+      Process.put({:bulk_notifications, ref}, new_notifications)
     end
   end
 

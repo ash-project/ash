@@ -215,6 +215,11 @@ defmodule Ash.Resource.Change.CascadeDestroy do
     end
   end
 
+  # @impl true
+  # def batch_change(changesets, _opts, _context) do
+  #   changesets
+  # end
+
   @doc false
   @impl true
   def batch_callbacks?([], _, _), do: false

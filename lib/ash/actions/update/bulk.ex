@@ -1365,8 +1365,8 @@ defmodule Ash.Actions.Update.Bulk do
         after
           if opts[:notify?] && !opts[:return_notifications?] do
             Process.put(
-              {:bulk_update_notifications, ref},
-              Ash.Notifier.notify(Process.delete({:bulk_update_notifications, ref}) || [])
+              {:bulk_notifications, ref},
+              Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
             )
           end
         end
@@ -1390,7 +1390,7 @@ defmodule Ash.Actions.Update.Bulk do
 
         notifications =
           if opts[:notify?] do
-            Process.delete({:bulk_update_notifications, ref}) || []
+            Process.delete({:bulk_notifications, ref}) || []
           else
             []
           end
@@ -1422,7 +1422,7 @@ defmodule Ash.Actions.Update.Bulk do
               nil
           end
 
-        {errors, error_count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+        {errors, error_count} = Process.get({:bulk_errors, ref}) || {[], 0}
 
         errors =
           if opts[:return_errors?] do
@@ -1461,15 +1461,15 @@ defmodule Ash.Actions.Update.Bulk do
 
           result = %Ash.BulkResult{
             status: status,
-            notifications: Process.delete({:bulk_update_notifications, ref})
+            notifications: Process.delete({:bulk_notifications, ref})
           }
 
           {error_count, errors} = errors(result, error, opts)
 
           %{result | errors: errors, error_count: error_count}
       after
-        Process.delete({:bulk_update_errors, ref})
-        Process.delete({:bulk_update_notifications, ref})
+        Process.delete({:bulk_errors, ref})
+        Process.delete({:bulk_notifications, ref})
       end
     end
   end
@@ -1646,7 +1646,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp error_stream(ref) do
-    the_errors = Process.delete({:bulk_update_errors, ref})
+    the_errors = Process.delete({:bulk_errors, ref})
 
     Stream.resource(
       fn -> the_errors end,
@@ -1662,7 +1662,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp notification_stream(ref) do
-    the_notifications = Process.delete({:bulk_update_notifications, ref})
+    the_notifications = Process.delete({:bulk_notifications, ref})
 
     Stream.resource(
       fn -> the_notifications end,
@@ -1975,12 +1975,12 @@ defmodule Ash.Actions.Update.Bulk do
           Ash.ProcessHelpers.transfer_context(ash_context, opts)
           Process.put(:ash_started_transaction?, true)
           batch_result = callback.(batch)
-          {errors, _} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+          {errors, _} = Process.get({:bulk_errors, ref}) || {[], 0}
 
           notifications =
             if opts[:notify?] do
               process_notifications = Process.get(:ash_notifications, [])
-              bulk_notifications = Process.get({:bulk_update_notifications, ref}) || []
+              bulk_notifications = Process.get({:bulk_notifications, ref}) || []
 
               if opts[:return_notifications?] do
                 process_notifications ++ bulk_notifications
@@ -2069,30 +2069,25 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp run_bulk_before_batches(
-         batch,
-         changes,
-         all_changes,
-         opts,
-         ref,
-         context_key
-       ) do
+  @doc false
+  def run_bulk_before_batches(
+        batch,
+        changes,
+        all_changes,
+        opts,
+        ref,
+        context_key
+      ) do
     all_changes
-    |> Enum.filter(fn
-      {%{change: {module, _opts}}, _} ->
-        module.has_before_batch?()
+    |> Enum.reduce(batch, fn
+      {%{validation: _}, _index}, batch ->
+        batch
 
-      _ ->
-        false
-    end)
-    |> Enum.reduce(batch, fn {%{change: {module, change_opts}}, index}, batch ->
-      # change may return a stream but before_batch/3 expects a list
-      batch = Enum.to_list(batch)
+      {%{change: {module, change_opts}}, index}, batch ->
+        # change may return a stream but before_batch/3 expects a list
+        batch = Enum.to_list(batch)
 
-      if changes[index] == :all do
-        module.before_batch(
-          batch,
-          change_opts,
+        context =
           struct(Ash.Resource.Change.Context, %{
             bulk?: true,
             actor: opts[:actor],
@@ -2100,33 +2095,99 @@ defmodule Ash.Actions.Update.Bulk do
             tracer: opts[:tracer],
             authorize?: opts[:authorize?]
           })
-        )
-      else
-        {matches, non_matches} =
-          batch
-          |> Enum.split_with(fn
-            %{valid?: false} ->
-              false
 
-            changeset ->
-              changeset.context[context_key].index in List.wrap(changes[index])
-          end)
+        if changes[index] == :all do
+          case change_opts do
+            {:templated, change_opts} ->
+              if module.has_before_batch?() && module.has_batch_change?() &&
+                   module.batch_callbacks?(batch, change_opts, context) do
+                module.before_batch(
+                  batch,
+                  change_opts,
+                  context
+                )
+              else
+                batch
+              end
 
-        before_batch_results =
-          module.before_batch(
-            matches,
-            change_opts,
-            struct(Ash.Resource.Change.Context, %{
-              bulk?: true,
-              actor: opts[:actor],
-              tenant: opts[:tenant],
-              tracer: opts[:tracer],
-              authorize?: opts[:authorize?]
-            })
-          )
+            change_opts ->
+              Enum.flat_map(batch, fn changeset ->
+                if module.has_before_batch?() && module.has_batch_change?() &&
+                     module.batch_callbacks?(batch, change_opts, context) do
+                  change_opts =
+                    templated_opts(
+                      change_opts,
+                      opts[:actor],
+                      changeset.to_tenant,
+                      changeset.arguments,
+                      changeset.context,
+                      changeset
+                    )
 
-        Enum.concat([before_batch_results, non_matches])
-      end
+                  module.before_batch(
+                    [changeset],
+                    change_opts,
+                    context
+                  )
+                else
+                  [changeset]
+                end
+              end)
+          end
+        else
+          {matches, non_matches} =
+            batch
+            |> Enum.split_with(fn
+              %{valid?: false} ->
+                false
+
+              changeset ->
+                changeset.context[context_key].index in List.wrap(changes[index])
+            end)
+
+          before_batch_results =
+            case change_opts do
+              {:templated, change_opts} ->
+                if module.has_before_batch?() &&
+                     module.has_batch_change?() &&
+                     module.batch_callbacks?(matches, change_opts, context) do
+                  module.before_batch(
+                    matches,
+                    change_opts,
+                    context
+                  )
+                else
+                  matches
+                end
+
+              change_opts ->
+                Enum.flat_map(matches, fn changeset ->
+                  change_opts =
+                    templated_opts(
+                      change_opts,
+                      opts[:actor],
+                      changeset.to_tenant,
+                      changeset.arguments,
+                      changeset.context,
+                      changeset
+                    )
+
+                  if module.has_before_batch?() &&
+                       module.has_batch_change?() &&
+                       module.batch_callbacks?([changeset], change_opts, context) do
+                    module.before_batch(
+                      [changeset],
+                      change_opts,
+                      context
+                    )
+                  else
+                    [changeset]
+                  end
+                end)
+            end
+
+          Enum.concat([before_batch_results, non_matches])
+        end
     end)
     |> Enum.reject(fn
       %Ash.Notifier.Notification{} = notification ->
@@ -2143,10 +2204,10 @@ defmodule Ash.Actions.Update.Bulk do
   defp store_error(_ref, empty, _opts, 0) when empty in [[], nil], do: :ok
 
   defp store_error(ref, empty, _opts, error_count) when empty in [[], nil] do
-    {errors, count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+    {errors, count} = Process.get({:bulk_errors, ref}) || {[], 0}
 
     Process.put(
-      {:bulk_update_errors, ref},
+      {:bulk_errors, ref},
       {errors, count + (error_count || 1)}
     )
   end
@@ -2158,7 +2219,7 @@ defmodule Ash.Actions.Update.Bulk do
       throw({:error, Ash.Error.to_error_class(error), 0})
     else
       if opts[:return_errors?] do
-        {errors, count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+        {errors, count} = Process.get({:bulk_errors, ref}) || {[], 0}
 
         new_errors =
           error
@@ -2166,12 +2227,12 @@ defmodule Ash.Actions.Update.Bulk do
           |> Enum.map(&Ash.Error.to_ash_error/1)
 
         Process.put(
-          {:bulk_update_errors, ref},
+          {:bulk_errors, ref},
           {new_errors ++ errors, count + add}
         )
       else
-        {errors, count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
-        Process.put({:bulk_update_errors, ref}, {errors, count + add})
+        {errors, count} = Process.get({:bulk_errors, ref}) || {[], 0}
+        Process.put({:bulk_errors, ref}, {errors, count + add})
       end
     end
   end
@@ -2180,7 +2241,7 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp store_notification(ref, notification, opts) do
     if opts[:notify?] || opts[:return_notifications?] do
-      notifications = Process.get({:bulk_update_notifications, ref}) || []
+      notifications = Process.get({:bulk_notifications, ref}) || []
 
       new_notifications =
         if is_list(notification) do
@@ -2189,7 +2250,7 @@ defmodule Ash.Actions.Update.Bulk do
           [notification | notifications]
         end
 
-      Process.put({:bulk_update_notifications, ref}, new_notifications)
+      Process.put({:bulk_notifications, ref}, new_notifications)
     end
   end
 
@@ -2400,7 +2461,7 @@ defmodule Ash.Actions.Update.Bulk do
                   |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
                   |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
                     mod,
-                    :bulk_destroy,
+                    :bulk_update,
                     &store_notification/3,
                     &store_error/3,
                     ref,
@@ -2666,89 +2727,139 @@ defmodule Ash.Actions.Update.Bulk do
       )
 
     all_changes
-    |> Enum.filter(fn
-      {%{change: {module, change_opts}}, _} ->
-        module.has_after_batch?() &&
-          module.has_batch_change?() &&
-          module.batch_callbacks?(changesets, change_opts, context)
+    |> Enum.reduce(results, fn
+      {%{validation: _}, _index}, results ->
+        results
 
-      _ ->
-        false
-    end)
-    |> Enum.reduce(results, fn {%{change: {module, change_opts}}, index}, results ->
-      records = results
+      {%{change: {module, change_opts}}, index}, results ->
+        records = results
 
-      if changes[index] == :all do
-        results =
-          Enum.map(results, fn result ->
-            {changesets_by_index[result.__metadata__[metadata_key]], result}
-          end)
-
-        case change_opts do
-          {:templated, change_opts} ->
-            module.after_batch(
-              results,
-              change_opts,
-              context
-            )
-
-          change_opts ->
-            Enum.flat_map(results, fn {changeset, _} = result ->
-              change_opts =
-                templated_opts(
-                  change_opts,
-                  opts[:actor],
-                  changeset.to_tenant,
-                  changeset.arguments,
-                  changeset.context,
-                  changeset
-                )
-
-              module.after_batch(
-                [result],
-                change_opts,
-                context
-              )
+        if changes[index] == :all do
+          results =
+            Enum.map(results, fn result ->
+              {changesets_by_index[result.__metadata__[metadata_key]], result}
             end)
+
+          case change_opts do
+            {:templated, change_opts} ->
+              if module.has_after_batch?() &&
+                   module.has_batch_change?() &&
+                   module.batch_callbacks?(changesets, change_opts, context) do
+                module.after_batch(
+                  results,
+                  change_opts,
+                  context
+                )
+              else
+                Enum.map(results, &{:ok, elem(&1, 1)})
+              end
+
+            change_opts ->
+              Enum.flat_map(results, fn {changeset, record} = result ->
+                change_opts =
+                  templated_opts(
+                    change_opts,
+                    opts[:actor],
+                    changeset.to_tenant,
+                    changeset.arguments,
+                    changeset.context,
+                    changeset
+                  )
+
+                if module.has_after_batch?() &&
+                     module.has_batch_change?() &&
+                     module.batch_callbacks?(changesets, change_opts, context) do
+                  module.after_batch(
+                    [result],
+                    change_opts,
+                    context
+                  )
+                else
+                  [{:ok, record}]
+                end
+              end)
+          end
+          |> handle_after_batch_results(records, ref, resource, opts)
+        else
+          {matches, non_matches} =
+            results
+            |> Enum.split_with(fn
+              {:ok, result} ->
+                result.__metadata__[metadata_key] in List.wrap(changes[index])
+
+              _ ->
+                false
+            end)
+
+          match_records = matches
+
+          matches =
+            Enum.map(matches, fn match ->
+              {changesets_by_index[match.__metadata__[metadata_key]], match}
+            end)
+
+          after_batch_results =
+            case change_opts do
+              {:templated, change_opts} ->
+                if module.has_after_batch?() &&
+                     module.has_batch_change?() &&
+                     module.batch_callbacks?(changesets, change_opts, context) do
+                  module.after_batch(
+                    matches,
+                    change_opts,
+                    struct(
+                      Ash.Resource.Change.Context,
+                      %{
+                        bulk?: true,
+                        actor: opts[:actor],
+                        tenant: opts[:tenant],
+                        tracer: opts[:tracer],
+                        authorize?: opts[:authorize?]
+                      }
+                    )
+                  )
+                else
+                  Enum.map(matches, &{:ok, elem(&1, 1)})
+                end
+
+              change_opts ->
+                Enum.flat_map(matches, fn {changeset, record} = result ->
+                  if module.has_after_batch?() &&
+                       module.has_batch_change?() &&
+                       module.batch_callbacks?(changesets, change_opts, context) do
+                    change_opts =
+                      templated_opts(
+                        change_opts,
+                        opts[:actor],
+                        changeset.to_tenant,
+                        changeset.arguments,
+                        changeset.context,
+                        changeset
+                      )
+
+                    module.after_batch(
+                      [result],
+                      change_opts,
+                      struct(
+                        Ash.Resource.Change.Context,
+                        %{
+                          bulk?: true,
+                          actor: opts[:actor],
+                          tenant: opts[:tenant],
+                          tracer: opts[:tracer],
+                          authorize?: opts[:authorize?]
+                        }
+                      )
+                    )
+                  else
+                    [{:ok, record}]
+                  end
+                end)
+            end
+            |> handle_after_batch_results(match_records, ref, resource, opts)
+
+          Enum.concat([after_batch_results, non_matches])
         end
-        |> handle_after_batch_results(records, ref, resource, opts)
-      else
-        {matches, non_matches} =
-          results
-          |> Enum.split_with(fn
-            {:ok, result} ->
-              result.__metadata__[metadata_key] in List.wrap(changes[index])
-
-            _ ->
-              false
-          end)
-
-        match_records = matches
-
-        matches =
-          Enum.map(matches, fn match ->
-            {changesets_by_index[match.__metadata__[metadata_key]], match}
-          end)
-
-        after_batch_results =
-          module.after_batch(
-            matches,
-            change_opts,
-            struct(
-              Ash.Resource.Change.Context,
-              %{
-                bulk?: true,
-                actor: opts[:actor],
-                tenant: opts[:tenant],
-                tracer: opts[:tracer],
-                authorize?: opts[:authorize?]
-              }
-            )
-          )
-          |> handle_after_batch_results(match_records, ref, resource, opts)
-
-        Enum.concat([after_batch_results, non_matches])
-      end
     end)
   end
 

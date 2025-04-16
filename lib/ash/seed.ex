@@ -116,7 +116,11 @@ defmodule Ash.Seed do
     |> create_via_data_layer()
     |> case do
       {:ok, result, _, _} ->
-        result
+        if opts[:tenant] do
+          Ash.Resource.set_metadata(result, %{tenant: opts[:tenant]})
+        else
+          result
+        end
 
       {:error, error} ->
         raise Ash.Error.to_error_class(error)
@@ -146,7 +150,11 @@ defmodule Ash.Seed do
     |> create_via_data_layer()
     |> case do
       {:ok, result, _, _} ->
-        result
+        if opts[:tenant] do
+          Ash.Resource.set_metadata(result, %{tenant: opts[:tenant]})
+        else
+          result
+        end
 
       {:error, error} ->
         raise Ash.Error.to_error_class(error)
@@ -312,7 +320,11 @@ defmodule Ash.Seed do
     |> update_via_data_layer()
     |> case do
       {:ok, result, _, _} ->
-        result
+        if opts[:tenant] do
+          Ash.Resource.set_metadata(result, %{tenant: opts[:tenant]})
+        else
+          result
+        end
 
       {:error, error} ->
         raise Ash.Error.to_error_class(error)
