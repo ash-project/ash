@@ -92,6 +92,7 @@ defmodule Ash.Test.ManageRelationshipTest do
 
       update :update_with_existing_parent do
         argument :parent_resource, :map, allow_nil?: false
+        require_atomic? false
 
         change manage_relationship(:parent_resource, on_match: :update)
       end
@@ -205,10 +206,9 @@ defmodule Ash.Test.ManageRelationshipTest do
     {:ok, related} =
       related
       |> Ash.Changeset.for_update(:update_with_existing_parent, %{
-        required_attribute: "string",
         parent_resource: %{id: parent.id, name: "Even newer name"}
       })
-      |> Ash.create!()
+      |> Ash.update!()
       |> Ash.load(:parent_resource)
 
     assert related.parent_resource.name == "Even newer name"

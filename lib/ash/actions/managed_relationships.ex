@@ -955,7 +955,40 @@ defmodule Ash.Actions.ManagedRelationships do
             end
 
           {:ok, found} ->
-            {:ok, [found | current_value], []}
+            case {relationship.type, other} do
+              {:belongs_to, {:relate_and_update, action, _}} ->
+                domain = domain(changeset, relationship)
+
+                action_name =
+                  action ||
+                    Ash.Resource.Info.primary_action!(relationship.destination, :update).name
+
+                found
+                |> Ash.Changeset.new()
+                |> Ash.Changeset.set_context(relationship.context)
+                |> Ash.Changeset.set_context(%{
+                  accessing_from: %{source: relationship.source, name: relationship.name}
+                })
+                |> Ash.Changeset.for_update(action_name, input,
+                  actor: actor,
+                  tenant: changeset.tenant,
+                  authorize?: opts[:authorize?],
+                  domain: domain,
+                  skip_unknown_inputs: Map.keys(input)
+                )
+                |> Ash.Changeset.set_context(relationship.context)
+                |> Ash.update(return_notifications?: true)
+                |> case do
+                  {:ok, updated, notifications} ->
+                    {:ok, [updated | current_value], notifications}
+
+                  {:error, error} ->
+                    {:error, error}
+                end
+
+              _ ->
+                {:ok, [found | current_value], []}
+            end
         end
     end
   end
@@ -1373,6 +1406,7 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.set_context(%{
           accessing_from: %{source: relationship.source, name: relationship.name}
         })
+        |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.for_update(action_name, input,
           actor: actor,
           tenant: changeset.tenant,
@@ -1380,7 +1414,6 @@ defmodule Ash.Actions.ManagedRelationships do
           domain: domain,
           skip_unknown_inputs: Map.keys(input)
         )
-        |> Ash.Changeset.set_context(relationship.context)
         |> Ash.update(return_notifications?: true)
         |> case do
           {:ok, updated, update_notifications} ->
@@ -1830,13 +1863,13 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Changeset.set_context(%{
       accessing_from: %{source: relationship.source, name: relationship.name, unrelating?: true}
     })
+    |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.for_update(action_name, %{},
       authorize?: opts[:authorize?],
       actor: actor,
       domain: domain
     )
     |> maybe_force_change_attribute(relationship, :destination_attribute, nil)
-    |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)
     |> Ash.update(return_notifications?: true)
     |> case do
