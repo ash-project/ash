@@ -82,6 +82,19 @@ defmodule Ash.Test.ManageRelationshipTest do
                  {:ok, result}
                end)
       end
+
+      create :create_with_existing_parent do
+        accept [:required_attribute]
+        argument :parent_resource, :map, allow_nil?: false
+
+        change manage_relationship(:parent_resource, on_lookup: :relate_and_update)
+      end
+
+      update :update_with_existing_parent do
+        argument :parent_resource, :map, allow_nil?: false
+
+        change manage_relationship(:parent_resource, on_match: :update)
+      end
     end
 
     attributes do
@@ -170,6 +183,35 @@ defmodule Ash.Test.ManageRelationshipTest do
              |> Ash.load(:parent_resource)
 
     assert related.parent_resource.name == "Test Parent Resource"
+  end
+
+  test "relates and updates existing parent" do
+    parent =
+      ParentResource
+      |> Ash.Changeset.for_create(:create, %{name: "Initial name"})
+      |> Ash.create!()
+
+    {:ok, related} =
+      RelatedResource
+      |> Ash.Changeset.for_create(:create_with_existing_parent, %{
+        required_attribute: "string",
+        parent_resource: %{id: parent.id, name: "New name"}
+      })
+      |> Ash.create!()
+      |> Ash.load(:parent_resource)
+
+    assert related.parent_resource.name == "New name"
+
+    {:ok, related} =
+      related
+      |> Ash.Changeset.for_update(:update_with_existing_parent, %{
+        required_attribute: "string",
+        parent_resource: %{id: parent.id, name: "Even newer name"}
+      })
+      |> Ash.create!()
+      |> Ash.load(:parent_resource)
+
+    assert related.parent_resource.name == "Even newer name"
   end
 
   test "can create and update a related resource" do
