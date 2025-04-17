@@ -1015,6 +1015,7 @@ defmodule Ash.Changeset do
     end)
   end
 
+  @doc false
   def run_atomic_change(
         changeset,
         %{change: {module, change_opts}, where: where},
@@ -1984,6 +1985,8 @@ defmodule Ash.Changeset do
   def expand_upsert_fields(fields, _), do: fields
 
   @spec set_on_upsert(t(), list(atom)) :: Keyword.t()
+
+  @doc false
   def set_on_upsert(changeset, upsert_keys) do
     keys = upsert_keys || Ash.Resource.Info.primary_key(changeset.resource)
 
@@ -2228,6 +2231,7 @@ defmodule Ash.Changeset do
     end)
   end
 
+  @doc false
   def handle_params(changeset, action, params, handle_params_opts \\ []) do
     if Keyword.get(handle_params_opts, :cast_params?, true) do
       cast_params(changeset, action, params || %{}, handle_params_opts)
@@ -4412,6 +4416,8 @@ defmodule Ash.Changeset do
           :append_and_remove | :append | :remove | :direct_control | :create
 
   @spec manage_relationship_opts(manage_relationship_type()) :: Keyword.t()
+
+  @doc false
   def manage_relationship_opts(:append_and_remove) do
     [
       on_lookup: :relate,
@@ -4421,6 +4427,7 @@ defmodule Ash.Changeset do
     ]
   end
 
+  @doc false
   def manage_relationship_opts(:append) do
     [
       on_lookup: :relate,
@@ -4430,6 +4437,7 @@ defmodule Ash.Changeset do
     ]
   end
 
+  @doc false
   def manage_relationship_opts(:remove) do
     [
       on_no_match: :error,
@@ -4438,6 +4446,7 @@ defmodule Ash.Changeset do
     ]
   end
 
+  @doc false
   def manage_relationship_opts(:create) do
     [
       on_no_match: :create,
@@ -4445,6 +4454,7 @@ defmodule Ash.Changeset do
     ]
   end
 
+  @doc false
   def manage_relationship_opts(:direct_control) do
     [
       on_lookup: :ignore,
