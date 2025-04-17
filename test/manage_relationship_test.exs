@@ -12,11 +12,20 @@ defmodule Ash.Test.ManageRelationshipTest do
 
       create :create do
         primary? true
+
+        upsert? true
+        upsert_identity :uniqe_value
+        upsert_fields [:name]
+
         accept [:name]
         argument :related_resource, :map
         argument :other_resources, {:array, :map}
 
-        change manage_relationship(:related_resource, :related_resource, type: :create)
+        change manage_relationship(:related_resource, :related_resource,
+                 type: :create,
+                 use_identities: [:by_parent_resource_id]
+               )
+
         change manage_relationship(:other_resources, type: :direct_control)
       end
 
@@ -37,11 +46,23 @@ defmodule Ash.Test.ManageRelationshipTest do
         change manage_relationship(:related_resource, :related_resource, type: :direct_control)
         change manage_relationship(:other_resources, type: :direct_control)
       end
+
+      update :create_has_one_child do
+      end
+    end
+
+    identities do
+      identity :uniqe_value, [:unique_value], pre_check_with: Ash.Test.Domain
     end
 
     attributes do
       uuid_primary_key :id
       attribute :name, :string
+
+      attribute :unique_value, :uuid do
+        allow_nil? false
+        default &Ash.UUIDv7.generate/0
+      end
     end
 
     relationships do
@@ -65,6 +86,10 @@ defmodule Ash.Test.ManageRelationshipTest do
       domain: Ash.Test.Domain,
       data_layer: Ash.DataLayer.Ets,
       fragments: [RelatedResourceFragment]
+
+    identities do
+      identity :by_parent_resource_id, [:parent_resource_id], pre_check_with: Ash.Test.Domain
+    end
 
     actions do
       defaults [:read, :destroy, create: :*, update: :*]
@@ -115,7 +140,7 @@ defmodule Ash.Test.ManageRelationshipTest do
       fragments: [RelatedResourceFragment]
 
     actions do
-      defaults [:read, create: :*, update: :*]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       destroy :archive do
         primary? true
@@ -134,6 +159,22 @@ defmodule Ash.Test.ManageRelationshipTest do
     relationships do
       belongs_to :parent_resource, ParentResource
     end
+  end
+
+  setup do
+    on_exit(fn ->
+      RelatedResource
+      |> Ash.Query.for_read(:read, %{}, authorize?: false)
+      |> Ash.bulk_destroy!(:destroy, %{}, authorize?: false)
+
+      ParentResource
+      |> Ash.Query.for_read(:read, %{}, authorize?: false)
+      |> Ash.bulk_destroy!(:destroy, %{}, authorize?: false)
+
+      OtherResource
+      |> Ash.Query.for_read(:read, %{}, authorize?: false)
+      |> Ash.bulk_destroy!(:destroy, %{}, authorize?: false)
+    end)
   end
 
   test "errors have the proper path set on them" do
@@ -240,6 +281,40 @@ defmodule Ash.Test.ManageRelationshipTest do
              |> Ash.load(:related_resource)
 
     assert parent.related_resource.required_attribute == "other_string"
+  end
+
+  test "can upsert without createing a new related resource" do
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               related_resource: %{
+                 required_attribute: "string"
+               }
+             })
+             |> Ash.create!()
+             |> Ash.load(:related_resource)
+
+    assert parent.related_resource.required_attribute == "string"
+
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               unique_value: parent.unique_value,
+               name: "Test Parent Resource",
+               related_resource: %{
+                 required_attribute: "string2"
+               }
+             })
+             |> Ash.create!()
+             |> Ash.load(:related_resource)
+
+    assert parent.related_resource.required_attribute == "string"
+
+    assert {:ok, [_related]} =
+             RelatedResource
+             |> Ash.Query.for_read(:read, %{}, authorize?: false)
+             |> Ash.read()
   end
 
   test "can create and destroy arrays" do
