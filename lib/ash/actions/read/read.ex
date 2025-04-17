@@ -2488,7 +2488,7 @@ defmodule Ash.Actions.Read do
 
     field =
       if is_atom(agg.field) do
-        Ash.Resource.Info.field(agg.resource, agg.field)
+        Ash.Resource.Info.field(query.resource, agg.field)
       else
         agg.field
       end
@@ -2581,15 +2581,10 @@ defmodule Ash.Actions.Read do
         resource,
         opts
       ) do
-    calc_opts = [
-      actor: actor,
-      authorize?: authorize?,
-      tenant: tenant,
-      tracer: tracer,
-      domain: domain
-    ]
-
-    {:ok, calc} = Ash.Query.Calculation.from_resource_calculation(resource, calc.name, calc_opts)
+    {:ok, calc} =
+      Ash.Query.Calculation.from_resource_calculation(resource, calc.name,
+        source_context: opts[:source_context]
+      )
 
     add_calc_context(calc, actor, authorize?, tenant, tracer, domain, resource, opts)
   end
@@ -3548,7 +3543,7 @@ defmodule Ash.Actions.Read do
          source_context
        ) do
     aggregate =
-      add_calc_context(aggregate, actor, authorize?, tenant, tracer, domain, aggregate.resource,
+      add_calc_context(aggregate, actor, authorize?, tenant, tracer, domain, resource,
         parent_stack: parent_stack,
         source_context: source_context
       )
@@ -3782,9 +3777,9 @@ defmodule Ash.Actions.Read do
         ]
 
         case resource_aggregate_to_query_aggregate(related_resource, resource_aggregate, opts) do
-          {:ok, aggregate} ->
+          {:ok, query_aggregate} ->
             aggregate_field_with_related_filters(
-              %{aggregate | field: aggregate},
+              %{aggregate | field: query_aggregate},
               path_filters,
               actor,
               authorize?,
