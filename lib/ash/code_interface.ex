@@ -759,7 +759,7 @@ defmodule Ash.CodeInterface do
                   query =
                     if unquote(filter_keys) && !Enum.empty?(unquote(filter_keys)) do
                       require Ash.Query
-                      {filters, params} = Map.split(params, unquote(filter_keys))
+                      filters = Map.take(params, unquote(filter_keys))
 
                       query
                       |> Ash.Query.for_read(unquote(action.name), params, query_opts)
@@ -966,7 +966,7 @@ defmodule Ash.CodeInterface do
                       record
                       |> case do
                         %Ash.Changeset{resource: unquote(resource)} ->
-                          {filters, params} = Map.split(params, unquote(filter_keys))
+                          filters = Map.take(params, unquote(filter_keys))
 
                           record
                           |> Ash.Changeset.filter(filters)
@@ -982,7 +982,7 @@ defmodule Ash.CodeInterface do
                                 "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
                         %struct{} = record when struct == unquote(resource) ->
-                          {filters, params} = Map.split(params, unquote(filter_keys))
+                          filters = Map.take(params, unquote(filter_keys))
 
                           record
                           |> Ash.Changeset.new()
@@ -1034,7 +1034,7 @@ defmodule Ash.CodeInterface do
 
               act =
                 quote do
-                  {filters, params} = Map.split(params, unquote(filter_keys))
+                  filters = Map.take(params, unquote(filter_keys))
 
                   case changeset do
                     {:atomic, method, id} ->
@@ -1131,7 +1131,7 @@ defmodule Ash.CodeInterface do
                       if Enum.any?(custom_input_errors) do
                         raise Ash.Error.to_error_class(custom_input_errors)
                       else
-                        {filters, params} = Map.split(params, unquote(filter_keys))
+                        filters = Map.take(params, unquote(filter_keys))
 
                         bulk_opts =
                           opts
@@ -1242,7 +1242,7 @@ defmodule Ash.CodeInterface do
                       record
                       |> case do
                         %Ash.Changeset{resource: unquote(resource)} ->
-                          {filters, params} = Map.split(params, unquote(filter_keys))
+                          filters = Map.take(params, unquote(filter_keys))
 
                           record
                           |> Ash.Changeset.filter(filters)
@@ -1258,7 +1258,7 @@ defmodule Ash.CodeInterface do
                                 "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
                         %struct{} = record when struct == unquote(resource) ->
-                          {filters, params} = Map.split(params, unquote(filter_keys))
+                          filters = Map.take(params, unquote(filter_keys))
 
                           record
                           |> Ash.Changeset.new()
@@ -1318,7 +1318,7 @@ defmodule Ash.CodeInterface do
                           error_count: 1
                         }
                       else
-                        {filters, params} = Map.split(params, unquote(filter_keys))
+                        filters = Map.take(params, unquote(filter_keys))
 
                         bulk_opts =
                           opts
@@ -1436,7 +1436,7 @@ defmodule Ash.CodeInterface do
                       if Enum.any?(custom_input_errors) do
                         raise Ash.Error.to_error_class(custom_input_errors)
                       else
-                        {filters, params} = Map.split(params, unquote(filter_keys))
+                        filters = Map.take(params, unquote(filter_keys))
 
                         bulk_opts =
                           opts
