@@ -334,7 +334,8 @@ defmodule Ash.DataLayer do
   @doc "Whether or not lateral joins should be used for many to many relationships by default"
   @spec prefer_lateral_join_for_many_to_many?(Ash.DataLayer.t()) :: boolean
   def prefer_lateral_join_for_many_to_many?(data_layer) do
-    if function_exported?(data_layer, :prefer_lateral_join_for_many_to_many?, 0) do
+    if Code.ensure_loaded?(data_layer) &&
+         function_exported?(data_layer, :prefer_lateral_join_for_many_to_many?, 0) do
       data_layer.prefer_lateral_join_for_many_to_many?()
     else
       true
@@ -365,7 +366,7 @@ defmodule Ash.DataLayer do
   def prefer_transaction?(resource) do
     data_layer = data_layer(resource)
 
-    if function_exported?(data_layer, :prefer_transaction?, 1) do
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :prefer_transaction?, 1) do
       data_layer.prefer_transaction?(resource)
     else
       # default to false in 4.0
@@ -378,7 +379,8 @@ defmodule Ash.DataLayer do
   def prefer_transaction_for_atomic_updates?(resource) do
     data_layer = data_layer(resource)
 
-    if function_exported?(data_layer, :prefer_transaction_for_atomic_updates?, 1) do
+    if Code.ensure_loaded?(data_layer) &&
+         function_exported?(data_layer, :prefer_transaction_for_atomic_updates?, 1) do
       data_layer.prefer_transaction_for_atomic_updates?(resource)
     else
       # default to false in 4.0
@@ -435,6 +437,9 @@ defmodule Ash.DataLayer do
 
       if data_layer.can?(resource, :transact) do
         cond do
+          !Code.ensure_loaded?(data_layer) ->
+            data_layer.transaction(resource, func)
+
           function_exported?(data_layer, :transaction, 4) ->
             data_layer.transaction(resource, func, timeout, reason)
 
@@ -516,7 +521,7 @@ defmodule Ash.DataLayer do
   def return_query(query, resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    if function_exported?(data_layer, :return_query, 2) do
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :return_query, 2) do
       data_layer.return_query(query, resource)
     else
       {:ok, query}
@@ -550,7 +555,7 @@ defmodule Ash.DataLayer do
 
     Code.ensure_compiled!(data_layer)
 
-    if :erlang.function_exported(data_layer, :source, 1) do
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :source, 1) do
       data_layer.source(resource)
     else
       ""
@@ -580,7 +585,7 @@ defmodule Ash.DataLayer do
     changeset = %{changeset | tenant: changeset.to_tenant}
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    if function_exported?(data_layer, :upsert, 4) do
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :upsert, 4) do
       data_layer.upsert(resource, changeset, keys, identity)
     else
       data_layer.upsert(resource, changeset, keys)
@@ -592,7 +597,7 @@ defmodule Ash.DataLayer do
   def set_context(resource, query, map) do
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    if :erlang.function_exported(data_layer, :set_context, 3) do
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :set_context, 3) do
       data_layer.set_context(resource, query, map)
     else
       {:ok, query}
@@ -700,7 +705,7 @@ defmodule Ash.DataLayer do
   def add_aggregates(query, aggregates, resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    if function_exported?(data_layer, :add_aggregates, 3) do
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :add_aggregates, 3) do
       data_layer.add_aggregates(query, aggregates, resource)
     else
       Enum.reduce_while(aggregates, {:ok, query}, fn aggregate, {:ok, data_layer_query} ->
@@ -725,7 +730,7 @@ defmodule Ash.DataLayer do
   def add_calculations(query, calculations, resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    if function_exported?(data_layer, :add_calculations, 3) do
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :add_calculations, 3) do
       data_layer.add_calculations(query, calculations, resource)
     else
       Enum.reduce_while(calculations, {:ok, query}, fn {calculation, expression}, {:ok, query} ->
@@ -752,7 +757,7 @@ defmodule Ash.DataLayer do
   def run_aggregate_query(query, aggregates, resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    if :erlang.function_exported(data_layer, :run_aggregate_query, 3) do
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :run_aggregate_query, 3) do
       data_layer.run_aggregate_query(query, aggregates, resource)
     else
       {:error, "Aggregate queries not supported"}
@@ -815,7 +820,7 @@ defmodule Ash.DataLayer do
   def functions(resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    if :erlang.function_exported(data_layer, :functions, 1) do
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :functions, 1) do
       data_layer.functions(resource)
     else
       %{}
@@ -825,7 +830,7 @@ defmodule Ash.DataLayer do
   def transform_query(query) do
     data_layer = Ash.DataLayer.data_layer(query.resource)
 
-    if :erlang.function_exported(data_layer, :transform_query, 1) do
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :transform_query, 1) do
       data_layer.transform_query(query)
     else
       query
