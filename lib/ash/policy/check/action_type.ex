@@ -14,9 +14,6 @@ defmodule Ash.Policy.Check.ActionType do
   end
 
   @impl true
-  def requires_original_data?(_, _), do: false
-
-  @impl true
   def match?(_actor, %{action: %{type: type}}, options) do
     type in options[:type]
   end
