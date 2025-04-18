@@ -23,7 +23,7 @@ defmodule Ash.Resource.Validation.Changing do
           required: false,
           default: false,
           doc:
-            "Whether to consider a field as changing if it is just being touched (i.e consider it changed when it is being changed to its current value)"
+            "Whether to consider a field as changing if it is just being touched (i.e consider it changed even if it is being changed to its current value)"
         ]
       ]
   end

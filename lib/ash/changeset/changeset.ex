@@ -1052,17 +1052,30 @@ defmodule Ash.Changeset do
              "change `#{inspect(module)}` modified the changeset, but had a condition that could not be checked without running the action"}
           else
             atomic_changes =
-              Map.new(atomic_changes, fn {key, value} ->
-                new_value =
-                  expr(
-                    if ^condition do
-                      ^value
-                    else
-                      ^ref(key)
-                    end
-                  )
+              Map.new(atomic_changes, fn
+                {key, {:atomic, value}} ->
+                  new_value =
+                    expr(
+                      if ^condition do
+                        ^value
+                      else
+                        ^ref(key)
+                      end
+                    )
 
-                {key, new_value}
+                  {key, {:atomic, new_value}}
+
+                {key, value} ->
+                  new_value =
+                    expr(
+                      if ^condition do
+                        ^value
+                      else
+                        ^ref(key)
+                      end
+                    )
+
+                  {key, new_value}
               end)
 
             {:atomic, apply_atomic_update(new_changeset, atomic_changes)}
@@ -1108,7 +1121,7 @@ defmodule Ash.Changeset do
       | atomics: Keyword.put(changeset.atomics, key, value),
         no_atomic_constraints: [key | changeset.no_atomic_constraints]
     }
-    |> record_atomic_update_for_atomic_upgrade(key, value)
+    |> record_atomic_update_for_atomic_upgrade(key, {:atomic, value})
   end
 
   defp apply_atomic_update(changeset, key, value) do
@@ -1263,6 +1276,10 @@ defmodule Ash.Changeset do
   # This is not expressly necessary as `expr(true and not ^new_expr)` would also
   # work just fine, but the final output from omitting `true` is much easier to
   # read if debugging.
+  defp atomic_condition_expr(condition_expr, {:atomic, expr}) do
+    {:atomic, atomic_condition_expr(condition_expr, expr)}
+  end
+
   defp atomic_condition_expr(true, expr) do
     expr(not (^expr))
   end
