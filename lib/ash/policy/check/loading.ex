@@ -9,9 +9,6 @@ defmodule Ash.Policy.Check.Loading do
   end
 
   @impl true
-  def requires_original_data?(_, _), do: false
-
-  @impl true
   def match?(_actor, %{query: %Ash.Query{} = query}, opts) do
     Logger.warning(
       "`loading/1` check is deprecated! Use field policies to secure field access instead."

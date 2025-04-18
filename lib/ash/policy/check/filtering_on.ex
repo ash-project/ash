@@ -8,9 +8,6 @@ defmodule Ash.Policy.Check.FilteringOn do
   end
 
   @impl true
-  def requires_original_data?(_, _), do: false
-
-  @impl true
   def match?(_actor, %{query: %Ash.Query{} = query}, opts) do
     path = opts[:path] || []
     field = opts[:field] || raise "Must provide field to #{inspect(__MODULE__)}"

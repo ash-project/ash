@@ -14,9 +14,6 @@ defmodule Ash.Policy.Check.Action do
   end
 
   @impl true
-  def requires_original_data?(_, _), do: false
-
-  @impl true
   def match?(_actor, %{action: %{name: name}}, options) do
     name in options[:action]
   end
