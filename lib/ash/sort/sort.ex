@@ -362,27 +362,11 @@ defmodule Ash.Sort do
   end
 
   defp type_sortable?(resource, %Ash.Resource.Aggregate{} = aggregate) do
-    attribute =
-      if aggregate.field do
-        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
-        Ash.Resource.Info.field(related, aggregate.field)
-      end
-
-    attribute_type =
-      if attribute do
-        attribute.type
-      end
-
-    attribute_constraints =
-      if attribute do
-        attribute.constraints
-      end
-
-    case Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type, attribute_constraints) do
-      {:ok, type, constraints} ->
+    case aggregate_type(resource, aggregate) do
+      {type, constraints} ->
         do_type_sortable?(resource, type, constraints)
 
-      _other ->
+      nil ->
         false
     end
   end
@@ -392,6 +376,52 @@ defmodule Ash.Sort do
 
   defp type_sortable?(resource, field) do
     do_type_sortable?(resource, field.type, field.constraints)
+  end
+
+  defp aggregate_type(resource, aggregate) do
+    attribute =
+      if aggregate.field do
+        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
+        Ash.Resource.Info.field(related, aggregate.field)
+      end
+
+    case attribute do
+      %Ash.Resource.Aggregate{} = related_aggregate ->
+        case aggregate_type(
+               Ash.Resource.Info.related(resource, aggregate.relationship_path),
+               related_aggregate
+             ) do
+          {type, constraints} ->
+            case Ash.Query.Aggregate.kind_to_type(aggregate.kind, type, constraints) do
+              {:ok, type, constraints} ->
+                {type, constraints}
+
+              _ ->
+                nil
+            end
+
+          nil ->
+            nil
+        end
+
+      nil ->
+        case Ash.Query.Aggregate.kind_to_type(aggregate.kind, nil, nil) do
+          {:ok, type, constraints} ->
+            {type, constraints}
+
+          _ ->
+            nil
+        end
+
+      field ->
+        case Ash.Query.Aggregate.kind_to_type(aggregate.kind, field.type, field.constraints) do
+          {:ok, type, constraints} ->
+            {type, constraints}
+
+          _ ->
+            nil
+        end
+    end
   end
 
   defp get_type(resource, %Ash.Resource.Aggregate{} = aggregate) do
