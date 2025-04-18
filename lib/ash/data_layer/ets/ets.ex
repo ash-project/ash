@@ -57,7 +57,7 @@ defmodule Ash.DataLayer.Ets do
       :domain,
       :distinct,
       :distinct_sort,
-      union_of: [],
+      combination_of: [],
       context: %{},
       calculations: [],
       aggregates: [],
@@ -178,7 +178,8 @@ defmodule Ash.DataLayer.Ets do
   def can?(resource, :async_engine), do: not Ash.DataLayer.Ets.Info.private?(resource)
   def can?(_, {:lateral_join, _}), do: true
   def can?(_, :bulk_create), do: true
-  def can?(_, :union_of), do: true
+  def can?(_, :combine), do: true
+  def can?(_, {:combine, _type}), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :expression_calculation), do: true
   def can?(_, :expression_calculation_sort), do: true
@@ -373,8 +374,8 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def union_of(unions, resource, domain) do
-    {:ok, %Query{union_of: unions, resource: resource, domain: domain}}
+  def combination_of(combinations, resource, domain) do
+    {:ok, %Query{combination_of: combinations, resource: resource, domain: domain}}
   end
 
   @doc false
@@ -386,7 +387,7 @@ defmodule Ash.DataLayer.Ets do
           offset: offset,
           limit: limit,
           sort: sort,
-          union_of: union_of,
+          combination_of: combination_of,
           distinct: distinct,
           distinct_sort: distinct_sort,
           tenant: tenant,
@@ -398,7 +399,7 @@ defmodule Ash.DataLayer.Ets do
         _resource,
         parent \\ nil
       ) do
-    with {:ok, records} <- get_records(resource, union_of, parent, tenant),
+    with {:ok, records} <- get_records(resource, combination_of, parent, tenant),
          {:ok, records} <-
            filter_matches(
              records,

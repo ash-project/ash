@@ -22,7 +22,7 @@ defmodule Ash.Sort do
   alias Ash.Error.Query.{InvalidSortOrder, NoSuchField}
 
   @doc """
-  Builds an expression to be used in a sort statement.
+  Builds an expression to be used in a sort statement. Prefer to use `Ash.Expr.expr_sort/3` instead.
 
   For example:
 

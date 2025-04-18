@@ -2355,12 +2355,12 @@ defmodule Ash.Actions.Read do
     %{
       query
       | sort: sort,
-        union_of:
-          Enum.map(query.union_of, fn
-            %Ash.Query.Union{} = union ->
+        combination_of:
+          Enum.map(query.combination_of, fn
+            %Ash.Query.Combination{} = combination ->
               {:ok, sort} =
                 add_calc_context_to_sort(
-                  union.sort,
+                  combination.sort,
                   actor,
                   authorize?,
                   tenant,
@@ -2371,10 +2371,10 @@ defmodule Ash.Actions.Read do
                 )
 
               %{
-                union
+                combination
                 | filter:
                     add_calc_context_to_filter(
-                      union.filter,
+                      combination.filter,
                       actor,
                       authorize?,
                       tenant,

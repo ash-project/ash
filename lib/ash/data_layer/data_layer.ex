@@ -65,10 +65,13 @@ defmodule Ash.DataLayer do
           | %{required(:type) => :custom, required(:metadata) => map()}
           | %{required(:type) => atom, required(:metadata) => map()}
 
+  @type combination_type :: :union | :union_all | :intersection
+
   @type feature() ::
           :transact
           | :multitenancy
-          | :union_of
+          | :combine
+          | {:combine, combination_type}
           | {:atomic, :update}
           | {:atomic, :upsert}
           | {:lateral_join, list(Ash.Resource.t())}
@@ -107,8 +110,8 @@ defmodule Ash.DataLayer do
           {Ash.Resource.t(), atom, atom, Ash.Resource.Relationships.relationship()}
 
   @callback functions(Ash.Resource.t()) :: [module]
-  @callback union_of(
-              union_of :: [data_layer_query()],
+  @callback combination_of(
+              combine :: [{combination_type, data_layer_query()}],
               resource :: Ash.Resource.t(),
               domain :: Ash.Domain.t()
             ) ::
@@ -303,7 +306,7 @@ defmodule Ash.DataLayer do
                       return_query: 2,
                       lock: 3,
                       run_query_with_lateral_join: 4,
-                      union_of: 3,
+                      combination_of: 3,
                       create: 2,
                       update: 2,
                       set_context: 3,
@@ -631,15 +634,31 @@ defmodule Ash.DataLayer do
     end
   end
 
-  @spec union_of([data_layer_query], resource :: Ash.Resource.t(), domain :: Ash.Domain.t()) ::
+  @spec combination_of(
+          [{combination_type, data_layer_query}],
+          resource :: Ash.Resource.t(),
+          domain :: Ash.Domain.t()
+        ) ::
           {:ok, data_layer_query()} | {:error, term}
-  def union_of(unions, resource, domain) do
+  def combination_of(combinations, resource, domain) do
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    if data_layer.can?(resource, :union_of) do
-      data_layer.union_of(unions, resource, domain)
+    if data_layer.can?(resource, :combine) do
+      combinations
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.uniq()
+      |> Enum.find(fn type ->
+        !Ash.DataLayer.can?({:combine, type}, resource)
+      end)
+      |> case do
+        nil ->
+          data_layer.combination_of(combinations, resource, domain)
+
+        type ->
+          {:error, "Data layer does not support combining queries with `#{inspect(type)}`"}
+      end
     else
-      {:error, "Data layer does not support union_of"}
+      {:error, "Data layer does not support combining queries"}
     end
   end
 

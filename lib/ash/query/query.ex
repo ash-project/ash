@@ -169,7 +169,7 @@ defmodule Ash.Query do
     invalid_keys: MapSet.new(),
     load_through: %{},
     action_failed?: false,
-    union_of: [],
+    combination_of: [],
     after_action: [],
     authorize_results: [],
     aggregates: %{},
@@ -198,7 +198,7 @@ defmodule Ash.Query do
           filter: Ash.Filter.t() | nil,
           resource: module,
           tenant: term(),
-          union_of: [t()],
+          combination_of: [Ash.Query.Combination.t()],
           timeout: pos_integer() | nil,
           action_failed?: boolean,
           after_action: [
@@ -299,7 +299,7 @@ defmodule Ash.Query do
       distinct? = query.distinct not in [[], nil]
       lock? = not is_nil(query.lock)
       page? = not is_nil(query.page)
-      union_of? = query.union_of != []
+      combination_of? = query.combination_of != []
 
       container_doc(
         "#Ash.Query<",
@@ -307,7 +307,14 @@ defmodule Ash.Query do
           concat("resource: ", inspect(query.resource)),
           or_empty(concat("tenant: ", to_doc(query.to_tenant, opts)), tenant?),
           arguments(query, opts),
-          or_empty(concat("union_of: ", to_doc(query.union_of, opts)), union_of?),
+          # TODO: inspect these specially
+          or_empty(
+            concat(
+              "combination_of: ",
+              to_doc(query.combination_of, %{opts | custom_options: [in_query?: true]})
+            ),
+            combination_of?
+          ),
           or_empty(concat("filter: ", to_doc(query.filter, opts)), filter?),
           or_empty(concat("sort: ", to_doc(query.sort, opts)), sort?),
           or_empty(concat("distinct_sort: ", to_doc(query.distinct_sort, opts)), distinct_sort?),
@@ -393,30 +400,89 @@ defmodule Ash.Query do
     end
   end
 
-  defmodule Union do
-    defstruct [:filter, :sort, :limit, :offset]
+  defmodule Combination do
+    @moduledoc """
+    Represents one combination in a combination of queries.
+    """
+
+    defstruct [:filter, :sort, :limit, :offset, type: :base]
+
+    @doc """
+    The initial combination of a combined query.
+    """
+    def base(opts) do
+      %{struct(__MODULE__, opts) | type: :base}
+    end
+
+    @doc """
+    Unions the query with the previous combinations, discarding duplicates when all fields are equal.
+    """
+    def union(opts) do
+      %{struct(__MODULE__, opts) | type: :union}
+    end
+
+    @doc """
+    Unions the query with the previous combinations, keeping all rows.
+    """
+    def union_all(opts) do
+      %{struct(__MODULE__, opts) | type: :union_all}
+    end
+
+    @doc """
+    Removes all rows that are present in the previous combinations *and* this one.
+    """
+    def except(opts) do
+      %{struct(__MODULE__, opts) | type: :intersection}
+    end
+
+    @doc """
+    Intersects the query with the previous combinations, keeping only rows that are present in the previous combinations and this one.
+    """
+    def intersect(opts) do
+      %{struct(__MODULE__, opts) | type: :intersect}
+    end
 
     defimpl Inspect do
       import Inspect.Algebra
 
-      def inspect(union, opts) do
-        sort? = union.sort != []
-        filter? = !!union.filter
-        limit? = !!union.limit
-        offset? = !!union.offset
+      def inspect(combination, opts) do
+        if opts.custom_options[:in_query?] && combination.type != :base do
+          sort? = combination.sort != []
+          filter? = !!combination.filter
+          limit? = !!combination.limit
+          offset? = !!combination.offset
 
-        container_doc(
-          "#Ash.Query<",
-          [
-            or_empty(concat("filter: ", to_doc(union.filter, opts)), filter?),
-            or_empty(concat("sort: ", to_doc(union.sort, opts)), sort?),
-            or_empty(concat("offset: ", to_doc(union.offset, opts)), offset?),
-            or_empty(concat("limit: ", to_doc(union.limit, opts)), limit?)
-          ],
-          ">",
-          opts,
-          fn str, _ -> str end
-        )
+          container_doc(
+            "#{combination.type} #Ash.Query.Combination<",
+            [
+              or_empty(concat("filter: ", to_doc(combination.filter, opts)), filter?),
+              or_empty(concat("sort: ", to_doc(combination.sort, opts)), sort?),
+              or_empty(concat("offset: ", to_doc(combination.offset, opts)), offset?),
+              or_empty(concat("limit: ", to_doc(combination.limit, opts)), limit?)
+            ],
+            ">",
+            opts,
+            fn str, _ -> str end
+          )
+        else
+          sort? = combination.sort != []
+          filter? = !!combination.filter
+          limit? = !!combination.limit
+          offset? = !!combination.offset
+
+          container_doc(
+            "#Ash.Query.Combination<",
+            [
+              or_empty(concat("filter: ", to_doc(combination.filter, opts)), filter?),
+              or_empty(concat("sort: ", to_doc(combination.sort, opts)), sort?),
+              or_empty(concat("offset: ", to_doc(combination.offset, opts)), offset?),
+              or_empty(concat("limit: ", to_doc(combination.limit, opts)), limit?)
+            ],
+            ">",
+            opts,
+            fn str, _ -> str end
+          )
+        end
       end
 
       defp or_empty(value, true), do: value
@@ -456,40 +522,87 @@ defmodule Ash.Query do
     end
   end
 
+  raise "see the crying emoji below for the problem 😭"
+
   @doc """
-  Produces a query that is the union of multiple statements.
+  Produces a query that is the combination of multiple queries.
 
-  All aspects of the parent query are applied to the combination
-  of all of the unions.
+  All aspects of the parent query are applied to the combination in total.
 
-  See `Ash.Query.Union` for what keys can be specified on each union.
+  See `Ash.Query.Combination` for more on creating combination queries.
 
-  ### Examples
+  ### Example
 
   ```elixir
-  # Top ten and bottom ten users who are not on the upswing or downswing
+  # Top ten users not on a losing streak and top ten users who are not on a winning streak
   User
   |> Ash.Query.filter(active == true)
-  |> Ash.Query.union_of([
-    %Ash.Query.Union{
+  |> Ash.Query.combination_of([
+    # must always begin with a base combination
+    Ash.Query.Combination.base(
       sort: [score: :desc],
       filter: expr(not(on_a_losing_streak)),
       limit: 10
-    },
-    %Ash.Query.Union{
+    ),
+    Ash.Query.Combination.union(
       sort: [score: :asc],
       filter: expr(not(on_a_winning_streak)),
       limit: 10
-    }
+    )
+  ])
+  |> Ash.read!()
+  ```
+
+  ### Select and calculations
+
+  There is no `select` available for combinations, instead the select of the outer query
+  is used for each combination. However, you can use the `calculations` field in
+  `Ash.Query.Combination` to add expression calculations. Those calculations can "overwrite"
+  a selected attribute, or can introduce a new field. Note that, for SQL data layers, all
+  combinations will be required to have the same number of fields in their SELECT statement,
+  which means that if one combination adds a calculation, all of the others must also add
+  that calculation.
+
+  In this example, we compute separate match scores
+
+  ```elixir
+  query = "fred"
+
+  User
+  |> Ash.Query.filter(active == true)
+  # how to distinct on one of these virtual fields 😭
+  |> Ash.Query.distinct()
+  |> Ash.Query.combination_of([
+    # must always begin with a base combination
+    Ash.Query.Combination.base(
+      filter: expr(trigram_similarity(user_name, ^query) >= 0.5),
+      calculate: %{
+        match_score: trigram_similarity(user_name, ^query)
+      },
+      sort: [
+        expr_sort(trigram_similarity(user_name, ^query), :desc)
+      ],
+      limit: 10
+    ),
+    Ash.Query.Combination.union(
+      filter: expr(trigram_similarity(email, ^query) >= 0.5),
+      calculate: %{
+        match_score: trigram_similarity(email, ^query)
+      },
+      sort: [
+        expr_sort(trigram_similarity(email, ^query), :desc)
+      ],
+      limit: 10
+    )
   ])
   |> Ash.read!()
   ```
   """
-  @spec union_of(t(), Keyword.t() | t()) :: t()
-  def union_of(query, unions) do
+  @spec combination_of(t(), Ash.Query.Combination.t()) :: t()
+  def combination_of(query, combinations) do
     query = new(query)
 
-    %{query | union_of: query.union_of ++ List.wrap(unions)}
+    %{query | combination_of: query.combination_of ++ List.wrap(combinations)}
   end
 
   @doc """
@@ -3331,11 +3444,11 @@ defmodule Ash.Query do
       |> Map.put_new(:data_layer, %{})
 
     context =
-      if opts[:previous_union_of] do
+      if opts[:previous_combination] do
         Map.update!(
           context,
           :data_layer,
-          &Map.put(&1, :previous_union_of, opts[:previous_union_of])
+          &Map.put(&1, :previous_combination, opts[:previous_combination])
         )
       else
         context
@@ -3395,11 +3508,12 @@ defmodule Ash.Query do
       opts[:initial_query] ->
         {:ok, opts[:initial_query], %{}}
 
-      ash_query.union_of != [] ->
-        case union_queries(ash_query) do
-          {:ok, unions, previous} ->
-            with {:ok, query} <- Ash.DataLayer.union_of(unions, ash_query.resource, domain) do
-              {:ok, query, %{previous_union_of: previous, union_of_queries?: true}}
+      ash_query.combination_of != [] ->
+        case combination_queries(ash_query) do
+          {:ok, combinations, previous} ->
+            with {:ok, query} <-
+                   Ash.DataLayer.combination_of(combinations, ash_query.resource, domain) do
+              {:ok, query, %{previous_combination: previous, combination_of_queries?: true}}
             end
 
           {:error, error} ->
@@ -3412,22 +3526,24 @@ defmodule Ash.Query do
     end
   end
 
-  defp union_queries(query) do
+  defp combination_queries(query) do
     base_query = Ash.Query.new(query.resource)
 
-    Enum.reduce_while(query.union_of, {:ok, [], nil}, fn union, {:ok, union_of, previous} ->
+    Enum.reduce_while(query.combination_of, {:ok, [], nil}, fn combination,
+                                                               {:ok, combinations, previous} ->
       base_query
-      |> limit(union.limit)
-      |> offset(union.offset)
-      |> do_filter(union.filter)
-      |> sort(union.sort)
+      |> limit(combination.limit)
+      |> offset(combination.offset)
+      |> do_filter(combination.filter)
+      |> sort(combination.sort)
       |> Ash.Query.set_context(query.context)
       |> Ash.Query.set_context(%{data_layer: %{union_query?: true}})
       |> then(fn
-        %{valid?: true} = union_query ->
-          case data_layer_query(union_query, previous_union_of: previous) do
-            {:ok, union_query} ->
-              {:cont, {:ok, [union_query | union_of], union_query}}
+        %{valid?: true} = combination_query ->
+          case data_layer_query(combination_query, previous_combination: previous) do
+            {:ok, combination_query} ->
+              {:cont,
+               {:ok, [{combination.type, combination_query} | combinations], combination_query}}
 
             {:error, error} ->
               {:halt, {:error, error}}

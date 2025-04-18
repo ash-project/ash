@@ -144,6 +144,28 @@ defmodule Ash.Expr do
     end
   end
 
+  @doc """
+  Creates an expression for use in a sort statement.
+
+  ## Examples
+
+  ```elixir
+  Ash.Query.sort(query, [
+    expr_sort(string_upcase(name), :asc),
+    expr_sort(count_nils([field1, field2]), :integer, :desc)
+  ])
+  ```
+  """
+  @spec expr_sort(Macro.t(), order :: Ash.Sort.sort_order(), type :: Ash.Type.t() | nil) :: t()
+  defmacro expr_sort(expression, order, type \\ nil) do
+    quote do
+      {Ash.Sort.expr_sort(unquote(expression), unquote(type)), unquote(order)}
+    end
+  end
+
+  @doc """
+  Creates an expression. See the [Expressions guide](/documentation/topics/reference/expressions.md) for more.
+  """
   @spec expr(Macro.t()) :: t()
   defmacro expr(do: body) do
     quote location: :keep do
