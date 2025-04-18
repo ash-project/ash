@@ -1851,7 +1851,7 @@ defmodule Ash.Actions.Read do
                   actor: actor,
                   tenant: tenant,
                   args: args,
-                  context: query.context
+                  context: opts[:source_context]
                 )
 
               expr =

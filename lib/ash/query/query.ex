@@ -3427,7 +3427,6 @@ defmodule Ash.Query do
         %{valid?: true} = union_query ->
           case data_layer_query(union_query, previous_union_of: previous) do
             {:ok, union_query} ->
-              IO.inspect(union_query)
               {:cont, {:ok, [union_query | union_of], union_query}}
 
             {:error, error} ->
