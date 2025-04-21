@@ -34,6 +34,7 @@ defmodule Ash.Type do
     keyword: Ash.Type.Keyword,
     term: Ash.Type.Term,
     atom: Ash.Type.Atom,
+    tuple: Ash.Type.Tuple,
     string: Ash.Type.String,
     integer: Ash.Type.Integer,
     file: Ash.Type.File,

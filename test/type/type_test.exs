@@ -110,7 +110,7 @@ defmodule Ash.Test.Type.TypeTest do
     assert {:error, error} = Ash.Type.init(:map, invalid_constraints)
 
     assert error =~
-             "unknown options [:instance_of], valid options are: [:type, :allow_nil?, :constraints] (in options [:fields, :foo])"
+             "unknown options [:instance_of], valid options are: [:type, :allow_nil?, :description, :constraints] (in options [:fields, :foo])"
 
     invalid_foo = {:foo, [type: :string, constraints: [invalid_key]]}
     invalid_constraints = [fields: [invalid_foo, bar]]

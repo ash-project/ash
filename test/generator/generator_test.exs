@@ -524,7 +524,7 @@ defmodule Ash.Test.GeneratorTest do
 
   describe "built in generators" do
     for type <- Enum.uniq(Ash.Type.builtin_types()),
-        type not in [Ash.Type.Struct, Ash.Type.Keyword, Ash.Type.Map] do
+        type not in [Ash.Type.Struct, Ash.Type.Keyword, Ash.Type.Map, Ash.Type.Tuple] do
       for type <- [{:array, type}, type] do
         constraints =
           case type do

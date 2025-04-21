@@ -1,4 +1,4 @@
-defmodule Type.MapTest do
+defmodule Ash.Type.MapTest do
   use ExUnit.Case, async: true
 
   alias Ash.Test.Domain, as: Domain
