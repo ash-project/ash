@@ -11,6 +11,9 @@ defmodule Ash.Type.Keyword do
               type: Ash.OptionsHelpers.ash_type(),
               required: true
             ],
+            description: [
+              type: :string
+            ],
             allow_nil?: [
               type: :boolean,
               default: true
@@ -32,6 +35,7 @@ defmodule Ash.Type.Keyword do
           fields:  [
             amount: [
               type: :integer,
+              description: "The amount of the transaction",
               constraints: [
                 max: 10
               ]
@@ -39,6 +43,7 @@ defmodule Ash.Type.Keyword do
             currency: [
               type: :string,
               allow_nil?: false,
+              description: "The currency code of the transaction",
               constraints: [
                 max_length: 3
               ]

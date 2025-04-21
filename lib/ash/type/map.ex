@@ -14,6 +14,9 @@ defmodule Ash.Type.Map do
               type: :boolean,
               default: true
             ],
+            description: [
+              type: :string
+            ],
             constraints: [
               type: :keyword_list,
               default: []
@@ -31,6 +34,7 @@ defmodule Ash.Type.Map do
           fields:  [
             amount: [
               type: :integer,
+              description: "The amount of the transaction",
               constraints: [
                 max: 10
               ]
@@ -38,6 +42,7 @@ defmodule Ash.Type.Map do
             currency: [
               type: :string,
               allow_nil?: false,
+              description: "The currency code of the transaction",
               constraints: [
                 max_length: 3
               ]
