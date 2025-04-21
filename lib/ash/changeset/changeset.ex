@@ -1098,6 +1098,12 @@ defmodule Ash.Changeset do
       {{:ok, new_changeset}, _condition} ->
         new_changeset
 
+      {{:error, error}, _condition} ->
+        {:error, error}
+
+      {:error, error} ->
+        {:error, error}
+
       {{:not_atomic, reason}, _} ->
         {:not_atomic, reason}
 
