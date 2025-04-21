@@ -1248,6 +1248,20 @@ defmodule Ash.Actions.Destroy.Bulk do
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
     |> Ash.Changeset.set_arguments(arguments)
+    |> then(fn changeset ->
+      changeset =
+        if select = opts[:select] do
+          Ash.Changeset.select(changeset, select)
+        else
+          changeset
+        end
+
+      if load = opts[:load] do
+        Ash.Changeset.load(changeset, load)
+      else
+        changeset
+      end
+    end)
   end
 
   defp authorize_bulk_query(query, atomic_changeset, opts) do
