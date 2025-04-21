@@ -599,10 +599,15 @@ defmodule Ash.CodeInterface do
               []
           end
 
-        args = List.wrap(filter_keys) ++ Ash.CodeInterface.without_optional(interface.args || [])
+        arg_names = Ash.CodeInterface.without_optional(interface.args || [])
 
-        arg_vars = Enum.map(args, &{&1, [], Elixir})
-        arg_params = {:%{}, [], Enum.map(args, fn arg -> {arg, {arg, [], Elixir}} end)}
+        all_args =
+          List.wrap(filter_keys) ++ arg_names
+
+        arg_vars = Enum.map(all_args, &{&1, [], Elixir})
+
+        arg_params = {:%{}, [], Enum.map(arg_names, fn arg -> {arg, {arg, [], Elixir}} end)}
+        filter_params = {:%{}, [], Enum.map(filter_keys, fn key -> {key, {key, [], Elixir}} end)}
 
         arg_vars_function =
           filter_keys
@@ -617,9 +622,9 @@ defmodule Ash.CodeInterface do
               {key, [], Elixir}
           end)
 
-        if Enum.uniq(args) != args do
+        if Enum.uniq(all_args) != all_args do
           raise """
-          Arguments #{inspect(args)} for #{interface.name} are not unique!
+          Arguments #{inspect(all_args)} for #{interface.name} are not unique!
           """
         end
 
@@ -681,6 +686,8 @@ defmodule Ash.CodeInterface do
                 unquote(custom_inputs),
                 unquote(resource)
               )
+
+            filter_params = unquote(filter_params)
           end
 
         {subject, subject_args, resolve_subject, act, act!} =
@@ -759,11 +766,10 @@ defmodule Ash.CodeInterface do
                   query =
                     if unquote(filter_keys) && !Enum.empty?(unquote(filter_keys)) do
                       require Ash.Query
-                      {filters, params} = Map.split(params, unquote(filter_keys))
 
                       query
                       |> Ash.Query.for_read(unquote(action.name), params, query_opts)
-                      |> Ash.Query.filter(filters)
+                      |> Ash.Query.do_filter(filter_params)
                     else
                       Ash.Query.for_read(query, unquote(action.name), params, query_opts)
                     end
@@ -966,10 +972,8 @@ defmodule Ash.CodeInterface do
                       record
                       |> case do
                         %Ash.Changeset{resource: unquote(resource)} ->
-                          {filters, params} = Map.split(params, unquote(filter_keys))
-
                           record
-                          |> Ash.Changeset.filter(filters)
+                          |> Ash.Changeset.filter(filter_params)
                           |> Ash.Changeset.add_error(custom_input_errors)
                           |> Ash.Changeset.for_update(
                             unquote(action.name),
@@ -982,11 +986,9 @@ defmodule Ash.CodeInterface do
                                 "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
                         %struct{} = record when struct == unquote(resource) ->
-                          {filters, params} = Map.split(params, unquote(filter_keys))
-
                           record
                           |> Ash.Changeset.new()
-                          |> Ash.Changeset.filter(filters)
+                          |> Ash.Changeset.filter(filter_params)
                           |> Ash.Changeset.add_error(custom_input_errors)
                           |> Ash.Changeset.for_update(
                             unquote(action.name),
@@ -1013,8 +1015,6 @@ defmodule Ash.CodeInterface do
                   end
                 else
                   quote do
-                    filters = Map.take(params, unquote(filter_keys))
-
                     {changeset_opts, opts} =
                       Keyword.split(opts, [
                         :actor,
@@ -1028,14 +1028,12 @@ defmodule Ash.CodeInterface do
                     changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
                     changeset =
-                      {:atomic, :query, Ash.Query.do_filter(unquote(resource), filters)}
+                      {:atomic, :query, Ash.Query.do_filter(unquote(resource), filter_params)}
                   end
                 end
 
               act =
                 quote do
-                  {filters, params} = Map.split(params, unquote(filter_keys))
-
                   case changeset do
                     {:atomic, method, id} ->
                       if Enum.any?(custom_input_errors) do
@@ -1072,7 +1070,7 @@ defmodule Ash.CodeInterface do
 
                         bulk_opts =
                           if method in [:stream, :query] do
-                            Keyword.put(bulk_opts, :filter, filters)
+                            Keyword.put(bulk_opts, :filter, filter_params)
                           else
                             bulk_opts
                           end
@@ -1131,8 +1129,6 @@ defmodule Ash.CodeInterface do
                       if Enum.any?(custom_input_errors) do
                         raise Ash.Error.to_error_class(custom_input_errors)
                       else
-                        {filters, params} = Map.split(params, unquote(filter_keys))
-
                         bulk_opts =
                           opts
                           |> Keyword.drop([:bulk_options, :atomic_upgrade?])
@@ -1162,7 +1158,7 @@ defmodule Ash.CodeInterface do
 
                         bulk_opts =
                           if method in [:stream] do
-                            Keyword.put(bulk_opts, :filter, filters)
+                            Keyword.put(bulk_opts, :filter, filter_params)
                           else
                             bulk_opts
                           end
@@ -1242,10 +1238,8 @@ defmodule Ash.CodeInterface do
                       record
                       |> case do
                         %Ash.Changeset{resource: unquote(resource)} ->
-                          {filters, params} = Map.split(params, unquote(filter_keys))
-
                           record
-                          |> Ash.Changeset.filter(filters)
+                          |> Ash.Changeset.filter(filter_params)
                           |> Ash.Changeset.add_error(custom_input_errors)
                           |> Ash.Changeset.for_destroy(
                             unquote(action.name),
@@ -1258,11 +1252,9 @@ defmodule Ash.CodeInterface do
                                 "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
                         %struct{} = record when struct == unquote(resource) ->
-                          {filters, params} = Map.split(params, unquote(filter_keys))
-
                           record
                           |> Ash.Changeset.new()
-                          |> Ash.Changeset.filter(filters)
+                          |> Ash.Changeset.filter(filter_params)
                           |> Ash.Changeset.add_error(custom_input_errors)
                           |> Ash.Changeset.for_destroy(
                             unquote(action.name),
@@ -1289,8 +1281,6 @@ defmodule Ash.CodeInterface do
                   end
                 else
                   quote do
-                    filters = Map.take(params, unquote(filter_keys))
-
                     {changeset_opts, opts} =
                       Keyword.split(opts, [
                         :actor,
@@ -1304,7 +1294,7 @@ defmodule Ash.CodeInterface do
                     changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
                     changeset =
-                      {:atomic, :query, Ash.Query.do_filter(unquote(resource), filters)}
+                      {:atomic, :query, Ash.Query.do_filter(unquote(resource), filter_params)}
                   end
                 end
 
@@ -1318,8 +1308,6 @@ defmodule Ash.CodeInterface do
                           error_count: 1
                         }
                       else
-                        {filters, params} = Map.split(params, unquote(filter_keys))
-
                         bulk_opts =
                           opts
                           |> Keyword.drop([:bulk_options, :return_destroyed?])
@@ -1349,7 +1337,7 @@ defmodule Ash.CodeInterface do
 
                         bulk_opts =
                           if method in [:stream, :query] do
-                            Keyword.put(bulk_opts, :filter, filters)
+                            Keyword.put(bulk_opts, :filter, filter_params)
                           else
                             bulk_opts
                           end
@@ -1436,8 +1424,6 @@ defmodule Ash.CodeInterface do
                       if Enum.any?(custom_input_errors) do
                         raise Ash.Error.to_error_class(custom_input_errors)
                       else
-                        {filters, params} = Map.split(params, unquote(filter_keys))
-
                         bulk_opts =
                           opts
                           |> Keyword.drop([:bulk_options, :return_destroyed?])
@@ -1467,7 +1453,7 @@ defmodule Ash.CodeInterface do
 
                         bulk_opts =
                           if method in [:stream, :query] do
-                            Keyword.put(bulk_opts, :filter, filters)
+                            Keyword.put(bulk_opts, :filter, filter_params)
                           else
                             bulk_opts
                           end
@@ -1729,6 +1715,7 @@ defmodule Ash.CodeInterface do
               |> Keyword.put(:actor, actor)
             end)
 
+          filter_params = unquote(filter_params)
           arg_params = unquote(arg_params)
 
           params =
@@ -1811,6 +1798,7 @@ defmodule Ash.CodeInterface do
               |> Keyword.put(:actor, actor)
             end)
 
+          filter_params = unquote(filter_params)
           arg_params = unquote(arg_params)
 
           params =
@@ -1901,7 +1889,7 @@ defmodule Ash.CodeInterface do
         {:not_atomic, _} ->
           if !opts[:data] or Enum.count_until(List.wrap(opts[:data]), 2) == 2 do
             raise ArgumentError, """
-            The action #{action_name} could not be done atomically with the provided inputs. 
+            The action #{action_name} could not be done atomically with the provided inputs.
             You must pass the `data` option, containing a single record you are checking for authorization.
             """
           else
