@@ -142,6 +142,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         :ok
       end
     else
+      {:error, error} ->
+        {:error, error}
+
       _ ->
         {:error, "Couldn't validate the opts"}
     end
