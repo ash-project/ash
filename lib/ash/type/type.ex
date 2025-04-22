@@ -1353,7 +1353,7 @@ defmodule Ash.Type do
   @doc """
   Modifies an expression to apply a type's casting logic to the value it produces.
 
-  This delegates to the underlying types implementaiton of `c:cast_atomic/2`.
+  This delegates to the underlying types implementation of `c:cast_atomic/2`.
   """
   @spec cast_atomic(t(), term, constraints()) ::
           {:atomic, Ash.Expr.t()}
@@ -1403,7 +1403,7 @@ defmodule Ash.Type do
   @doc """
   Applies a types constraints to an expression.
 
-  This delegates to the underlying types implementaiton of `c:apply_atomic_constraints/2`.
+  This delegates to the underlying types implementation of `c:apply_atomic_constraints/2`.
   """
   @spec apply_atomic_constraints(t(), term, constraints()) ::
           {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}

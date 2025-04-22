@@ -57,7 +57,7 @@ defmodule Ash.Query do
 
   ## Escape Hatches
 
-  Many of these tools are suprisingly deep and capable, covering everything you
+  Many of these tools are surprisingly deep and capable, covering everything you
   need to build your domain logic. With that said, these tools are *not*
   designed to encompass *every kind of query* that you could possibly want to
   write over your data. `Ash` is *not* an ORM or a database query tool, despite

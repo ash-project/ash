@@ -177,7 +177,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     @doc """
     Sets the context inside the Plug connection.
 
-    Context can be used to store abitrary data about the user, connection, or
+    Context can be used to store arbitrary data about the user, connection, or
     anything else you like that doesn't belong as part of the actor or tenant.
 
     The context is stored inside the [connection's private

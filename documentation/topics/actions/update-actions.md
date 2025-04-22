@@ -94,7 +94,7 @@ atomic updates.
 
 ## Fully Atomic updates
 
-Atomic updates are a special case of update actions that can be done completely atomically. If your update action can't be done atomically, you will get an error unless you have set `require_atomic? false`. This is to encourage you to opt for atomic updates whereever reasonable. Not all actions can reasonably be made atomic, and not all non-atomic actions are problematic for concurrency. The goal is only to make sure that you are aware and have considered the implications.
+Atomic updates are a special case of update actions that can be done completely atomically. If your update action can't be done atomically, you will get an error unless you have set `require_atomic? false`. This is to encourage you to opt for atomic updates wherever reasonable. Not all actions can reasonably be made atomic, and not all non-atomic actions are problematic for concurrency. The goal is only to make sure that you are aware and have considered the implications.
 
 > ### What does atomic mean? {: .info}
 >

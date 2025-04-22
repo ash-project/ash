@@ -285,7 +285,7 @@ So lets make our `belongs_to` relationship looks like this.
 belongs_to :author, MyApp.Author do
   allow_nil? false
   allow_forbidden_field? true
-  athorize_read_with :error
+  authorize_read_with :error
 end
 ```
 
@@ -623,7 +623,7 @@ This prevents a common security vulnerability that would allow malicious actors 
 
 #### Field references in filters & sorts
 
-When a field is referenced in filters or sorts, the field reference is replaced with a conditional, that evalutes to the field value if the actor is authorized to view the field, or `nil` otherwise (causing all conditions to evaluate to `false`).
+When a field is referenced in filters or sorts, the field reference is replaced with a conditional, that evaluates to the field value if the actor is authorized to view the field, or `nil` otherwise (causing all conditions to evaluate to `false`).
 
 Lets say that users have a field policy that only allows viewing the email address if the user's id matches the actor's id, similar to the abvoe example.
 
@@ -653,7 +653,7 @@ This prevents the same security vulnerability as described above, which would al
 
 ### Policy Breakdowns
 
-Policy breakdowns can be fetched on demand for a given forbidden error (either an `Ash.Error.Forbidden` that contains one ore more `Ash.Error.Forbidden.Policy` errors, or an `Ash.Error.Forbidden.Policy` error itself), via `Ash.Error.Forbidden.Policy.report/2`.
+Policy breakdowns can be fetched on demand for a given forbidden error (either an `Ash.Error.Forbidden` that contains one or more `Ash.Error.Forbidden.Policy` errors, or an `Ash.Error.Forbidden.Policy` error itself), via `Ash.Error.Forbidden.Policy.report/2`.
 
 Additionally, you can request that they be provided in the error message for all raised forbidden errors (without the help text), by setting
 

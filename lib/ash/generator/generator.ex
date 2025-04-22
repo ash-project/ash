@@ -56,7 +56,7 @@ defmodule Ash.Generator do
 
   ## About Generators
 
-  These generators are backed by `StreamData`, and are ready for use with proeprty testing via `ExUnitProperties`
+  These generators are backed by `StreamData`, and are ready for use with property testing via `ExUnitProperties`
 
   Many functions in this module support "overrides", which allow passing down either constant values
   or your own `StreamData` generators.
@@ -192,7 +192,7 @@ defmodule Ash.Generator do
   * `:authorize?` - Passed through to the changeset
   * `:context` - Passed through to the changeset
   * `:after_action` - A one argument function that takes the result and returns
-    a new result to run after the record is creatd.
+    a new result to run after the record is created.
 
   ## The `uses` option
 
@@ -337,7 +337,7 @@ defmodule Ash.Generator do
   * `:authorize?` - Passed through to the changeset
   * `:context` - Passed through to the changeset
   * `:after_action` - A one argument function that takes the result and returns
-    a new result to run after the record is creatd.
+    a new result to run after the record is created.
   """
   @spec seed_generator(
           Ash.Resource.record()

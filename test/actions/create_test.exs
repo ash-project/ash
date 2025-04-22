@@ -799,7 +799,7 @@ defmodule Ash.Test.Actions.CreateTest do
       assert :tag in changeset.defaults
     end
 
-    test "a default being set and then overriden will no longer be annotated as a default" do
+    test "a default being set and then overridden will no longer be annotated as a default" do
       changeset =
         Post
         |> Ash.Changeset.new()

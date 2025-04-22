@@ -267,7 +267,7 @@ to a resource that you did not intend them to be able to see.
 
 * validate multitenancy earlier in bulk actions
 
-* initialize all types propertly at compile time
+* initialize all types properly at compile time
 
 ## [v3.4.69](https://github.com/ash-project/ash/compare/v3.4.68...v3.4.69) (2025-03-18)
 
@@ -383,7 +383,7 @@ to a resource that you did not intend them to be able to see.
 
 * don't prevent changing values to `nil` when original data is not available
 
-* propagate invalid refrence error when adding calc context to sort (#1827)
+* propagate invalid reference error when adding calc context to sort (#1827)
 
 * ensure that we don't try to compare not loaded or forbidden values
 
@@ -412,7 +412,7 @@ to a resource that you did not intend them to be able to see.
 
 * fix case where batch before/after action callbacks could be skipped
 
-* return NotFound error in proper cases on bulk intefaces
+* return NotFound error in proper cases on bulk interfaces
 
 * don't eagerly return records on bulk update/destroys
 
@@ -636,7 +636,7 @@ to a resource that you did not intend them to be able to see.
 
 * [`Ash.Changeset`] Use clearer error message for match validation atomic errors (#1721)
 
-* [`Ash.Type`] Add autogenerate_enabled? to Ash.Type for Ecto compatability (#1715)
+* [`Ash.Type`] Add autogenerate_enabled? to Ash.Type for Ecto compatibility (#1715)
 
 * [`Ash.Policy.Authorizer`] warn when domain policies would be ignored by resources
 
@@ -848,7 +848,7 @@ You should upgrade regardless, and adopt that new configuration.
 
 ### Improvements:
 
-- [`Ash.Reactor`]: Always add the notication middleware any time the extension is added. (#1657)
+- [`Ash.Reactor`]: Always add the notification middleware any time the extension is added. (#1657)
 
 ## [v3.4.46](https://github.com/ash-project/ash/compare/v3.4.45...v3.4.46) (2024-12-12)
 
@@ -1880,7 +1880,7 @@ field_policies :include
 
 - [bulk actions] ensure that errors in queries do not raise in atomic upgrades/single atomics
 
-- [Ash.Type.Integer] use correct contraint when validating min int (#1298)
+- [Ash.Type.Integer] use correct constraint when validating min int (#1298)
 
 - [Ash.Filter] don't refer to private attributes when parsing filter inputs that refer to relationships (#1280)
 
@@ -2116,7 +2116,7 @@ field_policies :include
 
 - [identities] support `nils_distinct?` on identities
 
-- [identties] support `where` option on `identities`
+- [identities] support `where` option on `identities`
 
 - [identities] allow calculations in identity keys
 
@@ -2265,7 +2265,7 @@ We are starting the changelog fresh. See `documentation/2.0-CHANGELOG.md` in Git
 For a guide on adjusting to these breaking changes, see the [upgrade guide](/documentation/topics/development/upgrading-to-3.0.md)
 
 - [Ash.Api] has been renamed to `Ash.Domain`, and references to the concept have been renamed as well, i.e in options and in the DSL
-- [Ash] we now call functions on this, isntead of the domain. i.e `Ash.create` and `Ash.read`. The generated functions are now marked as deprecated
+- [Ash] we now call functions on this, instead of the domain. i.e `Ash.create` and `Ash.read`. The generated functions are now marked as deprecated
 - [Ash] remove process context functionality. You can no longer store the actor/tenant in the context with `Ash.set_actor` and so on
 - [private?] deprecate `private?: false` in favor of the more explicit `public?: true`
 - [default_accept] default `default_accept` is now `[]`

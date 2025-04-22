@@ -281,7 +281,7 @@ defmodule Ash.Helpers do
   end
 
   @doc """
-  Returns {params, opts} from ambigous inputs.
+  Returns {params, opts} from ambiguous inputs.
   """
   def get_params_and_opts(params_or_opts, opts) do
     if opts == [] && Keyword.keyword?(params_or_opts) do

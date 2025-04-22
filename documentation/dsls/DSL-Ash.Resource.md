@@ -1039,7 +1039,7 @@ end
 |------|------|---------|------|
 | [`manual`](#actions-create-manual){: #actions-create-manual } | `(any, any -> any) \| module` |  | Override the creation behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 | [`upsert?`](#actions-create-upsert?){: #actions-create-upsert? } | `boolean` | `false` | Forces all uses of this action to be treated as an upsert. |
-| [`upsert_identity`](#actions-create-upsert_identity){: #actions-create-upsert_identity } | `atom` |  | The identity to use for the upsert. Cannot be overriden by the caller. Ignored  if `upsert?` is not set to `true`. |
+| [`upsert_identity`](#actions-create-upsert_identity){: #actions-create-upsert_identity } | `atom` |  | The identity to use for the upsert. Cannot be overridden by the caller. Ignored  if `upsert?` is not set to `true`. |
 | [`upsert_fields`](#actions-create-upsert_fields){: #actions-create-upsert_fields } | `:replace_all \| {:replace, atom \| list(atom)} \| {:replace_all_except, atom \| list(atom)} \| atom \| list(atom)` |  | The fields to overwrite in the case of an upsert. If not provided, all fields except for fields set by defaults will be overwritten. |
 | [`upsert_condition`](#actions-create-upsert_condition){: #actions-create-upsert_condition } | `any` |  | An expression to check if the record should be updated when there's a conflict. |
 | [`return_skipped_upsert?`](#actions-create-return_skipped_upsert?){: #actions-create-return_skipped_upsert? } | `boolean` |  | Returns the record that would have been upserted against but was skipped due to a filter or no fields being changed. How this works depends on the data layer. Keep in mind that read policies *are not applied* to the read of the record in question. |
@@ -2389,7 +2389,7 @@ identity :full_name, [:first_name, :last_name]
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`where`](#identities-identity-where){: #identities-identity-where } | `any` |  | A filter that expresses only matching records are unique on the provided keys. Ignored on embedded resources. |
-| [`nils_distinct?`](#identities-identity-nils_distinct?){: #identities-identity-nils_distinct? } | `boolean` | `true` | Whether or not `nil` values are considered always distinct from eachother. `nil` values won't conflict with eachother unless you set this option to `false`. |
+| [`nils_distinct?`](#identities-identity-nils_distinct?){: #identities-identity-nils_distinct? } | `boolean` | `true` | Whether or not `nil` values are considered always distinct from each other. `nil` values won't conflict with each other unless you set this option to `false`. |
 | [`eager_check?`](#identities-identity-eager_check?){: #identities-identity-eager_check? } | `boolean` | `false` | Whether or not this identity is validated to be unique at validation time. |
 | [`eager_check_with`](#identities-identity-eager_check_with){: #identities-identity-eager_check_with } | `module` |  | Validates that the unique identity provided is unique at validation time, outside of any transactions, using the domain module provided. Will default to resource's domain. |
 | [`pre_check?`](#identities-identity-pre_check?){: #identities-identity-pre_check? } | `boolean` | `false` | Whether or not this identity is validated to be unique in a before_action hook. |
