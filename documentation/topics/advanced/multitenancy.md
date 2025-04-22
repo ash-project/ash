@@ -7,7 +7,7 @@ In Ash, there are two primary strategies for implementing multitenancy. The firs
 ## Attribute Multitenancy
 
 ```elixir
-defmodule MyApp.Users do
+defmodule MyApp.User do
   use Ash.Resource, ...
 
   multitenancy do
@@ -124,9 +124,25 @@ User
 
 ## Context Multitenancy
 
+```elixir
+defmodule MyApp.Project do
+  use Ash.Resource, data_layer: AshPostgres.DataLayer
+
+  multitenancy do
+    strategy :context
+  end
+
+  ...
+
+  relationships do
+    belongs_to :organization, MyApp.Organization
+  end
+end
+```
+
 Context multitenancy allows for the data layer to dictate how multitenancy works. For example, a csv data layer might implement multitenancy via saving the file with different suffixes, or an API wrapping data layer might use different subdomains for the tenant.
 
-For `AshPostgres` context multitenancy, which uses postgres schemas and is referred to ash "Schema Based Multitenancy", see the [guide](https://hexdocs.pm/ash_postgres/schema-based-multitenancy.html)
+For `AshPostgres` context multitenancy, which uses Postgres schemas and is referred to Ash "Schema Based Multitenancy", see the [guide](https://hexdocs.pm/ash_postgres/schema-based-multitenancy.html)
 
 ## Possible Values for tenant
 
