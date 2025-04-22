@@ -396,17 +396,25 @@ defmodule Ash.Type.NewType do
         unquote(subtype_of).describe(constraints)
       end
 
-      @impl Ash.Type.NewType
-      def type_constraints(constraints, subtype_constraints) do
-        constraints = get_constraints(constraints)
-        Keyword.merge(constraints || [], subtype_constraints || [])
-      end
-
       if lazy_init? do
+        @impl Ash.Type.NewType
+        def type_constraints(constraints, subtype_constraints) do
+          constraints
+        end
+
         defp get_constraints(constraints) do
-          unquote(subtype_of).init(type_constraints(constraints, unquote(subtype_constraints)))
+          {:ok, constraints} =
+            unquote(subtype_of).init(type_constraints(constraints, unquote(subtype_constraints)))
+
+          Keyword.merge(constraints || [], subtype_constraints() || [])
         end
       else
+        @impl Ash.Type.NewType
+        def type_constraints(constraints, subtype_constraints) do
+          constraints = get_constraints(constraints)
+          Keyword.merge(constraints || [], subtype_constraints || [])
+        end
+
         defp get_constraints(constraints) do
           constraints
         end
