@@ -73,12 +73,7 @@ defmodule Ash.Type.NewType do
 
   def constraints(type, constraints) do
     if new_type?(type) do
-      constraints =
-        if constraints[:lazy_init?] do
-          Ash.Type.init(type, Keyword.merge(constraints, type.subtype_constraints()))
-        else
-          constraints
-        end
+      constraints = type.subtype_constraints()
 
       if new_type?(type.subtype_of()) do
         constraints(type.subtype_of(), constraints)
@@ -194,10 +189,7 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       if lazy_init? do
         def init(constraints) do
-          case validate_constraints(unquote(subtype_of), constraints) do
-            :ok -> {:ok, constraints}
-            {:error, error} -> raise ArgumentError, error
-          end
+          {:ok, constraints}
         end
       else
         def init(constraints) do
