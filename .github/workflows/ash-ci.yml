@@ -58,6 +58,12 @@ env:
   PG_VERSION: ${{inputs.postgres-version}}
   ASH_CI_BUILD: true
 jobs:
+  report_mix_deps:
+    name: "Report Mix Dependencies"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/mix-dependency-submission@v1
   auditor:
     name: audit
     runs-on: ubuntu-latest
@@ -282,8 +288,8 @@ jobs:
         image: postgres:${{inputs.postgres-version}}
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
-          TZ: 'UTC'
-          PGTZ: 'UTC'
+          TZ: "UTC"
+          PGTZ: "UTC"
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -368,10 +374,10 @@ jobs:
         with:
           mix-env: dev
   build-release:
-     name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
-     runs-on: ${{ matrix.job.os }}
-     if: ${{ always() && !failure() && !cancelled() && inputs.rustler-precompiled-module && startsWith(github.ref, 'refs/tags/v') }}
-     needs:
+    name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    if: ${{ always() && !failure() && !cancelled() && inputs.rustler-precompiled-module && startsWith(github.ref, 'refs/tags/v') }}
+    needs:
       - credo
       - unused-deps
       - spark-formatter
@@ -383,76 +389,98 @@ jobs:
       - test
       - dialyzer
       - build-dev
-     permissions:
-       contents: write
-     strategy:
-       fail-fast: false
-       matrix:
-         # we list the oldest OTP version that supports all features needed, have a look at the
-         # erlang docs for the OTP version to see which NIF version is in which OTP release
-         # https://github.com/erlang/otp/blob/master/erts/emulator/beam/erl_nif.h
-         # - "2.15" # OTP 22, OTP 23
-         # - "2.16" # OTP 24, OTP 25
-         # - "2.17" # OTP 26
-         nif: ["2.15"]
-         job:
-           # cranelift-codegen panics at 'error when identifying target: "no supported isa found for arch `arm`"'
-           # - { target: arm-unknown-linux-gnueabihf , os: ubuntu-20.04 , use-cross: true }
-           - { target: aarch64-unknown-linux-gnu, os: ubuntu-20.04, use-cross: true }
-           - { target: aarch64-unknown-linux-musl, os: ubuntu-20.04, use-cross: true }
-           - { target: aarch64-apple-darwin, os: macos-15 }
-           - { target: x86_64-apple-darwin, os: macos-15 }
-           - { target: x86_64-unknown-linux-gnu, os: ubuntu-20.04 }
-           - { target: x86_64-unknown-linux-musl, os: ubuntu-20.04, use-cross: true }
-           - { target: riscv64gc-unknown-linux-gnu, os: ubuntu-20.04, use-cross: true, cargo-args: "--no-default-features"}
-           - { target: x86_64-pc-windows-gnu, os: windows-2022 }
-           - { target: x86_64-pc-windows-msvc, os: windows-2022 }
-           - { target: x86_64-unknown-freebsd, os: ubuntu-22.04, use-cross: true, cross-version: v0.2.5 }
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # we list the oldest OTP version that supports all features needed, have a look at the
+        # erlang docs for the OTP version to see which NIF version is in which OTP release
+        # https://github.com/erlang/otp/blob/master/erts/emulator/beam/erl_nif.h
+        # - "2.15" # OTP 22, OTP 23
+        # - "2.16" # OTP 24, OTP 25
+        # - "2.17" # OTP 26
+        nif: ["2.15"]
+        job:
+          # cranelift-codegen panics at 'error when identifying target: "no supported isa found for arch `arm`"'
+          # - { target: arm-unknown-linux-gnueabihf , os: ubuntu-20.04 , use-cross: true }
+          - {
+              target: aarch64-unknown-linux-gnu,
+              os: ubuntu-20.04,
+              use-cross: true,
+            }
+          - {
+              target: aarch64-unknown-linux-musl,
+              os: ubuntu-20.04,
+              use-cross: true,
+            }
+          - { target: aarch64-apple-darwin, os: macos-15 }
+          - { target: x86_64-apple-darwin, os: macos-15 }
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-20.04 }
+          - {
+              target: x86_64-unknown-linux-musl,
+              os: ubuntu-20.04,
+              use-cross: true,
+            }
+          - {
+              target: riscv64gc-unknown-linux-gnu,
+              os: ubuntu-20.04,
+              use-cross: true,
+              cargo-args: "--no-default-features",
+            }
+          - { target: x86_64-pc-windows-gnu, os: windows-2022 }
+          - { target: x86_64-pc-windows-msvc, os: windows-2022 }
+          - {
+              target: x86_64-unknown-freebsd,
+              os: ubuntu-22.04,
+              use-cross: true,
+              cross-version: v0.2.5,
+            }
 
-     steps:
-       - name: Checkout source code
-         uses: actions/checkout@v4
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
 
-       - name: Extract crate information
-         shell: bash
-         run: |
-           # Get the project version from mix.exs
-           echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
-       - name: Add target
-         shell: bash
-         run: |
-           rustup target add ${{ matrix.job.target }}
-       - uses: Swatinem/rust-cache@v2
-         with:
-           prefix-key: v0-precomp
-           shared-key: ${{ matrix.job.target }}-${{ matrix.nif }}
-           workspaces: |
-             native/igniter_js
-       - name: Build the project
-         id: build-crate
-         uses: philss/rustler-precompiled-action@v1.1.4
-         with:
-           project-name: igniter_js
-           project-version: ${{ env.PROJECT_VERSION }}
-           target: ${{ matrix.job.target }}
-           nif-version: ${{ matrix.nif }}
-           use-cross: ${{ matrix.job.use-cross }}
-           cross-version: ${{ matrix.job.cross-version || 'v0.2.4' }}
-           project-dir: "native/igniter_js"
-           cargo-args: ${{ matrix.job.cargo-args }}
+      - name: Extract crate information
+        shell: bash
+        run: |
+          # Get the project version from mix.exs
+          echo "PROJECT_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
+      - name: Add target
+        shell: bash
+        run: |
+          rustup target add ${{ matrix.job.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v0-precomp
+          shared-key: ${{ matrix.job.target }}-${{ matrix.nif }}
+          workspaces: |
+            native/igniter_js
+      - name: Build the project
+        id: build-crate
+        uses: philss/rustler-precompiled-action@v1.1.4
+        with:
+          project-name: igniter_js
+          project-version: ${{ env.PROJECT_VERSION }}
+          target: ${{ matrix.job.target }}
+          nif-version: ${{ matrix.nif }}
+          use-cross: ${{ matrix.job.use-cross }}
+          cross-version: ${{ matrix.job.cross-version || 'v0.2.4' }}
+          project-dir: "native/igniter_js"
+          cargo-args: ${{ matrix.job.cargo-args }}
 
-       - name: Artifact upload
-         uses: actions/upload-artifact@v4
-         with:
-           name: ${{ steps.build-crate.outputs.file-name }}
-           path: ${{ steps.build-crate.outputs.file-path }}
+      - name: Artifact upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build-crate.outputs.file-name }}
+          path: ${{ steps.build-crate.outputs.file-path }}
 
-       - name: Publish archives and packages
-         uses: softprops/action-gh-release@v2
-         with:
-           files: |
-             ${{ steps.build-crate.outputs.file-path }}
-         if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish archives and packages
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.build-crate.outputs.file-path }}
+        if: startsWith(github.ref, 'refs/tags/v')
   release:
     needs:
       - credo
@@ -473,7 +501,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-task@main
-        if: ${{inputs.rustler-precompiled-module}} 
+        if: ${{inputs.rustler-precompiled-module}}
         with:
           task: rustler_precompiled.download ${{inputs.rustler-precompiled-module}} --only-local --all --print
       - uses: team-alembic/staple-actions/actions/mix-hex-publish@main
