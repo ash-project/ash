@@ -154,7 +154,7 @@ defmodule Ash.Actions.Update.Bulk do
               # We need to figure out a way to capture errors raised by the stream when picking items off somehow
               # for now, we only go this route if there are potentially more records in the result set than
               # in the batch size, to solve this problem for atomic upgrades.
-              # we can likely make the stream throw something instead of raising somethign
+              # we can likely make the stream throw something instead of raising something
               # like `{:stream_error, ...}` if a specific option is passed in.
               # once we figure this out, we may be able to remove the branch above
               run(

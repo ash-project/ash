@@ -294,7 +294,7 @@ For those who want to be more explicit, or after your upgrade has complete if yo
 
 > ### :\* private attributes can now be accepted {: .info}
 >
-> In 2.0, accepting a private attribute as a change required adding an argument with the same name, and using `change set_attribute(...)`. Now that we require explicit accept lists, you can place private attribtues in that list, which will allow them to be written to (but not read back).
+> In 2.0, accepting a private attribute as a change required adding an argument with the same name, and using `change set_attribute(...)`. Now that we require explicit accept lists, you can place private attributes in that list, which will allow them to be written to (but not read back).
 
 > ### :\* includes belongs_to attributes! {: .warning}
 >
@@ -423,7 +423,7 @@ If you are using api extensions (i.e `AshGraphql` and `AshJsonApi`), you will ne
 
 > ### Embedded resources too! {: .WARNING}
 >
-> The above includes embedded resources as well! Don't forget to make sure that all fields on your embedded resources are also marked as `public?: true` (if applicable). The goal here is to have a clear visual indicator of what in your application can be shown publically.
+> The above includes embedded resources as well! Don't forget to make sure that all fields on your embedded resources are also marked as `public?: true` (if applicable). The goal here is to have a clear visual indicator of what in your application can be shown publicly.
 
 ---
 
@@ -532,7 +532,7 @@ things like IDs in notification topics, that do not change, so for most this wil
 
 If you wish to send a notification for the old value and the new value, then an action cannot be done atomically. Bulk actions must update each record in turn, and atomic updates can't be leveraged.
 
-If you're comfortable with the performance implications, you can restore the previous behavior by addding `previous_values?: true` to your publications in your pub_sub notifier
+If you're comfortable with the performance implications, you can restore the previous behavior by adding `previous_values?: true` to your publications in your pub_sub notifier
 
 ```elixir
 publish :update, ["user:updated", :email], previous_values?: true

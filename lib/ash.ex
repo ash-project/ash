@@ -123,7 +123,7 @@ defmodule Ash do
                           type: {:one_of, [:filter, :error]},
                           default: :filter,
                           doc:
-                            "If set to `:error`, instead of applying authorization filters as a filter, any records not matching the authroization filter will cause an error to be returned."
+                            "If set to `:error`, instead of applying authorization filters as a filter, any records not matching the authorization filter will cause an error to be returned."
                         ]
                       ],
                       @global_opts,
@@ -257,7 +257,7 @@ defmodule Ash do
                        type: {:one_of, [:filter, :error]},
                        default: :filter,
                        doc:
-                         "If set to `:error`, instead of applying authorization filters as a filter, any records not matching the authroization filter will cause an error to be returned."
+                         "If set to `:error`, instead of applying authorization filters as a filter, any records not matching the authorization filter will cause an error to be returned."
                      ]
                    ]
                    |> Spark.Options.merge(@global_opts, "Global Options")
@@ -423,7 +423,7 @@ defmodule Ash do
 
       `{:notification, notification}` - if `return_notifications?` is set to `true`
       `{:ok, record}` - if `return_records?` is set to `true`
-      `{:error, error}` - an error that occurred. May be changeset or an invidual error.
+      `{:error, error}` - an error that occurred. May be changeset or an individual error.
       """
     ],
     return_nothing?: [

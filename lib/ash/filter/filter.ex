@@ -4354,7 +4354,7 @@ defmodule Ash.Filter do
     else
       _ ->
         raise """
-        Attempted to read relationship path that does not exsist.
+        Attempted to read relationship path that does not exist.
 
         Resource: #{inspect(resource)}
         Path: #{inspect(list)}

@@ -883,7 +883,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`private_fields`](#field_policies-private_fields){: #field_policies-private_fields } | `:show \| :hide \| :include` | `:show` | How private fields should be handeled by field policies in internal functions. See the [Policies guide](documentation/topics/security/policies.md#field-policies) for more. |
+| [`private_fields`](#field_policies-private_fields){: #field_policies-private_fields } | `:show \| :hide \| :include` | `:show` | How private fields should be handled by field policies in internal functions. See the [Policies guide](documentation/topics/security/policies.md#field-policies) for more. |
 
 
 

@@ -18,7 +18,7 @@ You can define a code interface on individual resources as well, using the `code
 
 ```elixir
 code_interface do
-  # the action open can be omitted because it matches the functon name
+  # the action open can be omitted because it matches the function name
   define :open, args: [:subject]
 end
 ```
