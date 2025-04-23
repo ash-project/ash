@@ -763,17 +763,22 @@ defmodule Ash.Generator do
   """
   @spec action_input(
           Ash.Resource.t() | Ash.Resource.record(),
-          action :: atom,
+          action_name :: atom,
           generators :: overrides()
         ) :: map()
-  def action_input(resource_or_record, action, generators \\ %{}) do
+  def action_input(resource_or_record, action_name, generators \\ %{}) do
     resource =
       case resource_or_record do
         %resource{} -> resource
         resource -> resource
       end
 
-    action = Ash.Resource.Info.action(resource, action)
+    action = Ash.Resource.Info.action(resource, action_name)
+
+    if !action do
+      raise ArgumentError,
+            "Invalid action #{inspect(resource)}.#{action_name}"
+    end
 
     arguments = Enum.reject(action.arguments, &find_manage_change(&1, action))
 
