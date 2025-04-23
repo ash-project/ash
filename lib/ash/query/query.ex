@@ -2993,13 +2993,39 @@ defmodule Ash.Query do
   Ash.Query.sort(query, name: :desc, title: :asc)
 
   # sort by name ascending
-  Ash.Query.sort_input(query, "name")
+  Ash.Query.sort(query, "name")
 
   # sort by name descending, and title ascending
-  Ash.Query.sort_input(query, "-name,title")
+  Ash.Query.sort(query, "-name,title")
 
   # sort by name descending with nils at the end
-  Ash.Query.sort_input(query, "--name")
+  Ash.Query.sort(query, "--name")
+  ```
+
+  ## Related Fields
+
+  You can refer to related fields using the shorthand of `"rel1.rel2.field"`. For example:
+
+  ```elixir
+  # sort by the username of the comment's author.
+  Ash.Query.sort(query, "comment.author.username")
+
+  # Use as an atom for keyword lists
+  Ash.Query.sort(query, "comment.author.username": :desc)
+  ```
+
+  ## Expression Sorts
+
+  You can use `Ash.Expr.expr_sort/2-3` to sort on expressions:
+
+  ```elixir
+  # Sort on an expression
+  import Ash.Expr
+  Ash.Query.sort(query, expr_sort(count(friends), :desc))
+
+  # Specify a type (required in some cases when we can't determine a type)
+  import Ash.Expr
+  Ash.Query.sort(query, expr_sort(fragment("some_sql(?)", field), :desc, :string))
   ```
 
   ## Sort Strings
