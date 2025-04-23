@@ -888,8 +888,11 @@ defmodule Ash.Actions.Read.Calculations do
                 | get_all_rewrites(
                     calculation.opts[:query],
                     calculation,
-                    path ++ [name]
+                    path
                   )
+                  |> Enum.map(fn {{path, data, calc_name, calc_load}, source} ->
+                    {{path ++ [{:rel, name}], data, calc_name, calc_load}, source}
+                  end)
               ]
 
             _ ->
@@ -912,8 +915,11 @@ defmodule Ash.Actions.Read.Calculations do
       get_all_rewrites(
         calculation.opts[:query],
         top_calculation,
-        path ++ [{:rel, calculation.opts[:relationship]}]
+        path
       )
+      |> Enum.map(fn {{path, data, calc_name, calc_load}, source} ->
+        {{path ++ [{:rel, calculation.opts[:relationship]}], data, calc_name, calc_load}, source}
+      end)
     end)
   end
 
@@ -1092,6 +1098,17 @@ defmodule Ash.Actions.Read.Calculations do
       _ ->
         :error
     end
+  end
+
+  @doc false
+  def map_without_calc_deps(calculations) do
+    Enum.reduce(calculations, %{}, fn
+      {{:__calc_dep__, _}, _}, acc ->
+        acc
+
+      {name, calculation}, acc ->
+        Map.put(acc, name, calculation)
+    end)
   end
 
   defp should_be_in_expression?(calculation, expression \\ nil, ash_query) do
