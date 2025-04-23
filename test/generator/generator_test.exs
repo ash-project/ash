@@ -504,6 +504,14 @@ defmodule Ash.Test.GeneratorTest do
                Ash.Generator.changeset_generator(Author, :create, overrides: @meta_generator)
                |> Ash.Generator.generate()
     end
+
+    test "it raises an error for an invalid action name" do
+      assert_raise ArgumentError,
+                   "Invalid action Ash.Test.GeneratorTest.Author.jeremy_bearimy",
+                   fn ->
+                     Ash.Generator.changeset_generator(Author, :jeremy_bearimy)
+                   end
+    end
   end
 
   describe "seed" do
