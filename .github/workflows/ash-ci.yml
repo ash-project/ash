@@ -58,12 +58,13 @@ env:
   PG_VERSION: ${{inputs.postgres-version}}
   ASH_CI_BUILD: true
 jobs:
-  report_mix_deps:
-    name: "Report Mix Dependencies"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: erlef/mix-dependency-submission@v1
+  # Some kind of 403 permissions bug here
+  # report_mix_deps:
+  #   name: "Report Mix Dependencies"
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: erlef/mix-dependency-submission@v1
   auditor:
     name: audit
     runs-on: ubuntu-latest
