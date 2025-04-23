@@ -2326,6 +2326,9 @@ end
 | [`default_context`](#resource-default_context){: #resource-default_context } | `any` |  | Default context to apply to any queries/changesets generated for this resource. |
 | [`trace_name`](#resource-trace_name){: #resource-trace_name } | `String.t` |  | The name to use in traces. Defaults to the short_name stringified. See the [monitoring guide](/documentation/topics/monitoring.md) for more. |
 | [`short_name`](#resource-short_name){: #resource-short_name } | `atom` |  | A short identifier for the resource, which should be unique. See the [monitoring guide](/documentation/topics/monitoring.md) for more. |
+| [`inspect_private_fields?`](#resource-inspect_private_fields?){: #resource-inspect_private_fields? } | `boolean` | `true` | Whether to include private fields in the inspect output. `show_inspect_fields` takes precedence over this option. |
+| [`hide_inspect_fields`](#resource-hide_inspect_fields){: #resource-hide_inspect_fields } | `list(atom)` | `[]` | A deny-list of fields to hide from the inspect output. Takes precedence over `show_inspect_fields`. |
+| [`show_inspect_fields`](#resource-show_inspect_fields){: #resource-show_inspect_fields } | `list(atom)` |  | An allow-list of fields to show in the inspect output. Sensitive fields are _always_ hidden. |
 | [`plural_name`](#resource-plural_name){: #resource-plural_name } | `atom` |  | A pluralized version of the resource short_name. May be used by generators or automated tooling. |
 | [`require_primary_key?`](#resource-require_primary_key?){: #resource-require_primary_key? } | `boolean` | `true` | Allow the resource to be used without any primary key fields. Warning: this option is experimental, and should not be used unless you know what you're doing. |
 

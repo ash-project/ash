@@ -857,6 +857,26 @@ defmodule Ash.Resource.Dsl do
         A short identifier for the resource, which should be unique. See the [monitoring guide](/documentation/topics/monitoring.md) for more.
         """
       ],
+      inspect_private_fields?: [
+        type: :boolean,
+        default: true,
+        doc: """
+        Whether to include private fields in the inspect output. `show_inspect_fields` takes precedence over this option.
+        """
+      ],
+      hide_inspect_fields: [
+        type: {:list, :atom},
+        default: [],
+        doc: """
+        A deny-list of fields to hide from the inspect output. Takes precedence over `show_inspect_fields`.
+        """
+      ],
+      show_inspect_fields: [
+        type: {:list, :atom},
+        doc: """
+        An allow-list of fields to show in the inspect output. Sensitive fields are _always_ hidden.
+        """
+      ],
       plural_name: [
         type: :atom,
         doc: """

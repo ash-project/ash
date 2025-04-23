@@ -283,6 +283,11 @@ defmodule Ash.Query do
             end)
       }
 
+      query = %{
+        query
+        | calculations: Ash.Actions.Read.Calculations.map_without_calc_deps(query.calculations)
+      }
+
       sort? = query.sort != []
       distinct_sort? = query.distinct_sort != []
       load? = query.load != []

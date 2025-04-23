@@ -178,6 +178,32 @@ defmodule Ash.Resource.Info do
   end
 
   @doc """
+  Whether to include private fields in the inspect output.
+  `show_inspect_fields` takes precedence over this option.
+  """
+  @spec inspect_private_fields?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean
+  def inspect_private_fields?(resource) do
+    Extension.get_opt(resource, [:resource], :inspect_private_fields?, true)
+  end
+
+  @doc """
+  A deny-list of fields to hide from the inspect output.
+  Takes precedence over `show_inspect_fields`.
+  """
+  @spec hide_inspect_fields(Spark.Dsl.t() | Ash.Resource.t()) :: list(atom)
+  def hide_inspect_fields(resource) do
+    Extension.get_opt(resource, [:resource], :hide_inspect_fields, [])
+  end
+
+  @doc """
+  An allow-list of fields to show in the inspect output.
+  """
+  @spec show_inspect_fields(Spark.Dsl.t() | Ash.Resource.t()) :: list(atom) | nil
+  def show_inspect_fields(resource) do
+    Extension.get_opt(resource, [:resource], :show_inspect_fields, nil)
+  end
+
+  @doc """
   The plural_name of the resource
   """
   def plural_name(resource) do

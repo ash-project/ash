@@ -143,6 +143,62 @@ defmodule Ash.Resource do
         @persist {:domain, domain}
       end
 
+      if Ash.Schema.define?(__MODULE__) do
+        @persist {:schema, Ash.Schema.define(__MODULE__)}
+        @derive_inspect_for_redacted_fields false
+        module = __MODULE__
+
+        defimpl Inspect do
+          import Inspect.Algebra
+
+          inspect_private_fields? = Ash.Resource.Info.inspect_private_fields?(module)
+          hide_inspect_fields = Ash.Resource.Info.hide_inspect_fields(module)
+          show_inspect_fields = Ash.Resource.Info.show_inspect_fields(module)
+
+          @show_fields module
+                       |> Ash.Resource.Info.fields()
+                       |> then(fn fields ->
+                         if is_list(show_inspect_fields) do
+                           Enum.filter(fields, &(&1.name in show_inspect_fields))
+                         else
+                           fields
+                         end
+                       end)
+                       |> Enum.reject(&Map.get(&1, :sensitive?))
+                       |> then(fn fields ->
+                         if inspect_private_fields? do
+                           fields
+                         else
+                           Enum.reject(
+                             fields,
+                             &(&1.private? ||
+                                 (is_list(show_inspect_fields) && &1.name in show_inspect_fields))
+                           )
+                         end
+                       end)
+                       |> Enum.reject(&(&1.name in hide_inspect_fields))
+                       |> Enum.map(& &1.name)
+                       |> Enum.concat([:__meta__, :calculations, :aggregates])
+
+          def inspect(record, opts) do
+            record = %{
+              record
+              | calculations:
+                  Ash.Actions.Read.Calculations.map_without_calc_deps(record.calculations)
+            }
+
+            infos =
+              for %{field: field} = info <- record.__struct__.__info__(:struct),
+                  field in @show_fields,
+                  not (field == :aggregates && record.aggregates == %{}),
+                  not (field == :calculations && record.calculations == %{}),
+                  do: info
+
+            Inspect.Map.inspect(record, inspect(record.__struct__), infos, opts)
+          end
+        end
+      end
+
       if embedded? do
         @persist {:embedded?, true}
 
