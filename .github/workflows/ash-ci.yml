@@ -62,6 +62,8 @@ jobs:
   report_mix_deps:
     name: "Report Mix Dependencies"
     runs-on: ubuntu-latest
+    # Only run this job when we're on the main branch, not for PRs
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/mix-dependency-submission@v1
