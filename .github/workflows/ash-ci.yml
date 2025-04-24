@@ -59,12 +59,15 @@ env:
   ASH_CI_BUILD: true
 jobs:
   # Some kind of 403 permissions bug here
-  # report_mix_deps:
-  #   name: "Report Mix Dependencies"
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: erlef/mix-dependency-submission@v1
+  report_mix_deps:
+    name: "Report Mix Dependencies"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/mix-dependency-submission@v1
+    permissions:
+      # Give the default GITHUB_TOKEN write permission to call the dependencies API
+      contents: write
   auditor:
     name: audit
     runs-on: ubuntu-latest
