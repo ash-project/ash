@@ -123,10 +123,10 @@ defmodule Ash.Generator do
   end
 
   @doc """
-  A generator of seedable records, to be passed to `generate/1` or `generate_many/1`
+  A generator of changesets which call their specific actions when passed to `generate/1` or `generate_many/2`.
 
-  See `changeset_generator/3` for the equivalent construct for cases when you want to call resource
-  actions as opposed to seed directly to the data layer.
+  See `seed_generator/2` for the equivalent construct for cases when you want to seed directly to the data layer as opposed to calling resource
+  actions.
 
   ## Examples
 
