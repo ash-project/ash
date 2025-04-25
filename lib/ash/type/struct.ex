@@ -241,6 +241,8 @@ defmodule Ash.Type.Struct do
   end
 
   @impl true
+  def apply_constraints(nil, _constraints), do: {:ok, nil}
+
   def apply_constraints(value, constraints) do
     with {:ok, value} <- handle_fields(value, constraints) do
       handle_instance_of(value, constraints)
@@ -414,6 +416,26 @@ defmodule Ash.Type.Struct do
           {:error, errors} ->
             {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
         end
+
+      {:error, error} when is_binary(error) ->
+        {:error, [[message: error, field: field]]}
+
+      {:error, error} when is_list(error) ->
+        if Keyword.keyword?(error) do
+          {:error, [Keyword.update(error, :path, [field], &[field | &1])]}
+        else
+          {:error,
+           Enum.map(error, fn error ->
+             if Keyword.keyword?(error) do
+               Keyword.update(error, :path, [field], &[field | &1])
+             else
+               error
+             end
+           end)}
+        end
+
+      {:error, error} ->
+        {:error, error}
 
       :error ->
         {:error, [[message: "invalid value", field: field]]}

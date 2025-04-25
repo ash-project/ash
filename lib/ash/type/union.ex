@@ -292,6 +292,18 @@ defmodule Ash.Type.Union do
     end
   end
 
+  def generator(constraints) do
+    constraints[:types]
+    |> Enum.map(fn {name, config} ->
+      config[:type]
+      |> Ash.Type.generator(config[:constraints] || [])
+      |> StreamData.map(fn value ->
+        %Ash.Union{type: name, value: value}
+      end)
+    end)
+    |> StreamData.one_of()
+  end
+
   @impl Ash.Type
   def merge_load(left, right, constraints, context) do
     constraints[:types]

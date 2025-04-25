@@ -197,7 +197,22 @@ defmodule Ash.Type.Map do
       |> Map.new(fn {key, config} ->
         type = config[:type]
         constraints = config[:constraints] || []
-        {key, Ash.Type.generator(type, constraints)}
+
+        generator =
+          type
+          |> Ash.Type.generator(constraints)
+          |> StreamData.filter(fn item ->
+            with {:ok, value} <- Ash.Type.cast_input(config[:type], item, config[:constraints]),
+                 {:ok, nil} <-
+                   Ash.Type.apply_constraints(config[:type], value, config[:constraints]) do
+              false
+            else
+              _ ->
+                true
+            end
+          end)
+
+        {key, generator}
       end)
       |> Ash.Generator.mixed_map(optional)
     else
