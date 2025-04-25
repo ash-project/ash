@@ -795,6 +795,50 @@ defmodule Ash.Test.Actions.LoadTest do
       Ash.load!(author, [:posts, :latest_post], lazy?: true)
     end
 
+    test "you can load multiple depths of relationships with `lazy?: true` and sorts will work" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post1"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post2"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      [author] =
+        Author
+        |> Ash.Query.load(posts: :author)
+        |> Ash.read!(authorize?: true)
+
+      # doing this 25 times because its a regression test of an issue
+      # with sorting that doesn't always go wrong
+      for _ <- 0..25 do
+        author =
+          Map.update!(author, :posts, &Enum.shuffle/1)
+
+        post_ids = Enum.map(author.posts, & &1.id)
+
+        lazy_loaded_author =
+          Ash.load!(author, [posts: [author: [posts: Ash.Query.sort(Post, title: :desc)]]],
+            lazy?: true
+          )
+
+        assert Enum.map(lazy_loaded_author.posts, & &1.id) == post_ids
+
+        assert Enum.all?(lazy_loaded_author.posts, fn post ->
+                 titles = Enum.map(post.author.posts, & &1.title)
+
+                 titles == Enum.sort(titles) |> Enum.reverse()
+               end)
+      end
+    end
+
     @tag :regression
     test "you can lazy load through empty relationships without errors" do
       author =

@@ -108,6 +108,10 @@ defmodule Ash.Actions.Read.Relationships do
             record_or_records ->
               List.wrap(record_or_records)
           end
+          |> Stream.with_index()
+          |> Stream.map(fn {record, index} ->
+            %{record | __order__: index}
+          end)
           |> Enum.reduce(acc, fn related_record, acc ->
             related_record_pkey =
               Map.take(related_record, Ash.Resource.Info.primary_key(relationship.destination))
@@ -136,7 +140,8 @@ defmodule Ash.Actions.Read.Relationships do
             end
           end)
         end)
-        |> Map.values()
+        |> Stream.map(&elem(&1, 1))
+        |> Enum.sort_by(& &1.__order__)
       else
         primary_key = Ash.Resource.Info.primary_key(relationship.destination)
 
@@ -162,7 +167,12 @@ defmodule Ash.Actions.Read.Relationships do
                 if relationship.destination.primary_key_matches?(existing_record, related_record) do
                   related_record =
                     Map.update!(related_record, :__metadata__, fn metadata ->
-                      Map.update!(metadata, :__lazy_join_sources__, &[record_pkey | &1])
+                      Map.update(
+                        metadata,
+                        :__lazy_join_sources__,
+                        [record_pkey],
+                        &[record_pkey | &1]
+                      )
                     end)
 
                   {[related_record | acc], true}
@@ -182,6 +192,7 @@ defmodule Ash.Actions.Read.Relationships do
               [related_record | acc]
             end
           end)
+          |> Enum.reverse()
         end)
       end
 
