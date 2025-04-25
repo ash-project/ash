@@ -961,9 +961,21 @@ defmodule Ash.Actions.Read do
             }
           )
           |> case do
-            {:error, {:error, error}} -> {:error, error}
-            {:error, error} -> {:error, error}
-            {:ok, result} -> result
+            {:error, :rollback} when not is_nil(query.timeout) ->
+              {:error,
+               Ash.Error.Invalid.Timeout.exception(
+                 timeout: query.timeout,
+                 name: fn -> "#{inspect(query.resource)}.#{query.action.name}" end
+               )}
+
+            {:error, {:error, error}} ->
+              {:error, error}
+
+            {:error, error} ->
+              {:error, error}
+
+            {:ok, result} ->
+              result
           end
 
         query.timeout ->
