@@ -250,7 +250,7 @@ There are two ways that you can improve this behavior
 This option will **default to `true`** in 4.0. You can adopt this behavior now with the following configuration.
 
 ```elixir
-config :ash, :allow_forbidden_field_for_relationships_by_default, true
+config :ash, :allow_forbidden_field_for_relationships_by_default?, true
 ```
 
 This option adjusts the relationship reading logic such that, if running a related read action would produce a
