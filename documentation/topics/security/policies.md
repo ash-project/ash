@@ -292,7 +292,7 @@ end
 Now, that filter will be applied in such a way that produces an error if any record exists that matches `not(active == false)`.
 
 So a forbidden read of the `:author` relationship will never produce a `nil` value, nor will it produce an `{:error, %Ash.Error.Forbidden{}}`
-result. Instead, it the value of `:author` will be `%Ash.ForbiddenField{}`!
+result. Instead, the value of `:author` will be `%Ash.ForbiddenField{}`!
 
 
 ## Checks
