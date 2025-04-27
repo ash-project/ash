@@ -250,7 +250,7 @@ There are two ways that you can improve this behavior
 This option will **default to `true`** in 4.0. You can adopt this behavior now with the following configuration.
 
 ```elixir
-config :ash, :allow_forbidden_field_for_relationships_by_default, true
+config :ash, :allow_forbidden_field_for_relationships_by_default?, true
 ```
 
 This option adjusts the relationship reading logic such that, if running a related read action would produce a
@@ -292,7 +292,7 @@ end
 Now, that filter will be applied in such a way that produces an error if any record exists that matches `not(active == false)`.
 
 So a forbidden read of the `:author` relationship will never produce a `nil` value, nor will it produce an `{:error, %Ash.Error.Forbidden{}}`
-result. Instead, it the value of `:author` will be `%Ash.ForbiddenField{}`!
+result. Instead, the value of `:author` will be `%Ash.ForbiddenField{}`!
 
 
 ## Checks
