@@ -144,7 +144,6 @@ defmodule Ash.Resource do
       end
 
       if Ash.Schema.define?(__MODULE__) do
-        @persist {:schema, Ash.Schema.define(__MODULE__)}
         @derive_inspect_for_redacted_fields false
         module = __MODULE__
 
