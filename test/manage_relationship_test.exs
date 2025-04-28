@@ -15,9 +15,11 @@ defmodule Ash.Test.ManageRelationshipTest do
         accept [:name]
         argument :related_resource, :map
         argument :other_resources, {:array, :map}
+        argument :many_to_many_resources, {:array, :map}
 
         change manage_relationship(:related_resource, :related_resource, type: :create)
         change manage_relationship(:other_resources, type: :direct_control)
+        change manage_relationship(:many_to_many_resources, type: :direct_control)
       end
 
       create :create_ordered do
@@ -37,6 +39,26 @@ defmodule Ash.Test.ManageRelationshipTest do
         change manage_relationship(:related_resource, :related_resource, type: :direct_control)
         change manage_relationship(:other_resources, type: :direct_control)
       end
+
+      update :update_many_soft do
+        require_atomic? false
+        argument :many_to_many_resources, {:array, :map}
+
+        change manage_relationship(:many_to_many_resources,
+                 type: :direct_control,
+                 on_missing: {:destroy, :destroy_soft, :destroy_soft}
+               )
+      end
+
+      update :update_many_hard do
+        require_atomic? false
+        argument :many_to_many_resources, {:array, :map}
+
+        change manage_relationship(:many_to_many_resources,
+                 type: :direct_control,
+                 on_missing: {:destroy, :destroy_hard, :destroy_hard}
+               )
+      end
     end
 
     attributes do
@@ -49,6 +71,12 @@ defmodule Ash.Test.ManageRelationshipTest do
         destination_attribute: :parent_resource_id
 
       has_many :other_resources, Ash.Test.ManageRelationshipTest.OtherResource
+
+      has_many :join_resources, Ash.Test.ManageRelationshipTest.JoinResource
+
+      many_to_many :many_to_many_resources, Ash.Test.ManageRelationshipTest.ManyToManyResource do
+        join_relationship :join_resources
+      end
     end
   end
 
@@ -133,6 +161,68 @@ defmodule Ash.Test.ManageRelationshipTest do
 
     relationships do
       belongs_to :parent_resource, ParentResource
+    end
+  end
+
+  defmodule JoinResource do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:read, create: :*, update: :*]
+
+      destroy :destroy_soft do
+        soft? true
+        change set_attribute(:archived_at, &DateTime.utc_now/0)
+      end
+
+      destroy :destroy_hard do
+        primary? true
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :archived_at, :utc_datetime_usec
+    end
+
+    relationships do
+      belongs_to :parent_resource, Ash.Test.ManageRelationshipTest.ParentResource
+      belongs_to :many_to_many_resource, Ash.Test.ManageRelationshipTest.ManyToManyResource
+    end
+  end
+
+  defmodule ManyToManyResource do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:read, create: :*, update: :*]
+
+      destroy :destroy_soft do
+        soft? true
+        change set_attribute(:archived_at, &DateTime.utc_now/0)
+      end
+
+      destroy :destroy_hard do
+        primary? true
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, allow_nil?: false, public?: true
+      attribute :archived_at, :utc_datetime_usec
+    end
+
+    relationships do
+      has_many :join_resources, JoinResource
+
+      many_to_many :parent_resources, ParentResource do
+        join_relationship :join_resources
+      end
     end
   end
 
@@ -281,5 +371,74 @@ defmodule Ash.Test.ManageRelationshipTest do
 
     second_other = Enum.find(updated_parent.other_resources, &(&1.required_attribute == "second"))
     assert is_nil(second_other.archived_at)
+  end
+
+  test "can hard-delete many-to-many relationships" do
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               many_to_many_resources: [%{name: "first"}, %{name: "second"}]
+             })
+             |> Ash.create!()
+             |> Ash.load([:many_to_many_resources])
+
+    assert Enum.map(parent.many_to_many_resources, & &1.name) |> Enum.sort() == [
+             "first",
+             "second"
+           ]
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update_many_hard, %{
+               many_to_many_resources: [%{name: "second"}, %{name: "third"}]
+             })
+             |> Ash.update!()
+             |> Ash.load(many_to_many_resources: :join_resources)
+
+    first = Enum.find(updated_parent.many_to_many_resources, &(&1.name == "first"))
+    assert first == nil
+
+    second = Enum.find(updated_parent.many_to_many_resources, &(&1.name == "second"))
+    assert is_nil(second.archived_at)
+
+    third = Enum.find(updated_parent.many_to_many_resources, &(&1.name == "third"))
+    assert is_nil(third.archived_at)
+  end
+
+  test "can soft-delete many-to-many relationships" do
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               many_to_many_resources: [%{name: "first"}, %{name: "second"}]
+             })
+             |> Ash.create!()
+             |> Ash.load([:many_to_many_resources])
+
+    assert Enum.map(parent.many_to_many_resources, & &1.name) |> Enum.sort() == [
+             "first",
+             "second"
+           ]
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update_many_soft, %{
+               many_to_many_resources: [%{name: "second"}, %{name: "third"}]
+             })
+             |> Ash.update!()
+             |> Ash.load(many_to_many_resources: :join_resources)
+
+    first = Enum.find(updated_parent.many_to_many_resources, &(&1.name == "first"))
+    assert not is_nil(first.archived_at)
+    assert not is_nil(hd(first.join_resources).archived_at)
+
+    second = Enum.find(updated_parent.many_to_many_resources, &(&1.name == "second"))
+    assert is_nil(second.archived_at)
+    assert is_nil(hd(second.join_resources).archived_at)
+
+    third = Enum.find(updated_parent.many_to_many_resources, &(&1.name == "third"))
+    assert is_nil(third.archived_at)
+    assert is_nil(hd(third.join_resources).archived_at)
   end
 end

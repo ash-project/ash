@@ -1694,31 +1694,30 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.destroy(return_notifications?: true)
                 |> case do
                   {:ok, join_notifications} ->
-                    notifications = join_notifications ++ all_notifications
-
-                    record
-                    |> Ash.Changeset.new()
-                    |> Ash.Changeset.set_context(%{
-                      accessing_from: %{source: relationship.source, name: relationship.name}
-                    })
-                    |> Ash.Changeset.for_destroy(action_name, %{},
-                      actor: actor,
-                      tenant: changeset.tenant,
-                      authorize?: opts[:authorize?],
-                      domain: domain
+                    destroy_destination(
+                      record,
+                      relationship,
+                      action_name,
+                      join_notifications ++ all_notifications,
+                      domain,
+                      current_value,
+                      actor,
+                      changeset.tenant,
+                      opts[:authorize?]
                     )
-                    |> Ash.Changeset.set_context(relationship.context)
-                    |> Ash.destroy(return_notifications?: true)
-                    |> case do
-                      {:ok, destroy_destination_notifications} ->
-                        {:cont,
-                         {:ok, current_value,
-                          notifications ++
-                            all_notifications ++ destroy_destination_notifications}}
 
-                      {:error, error} ->
-                        {:halt, {:error, error}}
-                    end
+                  {:ok, _destroyed_join_record, join_notifications} ->
+                    destroy_destination(
+                      record,
+                      relationship,
+                      action_name,
+                      join_notifications ++ all_notifications,
+                      domain,
+                      current_value,
+                      actor,
+                      changeset.tenant,
+                      opts[:authorize?]
+                    )
 
                   {:error, error} ->
                     {:halt, {:error, error}}
@@ -1781,6 +1780,42 @@ defmodule Ash.Actions.ManagedRelationships do
         end
       end
     )
+  end
+
+  defp destroy_destination(
+         record,
+         relationship,
+         action_name,
+         notifications,
+         domain,
+         current_value,
+         actor,
+         tenant,
+         authorize?
+       ) do
+    record
+    |> Ash.Changeset.new()
+    |> Ash.Changeset.set_context(%{
+      accessing_from: %{source: relationship.source, name: relationship.name}
+    })
+    |> Ash.Changeset.for_destroy(action_name, %{},
+      actor: actor,
+      tenant: tenant,
+      authorize?: authorize?,
+      domain: domain
+    )
+    |> Ash.Changeset.set_context(relationship.context)
+    |> Ash.destroy(return_notifications?: true)
+    |> case do
+      {:ok, destroy_destination_notifications} ->
+        {:cont, {:ok, current_value, notifications ++ destroy_destination_notifications}}
+
+      {:ok, _destroyed_destination, destroy_destination_notifications} ->
+        {:cont, {:ok, current_value, notifications ++ destroy_destination_notifications}}
+
+      {:error, error} ->
+        {:halt, {:error, error}}
+    end
   end
 
   defp unrelate_data(
