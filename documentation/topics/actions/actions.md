@@ -146,7 +146,7 @@ you have two options.
 
 ```elixir
 create :create do
-  argument :ip_address, :string, allow_nil?: false
+  argument :ip_address, :string, allow_nil?: false, public?: false
 
   ...
 end
