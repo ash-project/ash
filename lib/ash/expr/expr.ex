@@ -988,8 +988,22 @@ defmodule Ash.Expr do
           Enum.map(returns, fn
             {:array, any} when any in [:same, :any] -> {:array, any}
             any when any in [:same, :any] -> any
-            {type, constraints} -> {type, constraints}
-            type -> {type, []}
+            {type, constraints} -> {Ash.Type.get_type(type), constraints}
+            type -> {Ash.Type.get_type(type), []}
+          end)
+
+        types =
+          Enum.map(types, fn
+            types when is_list(types) ->
+              Enum.map(types, fn
+                {:array, any} when any in [:same, :any] -> {:array, any}
+                any when any in [:same, :any] -> any
+                {type, constraints} -> {Ash.Type.get_type(type), constraints}
+                type -> {Ash.Type.get_type(type), []}
+              end)
+
+            types ->
+              types
           end)
 
         Enum.zip(types, returns)
