@@ -1161,6 +1161,9 @@ defmodule Ash.Expr do
               match?({:ok, {determined_type, _}} when determined_type != type, determined_type) ->
                 {:halt, :error}
 
+              match?({:ok, _}, determined_type) ->
+                {:cont, Map.update!(acc, :types, &[elem(determined_type, 1) | &1])}
+
               Ash.Expr.expr?(value) ->
                 {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
 
