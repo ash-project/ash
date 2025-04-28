@@ -952,7 +952,8 @@ defmodule Ash.Type do
 
   Maps to `Ecto.Type.cast/2`
   """
-  @spec cast_input(t(), term, constraints | nil) :: {:ok, term} | {:error, Keyword.t()} | :error
+  @spec cast_input(t(), term, constraints | nil) ::
+          {:ok, term} | {:error, Ash.Error.error_input()} | :error
   def cast_input(type, term, constraints \\ nil)
 
   def cast_input({:array, _type}, term, _)
