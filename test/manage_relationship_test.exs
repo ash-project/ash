@@ -388,10 +388,15 @@ defmodule Ash.Test.ManageRelationshipTest do
              "second"
            ]
 
+    second_id = Enum.find(parent.many_to_many_resources, &(&1.name == "second")).id
+
     assert {:ok, updated_parent} =
              parent
              |> Ash.Changeset.for_update(:update_many_hard, %{
-               many_to_many_resources: [%{name: "second"}, %{name: "third"}]
+               many_to_many_resources: [
+                 %{id: second_id, name: "second"},
+                 %{name: "third"}
+               ]
              })
              |> Ash.update!()
              |> Ash.load(many_to_many_resources: :join_resources)
@@ -421,10 +426,15 @@ defmodule Ash.Test.ManageRelationshipTest do
              "second"
            ]
 
+    second_id = Enum.find(parent.many_to_many_resources, &(&1.name == "second")).id
+
     assert {:ok, updated_parent} =
              parent
              |> Ash.Changeset.for_update(:update_many_soft, %{
-               many_to_many_resources: [%{name: "second"}, %{name: "third"}]
+               many_to_many_resources: [
+                 %{id: second_id, name: "second"},
+                 %{name: "third"}
+               ]
              })
              |> Ash.update!()
              |> Ash.load(many_to_many_resources: :join_resources)
