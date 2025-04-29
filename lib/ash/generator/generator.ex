@@ -516,7 +516,7 @@ defmodule Ash.Generator do
            end) |> Enum.at(0)
       %User{id: 1} # reused the last user
   """
-  @spec once(pid | atom, (-> value) | Enumerable.t(value)) ::
+  @spec once(pid | term, (-> value) | Enumerable.t(value)) ::
           StreamData.t(value)
         when value: term
   def once(identifier, generator) do
@@ -576,7 +576,7 @@ defmodule Ash.Generator do
   See `once/2` for more.
   """
   # sobelow_skip ["DOS.BinToAtom"]
-  @spec initialize_once(atom) :: pid
+  @spec initialize_once(term()) :: pid
   def initialize_once(identifier) do
     case find_in_self_or_ancestor({:ash_once, identifier}) do
       nil ->
