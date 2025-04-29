@@ -3169,7 +3169,7 @@ defmodule Ash.Actions.Update.Bulk do
                   )
 
                 changeset ->
-                  {:cont, changeset}
+                  changeset
               end
             end)
 
@@ -3258,7 +3258,7 @@ defmodule Ash.Actions.Update.Bulk do
                   )
 
                 changeset ->
-                  {:cont, changeset}
+                  changeset
               end
             end)
 
