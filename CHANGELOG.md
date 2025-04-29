@@ -2,6 +2,77 @@
 
 <!-- changelog -->
 
+## [v3.5.7](https://github.com/ash-project/ash/compare/v3.5.6...v3.5.7) (2025-04-29)
+
+
+
+
+### Bug Fixes:
+
+* Accept field opt in query aggregate (#2001)
+
+* only return the changeset (#2003)
+
+* expand types when typing expressions
+
+* Allow soft-deleting of many-to-many relationships (#1999)
+
+* properly show timeout errors on read transactions
+
+* handle values that generate as `nil` in map generators
+
+* sort lazy loaded records post-linking
+
+* properly attach nested transient calculation dependencies
+
+* be more lax with lazy_init? newtypes
+
+* properly return subtype constraints on constraint call
+
+* handle error cases in atomic changesets better
+
+* CodeInterface: logic error in `get_by` code interfaces. (#1961)
+
+* CodeInterface: logic error in `get_by` code interfaces.
+
+* crash when sorting by aggregates with non-attribute field (#1986)
+
+* handle atomic conditions on `{:atomic, ...}` changes
+
+* ensure data layer is loaded before using `function_exported?/3`
+
+* ensure that bulk callbacks are only called when appropriate
+
+* properly update belongs_to records on `relate_and_update`
+
+### Improvements:
+
+* Skip reading query for filter false (#2002)
+
+* generator for union types
+
+* Add various DSL options for inspecting resources
+
+* hide calculations and aggregates when empty
+
+* hide calculation dep calculations while inspecting
+
+* Raise an `ArgumentError` when generating a changeset using a non-existent action (#1992)
+
+* add `:tuple` builtin type
+
+* set changeset.load on bulk destroy actions
+
+* return the error when atomically cascade destroying
+
+* add a description to map/keyword/struct types
+
+* Remove duplicate impl of default policy functions (#1985)
+
+* eagerly expand aggregates in `Ash.aggregate`
+
+* accept `context` option in generic action code interfaces
+
 ## [v3.5.6](https://github.com/ash-project/ash/compare/v3.5.5...v3.5.6) (2025-04-15)
 
 
