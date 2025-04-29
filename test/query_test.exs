@@ -130,4 +130,30 @@ defmodule Ash.Test.QueryTest do
       assert [%Ash.Error.Query.InvalidArgument{}] = query.errors
     end
   end
+
+  describe "aggregate" do
+    test "using field option aggregates best friend list" do
+      user1 = Ash.create!(User, %{list: nil})
+      user2 = Ash.create!(User, %{list: ["a", "b", "c"]})
+
+      Ash.create!(User, %{best_friend_id: user1.id})
+      Ash.create!(User, %{best_friend_id: user2.id})
+
+      users =
+        User
+        |> Ash.Query.aggregate(
+          :best_friends_list,
+          :first,
+          :best_friend,
+          field: :list
+        )
+        |> Ash.read!()
+
+      assert Enum.all?(users, fn user ->
+               is_nil(user.aggregates.best_friends_list) or
+                 (user.best_friend_id == user2.id and
+                    user.aggregates.best_friends_list == ["a", "b", "c"])
+             end)
+    end
+  end
 end
