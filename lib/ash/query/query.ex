@@ -2471,9 +2471,10 @@ defmodule Ash.Query do
   The filter option accepts either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
   See the DSL docs for each aggregate type in the [Resource DSL docs](dsl-ash-resource.html#aggregates) for more information.
 
-  Options:
+  ### Options
 
     * query: The query over the destination resource to use as a base for aggregation
+    * field: - The field to use for the aggregate. Not necessary for all aggregate types
     * default: The default value to use if the aggregate returns nil
     * filterable?: Whether or not this aggregate may be referenced in filters
     * type: The type of the aggregate
@@ -2481,7 +2482,7 @@ defmodule Ash.Query do
     * implementation: An implementation used when the aggregate kind is custom
     * read_action: The read action to use on the destination resource
     * authorize?: Whether or not to authorize access to this aggregate
-    * join_filters: A map of relationship paths to filter expressions. See the aggregates guide for more.
+    * join_filters: A map of relationship paths to filter expressions. See the aggregates guide for more
   """
   def aggregate(query, name, kind, relationship) do
     aggregate(query, name, kind, relationship, [])
@@ -2505,10 +2506,10 @@ defmodule Ash.Query do
     {field, agg_query} =
       case agg_query do
         %Ash.Query{} = query ->
-          {nil, query}
+          {opts[:field], query}
 
         agg_query ->
-          Keyword.pop(agg_query || [], :field)
+          Keyword.pop(agg_query || [], :field, opts[:field])
       end
 
     query = new(query)
