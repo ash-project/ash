@@ -3183,19 +3183,24 @@ defmodule Ash.Actions.Read do
          _context,
          load_attributes?
        ) do
-    if query.limit == 0 do
-      {:ok, []}
-    else
-      result
-      |> Helpers.select(query)
-      |> Helpers.load_runtime_types(query, load_attributes?)
-      |> case do
-        {:ok, result} ->
-          Ash.load(result, query, domain: query.domain, reuse_values?: true)
+    cond do
+      query.limit == 0 ->
+        {:ok, []}
 
-        other ->
-          other
-      end
+      query.filter == false ->
+        {:ok, []}
+
+      true ->
+        result
+        |> Helpers.select(query)
+        |> Helpers.load_runtime_types(query, load_attributes?)
+        |> case do
+          {:ok, result} ->
+            Ash.load(result, query, domain: query.domain, reuse_values?: true)
+
+          other ->
+            other
+        end
     end
     |> then(&{&1, query})
   end
@@ -3213,17 +3218,22 @@ defmodule Ash.Actions.Read do
          _context,
          load_attributes?
        ) do
-    if query.limit == 0 do
-      {:ok, []}
-    else
-      data_layer_query
-      |> Ash.DataLayer.run_query_with_lateral_join(
-        root_data,
-        destination_resource,
-        path
-      )
-      |> Helpers.select(query)
-      |> Helpers.load_runtime_types(query, load_attributes?)
+    cond do
+      query.limit == 0 ->
+        {:ok, []}
+
+      query.filter == false ->
+        {:ok, []}
+
+      true ->
+        data_layer_query
+        |> Ash.DataLayer.run_query_with_lateral_join(
+          root_data,
+          destination_resource,
+          path
+        )
+        |> Helpers.select(query)
+        |> Helpers.load_runtime_types(query, load_attributes?)
     end
     |> then(&{&1, query})
   end
@@ -3265,14 +3275,19 @@ defmodule Ash.Actions.Read do
          _context,
          load_attributes?
        ) do
-    if query.limit == 0 do
-      {:ok, []}
-    else
-      data_layer_query
-      |> Ash.DataLayer.run_query(resource)
-      |> Helpers.rollback_if_in_transaction(query.resource, query)
-      |> Helpers.select(query)
-      |> Helpers.load_runtime_types(query, load_attributes?)
+    cond do
+      query.limit == 0 ->
+        {:ok, []}
+
+      query.filter == false ->
+        {:ok, []}
+
+      true ->
+        data_layer_query
+        |> Ash.DataLayer.run_query(resource)
+        |> Helpers.rollback_if_in_transaction(query.resource, query)
+        |> Helpers.select(query)
+        |> Helpers.load_runtime_types(query, load_attributes?)
     end
     |> then(&{&1, query})
   end
