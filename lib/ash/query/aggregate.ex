@@ -176,7 +176,7 @@ defmodule Ash.Query.Aggregate do
   @doc """
   Create a new aggregate, used with `Query.aggregate` or `Ash.aggregate`
 
-  Options:
+  ### Options
 
   #{Spark.Options.docs(@schema)}
   """
