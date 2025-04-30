@@ -3572,7 +3572,7 @@ end
 |------|------|---------|------|
 | [`name`](#calculations-calculate-name){: #calculations-calculate-name .spark-required} | `atom` |  | The field name to use for the calculation value |
 | [`type`](#calculations-calculate-type){: #calculations-calculate-type .spark-required} | `any` |  | The type of the calculation. See `Ash.Type` for more. |
-| [`calculation`](#calculations-calculate-calculation){: #calculations-calculate-calculation .spark-required} | `(any, any -> any) \| module \| any` |  | The `module`, `{module, opts}` or `expr(...)` to use for the calculation. Also accepts a function that takes *a list of records* and produces a result for each record. |
+| [`calculation`](#calculations-calculate-calculation){: #calculations-calculate-calculation .spark-required} | `(any, any -> any) \| module \| any` |  | The `module`, `{module, opts}` or `expr(...)` to use for the calculation. Also accepts a function that takes *a list of records* and the context, and produces a result for each record. |
 ### Options
 
 | Name | Type | Default | Docs |
