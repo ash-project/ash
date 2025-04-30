@@ -4,11 +4,18 @@ defmodule Ash.Test.ExprTest do
 
   import Ash.Expr
 
+  defmodule Role do
+    @moduledoc false
+
+    use Ash.Type.Enum, values: [:admin, :user]
+  end
+
   defmodule Resource do
     use Ash.Resource, domain: nil
 
     attributes do
       uuid_primary_key :id
+      attribute :roles, {:array, Role}
     end
   end
 
@@ -45,6 +52,32 @@ defmodule Ash.Test.ExprTest do
             )
           else
             id
+          end
+        )
+        |> Ash.Filter.hydrate_refs(%{resource: Resource})
+
+      # assert {[{Ash.Type.Boolean, []}, Ash.Type.String, Ash.Type.String], Ash.Type.String} =
+      assert {[{Ash.Type.Boolean, []}, {Ash.Type.UUID, []}, {Ash.Type.UUID, []}],
+              {Ash.Type.UUID, []}} =
+               determine_types(func, args, Ash.Type.UUID)
+    end
+
+    test "it determines the type of an if statement with only the return type" do
+      {:ok, %func{arguments: args}} =
+        expr(
+          if type(fragment("\"george\""), Ash.Type.String, trim?: true, allow_empty?: false) ==
+               "not allowed" do
+            error(
+              Ash.Error.Changes.InvalidAttribute,
+              %{
+                message: "must not equal %{value}",
+                value: type("george", Ash.Type.String, trim?: true, allow_empty?: false),
+                vars: %{value: "not allowed", field: :title},
+                field: :title
+              }
+            )
+          else
+            fragment("foo")
           end
         )
         |> Ash.Filter.hydrate_refs(%{resource: Resource})

@@ -953,6 +953,7 @@ defmodule Ash.Expr do
 
     known_result =
       case known_result do
+        nil -> nil
         {:array, type} -> {{:array, type}, []}
         {type, constraints} -> {type, constraints}
         type -> {type, []}
@@ -995,8 +996,8 @@ defmodule Ash.Expr do
           Enum.map(returns, fn
             {:array, any} when any in [:same, :any] -> {:array, any}
             any when any in [:same, :any] -> any
-            {type, constraints} -> {Ash.Type.get_type(type), constraints}
-            type -> {Ash.Type.get_type(type), []}
+            {type, constraints} -> get_type({type, constraints})
+            type -> get_type({type, []})
           end)
 
         types =
@@ -1005,8 +1006,8 @@ defmodule Ash.Expr do
               Enum.map(types, fn
                 {:array, any} when any in [:same, :any] -> {:array, any}
                 any when any in [:same, :any] -> any
-                {type, constraints} -> {Ash.Type.get_type(type), constraints}
-                type -> {Ash.Type.get_type(type), []}
+                {type, constraints} -> get_type({type, constraints})
+                type -> get_type({type, []})
               end)
 
             types ->
@@ -1263,10 +1264,10 @@ defmodule Ash.Expr do
         |> Enum.map(fn {types, {type, constraints}, _} ->
           types =
             Enum.map(types, fn {type, constraints} ->
-              {Ash.Type.get_type(type), constraints}
+              get_type({type, constraints})
             end)
 
-          {types, {Ash.Type.get_type(type), constraints}}
+          {types, get_type({type, constraints})}
         end)
         |> Enum.reject(fn {types, _} ->
           types
@@ -1345,28 +1346,44 @@ defmodule Ash.Expr do
     case value do
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type, constraints]} ->
         if Ash.Type.ash_type?(type) do
-          {:ok, {Ash.Type.get_type(type), constraints}}
+          if res = get_type({type, constraints}) do
+            {:ok, res}
+          else
+            :error
+          end
         else
           :error
         end
 
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type]} ->
         if Ash.Type.ash_type?(type) do
-          {:ok, {Ash.Type.get_type(type), []}}
+          if res = get_type({type, []}) do
+            {:ok, res}
+          else
+            :error
+          end
         else
           :error
         end
 
       %{__struct__: Ash.Query.Ref, attribute: %{type: type, constraints: constraints}} ->
         if Ash.Type.ash_type?(type) do
-          {:ok, {Ash.Type.get_type(type), constraints}}
+          if res = get_type({type, constraints}) do
+            {:ok, res}
+          else
+            :error
+          end
         else
           :error
         end
 
       %{__struct__: Ash.Query.Ref, attribute: %{type: type}} ->
         if Ash.Type.ash_type?(type) do
-          {:ok, {Ash.Type.get_type(type), []}}
+          if res = get_type({type, []}) do
+            {:ok, res}
+          else
+            :error
+          end
         else
           :error
         end
@@ -1400,6 +1417,12 @@ defmodule Ash.Expr do
 
       _ ->
         :error
+    end
+  end
+
+  defp get_type({type, constraints}) do
+    if type = Ash.Type.get_type(type) do
+      {type, constraints}
     end
   end
 
