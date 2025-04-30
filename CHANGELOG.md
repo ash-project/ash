@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.5.8](https://github.com/ash-project/ash/compare/v3.5.7...v3.5.8) (2025-04-30)
+
+
+
+
+### Bug Fixes:
+
+* handle `nil` type or invalid types more gracefully in type determination
+
+* properly type expressions based on return values
+
+### Improvements:
+
+* add rem/2 expr (#2004)
+
+* add `Ash.Info` for general application information
+
 ## [v3.5.7](https://github.com/ash-project/ash/compare/v3.5.6...v3.5.7) (2025-04-29)
 
 
