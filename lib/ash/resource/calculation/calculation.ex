@@ -49,7 +49,7 @@ defmodule Ash.Resource.Calculation do
          ]},
       required: true,
       doc: """
-      The `module`, `{module, opts}` or `expr(...)` to use for the calculation. Also accepts a function that takes *a list of records* and produces a result for each record.
+      The `module`, `{module, opts}` or `expr(...)` to use for the calculation. Also accepts a function that takes *a list of records* and the context, and produces a result for each record.
       """
     ],
     description: [
