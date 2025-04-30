@@ -951,6 +951,13 @@ defmodule Ash.Expr do
   def determine_types(mod, values, known_result, _nested?) do
     Code.ensure_compiled(mod)
 
+    known_result =
+      case known_result do
+        {:array, type} -> {{:array, type}, []}
+        {type, constraints} -> {type, constraints}
+        type -> {type, []}
+      end
+
     name =
       cond do
         function_exported?(mod, :operator, 0) ->
@@ -1074,25 +1081,11 @@ defmodule Ash.Expr do
                   {^type, matched_constraints} ->
                     {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
 
-                  _ ->
+                  _basis ->
                     {:halt, :error}
                 end
 
               :error ->
-                acc =
-                  case acc[:fallback_basis] do
-                    {type, constraints} ->
-                      if !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) do
-                        # Map.put(acc, :fallback_basis, nil)
-                        acc
-                      else
-                        acc
-                      end
-
-                    _ ->
-                      acc
-                  end
-
                 acc = Map.update!(acc, :types, &[nil | &1])
                 {:cont, Map.update!(acc, :must_adopt_basis, &[{index, fn x -> x end} | &1])}
             end
@@ -1352,40 +1345,40 @@ defmodule Ash.Expr do
     case value do
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type, constraints]} ->
         if Ash.Type.ash_type?(type) do
-          {:ok, {type, constraints}}
+          {:ok, {Ash.Type.get_type(type), constraints}}
         else
           :error
         end
 
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type]} ->
         if Ash.Type.ash_type?(type) do
-          {:ok, {type, []}}
+          {:ok, {Ash.Type.get_type(type), []}}
         else
           :error
         end
 
       %{__struct__: Ash.Query.Ref, attribute: %{type: type, constraints: constraints}} ->
         if Ash.Type.ash_type?(type) do
-          {:ok, {type, constraints}}
+          {:ok, {Ash.Type.get_type(type), constraints}}
         else
           :error
         end
 
       %{__struct__: Ash.Query.Ref, attribute: %{type: type}} ->
         if Ash.Type.ash_type?(type) do
-          {:ok, {type, []}}
+          {:ok, {Ash.Type.get_type(type), []}}
         else
           :error
         end
 
       %{__predicate__?: true} ->
-        {:ok, {:boolean, []}}
+        {:ok, {Ash.Type.Boolean, []}}
 
       %{__struct__: Ash.Query.BooleanExpression} ->
-        {:ok, {:boolean, []}}
+        {:ok, {Ash.Type.Boolean, []}}
 
       %{__struct__: Ash.Query.Exists} ->
-        {:ok, {:boolean, []}}
+        {:ok, {Ash.Type.Boolean, []}}
 
       %{__struct__: Ash.Query.Parent, expr: expr} ->
         determine_type(expr)

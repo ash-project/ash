@@ -4,6 +4,14 @@ defmodule Ash.Test.ExprTest do
 
   import Ash.Expr
 
+  defmodule Resource do
+    use Ash.Resource, domain: nil
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
   describe "determine_types" do
     test "it determines the type of an if statement with complex values" do
       {:ok, %func{arguments: args}} =
@@ -16,7 +24,35 @@ defmodule Ash.Test.ExprTest do
         )
         |> Ash.Filter.hydrate_refs(%{})
 
-      determine_types(func, args)
+      assert {[{Ash.Type.Boolean, []}, {Ash.Type.String, []}, {Ash.Type.String, []}],
+              {Ash.Type.String, []}} =
+               determine_types(func, args, Ash.Type.String)
+    end
+
+    test "it determines the type of an if statement with semi-typed values" do
+      {:ok, %func{arguments: args}} =
+        expr(
+          if type(fragment("\"george\""), Ash.Type.String, trim?: true, allow_empty?: false) ==
+               "not allowed" do
+            error(
+              Ash.Error.Changes.InvalidAttribute,
+              %{
+                message: "must not equal %{value}",
+                value: type("george", Ash.Type.String, trim?: true, allow_empty?: false),
+                vars: %{value: "not allowed", field: :title},
+                field: :title
+              }
+            )
+          else
+            id
+          end
+        )
+        |> Ash.Filter.hydrate_refs(%{resource: Resource})
+
+      # assert {[{Ash.Type.Boolean, []}, Ash.Type.String, Ash.Type.String], Ash.Type.String} =
+      assert {[{Ash.Type.Boolean, []}, {Ash.Type.UUID, []}, {Ash.Type.UUID, []}],
+              {Ash.Type.UUID, []}} =
+               determine_types(func, args, Ash.Type.UUID)
     end
   end
 
