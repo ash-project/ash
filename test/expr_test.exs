@@ -35,6 +35,15 @@ defmodule Ash.Test.ExprTest do
     end
   end
 
+  describe "rem expressions" do
+    test "evaluates" do
+      expr = expr(rem(1, 2) == 0)
+      assert eval!(expr) == false
+      expr = expr(rem(2, 2) == 0)
+      assert eval!(expr) == true
+    end
+  end
+
   describe "case expressions" do
     test "raises error when using case expressions" do
       assert_raise ArgumentError, ~r/`case` expressions are not supported/, fn ->
