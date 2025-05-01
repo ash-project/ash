@@ -160,7 +160,6 @@ defmodule Ash.Resource do
     quote do
       require Ash.Schema
 
-      @derive_inspect_for_redacted_fields false
       Ash.Schema.define_schema()
 
       if Ash.Schema.define?(__MODULE__) do

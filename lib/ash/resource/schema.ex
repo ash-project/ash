@@ -5,14 +5,27 @@ defmodule Ash.Schema do
 
   # This defines struct representation of a resource. Data layers can rely on this
   # schema for persistence.
+  @old_ecto_attr (case :application.get_key(:ecto, :vsn) do
+                    {:ok, version} ->
+                      !Version.match?(List.to_string(version), ">= 3.13.0")
+
+                    _ ->
+                      false
+                  end)
 
   defmacro define_schema do
     if Ash.Resource.Info.embedded?(__CALLER__.module) do
-      quote unquote: false do
+      quote unquote: false, bind_quoted: [old_ecto_attr?: @old_ecto_attr] do
         if Ash.Schema.define?(__MODULE__) do
           alias Ash.Query.Aggregate
           use Ecto.Schema
           @primary_key false
+
+          if old_ecto_attr? do
+            @ecto_derive_inspect_for_redacted_fields false
+          else
+            @derive_inspect_for_redacted_fields false
+          end
 
           embedded_schema do
             for attribute <- Ash.Resource.Info.attributes(__MODULE__),
@@ -128,11 +141,17 @@ defmodule Ash.Schema do
         end
       end
     else
-      quote unquote: false do
+      quote unquote: false, bind_quoted: [old_ecto_attr?: @old_ecto_attr] do
         if Ash.Schema.define?(__MODULE__) do
           alias Ash.Query.Aggregate
           use Ecto.Schema
           @primary_key false
+
+          if old_ecto_attr? do
+            @ecto_derive_inspect_for_redacted_fields false
+          else
+            @derive_inspect_for_redacted_fields false
+          end
 
           schema Ash.DataLayer.source(__MODULE__) do
             for attribute <- Ash.Resource.Info.attributes(__MODULE__),
