@@ -22,7 +22,7 @@ defmodule Ash.Sort do
   alias Ash.Error.Query.{InvalidSortOrder, NoSuchField}
 
   @doc """
-  Builds an expression to be used in a sort statement.
+  Builds an expression to be used in a sort statement. Prefer to use `Ash.Expr.calc/2` instead.
 
   For example:
 
@@ -36,6 +36,7 @@ defmodule Ash.Sort do
   defmacro expr_sort(expression, type \\ nil) do
     quote generated: true do
       require Ash.Expr
+
       type = unquote(type)
 
       {type, constraints} =
@@ -53,18 +54,11 @@ defmodule Ash.Sort do
             {nil, []}
         end
 
-      type = type && Ash.Type.get_type(type)
-
-      case Ash.Query.Calculation.new(
-             :__expr_sort__,
-             Ash.Resource.Calculation.Expression,
-             [expr: Ash.Expr.expr(unquote(expression))],
-             type,
-             constraints
-           ) do
-        {:ok, calc} -> calc
-        {:error, term} -> raise Ash.Error.to_ash_error(term)
-      end
+      Ash.Expr.calc(unquote(expression),
+        type: type,
+        constraints: constraints,
+        name: :__calc__
+      )
     end
   end
 
@@ -274,7 +268,7 @@ defmodule Ash.Sort do
                     }
 
                     Ash.Query.Calculation.new(
-                      :__expr_sort__,
+                      :__calc__,
                       Ash.Resource.Calculation.Expression,
                       [expr: ref],
                       type,
@@ -289,7 +283,7 @@ defmodule Ash.Sort do
                     }
 
                     Ash.Query.Calculation.new(
-                      :__expr_sort__,
+                      :__calc__,
                       Ash.Resource.Calculation.Expression,
                       [expr: ref],
                       type,
@@ -318,7 +312,7 @@ defmodule Ash.Sort do
       %Ash.Resource.Calculation{} = calc ->
         with {:ok, calc} <-
                Ash.Query.Calculation.from_resource_calculation(resource, calc, args: input) do
-          {:ok, %{calc | name: :__expr_sort__}}
+          {:ok, %{calc | name: :__calc__}}
         end
 
       nil ->
@@ -342,7 +336,7 @@ defmodule Ash.Sort do
       %Ash.Resource.Calculation{} = calc ->
         with {:ok, calc} <-
                Ash.Query.Calculation.from_resource_calculation(resource, calc, args: input) do
-          {:ok, %{calc | name: :__expr_sort__}}
+          {:ok, %{calc | name: :__calc__}}
         end
 
       nil ->
@@ -547,5 +541,5 @@ defmodule Ash.Sort do
   collation that affects their sorting, making it unpredictable from the perspective
   of a tool using the database: https://www.postgresql.org/docs/current/collation.html
   """
-  defdelegate runtime_sort(results, sort, domain \\ nil), to: Ash.Actions.Sort
+  defdelegate runtime_sort(results, sort, opts \\ []), to: Ash.Actions.Sort
 end

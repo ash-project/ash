@@ -169,6 +169,8 @@ defmodule Ash.Query do
     invalid_keys: MapSet.new(),
     load_through: %{},
     action_failed?: false,
+    combination_of: [],
+    combination_calcs: [],
     after_action: [],
     authorize_results: [],
     aggregates: %{},
@@ -197,6 +199,8 @@ defmodule Ash.Query do
           filter: Ash.Filter.t() | nil,
           resource: module,
           tenant: term(),
+          combination_of: [Ash.Query.Combination.t()],
+          combination_calcs: list(atom),
           timeout: pos_integer() | nil,
           action_failed?: boolean,
           after_action: [
@@ -302,6 +306,7 @@ defmodule Ash.Query do
       distinct? = query.distinct not in [[], nil]
       lock? = not is_nil(query.lock)
       page? = not is_nil(query.page)
+      combination_of? = query.combination_of != []
 
       container_doc(
         "#Ash.Query<",
@@ -309,6 +314,14 @@ defmodule Ash.Query do
           concat("resource: ", inspect(query.resource)),
           or_empty(concat("tenant: ", to_doc(query.to_tenant, opts)), tenant?),
           arguments(query, opts),
+          # TODO: inspect these specially
+          or_empty(
+            concat(
+              "combination_of: ",
+              to_doc(query.combination_of, %{opts | custom_options: [in_query?: true]})
+            ),
+            combination_of?
+          ),
           or_empty(concat("filter: ", to_doc(query.filter, opts)), filter?),
           or_empty(concat("sort: ", to_doc(query.sort, opts)), sort?),
           or_empty(concat("distinct_sort: ", to_doc(query.distinct_sort, opts)), distinct_sort?),
@@ -427,6 +440,92 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Produces a query that is the combination of multiple queries.
+
+  All aspects of the parent query are applied to the combination in total.
+
+  See `Ash.Query.Combination` for more on creating combination queries.
+
+  ### Example
+
+  ```elixir
+  # Top ten users not on a losing streak and top ten users who are not on a winning streak
+  User
+  |> Ash.Query.filter(active == true)
+  |> Ash.Query.combination_of([
+    # must always begin with a base combination
+    Ash.Query.Combination.base(
+      sort: [score: :desc],
+      filter: expr(not(on_a_losing_streak)),
+      limit: 10
+    ),
+    Ash.Query.Combination.union(
+      sort: [score: :asc],
+      filter: expr(not(on_a_winning_streak)),
+      limit: 10
+    )
+  ])
+  |> Ash.read!()
+  ```
+
+  ### Select and calculations
+
+  There is no `select` available for combinations, instead the select of the outer query
+  is used for each combination. However, you can use the `calculations` field in
+  `Ash.Query.Combination` to add expression calculations. Those calculations can "overwrite"
+  a selected attribute, or can introduce a new field. Note that, for SQL data layers, all
+  combinations will be required to have the same number of fields in their SELECT statement,
+  which means that if one combination adds a calculation, all of the others must also add
+  that calculation.
+
+  In this example, we compute separate match scores
+
+  ```elixir
+  query = "fred"
+
+  User
+  |> Ash.Query.filter(active == true)
+  |> Ash.Query.combination_of([
+    # must always begin with a base combination
+    Ash.Query.Combination.base(
+      filter: expr(trigram_similarity(user_name, ^query) >= 0.5),
+      calculate: %{
+        match_score: trigram_similarity(user_name, ^query)
+      },
+      sort: [
+        calc(trigram_similarity(user_name, ^query), :desc)
+      ],
+      limit: 10
+    ),
+    Ash.Query.Combination.union(
+      filter: expr(trigram_similarity(email, ^query) >= 0.5),
+      calculate: %{
+        match_score: trigram_similarity(email, ^query)
+      },
+      sort: [
+        calc(trigram_similarity(email, ^query), :desc)
+      ],
+      limit: 10
+    )
+  ])
+  |> Ash.read!()
+  ```
+  """
+  @spec combination_of(t(), Ash.Query.Combination.t()) :: t()
+  def combination_of(query, combinations) do
+    query = new(query)
+
+    %{query | combination_of: query.combination_of ++ List.wrap(combinations)}
+  end
+
+  @spec combination_calcs(t(), list(atom)) :: t()
+  def combination_calcs(query, fields) do
+    query = new(query)
+
+    %{query | combination_calcs: fields}
+  end
+
+  @doc """
   Attach a sort statement to the query labelled as user input.
 
   Sorts added as user input (or filters constructed with `Ash.Filter.parse_input`)
@@ -487,27 +586,32 @@ defmodule Ash.Query do
         add_error(query, :sort, "Data layer does not support sorting")
       end
     end
-    |> sequence_expr_sorts()
+    |> sequence_sorts()
   end
 
-  # sobelow_skip ["DOS.BinToAtom", "DOS.StringToAtom"]
-  defp sequence_expr_sorts(%{sort: sort} = query) when is_list(sort) and sort != [] do
+  defp sequence_sorts(query) do
     %{
       query
-      | sort:
-          query.sort
-          |> Enum.with_index()
-          |> Enum.map(fn
-            {{%Ash.Query.Calculation{name: :__expr_sort__} = field, direction}, index} ->
-              {%{field | name: String.to_atom("__expr_sort__#{index}"), load: nil}, direction}
-
-            {other, _} ->
-              other
-          end)
+      | sort: sequence_sort(query.sort),
+        distinct_sort: sequence_sort(query.distinct_sort),
+        distinct: sequence_sort(query.distinct)
     }
   end
 
-  defp sequence_expr_sorts(query), do: query
+  defp sequence_sort(nil), do: nil
+
+  # sobelow_skip ["DOS.BinToAtom", "DOS.StringToAtom"]
+  defp sequence_sort(statement) do
+    statement
+    |> Enum.with_index()
+    |> Enum.map(fn
+      {{%Ash.Query.Calculation{name: :__calc__} = field, direction}, index} ->
+        {%{field | name: String.to_atom("__calc__#{index}"), load: nil}, direction}
+
+      {other, _} ->
+        other
+    end)
+  end
 
   @doc """
   Attach a filter statement to the query.
@@ -2597,7 +2701,11 @@ defmodule Ash.Query do
     {module, opts} =
       case module_and_opts do
         {module, opts} ->
-          {module, opts}
+          if Ash.Expr.expr?({module, opts}) do
+            {Ash.Resource.Calculation.Expression, expr: {module, opts}}
+          else
+            {module, opts}
+          end
 
         module when is_atom(module) ->
           {module, []}
@@ -3022,16 +3130,16 @@ defmodule Ash.Query do
 
   ## Expression Sorts
 
-  You can use `Ash.Expr.expr_sort/2-3` to sort on expressions:
+  You can use the `Ash.Expr.calc/2` macro to sort on expressions:
 
   ```elixir
-  # Sort on an expression
   import Ash.Expr
-  Ash.Query.sort(query, expr_sort(count(friends), :desc))
+
+  # Sort on an expression
+  Ash.Query.sort(query, calc(count(friends), :desc))
 
   # Specify a type (required in some cases when we can't determine a type)
-  import Ash.Expr
-  Ash.Query.sort(query, expr_sort(fragment("some_sql(?)", field), :desc, :string))
+  Ash.Query.sort(query, [{calc(fragment("some_sql(?)", field, type: :string), :desc}])
   ```
 
   ## Sort Strings
@@ -3129,7 +3237,7 @@ defmodule Ash.Query do
         add_error(query, :sort, "Data layer does not support sorting")
       end
     end
-    |> sequence_expr_sorts()
+    |> sequence_sorts()
   end
 
   @doc """
@@ -3284,19 +3392,34 @@ defmodule Ash.Query do
   end
 
   def data_layer_query(%{resource: resource, domain: domain} = ash_query, opts) do
-    query = opts[:initial_query] || Ash.DataLayer.resource_to_query(resource, domain)
-
     context =
       ash_query.context
       |> Map.put(:action, ash_query.action)
       |> Map.put_new(:private, %{})
       |> put_in([:private, :tenant], ash_query.tenant)
+      |> Map.put_new(:data_layer, %{})
 
-    with {:ok, query} <-
+    context =
+      if opts[:previous_combination] do
+        Map.update!(
+          context,
+          :data_layer,
+          &Map.put(&1, :previous_combination, opts[:previous_combination])
+        )
+      else
+        context
+      end
+
+    with {:ok, query, new_context} <- initial_data_layer_query(ash_query, domain, opts),
+         {:ok, query} <-
            Ash.DataLayer.set_context(
              resource,
              query,
-             context
+             Map.update!(
+               context,
+               :data_layer,
+               &Map.merge(&1, new_context)
+             )
            ),
          {:ok, query} <- add_tenant(query, ash_query),
          {:ok, query} <- Ash.DataLayer.select(query, ash_query.select, ash_query.resource),
@@ -3334,6 +3457,76 @@ defmodule Ash.Query do
     else
       {:error, error} -> {:error, error}
     end
+  end
+
+  defp initial_data_layer_query(ash_query, domain, opts) do
+    cond do
+      opts[:initial_query] ->
+        {:ok, opts[:initial_query], %{}}
+
+      ash_query.combination_of != [] ->
+        case combination_queries(ash_query) do
+          {:ok, combinations, previous} ->
+            with {:ok, query} <-
+                   Ash.DataLayer.combination_of(combinations, ash_query.resource, domain) do
+              {:ok, query, %{previous_combination: previous, combination_of_queries?: true}}
+            end
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      true ->
+        {:ok, opts[:initial_query] || Ash.DataLayer.resource_to_query(ash_query.resource, domain),
+         %{}}
+    end
+  end
+
+  defp combination_queries(query) do
+    base_query = Ash.Query.new(query.resource)
+
+    Enum.reduce_while(
+      query.combination_of,
+      {:ok, [], nil},
+      fn combination, {:ok, combinations, previous} ->
+        calculations =
+          Enum.map(combination.calculations, fn {name, calc} ->
+            {%{calc | name: name, load: nil}, calc.module.expression(calc.opts, calc.context)}
+          end)
+
+        base_query
+        |> limit(combination.limit)
+        |> offset(combination.offset)
+        |> do_filter(combination.filter)
+        |> sort(combination.sort)
+        |> Ash.Query.set_context(query.context)
+        |> Ash.Query.set_context(%{data_layer: %{union_query?: true}})
+        |> then(fn
+          %{valid?: true} = combination_query ->
+            case data_layer_query(combination_query,
+                   previous_combination: previous,
+                   data_layer_calculations: calculations
+                 ) do
+              {:ok, combination_query} ->
+                {:cont,
+                 {:ok, [{combination.type, combination_query} | combinations], combination_query}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+
+          %{valid?: false, errors: errors} ->
+            {:halt, {:error, errors}}
+        end)
+      end
+    )
+    |> then(fn
+      {:ok, unions, previous} ->
+        {:ok, Enum.reverse(unions), previous}
+
+      {:error, error} ->
+        {:error, error}
+    end)
   end
 
   defp maybe_return_query(query, resource, opts) do

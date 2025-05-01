@@ -52,11 +52,13 @@ defmodule Ash.DataLayer.Ets do
       :resource,
       :filter,
       :limit,
-      :sort,
       :tenant,
       :domain,
-      :distinct,
-      :distinct_sort,
+      :select,
+      sort: [],
+      distinct: [],
+      distinct_sort: nil,
+      combination_of: [],
       context: %{},
       calculations: [],
       aggregates: [],
@@ -177,6 +179,8 @@ defmodule Ash.DataLayer.Ets do
   def can?(resource, :async_engine), do: not Ash.DataLayer.Ets.Info.private?(resource)
   def can?(_, {:lateral_join, _}), do: true
   def can?(_, :bulk_create), do: true
+  def can?(_, :combine), do: true
+  def can?(_, {:combine, _type}), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :expression_calculation), do: true
   def can?(_, :expression_calculation_sort), do: true
@@ -295,6 +299,12 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  def select(query, select, _resource) do
+    {:ok, %{query | select: select}}
+  end
+
+  @doc false
+  @impl true
   def filter(query, filter, _resource) do
     if query.filter do
       {:ok, %{query | filter: Ash.Filter.add_to_filter!(query.filter, filter)}}
@@ -371,25 +381,37 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  def combination_of(combinations, resource, domain) do
+    {:ok, %Query{combination_of: combinations, resource: resource, domain: domain}}
+  end
+
+  @doc false
+  @impl true
   def run_query(
         %Query{
           resource: resource,
-          filter: filter,
-          offset: offset,
-          limit: limit,
-          sort: sort,
-          distinct: distinct,
-          distinct_sort: distinct_sort,
-          tenant: tenant,
-          calculations: calculations,
-          aggregates: aggregates,
-          domain: domain,
-          context: context
-        },
+          combination_of: combination_of,
+          tenant: tenant
+        } = query,
         _resource,
         parent \\ nil
       ) do
-    with {:ok, records} <- get_records(resource, tenant),
+    maybe_not_distinct? = Enum.any?(combination_of, &(elem(&1, 0) == :union_all))
+
+    with {:ok, records} when records != [] <-
+           get_records(resource, combination_of, parent, tenant),
+         %Query{
+           filter: filter,
+           offset: offset,
+           limit: limit,
+           sort: sort,
+           distinct: distinct,
+           distinct_sort: distinct_sort,
+           calculations: calculations,
+           aggregates: aggregates,
+           domain: domain,
+           context: context
+         } <- load_combinations(query),
          {:ok, records} <-
            filter_matches(
              records,
@@ -399,9 +421,8 @@ defmodule Ash.DataLayer.Ets do
              context[:private][:actor],
              parent
            ),
-         records <- Sort.runtime_sort(records, distinct_sort || sort, domain: domain),
-         records <- Sort.runtime_distinct(records, distinct, domain: domain),
-         records <- Sort.runtime_sort(records, sort, domain: domain),
+         records <-
+           distinct_and_sort(records, sort, distinct, distinct_sort, maybe_not_distinct?, domain),
          records <- Enum.drop(records, offset || []),
          records <- do_limit(records, limit),
          {:ok, records} <-
@@ -415,8 +436,51 @@ defmodule Ash.DataLayer.Ets do
            ) do
       {:ok, records}
     else
+      {:ok, records} ->
+        {:ok, records}
+
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  defp distinct_and_sort(records, sort, distinct, distinct_sort, maybe_not_distinct?, domain) do
+    if distinct in [nil, []] do
+      Sort.runtime_sort(records, sort,
+        domain: domain,
+        maybe_not_distinct?: maybe_not_distinct?,
+        rekey?: false
+      )
+    else
+      if distinct_sort in [nil, []] do
+        Sort.runtime_sort(records, sort,
+          domain: domain,
+          maybe_not_distinct?: maybe_not_distinct?,
+          rekey?: false
+        )
+        |> Sort.runtime_distinct(distinct,
+          domain: domain,
+          maybe_not_distinct?: maybe_not_distinct?,
+          rekey?: false
+        )
+      else
+        records
+        |> Sort.runtime_sort(distinct_sort,
+          domain: domain,
+          maybe_not_distinct?: maybe_not_distinct?,
+          rekey?: false
+        )
+        |> Sort.runtime_distinct(distinct,
+          domain: domain,
+          maybe_not_distinct?: maybe_not_distinct?,
+          rekey?: false
+        )
+        |> Sort.runtime_sort(sort,
+          domain: domain,
+          maybe_not_distinct?: maybe_not_distinct?,
+          rekey?: false
+        )
+      end
     end
   end
 
@@ -740,7 +804,7 @@ defmodule Ash.DataLayer.Ets do
                      context[:tenant],
                      context[:actor]
                    ),
-                 sorted <- Sort.runtime_sort(filtered, query.sort, domain: domain) do
+                 sorted <- Sort.runtime_sort(filtered, query.sort, domain: domain, rekey?: false) do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
               value =
@@ -966,12 +1030,217 @@ defmodule Ash.DataLayer.Ets do
     Map.get(record, name)
   end
 
-  defp get_records(resource, tenant) do
+  defp get_records(resource, [], _parent, tenant) do
     with {:ok, table} <- wrap_or_create_table(resource, tenant),
          {:ok, record_tuples} <- ETS.Set.to_list(table),
          records <- Enum.map(record_tuples, &elem(&1, 1)) do
       cast_records(records, resource)
     end
+  end
+
+  defp get_records(resource, [{_, first} | _] = combinations_of, parent, tenant) do
+    field_set =
+      Enum.uniq_by(
+        Enum.map(
+          first.select ||
+            MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(resource)),
+          &Ash.Resource.Info.attribute(resource, &1)
+        ) ++
+          Enum.map(first.calculations, &elem(&1, 0)),
+        & &1.name
+      )
+
+    {simple_equality, non_simple_equality} =
+      Enum.split_with(field_set, fn %{type: type} ->
+        is_nil(type) || Ash.Type.simple_equality?(type)
+      end)
+
+    {base, matcher, grouper} =
+      case {simple_equality, non_simple_equality} do
+        {[], non_simple_equality} ->
+          non_simple_equality = Enum.map(non_simple_equality, & &1.name)
+          base = []
+
+          matcher = fn record, acc ->
+            Enum.any?(acc, fn existing ->
+              Enum.all?(non_simple_equality, fn %{type: type, name: name} ->
+                Ash.Type.equal?(type, combo_field(record, name), combo_field(existing, name))
+              end)
+            end)
+          end
+
+          grouper = fn records, acc ->
+            Enum.concat(acc, records)
+          end
+
+          {base, matcher, grouper}
+
+        {simple_equality, []} ->
+          simple_equality_names = Enum.map(simple_equality, & &1.name)
+          base = MapSet.new()
+          matcher = fn record, acc -> combo_fields(record, simple_equality_names) in acc end
+
+          grouper = fn records, acc ->
+            Enum.reduce(records, acc, fn record, acc ->
+              MapSet.put(acc, combo_fields(record, simple_equality_names))
+            end)
+          end
+
+          {base, matcher, grouper}
+
+        {simple_equality, non_simple_equality} ->
+          simple_equality_names = Enum.map(simple_equality, & &1.name)
+          non_simple_equality_names = Enum.map(non_simple_equality, & &1.name)
+          base = Map.new()
+
+          matcher = fn record, acc ->
+            key = combo_fields(record, simple_equality_names)
+
+            case Map.fetch(acc, key) do
+              {:ok, non_simple_equality_values} ->
+                Enum.all?(non_simple_equality, fn %{type: type, name: name} ->
+                  Ash.Type.equal?(
+                    type,
+                    combo_field(record, name),
+                    Map.get(non_simple_equality_values, name)
+                  )
+                end)
+
+              :error ->
+                false
+            end
+          end
+
+          grouper = fn records, acc ->
+            Enum.reduce(records, acc, fn record, acc ->
+              Map.put(
+                acc,
+                combo_fields(record, simple_equality_names),
+                combo_fields(record, non_simple_equality_names)
+              )
+            end)
+          end
+
+          {base, matcher, grouper}
+      end
+
+    combinations_of
+    |> Enum.reduce_while({:ok, [], base}, fn {type, combination}, {:ok, records, acc} ->
+      case run_query(
+             %{combination | tenant: tenant},
+             resource,
+             parent
+           ) do
+        {:ok, results} ->
+          case type do
+            type when type in [:base, :union_all] ->
+              {:cont, {:ok, [records, results], grouper.(results, acc)}}
+
+            :union ->
+              new_results =
+                Enum.reject(results, fn result ->
+                  matcher.(result, acc)
+                end)
+
+              {:cont, {:ok, [records, new_results], grouper.(new_results, acc)}}
+
+            :intersect ->
+              temp_results_acc =
+                results
+                |> Enum.filter(fn result ->
+                  matcher.(result, acc)
+                end)
+                |> grouper.(base)
+
+              records =
+                records
+                |> Stream.flat_map(&List.flatten(List.wrap(&1)))
+                |> Enum.filter(fn result ->
+                  matcher.(result, temp_results_acc)
+                end)
+
+              {:cont, {:ok, records, grouper.(records, acc)}}
+
+            :except ->
+              temp_results_acc = grouper.(results, base)
+
+              results =
+                records
+                |> Stream.flat_map(&List.flatten(List.wrap(&1)))
+                |> Enum.reject(fn result ->
+                  matcher.(result, temp_results_acc)
+                end)
+
+              {:cont, {:ok, results, grouper.(results, base)}}
+          end
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, records, _acc} ->
+        records
+        |> List.flatten()
+        |> then(&{:ok, &1})
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp load_combinations(query) do
+    %{
+      query
+      | filter: do_load_combinations(query.filter),
+        sort:
+          Enum.map(query.sort, fn
+            {%Ash.Query.Calculation{
+               module: Ash.Resource.Calculation.Expression,
+               opts: opts
+             } = calc, order} ->
+              {%{calc | opts: Keyword.update!(opts, :expr, &do_load_combinations/1)}, order}
+
+            other ->
+              other
+          end),
+        distinct:
+          Enum.map(query.distinct, fn
+            {%Ash.Query.Calculation{
+               module: Ash.Resource.Calculation.Expression,
+               opts: opts
+             } = calc, order} ->
+              {%{calc | opts: Keyword.update!(opts, :expr, &do_load_combinations/1)}, order}
+
+            other ->
+              other
+          end),
+        distinct_sort:
+          query.distinct_sort &&
+            Enum.map(query.distinct_sort, fn
+              {%Ash.Query.Calculation{
+                 module: Ash.Resource.Calculation.Expression,
+                 opts: opts
+               } = calc, order} ->
+                {%{calc | opts: Keyword.update!(opts, :expr, &do_load_combinations/1)}, order}
+
+              other ->
+                other
+            end)
+    }
+  end
+
+  defp do_load_combinations(filter) do
+    Ash.Filter.map(filter, fn
+      %Ash.Query.Ref{
+        combinations?: true,
+        attribute: %{load?: false} = attr
+      } = ref ->
+        %{ref | attribute: %{attr | load?: true}}
+
+      other ->
+        other
+    end)
   end
 
   @doc false
@@ -993,6 +1262,16 @@ defmodule Ash.DataLayer.Ets do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp combo_field(record, field) do
+    Map.get(record.calculations, field, Map.get(record, field))
+  end
+
+  defp combo_fields(record, fields) do
+    Map.new(fields, fn field ->
+      {field, combo_field(record, field)}
+    end)
   end
 
   @doc false

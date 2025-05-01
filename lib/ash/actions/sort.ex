@@ -69,33 +69,53 @@ defmodule Ash.Actions.Sort do
   * `:resource` - The resource being sorted.
   """
   def runtime_sort(results, sort, opts \\ [])
-  def runtime_sort([], _empty, _), do: []
-  def runtime_sort(results, empty, _) when empty in [nil, []], do: results
-  def runtime_sort([single_result], _, _), do: [single_result]
 
-  def runtime_sort(results, [{field, direction}], opts) do
+  def runtime_sort([], _sort, _opts) do
+    []
+  end
+
+  def runtime_sort(results, sort, opts) do
     resource = get_resource(results, opts)
 
+    sort =
+      if Keyword.get(opts, :rename_calcs?, true) do
+        sort
+        |> Enum.with_index()
+        |> Enum.map(fn
+          {{%dynamic{load: nil} = field, order}, index}
+          when dynamic in [Ash.Query.Calculation, Ash.Query.Aggregate] ->
+            {%{field | name: {:__ash_runtime_sort__, index}}, order}
+
+          {other, _} ->
+            other
+        end)
+      else
+        sort
+      end
+
+    results
+    |> do_runtime_sort(resource, sort, opts)
+    |> maybe_rekey(results, resource, Keyword.get(opts, :rekey?, true))
+  end
+
+  defp do_runtime_sort([], _resource, _empty, _), do: []
+  defp do_runtime_sort(results, _resource, empty, _) when empty in [nil, []], do: results
+  defp do_runtime_sort([single_result], _resource, _, _), do: [single_result]
+
+  defp do_runtime_sort(results, resource, [{field, direction}], opts) do
     results
     |> load_field(field, resource, opts)
     |> Enum.sort_by(&resolve_field(&1, field), to_sort_by_fun(direction))
   end
 
-  def runtime_sort(results, [{field, direction} | rest], opts) do
-    # we need check if the field supports simple equality, and if so then we can use
-    # uniq_by
-    #
-    # otherwise, we need to do our own matching
-    resource = get_resource(results, opts)
-
+  defp do_runtime_sort(results, resource, [{field, direction} | rest], opts) do
     results
     |> load_field(field, resource, opts)
     |> Enum.group_by(&resolve_field(&1, field))
     |> Enum.sort_by(fn {key, _value} -> key end, to_sort_by_fun(direction))
     |> Enum.flat_map(fn {_, records} ->
-      runtime_sort(records, rest, Keyword.put(opts, :rekey?, false))
+      do_runtime_sort(records, resource, rest, Keyword.put(opts, :rekey?, false))
     end)
-    |> maybe_rekey(results, resource, Keyword.get(opts, :rekey?, true))
   end
 
   defp get_resource(results, opts) do
@@ -116,54 +136,101 @@ defmodule Ash.Actions.Sort do
   end
 
   defp maybe_rekey(new_results, results, resource, true) do
-    Enum.map(new_results, fn new_result ->
-      Enum.find(results, fn result ->
-        resource.primary_key_matches?(new_result, result)
+    if Ash.Resource.Info.primary_key(resource) == [] do
+      new_results
+    else
+      Enum.map(new_results, fn new_result ->
+        Enum.find(results, new_result, fn result ->
+          resource.primary_key_matches?(new_result, result)
+        end)
       end)
-    end)
+    end
   end
 
   defp maybe_rekey(new_results, _, _, _), do: new_results
 
   def runtime_distinct(results, sort, opts \\ [])
-  def runtime_distinct([], _empty, _), do: []
-  def runtime_distinct(results, empty, _) when empty in [nil, []], do: results
-  def runtime_distinct([single_result], _, _), do: [single_result]
 
-  def runtime_distinct([%resource{} | _] = results, distinct, opts) do
-    # we need check if the field supports simple equality, and if so then we can use
-    # uniq_by
-    #
-    # otherwise, we need to do our own matching
+  def runtime_distinct([], _sort, _opts) do
+    []
+  end
+
+  def runtime_distinct(results, sort, opts) do
+    resource = get_resource(results, opts)
+
+    results
+    |> do_runtime_distinct(resource, sort, opts)
+    |> maybe_rekey(results, resource, Keyword.get(opts, :rekey?, true))
+  end
+
+  defp do_runtime_distinct([], _resource, _empty, _), do: []
+  defp do_runtime_distinct(results, _resource, empty, _) when empty in [nil, []], do: results
+  defp do_runtime_distinct([single_result], _resource, _, _), do: [single_result]
+
+  defp do_runtime_distinct(results, resource, distinct, opts) do
+    distinct =
+      distinct
+      |> Enum.with_index()
+      |> Enum.map(fn
+        {{%dynamic{load: nil} = field, order}, index}
+        when dynamic in [Ash.Query.Calculation, Ash.Query.Aggregate] ->
+          {%{field | name: {:__ash_runtime_sort__, index}}, order}
+
+        {other, _} ->
+          other
+      end)
+
     fields = Enum.map(distinct, &elem(&1, 0))
 
     results
-    |> load_field(fields, resource, opts)
-    |> Enum.to_list()
-    |> runtime_sort(distinct, opts)
-    |> Enum.uniq_by(&Map.take(&1, fields))
+    |> Stream.with_index()
+    |> Stream.map(fn {record, index} ->
+      Ash.Resource.set_metadata(record, %{__runtime_distinct_index__: index})
+    end)
+    |> do_runtime_sort(
+      resource,
+      distinct,
+      Keyword.merge(opts, rename_calcs?: false, resource: resource)
+    )
+    |> Stream.uniq_by(fn record ->
+      Enum.map(fields, fn field ->
+        resolve_field(record, field)
+      end)
+    end)
+    |> Enum.sort_by(& &1.__metadata__.__runtime_distinct_index__)
   end
 
   defp load_field(records, field, resource, opts) do
+    query =
+      resource
+      |> Ash.Query.select([])
+      |> Ash.Query.load(field)
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+
     if is_nil(opts[:domain]) do
       records
     else
-      records
-      |> Stream.chunk_every(100)
-      |> Stream.flat_map(fn batch ->
-        query =
-          resource
-          |> Ash.Query.select([])
-          |> Ash.Query.load(field)
-          |> Ash.Query.set_context(%{private: %{internal?: true}})
-
-        Ash.load!(batch, query,
-          domain: opts[:domain],
-          reuse_values?: true,
-          authorize?: false,
-          lazy?: opts[:lazy?] || false
-        )
-      end)
+      if opts[:maybe_not_distinct?] do
+        Enum.map(records, fn record ->
+          Ash.load!(record, query,
+            domain: opts[:domain],
+            reuse_values?: true,
+            authorize?: false,
+            lazy?: opts[:lazy?] || false
+          )
+        end)
+      else
+        records
+        |> Stream.chunk_every(100)
+        |> Stream.flat_map(fn batch ->
+          Ash.load!(batch, query,
+            domain: opts[:domain],
+            reuse_values?: true,
+            authorize?: false,
+            lazy?: opts[:lazy?] || false
+          )
+        end)
+      end
     end
   end
 
