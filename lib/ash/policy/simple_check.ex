@@ -19,7 +19,7 @@ defmodule Ash.Policy.SimpleCheck do
       {:ok, Enum.all?(Map.keys(changeset.attributes), &(&1 in allowed))}
     end
 
-    def match?(_, _, _), do: true
+    def match?(_, _, _), do: {:ok, true}
   end
   ```
 
