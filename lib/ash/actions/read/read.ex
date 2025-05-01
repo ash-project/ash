@@ -472,7 +472,7 @@ defmodule Ash.Actions.Read do
          {:ok, query} <- authorize_query(query, opts),
          {:ok, sort} <-
            add_calc_context_to_sort(
-             query,
+             query.sort,
              opts[:actor],
              opts[:authorize?],
              query.tenant,
@@ -480,6 +480,7 @@ defmodule Ash.Actions.Read do
              query.resource,
              query.domain,
              parent_stack: parent_stack_from_context(query.context),
+             first_combination: Enum.at(query.combination_of, 0),
              source_context: query.context
            ),
          query <- %{
@@ -608,6 +609,7 @@ defmodule Ash.Actions.Read do
                  opts
                ),
              {:ok, query} <- paginate(query, action, opts[:skip_pagination?]),
+             :ok <- validate_combinations(query, calculations_at_runtime, query.load),
              {:ok, data_layer_query} <-
                Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations),
              {{:ok, results}, query} <-
@@ -661,6 +663,53 @@ defmodule Ash.Actions.Read do
       {:error, error} ->
         {{:error, error}, query}
     end
+  end
+
+  defp validate_combinations(%{combination_of: []}, _, _) do
+    :ok
+  end
+
+  defp validate_combinations(query, runtime_calculations, load) do
+    case query.combination_of do
+      [%{type: type} | _] when type != :base ->
+        {:error, "Invalid combinations. The first combination must have type `:base`."}
+
+      combination_of ->
+        default_select =
+          MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(query.resource))
+
+        fieldsets =
+          Enum.map(
+            combination_of,
+            &Enum.sort(Enum.uniq((&1.select || default_select) ++ Map.keys(&1.calculations)))
+          )
+
+        case Enum.uniq(fieldsets) do
+          [fieldset] ->
+            if requires_pkey_but_not_selecting_it(query, fieldset, runtime_calculations, load) do
+              :ok
+            else
+              {:error,
+               "When runtime calculations or loads are present, all fieldsets must contain the primary key of the resource."}
+            end
+
+          _ ->
+            {:error,
+             """
+             Invalid combinations. All fieldsets must be the same, got the following:
+
+             #{inspect(query.combination_of)}
+             """}
+        end
+    end
+  end
+
+  defp requires_pkey_but_not_selecting_it(query, fieldset, runtime_calculations, load) do
+    (Enum.empty?(runtime_calculations) && Enum.empty?(load)) ||
+      Enum.all?(
+        Ash.Resource.Info.primary_key(query.resource),
+        &Enum.member?(fieldset, Atom.to_string(&1))
+      )
   end
 
   defp add_relationship_count_aggregates(query) do
@@ -862,6 +911,7 @@ defmodule Ash.Actions.Read do
       |> Ash.Filter.hydrate_refs(%{
         resource: query.resource,
         public?: false,
+        first_combination: Enum.at(query.combination_of, 0),
         parent_stack: parent_stack_from_context(query.context)
       })
       |> case do
@@ -1188,113 +1238,114 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp hydrate_sort(%{sort: empty} = query, _actor, _authorize?, _tenant, _tracer, _domain)
-       when empty in [nil, []] do
-    {:ok, query}
-  end
-
   defp hydrate_sort(query, actor, authorize?, tenant, tracer, domain) do
-    query.sort
-    |> List.wrap()
-    |> Enum.map(fn {field, direction} ->
-      if is_atom(field) do
-        case Ash.Resource.Info.field(query.resource, field) do
-          %Ash.Resource.Calculation{} = calc -> {calc, direction}
-          %Ash.Resource.Aggregate{} = agg -> {agg, direction}
-          _field -> {field, direction}
+    [:sort, :distinct, :distinct_sort]
+    |> Enum.reject(&(Map.get(query, &1) in [nil, []]))
+    |> Enum.reduce({:ok, query}, fn key, {:ok, query} ->
+      query
+      |> Map.get(key)
+      |> Enum.map(fn {field, direction} ->
+        if is_atom(field) do
+          case Ash.Resource.Info.field(query.resource, field) do
+            %Ash.Resource.Calculation{} = calc -> {calc, direction}
+            %Ash.Resource.Aggregate{} = agg -> {agg, direction}
+            _field -> {field, direction}
+          end
+        else
+          {field, direction}
         end
-      else
-        {field, direction}
+      end)
+      |> Enum.reduce_while({:ok, []}, fn
+        {%Ash.Resource.Calculation{} = resource_calculation, direction}, {:ok, sort} ->
+          case Ash.Query.Calculation.from_resource_calculation(
+                 query.resource,
+                 resource_calculation,
+                 source_context: query.context
+               ) do
+            {:ok, calc} ->
+              case hydrate_calculations(query, [calc]) do
+                {:ok, [{calc, expression}]} ->
+                  {:cont,
+                   {:ok,
+                    [
+                      {%{
+                         calc
+                         | module: Ash.Resource.Calculation.Expression,
+                           opts: [expr: expression]
+                       }, direction}
+                      | sort
+                    ]}}
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+
+        {%Ash.Query.Calculation{} = calc, direction}, {:ok, sort} ->
+          case hydrate_calculations(query, [calc]) do
+            {:ok, [{calc, expression}]} ->
+              {:cont,
+               {:ok,
+                [
+                  {%{
+                     calc
+                     | module: Ash.Resource.Calculation.Expression,
+                       opts: [expr: expression]
+                   }, direction}
+                  | sort
+                ]}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+
+        {%Ash.Resource.Aggregate{} = agg, direction}, {:ok, sort} ->
+          case query_aggregate_from_resource_aggregate(query, agg) do
+            {:ok, agg} -> {:cont, {:ok, [{agg, direction} | sort]}}
+            {:error, error} -> {:halt, {:error, error}}
+          end
+
+        {other, direction}, {:ok, sort} ->
+          {:cont, {:ok, [{other, direction} | sort]}}
+      end)
+      |> case do
+        {:ok, sort} ->
+          sort =
+            Enum.map(sort, fn {field, direction} ->
+              case field do
+                %struct{} = field
+                when struct in [
+                       Ash.Query.Calculation,
+                       Ash.Aggregate.Calculation,
+                       Ash.Resource.Calculation,
+                       Ash.Resource.Aggregate
+                     ] ->
+                  {add_calc_context(
+                     field,
+                     actor,
+                     authorize?,
+                     tenant,
+                     tracer,
+                     domain,
+                     query.resource,
+                     parent_stack: parent_stack_from_context(query.context),
+                     source_context: query.context
+                   ), direction}
+
+                field ->
+                  {field, direction}
+              end
+            end)
+
+          {:ok, %{query | key => Enum.reverse(sort)}}
+
+        {:error, error} ->
+          {:error, error}
       end
     end)
-    |> Enum.reduce_while({:ok, []}, fn
-      {%Ash.Resource.Calculation{} = resource_calculation, direction}, {:ok, sort} ->
-        case Ash.Query.Calculation.from_resource_calculation(query.resource, resource_calculation,
-               source_context: query.context
-             ) do
-          {:ok, calc} ->
-            case hydrate_calculations(query, [calc]) do
-              {:ok, [{calc, expression}]} ->
-                {:cont,
-                 {:ok,
-                  [
-                    {%{
-                       calc
-                       | module: Ash.Resource.Calculation.Expression,
-                         opts: [expr: expression]
-                     }, direction}
-                    | sort
-                  ]}}
-
-              {:error, error} ->
-                {:halt, {:error, error}}
-            end
-
-          {:error, error} ->
-            {:halt, {:error, error}}
-        end
-
-      {%Ash.Query.Calculation{} = calc, direction}, {:ok, sort} ->
-        case hydrate_calculations(query, [calc]) do
-          {:ok, [{calc, expression}]} ->
-            {:cont,
-             {:ok,
-              [
-                {%{
-                   calc
-                   | module: Ash.Resource.Calculation.Expression,
-                     opts: [expr: expression]
-                 }, direction}
-                | sort
-              ]}}
-
-          {:error, error} ->
-            {:halt, {:error, error}}
-        end
-
-      {%Ash.Resource.Aggregate{} = agg, direction}, {:ok, sort} ->
-        case query_aggregate_from_resource_aggregate(query, agg) do
-          {:ok, agg} -> {:cont, {:ok, [{agg, direction} | sort]}}
-          {:error, error} -> {:halt, {:error, error}}
-        end
-
-      {other, direction}, {:ok, sort} ->
-        {:cont, {:ok, [{other, direction} | sort]}}
-    end)
-    |> case do
-      {:ok, sort} ->
-        sort =
-          Enum.map(sort, fn {field, direction} ->
-            case field do
-              %struct{} = field
-              when struct in [
-                     Ash.Query.Calculation,
-                     Ash.Aggregate.Calculation,
-                     Ash.Resource.Calculation,
-                     Ash.Resource.Aggregate
-                   ] ->
-                {add_calc_context(
-                   field,
-                   actor,
-                   authorize?,
-                   tenant,
-                   tracer,
-                   domain,
-                   query.resource,
-                   parent_stack: parent_stack_from_context(query.context),
-                   source_context: query.context
-                 ), direction}
-
-              field ->
-                {field, direction}
-            end
-          end)
-
-        {:ok, %{query | sort: Enum.reverse(sort)}}
-
-      {:error, error} ->
-        {:error, error}
-    end
   end
 
   defp hydrate_aggregates(query) do
@@ -1781,8 +1832,14 @@ defmodule Ash.Actions.Read do
                 expr
 
               expr ->
-                {:ok, expr} = Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
-                expr
+                if calc.type do
+                  {:ok, expr} =
+                    Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
+
+                  expr
+                else
+                  expr
+                end
             end
 
           {:ok, expr} =
@@ -1833,11 +1890,11 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  defp add_calc_context_to_sort(%{sort: empty}, _, _, _, _, _, _, _opts) when empty in [[], nil],
+  defp add_calc_context_to_sort(empty, _, _, _, _, _, _, _opts) when empty in [[], nil],
     do: {:ok, empty}
 
-  defp add_calc_context_to_sort(query, actor, authorize?, tenant, tracer, resource, domain, opts) do
-    query.sort
+  defp add_calc_context_to_sort(sort, actor, authorize?, tenant, tracer, resource, domain, opts) do
+    sort
     |> Enum.reduce_while({:ok, []}, fn
       {%struct{} = calc, order}, {:ok, acc}
       when struct in [
@@ -1849,7 +1906,7 @@ defmodule Ash.Actions.Read do
         calc = add_calc_context(calc, actor, authorize?, tenant, tracer, domain, resource, opts)
 
         if should_expand_expression?(struct, calc, opts) do
-          case expand_expression(calc, resource, opts[:parent_stack]) do
+          case expand_expression(calc, resource, opts[:parent_stack], opts[:first_combination]) do
             {:ok, expr} ->
               args =
                 case calc do
@@ -1863,7 +1920,7 @@ defmodule Ash.Actions.Read do
                   actor: actor,
                   tenant: tenant,
                   args: args,
-                  context: query.context
+                  context: opts[:source_context]
                 )
 
               expr =
@@ -1904,7 +1961,7 @@ defmodule Ash.Actions.Read do
       calc.module.has_expression?()
   end
 
-  defp expand_expression(calc, resource, parent_stack) do
+  defp expand_expression(calc, resource, parent_stack, first_combination) do
     calc.module.expression(calc.opts, calc.context)
     |> case do
       %Ash.Query.Function.Type{} = expr ->
@@ -1914,10 +1971,21 @@ defmodule Ash.Actions.Read do
         expr
 
       expr ->
-        {:ok, expr} = Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
-        expr
+        if calc.type do
+          {:ok, expr} =
+            Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
+
+          expr
+        else
+          expr
+        end
     end
-    |> Ash.Filter.hydrate_refs(%{resource: resource, public?: false, parent_stack: parent_stack})
+    |> Ash.Filter.hydrate_refs(%{
+      resource: resource,
+      public?: false,
+      parent_stack: parent_stack,
+      first_combination: first_combination
+    })
   end
 
   @doc false
@@ -2354,19 +2422,50 @@ defmodule Ash.Actions.Read do
   def add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain, opts) do
     {:ok, sort} =
       add_calc_context_to_sort(
-        query,
+        query.sort,
         actor,
         authorize?,
         tenant,
         tracer,
         query.resource,
         domain,
-        opts
+        Keyword.put(opts, :first_combination, Enum.at(query.combination_of, 0))
       )
 
     %{
       query
       | sort: sort,
+        combination_of:
+          Enum.map(query.combination_of, fn
+            %Ash.Query.Combination{} = combination ->
+              {:ok, sort} =
+                add_calc_context_to_sort(
+                  combination.sort,
+                  actor,
+                  authorize?,
+                  tenant,
+                  tracer,
+                  query.resource,
+                  domain,
+                  opts
+                )
+
+              %{
+                combination
+                | filter:
+                    add_calc_context_to_filter(
+                      combination.filter,
+                      actor,
+                      authorize?,
+                      tenant,
+                      tracer,
+                      domain,
+                      query.resource,
+                      opts
+                    ),
+                  sort: sort
+              }
+          end),
         aggregates:
           Map.new(query.aggregates, fn {key, agg} ->
             {key,
@@ -3349,6 +3448,7 @@ defmodule Ash.Actions.Read do
         case Ash.Filter.hydrate_refs(expression, %{
                resource: query.resource,
                public?: false,
+               first_combination: Enum.at(query.combination_of, 0),
                parent_stack: parent_stack_from_context(query.context)
              }) do
           {:ok, expression} ->
@@ -3691,8 +3791,14 @@ defmodule Ash.Actions.Read do
             expr
 
           expr ->
-            {:ok, expr} = Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
-            expr
+            if calc.type do
+              {:ok, expr} =
+                Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
+
+              expr
+            else
+              expr
+            end
         end
 
       {:ok, expr} =

@@ -1,6 +1,14 @@
 defmodule Ash.Query.Ref do
   @moduledoc "Represents a relation/attribute reference"
-  defstruct [:attribute, :relationship_path, :resource, :simple_equality?, :bare?, :input?]
+  defstruct [
+    :attribute,
+    :resource,
+    :simple_equality?,
+    :bare?,
+    :input?,
+    combinations?: false,
+    relationship_path: []
+  ]
 
   @doc "Returns the referenced field"
   def name(%__MODULE__{attribute: %{name: name}}), do: name
@@ -45,6 +53,13 @@ defmodule Ash.Query.Ref do
             end
           end) <> "." <> "#{name}"
       end
+      |> then(fn value ->
+        if ref.combinations? do
+          "combinations(#{value})"
+        else
+          value
+        end
+      end)
     end
   end
 end

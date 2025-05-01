@@ -1,16 +1,7 @@
 defmodule Ash.Filter.Runtime do
   @moduledoc """
-  Checks a record to see if it matches a filter statement.
-
-  We can't always tell if a record matches a filter statement, and as such this
-  function may return `:unknown`. Additionally, some expressions wouldn't ever
-  make sense outside of the context of the data layer, and will always be an
-  error. For example, if you used the trigram search features in
-  `ash_postgres`. That logic would need to be handwritten in Elixir and would
-  need to be a *perfect* copy of the postgres implementation. That isn't a
-  realistic goal. This generally should not affect anyone using the standard
-  framework features, but if you were to attempt to use this module with a data
-  layer like `ash_postgres`, certain expressions will behave unpredictably.
+  Tools to checks a record to see if it matches a filter statement, or to
+  evalute expressions against records.
   """
 
   alias Ash.Query.{BooleanExpression, Not, Ref}
@@ -373,6 +364,7 @@ defmodule Ash.Filter.Runtime do
   defp resolve_expr({:_arg, _}, _, _, _, _), do: :unknown
   defp resolve_expr({:_ref, _}, _, _, _, _), do: :unknown
   defp resolve_expr({:_ref, _, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_combinations, _}, _, _, _, _), do: :unknown
   defp resolve_expr({:_parent, _}, _, _, _, _), do: :unknown
   defp resolve_expr({:_parent, _, _}, _, _, _, _), do: :unknown
   defp resolve_expr({:_atomic_ref, _}, _, _, _, _), do: :unknown
@@ -818,6 +810,7 @@ defmodule Ash.Filter.Runtime do
          %Ash.Query.Ref{
            relationship_path: relationship_path,
            resource: resource,
+           combinations?: combinations?,
            attribute: %Ash.Query.Calculation{
              module: module,
              opts: opts,
@@ -830,7 +823,8 @@ defmodule Ash.Filter.Runtime do
          parent,
          _resource,
          unknown_on_unknown_refs?
-       ) do
+       )
+       when combinations? != true do
     result =
       record
       |> get_related(relationship_path, unknown_on_unknown_refs?)
@@ -937,6 +931,29 @@ defmodule Ash.Filter.Runtime do
       :unknown
     else
       {:ok, nil}
+    end
+  end
+
+  defp resolve_ref(%Ash.Query.Ref{combinations?: true, attribute: %{load?: false}}, _, _, _, true) do
+    :unknown
+  end
+
+  defp resolve_ref(
+         %Ash.Query.Ref{attribute: %{name: name}, combinations?: true},
+         record,
+         _,
+         _,
+         unknown_on_unknown_refs?
+       ) do
+    with :error <- Map.fetch(record.calculations, name),
+         :error <- Map.fetch(record, name) do
+      if unknown_on_unknown_refs? do
+        :unknown
+      else
+        {:ok, nil}
+      end
+    else
+      {:ok, value} -> {:ok, value}
     end
   end
 

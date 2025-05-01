@@ -30,7 +30,7 @@ The [Get Started Livebook](documentation/tutorials/get-started.md) **Tutorial** 
 
 ---
 
-[**Reference**](#reference) documentation is **information-oriented**, covering every Ash module, function, expression, and DSL. It is produced automatically from our source code. Use the sidebar and the top search 
+[**Reference**](#reference) documentation is **information-oriented**, covering every Ash module, function, expression, and DSL. It is produced automatically from our source code. Use the sidebar and the top search
 bar to find relevant reference information. Place the text `dsl` before your search to quickly jump to a particular DSL — e.g. try comparing the results of searching for `name` with the results for `dsl name`.
 
 ---
@@ -90,6 +90,7 @@ bar to find relevant reference information. Place the text `dsl` before your sea
 - [Monitoring](documentation/topics/advanced/monitoring.md)
 - [Multitenancy](documentation/topics/advanced/multitenancy.md)
 - [Reactor](documentation/topics/advanced/reactor.md)
+- [Combination Queries](documentation/topics/advanced/combination-queries.md)
 - [Timeouts](documentation/topics/advanced/timeouts.md)
 - [Writing Extensions](documentation/topics/advanced/writing-extensions.md)
 

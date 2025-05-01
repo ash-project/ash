@@ -1,4 +1,4 @@
-defmodule Ash.Test.Type.UnionTest do
+defmodule Ash.Test.Filter.UnionTest do
   @moduledoc false
   use ExUnit.Case, async: true
 

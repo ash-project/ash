@@ -1106,6 +1106,9 @@ defmodule Ash.Actions.Read.Calculations do
       {{:__calc_dep__, _}, _}, acc ->
         acc
 
+      {{:__ash_runtime_sort__, _}, _}, acc ->
+        acc
+
       {name, calculation}, acc ->
         Map.put(acc, name, calculation)
     end)

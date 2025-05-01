@@ -143,8 +143,27 @@ defmodule Ash.Resource do
         @persist {:domain, domain}
       end
 
+      if embedded? do
+        @persist {:embedded?, true}
+
+        require Ash.EmbeddableType
+
+        Ash.EmbeddableType.define_embeddable_type(embed_nil_values?: embed_nil_values?)
+      end
+    end
+  end
+
+  @doc false
+  # sobelow_skip ["DOS.StringToAtom"]
+  @impl Spark.Dsl
+  def handle_before_compile(_opts) do
+    quote do
+      require Ash.Schema
+
+      @derive_inspect_for_redacted_fields false
+      Ash.Schema.define_schema()
+
       if Ash.Schema.define?(__MODULE__) do
-        @derive_inspect_for_redacted_fields false
         module = __MODULE__
 
         defimpl Inspect do
@@ -197,25 +216,6 @@ defmodule Ash.Resource do
           end
         end
       end
-
-      if embedded? do
-        @persist {:embedded?, true}
-
-        require Ash.EmbeddableType
-
-        Ash.EmbeddableType.define_embeddable_type(embed_nil_values?: embed_nil_values?)
-      end
-    end
-  end
-
-  @doc false
-  # sobelow_skip ["DOS.StringToAtom"]
-  @impl Spark.Dsl
-  def handle_before_compile(_opts) do
-    quote do
-      require Ash.Schema
-
-      Ash.Schema.define_schema()
 
       @all_arguments __MODULE__
                      |> Ash.Resource.Info.actions()

@@ -44,6 +44,7 @@ defmodule Ash.Expr do
   def expr?({:_actor, _}), do: true
   def expr?({:_arg, _}), do: true
   def expr?({:_ref, _, _}), do: true
+  def expr?({:_combinations, _}), do: true
   def expr?({:_parent, _, _}), do: true
   def expr?({:_parent, _}), do: true
   def expr?({:_atomic_ref, _}), do: true
@@ -95,6 +96,9 @@ defmodule Ash.Expr do
   @doc "A template helper for creating a reference to a related path"
   def ref(path, name) when is_list(path) and is_atom(name), do: {:_ref, path, name}
 
+  @doc "A template helper for creating a reference"
+  def combinations(name) when is_atom(name), do: {:_combinations, name}
+
   @doc "A template helper for creating a parent reference"
   def parent(expr), do: {:_parent, [], expr}
 
@@ -144,6 +148,43 @@ defmodule Ash.Expr do
     end
   end
 
+  @doc """
+  Creates an expression calculation for use in sort and distinct statements.
+
+  ## Examples
+
+  ```elixir
+  Ash.Query.sort(query, [
+    {calc(string_upcase(name), :asc},
+    {calc(count_nils([field1, field2]), type: :integer), :desc})
+  ])
+  ```
+  """
+  @spec calc(Macro.t(), opts :: Keyword.t()) :: t()
+  defmacro calc(expression, opts \\ []) do
+    quote generated: true do
+      require Ash.Expr
+      opts = unquote(opts)
+      type = opts[:type] && Ash.Type.get_type(opts[:type])
+      constraints = opts[:constraints] || []
+      name = opts[:name] || :__calc__
+
+      case Ash.Query.Calculation.new(
+             name,
+             Ash.Resource.Calculation.Expression,
+             [expr: Ash.Expr.expr(unquote(expression))],
+             type,
+             constraints
+           ) do
+        {:ok, calc} -> calc
+        {:error, term} -> raise Ash.Error.to_ash_error(term)
+      end
+    end
+  end
+
+  @doc """
+  Creates an expression. See the [Expressions guide](/documentation/topics/reference/expressions.md) for more.
+  """
   @spec expr(Macro.t()) :: t()
   defmacro expr(do: body) do
     quote location: :keep do
@@ -213,6 +254,12 @@ defmodule Ash.Expr do
           attribute: fill_template(name, Keyword.take(opts, [:actor, :tenant, :args, :context])),
           relationship_path:
             fill_template(path, Keyword.take(opts, [:actor, :tenant, :args, :context]))
+        }
+
+      {:_combinations, name} ->
+        %Ash.Query.Ref{
+          attribute: fill_template(name, Keyword.take(opts, [:actor, :tenant, :args, :context])),
+          combinations?: true
         }
 
       other ->

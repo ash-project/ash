@@ -2291,6 +2291,7 @@ defmodule Ash.Filter do
     expression
     |> do_list_refs(no_longer_simple?, in_an_eq?, expand_calculations?, expand_get_path?)
     |> Enum.uniq()
+    |> Enum.reject(& &1.combinations?)
   end
 
   defp do_list_refs(list, no_longer_simple?, in_an_eq?, expand_calculations?, expand_get_path?)
@@ -3537,6 +3538,19 @@ defmodule Ash.Filter do
     )
   end
 
+  def do_hydrate_refs({:_combinations, value}, context) do
+    do_hydrate_refs(
+      %Ash.Query.Ref{
+        attribute: value,
+        relationship_path: [],
+        input?: Map.get(context, :input?, false),
+        combinations?: true,
+        resource: context.root_resource
+      },
+      context
+    )
+  end
+
   def do_hydrate_refs({:_ref, path, value}, context) do
     do_hydrate_refs(
       %Ash.Query.Ref{
@@ -3557,6 +3571,24 @@ defmodule Ash.Filter do
       other ->
         other
     end
+  end
+
+  def do_hydrate_refs(%Ref{combinations?: true, attribute: attribute} = ref, %{
+        resource: resource,
+        first_combination: first_combination
+      })
+      when is_atom(attribute) and not is_nil(first_combination) do
+    with :error <- combination_calc(first_combination, attribute),
+         :error <- combination_attr(resource, first_combination, attribute) do
+      {:error, "Invalid combination reference #{inspect(ref)}"}
+    else
+      {:error, error} -> {:error, error}
+      {:ok, attr} -> {:ok, %{ref | attribute: attr}}
+    end
+  end
+
+  def do_hydrate_refs(%Ref{combinations?: true} = ref, _) do
+    {:ok, ref}
   end
 
   def do_hydrate_refs(
@@ -3891,6 +3923,48 @@ defmodule Ash.Filter do
 
   def do_hydrate_refs(val, _context) do
     {:ok, val}
+  end
+
+  defp combination_calc(first_combination, attribute) do
+    with {:ok, calc} <- Map.fetch(first_combination.calculations, attribute) do
+      case calc do
+        %Ash.Query.Calculation{type: type, constraints: constraints} when not is_nil(type) ->
+          {:ok, %Ash.Query.CombinationAttr{type: type, constraints: constraints, name: attribute}}
+
+        %Ash.Query.Calculation{} = calculation ->
+          {:error,
+           """
+           Calculation #{inspect(calculation)} must be added with a type to refer to it with `combinations/1`
+
+           For example:
+
+             calc(foo <> bar, type: :string)
+           """}
+
+        other ->
+          {:error, "Invalid combination calculation #{inspect(other)}"}
+      end
+    end
+  end
+
+  defp combination_attr(resource, first_combination, attribute_name) do
+    attribute = Ash.Resource.Info.attribute(resource, attribute_name)
+
+    if attribute do
+      if (first_combination.select && attribute_name in first_combination.select) ||
+           attribute_name in Ash.Resource.Info.selected_by_default_attribute_names(resource) do
+        {:ok,
+         %Ash.Query.CombinationAttr{
+           type: attribute.type,
+           constraints: attribute.constraints,
+           name: attribute.name
+         }}
+      else
+        {:error, "#{attribute_name} is not selected nor is it a calculation in the combinations."}
+      end
+    else
+      :error
+    end
   end
 
   defp validate_data_layers_support_boolean_filters(%BooleanExpression{
