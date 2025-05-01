@@ -1059,7 +1059,7 @@ defmodule Ash.Changeset do
                       if ^condition do
                         ^value
                       else
-                        ^ref(key)
+                        ^atomic_ref(key)
                       end
                     )
 
@@ -1071,7 +1071,7 @@ defmodule Ash.Changeset do
                       if ^condition do
                         ^value
                       else
-                        ^ref(key)
+                        ^atomic_ref(key)
                       end
                     )
 
@@ -1090,7 +1090,11 @@ defmodule Ash.Changeset do
             List.wrap(validations),
             changeset,
             fn {:atomic, _, condition_expr, error_expr}, changeset ->
-              validate_atomically(changeset, condition_expr, error_expr)
+              validate_atomically(
+                changeset,
+                Ash.Expr.expr(^condition and ^condition_expr),
+                error_expr
+              )
             end
           )
       end
@@ -1122,6 +1126,15 @@ defmodule Ash.Changeset do
   end
 
   defp apply_atomic_update(changeset, key, {:atomic, value}) do
+    value =
+      Ash.Expr.walk_template(value, fn
+        {:_atomic_ref, field} ->
+          atomic_ref(changeset, field)
+
+        other ->
+          other
+      end)
+
     %{
       changeset
       | atomics: Keyword.put(changeset.atomics, key, value),
@@ -1163,9 +1176,16 @@ defmodule Ash.Changeset do
           attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
 
         if is_nil(value) and !allow_nil? do
-          add_required_attribute_error(changeset, attribute)
+          add_required_attribute_error(
+            %{changeset | atomics: Keyword.delete(changeset.atomics, attribute.name)},
+            attribute
+          )
         else
-          %{changeset | attributes: Map.put(changeset.attributes, attribute.name, value)}
+          %{
+            changeset
+            | attributes: Map.put(changeset.attributes, attribute.name, value),
+              atomics: Keyword.delete(changeset.atomics, attribute.name)
+          }
           |> store_casted_attribute(attribute.name, value, true)
         end
 
