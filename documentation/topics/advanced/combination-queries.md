@@ -32,22 +32,31 @@ Where `combinations` is a list of combination specifications starting with a bas
 Here's a simple example that combines users who meet different criteria:
 
 ```elixir
-User
-|> Ash.Query.filter(active == true)
-|> Ash.Query.combination_of([
-  # Must always begin with a base combination
-  Ash.Query.Combination.base(
-    filter: expr(not(on_a_losing_streak)),
-    sort: [score: :desc],
-    limit: 10
-  ),
-  Ash.Query.Combination.union(
-    filter: expr(not(on_a_winning_streak)),
-    sort: [score: :asc],
-    limit: 10
-  )
-])
-|> Ash.read!()
+read :best_and_worst_users do
+  description """
+  Returns the top 10 active users who are not on a losing streak
+  (sorted by score descending) and the bottom 10 active users who are not on a
+  winning streak (sorted by score ascending)
+  """
+
+  filter expr(active == true)
+
+  prepare fn query, _ ->
+    Ash.Query.combination_of(query, [
+      # Must always begin with a base combination
+      Ash.Query.Combination.base(
+        filter: expr(not(on_a_losing_streak)),
+        sort: [score: :desc],
+        limit: 10
+      ),
+      Ash.Query.Combination.union(
+        filter: expr(not(on_a_winning_streak)),
+        sort: [score: :asc],
+        limit: 10
+      )
+    ])
+  end
+end
 ```
 
 This query would return:
