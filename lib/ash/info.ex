@@ -31,7 +31,6 @@ defmodule Ash.Info do
   Generate a mermaid chart of the application's domains and resources.
 
   This offers a high level view, but will not include information from extensions.
-  Use `resource_report/2` for a detailed report of a resource.
   """
   def mermaid_overview(otp_app, type \\ :class) do
     case type do
