@@ -193,6 +193,8 @@ defmodule Ash.Generator do
   * `:context` - Passed through to the changeset
   * `:after_action` - A one argument function that takes the result and returns
     a new result to run after the record is created.
+  * `:private_arguments` - A map of private arguments, whos values can also be generators. Can also
+    be a function when using the `:uses` option.
 
   ## The `uses` option
 
@@ -220,16 +222,16 @@ defmodule Ash.Generator do
 
   """
   def changeset_generator(resource, action, opts \\ []) do
-    changeset_opts =
-      StreamData.fixed_map(
-        to_generators(Keyword.take(opts, [:actor, :tenant, :authorize?, :context]))
-      )
-
     generator =
       if opts[:uses] do
-        if !is_function(opts[:defaults]) do
+        if not (is_nil(opts[:defaults]) || is_function(opts[:defaults])) do
           raise ArgumentError,
                 "The `uses` option can only be provided if the `defaults` option is a function"
+        end
+
+        if not (is_nil(opts[:private_arguments]) || is_function(opts[:private_arguments])) do
+          raise ArgumentError,
+                "The `uses` option can only be provided if the `private_arguments` option is a function"
         end
 
         opts[:uses]
@@ -237,16 +239,35 @@ defmodule Ash.Generator do
         |> StreamData.fixed_map()
         |> StreamData.bind(fn uses ->
           generators =
-            opts[:defaults].(uses)
-            |> Map.new()
+            if opts[:defaults] do
+              opts[:defaults].(uses)
+              |> Map.new()
+            else
+              %{}
+            end
             |> Map.merge(Map.new(opts[:overrides] || %{}))
 
-          action_input(resource, action, generators)
-        end)
-        |> StreamData.bind(fn input ->
+          private_arguments =
+            if opts[:private_arguments] do
+              opts[:private_arguments].(uses)
+              |> to_generators()
+              |> StreamData.fixed_map()
+            else
+              StreamData.fixed_map(%{})
+            end
+
+          changeset_opts =
+            StreamData.fixed_map(
+              Map.put(
+                to_generators(Keyword.take(opts, [:actor, :tenant, :authorize?, :context])),
+                :private_arguments,
+                private_arguments
+              )
+            )
+
           StreamData.fixed_map(%{
             changeset_opts: changeset_opts,
-            input: StreamData.fixed_map(to_generators(input))
+            input: action_input(resource, action, generators)
           })
         end)
       else
@@ -262,6 +283,22 @@ defmodule Ash.Generator do
           |> Map.merge(Map.new(opts[:overrides] || %{}))
 
         input = action_input(resource, action, generators)
+
+        private_arguments =
+          if opts[:private_arguments] do
+            StreamData.fixed_map(to_generators(opts[:private_arguments]))
+          else
+            StreamData.fixed_map(%{})
+          end
+
+        changeset_opts =
+          StreamData.fixed_map(
+            Map.put(
+              to_generators(Keyword.take(opts, [:actor, :tenant, :authorize?, :context])),
+              :private_arguments,
+              private_arguments
+            )
+          )
 
         StreamData.fixed_map(%{
           changeset_opts: changeset_opts,

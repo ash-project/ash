@@ -46,6 +46,12 @@ defmodule Ash.Test.GeneratorTest do
         argument :posts, {:array, :map}, allow_nil?: false
         change manage_relationship(:posts, type: :create)
       end
+
+      update :new_post_private do
+        require_atomic? false
+        argument :posts, {:array, :map}, allow_nil?: false, public?: false
+        change manage_relationship(:posts, type: :create)
+      end
     end
 
     attributes do
@@ -269,6 +275,25 @@ defmodule Ash.Test.GeneratorTest do
       )
     end
 
+    def post_for_private(author, opts \\ []) do
+      changeset_generator(author, :new_post_private,
+        uses: [
+          post_input:
+            action_input(
+              Post,
+              :create,
+              name: sequence(:title, &"Post #{&1}")
+            )
+        ],
+        private_arguments: fn inputs ->
+          %{
+            posts: [inputs.post_input]
+          }
+        end,
+        overrides: opts
+      )
+    end
+
     def seed_post_with_double_name(opts \\ []) do
       seed_generator(
         fn uses ->
@@ -332,6 +357,14 @@ defmodule Ash.Test.GeneratorTest do
       author = generate(author())
 
       author_with_posts = generate(post_for(author))
+      assert [%Post{}] = author_with_posts.posts
+    end
+
+    test "can generate private arguments" do
+      import Generator
+      author = generate(author())
+
+      author_with_posts = generate(post_for_private(author))
       assert [%Post{}] = author_with_posts.posts
     end
 
