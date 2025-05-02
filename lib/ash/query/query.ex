@@ -3500,7 +3500,7 @@ defmodule Ash.Query do
         |> do_filter(combination.filter)
         |> sort(combination.sort)
         |> Ash.Query.set_context(query.context)
-        |> Ash.Query.set_context(%{data_layer: %{union_query?: true}})
+        |> Ash.Query.set_context(%{data_layer: %{combination_query?: true}})
         |> then(fn
           %{valid?: true} = combination_query ->
             case data_layer_query(combination_query,
