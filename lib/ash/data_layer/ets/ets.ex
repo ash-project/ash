@@ -1050,6 +1050,18 @@ defmodule Ash.DataLayer.Ets do
         & &1.name
       )
 
+    fields_to_rewrite =
+      resource
+      |> Ash.Resource.Info.fields([:attributes, :calculations, :aggregates])
+      |> Enum.map(& &1.name)
+
+    rewrite? = not Enum.empty?(field_set -- fields_to_rewrite)
+
+    fields_to_rewrite =
+      if rewrite? do
+        Enum.filter(fields_to_rewrite, &(&1 in field_set))
+      end
+
     {simple_equality, non_simple_equality} =
       Enum.split_with(field_set, fn %{type: type} ->
         is_nil(type) || Ash.Type.simple_equality?(type)
@@ -1132,6 +1144,19 @@ defmodule Ash.DataLayer.Ets do
              parent
            ) do
         {:ok, results} ->
+          results =
+            if rewrite? do
+              Enum.map(results, fn record ->
+                {merge, remain} = Map.split(record.calculations, fields_to_rewrite)
+
+                record
+                |> Map.merge(merge)
+                |> Map.put(:calculations, remain)
+              end)
+            else
+              results
+            end
+
           case type do
             type when type in [:base, :union_all] ->
               {:cont, {:ok, [records, results], grouper.(results, acc)}}

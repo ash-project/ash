@@ -97,6 +97,8 @@ User
 |> Ash.read!()
 ```
 
+When you add calculations to a combination query, they behave differently depending on the name of the calculation. If the name matches the name of an attribute, calculation or aggregate on the resource, then the value is placed in that key. Otherwise, it will be placed into the `calculations` key.
+
 This example searches for users where either their name or email matches "fred" with a similarity score of at least 0.5, and returns the top 10 matches of each type sorted by their match score.
 
 ## Accessing Combination Values

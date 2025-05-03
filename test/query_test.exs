@@ -102,7 +102,7 @@ defmodule Ash.Test.QueryTest do
     end
   end
 
-  describe "union" do
+  describe "combinations" do
     test "it combines multiple queries into one result set" do
       Ash.create!(User, %{name: "fred", email: "a@bar.com"})
       Ash.create!(User, %{name: "fred", email: "b@bar.com"})

@@ -3422,7 +3422,8 @@ defmodule Ash.Query do
              )
            ),
          {:ok, query} <- add_tenant(query, ash_query),
-         {:ok, query} <- Ash.DataLayer.select(query, ash_query.select, ash_query.resource),
+         {:ok, query} <-
+           Ash.DataLayer.select(query, ash_query.select, ash_query.resource),
          {:ok, query} <- Ash.DataLayer.sort(query, ash_query.sort, resource),
          {:ok, query} <- Ash.DataLayer.distinct_sort(query, ash_query.distinct_sort, resource),
          {:ok, query} <-
@@ -3465,11 +3466,26 @@ defmodule Ash.Query do
         {:ok, opts[:initial_query], %{}}
 
       ash_query.combination_of != [] ->
+        combination = hd(ash_query.combination_of)
+
+        default_select =
+          MapSet.to_list(
+            Ash.Resource.Info.selected_by_default_attribute_names(ash_query.resource)
+          )
+
         case combination_queries(ash_query) do
           {:ok, combinations, previous} ->
             with {:ok, query} <-
                    Ash.DataLayer.combination_of(combinations, ash_query.resource, domain) do
-              {:ok, query, %{previous_combination: previous, combination_of_queries?: true}}
+              {:ok, query,
+               %{
+                 previous_combination: previous,
+                 combination_of_queries?: true,
+                 combination_fieldset:
+                   Enum.uniq(
+                     (combination.select || default_select) ++ Map.keys(combination.calculations)
+                   )
+               }}
             end
 
           {:error, error} ->

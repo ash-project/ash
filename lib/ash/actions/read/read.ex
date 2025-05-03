@@ -519,6 +519,19 @@ defmodule Ash.Actions.Read do
                  opts[:tracer],
                  query.domain
                ),
+             {:ok, query} <-
+               hydrate_combinations(
+                 query,
+                 opts[:actor],
+                 opts[:authorize?],
+                 query.tenant,
+                 opts[:tracer],
+                 query.domain,
+                 query.resource,
+                 expand?: true,
+                 parent_stack: parent_stack_from_context(query.context),
+                 source_context: query.context
+               ),
              {:ok, relationship_path_filters} <-
                Ash.Filter.relationship_filters(
                  query.domain,
@@ -686,11 +699,17 @@ defmodule Ash.Actions.Read do
 
         case Enum.uniq(fieldsets) do
           [fieldset] ->
-            if requires_pkey_but_not_selecting_it(query, fieldset, runtime_calculations, load) do
+            if requires_pkey_but_not_selecting_it(
+                 query,
+                 fieldset,
+                 default_select,
+                 runtime_calculations,
+                 load
+               ) do
               :ok
             else
               {:error,
-               "When runtime calculations or loads are present, all fieldsets must contain the primary key of the resource."}
+               "When runtime calculations, loads, or more attributes in the parent select but not the combination fieldsets are present, all fieldsets must contain the primary key of the resource."}
             end
 
           _ ->
@@ -704,8 +723,15 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp requires_pkey_but_not_selecting_it(query, fieldset, runtime_calculations, load) do
-    (Enum.empty?(runtime_calculations) && Enum.empty?(load)) ||
+  defp requires_pkey_but_not_selecting_it(
+         query,
+         fieldset,
+         default_select,
+         runtime_calculations,
+         load
+       ) do
+    Enum.all?(query.select || default_select, &(&1 in fieldset)) ||
+      (Enum.empty?(runtime_calculations) && Enum.empty?(load)) ||
       Enum.all?(
         Ash.Resource.Info.primary_key(query.resource),
         &Enum.member?(fieldset, Atom.to_string(&1))
@@ -1235,6 +1261,94 @@ defmodule Ash.Actions.Read do
         {:error, error} ->
           {:error, error}
       end
+    end
+  end
+
+  defp hydrate_combinations(
+         query,
+         actor,
+         authorize?,
+         tenant,
+         tracer,
+         domain,
+         _resource,
+         opts
+       ) do
+    Enum.reduce_while(query.combination_of, {:ok, []}, fn combination, {:ok, acc} ->
+      case add_calc_context_to_sort(
+             combination.sort,
+             actor,
+             authorize?,
+             tenant,
+             tracer,
+             query.resource,
+             domain,
+             opts
+           ) do
+        {:error, error} ->
+          {:halt, {:error, error}}
+
+        {:ok, sort} ->
+          Enum.reduce_while(combination.calculations, {:ok, %{}}, fn {key, calc}, {:ok, acc} ->
+            case hydrate_calculations(query, [calc]) do
+              {:ok, [{calc, expression}]} ->
+                {:cont,
+                 {:ok,
+                  Map.put(acc, key, %{
+                    calc
+                    | module: Ash.Resource.Calculation.Expression,
+                      opts: [expr: expression]
+                  })}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+          end)
+          |> case do
+            {:error, error} ->
+              {:halt, {:error, error}}
+
+            {:ok, calculations} ->
+              {:cont,
+               {:ok,
+                [
+                  %{
+                    combination
+                    | filter:
+                        add_calc_context_to_filter(
+                          combination.filter,
+                          actor,
+                          authorize?,
+                          tenant,
+                          tracer,
+                          domain,
+                          query.resource,
+                          opts
+                        ),
+                      calculations:
+                        Map.new(calculations, fn {key, val} ->
+                          {key,
+                           add_calc_context(
+                             val,
+                             actor,
+                             authorize?,
+                             tenant,
+                             tracer,
+                             domain,
+                             query.resource,
+                             opts
+                           )}
+                        end),
+                      sort: sort
+                  }
+                  | acc
+                ]}}
+          end
+      end
+    end)
+    |> case do
+      {:ok, combinations} -> {:ok, %{query | combination_of: Enum.reverse(combinations)}}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -2435,37 +2549,6 @@ defmodule Ash.Actions.Read do
     %{
       query
       | sort: sort,
-        combination_of:
-          Enum.map(query.combination_of, fn
-            %Ash.Query.Combination{} = combination ->
-              {:ok, sort} =
-                add_calc_context_to_sort(
-                  combination.sort,
-                  actor,
-                  authorize?,
-                  tenant,
-                  tracer,
-                  query.resource,
-                  domain,
-                  opts
-                )
-
-              %{
-                combination
-                | filter:
-                    add_calc_context_to_filter(
-                      combination.filter,
-                      actor,
-                      authorize?,
-                      tenant,
-                      tracer,
-                      domain,
-                      query.resource,
-                      opts
-                    ),
-                  sort: sort
-              }
-          end),
         aggregates:
           Map.new(query.aggregates, fn {key, agg} ->
             {key,
