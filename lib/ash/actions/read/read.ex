@@ -3072,7 +3072,7 @@ defmodule Ash.Actions.Read do
             state
         end
 
-      context = Ash.Authorizer.strict_check_context(authorizer, data)
+      context = Map.take(data, Ash.Authorizer.strict_check_context(authorizer, data))
 
       case Ash.Authorizer.add_calculations(authorizer, query, state, context) do
         {:ok, query, _} ->

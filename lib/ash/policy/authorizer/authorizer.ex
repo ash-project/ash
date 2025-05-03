@@ -730,6 +730,19 @@ defmodule Ash.Policy.Authorizer do
         authorizer,
         context
       ) do
+    subject = context.query || context.changeset || context[:action_input]
+
+    authorizer =
+      %{
+        authorizer
+        | query: context.query,
+          changeset: context.changeset,
+          action_input: context[:action_input],
+          subject: subject,
+          context: (subject && subject.context) || %{},
+          domain: context.domain
+      }
+
     {expr, _acc} =
       replace_refs(expression, authorizer_acc(authorizer, resource, context))
 
@@ -757,6 +770,19 @@ defmodule Ash.Policy.Authorizer do
         authorizer,
         context
       ) do
+    subject = context.query || context.changeset || context[:action_input]
+
+    authorizer =
+      %{
+        authorizer
+        | query: context.query,
+          changeset: context.changeset,
+          action_input: context[:action_input],
+          subject: subject,
+          context: (subject && subject.context) || %{},
+          domain: context.domain
+      }
+
     case Ash.Policy.Info.field_policies(authorizer.resource) do
       [] ->
         {:ok, sort}
@@ -1173,7 +1199,20 @@ defmodule Ash.Policy.Authorizer do
   end
 
   @impl true
-  def add_calculations(query_or_changeset, authorizer, _context) do
+  def add_calculations(query_or_changeset, authorizer, context) do
+    subject = context.query || context.changeset || context[:action_input]
+
+    authorizer =
+      %{
+        authorizer
+        | query: context.query,
+          changeset: context.changeset,
+          action_input: context[:action_input],
+          subject: subject,
+          context: (subject && subject.context) || %{},
+          domain: context.domain
+      }
+
     if Ash.Policy.Info.field_policies(query_or_changeset.resource) == [] do
       # If there are no field policies, access is allowed by default
       # and we don't need to add any calculations
