@@ -687,17 +687,8 @@ defmodule Ash.Policy.Authorizer do
 
   @impl true
   def strict_check(authorizer, context) do
-    subject = context.query || context.changeset || context[:action_input]
-
-    %{
-      authorizer
-      | query: context.query,
-        changeset: context.changeset,
-        action_input: context[:action_input],
-        subject: subject,
-        context: (subject && subject.context) || %{},
-        domain: context.domain
-    }
+    authorizer
+    |> ensure_context_in_authorizer(context)
     |> get_policies()
     |> strict_check_result()
     |> case do
@@ -730,18 +721,7 @@ defmodule Ash.Policy.Authorizer do
         authorizer,
         context
       ) do
-    subject = context.query || context.changeset || context[:action_input]
-
-    authorizer =
-      %{
-        authorizer
-        | query: context.query,
-          changeset: context.changeset,
-          action_input: context[:action_input],
-          subject: subject,
-          context: (subject && subject.context) || %{},
-          domain: context.domain
-      }
+    authorizer = ensure_context_in_authorizer(authorizer, context)
 
     {expr, _acc} =
       replace_refs(expression, authorizer_acc(authorizer, resource, context))
@@ -755,11 +735,7 @@ defmodule Ash.Policy.Authorizer do
     %{
       stack: [{resource, [], context.query.action, context.query.domain}],
       authorizers: %{
-        {resource, context.query.action} => %{
-          authorizer
-          | query: context.query,
-            subject: context.query
-        }
+        {resource, context.query.action} => authorizer
       },
       actor: authorizer.actor
     }
@@ -770,18 +746,7 @@ defmodule Ash.Policy.Authorizer do
         authorizer,
         context
       ) do
-    subject = context.query || context.changeset || context[:action_input]
-
-    authorizer =
-      %{
-        authorizer
-        | query: context.query,
-          changeset: context.changeset,
-          action_input: context[:action_input],
-          subject: subject,
-          context: (subject && subject.context) || %{},
-          domain: context.domain
-      }
+    authorizer = ensure_context_in_authorizer(authorizer, context)
 
     case Ash.Policy.Info.field_policies(authorizer.resource) do
       [] ->
@@ -1138,6 +1103,15 @@ defmodule Ash.Policy.Authorizer do
 
           :error ->
             authorizer = initial_state(acc.actor, resource, action, domain)
+            query = Ash.Query.for_read(resource, action.name, actor: acc.actor)
+
+            authorizer =
+              ensure_context_in_authorizer(authorizer, %{
+                query: query,
+                changeset: nil,
+                action_input: nil,
+                domain: domain
+              })
 
             {authorizer,
              %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
@@ -1200,18 +1174,7 @@ defmodule Ash.Policy.Authorizer do
 
   @impl true
   def add_calculations(query_or_changeset, authorizer, context) do
-    subject = context.query || context.changeset || context[:action_input]
-
-    authorizer =
-      %{
-        authorizer
-        | query: context.query,
-          changeset: context.changeset,
-          action_input: context[:action_input],
-          subject: subject,
-          context: (subject && subject.context) || %{},
-          domain: context.domain
-      }
+    authorizer = ensure_context_in_authorizer(authorizer, context)
 
     if Ash.Policy.Info.field_policies(query_or_changeset.resource) == [] do
       # If there are no field policies, access is allowed by default
@@ -1319,6 +1282,20 @@ defmodule Ash.Policy.Authorizer do
         {:ok, result, authorizer}
       end)
     end
+  end
+
+  defp ensure_context_in_authorizer(authorizer, context) do
+    subject = context.query || context.changeset || context[:action_input]
+
+    %{
+      authorizer
+      | query: context.query,
+        changeset: context.changeset,
+        action_input: context[:action_input],
+        subject: subject,
+        context: (subject && subject.context) || %{},
+        domain: context.domain
+    }
   end
 
   defp add_query_or_changeset(
