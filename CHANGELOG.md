@@ -2,6 +2,31 @@
 
 <!-- changelog -->
 
+## [v3.5.9](https://github.com/ash-project/ash/compare/v3.5.8...v3.5.9) (2025-05-06)
+
+
+
+
+### Bug Fixes:
+
+* shortcircuit queries properly
+
+* ensure that context is set on authorizers in nested field policies
+
+* accept `private_arguments` option in the same way as `defaults` in generators
+
+* handle case where atomic change isn't cleared when converted to static
+
+* handle case where atomic condition isn't applied to generated validations
+
+### Improvements:
+
+* normalize authorizer context in more locations
+
+* aggressively prune ets logs while retaining important info
+
+* combination queries (#2009)
+
 ## [v3.5.8](https://github.com/ash-project/ash/compare/v3.5.7...v3.5.8) (2025-04-30)
 
 
