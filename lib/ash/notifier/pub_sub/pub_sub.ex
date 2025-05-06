@@ -491,7 +491,7 @@ defmodule Ash.Notifier.PubSub do
 
   defp publishable_value?(
          %Ash.NotLoaded{field: field},
-         %{topic: topic, resource: resource} = notification
+         %{topic: topic, resource: resource}
        ) do
     Logger.warning(
       "Not publishing notification `#{inspect(topic)}` for #{inspect(resource)} because `#{field}` is not loaded"
@@ -510,7 +510,7 @@ defmodule Ash.Notifier.PubSub do
 
   defp publishable_value?(
          %Ash.ForbiddenField{field: field},
-         %{topic: topic, resource: resource} = notification
+         %{topic: topic, resource: resource}
        ) do
     Logger.warning(
       "Not publishing notification `#{inspect(topic)}` for #{inspect(resource)} because `#{field}` is an `%Ash.ForbiddenField{}`"
