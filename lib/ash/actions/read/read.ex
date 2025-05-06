@@ -3369,7 +3369,7 @@ defmodule Ash.Actions.Read do
       query.limit == 0 ->
         {:ok, []}
 
-      query.filter == false ->
+      query.filter && query.filter.expression == false ->
         Logger.debug("""
         #{inspect(query.resource)} #{inspect(query.action)}: skipped query run due to filter being false"
         """)
@@ -3408,7 +3408,7 @@ defmodule Ash.Actions.Read do
       query.limit == 0 ->
         {:ok, []}
 
-      query.filter == false ->
+      query.filter && query.filter.expression == false ->
         Logger.debug("""
         #{inspect(query.resource)} #{inspect(query.action)}: skipped query run due to filter being false"
         """)
@@ -3469,7 +3469,7 @@ defmodule Ash.Actions.Read do
       query.limit == 0 ->
         {:ok, []}
 
-      query.filter == false ->
+      query.filter && query.filter.expression == false ->
         Logger.debug("""
         #{inspect(query.resource)} #{inspect(query.action)}: skipped query run due to filter being false"
         """)
