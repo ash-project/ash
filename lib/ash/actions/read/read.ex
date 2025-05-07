@@ -172,7 +172,6 @@ defmodule Ash.Actions.Read do
       end
 
     initial_query = query
-
     query = add_field_level_auth(query, query.domain, opts)
 
     query = %{
@@ -195,6 +194,7 @@ defmodule Ash.Actions.Read do
         source_context: query.context
       )
 
+    query = add_relationship_limit_to_loads(query)
     relationship? = Map.has_key?(query.context, :accessing_from)
 
     page_opts =
@@ -2618,6 +2618,24 @@ defmodule Ash.Actions.Read do
                   |> add_calc_context_to_loads(actor, authorize?, tenant, tracer, domain)
 
                 {key, load}
+            end
+          end)
+    }
+  end
+
+  defp add_relationship_limit_to_loads(%Ash.Query{load: []} = query), do: query
+
+  defp add_relationship_limit_to_loads(%Ash.Query{load: load} = query) do
+    %{
+      query
+      | load:
+          Enum.map(load, fn {key, load_query} ->
+            case Ash.Resource.Info.relationship(query.resource, key) do
+              %Ash.Resource.Relationships.HasMany{limit: limit} ->
+                {key, Ash.Query.limit(load_query, limit)}
+
+              _ ->
+                {key, load_query}
             end
           end)
     }
