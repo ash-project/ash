@@ -12,12 +12,12 @@ defmodule Ash.Policy.Info do
     Keyword.get(Application.get_env(:ash, :policies, []), :show_policy_breakdowns?, false)
   end
 
-  @doc "Whether or not Ash policy authorizer is configured to log policy breakdowns"
+  @doc "The log level at which Ash policy authorizer logs policy breakdowns. Defaults to none."
   def log_policy_breakdowns do
     Application.get_env(:ash, :policies)[:log_policy_breakdowns]
   end
 
-  @doc "Whether or not Ash policy authorizer is configured to log successful policy breakdowns"
+  @doc "The log level at which Ash policy authorizer logs successful policy breakdowns. Defaults to none."
   def log_successful_policy_breakdowns do
     Application.get_env(:ash, :policies)[:log_successful_policy_breakdowns]
   end
