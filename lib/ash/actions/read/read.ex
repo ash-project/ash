@@ -172,7 +172,6 @@ defmodule Ash.Actions.Read do
       end
 
     initial_query = query
-
     query = add_field_level_auth(query, query.domain, opts)
 
     query = %{

@@ -10,6 +10,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :context,
     :description,
     :filter,
+    :limit,
     :sort,
     :default_sort,
     :read_action,
@@ -49,6 +50,7 @@ defmodule Ash.Resource.Relationships.HasMany do
           filterable?: boolean,
           sortable?: true,
           source_attribute: atom,
+          limit: integer,
           sort: Keyword.t() | nil,
           default_sort: Keyword.t() | nil,
           description: String.t(),
@@ -64,11 +66,18 @@ defmodule Ash.Resource.Relationships.HasMany do
                 [
                   manual(),
                   no_attributes()
-                ],
+                ] ++
+                  [
+                    limit: [
+                      type: :integer,
+                      doc: """
+                      An integer to limit entries from loaded relationship.
+                      """
+                    ]
+                  ],
                 @global_opts,
                 "Relationship Options"
               )
-
   @doc false
   def opt_schema, do: @opt_schema
 
