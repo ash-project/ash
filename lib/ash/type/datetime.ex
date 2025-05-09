@@ -17,6 +17,8 @@ defmodule Ash.Type.DateTime do
   @moduledoc """
   Represents a datetime, with configurable precision and timezone.
 
+  A builtin type that can be referenced via `:datetime`
+
   ### Constraints
 
   #{Spark.Options.docs(@constraints)}

@@ -1,13 +1,40 @@
 defmodule Ash.Type.Time do
+  @constraints [
+    precision: [
+      type: {:one_of, [:microsecond, :second]},
+      default: :second
+    ]
+  ]
   @moduledoc """
-  Represents a time in the database
+  Represents a time in the database, with a 'second' precision
 
   A builtin type that can be referenced via `:time`
+
+  ### Constraints
+
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 
   @impl true
-  def storage_type(_), do: :time
+  def constraints, do: @constraints
+
+  @impl true
+  def init(constraints) do
+    {precision, constraints} = Keyword.pop(constraints, :precision)
+    precision = precision || :second
+    {:ok, [{:precision, precision} | constraints]}
+  end
+
+  @impl true
+  @spec storage_type(nonempty_maybe_improper_list()) :: any()
+  def storage_type([{:precision, :microsecond} | _]) do
+    :time_usec
+  end
+
+  def storage_type(_constraints) do
+    :time
+  end
 
   @impl true
   def generator(_constraints) do
@@ -19,8 +46,30 @@ defmodule Ash.Type.Time do
   @impl true
   def cast_input(nil, _), do: {:ok, nil}
 
-  def cast_input(value, _) do
-    Ecto.Type.cast(:time, value)
+  def cast_input(
+        %Time{microsecond: {_, _} = microseconds} = time,
+        [{:precision, :second} | _] = constraints
+      )
+      when microseconds != {0, 0} do
+    cast_input(%{time | microsecond: {0, 0}}, constraints)
+  end
+
+  def cast_input(
+        %Time{microsecond: {0, 0}} = time,
+        [{:precision, :microsecond} | _] = constraints
+      ) do
+    cast_input(%{time | microsecond: {0, 6}}, constraints)
+  end
+
+  def cast_input(
+        %Time{microsecond: nil} = time,
+        [{:precision, :microsecond} | _] = constraints
+      ) do
+    cast_input(%{time | microsecond: {0, 6}}, constraints)
+  end
+
+  def cast_input(value, constraints) do
+    Ecto.Type.cast(storage_type(constraints), value)
   end
 
   @impl true
@@ -39,16 +88,16 @@ defmodule Ash.Type.Time do
     cast_input(value, constraints)
   end
 
-  def cast_stored(value, _) do
-    Ecto.Type.load(:time, value)
+  def cast_stored(value, constraints) do
+    Ecto.Type.load(storage_type(constraints), value)
   end
 
   @impl true
 
   def dump_to_native(nil, _), do: {:ok, nil}
 
-  def dump_to_native(value, _) do
-    Ecto.Type.dump(:time, value)
+  def dump_to_native(value, constraints) do
+    Ecto.Type.dump(storage_type(constraints), value)
   end
 end
 

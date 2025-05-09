@@ -48,6 +48,7 @@ defmodule Ash.Type do
     binary: Ash.Type.Binary,
     date: Ash.Type.Date,
     time: Ash.Type.Time,
+    time_usec: Ash.Type.TimeUsec,
     decimal: Ash.Type.Decimal,
     ci_string: Ash.Type.CiString,
     naive_datetime: Ash.Type.NaiveDatetime,
