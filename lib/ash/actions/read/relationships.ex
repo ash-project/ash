@@ -314,7 +314,7 @@ defmodule Ash.Actions.Read.Relationships do
           relationship.cardinality == :one && Map.get(relationship, :from_many?) ->
             Ash.Query.limit(query, 1)
 
-          relationship.cardinality == :many && Map.get(relationship, :limit) ->
+          Map.get(relationship, :limit) ->
             Ash.Query.limit(query, relationship.limit)
 
           true ->
