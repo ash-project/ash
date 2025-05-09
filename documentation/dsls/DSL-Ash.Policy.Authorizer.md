@@ -110,11 +110,11 @@ want to add an `authorize_if always()` at the bottom of your policy, like so:
 
 ```elixir
 policy action_type(:read) do
-  forbid_if not_logged_in()
-  forbid_if user_is_denylisted()
-  forbid_if user_is_in_denylisted_group()
+forbid_if not_logged_in()
+forbid_if user_is_denylisted()
+forbid_if user_is_in_denylisted_group()
 
-  authorize_if always()
+authorize_if always()
 end
 ```
 
