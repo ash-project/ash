@@ -85,22 +85,8 @@ if Code.ensure_loaded?(Igniter) do
                        [1, 2],
                        &Igniter.Code.Function.argument_equals?(&1, 0, resource)
                      ) do
-                case Igniter.Code.Common.move_to_do_block(zipper) do
-                  {:ok, zipper} ->
-                    case Igniter.Code.Function.move_to_function_call_in_current_scope(
-                           zipper,
-                           :define,
-                           [1, 2],
-                           &Igniter.Code.Function.argument_equals?(&1, 0, name)
-                         ) do
-                      {:ok, _} ->
-                        {:ok, zipper}
-
-                      :error ->
-                        {:ok, Igniter.Code.Common.add_code(zipper, definition, placement: :after)}
-                    end
-
-                  :error ->
+                cond do
+                  Igniter.Code.Function.function_call?(zipper, :resource, 1) ->
                     {:ok,
                      Igniter.Code.Common.replace_code(
                        zipper,
@@ -110,6 +96,23 @@ if Code.ensure_loaded?(Igniter) do
                        end
                        """)
                      )}
+
+                  Igniter.Code.Function.function_call?(zipper, :resource, 2) ->
+                    with {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
+                      case Igniter.Code.Function.move_to_function_call_in_current_scope(
+                             zipper,
+                             :define,
+                             [1, 2],
+                             &Igniter.Code.Function.argument_equals?(&1, 0, name)
+                           ) do
+                        {:ok, _} ->
+                          {:ok, zipper}
+
+                        :error ->
+                          {:ok,
+                           Igniter.Code.Common.add_code(zipper, definition, placement: :after)}
+                      end
+                    end
                 end
               else
                 _ ->

@@ -111,4 +111,99 @@ defmodule Ash.Resource.IgniterTest do
       |> assert_unchanged()
     end
   end
+
+  describe "add_new_code_interface" do
+    setup do
+      igniter =
+        test_project()
+        |> Map.put(:args, %Igniter.Mix.Task.Args{
+          positional: %{
+            resource: "MyApp.Accounts.User"
+          },
+          options: [
+            domain: "MyApp.Accounts",
+            default_actions: ~w[create read update destroy],
+            uuid_primary_key: "id",
+            attribute: ["name:string:required:public"],
+            relationship: [],
+            extend: []
+          ]
+        })
+        |> Mix.Tasks.Ash.Gen.Resource.igniter()
+        |> apply_igniter!()
+
+      %{igniter: igniter}
+    end
+
+    test "add_new_code_interface adds a new code interface to existing resource", %{
+      igniter: igniter
+    } do
+      igniter
+      |> Ash.Domain.Igniter.add_new_code_interface(
+        MyApp.Accounts,
+        MyApp.Accounts.User,
+        :create,
+        "define :create, action: :create"
+      )
+      |> assert_has_patch("lib/my_app/accounts.ex", """
+      - |    resource(MyApp.Accounts.User)
+      + |    resource(MyApp.Accounts.User) do
+      + |      define(:create, action: :create)
+      + |    end
+      """)
+    end
+
+    test "add_new_code_interface appends a new code interface to existing resource with code interface",
+         %{
+           igniter: igniter
+         } do
+      igniter =
+        igniter
+        |> Ash.Domain.Igniter.add_new_code_interface(
+          MyApp.Accounts,
+          MyApp.Accounts.User,
+          :create,
+          "define :create, action: :create"
+        )
+        |> apply_igniter!()
+
+      igniter
+      |> Ash.Domain.Igniter.add_new_code_interface(
+        MyApp.Accounts,
+        MyApp.Accounts.User,
+        :update,
+        "define :update, action: :update"
+      )
+      |> assert_has_patch("lib/my_app/accounts.ex", """
+        |    resource(MyApp.Accounts.User) do
+        |      define(:create, action: :create)
+      + |      define(:update, action: :update)
+        |    end
+      """)
+    end
+
+    test "add_new_code_interface appends doesnt add code interface when one already exists",
+         %{
+           igniter: igniter
+         } do
+      igniter =
+        igniter
+        |> Ash.Domain.Igniter.add_new_code_interface(
+          MyApp.Accounts,
+          MyApp.Accounts.User,
+          :create,
+          "define :create, action: :create"
+        )
+        |> apply_igniter!()
+
+      igniter
+      |> Ash.Domain.Igniter.add_new_code_interface(
+        MyApp.Accounts,
+        MyApp.Accounts.User,
+        :create,
+        "define :create, action: :create"
+      )
+      |> assert_unchanged()
+    end
+  end
 end
