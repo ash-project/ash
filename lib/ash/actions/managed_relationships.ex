@@ -494,7 +494,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.create(return_notifications?: true)
     |> case do
       {:ok, created, notifications} ->
-        if opts[:debug?], do: Logger.debug("CREATE: #{created.id}.")
+        debug_log(relationship.destination, changeset, :create, :ok, created, opts[:debug?])
 
         changeset =
           changeset
@@ -513,7 +513,7 @@ defmodule Ash.Actions.ManagedRelationships do
          {changeset, %{instructions | notifications: instructions.notifications ++ notifications}}}
 
       {:error, error} ->
-        if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+        debug_log(relationship.destination, changeset, :create, :error, nil, opts[:debug?])
 
         {:halt,
          {Ash.Changeset.add_error(changeset, error, [opts[:meta][:id] || relationship.name]),
@@ -914,7 +914,14 @@ defmodule Ash.Actions.ManagedRelationships do
                 end
                 |> case do
                   {:ok, found} when not is_nil(found) ->
-                    if opts[:debug?], do: Logger.debug("READ: found record #{found.id}},")
+                    debug_log(
+                      relationship.destination,
+                      changeset,
+                      :read,
+                      :ok,
+                      found,
+                      opts[:debug?]
+                    )
 
                     do_handle_found(
                       relationship,
@@ -987,11 +994,27 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.update(return_notifications?: true)
                 |> case do
                   {:ok, updated, notifications} ->
-                    if opts[:debug?], do: Logger.debug("UPDATE: #{updated.id}.")
+                    debug_log(
+                      relationship.destination,
+                      changeset,
+                      :update,
+                      :ok,
+                      updated,
+                      opts[:debug?]
+                    )
+
                     {:ok, [updated | current_value], notifications}
 
                   {:error, error} ->
-                    if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+                    debug_log(
+                      relationship.destination,
+                      changeset,
+                      :update,
+                      :error,
+                      found,
+                      opts[:debug?]
+                    )
+
                     {:error, error}
                 end
 
@@ -1072,8 +1095,7 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.create(return_notifications?: true)
         |> case do
           {:ok, created, notifications} ->
-            if opts[:debug?],
-              do: Logger.debug("CREATED: #{created.id}. Attempting to `#{key}`.")
+            debug_log(relationship.through, changeset, :create, :ok, created, opts[:debug?])
 
             case key do
               :relate ->
@@ -1092,17 +1114,16 @@ defmodule Ash.Actions.ManagedRelationships do
                        opts
                      ) do
                   {:ok, new_value, update_notifications} ->
-                    if opts[:debug?], do: Logger.debug("RELATE AND UPDATE: #{new_value.id}.")
                     {:ok, new_value, update_notifications ++ notifications}
 
                   {:error, error} ->
-                    if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
                     {:error, error}
                 end
             end
 
           {:error, error} ->
-            if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+            debug_log(relationship.through, changeset, :create, :error, nil, opts[:debug?])
+
             {:error, error}
         end
 
@@ -1148,11 +1169,13 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.update(return_notifications?: true)
         |> case do
           {:ok, updated, notifications} ->
-            if opts[:debug?], do: Logger.debug("UPDATE: #{updated.id}.")
+            debug_log(relationship.destination, changeset, :update, :ok, updated, opts[:debug?])
+
             {:ok, [updated | current_value], notifications}
 
           {:error, error} ->
-            if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+            debug_log(relationship.destination, changeset, :update, :error, found, opts[:debug?])
+
             {:error, error}
         end
 
@@ -1224,11 +1247,27 @@ defmodule Ash.Actions.ManagedRelationships do
 
             case created do
               {:ok, created, notifications} ->
-                if opts[:debug?], do: Logger.debug("CREATE: #{created.id}.")
+                debug_log(
+                  relationship.destination,
+                  changeset,
+                  :create,
+                  :ok,
+                  created,
+                  opts[:debug?]
+                )
+
                 {:ok, [created | current_value], notifications}
 
               {:error, error} ->
-                if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+                debug_log(
+                  relationship.destination,
+                  changeset,
+                  :create,
+                  :error,
+                  nil,
+                  opts[:debug?]
+                )
+
                 {:error, error}
             end
 
@@ -1284,8 +1323,14 @@ defmodule Ash.Actions.ManagedRelationships do
 
         case created do
           {:ok, created, regular_notifications} ->
-            if opts[:debug?],
-              do: Logger.debug("CREATE: #{created.id}. Attempting to join through.")
+            debug_log(
+              relationship.destination,
+              changeset,
+              :create,
+              :ok,
+              created,
+              opts[:debug?]
+            )
 
             join_relationship =
               Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
@@ -1317,16 +1362,19 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.create(return_notifications?: true)
             |> case do
               {:ok, join_row, notifications} ->
-                if opts[:debug?], do: Logger.debug("CREATE: #{join_row.id}.")
+                debug_log(relationship.through, changeset, :create, :ok, join_row, opts[:debug?])
+
                 {:ok, [created | current_value], regular_notifications ++ notifications}
 
               {:error, error} ->
-                if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+                debug_log(relationship.through, changeset, :create, :error, nil, opts[:debug?])
+
                 {:error, error}
             end
 
           {:error, error} ->
-            if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+            debug_log(relationship.destination, changeset, :create, :error, nil, opts[:debug?])
+
             {:error, error}
         end
 
@@ -1376,11 +1424,9 @@ defmodule Ash.Actions.ManagedRelationships do
                relationship
              ) do
           {:ok, notifications} ->
-            if opts[:debug?], do: Logger.debug("DESTROY: #{source_record.id}.")
             {:ok, current_value, notifications}
 
           {:error, error} ->
-            if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
             {:error, error}
         end
 
@@ -1444,12 +1490,13 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.update(return_notifications?: true)
         |> case do
           {:ok, updated, update_notifications} ->
-            if opts[:debug?], do: Logger.debug("UPDATE: #{updated.id}.")
+            debug_log(relationship.destination, changeset, :update, :ok, updated, opts[:debug?])
 
             {:ok, [updated | current_value], update_notifications}
 
           {:error, error} ->
-            if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+            debug_log(relationship.destination, changeset, :update, :error, match, opts[:debug?])
+
             {:error, error}
         end
 
@@ -1499,7 +1546,8 @@ defmodule Ash.Actions.ManagedRelationships do
 
         case update_result do
           {:ok, updated, update_notifications} ->
-            if opts[:debug?], do: Logger.debug("UPDATE: #{updated.id}. Attempting to read.")
+            debug_log(relationship.destination, changeset, :update, :ok, updated, opts[:debug?])
+
             destination_value = Map.get(updated, relationship.destination_attribute)
 
             join_relationship =
@@ -1525,8 +1573,7 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> case do
               {:ok, result} ->
-                if opts[:debug?],
-                  do: Logger.debug("READ: #{result.id}. Attempting to update join.")
+                debug_log(relationship.through, changeset, :read, :ok, result, opts[:debug?])
 
                 join_relationship =
                   Ash.Resource.Info.relationship(
@@ -1553,23 +1600,40 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.update(return_notifications?: true)
                 |> case do
                   {:ok, updated_join, join_update_notifications} ->
-                    if opts[:debug?], do: Logger.debug("UPDATE: #{updated_join.id}")
+                    debug_log(
+                      relationship.through,
+                      changeset,
+                      :update,
+                      :ok,
+                      updated_join,
+                      opts[:debug?]
+                    )
 
                     {:ok, [updated | current_value],
                      update_notifications ++ join_update_notifications}
 
                   {:error, error} ->
-                    if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+                    debug_log(
+                      relationship.through,
+                      changeset,
+                      :update,
+                      :error,
+                      result,
+                      opts[:debug?]
+                    )
+
                     {:error, error}
                 end
 
               {:error, error} ->
-                if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+                debug_log(relationship.through, changeset, :read, :error, nil, opts[:debug?])
+
                 {:error, error}
             end
 
           {:error, error} ->
-            if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+            debug_log(relationship.destination, changeset, :update, :error, match, opts[:debug?])
+
             {:error, error}
         end
     end
@@ -1713,8 +1777,7 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> case do
               {:ok, result} ->
-                if opts[:debug?],
-                  do: Logger.debug("READ: #{result.id}. Attempting to destroy join.")
+                debug_log(relationship.through, changeset, :read, :ok, result, opts[:debug?])
 
                 result
                 |> Ash.Changeset.new()
@@ -1736,10 +1799,18 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.destroy(return_notifications?: true)
                 |> case do
                   {:ok, join_notifications} ->
-                    if opts[:debug?], do: Logger.debug("DESTROY: #{result.id}.")
+                    debug_log(
+                      relationship.through,
+                      changeset,
+                      :destroy,
+                      :ok,
+                      result,
+                      opts[:debug?]
+                    )
 
                     destroy_destination(
                       record,
+                      changeset,
                       relationship,
                       action_name,
                       join_notifications ++ all_notifications,
@@ -1751,11 +1822,19 @@ defmodule Ash.Actions.ManagedRelationships do
                       opts[:debug?]
                     )
 
-                  {:ok, destroyed_join_record, join_notifications} ->
-                    if opts[:debug?], do: Logger.debug("DESTROY: #{destroyed_join_record.id}.")
+                  {:ok, _destroyed_join_record, join_notifications} ->
+                    debug_log(
+                      relationship.through,
+                      changeset,
+                      :destroy,
+                      :ok,
+                      record,
+                      opts[:debug?]
+                    )
 
                     destroy_destination(
                       record,
+                      changeset,
                       relationship,
                       action_name,
                       join_notifications ++ all_notifications,
@@ -1768,12 +1847,21 @@ defmodule Ash.Actions.ManagedRelationships do
                     )
 
                   {:error, error} ->
-                    if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+                    debug_log(
+                      relationship.through,
+                      changeset,
+                      :destroy,
+                      :error,
+                      record,
+                      opts[:debug?]
+                    )
+
                     {:halt, {:error, error}}
                 end
 
               {:error, error} ->
-                if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+                debug_log(relationship.through, changeset, :read, :error, nil, opts[:debug?])
+
                 {:halt, {:error, error}}
             end
 
@@ -1793,15 +1881,39 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.destroy(return_notifications?: true)
             |> case do
               {:ok, notifications} ->
-                if opts[:debug?], do: Logger.debug("DESTROY: #{record.id}.")
+                debug_log(
+                  relationship.destination,
+                  changeset,
+                  :destroy,
+                  :ok,
+                  record,
+                  opts[:debug?]
+                )
+
                 {:cont, {:ok, current_value, notifications ++ all_notifications}}
 
-              {:ok, soft_destroyed_record, notifications} ->
-                if opts[:debug?], do: Logger.debug("DESTROY: #{soft_destroyed_record.id}.")
+              {:ok, _soft_destroyed_record, notifications} ->
+                debug_log(
+                  relationship.destination,
+                  changeset,
+                  :destroy,
+                  :ok,
+                  record,
+                  opts[:debug?]
+                )
+
                 {:cont, {:ok, current_value, notifications ++ all_notifications}}
 
               {:error, error} ->
-                if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+                debug_log(
+                  relationship.destination,
+                  changeset,
+                  :destroy,
+                  :error,
+                  record,
+                  opts[:debug?]
+                )
+
                 {:halt, {:error, error}}
             end
 
@@ -1837,6 +1949,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
   defp destroy_destination(
          record,
+         changeset,
          relationship,
          action_name,
          notifications,
@@ -1862,15 +1975,18 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.destroy(return_notifications?: true)
     |> case do
       {:ok, destroy_destination_notifications} ->
-        if debug?, do: Logger.debug("DESTROY: #{record.id}.")
+        debug_log(relationship.destination, changeset, :destroy, :ok, record, debug?)
+
         {:cont, {:ok, current_value, notifications ++ destroy_destination_notifications}}
 
-      {:ok, destroyed_destination, destroy_destination_notifications} ->
-        if debug?, do: Logger.debug("DESTROY: #{destroyed_destination.id}.")
+      {:ok, _destroyed_destination, destroy_destination_notifications} ->
+        debug_log(relationship.destination, changeset, :destroy, :ok, record, debug?)
+
         {:cont, {:ok, current_value, notifications ++ destroy_destination_notifications}}
 
       {:error, error} ->
-        if debug?, do: Logger.debug("ERROR: #{inspect(error)}.")
+        debug_log(relationship.destination, changeset, :destroy, :error, record, debug?)
+
         {:halt, {:error, error}}
     end
   end
@@ -1911,7 +2027,7 @@ defmodule Ash.Actions.ManagedRelationships do
     )
     |> case do
       {:ok, result} ->
-        if opts[:debug?], do: Logger.debug("READ: #{result.id}. Attempting to destroy.")
+        debug_log(relationship.through, changeset, :read, :ok, result, opts[:debug?])
 
         result
         |> Ash.Changeset.new()
@@ -1928,16 +2044,18 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.destroy(return_notifications?: true)
         |> case do
           {:ok, notifications} ->
-            if opts[:debug?], do: Logger.debug("DESTROY: #{result.id}.")
+            debug_log(relationship.through, changeset, :destroy, :ok, result, opts[:debug?])
+
             {:ok, notifications}
 
           {:error, error} ->
-            if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+            debug_log(relationship.through, changeset, :destroy, :error, result, opts[:debug?])
+
             {:error, error}
         end
 
       {:error, error} ->
-        if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+        debug_log(relationship.source, changeset, :read, :error, nil, opts[:debug?])
         {:error, error}
     end
   end
@@ -1971,11 +2089,12 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.update(return_notifications?: true)
     |> case do
       {:ok, unrelated, notifications} ->
-        if opts[:debug?], do: Logger.debug("UPDATE: #{unrelated.id}.")
+        debug_log(relationship.destination, changeset, :update, :ok, unrelated, opts[:debug?])
         {:ok, notifications}
 
       {:error, error} ->
-        if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+        debug_log(relationship.destination, changeset, :update, :error, record, opts[:debug?])
+
         {:error, error}
     end
   end
@@ -2028,7 +2147,7 @@ defmodule Ash.Actions.ManagedRelationships do
     )
     |> case do
       {:ok, result} ->
-        if opts[:debug?], do: Logger.debug("READ: #{result.id}. Attempting to destroy.")
+        debug_log(relationship.through, changeset, :read, :ok, result, opts[:debug?])
 
         result
         |> Ash.Changeset.new()
@@ -2045,16 +2164,18 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.destroy(return_notifications?: true)
         |> case do
           {:ok, notifications} ->
-            if opts[:debug?], do: Logger.debug("DESTROY: #{result.id}.")
+            debug_log(relationship.through, changeset, :destroy, :ok, result, opts[:debug?])
+
             {:ok, notifications}
 
           {:error, error} ->
-            if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+            debug_log(relationship.through, changeset, :destroy, :error, result, opts[:debug?])
+
             {:error, error}
         end
 
       {:error, error} ->
-        if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+        debug_log(relationship.source, changeset, :read, :error, nil, opts[:debug?])
         {:error, error}
     end
   end
@@ -2086,12 +2207,28 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.destroy(return_notifications?: true)
     |> case do
       {:ok, notifications} ->
-        if opts[:debug?], do: Logger.debug("DESTROY: #{record.id}.")
+        debug_log(relationship.destination, changeset, :destroy, :ok, record, opts[:debug?])
         {:ok, notifications}
 
       {:error, error} ->
-        if opts[:debug?], do: Logger.debug("ERROR: #{inspect(error)}.")
+        debug_log(relationship.source, changeset, :destroy, :error, record, opts[:debug?])
         {:error, error}
+    end
+  end
+
+  defp debug_log(resource, changeset, action, response, record, debug?) do
+    if debug? do
+      identifier = if is_struct(record), do: Map.get(record, :id, record.__struct__), else: ""
+      action = action |> Atom.to_string() |> String.capitalize()
+
+      message =
+        case response do
+          :ok -> "#{action} success #{inspect(identifier)}"
+          _ -> "Failed to #{action} #{inspect(identifier)}"
+        end
+
+      log = "#{inspect(resource)}.#{changeset.action.name}: #{message}"
+      Logger.debug("Managed Relationship Debug, #{log}.")
     end
   end
 end
