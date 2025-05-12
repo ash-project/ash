@@ -1383,10 +1383,7 @@ defmodule Ash.Type do
     type = get_type(type)
 
     if type.handle_change?() || type.prepare_change?() || Ash.Expr.expr?(term) do
-      with {:ok, value} <-
-             maybe_cast_input(type, term, constraints) do
-        type.cast_atomic(value, constraints)
-      end
+      type.cast_atomic(term, constraints)
     else
       with {:ok, v} <- Ash.Type.cast_input(type, term, constraints) do
         apply_constraints(type, v, constraints)
