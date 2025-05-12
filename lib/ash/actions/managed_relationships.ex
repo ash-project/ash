@@ -2322,7 +2322,12 @@ defmodule Ash.Actions.ManagedRelationships do
             ash_error = Ash.Error.to_ash_error(error)
             stacktrace = ash_error.stacktrace && ash_error.stacktrace.stacktrace
             error = Exception.format(:error, ash_error, stacktrace)
-            "Failed to #{action} #{inspect(identifier)}, #{error}"
+
+            """
+            Failed to #{action} #{inspect(identifier)}
+
+            #{error}
+            """
 
           _ ->
             "#{action} #{inspect(identifier)}"
