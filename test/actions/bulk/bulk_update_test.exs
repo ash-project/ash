@@ -111,6 +111,34 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule Address do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: :embedded
+
+    attributes do
+      attribute :line1, :string, allow_nil?: false, public?: true
+      attribute :line2, :string, allow_nil?: true, public?: true
+      attribute :city, :string, allow_nil?: false, public?: true
+      attribute :state, :string, allow_nil?: false, public?: true
+      attribute :zip_code, :string, allow_nil?: false, public?: true
+      attribute :country, :string, allow_nil?: false, public?: true
+    end
+  end
+
+  defmodule Contact do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: :embedded
+
+    # actions do
+    #   defaults [:read, :create, :update, :destroy]
+    # end
+
+    attributes do
+      attribute :email, :string, allow_nil?: false, public?: true
+      attribute :address, Address, allow_nil?: false, public?: true
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -128,7 +156,11 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       uuid_primary_key :id
 
       attribute :name, :string do
-        public?(true)
+        public? true
+      end
+
+      attribute :contact, Contact do
+        public? true
       end
     end
 
@@ -1519,6 +1551,39 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                before: nil,
                after: ^keyset
              } = tag.related_tags
+    end
+  end
+
+  describe "embedded attribute update" do
+    test "allows partially updating an embedded attribute" do
+      address = %{
+        line1: "123 Memory Lane",
+        city: "Springfield",
+        state: "NY",
+        zip_code: "06101",
+        country: "US"
+      }
+
+      contact = %{
+        email: "ashley@example.com",
+        address: address
+      }
+
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "Name", contact: contact})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{records: [author], error_count: 0, errors: []} =
+               Ash.bulk_update!([author], :update, %{contact: %{email: "brooklyn@example.com"}},
+                 resource: Author,
+                 strategy: :stream,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert author.contact.email == "brooklyn@example.com"
     end
   end
 end
