@@ -172,7 +172,6 @@ defmodule Ash.Actions.Read do
       end
 
     initial_query = query
-
     query = add_field_level_auth(query, query.domain, opts)
 
     query = %{
@@ -3371,7 +3370,7 @@ defmodule Ash.Actions.Read do
 
       query.filter && query.filter.expression == false ->
         Logger.debug("""
-        #{inspect(query.resource)} #{inspect(query.action)}: skipped query run due to filter being false"
+        #{inspect(query.resource)}.#{query.action.name}: skipped query run due to filter being false"
         """)
 
         {:ok, []}
@@ -3410,7 +3409,7 @@ defmodule Ash.Actions.Read do
 
       query.filter && query.filter.expression == false ->
         Logger.debug("""
-        #{inspect(query.resource)} #{inspect(query.action)}: skipped query run due to filter being false"
+        #{inspect(query.resource)}.#{query.action.name}: skipped query run due to filter being false"
         """)
 
         {:ok, []}
@@ -3471,7 +3470,7 @@ defmodule Ash.Actions.Read do
 
       query.filter && query.filter.expression == false ->
         Logger.debug("""
-        #{inspect(query.resource)} #{inspect(query.action)}: skipped query run due to filter being false"
+        #{inspect(query.resource)}.#{query.action.name}: skipped query run due to filter being false"
         """)
 
         {:ok, []}

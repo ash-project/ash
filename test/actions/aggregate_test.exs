@@ -36,6 +36,8 @@ defmodule Ash.Test.Actions.AggregateTest do
       attribute :thing3, :integer do
         public?(true)
       end
+
+      create_timestamp :created_at
     end
 
     relationships do
@@ -159,6 +161,12 @@ defmodule Ash.Test.Actions.AggregateTest do
 
     relationships do
       has_many :comments, Comment do
+        public?(true)
+      end
+
+      has_many :latest_comments, Comment do
+        limit(2)
+        sort created_at: :desc
         public?(true)
       end
     end
@@ -320,6 +328,30 @@ defmodule Ash.Test.Actions.AggregateTest do
                Ash.load!(post, [:count_of_comments, :count_of_comments_unauthorized],
                  authorize?: true
                )
+    end
+
+    test "loads relationship with limit" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
+        |> Ash.create!(authorize?: false)
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: true})
+      |> Ash.create!(authorize?: false)
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: false})
+      |> Ash.create!(authorize?: false)
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: false})
+      |> Ash.create!(authorize?: false)
+
+      assert %{latest_comments: latest_comments} =
+               Ash.load!(post, [:latest_comments], authorize?: false)
+
+      assert 2 == Enum.count(latest_comments)
     end
 
     test "join filters are applied" do
