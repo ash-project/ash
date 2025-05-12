@@ -11,18 +11,7 @@ defmodule Ash.Query.Operator.Basic do
     times: [
       symbol: :*,
       no_nils: true,
-      evaluate_types: :numbers,
-      types: [
-        [:float, :float],
-        [:decimal, :decimal],
-        [:float, :decimal],
-        [:decimal, :float],
-        [:integer, :integer],
-        [:integer, :float],
-        [:integer, :decimal],
-        [:float, :integer],
-        [:decimal, :integer]
-      ]
+      evaluate_types: :numbers
     ],
     minus: [
       symbol: :-,
