@@ -285,7 +285,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
 
       update :update_with_match do
-        validate match(:title4, ~r/^[a-z]+$/)
+        validate match(:title4, ~r/^[a-z]+$/), message: "Title must be lowercase"
       end
 
       update :update_with_filter do
@@ -960,7 +960,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
   test "runs match validation with atomic_batches strategy" do
     assert %Ash.BulkResult{
-             error_count: 1
+             error_count: 1,
+             errors: [
+               %{errors: [%{field: :title4, message: "Title must be lowercase"}]}
+             ]
            } =
              Ash.bulk_create!([%{title: "title1"}], Post, :create,
                return_stream?: true,
