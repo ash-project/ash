@@ -63,6 +63,10 @@ defmodule Ash.ActionInput do
       doc: "Context to set on the action input.",
       default: %{}
     ],
+    params: [
+      type: :map,
+      doc: "Parameters to supply."
+    ],
     authorize?: [
       type: {:or, [:boolean, {:literal, nil}]},
       doc:
