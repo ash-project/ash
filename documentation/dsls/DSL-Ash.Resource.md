@@ -542,6 +542,7 @@ end
 |------|------|---------|------|
 | [`manual`](#relationships-has_many-manual){: #relationships-has_many-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. |
 | [`no_attributes?`](#relationships-has_many-no_attributes?){: #relationships-has_many-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
+| [`limit`](#relationships-has_many-limit){: #relationships-has_many-limit } | `integer` |  | An integer to limit entries from loaded relationship. |
 | [`description`](#relationships-has_many-description){: #relationships-has_many-description } | `String.t` |  | An optional description for the relationship |
 | [`destination_attribute`](#relationships-has_many-destination_attribute){: #relationships-has_many-destination_attribute } | `atom` |  | The attribute on the related resource that should match the `source_attribute` configured on this resource. |
 | [`validate_destination_attribute?`](#relationships-has_many-validate_destination_attribute?){: #relationships-has_many-validate_destination_attribute? } | `boolean` | `true` | Whether or not to validate that the destination field exists on the destination resource |

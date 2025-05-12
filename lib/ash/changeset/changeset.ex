@@ -1363,7 +1363,10 @@ defmodule Ash.Changeset do
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
             cond do
               attribute.name in action.accept ->
-                {:cont, atomic_update(changeset, attribute.name, value)}
+                case try_atomic_update(changeset, attribute.name, value) do
+                  {:not_atomic, error} -> {:halt, {:not_atomic, error}}
+                  changeset -> {:cont, changeset}
+                end
 
               :* in List.wrap(opts[:skip_unknown_inputs]) ->
                 {:cont, changeset}
@@ -1882,6 +1885,14 @@ defmodule Ash.Changeset do
   end
 
   def atomic_update(changeset, key, value) do
+    do_atomic_update(changeset, key, value)
+  end
+
+  defp try_atomic_update(changeset, key, value) do
+    do_atomic_update(changeset, key, value, true)
+  end
+
+  defp do_atomic_update(changeset, key, value, return_not_atomic? \\ false) do
     attribute =
       Ash.Resource.Info.attribute(changeset.resource, key) ||
         raise "Unknown attribute `#{inspect(changeset.resource)}.#{inspect(key)}`"
@@ -1930,10 +1941,17 @@ defmodule Ash.Changeset do
         add_invalid_errors(value, :attribute, changeset, attribute, error)
 
       {:not_atomic, message} ->
-        add_error(
-          changeset,
-          "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
-        )
+        if return_not_atomic? do
+          {:not_atomic, message}
+        else
+          add_error(
+            changeset,
+            Ash.Error.Unknown.UnknownError.exception(
+              error:
+                "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
+            )
+          )
+        end
     end
   end
 

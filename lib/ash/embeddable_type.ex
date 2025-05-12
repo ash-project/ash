@@ -562,7 +562,7 @@ defmodule Ash.EmbeddableType do
       def handle_change(old_value, new_value, constraints) do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
-        if Enum.empty?(pkey_fields) ||
+        if constraints[:on_update] == :replace || Enum.empty?(pkey_fields) ||
              Enum.all?(pkey_fields, fn pkey_field ->
                !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
              end) do
@@ -628,65 +628,69 @@ defmodule Ash.EmbeddableType do
       end
 
       def prepare_change(old_value, new_uncasted_value, constraints) do
-        pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
-
-        if Enum.empty?(pkey_fields) ||
-             Enum.all?(pkey_fields, fn pkey_field ->
-               !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
-             end) do
-          action =
-            constraints[:update_action] ||
-              Ash.Resource.Info.primary_action!(__MODULE__, :update).name
-
-          old_value
-          |> Ash.Changeset.new()
-          |> Ash.EmbeddableType.copy_source(constraints)
-          |> Ash.Changeset.for_update(action, new_uncasted_value,
-            domain: ShadowDomain,
-            skip_unknown_inputs: skip_unknown_inputs(constraints)
-          )
-          |> Ash.update()
-          |> case do
-            {:ok, value} -> {:ok, value}
-            {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
-          end
+        if constraints[:on_update] == :replace do
+          {:ok, new_uncasted_value}
         else
-          pkey =
-            Enum.into(pkey_fields, %{}, fn pkey_field ->
-              with {:ok, value} <- fetch_key(new_uncasted_value, pkey_field),
-                   attribute <- Ash.Resource.Info.attribute(__MODULE__, pkey_field),
-                   {:ok, casted} <-
-                     Ash.Type.cast_input(attribute.type, value, attribute.constraints) do
-                {pkey_field, casted}
-              else
-                _ -> {pkey_field, :error}
-              end
-            end)
+          pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
-          if Enum.any?(Map.values(pkey), &(&1 == :error)) do
-            {:ok, new_uncasted_value}
+          if Enum.empty?(pkey_fields) ||
+               Enum.all?(pkey_fields, fn pkey_field ->
+                 !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
+               end) do
+            action =
+              constraints[:update_action] ||
+                Ash.Resource.Info.primary_action!(__MODULE__, :update).name
+
+            old_value
+            |> Ash.Changeset.new()
+            |> Ash.EmbeddableType.copy_source(constraints)
+            |> Ash.Changeset.for_update(action, new_uncasted_value,
+              domain: ShadowDomain,
+              skip_unknown_inputs: skip_unknown_inputs(constraints)
+            )
+            |> Ash.update()
+            |> case do
+              {:ok, value} -> {:ok, value}
+              {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
+            end
           else
-            old_pkey = Map.take(old_value, pkey_fields)
+            pkey =
+              Enum.into(pkey_fields, %{}, fn pkey_field ->
+                with {:ok, value} <- fetch_key(new_uncasted_value, pkey_field),
+                     attribute <- Ash.Resource.Info.attribute(__MODULE__, pkey_field),
+                     {:ok, casted} <-
+                       Ash.Type.cast_input(attribute.type, value, attribute.constraints) do
+                  {pkey_field, casted}
+                else
+                  _ -> {pkey_field, :error}
+                end
+              end)
 
-            if old_pkey == pkey do
-              action =
-                constraints[:update_action] ||
-                  Ash.Resource.Info.primary_action!(__MODULE__, :update).name
-
-              old_value
-              |> Ash.Changeset.new()
-              |> Ash.EmbeddableType.copy_source(constraints)
-              |> Ash.Changeset.for_update(action, new_uncasted_value,
-                domain: ShadowDomain,
-                skip_unknown_inputs: skip_unknown_inputs(constraints)
-              )
-              |> Ash.update()
-              |> case do
-                {:ok, value} -> {:ok, value}
-                {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
-              end
-            else
+            if Enum.any?(Map.values(pkey), &(&1 == :error)) do
               {:ok, new_uncasted_value}
+            else
+              old_pkey = Map.take(old_value, pkey_fields)
+
+              if old_pkey == pkey do
+                action =
+                  constraints[:update_action] ||
+                    Ash.Resource.Info.primary_action!(__MODULE__, :update).name
+
+                old_value
+                |> Ash.Changeset.new()
+                |> Ash.EmbeddableType.copy_source(constraints)
+                |> Ash.Changeset.for_update(action, new_uncasted_value,
+                  domain: ShadowDomain,
+                  skip_unknown_inputs: skip_unknown_inputs(constraints)
+                )
+                |> Ash.update()
+                |> case do
+                  {:ok, value} -> {:ok, value}
+                  {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
+                end
+              else
+                {:ok, new_uncasted_value}
+              end
             end
           end
         end
@@ -700,7 +704,7 @@ defmodule Ash.EmbeddableType do
       alias Ash.EmbeddableType.ShadowDomain
 
       def cast_atomic_array(value, constraints) do
-        with :ok <- check_atomic(value, constraints) do
+        with :ok <- check_atomic(value, constraints, true) do
           case cast_input_array(value, constraints) do
             {:ok, value} ->
               {:atomic, value}
@@ -711,20 +715,23 @@ defmodule Ash.EmbeddableType do
         end
       end
 
-      def check_atomic(value, constraints) do
+      def check_atomic(value, constraints, list? \\ false) do
         if Ash.Expr.expr?(value) do
           {:not_atomic,
            "Embedded attributes do not support atomic updates with expressions, only literal values."}
         else
-          if Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
-               constraints[:on_update] == :replace ||
-               update_action_allows_atomics?(constraints) do
+          with true <- list? and Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)),
+               :ok <- update_action_allows_atomics(constraints) do
             :ok
           else
-            {:not_atomic,
-             """
-             Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`, or the update action accepts all public attributes and has no changes.
-             """}
+            {:not_atomic, msg} ->
+              {:not_atomic, msg}
+
+            _ ->
+              {:not_atomic,
+               """
+               Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`, or the update action accepts all public attributes and has no changes.
+               """}
           end
         end
       end
@@ -732,50 +739,54 @@ defmodule Ash.EmbeddableType do
       def may_support_atomic_update?(constraints) do
         Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
           constraints[:on_update] == :replace ||
-          update_action_allows_atomics?(constraints)
+          :ok == update_action_allows_atomics(constraints)
       end
 
-      defp update_action_allows_atomics?(constraints) do
-        action =
-          case constraints[:update_action] do
-            nil -> Ash.Resource.Info.primary_action!(__MODULE__, :update)
-            action -> Ash.Resource.Info.action(__MODULE__, action)
-          end
+      defp update_action_allows_atomics(constraints) do
+        if constraints[:on_update] == :replace do
+          :ok
+        else
+          action =
+            case constraints[:update_action] do
+              nil -> Ash.Resource.Info.primary_action!(__MODULE__, :update)
+              action -> Ash.Resource.Info.action(__MODULE__, action)
+            end
 
-        if Enum.empty?(action.changes) &&
-             Enum.empty?(Ash.Resource.Info.changes(__MODULE__, action.type)) &&
-             Enum.empty?(Ash.Resource.Info.validations(__MODULE__, action.type)) &&
-             Enum.empty?(Ash.Resource.Info.notifiers(__MODULE__)) &&
-             Enum.empty?(Ash.Resource.Info.relationships(__MODULE__)) do
-          __MODULE__
-          |> Ash.Resource.Info.public_attributes()
-          |> Enum.all?(&(&1.name in action.accept))
-          |> if do
-            :ok
+          if Enum.empty?(action.changes) &&
+               Enum.empty?(Ash.Resource.Info.changes(__MODULE__, action.type)) &&
+               Enum.empty?(Ash.Resource.Info.validations(__MODULE__, action.type)) &&
+               Enum.empty?(Ash.Resource.Info.notifiers(__MODULE__)) &&
+               Enum.empty?(Ash.Resource.Info.relationships(__MODULE__)) do
+            __MODULE__
+            |> Ash.Resource.Info.public_attributes()
+            |> Enum.all?(&(&1.name in action.accept))
+            |> if do
+              :ok
+            else
+              :error
+            end
           else
             :error
           end
-        else
-          :error
-        end
-        |> case do
-          :ok ->
-            :ok
+          |> case do
+            :ok ->
+              :ok
 
-          :error ->
-            {:not_atomic,
-             """
-             Embedded attributes do not support atomic updates unless one of the following is true:
+            :error ->
+              {:not_atomic,
+               """
+               Embedded attributes do not support atomic updates unless one of the following is true:
 
-             - it has no primary key
-             - `constraints[:on_update]` is set to `:replace`
+               - it has no primary key
+               - `constraints[:on_update]` is set to `:replace`
 
-             Or all of the following are true:
+               Or all of the following are true:
 
-             - the update action accepts all public attributes and has no changes
-             - there are no changes or validations on the action
-             - there are no notifiers, or relationships defined on the resource             \"""}
-             """}
+               - the update action accepts all public attributes and has no changes
+               - there are no changes or validations on the action
+               - there are no notifiers, or relationships defined on the resource             \"""}
+               """}
+          end
         end
       end
 
