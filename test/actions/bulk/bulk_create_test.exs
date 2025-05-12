@@ -596,7 +596,12 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       |> Ash.Changeset.for_create(:create, %{})
       |> Ash.create!()
 
-    assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1_stuff", __metadata__: %{tenant: tenant}},
+               %{title: "title2_stuff", __metadata__: %{tenant: tenant}}
+             ]
+           } =
              Ash.bulk_create!(
                [%{title: "title1"}, %{title: "title2"}],
                Post,
@@ -606,6 +611,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                authorize?: false,
                sorted?: true
              )
+
+    assert tenant == org.id
   end
 
   test "accepts arguments" do

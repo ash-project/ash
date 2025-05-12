@@ -1254,6 +1254,15 @@ defmodule Ash.Actions.Create.Bulk do
 
           case result do
             {:ok, result} ->
+              result =
+                if tenant = opts[:tenant] do
+                  Enum.map(result, fn record ->
+                    %{record | __metadata__: Map.put(record.__metadata__, :tenant, tenant)}
+                  end)
+                else
+                  result
+                end
+
               Process.put({:any_success?, ref}, true)
               Ash.Actions.Helpers.select(result, %{resource: resource, select: action_select})
 
