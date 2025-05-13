@@ -2,7 +2,14 @@ defmodule Ash.Test.Query.DefaultSortInRelationshipTest do
   use ExUnit.Case, async: true
 
   defmodule Post do
-    use Ash.Resource, domain: Ash.Test.Query.DefaultSortInRelationshipTest.Domain
+    use Ash.Resource,
+      domain: Ash.Test.Query.DefaultSortInRelationshipTest.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      primary_read_warning?: false
+
+    ets do
+      private? true
+    end
 
     attributes do
       uuid_primary_key :id
@@ -12,9 +19,10 @@ defmodule Ash.Test.Query.DefaultSortInRelationshipTest do
     end
 
     actions do
-      defaults [:create]
+      defaults create: [:title, :published_at, :author_id]
 
       read :read do
+        primary? true
         # sorted by published_at desc
         prepare build(default_sort: [published_at: :desc])
       end
@@ -22,7 +30,14 @@ defmodule Ash.Test.Query.DefaultSortInRelationshipTest do
   end
 
   defmodule Comment do
-    use Ash.Resource, domain: Ash.Test.Query.DefaultSortInRelationshipTest.Domain
+    use Ash.Resource,
+      domain: Ash.Test.Query.DefaultSortInRelationshipTest.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      primary_read_warning?: false
+
+    ets do
+      private? true
+    end
 
     attributes do
       uuid_primary_key :id
@@ -35,9 +50,10 @@ defmodule Ash.Test.Query.DefaultSortInRelationshipTest do
     end
 
     actions do
-      defaults [:create]
+      defaults create: [:body, :created_at, :post_id]
 
       read :read do
+        primary? true
         # sorted by created_at desc
         prepare build(default_sort: [created_at: :desc])
       end
@@ -45,7 +61,14 @@ defmodule Ash.Test.Query.DefaultSortInRelationshipTest do
   end
 
   defmodule Author do
-    use Ash.Resource, domain: Ash.Test.Query.DefaultSortInRelationshipTest.Domain
+    use Ash.Resource,
+      domain: Ash.Test.Query.DefaultSortInRelationshipTest.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      primary_read_warning?: false
+
+    ets do
+      private? true
+    end
 
     attributes do
       uuid_primary_key :id
@@ -59,9 +82,10 @@ defmodule Ash.Test.Query.DefaultSortInRelationshipTest do
     end
 
     actions do
-      defaults [:create]
+      defaults create: [:name]
 
       read :read do
+        primary? true
         # sorted by name asc
         prepare build(default_sort: [name: :asc])
       end
@@ -83,10 +107,10 @@ defmodule Ash.Test.Query.DefaultSortInRelationshipTest do
   describe "default_sort in relationship" do
     test "applies default sort when loading relationship" do
       # Create an author
-      {:ok, author} =
+      author =
         Author
         |> Ash.Changeset.for_create(:create, %{name: "Test Author"})
-        |> Ash.create()
+        |> Ash.create!()
 
       # Create posts with different published dates
       {:ok, post1} =
@@ -130,33 +154,29 @@ defmodule Ash.Test.Query.DefaultSortInRelationshipTest do
         |> Ash.create()
 
       # Create posts with different published dates
-      {:ok, post1} =
+      post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{
           title: "Older Post",
           published_at: ~U[2023-01-01 00:00:00Z],
           author_id: author.id
         })
-        |> Ash.create()
+        |> Ash.create!()
 
-      {:ok, post2} =
+      post2 =
         Post
         |> Ash.Changeset.for_create(:create, %{
           title: "Newer Post",
           published_at: ~U[2023-02-01 00:00:00Z],
           author_id: author.id
         })
-        |> Ash.create()
+        |> Ash.create!()
 
       # Load the author with posts, explicitly sorting by title
-      {:ok, author_with_posts} =
+      author_with_posts =
         Author
         |> Ash.get!(author.id)
-        |> Ash.load(
-          posts: fn query ->
-            Ash.Query.sort(query, :title)
-          end
-        )
+        |> Ash.load!(posts: Ash.Query.sort(Post, :title))
 
       # The posts should be sorted by title asc
       assert length(author_with_posts.posts) == 2
