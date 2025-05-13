@@ -1133,12 +1133,14 @@ defmodule Ash.Policy.Authorizer do
                  context_description: "accessing field in filter"
                ) do
             {:authorized, authorizer} ->
+              log_successful_policy_breakdown(authorizer)
               {true, authorizer}
 
             {:error, _} ->
               {false, authorizer}
 
             {:filter, authorizer, filter} ->
+              log_successful_policy_breakdown(authorizer)
               {filter, authorizer}
 
             {:filter_and_continue, filter, _authorizer} ->
@@ -1223,12 +1225,14 @@ defmodule Ash.Policy.Authorizer do
                    context_description: "selecting or loading fields"
                  ) do
               {:authorized, authorizer} ->
+                log_successful_policy_breakdown(authorizer)
                 {true, authorizer}
 
               {:error, _} ->
                 {false, authorizer}
 
               {:filter, authorizer, filter} ->
+                log_successful_policy_breakdown(authorizer)
                 {filter, authorizer}
 
               {:filter_and_continue, filter, _authorizer} ->
@@ -1564,6 +1568,7 @@ defmodule Ash.Policy.Authorizer do
         :ok
 
       level ->
+        IO.inspect("HERE")
         do_log_successful_policy_breakdown(authorizer, filter, level)
     end
   end
