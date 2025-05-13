@@ -24,6 +24,9 @@ defmodule Ash.Actions.Helpers do
         end
       end)
 
+    batch = batch |> Enum.reverse()
+    must_be_simple = must_be_simple |> Enum.reverse()
+
     context =
       struct(
         Ash.Resource.Change.Context,

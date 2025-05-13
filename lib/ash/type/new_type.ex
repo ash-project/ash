@@ -33,6 +33,8 @@ defmodule Ash.Type.NewType do
 
   @doc "Returns the type that the NewType is a subtype of."
   @callback subtype_of() :: module | atom
+  @doc "Whether or not the type is lazy initialized (so needs to be initialized when fetching constraints)"
+  @callback lazy_init?() :: boolean()
   @doc "Returns the underlying subtype constraints"
   @callback subtype_constraints() :: Keyword.t()
   @doc "Returns the modified NewType constraints"
@@ -73,7 +75,7 @@ defmodule Ash.Type.NewType do
 
   def constraints(type, constraints) do
     if new_type?(type) do
-      if constraints[:lazy_init?] do
+      if type.lazy_init?() do
         constraints = type.subtype_constraints()
 
         if new_type?(type.subtype_of()) do
@@ -188,6 +190,14 @@ defmodule Ash.Type.NewType do
         with {:ok, value} <- unquote(subtype_of).cast_input_array(value, constraints) do
           Ash.Type.apply_constraints({:array, unquote(subtype_of)}, value, items: constraints)
         end
+      end
+
+      if lazy_init? do
+        @impl Ash.Type.NewType
+        def lazy_init?, do: true
+      else
+        @impl Ash.Type.NewType
+        def lazy_init?, do: true
       end
 
       @impl Ash.Type

@@ -132,6 +132,16 @@ defmodule Ash.Test.Sort.SortTest do
       |> Ash.read!()
     end
 
+    test "a string sort can parse calculations" do
+      {:ok, [{%Ash.Query.Calculation{}, :desc_nils_last}]} =
+        Ash.Sort.parse_input(Author, [{"name_and_private_name", {%{}, :desc_nils_last}}])
+
+      assert [{%Ash.Query.Calculation{}, :desc_nils_last}] =
+               Author
+               |> Ash.Query.sort_input([{"name_and_private_name", {%{}, :desc_nils_last}}])
+               |> Map.get(:sort)
+    end
+
     test "a string sort can parse relationships as atoms" do
       {:ok, [{%Ash.Query.Calculation{}, :asc}] = sort} =
         Ash.Sort.parse_input(Post, "author.name_and_private_name": :asc)

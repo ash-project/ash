@@ -235,7 +235,7 @@ defmodule Ash.Error.Forbidden.Policy do
                 ]
             end
 
-          {policies, title}
+          {[], title}
 
         relevant ->
           {relevant, policy_breakdown_title}

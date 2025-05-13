@@ -172,6 +172,7 @@ spark_locals_without_parens = [
   keyset?: 1,
   kind: 1,
   lazy?: 1,
+  limit: 1,
   list: 3,
   list: 4,
   load: 1,

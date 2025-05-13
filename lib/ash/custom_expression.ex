@@ -20,6 +20,8 @@ defmodule Ash.CustomExpression do
     # as that is what Ash will use to run your custom expression in Elixir.
     # This allows us to completely avoid communicating with the database in some cases.
 
+    # Always use a fragment like this to evaluate code in simple data layers. The value you
+    # get here for arguments may be expressions at this point.
     def expression(data_layer, [left, right]) when data_layer in [
       Ash.DataLayer.Ets,
       Ash.DataLayer.Simple
