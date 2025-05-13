@@ -55,9 +55,6 @@ end
 import Ash.Type.Comparable
 
 defcomparable left :: Duration, right :: Duration do
-  cond do
-    to_timeout(left) < to_timeout(right) -> :lt
-    to_timeout(left) > to_timeout(right) -> :gt
-    true -> :eq
-  end
+  now = DateTime.utc_now()
+  DateTime.compare(DateTime.shift(now, left), DateTime.shift(now, right))
 end

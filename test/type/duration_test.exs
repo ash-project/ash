@@ -42,11 +42,17 @@ defmodule Ash.Test.Type.DurationTest do
   end
 
   test "comparable protocol" do
+    year1 = Duration.new!(year: 1)
+    month12 = Duration.new!(month: 12)
+    week1 = Duration.new!(week: 1)
+    day7 = Duration.new!(day: 7)
     hour1 = Duration.new!(hour: 1)
     min60 = Duration.new!(minute: 60)
     min30 = Duration.new!(minute: 30)
-    assert Comp.compare(hour1, min60) == :eq
     assert Comp.compare(hour1, min30) == :gt
     assert Comp.compare(min30, min60) == :lt
+    assert Comp.compare(hour1, min60) == :eq
+    assert Comp.compare(week1, day7) == :eq
+    assert Comp.compare(year1, month12) == :eq
   end
 end
