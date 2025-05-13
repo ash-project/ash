@@ -1414,6 +1414,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     %{
       must_return_records?: must_return_records_for_changes?,
       batch: batch,
+      re_sort?: re_sort?,
       changes: changes
     } =
       Ash.Actions.Update.Bulk.run_action_changes(
@@ -1427,6 +1428,13 @@ defmodule Ash.Actions.Destroy.Bulk do
         opts[:tenant],
         :bulk_destroy
       )
+
+    batch =
+      if re_sort? do
+        Enum.sort_by(batch, & &1.context.bulk_destroy.index)
+      else
+        batch
+      end
 
     {batch, must_be_simple_results} =
       Ash.Actions.Helpers.split_and_run_simple(

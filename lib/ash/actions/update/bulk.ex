@@ -1693,6 +1693,7 @@ defmodule Ash.Actions.Update.Bulk do
     %{
       must_return_records?: must_return_records_for_changes?,
       batch: batch,
+      re_sort?: re_sort?,
       changes: changes
     } =
       run_action_changes(
@@ -1706,6 +1707,13 @@ defmodule Ash.Actions.Update.Bulk do
         opts[:tenant],
         context_key
       )
+
+    batch =
+      if re_sort? do
+        Enum.sort_by(batch, & &1.context[context_key].index)
+      else
+        batch
+      end
 
     {batch, must_be_simple_results} =
       Ash.Actions.Helpers.split_and_run_simple(
@@ -2923,7 +2931,7 @@ defmodule Ash.Actions.Update.Bulk do
 
     Enum.reduce(
       all_changes,
-      %{must_return_records?: false, batch: batch, changes: %{}},
+      %{must_return_records?: false, re_sort?: false, batch: batch, changes: %{}},
       fn
         {%{validation: {module, _opts}} = validation, _change_index}, %{batch: batch} = state ->
           validation_context =
@@ -3028,6 +3036,7 @@ defmodule Ash.Actions.Update.Bulk do
               state
               | must_return_records?: must_return_records?,
                 batch: Enum.concat(matches, non_matches),
+                re_sort?: true,
                 changes:
                   Map.put(
                     state.changes,
