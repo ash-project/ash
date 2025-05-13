@@ -59,8 +59,10 @@ defmodule Concat do
 
   # You can implement this callback to make this calculation possible in the data layer
   # *and* in elixir. Ash expressions are already executable in Elixir or in the data layer, but this gives you fine grain control over how it is done
+  # See the expressions guide for more.
   # @impl true
   # def expression(opts, context) do
+  #   expr(your_expression_here)
   # end
 end
 
