@@ -1521,6 +1521,10 @@ defmodule Ash.DataLayer.Ets do
             {:halt, {:error, error}}
         end
       end)
+      |> case do
+        {:ok, result} -> {:ok, Enum.reverse(result)}
+        other -> other
+      end
     else
       with {:ok, table} <- wrap_or_create_table(resource, options.tenant) do
         Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
@@ -1546,7 +1550,11 @@ defmodule Ash.DataLayer.Ets do
                 :ok
 
               {:ok, records} ->
-                {:ok, Stream.map(records, &set_loaded/1)}
+                records
+                |> Enum.reduce([], fn record, records ->
+                  [set_loaded(record) | records]
+                end)
+                |> then(&{:ok, &1})
 
               {:error, error} ->
                 {:error, error}

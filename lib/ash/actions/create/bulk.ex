@@ -467,6 +467,7 @@ defmodule Ash.Actions.Create.Bulk do
     %{
       must_return_records?: must_return_records_for_changes?,
       batch: batch,
+      re_sort?: re_sort?,
       changes: changes
     } =
       run_action_changes(
@@ -478,6 +479,13 @@ defmodule Ash.Actions.Create.Bulk do
         opts[:tracer],
         opts[:tenant]
       )
+
+    batch =
+      if re_sort? do
+        Enum.sort_by(batch, & &1.context.bulk_create.index)
+      else
+        batch
+      end
 
     {batch, must_be_simple_results} =
       batch
@@ -1483,7 +1491,7 @@ defmodule Ash.Actions.Create.Bulk do
 
     Enum.reduce(
       all_changes,
-      %{must_return_records?: false, batch: batch, changes: %{}},
+      %{must_return_records?: false, re_sort?: false, batch: batch, changes: %{}},
       fn
         {%{validation: {module, opts}} = validation, _change_index}, %{batch: batch} = state ->
           batch =
@@ -1660,6 +1668,7 @@ defmodule Ash.Actions.Create.Bulk do
                 state
                 | must_return_records?: must_return_records?,
                   batch: Enum.concat(matches, non_matches),
+                  re_sort?: true,
                   changes:
                     Map.put(
                       state.changes,
