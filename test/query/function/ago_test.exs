@@ -12,7 +12,10 @@ defmodule Ash.Query.Function.AgoTest do
 
     test "Years ago :duration" do
       today = Date.utc_today()
-      assert {:known, %DateTime{} = datetime} = Ago.evaluate(%{arguments: [Duration.new!(year: 1)]})
+
+      assert {:known, %DateTime{} = datetime} =
+               Ago.evaluate(%{arguments: [Duration.new!(year: 1)]})
+
       assert datetime.year == today.year - 1
     end
   end
@@ -60,7 +63,9 @@ defmodule Ash.Query.Function.AgoTest do
 
     test "Adding 3 hours :duration is the same as adding 180 minutes :duration" do
       now = DateTime.utc_now()
-      assert Ago.datetime_add(now, Duration.new!(hour: 3)) == Ago.datetime_add(now, Duration.new!(minute: 180))
+
+      assert Ago.datetime_add(now, Duration.new!(hour: 3)) ==
+               Ago.datetime_add(now, Duration.new!(minute: 180))
     end
 
     test "Adding -5 minutes is the same as adding -300 seconds " do
@@ -70,7 +75,9 @@ defmodule Ash.Query.Function.AgoTest do
 
     test "Adding -5 minutes :duration is the same as adding -300 seconds :duration" do
       now = DateTime.utc_now()
-      assert Ago.datetime_add(now, Duration.new!(minute: -5)) == Ago.datetime_add(now, Duration.new!(second: -300))
+
+      assert Ago.datetime_add(now, Duration.new!(minute: -5)) ==
+               Ago.datetime_add(now, Duration.new!(second: -300))
     end
   end
 end

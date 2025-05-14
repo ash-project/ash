@@ -12,7 +12,10 @@ defmodule Ash.Query.Function.FromNowTest do
 
     test "Years from now :duration" do
       today = Date.utc_today()
-      assert {:known, %DateTime{} = datetime} = FromNow.evaluate(%{arguments: [Duration.new!(year: 1)]})
+
+      assert {:known, %DateTime{} = datetime} =
+               FromNow.evaluate(%{arguments: [Duration.new!(year: 1)]})
+
       assert datetime.year == today.year + 1
     end
   end

@@ -68,16 +68,29 @@ defmodule Ash.Test.Type.DurationTest do
       calculate :date_minus_duration_d, :date, expr(datetime - duration_d)
       calculate :datetime_plus_duration_a, :datetime, expr(datetime + duration_a)
       calculate :datetime_minus_duration_b, :datetime, expr(datetime - duration_b)
-      calculate :naive_datetime_plus_duration_a, :naive_datetime, expr(naive_datetime + duration_a)
-      calculate :naive_datetime_minus_duration_b, :naive_datetime, expr(naive_datetime - duration_b)
+
+      calculate :naive_datetime_plus_duration_a,
+                :naive_datetime,
+                expr(naive_datetime + duration_a)
+
+      calculate :naive_datetime_minus_duration_b,
+                :naive_datetime,
+                expr(naive_datetime - duration_b)
+
       calculate :time_plus_duration_a, :time, expr(time + duration_a)
       calculate :time_minus_duration_b, :time, expr(time - duration_b)
       calculate :time_usec_plus_duration_c, :time_usec, expr(time_usec + duration_c)
       calculate :time_usec_minus_duration_c, :time_usec, expr(time_usec - duration_c)
       calculate :utc_datetime_plus_duration_a, :utc_datetime, expr(utc_datetime + duration_a)
       calculate :utc_datetime_minus_duration_b, :utc_datetime, expr(utc_datetime - duration_b)
-      calculate :utc_datetime_usec_plus_duration_c, :utc_datetime_usec, expr(utc_datetime_usec + duration_c)
-      calculate :utc_datetime_usec_minus_duration_c, :utc_datetime_usec, expr(utc_datetime_usec - duration_c)
+
+      calculate :utc_datetime_usec_plus_duration_c,
+                :utc_datetime_usec,
+                expr(utc_datetime_usec + duration_c)
+
+      calculate :utc_datetime_usec_minus_duration_c,
+                :utc_datetime_usec,
+                expr(utc_datetime_usec - duration_c)
     end
   end
 
@@ -97,55 +110,67 @@ defmodule Ash.Test.Type.DurationTest do
 
   describe "functions resulting in duration" do
     test "minus function performs negation" do
-      assert Ash.Query.Function.Minus.evaluate(%{arguments: [@year1]}) == {:known, Duration.new!(year: -1)}
+      assert Ash.Query.Function.Minus.evaluate(%{arguments: [@year1]}) ==
+               {:known, Duration.new!(year: -1)}
     end
   end
 
   describe "operators resulting in duration" do
     test "plus operator performs addition of two durations" do
-      assert Basic.Plus.evaluate(%{left: @year1, right: @month5}) == {:known, Duration.add(@year1, @month5)}
+      assert Basic.Plus.evaluate(%{left: @year1, right: @month5}) ==
+               {:known, Duration.add(@year1, @month5)}
     end
 
     test "minus operator performs subtraction of two durations" do
-      assert Basic.Minus.evaluate(%{left: @year1, right: @month5}) == {:known, Duration.subtract(@year1, @month5)}
+      assert Basic.Minus.evaluate(%{left: @year1, right: @month5}) ==
+               {:known, Duration.subtract(@year1, @month5)}
     end
 
     test "times operator performs duration times integer" do
-      assert Basic.Times.evaluate(%{left: @year1, right: 2}) == {:known, Duration.multiply(@year1, 2)}
+      assert Basic.Times.evaluate(%{left: @year1, right: 2}) ==
+               {:known, Duration.multiply(@year1, 2)}
     end
   end
 
   describe "operators on other temporal types with duration" do
     test "plus operator performs addition of duration to date" do
-      assert Basic.Plus.evaluate(%{left: @today, right: @year1}) == {:known, Date.shift(@today, @year1)}
+      assert Basic.Plus.evaluate(%{left: @today, right: @year1}) ==
+               {:known, Date.shift(@today, @year1)}
     end
 
     test "minus operator performs subtraction of duration from date" do
-      assert Basic.Minus.evaluate(%{left: @today, right: @year1}) == {:known, Date.shift(@today, Duration.negate(@year1))}
+      assert Basic.Minus.evaluate(%{left: @today, right: @year1}) ==
+               {:known, Date.shift(@today, Duration.negate(@year1))}
     end
 
     test "plus operator performs addition of duration to datetime" do
-      assert Basic.Plus.evaluate(%{left: @datetime_now, right: @year1}) == {:known, DateTime.shift(@datetime_now, @year1)}
+      assert Basic.Plus.evaluate(%{left: @datetime_now, right: @year1}) ==
+               {:known, DateTime.shift(@datetime_now, @year1)}
     end
 
     test "minus operator performs subtraction of duration from datetime" do
-      assert Basic.Minus.evaluate(%{left: @datetime_now, right: @year1}) == {:known, DateTime.shift(@datetime_now, Duration.negate(@year1))}
+      assert Basic.Minus.evaluate(%{left: @datetime_now, right: @year1}) ==
+               {:known, DateTime.shift(@datetime_now, Duration.negate(@year1))}
     end
 
     test "plus operator performs addition of duration to naive_datetime" do
-      assert Basic.Plus.evaluate(%{left: @naive_datetime_now, right: @year1}) == {:known, NaiveDateTime.shift(@naive_datetime_now, @year1)}
+      assert Basic.Plus.evaluate(%{left: @naive_datetime_now, right: @year1}) ==
+               {:known, NaiveDateTime.shift(@naive_datetime_now, @year1)}
     end
 
     test "minus operator performs subtraction of duration from naive_datetime" do
-      assert Basic.Minus.evaluate(%{left: @naive_datetime_now, right: @year1}) == {:known, NaiveDateTime.shift(@naive_datetime_now, Duration.negate(@year1))}
+      assert Basic.Minus.evaluate(%{left: @naive_datetime_now, right: @year1}) ==
+               {:known, NaiveDateTime.shift(@naive_datetime_now, Duration.negate(@year1))}
     end
 
     test "plus operator performs addition of duration to time" do
-      assert Basic.Plus.evaluate(%{left: @time_now, right: @minute30}) == {:known, Time.shift(@time_now, @minute30)}
+      assert Basic.Plus.evaluate(%{left: @time_now, right: @minute30}) ==
+               {:known, Time.shift(@time_now, @minute30)}
     end
 
     test "minus operator performs subtraction of duration from time" do
-      assert Basic.Minus.evaluate(%{left: @time_now, right: @minute30}) == {:known, Time.shift(@time_now, Duration.negate(@minute30))}
+      assert Basic.Minus.evaluate(%{left: @time_now, right: @minute30}) ==
+               {:known, Time.shift(@time_now, Duration.negate(@minute30))}
     end
   end
 
@@ -166,10 +191,26 @@ defmodule Ash.Test.Type.DurationTest do
         utc_datetime_usec: @datetime_now
       })
       |> Ash.create!()
-      |> Ash.load!([:duration_a_plus_b, :duration_b_minus_a, :duration_b_times_three, :duration_a_negated, :date_plus_duration_d, :date_minus_duration_d,
-        :datetime_plus_duration_a, :datetime_minus_duration_b, :naive_datetime_plus_duration_a, :naive_datetime_minus_duration_b,
-        :time_plus_duration_a, :time_minus_duration_b, :time_usec_plus_duration_c, :time_usec_minus_duration_c,
-        :utc_datetime_plus_duration_a, :utc_datetime_minus_duration_b, :utc_datetime_usec_plus_duration_c, :utc_datetime_usec_minus_duration_c])
+      |> Ash.load!([
+        :duration_a_plus_b,
+        :duration_b_minus_a,
+        :duration_b_times_three,
+        :duration_a_negated,
+        :date_plus_duration_d,
+        :date_minus_duration_d,
+        :datetime_plus_duration_a,
+        :datetime_minus_duration_b,
+        :naive_datetime_plus_duration_a,
+        :naive_datetime_minus_duration_b,
+        :time_plus_duration_a,
+        :time_minus_duration_b,
+        :time_usec_plus_duration_c,
+        :time_usec_minus_duration_c,
+        :utc_datetime_plus_duration_a,
+        :utc_datetime_minus_duration_b,
+        :utc_datetime_usec_plus_duration_c,
+        :utc_datetime_usec_minus_duration_c
+      ])
 
     assert post.duration_a_plus_b == %Duration{hour: 1, minute: 30}
     assert post.duration_b_minus_a == %Duration{hour: -1, minute: 30}
@@ -177,17 +218,41 @@ defmodule Ash.Test.Type.DurationTest do
     assert post.duration_a_negated == %Duration{hour: -1}
     assert post.date_plus_duration_d == Date.shift(@today, @year1)
     assert post.date_minus_duration_d == Date.shift(@today, Duration.negate(@year1))
-    assert post.datetime_plus_duration_a == DateTime.truncate(DateTime.shift(@datetime_now, @hour1), :second)
-    assert post.datetime_minus_duration_b == DateTime.truncate(DateTime.shift(@datetime_now, Duration.negate(@minute30)), :second)
-    assert post.naive_datetime_plus_duration_a == NaiveDateTime.truncate(NaiveDateTime.shift(@naive_datetime_now, @hour1), :second)
-    assert post.naive_datetime_minus_duration_b == NaiveDateTime.truncate(NaiveDateTime.shift(@naive_datetime_now, Duration.negate(@minute30)), :second)
+
+    assert post.datetime_plus_duration_a ==
+             DateTime.truncate(DateTime.shift(@datetime_now, @hour1), :second)
+
+    assert post.datetime_minus_duration_b ==
+             DateTime.truncate(DateTime.shift(@datetime_now, Duration.negate(@minute30)), :second)
+
+    assert post.naive_datetime_plus_duration_a ==
+             NaiveDateTime.truncate(NaiveDateTime.shift(@naive_datetime_now, @hour1), :second)
+
+    assert post.naive_datetime_minus_duration_b ==
+             NaiveDateTime.truncate(
+               NaiveDateTime.shift(@naive_datetime_now, Duration.negate(@minute30)),
+               :second
+             )
+
     assert post.time_plus_duration_a == Time.truncate(Time.shift(@time_now, @hour1), :second)
-    assert post.time_minus_duration_b == Time.truncate(Time.shift(@time_now, Duration.negate(@minute30)), :second)
+
+    assert post.time_minus_duration_b ==
+             Time.truncate(Time.shift(@time_now, Duration.negate(@minute30)), :second)
+
     assert post.time_usec_plus_duration_c == Time.shift(@time_now, @millisecond1)
-    assert post.time_usec_minus_duration_c == Time.shift(@time_now, Duration.negate(@millisecond1))
-    assert post.utc_datetime_plus_duration_a == DateTime.truncate(DateTime.shift(@datetime_now, @hour1), :second)
-    assert post.utc_datetime_minus_duration_b == DateTime.truncate(DateTime.shift(@datetime_now, Duration.negate(@minute30)), :second)
+
+    assert post.time_usec_minus_duration_c ==
+             Time.shift(@time_now, Duration.negate(@millisecond1))
+
+    assert post.utc_datetime_plus_duration_a ==
+             DateTime.truncate(DateTime.shift(@datetime_now, @hour1), :second)
+
+    assert post.utc_datetime_minus_duration_b ==
+             DateTime.truncate(DateTime.shift(@datetime_now, Duration.negate(@minute30)), :second)
+
     assert post.utc_datetime_usec_plus_duration_c == DateTime.shift(@datetime_now, @millisecond1)
-    assert post.utc_datetime_usec_minus_duration_c == DateTime.shift(@datetime_now, Duration.negate(@millisecond1))
+
+    assert post.utc_datetime_usec_minus_duration_c ==
+             DateTime.shift(@datetime_now, Duration.negate(@millisecond1))
   end
 end

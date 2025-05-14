@@ -193,7 +193,7 @@ defmodule Ash.Query.Operator.Basic do
         end
 
         defp do_evaluate(op, left, right)
-          when Decimal.is_decimal(left) and Decimal.is_decimal(right) do
+             when Decimal.is_decimal(left) and Decimal.is_decimal(right) do
           case op do
             :+ -> {:known, Decimal.add(to_decimal(left), to_decimal(right))}
             :* -> {:known, Decimal.mult(to_decimal(left), to_decimal(right))}
@@ -202,38 +202,48 @@ defmodule Ash.Query.Operator.Basic do
           end
         end
 
-        defp do_evaluate(op, left, right) when is_struct(left, Date) and is_struct(right, Duration) do
+        defp do_evaluate(op, left, right)
+             when is_struct(left, Date) and is_struct(right, Duration) do
           case op do
             :+ -> {:known, Date.shift(left, right)}
             :- -> {:known, Date.shift(left, Duration.negate(right))}
+            _ -> :unknown
           end
         end
 
-        defp do_evaluate(op, left, right) when is_struct(left, DateTime) and is_struct(right, Duration) do
+        defp do_evaluate(op, left, right)
+             when is_struct(left, DateTime) and is_struct(right, Duration) do
           case op do
             :+ -> {:known, DateTime.shift(left, right)}
             :- -> {:known, DateTime.shift(left, Duration.negate(right))}
+            _ -> :unknown
           end
         end
 
-        defp do_evaluate(op, left, right) when is_struct(left, NaiveDateTime) and is_struct(right, Duration) do
+        defp do_evaluate(op, left, right)
+             when is_struct(left, NaiveDateTime) and is_struct(right, Duration) do
           case op do
             :+ -> {:known, NaiveDateTime.shift(left, right)}
             :- -> {:known, NaiveDateTime.shift(left, Duration.negate(right))}
+            _ -> :unknown
           end
         end
 
-        defp do_evaluate(op, left, right) when is_struct(left, Time) and is_struct(right, Duration) do
+        defp do_evaluate(op, left, right)
+             when is_struct(left, Time) and is_struct(right, Duration) do
           case op do
             :+ -> {:known, Time.shift(left, right)}
             :- -> {:known, Time.shift(left, Duration.negate(right))}
+            _ -> :unknown
           end
         end
 
-        defp do_evaluate(op, left, right) when is_struct(left, Duration) and is_struct(right, Duration) do
+        defp do_evaluate(op, left, right)
+             when is_struct(left, Duration) and is_struct(right, Duration) do
           case op do
             :+ -> {:known, Duration.add(left, right)}
             :- -> {:known, Duration.subtract(left, right)}
+            _ -> :unknown
           end
         end
 
