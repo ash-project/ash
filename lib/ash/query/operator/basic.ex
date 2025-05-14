@@ -11,7 +11,12 @@ defmodule Ash.Query.Operator.Basic do
     times: [
       symbol: :*,
       no_nils: true,
-      evaluate_types: :numbers
+      evaluate_types: :numbers,
+      types: [
+        [:duration, :integer],
+        [:integer, :duration]
+      ],
+      returns: [:duration, :duration]
     ],
     minus: [
       symbol: :-,
@@ -202,53 +207,41 @@ defmodule Ash.Query.Operator.Basic do
           end
         end
 
-        defp do_evaluate(op, left, right)
-             when is_struct(left, Date) and is_struct(right, Duration) do
-          case op do
-            :+ -> {:known, Date.shift(left, right)}
-            :- -> {:known, Date.shift(left, Duration.negate(right))}
+        defp do_evaluate(:-, %left_name{} = left, %right_name{} = right) do
+          case {left_name, right_name} do
+            {Date, _} -> {:known, Date.diff(left, right)}
+            {DateTime, _} -> {:known, DateTime.diff(left, right)}
+            {Time, _} -> {:known, Time.diff(left, right)}
+            {NaiveDateTime, _} -> {:known, NaiveDateTime.diff(left, right)}
+            {Duration, Duration} -> {:known, Duration.subtract(left, right)}
             _ -> :unknown
           end
         end
 
-        defp do_evaluate(op, left, right)
-             when is_struct(left, DateTime) and is_struct(right, Duration) do
-          case op do
-            :+ -> {:known, DateTime.shift(left, right)}
-            :- -> {:known, DateTime.shift(left, Duration.negate(right))}
+        defp do_evaluate(:+, %left_name{} = left, %right_name{} = right) do
+          case {left_name, right_name} do
+            {Duration, Duration} -> {:known, Duration.add(left, right)}
+            {Date, Duration} -> {:known, Date.shift(left, right)}
+            {Duration, Date} -> {:known, Date.shift(right, left)}
+            {DateTime, Duration} -> {:known, DateTime.shift(left, right)}
+            {Duration, DateTime} -> {:known, DateTime.shift(right, left)}
+            {NaiveDateTime, Duration} -> {:known, NaiveDateTime.shift(left, right)}
+            {Duration, NaiveDateTime} -> {:known, NaiveDateTime.shift(right, left)}
+            {Time, Duration} -> {:known, Time.shift(left, right)}
+            {Duration, Time} -> {:known, Time.shift(right, left)}
             _ -> :unknown
           end
         end
 
-        defp do_evaluate(op, left, right)
-             when is_struct(left, NaiveDateTime) and is_struct(right, Duration) do
-          case op do
-            :+ -> {:known, NaiveDateTime.shift(left, right)}
-            :- -> {:known, NaiveDateTime.shift(left, Duration.negate(right))}
-            _ -> :unknown
-          end
-        end
+        defp do_evaluate(:*, left, right)
+             when is_struct(left, Duration) or is_struct(right, Duration) do
+          cond do
+            is_struct(left, Duration) and is_integer(right) ->
+              {:known, Duration.multiply(left, right)}
 
-        defp do_evaluate(op, left, right)
-             when is_struct(left, Time) and is_struct(right, Duration) do
-          case op do
-            :+ -> {:known, Time.shift(left, right)}
-            :- -> {:known, Time.shift(left, Duration.negate(right))}
-            _ -> :unknown
+            is_integer(left) and is_struct(right, Duration) ->
+              {:known, Duration.multiply(right, left)}
           end
-        end
-
-        defp do_evaluate(op, left, right)
-             when is_struct(left, Duration) and is_struct(right, Duration) do
-          case op do
-            :+ -> {:known, Duration.add(left, right)}
-            :- -> {:known, Duration.subtract(left, right)}
-            _ -> :unknown
-          end
-        end
-
-        defp do_evaluate(:*, left, right) when is_struct(left, Duration) and is_integer(right) do
-          {:known, Duration.multiply(left, right)}
         end
 
         if unquote(opts[:evaluate_types]) == :numbers do
