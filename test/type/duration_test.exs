@@ -4,6 +4,12 @@ defmodule Ash.Test.Type.DurationTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  import Ash.Expr
+  alias Ash.Query.Operator.Basic
+
+  import Ash.Expr
+  alias Ash.Query.Operator.Basic
+
   @year1 Duration.new!(year: 1)
   @month5 Duration.new!(month: 5)
   @hour1 Duration.new!(hour: 1)
@@ -140,6 +146,13 @@ defmodule Ash.Test.Type.DurationTest do
       calculate :utc_datetime_usec_minus_duration_c,
                 :utc_datetime_usec,
                 expr(utc_datetime_usec - duration_c)
+    end
+
+    calculations do
+      calculate :duration_a_plus_b, :duration, expr(duration_a + duration_b)
+      calculate :duration_b_minus_a, :duration, expr(duration_b - duration_a)
+      calculate :duration_b_times_three, :duration, expr(duration_b * 3)
+      calculate :duration_a_negated, :duration, expr(-duration_a)
     end
   end
 
@@ -303,5 +316,26 @@ defmodule Ash.Test.Type.DurationTest do
 
     assert post.utc_datetime_usec_minus_duration_c ==
              DateTime.shift(@datetime_now, Duration.negate(@millisecond1))
+  end
+
+  test "calculations" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        duration_a: Duration.new!(hour: 1),
+        duration_b: Duration.new!(minute: 30)
+      })
+      |> Ash.create!()
+      |> Ash.load!([
+        :duration_a_plus_b,
+        :duration_b_minus_a,
+        :duration_b_times_three,
+        :duration_a_negated
+      ])
+
+    assert Comp.compare(post.duration_a_plus_b, %Duration{hour: 1, minute: 30}) == :eq
+    assert Comp.compare(post.duration_b_minus_a, %Duration{minute: -30}) == :eq
+    assert Comp.compare(post.duration_b_times_three, %Duration{minute: 90}) == :eq
+    assert Comp.compare(post.duration_a_negated, %Duration{hour: -1}) == :eq
   end
 end
