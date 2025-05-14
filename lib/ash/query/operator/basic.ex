@@ -11,12 +11,7 @@ defmodule Ash.Query.Operator.Basic do
     times: [
       symbol: :*,
       no_nils: true,
-      evaluate_types: :numbers,
-      types: [
-        [:duration, :integer],
-        [:integer, :duration]
-      ],
-      returns: [:duration, :duration]
+      evaluate_types: :numbers
     ],
     minus: [
       symbol: :-,
@@ -209,12 +204,35 @@ defmodule Ash.Query.Operator.Basic do
 
         defp do_evaluate(:-, %left_name{} = left, %right_name{} = right) do
           case {left_name, right_name} do
-            {Date, _} -> {:known, Date.diff(left, right)}
-            {DateTime, _} -> {:known, DateTime.diff(left, right)}
-            {Time, _} -> {:known, Time.diff(left, right)}
-            {NaiveDateTime, _} -> {:known, NaiveDateTime.diff(left, right)}
-            {Duration, Duration} -> {:known, Duration.subtract(left, right)}
-            _ -> :unknown
+            {Duration, Duration} ->
+              {:known, Duration.subtract(left, right)}
+
+            {Date, Duration} ->
+              {:known, Date.shift(left, Duration.negate(right))}
+
+            {Date, _} ->
+              {:known, Date.diff(left, right)}
+
+            {DateTime, Duration} ->
+              {:known, DateTime.shift(left, Duration.negate(right))}
+
+            {DateTime, _} ->
+              {:known, DateTime.diff(left, right)}
+
+            {Time, Duration} ->
+              {:known, Time.shift(left, Duration.negate(right))}
+
+            {Time, _} ->
+              {:known, Time.diff(left, right)}
+
+            {NaiveDateTime, Duration} ->
+              {:known, NaiveDateTime.shift(left, Duration.negate(right))}
+
+            {NaiveDateTime, _} ->
+              {:known, NaiveDateTime.diff(left, right)}
+
+            _ ->
+              :unknown
           end
         end
 
