@@ -30,7 +30,7 @@ defmodule Ash.Query.Function.DateAdd do
 
   def evaluate(%{arguments: [date, duration]}) when is_struct(duration, Duration) do
     shifted = Date.shift(date, duration)
-      {:known, shifted}
+    {:known, shifted}
   end
 
   def can_return_nil?(%{arguments: [date | _]}) do
