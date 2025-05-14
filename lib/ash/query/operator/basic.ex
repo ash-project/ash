@@ -11,7 +11,12 @@ defmodule Ash.Query.Operator.Basic do
     times: [
       symbol: :*,
       no_nils: true,
-      evaluate_types: :numbers
+      evaluate_types: :numbers,
+      types: [
+        [:duration, :integer],
+        [:integer, :duration]
+      ],
+      returns: [:duration, :duration]
     ],
     minus: [
       symbol: :-,
@@ -193,7 +198,7 @@ defmodule Ash.Query.Operator.Basic do
         end
 
         defp do_evaluate(op, left, right)
-             when Decimal.is_decimal(left) or Decimal.is_decimal(right) do
+          when Decimal.is_decimal(left) and Decimal.is_decimal(right) do
           case op do
             :+ -> {:known, Decimal.add(to_decimal(left), to_decimal(right))}
             :* -> {:known, Decimal.mult(to_decimal(left), to_decimal(right))}
@@ -259,6 +264,34 @@ defmodule Ash.Query.Operator.Basic do
 
             is_integer(left) and is_struct(right, Duration) ->
               {:known, Duration.multiply(right, left)}
+          end
+        end
+
+        defp do_evaluate(op, left, right) when is_struct(left, Duration) and is_struct(right, Duration) do
+          case op do
+            :+ -> {:known, Duration.add(left, right)}
+            :- -> {:known, Duration.subtract(left, right)}
+          end
+        end
+
+        defp do_evaluate(:*, left, right) when is_struct(left, Duration) or is_struct(right, Duration) do
+          cond do
+            is_struct(left, Duration) and is_integer(right) -> {:known, Duration.multiply(left, right)}
+            is_integer(left) and is_struct(right, Duration) -> {:known, Duration.multiply(right, left)}
+          end
+        end
+
+        defp do_evaluate(op, left, right) when is_struct(left, Duration) and is_struct(right, Duration) do
+          case op do
+            :+ -> {:known, Duration.add(left, right)}
+            :- -> {:known, Duration.subtract(left, right)}
+          end
+        end
+
+        defp do_evaluate(:*, left, right) when is_struct(left, Duration) or is_struct(right, Duration) do
+          cond do
+            is_struct(left, Duration) and is_integer(right) -> {:known, Duration.multiply(left, right)}
+            is_integer(left) and is_struct(right, Duration) -> {:known, Duration.multiply(right, left)}
           end
         end
 
