@@ -11,12 +11,7 @@ defmodule Ash.Query.Operator.Basic do
     times: [
       symbol: :*,
       no_nils: true,
-      evaluate_types: :numbers,
-      types: [
-        [:duration, :integer],
-        [:integer, :duration]
-      ],
-      returns: [:duration, :duration]
+      evaluate_types: :numbers
     ],
     minus: [
       symbol: :-,
@@ -72,6 +67,10 @@ defmodule Ash.Query.Operator.Basic do
 
         require Decimal
         require Duration
+        require Date
+        require DateTime
+        require NaiveDateTime
+        require Time
 
         use Ash.Query.Operator,
           operator: unquote(opts[:symbol]),
@@ -203,6 +202,34 @@ defmodule Ash.Query.Operator.Basic do
           end
         end
 
+        defp do_evaluate(op, left, right) when is_struct(left, Date) and is_struct(right, Duration) do
+          case op do
+            :+ -> {:known, Date.shift(left, right)}
+            :- -> {:known, Date.shift(left, Duration.negate(right))}
+          end
+        end
+
+        defp do_evaluate(op, left, right) when is_struct(left, DateTime) and is_struct(right, Duration) do
+          case op do
+            :+ -> {:known, DateTime.shift(left, right)}
+            :- -> {:known, DateTime.shift(left, Duration.negate(right))}
+          end
+        end
+
+        defp do_evaluate(op, left, right) when is_struct(left, NaiveDateTime) and is_struct(right, Duration) do
+          case op do
+            :+ -> {:known, NaiveDateTime.shift(left, right)}
+            :- -> {:known, NaiveDateTime.shift(left, Duration.negate(right))}
+          end
+        end
+
+        defp do_evaluate(op, left, right) when is_struct(left, Time) and is_struct(right, Duration) do
+          case op do
+            :+ -> {:known, Time.shift(left, right)}
+            :- -> {:known, Time.shift(left, Duration.negate(right))}
+          end
+        end
+
         defp do_evaluate(op, left, right) when is_struct(left, Duration) and is_struct(right, Duration) do
           case op do
             :+ -> {:known, Duration.add(left, right)}
@@ -210,11 +237,8 @@ defmodule Ash.Query.Operator.Basic do
           end
         end
 
-        defp do_evaluate(:*, left, right) when is_struct(left, Duration) or is_struct(right, Duration) do
-          cond do
-            is_struct(left, Duration) and is_integer(right) -> {:known, Duration.multiply(left, right)}
-            is_integer(left) and is_struct(right, Duration) -> {:known, Duration.multiply(right, left)}
-          end
+        defp do_evaluate(:*, left, right) when is_struct(left, Duration) and is_integer(right) do
+          {:known, Duration.multiply(left, right)}
         end
 
         if unquote(opts[:evaluate_types]) == :numbers do

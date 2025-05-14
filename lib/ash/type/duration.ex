@@ -51,10 +51,3 @@ defmodule Ash.Type.Duration do
     Ecto.Type.dump(:duration, value)
   end
 end
-
-import Ash.Type.Comparable
-
-defcomparable left :: Duration, right :: Duration do
-  now = DateTime.utc_now()
-  DateTime.compare(DateTime.shift(now, left), DateTime.shift(now, right))
-end
