@@ -1568,7 +1568,6 @@ defmodule Ash.Policy.Authorizer do
         :ok
 
       level ->
-        IO.inspect("HERE")
         do_log_successful_policy_breakdown(authorizer, filter, level)
     end
   end
