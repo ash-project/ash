@@ -1,9 +1,10 @@
 defmodule Ash.Query.Function.FromNow do
   @moduledoc """
-  Adds the given interval from the current time in UTC.
+  Adds the given interval or Duration from the current time in UTC.
 
   For example:
      expires_at < from_now(7, :day)
+     expires_at < from_now(Duration.new!(day: 7))
 
   Documentation + available intervals inspired by the corresponding ecto interval implementation
   """
@@ -17,6 +18,12 @@ defmodule Ash.Query.Function.FromNow do
   def evaluate(%{arguments: [factor, interval]}) do
     now = DateTime.utc_now()
     shifted = Ash.Query.Function.Ago.datetime_add(now, factor, interval)
+    {:known, shifted}
+  end
+
+  def evaluate(%{arguments: [duration]}) when is_struct(duration, Duration) do
+    now = DateTime.utc_now()
+    shifted = Ash.Query.Function.Ago.datetime_add(now, duration)
     {:known, shifted}
   end
 

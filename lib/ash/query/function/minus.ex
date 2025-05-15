@@ -1,12 +1,16 @@
 defmodule Ash.Query.Function.Minus do
   @moduledoc """
-  Multiplies the value by negative one
+  Negates the value
   """
   use Ash.Query.Function, name: :-
 
   def args, do: [[:any]]
 
   def returns, do: [:same]
+
+  def evaluate(%{arguments: [duration]}) when is_struct(duration, Duration) do
+    {:known, Duration.negate(duration)}
+  end
 
   def evaluate(%{arguments: [val]}) do
     {:ok, op} = Ash.Query.Operator.Basic.Times.new(val, -1)

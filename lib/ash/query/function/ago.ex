@@ -1,22 +1,29 @@
 defmodule Ash.Query.Function.Ago do
   @moduledoc """
-  Subtracts the given interval from the current time in UTC.
+  Subtracts the given interval or Duration from the current time in UTC.
 
   For example:
      deleted_at > ago(7, :day)
+     deleted_at > ago(Duration.new!(day: 7))
 
   Documentation + available intervals inspired by the corresponding ecto interval implementation
   """
 
   use Ash.Query.Function, name: :ago, eager_evaluate?: false
 
-  def args, do: [[:integer, :duration_name]]
+  def args, do: [[:integer, :duration_name], [:duration]]
 
   def returns, do: [:utc_datetime_usec]
 
   def evaluate(%{arguments: [factor, interval]}) do
     now = DateTime.utc_now()
     shifted = datetime_add(now, -factor, interval)
+    {:known, shifted}
+  end
+
+  def evaluate(%{arguments: [duration]}) do
+    now = DateTime.utc_now()
+    shifted = DateTime.shift(now, Duration.negate(duration))
     {:known, shifted}
   end
 
@@ -67,6 +74,10 @@ defmodule Ash.Query.Function.Ago do
     else
       result
     end
+  end
+
+  def datetime_add(datetime, duration) when is_struct(duration, Duration) do
+    DateTime.shift(datetime, duration)
   end
 
   def can_return_nil?(_), do: false
