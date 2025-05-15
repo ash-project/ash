@@ -39,7 +39,7 @@ define idiomatic and convenient functions that call your actions.
 The `Ash.get!` function is a convenience function for running a read action, filtering by a unique identifier, and expecting only a single result. It is equivalent to the following code:
 
 ```elixir
-# action can be omitted to use the primary read action 
+# action can be omitted to use the primary read action
 Ash.get!(Resource, 1, action: :read_action)
 
 # is roughly equivalent to
@@ -78,6 +78,10 @@ end
 ## Pagination
 
 Ash provides built-in support for pagination when reading resources and their relationships. You can find more information about this in the [pagination guide](/documentation/topics/advanced/pagination.livemd).
+
+> ### Pagination configuration on default vs custom read actions {: .info}
+>
+> The default read action supports keyset pagination automatically. You need to explicitly enable pagination strategies you want to support when defining your own read actions.
 
 ## What happens when you call Ash.Query.for_read/4
 
