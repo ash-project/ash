@@ -2,6 +2,45 @@
 
 <!-- changelog -->
 
+## [v3.5.10](https://github.com/ash-project/ash/compare/v3.5.9...v3.5.10) (2025-05-15)
+
+
+
+
+### Bug Fixes:
+
+* ensure field policies are logged on success
+
+* various additional fixes for bulk action input ordering
+
+* Fix batch order of bulk_create (#2027)
+
+* make `lazy_init?` a callback so it can be checked on new types
+
+* don't raise error when no policies apply to request
+
+* ensure tenant is set on bulk created records.
+
+* don't try to cast input before cast atomic
+
+* properly prevent embedded attribute updates in atomics
+
+* preserve validation messages in non-atomic-bulk-update validations
+
+* add types for times operator
+
+* properly handle pre-expanded newtype constraints
+
+* shortcircuit queries properly
+
+* only print topic if present (#2013)
+
+### Improvements:
+
+* support :time_usec (#2023)
+
+* support `limit` on has_many relationships (#2016)
+
 ## [v3.5.9](https://github.com/ash-project/ash/compare/v3.5.8...v3.5.9) (2025-05-06)
 
 
