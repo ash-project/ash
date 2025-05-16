@@ -197,6 +197,14 @@ defmodule Ash.Query.Operator.Basic do
           end
         end
 
+        defp do_evaluate(:-, %DateTime{} = left, %DateTime{} = right) do
+          {:known, DateTime.diff(left, right)}
+        end
+
+        defp do_evaluate(:-, %Date{} = left, %Date{} = right) do
+          {:known, Date.diff(left, right)}
+        end
+
         if unquote(opts[:evaluate_types]) == :numbers do
           defp do_evaluate(op, left, right)
                when not ((is_integer(left) or is_float(left)) and
