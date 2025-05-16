@@ -31,27 +31,27 @@ defmodule Ash.Type.Tuple do
       This type is stored as a map under the hood, keyed by the field name,
       and is represented in memory as a tuple.
 
-      For example:
+      Example constraints:
 
-          fields:  [
-            amount: [
-              type: :integer,
-              description: "The amount of the transaction",
-              constraints: [
-                max: 10
-              ]
-            ],
-            currency: [
-              type: :string,
-              allow_nil?: false,
-              description: "The currency code of the transaction",
-              constraints: [
-                max_length: 3
-              ]
-            ]
-          ]
+          constrains: fields:  [
+                        amount: [
+                          type: :integer,
+                          description: "The amount of the transaction",
+                          constraints: [
+                            max: 10
+                          ]
+                        ],
+                        currency: [
+                          type: :string,
+                          allow_nil?: false,
+                          description: "The currency code of the transaction",
+                          constraints: [
+                            max_length: 3
+                          ]
+                        ]
+                      ]
 
-      allow_nil? is true by default
+      `allow_nil?` is `true` by default.
       """
     ]
   ]
