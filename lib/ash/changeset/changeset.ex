@@ -4760,6 +4760,13 @@ defmodule Ash.Changeset do
       This tells Ash to ignore the provided inputs when actually running the action. This can be useful for
       building up a set of instructions that you intend to handle manually.
       """
+    ],
+    debug?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Logs queries executed by relationship.
+      """
     ]
   ]
 
