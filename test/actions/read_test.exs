@@ -309,6 +309,19 @@ defmodule Ash.Test.Actions.ReadTest do
     end
   end
 
+  describe "data_layer_query/2" do
+    test "returns the data layer query and can be run" do
+      %{run: run, query: query} = Ash.data_layer_query!(Post)
+      assert {:ok, []} = run.(query)
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+      |> Ash.create!()
+
+      assert {:ok, [_]} = run.(query)
+    end
+  end
+
   describe "Ash.read!/2 with no records" do
     test "returns an empty result" do
       assert [] = Ash.read!(Post)

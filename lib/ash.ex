@@ -1992,6 +1992,46 @@ defmodule Ash do
     end
   end
 
+  @typedoc """
+  Fields:
+
+  - `query` - The query that would be executed
+  - `count` - A function that returns the count of the query, if pagination would have happened
+  - `run` - A function that runs the query
+  - `load` - A function that loads any runtime data needed
+  """
+  @type data_layer_query :: %{
+          query: Ash.DataLayer.data_layer_query(),
+          ash_query: Ash.Query.t(),
+          count: (-> {:ok, integer() | nil} | {:error, Ash.Error.t()}),
+          run: (Ash.DataLayer.data_layer_query() ->
+                  {:ok, list(Ash.Resource.record()) | Ash.Page.page() | no_return}
+                  | {:error, Ash.Error.t()}),
+          load: (list(Ash.Resource.record()) | Ash.Page.page() ->
+                   {:ok, list(Ash.Resource.record()) | Ash.Page.page()} | {:error, Ash.Error.t()})
+        }
+
+  @doc """
+  Gets the full query and any runtime calculations that would be loaded
+  """
+  @spec data_layer_query(Ash.Query.t(), opts :: Keyword.t()) ::
+          {:ok, data_layer_query} | {:error, Ash.Error.t()}
+  def data_layer_query(query, opts \\ []) do
+    read(query, Keyword.put(opts, :data_layer_query?, true))
+  end
+
+  @doc """
+  Gets the full query and any runtime calculations that would be loaded, raising any errors.
+
+  See `data_layer_query/2` for more.
+  """
+  def data_layer_query!(query, opts \\ []) do
+    case read(query, Keyword.put(opts, :data_layer_query?, true)) do
+      {:ok, result} -> result
+      {:error, error} -> raise Ash.Error.to_error_class(error)
+    end
+  end
+
   @doc """
   Run an `Ash.Query`. See `read/2` for more.
   """
@@ -2040,12 +2080,18 @@ defmodule Ash do
         query
       end
 
+    {data_layer_query?, opts} = Keyword.pop(opts, :data_layer_query?, false)
+
     with {:ok, opts} <- ReadOpts.validate(opts),
          opts <- ReadOpts.to_options(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
-      case Ash.Actions.Read.run(query, action, opts) do
+      case Ash.Actions.Read.run(
+             query,
+             action,
+             Keyword.put(opts, :data_layer_query?, data_layer_query?)
+           ) do
         {:ok, results} -> {:ok, results}
         {:ok, results, query} -> {:ok, results, query}
         {:error, error} -> {:error, Ash.Error.to_error_class(error)}
