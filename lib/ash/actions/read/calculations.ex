@@ -17,6 +17,13 @@ defmodule Ash.Actions.Read.Calculations do
         resource -> {resource, opts[:record]}
       end
 
+    {_, opts} =
+      Ash.Actions.Helpers.set_context_and_get_opts(
+        opts[:domain] || Ash.Resource.Info.domain(resource),
+        Ash.Query.new(resource),
+        opts
+      )
+
     with {:calc,
           %{
             arguments: calc_arguments,

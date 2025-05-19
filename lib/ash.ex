@@ -63,6 +63,11 @@ defmodule Ash do
       type: :any,
       doc:
         "If an actor is provided, it will be used in conjunction with the authorizers of a resource to authorize access"
+    ],
+    scope: [
+      type: :any,
+      doc:
+        "A value that implements the `Ash.Scope` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
     ]
   ]
 
@@ -726,6 +731,11 @@ defmodule Ash do
       The actor for handling `^actor/1` templates, supplied to calculation context.
       """
     ],
+    scope: [
+      type: :any,
+      doc:
+        "A value that implements the `Ash.Scope` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
+    ],
     tenant: [
       type: {:protocol, Ash.ToTenant},
       doc: """
@@ -779,6 +789,11 @@ defmodule Ash do
       doc: """
       The actor for handling `^actor/1` templates, supplied to calculation context.
       """
+    ],
+    scope: [
+      type: :any,
+      doc:
+        "A value that implements the `Ash.Scope` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
     ],
     tenant: [
       type: {:protocol, Ash.ToTenant},
@@ -844,6 +859,11 @@ defmodule Ash do
       default: true,
       doc:
         "Whether or not this is a pre_flight check (which may perform optimized in-memory checks) or the final proper check."
+    ],
+    scope: [
+      type: :any,
+      doc:
+        "A value that implements the `Ash.Scope` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
     ],
     run_queries?: [
       type: :boolean,
@@ -1318,11 +1338,11 @@ defmodule Ash do
 
   #{Spark.Options.docs(@can_question_mark_opts)}
   """
-  @spec can?(Ash.Can.subject(), actor(), Keyword.t()) :: boolean() | no_return()
+  @spec can?(Ash.Can.subject(), actor() | Ash.Scope.t(), Keyword.t()) :: boolean() | no_return()
   @doc spark_opts: [{2, @can_question_mark_opts}]
-  def can?(action_or_query_or_changeset, actor, opts \\ []) do
+  def can?(action_or_query_or_changeset, actor_or_scope, opts \\ []) do
     domain = Ash.Helpers.domain!(action_or_query_or_changeset, opts)
-    Ash.Can.can?(action_or_query_or_changeset, domain, actor, opts)
+    Ash.Can.can?(action_or_query_or_changeset, domain, actor_or_scope, opts)
   end
 
   can_opts = @can_opts
@@ -1373,21 +1393,21 @@ defmodule Ash do
 
   #{Spark.Options.docs(@can_opts)}
   """
-  @spec can(Ash.Can.subject(), actor(), Keyword.t()) ::
+  @spec can(Ash.Can.subject(), actor() | Ash.Scope.t(), Keyword.t()) ::
           {:ok, boolean | :maybe}
           | {:ok, true, Ash.Changeset.t() | Ash.Query.t()}
           | {:ok, true, Ash.Changeset.t(), Ash.Query.t()}
           | {:ok, false, Exception.t()}
           | {:error, term}
   @doc spark_opts: [{2, @can_opts}]
-  def can(action_or_query_or_changeset, actor, opts \\ []) do
+  def can(action_or_query_or_changeset, actor_or_scope, opts \\ []) do
     domain = Ash.Helpers.domain!(action_or_query_or_changeset, opts)
 
     case CanOpts.validate(opts) do
       {:ok, opts} ->
         opts = CanOpts.to_options(opts)
 
-        case Ash.Can.can(action_or_query_or_changeset, domain, actor, opts) do
+        case Ash.Can.can(action_or_query_or_changeset, domain, actor_or_scope, opts) do
           {:error, %Ash.Error.Forbidden.InitialDataRequired{} = error} ->
             if opts[:on_must_pass_strict_check] do
               {:error, error}

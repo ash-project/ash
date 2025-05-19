@@ -3515,9 +3515,9 @@ defmodule Ash.Query do
         |> offset(combination.offset)
         |> do_filter(combination.filter)
         |> sort(combination.sort)
-        |> select(combination.select || MapSet.to_list(
-            Ash.Resource.Info.selected_by_default_attribute_names(query.resource)
-          )
+        |> select(
+          combination.select ||
+            MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(query.resource))
         )
         |> Ash.Query.set_context(query.context)
         |> Ash.Query.set_context(%{data_layer: %{combination_query?: true}})

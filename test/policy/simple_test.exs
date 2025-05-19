@@ -211,6 +211,16 @@ defmodule Ash.Test.Policy.SimpleTest do
              ~r/No policy conditions applied to this request/
   end
 
+  defmodule Scope do
+    defstruct [:actor, :tenant, :context]
+
+    defimpl Ash.Scope do
+      def get_actor(%{actor: actor}), do: {:ok, actor}
+      def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
+      def get_context(%{context: context}), do: {:ok, context}
+    end
+  end
+
   test "an impossible create policy shows the correct error message" do
     assert_raise Ash.Error.Forbidden, ~r/Cannot use a filter to authorize a create/, fn ->
       ResourceWithAnImpossibleCreatePolicy
@@ -274,6 +284,12 @@ defmodule Ash.Test.Policy.SimpleTest do
     refute Ash.can?({tweet, :read}, user)
   end
 
+  test "Ash.can? honors a provided scope", %{admin: admin, user: user} do
+    tweet = Ash.create!(Ash.Changeset.for_create(Tweet, :create), authorize?: false)
+    assert Ash.can?({tweet, :read}, %Scope{actor: admin})
+    refute Ash.can?({tweet, :read}, %Scope{actor: user})
+  end
+
   test "arguments can be referenced in expression policies", %{admin: admin, user: user} do
     Tweet
     |> Ash.Changeset.for_create(:create_foo, %{foo: "foo", user_id: admin.id}, actor: user)
@@ -319,6 +335,24 @@ defmodule Ash.Test.Policy.SimpleTest do
       Tweet
       |> Ash.Changeset.for_create(:create, %{user_id: Ash.UUID.generate()})
       |> Ash.create!(authorize?: true, actor: user)
+    end
+  end
+
+  test "scope is honored", %{user: user} do
+    scope = %Scope{
+      actor: user,
+      tenant: nil,
+      context: %{}
+    }
+
+    Tweet
+    |> Ash.Changeset.for_create(:create, %{user_id: user.id})
+    |> Ash.create!(authorize?: true, scope: scope)
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Tweet
+      |> Ash.Changeset.for_create(:create, %{user_id: Ash.UUID.generate()})
+      |> Ash.create!(authorize?: true, scope: scope)
     end
   end
 
