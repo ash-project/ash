@@ -229,10 +229,25 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     def seed_post(opts \\ []) do
+      {ratings, opts} =
+        Keyword.pop(opts, :ratings)
+
       seed_generator(
         %Post{
           title: sequence(:title, &"Post #{&1}")
         },
+        after_action: fn record ->
+          if ratings do
+            ratings
+            |> Enum.map(&Map.put(&1, :post_id, record.id))
+            |> Ash.bulk_create(Rating, :create)
+
+            record
+            |> Ash.load!(:ratings)
+          else
+            record
+          end
+        end,
         overrides: opts
       )
     end
@@ -334,6 +349,23 @@ defmodule Ash.Test.GeneratorTest do
       import Generator
       assert [%Post{title: "Post 0"}, %Post{title: "Post 1"}] = generate_many(post(), 2)
       assert [%Post{title: "Post 2"}, %Post{title: "Post 3"}] = generate_many(seed_post(), 2)
+    end
+
+    test "after_action works with generate" do
+      import Generator
+
+      assert %{title: "Post 0", ratings: [%{rating: 5}]} =
+               generate(seed_post(ratings: [%{rating: 5}]))
+    end
+
+    test "after_action works with generate_many" do
+      import Generator
+
+      assert [
+               %{title: "Post 0", ratings: [%{rating: 5}]},
+               %{title: "Post 1", ratings: [%{rating: 5}]}
+             ] =
+               generate_many(seed_post(ratings: [%{rating: 5}]), 2)
     end
 
     test "can share generators with `uses`" do
