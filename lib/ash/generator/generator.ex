@@ -782,13 +782,7 @@ defmodule Ash.Generator do
         result.records || []
 
       batch ->
-        Enum.map(batch, fn record ->
-          if record.__meta__.state == :built do
-            Ash.Seed.seed!(record)
-          else
-            record
-          end
-        end)
+        Enum.map(batch, &generate/1)
     end)
   end
 
