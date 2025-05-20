@@ -210,10 +210,10 @@ defmodule Ash.Type.NewType do
           case validate_constraints(unquote(subtype_of), constraints) do
             :ok ->
               type_constraints = type_constraints(constraints, unquote(subtype_constraints))
-              unquote(subtype_of).init(type_constraints)
+              Ash.Type.init(unquote(subtype_of), type_constraints)
 
             {:error, error} ->
-              raise ArgumentError, error
+              {:error, error}
           end
         end
       end

@@ -900,12 +900,22 @@ defmodule Ash.Type do
   def init(type, constraints) do
     type = get_type(type)
 
-    case validate_constraints(type, constraints) do
-      {:ok, constraints} ->
-        type.init(constraints)
+    if Ash.Type.NewType.new_type?(type) do
+      case type.init(constraints) do
+        {:ok, constraints} ->
+          {:ok, constraints}
 
-      {:error, error} ->
-        {:error, Exception.format(:error, error)}
+        {:error, error} ->
+          {:error, Exception.format(:error, error)}
+      end
+    else
+      case validate_constraints(type, constraints) do
+        {:ok, constraints} ->
+          type.init(constraints)
+
+        {:error, error} ->
+          {:error, Exception.format(:error, error)}
+      end
     end
   end
 
@@ -2198,8 +2208,7 @@ defmodule Ash.Type do
   def set_type_transformation(%{type: original_type, constraints: constraints} = thing) do
     type = get_type!(original_type)
 
-    with {:ok, constraints} <- validate_constraints(type, constraints),
-         {:ok, constraints} <- Ash.Type.init(type, constraints),
+    with {:ok, constraints} <- init(type, constraints),
          {:ok, thing} <- set_default(thing, type, constraints),
          {:ok, thing} <- set_update_default(thing, type, constraints) do
       {:ok, %{thing | type: type, constraints: constraints}}

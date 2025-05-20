@@ -33,7 +33,7 @@ defmodule Ash.Type.Tuple do
 
       Example constraints:
 
-          constrains: fields:  [
+          constraints: fields:  [
                         amount: [
                           type: :integer,
                           description: "The amount of the transaction",
