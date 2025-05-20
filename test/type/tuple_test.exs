@@ -3,6 +3,16 @@ defmodule Ash.Type.TupleTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  defmodule TupleWithFields do
+    use Ash.Type.NewType,
+      subtype_of: :tuple,
+      constraints: [
+        fields: [
+          foo: [type: :string, allow_nil?: false]
+        ]
+      ]
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -19,6 +29,10 @@ defmodule Ash.Type.TupleTest do
     attributes do
       uuid_primary_key :id
 
+      attribute :metadata_type, TupleWithFields do
+        public? true
+      end
+
       attribute :metadata, :tuple do
         public? true
 
@@ -30,21 +44,12 @@ defmodule Ash.Type.TupleTest do
     end
   end
 
-  defmodule TupleWithFields do
-    use Ash.Type.NewType,
-      subtype_of: :tuple,
-      constraints: [
-        fields: [
-          foo: [type: :string, allow_nil?: false]
-        ]
-      ]
-  end
-
   test "it handles valid tuples" do
     changeset =
       Post
       |> Ash.Changeset.for_create(:create, %{
-        metadata: {"bar", 1}
+        metadata: {"bar", 1},
+        metadata_type: {"bar"}
       })
 
     assert changeset.valid?
