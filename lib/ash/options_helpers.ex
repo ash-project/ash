@@ -41,7 +41,7 @@ defmodule Ash.OptionsHelpers do
   Defines the calculation type used in DSL schema definitions, allowing either
   a calculation module/function or an `expr(...)` expression.
   """
-  @spec calculation_type() :: Spark.Options.option()
+  @spec calculation_type() :: Spark.Options.type()
   def calculation_type do
     {:or,
      [
