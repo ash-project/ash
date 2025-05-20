@@ -40,13 +40,7 @@ defmodule Ash.Resource.Calculation do
       doc: "Constraints to provide to the type. See `Ash.Type` for more."
     ],
     calculation: [
-      type:
-        {:or,
-         [
-           {:spark_function_behaviour, Ash.Resource.Calculation,
-            {Ash.Resource.Calculation.Function, 2}},
-           {:custom, __MODULE__, :expr_calc, []}
-         ]},
+      type: Ash.OptionsHelpers.calculation_type(),
       required: true,
       doc: """
       The `module`, `{module, opts}` or `expr(...)` to use for the calculation. Also accepts a function that takes *a list of records* and the context, and produces a result for each record.
