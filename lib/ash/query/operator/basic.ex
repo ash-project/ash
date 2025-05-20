@@ -193,7 +193,7 @@ defmodule Ash.Query.Operator.Basic do
         end
 
         defp do_evaluate(op, left, right)
-                when Decimal.is_decimal(left) or Decimal.is_decimal(right) do
+             when Decimal.is_decimal(left) or Decimal.is_decimal(right) do
           case op do
             :+ -> {:known, Decimal.add(to_decimal(left), to_decimal(right))}
             :* -> {:known, Decimal.mult(to_decimal(left), to_decimal(right))}
