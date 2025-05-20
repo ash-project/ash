@@ -141,7 +141,7 @@ defmodule Ash.Type.Tuple do
       end
     end)
     |> case do
-      {:ok, value} -> value |> Enum.reverse() |> List.to_tuple()
+      {:ok, value} -> {:ok, value |> Enum.reverse() |> List.to_tuple()}
       {:error, error} -> {:error, error}
     end
   end
@@ -155,8 +155,8 @@ defmodule Ash.Type.Tuple do
     list = Tuple.to_list(value)
 
     if length(list) == length(constraints[:fields]) do
-      value
-      |> Enum.zip_with(constraints[:fields])
+      list
+      |> Enum.zip(constraints[:fields])
       |> Map.new(fn {tuple_val, {key, _config}} ->
         {key, tuple_val}
       end)
