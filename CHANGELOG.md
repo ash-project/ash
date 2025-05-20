@@ -2,6 +2,27 @@
 
 <!-- changelog -->
 
+## [v3.5.11](https://github.com/ash-project/ash/compare/v3.5.10...v3.5.11) (2025-05-20)
+
+
+
+
+### Bug Fixes:
+
+* ensure we fully initialize new types
+
+* Tuple loader and serializer (#2049)
+
+* make sure after_action is called in generate_many (#2047)
+
+* properly pass `select` into combinations
+
+* add_new_code_interface/5 when do block occurs after resource (#2020)
+
+### Improvements:
+
+* add experimental new tool `Ash.data_layer_query`
+
 ## [v3.5.10](https://github.com/ash-project/ash/compare/v3.5.9...v3.5.10) (2025-05-15)
 
 
