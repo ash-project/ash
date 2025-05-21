@@ -36,4 +36,18 @@ defmodule Ash.OptionsHelpers do
       end
     end)
   end
+
+  @doc """
+  Defines the calculation type used in DSL schema definitions, allowing either
+  a calculation module/function or an `expr(...)` expression.
+  """
+  @spec calculation_type() :: Spark.Options.type()
+  def calculation_type do
+    {:or,
+     [
+       {:spark_function_behaviour, Ash.Resource.Calculation,
+        {Ash.Resource.Calculation.Function, 2}},
+       {:custom, Ash.Resource.Calculation, :expr_calc, []}
+     ]}
+  end
 end
