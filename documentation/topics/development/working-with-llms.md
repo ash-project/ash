@@ -32,7 +32,7 @@ To leverage these rules files, you can simply copy them yourself if you'd prefer
 
 ```elixir
 mix ash_ai.gen.usage_rules .rules \
-  ash ash_postgres ash_phoenix ash_graphql ash_json_api
+  ash ash_postgres ash_phoenix ash_graphql ash_json_api ash_ai
 ```
 
 You can replace the `.rules` file with your own current rules file, and it will be appended to the contents. Repeated calls will only replace the package rules contents of the file, not the whole file contents.
