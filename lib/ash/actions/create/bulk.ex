@@ -667,9 +667,10 @@ defmodule Ash.Actions.Create.Bulk do
       domain,
       ref,
       attrs_to_require,
-      action_select
+      action_select,
+      changesets_by_index
     )
-    |> run_after_action_hooks(opts, domain, ref, changesets_by_index)
+    |> run_after_action_hooks(opts, domain, ref)
     |> process_results(
       changes,
       all_changes,
@@ -1013,7 +1014,8 @@ defmodule Ash.Actions.Create.Bulk do
          domain,
          ref,
          attrs_to_require,
-         action_select
+         action_select,
+         changesets_by_index
        ) do
     batch
     |> Enum.map(fn changeset ->
@@ -1103,6 +1105,8 @@ defmodule Ash.Actions.Create.Bulk do
                 end
             end
           end
+
+        changesets_by_index = index_changesets(batch)
 
         batch
         |> Enum.group_by(&{&1.atomics, &1.filter})
@@ -1286,6 +1290,7 @@ defmodule Ash.Actions.Create.Bulk do
               []
           end
         end)
+        |> then(&{&1, changesets_by_index})
     end
   end
 
@@ -1304,11 +1309,10 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp run_after_action_hooks(
-         batch_results,
+         {batch_results, changesets_by_index},
          opts,
          domain,
-         ref,
-         changesets_by_index
+         ref
        ) do
     Enum.flat_map(batch_results, fn result ->
       changeset = changesets_by_index[result.__metadata__.bulk_create_index]
