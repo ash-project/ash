@@ -13,4 +13,15 @@ defmodule Ash.Query.Function.DateTimeAddTest do
       assert datetime.year == today.year + 1
     end
   end
+
+  describe "datetime_add :duration query function" do
+    test "1 year from today" do
+      today = DateTime.utc_now()
+
+      assert {:known, %DateTime{} = datetime} =
+               DateTimeAdd.evaluate(%{arguments: [today, Duration.new!(year: 1)]})
+
+      assert datetime.year == today.year + 1
+    end
+  end
 end

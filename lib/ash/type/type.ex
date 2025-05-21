@@ -55,6 +55,7 @@ defmodule Ash.Type do
     utc_datetime: Ash.Type.UtcDatetime,
     utc_datetime_usec: Ash.Type.UtcDatetimeUsec,
     datetime: Ash.Type.DateTime,
+    duration: Ash.Type.Duration,
     url_encoded_binary: Ash.Type.UrlEncodedBinary,
     union: Ash.Type.Union,
     module: Ash.Type.Module,
