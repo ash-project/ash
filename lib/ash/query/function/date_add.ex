@@ -16,7 +16,6 @@ defmodule Ash.Query.Function.DateAdd do
   @beginning_of_day Time.new!(0, 0, 0)
 
   def args, do: [[:date, :integer, :duration_name], [:date, :duration]]
-  def args, do: [[:date, :integer, :duration_name], [:date, :duration]]
 
   def returns, do: [:date]
 
