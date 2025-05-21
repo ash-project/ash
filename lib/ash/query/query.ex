@@ -2529,6 +2529,9 @@ defmodule Ash.Query do
       {:load, value}, query ->
         load(query, value)
 
+      {:strict_load, value}, query ->
+        load(query, value, strict?: true)
+
       {:distinct, value}, query ->
         distinct(query, value)
 
