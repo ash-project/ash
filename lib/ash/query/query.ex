@@ -2430,6 +2430,10 @@ defmodule Ash.Query do
       type: :any,
       doc: "A load statement to add to the query"
     ],
+    strict_load: [
+      type: :any,
+      doc: "A load statement to add to the query with the `strict?` option set to `true`"
+    ],
     select: [
       type: :any,
       doc: "A select statement to add to the query"
