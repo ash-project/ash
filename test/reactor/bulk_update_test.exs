@@ -7,7 +7,10 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      domain: Domain,
+      authorizers: [Ash.Policy.Authorizer]
 
     attributes do
       uuid_primary_key :id
@@ -33,6 +36,16 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
       calculate :published?, :boolean, expr(published_at <= now())
     end
 
+    policies do
+      policy action(:publish) do
+        forbid_if always()
+      end
+
+      policy always() do
+        authorize_if always()
+      end
+    end
+
     ets do
       private? true
     end
@@ -47,6 +60,20 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
     bulk_update :publish_posts, Post, :publish do
       initial(input(:posts_to_publish))
       return_errors?(true)
+      authorize? false
+    end
+  end
+
+  defmodule BulkUpdateForbiddenReactor do
+    @moduledoc false
+    use Reactor, extensions: [Ash.Reactor]
+
+    input :posts_to_publish
+
+    bulk_update :publish_posts, Post, :publish do
+      initial(input(:posts_to_publish))
+      return_errors?(true)
+      authorize? true
     end
   end
 
@@ -87,5 +114,22 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
 
     assert Enum.all?(updated_posts, & &1.published?)
     assert length(updated_posts) == how_many
+  end
+
+  test "the bulk update can be forbidden by policies" do
+    how_many = :rand.uniform(99) + :rand.uniform(99)
+
+    posts =
+      1..how_many
+      |> Enum.map(&%{title: "Post number #{&1}", published_at: nil})
+      |> Ash.bulk_create!(Post, :create, return_records?: true)
+      |> Map.fetch!(:records)
+
+    assert {:error, %{errors: [%{error: %{errors: [error]}}]}} =
+             Reactor.run(BulkUpdateForbiddenReactor, %{posts_to_publish: posts}, %{},
+               async?: false
+             )
+
+    assert is_struct(error, Ash.Error.Forbidden)
   end
 end

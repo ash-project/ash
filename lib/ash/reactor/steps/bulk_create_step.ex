@@ -1,6 +1,6 @@
 defmodule Ash.Reactor.BulkCreateStep do
   @moduledoc """
-  The Reactor stop which is used to execute create actions in bulk.
+  The Reactor step which is used to execute create actions in bulk.
   """
 
   use Reactor.Step
