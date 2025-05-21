@@ -109,7 +109,7 @@ defmodule Ash.Test.ExprTest do
       now = DateTime.utc_now()
       tomorrow = DateTime.add(now, 1, :day)
       expr = expr(^tomorrow - ^now)
-      assert eval!(expr) == 86400
+      assert eval!(expr) == 86_400
     end
 
     test "date diff expression" do
