@@ -271,17 +271,23 @@ defmodule Ash.Query.Operator.Basic do
           end
         end
 
-        defp do_evaluate(op, left, right) when is_struct(left, Duration) and is_struct(right, Duration) do
+        defp do_evaluate(op, left, right)
+             when is_struct(left, Duration) and is_struct(right, Duration) do
           case op do
             :+ -> {:known, Duration.add(left, right)}
             :- -> {:known, Duration.subtract(left, right)}
+            _ -> :unknown
           end
         end
 
-        defp do_evaluate(:*, left, right) when is_struct(left, Duration) or is_struct(right, Duration) do
+        defp do_evaluate(:*, left, right)
+             when is_struct(left, Duration) or is_struct(right, Duration) do
           cond do
-            is_struct(left, Duration) and is_integer(right) -> {:known, Duration.multiply(left, right)}
-            is_integer(left) and is_struct(right, Duration) -> {:known, Duration.multiply(right, left)}
+            is_struct(left, Duration) and is_integer(right) ->
+              {:known, Duration.multiply(left, right)}
+
+            is_integer(left) and is_struct(right, Duration) ->
+              {:known, Duration.multiply(right, left)}
           end
         end
 
