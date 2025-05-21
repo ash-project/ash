@@ -13,10 +13,11 @@ defmodule Ash.Query.Operator.Basic do
       no_nils: true,
       evaluate_types: :numbers,
       types: [
+        [:same, :any],
         [:duration, :integer],
         [:integer, :duration]
       ],
-      returns: [:duration, :duration]
+      returns: [:same, :duration, :duration]
     ],
     minus: [
       symbol: :-,
@@ -71,15 +72,6 @@ defmodule Ash.Query.Operator.Basic do
         @moduledoc false
 
         require Decimal
-        require Duration
-        require Date
-        require DateTime
-        require NaiveDateTime
-        require Time
-        require Date
-        require DateTime
-        require NaiveDateTime
-        require Time
 
         use Ash.Query.Operator,
           operator: unquote(opts[:symbol]),

@@ -66,6 +66,7 @@ defmodule Ash.Test.Type.DurationTest do
       calculate :duration_a_plus_b, :duration, expr(duration_a + duration_b)
       calculate :duration_b_minus_a, :duration, expr(duration_b - duration_a)
       calculate :duration_b_times_three, :duration, expr(duration_b * 3)
+      calculate :duration_two_times_b, :duration, expr(2 * duration_b)
       calculate :duration_a_negated, :duration, expr(-duration_a)
       calculate :date_plus_duration_d, :date, expr(datetime + duration_d)
       calculate :date_minus_duration_d, :date, expr(datetime - duration_d)
@@ -198,6 +199,7 @@ defmodule Ash.Test.Type.DurationTest do
         :duration_a_plus_b,
         :duration_b_minus_a,
         :duration_b_times_three,
+        :duration_two_times_b,
         :duration_a_negated,
         :date_plus_duration_d,
         :date_minus_duration_d,
@@ -218,6 +220,7 @@ defmodule Ash.Test.Type.DurationTest do
     assert post.duration_a_plus_b == %Duration{hour: 1, minute: 30}
     assert post.duration_b_minus_a == %Duration{hour: -1, minute: 30}
     assert post.duration_b_times_three == %Duration{minute: 90}
+    assert post.duration_two_times_b == %Duration{minute: 60}
     assert post.duration_a_negated == %Duration{hour: -1}
     assert post.date_plus_duration_d == Date.shift(@today, @year1)
     assert post.date_minus_duration_d == Date.shift(@today, Duration.negate(@year1))
