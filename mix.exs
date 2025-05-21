@@ -335,7 +335,7 @@ defmodule Ash.MixProject do
       licenses: ["MIT"],
       maintainers: ["Zach Daniel"],
       files: ~w(lib .formatter.exs mix.exs README* LICENSE*
-      CHANGELOG* documentation),
+      CHANGELOG* documentation usage-rules.md),
       links: %{
         GitHub: "https://github.com/ash-project/ash",
         Discord: "https://discord.gg/HTHRaaVPUc",
