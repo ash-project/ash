@@ -44,6 +44,17 @@ bar to find relevant reference information. Place the text `dsl` before your sea
 - [Contributing to Ash](documentation/topics/about_ash/contributing-to-ash.md)
 - [Alternatives](documentation/topics/about_ash/alternatives.md)
 
+### Development
+
+- [Project Structure](documentation/topics/development/project-structure.md)
+- [Generators](documentation/topics/development/generators.md)
+- [Testing](documentation/topics/development/testing.md)
+- [Working with LLM Assistance](documentation/topics/development/working-with-llms.md)
+- [Development Utilities](documentation/topics/development/development-utilities.md)
+- [Backwards Compatibility Config](documentation/topics/development/backwards-compatibility-config.md)
+- [Upgrading to 3.0](documentation/topics/development/upgrading-to-3.0.md)
+- [Error Handling](documentation/topics/development/error-handling.md)
+
 ### Resources
 
 - [Domains](documentation/topics/resources/domains.md)
@@ -74,16 +85,6 @@ bar to find relevant reference information. Place the text `dsl` before your sea
 - [Actors & Authorization](documentation/topics/security/actors-and-authorization.md)
 - [Sensitive Data](documentation/topics/security/sensitive-data.md)
 - [Policies](documentation/topics/security/policies.md)
-
-### Development
-
-- [Project Structure](documentation/topics/development/project-structure.md)
-- [Generators](documentation/topics/development/generators.md)
-- [Testing](documentation/topics/development/testing.md)
-- [Development Utilities](documentation/topics/development/development-utilities.md)
-- [Backwards Compatibility Config](documentation/topics/development/backwards-compatibility-config.md)
-- [Upgrading to 3.0](documentation/topics/development/upgrading-to-3.0.md)
-- [Error Handling](documentation/topics/development/error-handling.md)
 
 ### Advanced
 
