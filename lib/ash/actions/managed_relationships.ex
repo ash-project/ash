@@ -5,6 +5,7 @@ defmodule Ash.Actions.ManagedRelationships do
   alias Ash.Error.Changes.InvalidRelationship
   alias Ash.Error.Query.NotFound
 
+  require Logger
   require Ash.Query
   import Ash.Expr
 
@@ -493,6 +494,8 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.create(return_notifications?: true)
     |> case do
       {:ok, created, notifications} ->
+        debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
+
         changeset =
           changeset
           |> Ash.Changeset.set_context(%{
@@ -510,6 +513,14 @@ defmodule Ash.Actions.ManagedRelationships do
          {changeset, %{instructions | notifications: instructions.notifications ++ notifications}}}
 
       {:error, error} ->
+        debug_log(
+          relationship.name,
+          changeset,
+          :create,
+          {:error, error},
+          opts[:debug?]
+        )
+
         {:halt,
          {Ash.Changeset.add_error(changeset, error, [opts[:meta][:id] || relationship.name]),
           instructions}}
@@ -909,6 +920,14 @@ defmodule Ash.Actions.ManagedRelationships do
                 end
                 |> case do
                   {:ok, found} when not is_nil(found) ->
+                    debug_log(
+                      relationship.name,
+                      changeset,
+                      :read,
+                      :ok,
+                      opts[:debug?]
+                    )
+
                     do_handle_found(
                       relationship,
                       join_keys,
@@ -980,9 +999,25 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.update(return_notifications?: true)
                 |> case do
                   {:ok, updated, notifications} ->
+                    debug_log(
+                      relationship.name,
+                      changeset,
+                      :update,
+                      :ok,
+                      opts[:debug?]
+                    )
+
                     {:ok, [updated | current_value], notifications}
 
                   {:error, error} ->
+                    debug_log(
+                      relationship.name,
+                      changeset,
+                      :update,
+                      :error,
+                      opts[:debug?]
+                    )
+
                     {:error, error}
                 end
 
@@ -1063,6 +1098,8 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.create(return_notifications?: true)
         |> case do
           {:ok, _created, notifications} ->
+            debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
+
             case key do
               :relate ->
                 {:ok, [found | current_value], notifications}
@@ -1088,6 +1125,14 @@ defmodule Ash.Actions.ManagedRelationships do
             end
 
           {:error, error} ->
+            debug_log(
+              relationship.name,
+              changeset,
+              :create,
+              {:error, error},
+              opts[:debug?]
+            )
+
             {:error, error}
         end
 
@@ -1133,9 +1178,19 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.update(return_notifications?: true)
         |> case do
           {:ok, updated, notifications} ->
+            debug_log(relationship.name, changeset, :update, :ok, opts[:debug?])
+
             {:ok, [updated | current_value], notifications}
 
           {:error, error} ->
+            debug_log(
+              relationship.name,
+              changeset,
+              :update,
+              {:error, error},
+              opts[:debug?]
+            )
+
             {:error, error}
         end
 
@@ -1207,9 +1262,25 @@ defmodule Ash.Actions.ManagedRelationships do
 
             case created do
               {:ok, created, notifications} ->
+                debug_log(
+                  relationship.name,
+                  changeset,
+                  :create,
+                  :ok,
+                  opts[:debug?]
+                )
+
                 {:ok, [created | current_value], notifications}
 
               {:error, error} ->
+                debug_log(
+                  relationship.name,
+                  changeset,
+                  :create,
+                  :error,
+                  opts[:debug?]
+                )
+
                 {:error, error}
             end
 
@@ -1265,6 +1336,14 @@ defmodule Ash.Actions.ManagedRelationships do
 
         case created do
           {:ok, created, regular_notifications} ->
+            debug_log(
+              relationship.name,
+              changeset,
+              :create,
+              :ok,
+              opts[:debug?]
+            )
+
             join_relationship =
               Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
 
@@ -1295,13 +1374,31 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.create(return_notifications?: true)
             |> case do
               {:ok, _join_row, notifications} ->
+                debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
+
                 {:ok, [created | current_value], regular_notifications ++ notifications}
 
               {:error, error} ->
+                debug_log(
+                  relationship.name,
+                  changeset,
+                  :create,
+                  {:error, error},
+                  opts[:debug?]
+                )
+
                 {:error, error}
             end
 
           {:error, error} ->
+            debug_log(
+              relationship.name,
+              changeset,
+              :create,
+              {:error, error},
+              opts[:debug?]
+            )
+
             {:error, error}
         end
 
@@ -1417,9 +1514,19 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.update(return_notifications?: true)
         |> case do
           {:ok, updated, update_notifications} ->
+            debug_log(relationship.name, changeset, :update, :ok, opts[:debug?])
+
             {:ok, [updated | current_value], update_notifications}
 
           {:error, error} ->
+            debug_log(
+              relationship.name,
+              changeset,
+              :update,
+              {:error, error},
+              opts[:debug?]
+            )
+
             {:error, error}
         end
 
@@ -1469,6 +1576,8 @@ defmodule Ash.Actions.ManagedRelationships do
 
         case update_result do
           {:ok, updated, update_notifications} ->
+            debug_log(relationship.name, changeset, :update, :ok, opts[:debug?])
+
             destination_value = Map.get(updated, relationship.destination_attribute)
 
             join_relationship =
@@ -1494,6 +1603,8 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> case do
               {:ok, result} ->
+                debug_log(relationship.name, changeset, :read, :ok, opts[:debug?])
+
                 join_relationship =
                   Ash.Resource.Info.relationship(
                     relationship.source,
@@ -1519,18 +1630,50 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.update(return_notifications?: true)
                 |> case do
                   {:ok, _updated_join, join_update_notifications} ->
+                    debug_log(
+                      relationship.name,
+                      changeset,
+                      :update,
+                      :ok,
+                      opts[:debug?]
+                    )
+
                     {:ok, [updated | current_value],
                      update_notifications ++ join_update_notifications}
 
                   {:error, error} ->
+                    debug_log(
+                      relationship.name,
+                      changeset,
+                      :update,
+                      :error,
+                      opts[:debug?]
+                    )
+
                     {:error, error}
                 end
 
               {:error, error} ->
+                debug_log(
+                  relationship.name,
+                  changeset,
+                  :read,
+                  {:error, error},
+                  opts[:debug?]
+                )
+
                 {:error, error}
             end
 
           {:error, error} ->
+            debug_log(
+              relationship.name,
+              changeset,
+              :update,
+              {:error, error},
+              opts[:debug?]
+            )
+
             {:error, error}
         end
     end
@@ -1674,6 +1817,8 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> case do
               {:ok, result} ->
+                debug_log(relationship.name, changeset, :read, :ok, opts[:debug?])
+
                 result
                 |> Ash.Changeset.new()
                 |> Ash.Changeset.set_context(%{
@@ -1694,8 +1839,17 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.destroy(return_notifications?: true)
                 |> case do
                   {:ok, join_notifications} ->
+                    debug_log(
+                      relationship.name,
+                      changeset,
+                      :destroy,
+                      :ok,
+                      opts[:debug?]
+                    )
+
                     destroy_destination(
                       record,
+                      changeset,
                       relationship,
                       action_name,
                       join_notifications ++ all_notifications,
@@ -1703,12 +1857,22 @@ defmodule Ash.Actions.ManagedRelationships do
                       current_value,
                       actor,
                       changeset.tenant,
-                      opts[:authorize?]
+                      opts[:authorize?],
+                      opts[:debug?]
                     )
 
                   {:ok, _destroyed_join_record, join_notifications} ->
+                    debug_log(
+                      relationship.name,
+                      changeset,
+                      :destroy,
+                      :ok,
+                      opts[:debug?]
+                    )
+
                     destroy_destination(
                       record,
+                      changeset,
                       relationship,
                       action_name,
                       join_notifications ++ all_notifications,
@@ -1716,14 +1880,31 @@ defmodule Ash.Actions.ManagedRelationships do
                       current_value,
                       actor,
                       changeset.tenant,
-                      opts[:authorize?]
+                      opts[:authorize?],
+                      opts[:debug?]
                     )
 
                   {:error, error} ->
+                    debug_log(
+                      relationship.name,
+                      changeset,
+                      :destroy,
+                      :error,
+                      opts[:debug?]
+                    )
+
                     {:halt, {:error, error}}
                 end
 
               {:error, error} ->
+                debug_log(
+                  relationship.name,
+                  changeset,
+                  :read,
+                  {:error, error},
+                  opts[:debug?]
+                )
+
                 {:halt, {:error, error}}
             end
 
@@ -1743,12 +1924,36 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.destroy(return_notifications?: true)
             |> case do
               {:ok, notifications} ->
+                debug_log(
+                  relationship.name,
+                  changeset,
+                  :destroy,
+                  :ok,
+                  opts[:debug?]
+                )
+
                 {:cont, {:ok, current_value, notifications ++ all_notifications}}
 
               {:ok, _soft_destroyed_record, notifications} ->
+                debug_log(
+                  relationship.name,
+                  changeset,
+                  :destroy,
+                  :ok,
+                  opts[:debug?]
+                )
+
                 {:cont, {:ok, current_value, notifications ++ all_notifications}}
 
               {:error, error} ->
+                debug_log(
+                  relationship.name,
+                  changeset,
+                  :destroy,
+                  :error,
+                  opts[:debug?]
+                )
+
                 {:halt, {:error, error}}
             end
 
@@ -1784,6 +1989,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
   defp destroy_destination(
          record,
+         changeset,
          relationship,
          action_name,
          notifications,
@@ -1791,7 +1997,8 @@ defmodule Ash.Actions.ManagedRelationships do
          current_value,
          actor,
          tenant,
-         authorize?
+         authorize?,
+         debug?
        ) do
     record
     |> Ash.Changeset.new()
@@ -1808,12 +2015,18 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.destroy(return_notifications?: true)
     |> case do
       {:ok, destroy_destination_notifications} ->
+        debug_log(relationship.name, changeset, :destroy, :ok, debug?)
+
         {:cont, {:ok, current_value, notifications ++ destroy_destination_notifications}}
 
       {:ok, _destroyed_destination, destroy_destination_notifications} ->
+        debug_log(relationship.name, changeset, :destroy, :ok, debug?)
+
         {:cont, {:ok, current_value, notifications ++ destroy_destination_notifications}}
 
       {:error, error} ->
+        debug_log(relationship.name, changeset, :destroy, {:error, error}, debug?)
+
         {:halt, {:error, error}}
     end
   end
@@ -1854,6 +2067,8 @@ defmodule Ash.Actions.ManagedRelationships do
     )
     |> case do
       {:ok, result} ->
+        debug_log(relationship.name, changeset, :read, :ok, opts[:debug?])
+
         result
         |> Ash.Changeset.new()
         |> Ash.Changeset.set_context(%{
@@ -1869,13 +2084,24 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.destroy(return_notifications?: true)
         |> case do
           {:ok, notifications} ->
+            debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
+
             {:ok, notifications}
 
           {:error, error} ->
+            debug_log(
+              relationship.name,
+              changeset,
+              :destroy,
+              {:error, error},
+              opts[:debug?]
+            )
+
             {:error, error}
         end
 
       {:error, error} ->
+        debug_log(relationship.name, changeset, :read, {:error, error}, opts[:debug?])
         {:error, error}
     end
   end
@@ -1909,9 +2135,18 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.update(return_notifications?: true)
     |> case do
       {:ok, _unrelated, notifications} ->
+        debug_log(relationship.name, changeset, :update, :ok, opts[:debug?])
         {:ok, notifications}
 
       {:error, error} ->
+        debug_log(
+          relationship.name,
+          changeset,
+          :update,
+          {:error, error},
+          opts[:debug?]
+        )
+
         {:error, error}
     end
   end
@@ -1964,6 +2199,8 @@ defmodule Ash.Actions.ManagedRelationships do
     )
     |> case do
       {:ok, result} ->
+        debug_log(relationship.name, changeset, :read, :ok, opts[:debug?])
+
         result
         |> Ash.Changeset.new()
         |> Ash.Changeset.set_context(%{
@@ -1979,13 +2216,24 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.destroy(return_notifications?: true)
         |> case do
           {:ok, notifications} ->
+            debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
+
             {:ok, notifications}
 
           {:error, error} ->
+            debug_log(
+              relationship.name,
+              changeset,
+              :destroy,
+              {:error, error},
+              opts[:debug?]
+            )
+
             {:error, error}
         end
 
       {:error, error} ->
+        debug_log(relationship.name, changeset, :read, {:error, error}, opts[:debug?])
         {:error, error}
     end
   end
@@ -2015,5 +2263,46 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)
     |> Ash.destroy(return_notifications?: true)
+    |> case do
+      {:ok, notifications} ->
+        debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
+        {:ok, notifications}
+
+      {:error, error} ->
+        debug_log(relationship.name, changeset, :destroy, {:error, error}, opts[:debug?])
+
+        {:error, error}
+    end
+  end
+
+  defp debug_log(relationship_name, changeset, action, response, debug?) do
+    if debug? do
+      action = action |> Atom.to_string() |> String.capitalize()
+
+      info =
+        "#{inspect(changeset.resource)}#{inspect(relationship_name)} with action #{changeset.action.name}"
+
+      message =
+        case response do
+          :ok ->
+            "#{action} success"
+
+          {:error, error} ->
+            ash_error = Ash.Error.to_ash_error(error)
+            stacktrace = ash_error.stacktrace && ash_error.stacktrace.stacktrace
+            error = Exception.format(:error, ash_error, stacktrace)
+
+            """
+            Failed to #{action}
+
+            #{error}
+            """
+
+          _ ->
+            "#{action}"
+        end
+
+      Logger.debug("Managed Relationship Debug, #{info}: #{message}.")
+    end
   end
 end
