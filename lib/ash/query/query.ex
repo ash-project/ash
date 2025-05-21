@@ -2430,6 +2430,10 @@ defmodule Ash.Query do
       type: :any,
       doc: "A load statement to add to the query"
     ],
+    strict_load: [
+      type: :any,
+      doc: "A load statement to add to the query with the `strict?` option set to `true`"
+    ],
     select: [
       type: :any,
       doc: "A select statement to add to the query"
@@ -2528,6 +2532,9 @@ defmodule Ash.Query do
 
       {:load, value}, query ->
         load(query, value)
+
+      {:strict_load, value}, query ->
+        load(query, value, strict?: true)
 
       {:distinct, value}, query ->
         distinct(query, value)
