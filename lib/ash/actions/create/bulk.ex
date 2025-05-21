@@ -1076,7 +1076,7 @@ defmodule Ash.Actions.Create.Bulk do
     end)
     |> case do
       [] ->
-        []
+        {[], changesets_by_index}
 
       batch ->
         upsert_keys =
