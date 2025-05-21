@@ -26,12 +26,12 @@ We suggest setting up, where applicable, the following tools:
 
 ## Rules
 
-We are working on establishing a pattern whereby packages can provide a `package-rules.md` which you can then combine into your own rules file. The idea here is to democratize the process of building rules, allowing you to adopt well vetted and quality rules files from the maintainers of projects. This has only been done for a few packages so far.
+We are working on establishing a pattern whereby packages can provide a `usage-rules.md` which you can then combine into your own rules file. The idea here is to democratize the process of building rules, allowing you to adopt well vetted and quality rules files from the maintainers of projects. This has only been done for a few packages so far.
 
 To leverage these rules files, you can simply copy them yourself if you'd prefer something more manual, or you can use a new mix task provided by `ash_ai` to combine them into your own rules file.
 
 ```elixir
-mix ash_ai.gen.package_rules .rules \
+mix ash_ai.gen.usage_rules .rules \
   ash ash_postgres ash_phoenix ash_graphql ash_json_api
 ```
 
