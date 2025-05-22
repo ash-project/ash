@@ -49,6 +49,17 @@ defmodule Ash.Domain.Info do
     related_domain(subject, relationship, default)
   end
 
+  def related_domain(subject, [], default) do
+    resource =
+      if is_atom(subject) do
+        subject
+      else
+        subject.resource
+      end
+
+    Ash.Resource.Info.domain(resource) || default
+  end
+
   def related_domain(subject, [relationship | relationships], default) do
     resource =
       if is_atom(subject) do

@@ -84,6 +84,7 @@ defmodule Ash.Actions.Aggregate do
                      distinct: query.distinct,
                      domain: query.domain,
                      tenant: query.tenant,
+                     filter: query.filter,
                      to_tenant: query.to_tenant,
                      context: query.context
                    }),
@@ -101,15 +102,6 @@ defmodule Ash.Actions.Aggregate do
           end
         end
     end)
-  end
-
-  defp merge_query(left, right) do
-    left
-    |> Ash.Query.do_filter(right.filter)
-    |> Ash.Query.sort(right.sort, prepend?: true)
-    |> Ash.Query.distinct_sort(right.distinct_sort, prepend?: true)
-    |> Ash.Query.set_tenant(right.tenant)
-    |> Ash.Query.set_context(right.context)
   end
 
   defp authorize_query(query, opts, agg_authorize?) do
@@ -206,7 +198,6 @@ defmodule Ash.Actions.Aggregate do
   end
 
   defp set_opts(query, specified, others) do
-    query = Ash.Query.unset(query, [:limit, :offset])
     {agg_opts, _} = Ash.Query.Aggregate.split_aggregate_opts(others)
 
     agg_opts = Keyword.merge(agg_opts, specified)
@@ -214,13 +205,13 @@ defmodule Ash.Actions.Aggregate do
     query =
       case agg_opts[:query] do
         %Ash.Query{} = agg_query ->
-          merge_query(agg_query, query)
+          agg_query
 
         nil ->
-          query
+          Ash.Query.new(query.resource)
 
         opts ->
-          Ash.Query.Aggregate.build_query(query, nil, opts)
+          Ash.Query.Aggregate.build_query(Ash.Query.new(query.resource), nil, opts)
       end
 
     Keyword.put(agg_opts, :query, query)

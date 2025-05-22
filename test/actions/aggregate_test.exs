@@ -82,6 +82,8 @@ defmodule Ash.Test.Actions.AggregateTest do
         public?(true)
       end
 
+      attribute :views, :integer
+
       attribute :public, :boolean do
         public?(true)
         default false
@@ -221,6 +223,27 @@ defmodule Ash.Test.Actions.AggregateTest do
                Ash.aggregate!(Post, {:count, :count}, tenant: "foo", authorize?: false)
 
       assert %{count: 3} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
+    end
+
+    test "counts should match read + Enum count" do
+      # create 10 unpublished posts
+      Enum.each(1..10, fn _ ->
+        Ash.Seed.seed!(Post, %{public: false})
+      end)
+
+      # create 1 public post
+      Ash.Seed.seed!(Post, %{public: true, views: 0})
+
+      query =
+        Post
+        |> Ash.Query.for_read(:read)
+        |> Ash.Query.filter(public == true)
+        |> Ash.Query.sort(views: :desc)
+        |> Ash.Query.limit(1)
+
+      direct_count = Ash.count!(query)
+      enum_count = query |> Ash.read!() |> Enum.count()
+      assert direct_count == enum_count
     end
 
     test "runs authorization" do
