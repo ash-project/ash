@@ -2,6 +2,33 @@
 
 <!-- changelog -->
 
+## [v3.5.12](https://github.com/ash-project/ash/compare/v3.5.11...v3.5.12) (2025-05-22)
+
+
+
+
+### Features:
+
+* add duration type, functions and operator support (#2036)
+
+### Bug Fixes:
+
+* properly split lazy & non-lazy new type initialization
+
+* Ash.Reactor: Don't import `Ash.Expr` in the bulk update DSL. (#2055)
+
+* don't lift query info to aggregate info on aggregation
+
+* ensure managed relationship context is kept for belongs_to relationships
+
+### Improvements:
+
+* Support manage relationship debug (#2021)
+
+* add `strict_load` key to `Ash.Query.build`
+
+* Add an Ash.OptionsHelpers.calculation_type/0 (#2051)
+
 ## [v3.5.11](https://github.com/ash-project/ash/compare/v3.5.10...v3.5.11) (2025-05-20)
 
 
