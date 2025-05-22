@@ -144,7 +144,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
       target: __MODULE__,
       args: [:name, :resource, {:optional, :action}],
       identifier: :name,
-      imports: [Reactor.Dsl.Argument, Ash.Expr],
+      imports: [Reactor.Dsl.Argument],
       entities: [
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
         context: [Ash.Reactor.Dsl.Context.__entity__()],
