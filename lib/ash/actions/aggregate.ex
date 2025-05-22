@@ -74,7 +74,7 @@ defmodule Ash.Actions.Aggregate do
             Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
             with {:ok, query} <- Ash.Actions.Read.handle_multitenancy(query),
-                 {:ok, query} <- authorize_query(query, opts, agg_authorize?),
+                 {:ok, %{valid?: true} = query} <- authorize_query(query, opts, agg_authorize?),
                  {:ok, aggregates} <- validate_aggregates(query, aggregates, opts),
                  {:ok, data_layer_query} <-
                    Ash.Query.data_layer_query(%Ash.Query{
@@ -96,6 +96,9 @@ defmodule Ash.Actions.Aggregate do
                    ) do
               {:cont, {:ok, Map.merge(acc, result)}}
             else
+              {:ok, %Ash.Query{} = query} ->
+                {:halt, {:error, Ash.Error.to_error_class(query)}}
+
               {:error, error} ->
                 {:halt, {:error, error}}
             end
