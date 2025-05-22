@@ -35,6 +35,47 @@ defmodule Ash.Test.Type.NewTypeTest do
       ]
   end
 
+  defmodule NativeBird do
+    defstruct [:name, :description]
+
+    use Ash.Type.NewType,
+      subtype_of: :struct,
+      constraints: [
+        instance_of: __MODULE__,
+        fields: [
+          name: [type: :string, allow_nil?: false],
+          description: [type: :string, allow_nil?: false]
+        ]
+      ]
+  end
+
+  defmodule LazyNativeBird do
+    defstruct [:name, :description]
+
+    use Ash.Type.NewType,
+      subtype_of: :struct,
+      lazy_init?: true,
+      constraints: [
+        instance_of: __MODULE__,
+        fields: [
+          name: [type: :string, allow_nil?: false],
+          description: [type: :string, allow_nil?: false]
+        ]
+      ]
+  end
+
+  test "constraints return the initialized constraints" do
+    {:ok, constraints} = Ash.Type.init(NativeBird, [])
+    assert constraints == Ash.Type.NewType.constraints(NativeBird, constraints)
+  end
+
+  test "constraints return the initialized constraints for lazy initialization" do
+    {:ok, constraints} = Ash.Type.init(NativeBird, [])
+
+    assert constraints ==
+             Ash.Type.NewType.constraints(LazyNativeBird, constraints)
+  end
+
   test "it handles simple types" do
     assert {:ok, "123-45-6789"} = Ash.Type.cast_input(SSN, "123-45-6789")
 

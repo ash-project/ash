@@ -76,12 +76,12 @@ defmodule Ash.Type.NewType do
   def constraints(type, constraints) do
     if new_type?(type) do
       if type.lazy_init?() do
-        constraints = type.subtype_constraints()
+        case type.do_init(constraints) do
+          {:ok, constraints} ->
+            constraints
 
-        if new_type?(type.subtype_of()) do
-          constraints(type.subtype_of(), constraints)
-        else
-          constraints
+          {:error, error} ->
+            raise Ash.Error.to_ash_error(error)
         end
       else
         constraints
@@ -192,13 +192,8 @@ defmodule Ash.Type.NewType do
         end
       end
 
-      if lazy_init? do
-        @impl Ash.Type.NewType
-        def lazy_init?, do: true
-      else
-        @impl Ash.Type.NewType
-        def lazy_init?, do: true
-      end
+      @impl Ash.Type.NewType
+      def lazy_init?, do: unquote(lazy_init?)
 
       @impl Ash.Type
       if lazy_init? do
@@ -207,14 +202,19 @@ defmodule Ash.Type.NewType do
         end
       else
         def init(constraints) do
-          case validate_constraints(unquote(subtype_of), constraints) do
-            :ok ->
-              type_constraints = type_constraints(constraints, unquote(subtype_constraints))
-              Ash.Type.init(unquote(subtype_of), type_constraints)
+          do_init(constraints)
+        end
+      end
 
-            {:error, error} ->
-              {:error, error}
-          end
+      @doc false
+      def do_init(constraints) do
+        case validate_constraints(unquote(subtype_of), constraints) do
+          :ok ->
+            type_constraints = type_constraints(constraints, unquote(subtype_constraints))
+            Ash.Type.init(unquote(subtype_of), type_constraints)
+
+          {:error, error} ->
+            {:error, error}
         end
       end
 
