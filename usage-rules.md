@@ -55,6 +55,236 @@ end
 - Prefer domain code interfaces to call actions instead of directly building queries/changesets and calling functions in the `Ash` module
 - A resource could be *only generic actions*. This can be useful when you are using a resource only to model behavior.
 
+### Using Validations
+
+Validations ensure that data meets your business requirements before it gets processed by an action. Unlike changes, validations cannot modify the changeset - they can only validate it or add errors.
+
+- Use **built-in validations** (defined in `Ash.Resource.Validation.Builtins`) for common validation patterns:
+  ```elixir
+  validate match(:email, ~r/@/)
+  validate compare(:age, greater_than_or_equal_to: 18)
+  validate present(:first_name)
+  validate one_of(:status, [:active, :inactive, :pending])
+  ```
+
+- Add **custom error messages** to make validation errors user-friendly:
+  ```elixir
+  validate compare(:age, greater_than_or_equal_to: 18) do
+    message "You must be at least 18 years old to sign up"
+  end
+  ```
+
+- Apply validations **conditionally** using `where`:
+  ```elixir
+  validate present(:phone_number) do
+    where present(:contact_method)
+    where eq(:contact_method, "phone")
+    message "Phone number is required when phone is selected as contact method"
+  end
+  ```
+
+- Create **action-specific validations** inside your action definitions:
+  ```elixir
+  actions do
+    create :sign_up do
+      validate present([:email, :password])
+      validate match(:email, ~r/@/)
+    end
+  end
+  ```
+
+- Add **global validations** that apply to multiple action types:
+  ```elixir
+  validations do
+    validate present([:title, :body]), on: [:create, :update]
+    validate absent(:admin_note), on: :create, where: not_actor_attribute(:is_admin, true)
+  end
+  ```
+
+- Create **custom validation modules** for complex validation logic:
+  ```elixir
+  defmodule MyApp.Validations.UniqueUsername do
+    use Ash.Resource.Validation
+
+    @impl true
+    def init(opts), do: {:ok, opts}
+
+    @impl true
+    def validate(changeset, _opts, _context) do
+      # Validation logic here
+      # Return :ok or {:error, message}
+    end
+  end
+
+  # Usage in resource:
+  validate {MyApp.Validations.UniqueUsername, []}
+  ```
+
+- Make validations **atomic** when possible to ensure they work correctly with direct database operations by implementing the `atomic/3` callback in custom validation modules.
+
+```elixir
+defmodule MyApp.Validations.IsEven do
+  # transform and validate opts
+
+  use Ash.Resource.Validation
+
+  @impl true
+  def init(opts) do
+    if is_atom(opts[:attribute]) do
+      {:ok, opts}
+    else
+      {:error, "attribute must be an atom!"}
+    end
+  end
+
+  @impl true
+  # This is optional, but useful to have in addition to validation
+  # so you get early feedback for validations that can otherwise
+  # only run in the datalayer
+  def validate(changeset, opts, _context) do
+    value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
+
+    if is_nil(value) || (is_number(value) && rem(value, 2) == 0) do
+      :ok
+    else
+      {:error, field: opts[:attribute], message: "must be an even number"}
+    end
+  end
+
+  @impl true
+  def atomic(changeset, opts, context) do
+    {:atomic,
+      # the list of attributes that are involved in the validation
+      [opts[:attribute]],
+      # the condition that should cause the error
+      # here we refer to the new value or the current value
+      expr(rem(^atomic_ref(opts[:attribute]), 2) != 0),
+      # the error expression
+      expr(
+        error(^InvalidAttribute, %{
+          field: ^opts[:attribute],
+          # the value that caused the error
+          value: ^atomic_ref(opts[:attribute]),
+          # the message to display
+          message: ^(context.message || "%{field} must be an even number"),
+          vars: %{field: ^opts[:attribute]}
+        })
+      )
+    }
+  end
+end
+```
+
+### Using Changes
+
+Changes allow you to modify the changeset before it gets processed by an action. Unlike validations, changes can manipulate attribute values, add attributes, or perform other data transformations.
+
+- Use **built-in changes** (defined in `Ash.Resource.Change.Builtins`) for common transformation patterns:
+```elixir
+change set_attribute(:status, "pending")
+change relate_actor(:user)
+change atomic_update(:counter, expr(^counter + 1))
+```
+
+- Apply changes **conditionally** using `where`:
+```elixir
+change set_attribute(:paid, true) do
+  where attribute_equals(:payment_method, "free")
+end
+
+change relate_actor(:creator) do
+  where present(:actor)
+end
+```
+
+- Create **action-specific changes** inside your action definitions:
+```elixir
+actions do
+  create :sign_up do
+    change set_attribute(:joined_at, expr(now()))
+    change increment(:visit_count)
+    change optimistic_lock(:version)
+    change debug_log("Processing signup")
+  end
+end
+```
+
+- Add **global changes** that apply to multiple action types:
+```elixir
+changes do
+  change set_attribute(:updated_at, expr(now())), on: :update
+  change set_attribute(:inserted_at, expr(now())), on: :create
+  change prevent_change(:secret_field), on: [:update, :destroy]
+  change manage_relationship(:related_items, :items), on: [:create, :update]
+end
+```
+
+- Create **custom change modules** for reusable transformation logic:
+  ```elixir
+  defmodule MyApp.Changes.SlugifyTitle do
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      title = Ash.Changeset.get_attribute(changeset, :title)
+
+      if title do
+        slug = title |> String.downcase() |> String.replace(~r/[^a-z0-9]+/, "-")
+        Ash.Changeset.change_attribute(changeset, :slug, slug)
+      else
+        changeset
+      end
+    end
+  end
+
+  # Usage in resource:
+  change {MyApp.Changes.SlugifyTitle, []}
+  ```
+
+- Create a **change module with lifecycle hooks** to handle complex multi-step operations:
+
+```elixir
+defmodule MyApp.Changes.ProcessOrder do
+  use Ash.Resource.Change
+
+  def change(changeset, _opts, _context) do
+    changeset
+    |> Ash.Changeset.before_transaction(fn changeset ->
+      # Runs before the transaction starts
+      # Use for external API calls, logging, etc.
+      MyApp.ExternalService.reserve_inventory(changeset)
+      changeset
+    end)
+    |> Ash.Changeset.before_action(fn changeset ->
+      # Runs inside the transaction before the main action
+      # Use for related database changes in the same transaction
+      Ash.Changeset.change_attribute(changeset, :processed_at, DateTime.utc_now())
+    end)
+    |> Ash.Changeset.after_action(fn changeset, result ->
+      # Runs inside the transaction after the main action, only on success
+      # Use for related database changes that depend on the result
+      MyApp.Inventory.update_stock_levels(result)
+      {changeset, result}
+    end)
+    |> Ash.Changeset.after_transaction(fn changeset,
+      {:ok, result} ->
+        # Runs after the transaction completes (success or failure)
+        # Use for notifications, external systems, etc.
+        MyApp.Mailer.send_order_confirmation(result)
+        {changeset, result}
+
+      {:error, error} ->
+        # Runs after the transaction completes (success or failure)
+        # Use for notifications, external systems, etc.
+        MyApp.Mailer.send_order_issue_notice(result)
+        {:error, error}
+    end)
+  end
+end
+
+# Usage in resource:
+change {MyApp.Changes.ProcessOrder, []}
+```
+
 ## Anonymous Functions
 
 Prefer to put code in its own module and refer to that in changes, preparations, validations etc.
@@ -492,7 +722,7 @@ defmodule MyApp.Checks.VisibleToUserLevel do
 
   # Return an expression that filters the records
   def filter(actor, _authorizer, _opts) do
-    # This filter will only show records with visibility_level 
+    # This filter will only show records with visibility_level
     # less than or equal to the actor's user_level
     expr(visibility_level <= ^actor.user_level)
   end
