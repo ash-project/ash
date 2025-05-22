@@ -2,8 +2,6 @@
 
 Changes are the primary way of customizing create/update/destroy action behavior. If you are familiar with `Plug`, you can think of an `Ash.Resource.Change` as the equivalent of a `Plug` for changesets. At its most basic, a change will take a changeset and return a new changeset. Changes can be simple, like setting or modifying an attribute value, or more complex, attaching hooks to be executed within the lifecycle of the action.
 
-For more information about hooks, see the [multi step actions guide](/documentation/topics/advanced/multi-step-actions.md).
-
 ## Builtin Changes
 
 There are a number of builtin changes that can be used, and are automatically imported into your resources. See `Ash.Resource.Change.Builtins` for more.
