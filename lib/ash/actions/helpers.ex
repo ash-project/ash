@@ -208,7 +208,20 @@ defmodule Ash.Actions.Helpers do
   end
 
   def set_context_and_get_opts(domain, query_or_changeset, opts) do
-    opts = transform_tenant(opts)
+    opts =
+      if scope = opts[:scope] do
+        actor = Ash.Scope.get_actor(scope)
+        tenant = Ash.Scope.get_tenant(scope)
+        context = Ash.Scope.get_context(scope)
+
+        opts
+        |> set_when_ok(:actor, actor)
+        |> set_when_ok(:tenant, tenant)
+        |> set_when_ok(:context, context, &Ash.Helpers.deep_merge_maps(&1, &2))
+      else
+        opts
+      end
+
     opts = set_skip_unknown_opts(opts, query_or_changeset)
     query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
 
@@ -272,6 +285,14 @@ defmodule Ash.Actions.Helpers do
     {query_or_changeset, opts}
   end
 
+  @doc false
+  def set_when_ok(opts, key, value, merger \\ fn _l, r -> r end)
+  def set_when_ok(opts, key, {:ok, value}, merger) do
+    Keyword.update(opts, key, value, &merger.(&1, value))
+  end
+
+  def set_when_ok(opts, _, _, _), do: opts
+
   def set_opts(opts, domain, query_or_changeset \\ nil) do
     opts
     |> add_actor(query_or_changeset, domain)
@@ -299,16 +320,6 @@ defmodule Ash.Actions.Helpers do
           private: private_context
         })
         |> Ash.Changeset.set_tenant(query_or_changeset.tenant || opts[:tenant])
-    end
-  end
-
-  defp transform_tenant(opts) do
-    case Keyword.fetch(opts, :tenant) do
-      {:ok, tenant} ->
-        Keyword.put(opts, :tenant, tenant)
-
-      :error ->
-        opts
     end
   end
 

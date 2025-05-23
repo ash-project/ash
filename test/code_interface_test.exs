@@ -602,4 +602,20 @@ defmodule Ash.Test.CodeInterfaceTest do
     assert "Hello, Leonard Nimoy." = User.hello_actor!(actor: %{name: "Leonard Nimoy"})
     assert "Hello, William Shatner." = User.hello_actor!()
   end
+
+  defmodule Scope do
+    defstruct [:actor, :tenant, :context]
+
+    defimpl Ash.Scope do
+      def get_actor(%{actor: actor}), do: {:ok, actor}
+      def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
+      def get_context(%{context: context}), do: {:ok, context}
+    end
+  end
+
+  test "uses scope options" do
+    scope = %Scope{actor: %{name: "Jelly Belly"}}
+    assert "Hello, Jelly Belly." = User.hello_actor!(scope: scope)
+    assert "Hello, William Shatner." = User.hello_actor!()
+  end
 end
