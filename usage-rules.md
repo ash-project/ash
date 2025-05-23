@@ -55,6 +55,32 @@ end
 - Prefer domain code interfaces to call actions instead of directly building queries/changesets and calling functions in the `Ash` module
 - A resource could be *only generic actions*. This can be useful when you are using a resource only to model behavior.
 
+## Querying Data
+
+Use `Ash.Query` to build queries for reading data from your resources. The query module provides a declarative way to filter, sort, and load data.
+
+**Important**: You must `require Ash.Query` if you want to use `Ash.Query.filter/2`, as it is a macro.
+
+```elixir
+defmodule MyApp.SomeModule do
+  require Ash.Query
+
+  def get_active_posts do
+    MyApp.Post
+    |> Ash.Query.filter(status == :active)
+    |> MyApp.Blog.read!()
+  end
+end
+```
+
+Common query operations:
+
+- **Filter**: `Ash.Query.filter(query, field == value)`
+- **Sort**: `Ash.Query.sort(query, field: :asc)`
+- **Load relationships**: `Ash.Query.load(query, [:author, :comments])`
+- **Limit**: `Ash.Query.limit(query, 10)`
+- **Offset**: `Ash.Query.offset(query, 20)`
+
 ## Error Handling
 
 Functions to call actions, like `Ash.create` and code interfaces like `MyApp.Accounts.register_user` all return ok/error tuples. All have `!` variations, like `Ash.create!` and `MyApp.Accounts.register_user!`. Use the `!` variations when you want to "let it crash", like if looking something up that should definitely exist, or calling an action that should always succeed.
