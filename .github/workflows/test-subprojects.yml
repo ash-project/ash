@@ -42,7 +42,8 @@ jobs:
             { org: "team-alembic", name: "ash_authentication_phoenix" },
             # { org: "sevenseacat", name: "tunez", ref: "end-of-chapter-8" }
           ]
-        otp: ["27.1.2", "28"]
+        # todo: add 28 here when its available
+        otp: ["27.1.2"]
         elixir: ["1.18.4"]
     services:
       pg:
