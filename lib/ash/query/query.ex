@@ -3425,7 +3425,7 @@ defmodule Ash.Query do
              Map.update!(
                context,
                :data_layer,
-               &Map.merge(&1, new_context)
+               &Map.merge(&1 || %{}, new_context)
              )
            ),
          {:ok, query} <- add_tenant(query, ash_query),
