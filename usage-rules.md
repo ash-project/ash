@@ -40,6 +40,14 @@ define :custom_action do
 end
 ```
 
+Prefer using the primary read action for "get" style code interfaces, and using `get_by` when the field you are looking up by is the primary key or has an `identity` on the resource.
+
+```elixir
+resource ResourceName do
+  define :get_thing, action: :read, get_by: [:id]
+end
+```
+
 ## Actions
 
 - Create specific, well-named actions rather than generic ones
@@ -213,6 +221,29 @@ defmodule MyApp.Validations.IsEven do
   end
 end
 ```
+
+- **Avoid redundant validations** - Don't add validations that duplicate attribute constraints:
+  ```elixir
+  # WRONG - redundant validation
+  attribute :name, :string do
+    allow_nil? false
+    constraints min_length: 1
+  end
+
+  validate present(:name) do  # Redundant! allow_nil? false already handles this
+    message "Name is required"
+  end
+
+  validate attribute_does_not_equal(:name, "") do  # Redundant! min_length: 1 already handles this
+    message "Name cannot be empty"
+  end
+
+  # CORRECT - let attribute constraints handle basic validation
+  attribute :name, :string do
+    allow_nil? false
+    constraints min_length: 1
+  end
+  ```
 
 ### Using Changes
 
