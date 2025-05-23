@@ -661,6 +661,33 @@ Policies evaluate from top to bottom with the following logic:
 3. The first check that produces a decision determines the policy result
 4. If no check produces a decision, the policy defaults to forbidden
 
+### IMPORTANT: Policy Check Logic
+
+**the first check that yields a result determines the policy outcome**
+
+```elixir
+# WRONG - This is OR logic, not AND logic!
+policy action_type(:update) do
+  authorize_if actor_attribute_equals(:admin?, true)    # If this passes, policy passes
+  authorize_if relates_to_actor_via(:owner)           # Only checked if first fails
+end
+```
+
+To require BOTH conditions in that exmaple, you would use `forbid_unless` for the first condition:
+
+```elixir
+# CORRECT - This requires BOTH conditions
+policy action_type(:update) do
+  forbid_unless actor_attribute_equals(:admin?, true)  # Must be admin
+  authorize_if relates_to_actor_via(:owner)           # AND must be owner
+end
+```
+
+Alternative patterns for AND logic:
+- Use multiple separate policies (each must pass independently)
+- Use a single complex expression with `expr(condition1 and condition2)`
+- Use `forbid_unless` for required conditions, then `authorize_if` for the final check
+
 ### Bypass Policies
 
 Use bypass policies to allow certain actors to bypass other policy restrictions. This should be used almost exclusively for admin bypasses.
