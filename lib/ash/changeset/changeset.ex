@@ -3093,6 +3093,9 @@ defmodule Ash.Changeset do
               end
 
             case extract_eager_error(eager_condition_expr, eager_error_expr, eager?) do
+              :skip ->
+                {:cont, changeset}
+
               {:ok, error} ->
                 {:cont,
                  add_error(
@@ -3153,6 +3156,9 @@ defmodule Ash.Changeset do
                 end
             end
           else
+            {:expr, {:ok, false}, _expr} ->
+              {:cont, changeset}
+
             {:expr, {:error, error}, expr} ->
               if Keyword.get(opts, :error_is_not_atomic?, false) do
                 {:halt,
@@ -3168,6 +3174,10 @@ defmodule Ash.Changeset do
           end
       end
     )
+  end
+
+  defp extract_eager_error({:ok, false}, _, true) do
+    :skip
   end
 
   defp extract_eager_error({:ok, true}, {:error, %{class: :invalid} = error}, true) do

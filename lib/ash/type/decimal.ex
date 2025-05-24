@@ -324,8 +324,6 @@ defmodule Ash.Type.Decimal do
       String.length(coef_str)
     end
   end
-
-
 end
 
 import Ash.Type.Comparable

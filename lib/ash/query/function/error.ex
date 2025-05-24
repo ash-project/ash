@@ -12,9 +12,6 @@ defmodule Ash.Query.Function.Error do
   def returns, do: :no_return
 
   def evaluate(%{arguments: [exception, input]}) do
-    json_module = Ash.Helpers.json_module()
-
-    {:error,
-     Ash.Error.from_json(exception, json_module.decode!(json_module.encode!(Map.new(input))))}
+    {:error, exception.exception(Keyword.new(input))}
   end
 end
