@@ -42,8 +42,9 @@ defmodule Ash.Actions.ManagedRelationships do
               Enum.any?(relationships, fn {_, opts} -> opts[:authorize?] end)
 
           actor = engine_opts[:actor]
+          tenant = engine_opts[:tenant]
 
-          case Ash.load(acc, key, authorize?: authorize?, actor: actor, domain: domain) do
+          case Ash.load(acc, key, authorize?: authorize?, actor: actor, tenant: tenant, domain: domain) do
             {:ok, loaded} -> {:cont, {:ok, loaded}}
             {:error, error} -> {:halt, {:error, error}}
           end
