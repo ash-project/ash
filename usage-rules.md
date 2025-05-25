@@ -641,6 +641,11 @@ After creating or modifying Ash code, run `mix ash.codegen <short_name_describin
 Post
 |> Ash.Query.for_read(:read, %{}, actor: current_user)
 |> Ash.read!()
+
+# BAD, DO NOT DO THIS
+Post
+|> Ash.Query.for_read(:read, %{})
+|> Ash.read!(actor: current_user)
 ```
 
 ### Policies
