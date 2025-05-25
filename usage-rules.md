@@ -1064,6 +1064,8 @@ calculate :grade_percentage, :decimal, expr(
 
 When testing resources:
 - Test your domain actions through the code interface
+- Use test utilities in `Ash.Test`
 - Test authorization policies work as expected using `Ash.can?`
 - Use `authorize?: false` in tests where authorization is not the focus
 - Write generators using `Ash.Generator`
+- Prefer to use raising versions of functions whenever possible, as opposed to pattern matching
