@@ -2578,6 +2578,7 @@ defmodule Ash.Actions.Update.Bulk do
 
         case manage_relationships(result, domain, changeset,
                actor: opts[:actor],
+               tenant: opts[:tenant],
                authorize?: opts[:authorize?]
              ) do
           {:ok, result, %{notifications: new_notifications, new_changeset: changeset}} ->
