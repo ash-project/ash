@@ -4,7 +4,7 @@ There aren't really any alternatives to Ash that we are aware of that do all of 
 
 This is a living document, and is not comprehensive. We are not *vouching* for any of these packages, but rather listing them here for your convenience to investigate on your own.
 
-Want to add or edit this list? Open a [pull request](https://github.com/ash-project/ash/edit/main/documentation/topics/about_ash/alternatives.md) Want a more comprehensive list? Check out the [Awesome Elixir](https://github.com/h4cc/awesome-elixir).
+Want to add or edit this list? Open a [pull request](https://github.com/ash-project/ash/edit/main/documentation/topics/about_ash/alternatives.md). Want a more comprehensive list? Check out the [Awesome Elixir](https://github.com/h4cc/awesome-elixir).
 
 ## Application Frameworks
 
