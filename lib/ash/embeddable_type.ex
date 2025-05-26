@@ -735,9 +735,10 @@ defmodule Ash.EmbeddableType do
                  """}
             end
           else
-            with :ok <- update_action_allows_atomics(constraints, value) do
-              :ok
-            else
+            case update_action_allows_atomics(constraints, value) do
+              :ok ->
+                :ok
+
               {:not_atomic, msg} ->
                 {:not_atomic, msg}
 
