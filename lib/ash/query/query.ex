@@ -576,7 +576,6 @@ defmodule Ash.Query do
                       sort_input_indices: query.sort_input_indices ++ [index]
                   }
               end)
-              |> validate_sort()
 
             {:error, error} ->
               Ash.Query.add_error(query, :sort, error)
@@ -3216,32 +3215,37 @@ defmodule Ash.Query do
     if sorts == [] || sorts == nil do
       query
     else
-      if Ash.DataLayer.data_layer_can?(query.resource, :sort) do
-        if opts[:prepend?] && query.sort != [] do
-          validated =
-            query
-            |> Map.put(:sort, [])
-            |> sort(sorts)
-            |> Map.get(:sort)
+      case Ash.Actions.Sort.process(query.resource, sorts) do
+        {:ok, sorts} ->
+          if Ash.DataLayer.data_layer_can?(query.resource, :sort) do
+            if opts[:prepend?] && query.sort != [] do
+              validated =
+                query
+                |> Map.put(:sort, [])
+                |> sort(sorts)
+                |> Map.get(:sort)
 
-          new_sort_input_indices =
-            Enum.map(query.sort_input_indices, &(&1 + 1))
+              new_sort_input_indices =
+                Enum.map(query.sort_input_indices, &(&1 + 1))
 
-          %{query | sort: validated ++ query.sort, sort_input_indices: new_sort_input_indices}
-        else
-          sorts
-          |> List.wrap()
-          |> Enum.reduce(query, fn
-            {sort, direction}, query ->
-              %{query | sort: query.sort ++ [{sort, direction}]}
+              %{query | sort: validated ++ query.sort, sort_input_indices: new_sort_input_indices}
+            else
+              sorts
+              |> List.wrap()
+              |> Enum.reduce(query, fn
+                {sort, direction}, query ->
+                  %{query | sort: query.sort ++ [{sort, direction}]}
 
-            sort, query ->
-              %{query | sort: query.sort ++ [{sort, :asc}]}
-          end)
-          |> validate_sort()
-        end
-      else
-        add_error(query, :sort, "Data layer does not support sorting")
+                sort, query ->
+                  %{query | sort: query.sort ++ [{sort, :asc}]}
+              end)
+            end
+          else
+            add_error(query, :sort, "Data layer does not support sorting")
+          end
+
+        {:error, error} ->
+          Ash.Query.add_error(query, :sort, error)
       end
     end
     |> sequence_sorts()
@@ -3313,7 +3317,6 @@ defmodule Ash.Query do
             sort, query ->
               %{query | distinct_sort: query.distinct_sort ++ [{sort, :asc}]}
           end)
-          |> validate_sort()
         end
       else
         add_error(query, :distinct_sort, "Data layer does not support distinct sorting")
@@ -3572,13 +3575,6 @@ defmodule Ash.Query do
     else
       {:error, error} -> {:error, error}
       _ -> {:ok, query}
-    end
-  end
-
-  defp validate_sort(%{resource: resource, sort: sort} = query) do
-    case Sort.process(resource, sort, query.aggregates, query.context) do
-      {:ok, new_sort} -> %{query | sort: new_sort}
-      {:error, error} -> add_error(query, :sort, error)
     end
   end
 

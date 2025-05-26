@@ -151,6 +151,15 @@ defmodule Ash.Test.Sort.SortTest do
       |> Ash.read!()
     end
 
+    test "a sort can be just a string" do
+      {:ok, [{%Ash.Query.Calculation{}, :asc}] = sort} =
+        Ash.Sort.parse_input(Post, "author.name_and_private_name")
+
+      Post
+      |> Ash.Query.sort(sort)
+      |> Ash.read!()
+    end
+
     test "a string sort honors private relationships" do
       {:error,
        %Ash.Error.Query.NoSuchField{
