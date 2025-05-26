@@ -34,6 +34,10 @@ defmodule Ash.Actions.Sort do
     end
   end
 
+  def process(resource, {field, order}) do
+    process(resource, [{field, order}])
+  end
+
   def sorting_on_identity?(%{sort: nil}), do: false
 
   def sorting_on_identity?(query) do
