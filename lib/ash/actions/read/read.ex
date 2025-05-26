@@ -2952,7 +2952,7 @@ defmodule Ash.Actions.Read do
         opts
       ) do
     query =
-      if is_nil(agg.query.__validated_for_action__) do
+      if is_nil(agg.query.__validated_for_action__) && agg.relationship_path != [] do
         read_action =
           agg.read_action || Ash.Resource.Info.primary_action!(agg.query.resource, :read).name
 

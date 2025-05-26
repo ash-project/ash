@@ -1017,13 +1017,6 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     query = Ash.Query.new(query)
 
-    opts =
-      if query.action do
-        Keyword.put(opts, :read_action, query.action.name)
-      else
-        opts
-      end
-
     {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
     case aggregate(query, {:exists, :exists, aggregate_opts}, opts) do

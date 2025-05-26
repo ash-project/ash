@@ -34,11 +34,15 @@ defmodule Ash.Actions.Aggregate do
     end)
     |> Enum.reduce_while({:ok, %{}}, fn
       {{agg_authorize?, read_action}, aggregates}, {:ok, acc} ->
+        action =
+          opts[:action] || read_action ||
+            Ash.Resource.Info.primary_action!(query.resource, :read).name
+
         query =
-          if query.__validated_for_action__ == read_action do
+          if query.__validated_for_action__ == action do
             query
           else
-            Ash.Query.for_read(query, read_action, %{},
+            Ash.Query.for_read(query, action, %{},
               tenant: opts[:tenant],
               actor: opts[:actor],
               authorize?: opts[:authorize?]
@@ -74,7 +78,8 @@ defmodule Ash.Actions.Aggregate do
             Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
             with {:ok, query} <- Ash.Actions.Read.handle_multitenancy(query),
-                 {:ok, %{valid?: true} = query} <- authorize_query(query, opts, agg_authorize?),
+                 {:ok, %{valid?: true} = query} <-
+                   authorize_query(query, opts, agg_authorize?),
                  {:ok, aggregates} <- validate_aggregates(query, aggregates, opts),
                  {:ok, data_layer_query} <-
                    Ash.Query.data_layer_query(%Ash.Query{
