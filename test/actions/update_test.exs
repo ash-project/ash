@@ -162,7 +162,7 @@ defmodule Ash.Test.Actions.UpdateTest do
           allow_nil? false
         end
 
-        validate match(:name, ~r/[a-z]+/) do
+        validate match(:name, "[a-z]+") do
           where argument_equals(:match?, true)
         end
       end

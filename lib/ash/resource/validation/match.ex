@@ -56,7 +56,13 @@ defmodule Ash.Resource.Validation.Match do
       {:ok, value} when not is_nil(value) ->
         case string_value(value, opts) do
           {:ok, value} ->
-            if String.match?(value, opts[:match]) do
+            match =
+              case opts[:match] do
+                %Regex{} = regex -> regex
+                string -> Regex.compile!(string)
+              end
+
+            if String.match?(value, match) do
               :ok
             else
               {:error, exception(value, opts)}
@@ -146,7 +152,7 @@ defmodule Ash.Resource.Validation.Match do
     {:ok, regex}
   end
 
-  def match(regex) when is_function(regex, 0) do
+  def match(regex) when is_binary(regex) do
     {:ok, regex}
   end
 

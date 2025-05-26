@@ -19,11 +19,11 @@ defmodule Ash.Test.Resource.Validation.MatchTest do
       update :atomic_update do
         argument :alternative_language, :string
 
-        validate match(:language_code, ~r/^[a-z]{2,3}$/) do
+        validate match(:language_code, "^[a-z]{2,3}$") do
           always_atomic? true
         end
 
-        validate match(:alternative_language, ~r/^[a-z]{2,3}$/) do
+        validate match(:alternative_language, "^[a-z]{2,3}$") do
           always_atomic? true
         end
       end

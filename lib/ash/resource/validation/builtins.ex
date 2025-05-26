@@ -175,7 +175,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Examples
 
-      validate match(:slug, ~r/^[0-9a-z-_]+$/)
+      validate match(:slug, "^[0-9a-z-_]+$")
   """
   @spec match(attribute :: atom, match :: Regex.t()) :: Validation.ref()
   def match(attribute, match) do

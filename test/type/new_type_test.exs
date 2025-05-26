@@ -5,7 +5,7 @@ defmodule Ash.Test.Type.NewTypeTest do
   defmodule SSN do
     use Ash.Type.NewType,
       subtype_of: :string,
-      constraints: [match: fn -> ~r/^(?!0{3})(?!6{3})[0-8]\d{2}-(?!0{2})\d{2}-(?!0{4})\d{4}$/ end]
+      constraints: [match: "^(?!0{3})(?!6{3})[0-8]\\d{2}-(?!0{2})\\d{2}-(?!0{4})\\d{4}$"]
   end
 
   defmodule CustomMap do

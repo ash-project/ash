@@ -241,13 +241,15 @@ defmodule Ash.Type.String do
 
       {:match, regex}, errors ->
         regex =
-          if is_function(regex) do
-            regex.()
-          else
-            regex
+          case regex do
+            %Regex{} = regex ->
+              regex
+
+            string ->
+              Regex.compile!(string)
           end
 
-        if String.match?(value, regex) do
+        if Regex.match?(regex, value) do
           errors
         else
           [[message: "must match the pattern %{regex}", regex: inspect(regex)] | errors]
@@ -315,7 +317,7 @@ defmodule Ash.Type.String do
     {:ok, regex}
   end
 
-  def match(regex) when is_function(regex, 0) do
+  def match(regex) when is_binary(regex) do
     {:ok, regex}
   end
 

@@ -108,7 +108,7 @@ Validations ensure that data meets your business requirements before it gets pro
 
 - Use **built-in validations** (defined in `Ash.Resource.Validation.Builtins`) for common validation patterns:
   ```elixir
-  validate match(:email, ~r/@/)
+  validate match(:email, "@")
   validate compare(:age, greater_than_or_equal_to: 18)
   validate present(:first_name)
   validate one_of(:status, [:active, :inactive, :pending])
@@ -135,7 +135,7 @@ Validations ensure that data meets your business requirements before it gets pro
   actions do
     create :sign_up do
       validate present([:email, :password])
-      validate match(:email, ~r/@/)
+      validate match(:email, "@")
     end
   end
   ```

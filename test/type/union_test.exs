@@ -9,7 +9,7 @@ defmodule Ash.Test.Filter.UnionTest do
 
     attributes do
       attribute :foo, :string do
-        constraints match: fn -> ~r/foo/ end
+        constraints match: "foo"
         public? true
       end
 
@@ -26,7 +26,7 @@ defmodule Ash.Test.Filter.UnionTest do
 
     attributes do
       attribute :bar, :string do
-        constraints match: fn -> ~r/bar/ end
+        constraints match: "bar"
         public? true
       end
 

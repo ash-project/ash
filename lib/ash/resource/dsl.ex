@@ -201,7 +201,7 @@ defmodule Ash.Resource.Dsl do
           allow_nil? false
 
           constraints [
-            match: fn -> ~r/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/ end
+            match: fn "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
           ]
         end
 

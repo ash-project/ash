@@ -9,7 +9,7 @@ There are a number of builtin validations that can be used, and are automaticall
 Some examples of usage of builtin validations
 
 ```elixir
-validate match(:email, ~r/@/)
+validate match(:email, "@")
 
 validate compare(:age, greater_than_or_equal_to: 18) do
   message "must be over 18 to sign up"

@@ -317,7 +317,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
 
       update :update_with_match do
-        validate match(:title4, ~r/^[a-z]+$/), message: "Title must be lowercase"
+        validate match(:title4, "^[a-z]+$"), message: "Title must be lowercase"
       end
 
       update :update_with_filter do
