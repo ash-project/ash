@@ -720,7 +720,8 @@ defmodule Ash.EmbeddableType do
           {:not_atomic,
            "Embedded attributes do not support atomic updates with expressions, only literal values."}
         else
-          with true <- list? and Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)),
+          with true <-
+                 !list? || (list? and Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__))),
                :ok <- update_action_allows_atomics(constraints) do
             :ok
           else
