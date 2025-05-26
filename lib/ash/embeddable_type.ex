@@ -720,19 +720,33 @@ defmodule Ash.EmbeddableType do
           {:not_atomic,
            "Embedded attributes do not support atomic updates with expressions, only literal values."}
         else
-          with true <-
-                 !list? || (list? and Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__))),
-               :ok <- update_action_allows_atomics(constraints) do
-            :ok
-          else
-            {:not_atomic, msg} ->
-              {:not_atomic, msg}
+          if list? do
+            with true <- Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)),
+                 :ok <- update_action_allows_atomics(constraints, value) do
+              :ok
+            else
+              {:not_atomic, msg} ->
+                {:not_atomic, msg}
 
-            _ ->
-              {:not_atomic,
-               """
-               Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`, or the update action accepts all public attributes and has no changes.
-               """}
+              _ ->
+                {:not_atomic,
+                 """
+                 Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`, or the update action accepts all public attributes and has no changes.
+                 """}
+            end
+          else
+            with :ok <- update_action_allows_atomics(constraints, value) do
+              :ok
+            else
+              {:not_atomic, msg} ->
+                {:not_atomic, msg}
+
+              _ ->
+                {:not_atomic,
+                 """
+                 Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`, or the update action accepts all public attributes and has no changes.
+                 """}
+            end
           end
         end
       end
@@ -740,10 +754,10 @@ defmodule Ash.EmbeddableType do
       def may_support_atomic_update?(constraints) do
         Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
           constraints[:on_update] == :replace ||
-          :ok == update_action_allows_atomics(constraints)
+          :ok == update_action_allows_atomics(constraints, nil)
       end
 
-      defp update_action_allows_atomics(constraints) do
+      defp update_action_allows_atomics(constraints, value) do
         if constraints[:on_update] == :replace do
           :ok
         else
@@ -758,10 +772,12 @@ defmodule Ash.EmbeddableType do
                Enum.empty?(Ash.Resource.Info.validations(__MODULE__, action.type)) &&
                Enum.empty?(Ash.Resource.Info.notifiers(__MODULE__)) &&
                Enum.empty?(Ash.Resource.Info.relationships(__MODULE__)) do
-            __MODULE__
-            |> Ash.Resource.Info.public_attributes()
-            |> Enum.all?(&(&1.name in action.accept))
-            |> if do
+            all_attrs =
+              __MODULE__
+              |> Ash.Resource.Info.public_attributes()
+              |> Enum.map(& &1.name)
+
+            if Enum.all?(all_attrs, &(&1 in action.accept)) && has_all_attrs?(value, all_attrs) do
               :ok
             else
               :error
@@ -790,6 +806,18 @@ defmodule Ash.EmbeddableType do
           end
         end
       end
+
+      defp has_all_attrs?(nil, _), do: true
+
+      defp has_all_attrs?(value, all_attrs) when is_list(value) do
+        Enum.all?(value, &has_all_attrs?(&1, all_attrs))
+      end
+
+      defp has_all_attrs?(value, all_attrs) when is_map(value) do
+        Enum.all?(all_attrs, &(Map.has_key?(value, &1) || Map.has_key?(value, to_string(&1))))
+      end
+
+      defp has_all_attrs?(_, _), do: false
 
       def loaded?(record, path_to_load, _constraints, opts) do
         Ash.Resource.loaded?(record, path_to_load, opts)
