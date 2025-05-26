@@ -34,6 +34,10 @@ defmodule Ash.Actions.Sort do
     end
   end
 
+  def process(resource, %Ash.Query.Calculation{} = calculation) do
+    process(resource, [calculation])
+  end
+
   def process(resource, {field, order}) do
     process(resource, [{field, order}])
   end
