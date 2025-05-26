@@ -3173,6 +3173,12 @@ defmodule Ash.Query do
       ["foo", "-bar", "++baz", "--buz"]
 
 
+  > ### Sorting on user input? {: .neutral}
+  >
+  > If some of your sort parameters originate from user input, you should
+  > use the `Ash.Query.sort_input/3`-function instead.
+
+
   ## Calculations
 
   Calculation inputs can be provided by providing a map. To provide both inputs and an order,
@@ -3234,6 +3240,9 @@ defmodule Ash.Query do
           |> Enum.reduce(query, fn
             {sort, direction}, query ->
               %{query | sort: query.sort ++ [{sort, direction}]}
+
+            sort, query when is_binary(sort) ->
+              %{query | sort: query.sort ++ String.split(sort, ",", trim: true)}
 
             sort, query ->
               %{query | sort: query.sort ++ [{sort, :asc}]}
