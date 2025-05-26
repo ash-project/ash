@@ -210,7 +210,9 @@ defmodule Ash.Type.NewType do
       def do_init(constraints) do
         case validate_constraints(unquote(subtype_of), constraints) do
           :ok ->
-            type_constraints = type_constraints(constraints, unquote(subtype_constraints))
+            type_constraints =
+              type_constraints(constraints, unquote(subtype_constraints))
+
             Ash.Type.init(unquote(subtype_of), type_constraints)
 
           {:error, error} ->
@@ -410,28 +412,14 @@ defmodule Ash.Type.NewType do
         unquote(subtype_of).describe(constraints)
       end
 
-      if lazy_init? do
-        @impl Ash.Type.NewType
-        def type_constraints(constraints, subtype_constraints) do
-          constraints
-        end
+      @impl Ash.Type.NewType
+      def type_constraints(constraints, subtype_constraints) do
+        constraints = get_constraints(constraints)
+        Keyword.merge(constraints || [], subtype_constraints || [])
+      end
 
-        defp get_constraints(constraints) do
-          {:ok, constraints} =
-            unquote(subtype_of).init(type_constraints(constraints, unquote(subtype_constraints)))
-
-          Keyword.merge(constraints || [], subtype_constraints() || [])
-        end
-      else
-        @impl Ash.Type.NewType
-        def type_constraints(constraints, subtype_constraints) do
-          constraints = get_constraints(constraints)
-          Keyword.merge(constraints || [], subtype_constraints || [])
-        end
-
-        defp get_constraints(constraints) do
-          constraints
-        end
+      defp get_constraints(constraints) do
+        constraints
       end
 
       defp validate_constraints(type, constraints) do

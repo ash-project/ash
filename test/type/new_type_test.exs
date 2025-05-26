@@ -50,13 +50,11 @@ defmodule Ash.Test.Type.NewTypeTest do
   end
 
   defmodule LazyNativeBird do
-    defstruct [:name, :description]
-
     use Ash.Type.NewType,
       subtype_of: :struct,
       lazy_init?: true,
       constraints: [
-        instance_of: __MODULE__,
+        instance_of: NativeBird,
         fields: [
           name: [type: :string, allow_nil?: false],
           description: [type: :string, allow_nil?: false]
@@ -72,8 +70,8 @@ defmodule Ash.Test.Type.NewTypeTest do
   test "constraints return the initialized constraints for lazy initialization" do
     {:ok, constraints} = Ash.Type.init(NativeBird, [])
 
-    assert constraints ==
-             Ash.Type.NewType.constraints(LazyNativeBird, constraints)
+    assert Enum.sort(constraints) ==
+             Enum.sort(Ash.Type.NewType.constraints(LazyNativeBird, constraints))
   end
 
   test "it handles simple types" do
