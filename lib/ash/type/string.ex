@@ -240,6 +240,13 @@ defmodule Ash.Type.String do
         end
 
       {:match, regex}, errors ->
+        regex =
+          if is_function(regex) do
+            regex.()
+          else
+            regex
+          end
+
         if String.match?(value, regex) do
           errors
         else
@@ -299,9 +306,21 @@ defmodule Ash.Type.String do
   end
 
   @doc false
-  def match(%Regex{} = regex), do: {:ok, regex}
+  def match(%Regex{} = regex) do
+    IO.warn("""
+    Providing a regex in the `match` constraint is deprecated, as OTP 28 does not support it.
+    Please provide a zero argument function instead.
+    """)
 
-  def match(_) do
-    {:error, "Must provide a regex to match, e.g ~r/foobar/"}
+    {:ok, regex}
+  end
+
+  def match(regex) when is_function(regex, 0) do
+    {:ok, regex}
+  end
+
+  def match(value) do
+    {:error,
+     "Must provide a zero argument function for the match constraint, got: #{inspect(value)}"}
   end
 end

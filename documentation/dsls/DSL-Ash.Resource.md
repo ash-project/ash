@@ -35,7 +35,7 @@ attributes do
     allow_nil? false
 
     constraints [
-      match: ~r/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$/
+      match: fn -> ~r/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$/ end
     ]
   end
 

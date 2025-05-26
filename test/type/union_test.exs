@@ -8,7 +8,10 @@ defmodule Ash.Test.Filter.UnionTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      attribute :foo, :string, constraints: [match: ~r/foo/], public?: true
+      attribute :foo, :string do
+        constraints match: fn -> ~r/foo/ end
+        public? true
+      end
 
       attribute :type, :string do
         public?(true)
@@ -22,7 +25,10 @@ defmodule Ash.Test.Filter.UnionTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      attribute :bar, :string, constraints: [match: ~r/bar/], public?: true
+      attribute :bar, :string do
+        constraints match: fn -> ~r/bar/ end
+        public? true
+      end
 
       attribute :type, :string do
         public?(true)

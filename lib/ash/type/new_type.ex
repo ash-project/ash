@@ -19,7 +19,7 @@ defmodule Ash.Type.NewType do
 
   ```elixir
   defmodule MyApp.Types.SSN do
-    use Ash.Type.NewType, subtype_of: :string, constraints: [match: ~r/regex for ssn/]
+    use Ash.Type.NewType, subtype_of: :string, constraints: [match: fn -> ~r/regex for ssn/ end]
   end
 
   defmodule MyApp.Types.Metadata do

@@ -38,7 +38,7 @@ defmodule Ash.Type.MapTest do
                       string_match: [
                         type: :string,
                         allow_nil?: true,
-                        constraints: [match: ~r/a_A/]
+                        constraints: [match: fn -> ~r/a_A/ end]
                       ]
                     ]
       end

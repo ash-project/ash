@@ -233,7 +233,7 @@ defmodule Ash.Type do
         constraints [
           max_length: 20,
           min_length: 3,
-          match: ~r/^[a-z_-]*$/,
+          match: fn -> ~r/^[a-z_-]*$/ end,
           trim?: true,
           allow_empty?: false
         ]

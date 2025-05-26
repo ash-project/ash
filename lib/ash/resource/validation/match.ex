@@ -13,7 +13,7 @@ defmodule Ash.Resource.Validation.Match do
       hide: true
     ],
     match: [
-      type: :any,
+      type: {:custom, __MODULE__, :match, []},
       required: true,
       doc: "The value that the attribute should match against"
     ],
@@ -134,5 +134,24 @@ defmodule Ash.Resource.Validation.Match do
     [value: string_value, field: opts[:attribute]]
     |> with_description(opts)
     |> InvalidAttribute.exception()
+  end
+
+  @doc false
+  def match(%Regex{} = regex) do
+    IO.warn("""
+    Providing a regex in the `match` constraint is deprecated, as OTP 28 does not support it.
+    Please provide a zero argument function instead.
+    """)
+
+    {:ok, regex}
+  end
+
+  def match(regex) when is_function(regex, 0) do
+    {:ok, regex}
+  end
+
+  def match(value) do
+    {:error,
+     "Must provide a zero argument function for the match constraint, got: #{inspect(value)}"}
   end
 end
