@@ -37,6 +37,8 @@ defprotocol Ash.Scope do
 
   For `context`, the values are deep merged.
 
+  For `tracer`, the value(s) are concatenated.
+
   ## Example
 
   You would implement `Ash.Scope` for a module like so:
@@ -49,6 +51,9 @@ defprotocol Ash.Scope do
       def get_actor(%{current_user: current_user}), do: {:ok, current_user}
       def get_tenant(%{current_tenant: current_tenant}), do: {:ok, current_tenant}
       def get_context(%{locale: locale}), do: {:ok, %{locale: locale}}
+      # You typically configure tracers in config giles
+      # so this will typically return :error
+      def get_tracer(_), do: :error
     end
   end
   ```
@@ -95,6 +100,10 @@ defprotocol Ash.Scope do
   @doc "Extracts the context from the scope"
   @spec get_context(term()) :: {:ok, term} | :error
   def get_context(scope)
+
+  @doc "Extracts the tracer(s) from the scope"
+  @spec get_tracer(term()) :: {:ok, module | list(module)} | :error
+  def get_tracer(scope)
 end
 
 defimpl Ash.Scope,
@@ -111,5 +120,6 @@ defimpl Ash.Scope,
   ] do
   def get_actor(%{actor: actor}), do: {:ok, actor}
   def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
-  def get_context(%{context: context}), do: {:ok, context || %{}}
+  def get_context(_), do: {:ok, %{}}
+  def get_tracer(%{tracer: tracer}), do: {:ok, tracer}
 end
