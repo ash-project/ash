@@ -1,6 +1,6 @@
 # What is Ash?
 
-Ash brings the batteries included experience to Elixir applications in a way that isn't tied to any one particular web framework or API/Frontend technology. It acts as the one universal element that you can take with you no matter what changes about your application or how it interfaces with the outside world.
+Ash brings the batteries included experience to Elixir applications in a way that isn't tied to any one particular web framework or API/frontend technology. It acts as the one universal element that you can take with you no matter what changes about your application or how it interfaces with the outside world.
 
 > Through its declarative extensibility, Ash delivers more than you'd expect: Powerful APIs with filtering/sorting/pagination/calculations/aggregations, pub/sub, authorization, rich introspection, GraphQL... It's what empowers this solo developer to build an ambitious ERP!
 >
@@ -37,7 +37,7 @@ This isn't accidental - it's core to Ash's design. We provide powerful defaults 
 
 The framework acts as a **spinal cord** for your application: providing structure and coordination while allowing complete customization at every level.
 
-> I'd consider Phoenix to be like Flask. Ash fills the gap that brings Phoenix up to feature parity with a batteries included framework like Django.
+> Ash fills the gap that brings Phoenix up to feature parity with a batteries included framework like Django.
 > Ash Admin (Django admin), Ash Resource & Domain (Django models & ORM), AshJsonApi (Django REST Framework), Ash Authentication (Django Allauth), Ash Phoenix (Django Forms), Ash Policies (Django Permissions)
 >
 > But you aren't required to use Phoenix with an Ash project. Ash will happily work as a standalone CLI, terminal app or some other Elixir web framework that comes out tomorrow.
