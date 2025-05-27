@@ -21,7 +21,7 @@ If you've ever built a web application, you've probably experienced this: you wr
 - **Maintenance burden** - Change one thing, update five different places
 - **Knowledge silos** - Each developer builds things their own way
 
-**Ash's solution**: Model your application's **behavior** first, derive everything else automatically. But this isn't just "slapping an API on a database" - Ash resources center around **actions** that represent rich business operations. Instead of exposing raw data tables, you define meaningful operations like `:publish_post`, `:approve_order`, or `:calculate_shipping_cost` that encapsulate your business logic, validation, and authorization rules.
+**Ash's solution**: Model your application's **behavior** first, derive everything else automatically. Ash resources center around **actions** that represent rich business operations. Instead of exposing raw data models, you define meaningful operations like `:publish_post`, `:approve_order`, or `:calculate_shipping_cost` that encapsulate your business logic, validation, and authorization rules.
 
 Why are actions "introspectable"? Because when your code can examine what an action does at runtime, other tools can automatically build around it. Define a "publish post" action with its validation rules and authorization policies, and extensions can automatically generate appropriate REST endpoints, GraphQL mutations, admin interfaces, and API documentation - all respecting your business rules.
 
@@ -179,8 +179,6 @@ end
 ```
 
 Notice how we have not defined any "state" here. A common misconception is that the purpose of Ash is to abstract state. Ash provides tons of useful features around state, but those are features *on top of* the core concept, which centers around typed actions.
-
-This demonstrates that Ash isn't about "slapping an API on a database" - it's about modeling meaningful business operations first. The `analyze_text` action represents a domain operation, not just data manipulation.
 
 ```elixir
 {:ok, analysis} = MyBlog.Blog.analyze_text("This is some sample blog content to analyze.")
