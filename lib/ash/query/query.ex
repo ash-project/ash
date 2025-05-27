@@ -845,6 +845,11 @@ defmodule Ash.Query do
     end
   end
 
+  @doc """
+  Set a timeout for the query.
+
+  For more information, see the [timeouts guide](/documentation/topics/advanced/timeouts.md)
+  """
   @spec timeout(t(), pos_integer() | :infinity | nil) :: t()
   def timeout(query, timeout) do
     query = new(query)
