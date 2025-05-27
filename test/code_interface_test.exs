@@ -93,7 +93,11 @@ defmodule Ash.Test.CodeInterfaceTest do
         end
       end
 
-      define :hello_actor, default_options: [actor: %{name: "William Shatner"}]
+      define :hello_actor_with_default,
+        default_options: [actor: %{name: "William Shatner"}],
+        action: :hello_actor
+
+      define :hello_actor
       define :create_with_map, args: [:map]
       define :update_with_map, args: [:map]
 
@@ -168,8 +172,8 @@ defmodule Ash.Test.CodeInterfaceTest do
       end
 
       action :hello_actor, :string do
-        run(fn input, _ ->
-          {:ok, "Hello, #{input.context.private.actor.name}."}
+        run(fn input, context ->
+          {:ok, "Hello, #{context.actor.name}."}
         end)
       end
     end
@@ -599,7 +603,30 @@ defmodule Ash.Test.CodeInterfaceTest do
   end
 
   test "default options" do
-    assert "Hello, Leonard Nimoy." = User.hello_actor!(actor: %{name: "Leonard Nimoy"})
-    assert "Hello, William Shatner." = User.hello_actor!()
+    assert "Hello, Leonard Nimoy." =
+             User.hello_actor_with_default!(actor: %{name: "Leonard Nimoy"})
+
+    assert "Hello, William Shatner." = User.hello_actor_with_default!()
+  end
+
+  defmodule Scope do
+    defstruct [:actor, :tenant, :context]
+
+    defimpl Ash.Scope do
+      def get_actor(%{actor: actor}), do: {:ok, actor}
+      def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
+      def get_context(%{context: context}), do: {:ok, context}
+    end
+  end
+
+  test "uses scope options" do
+    scope = %Scope{actor: %{name: "Jelly Belly"}}
+    assert "Hello, Jelly Belly." = User.hello_actor!(scope: scope)
+
+    assert_raise ArgumentError, ~r/Got an actor via the/, fn ->
+      User.hello_actor!(scope: scope, actor: %{foobar: true})
+    end
+
+    assert "Hello, William Shatner." = User.hello_actor_with_default!()
   end
 end

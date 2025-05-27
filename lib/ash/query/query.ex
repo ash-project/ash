@@ -715,6 +715,11 @@ defmodule Ash.Query do
       doc:
         "set the actor, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ],
+    scope: [
+      type: :any,
+      doc:
+        "A value that implements the `Ash.Scope` protocol, for passing around actor/tenant/context in a single value. See `Ash.Scope` for more."
+    ],
     authorize?: [
       type: :boolean,
       doc:

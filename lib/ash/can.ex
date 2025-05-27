@@ -60,15 +60,40 @@ defmodule Ash.Can do
 
   Note: `is_maybe` is set to `true`, if not set.
   """
-  @spec can(subject(), Ash.Domain.t(), Ash.Resource.record(), Keyword.t()) ::
+  @spec can(subject(), Ash.Domain.t(), Ash.actor() | Ash.Scope.t(), Keyword.t()) ::
           {:ok, boolean() | :maybe}
           | {:ok, boolean(), term()}
           | {:ok, boolean(), Ash.Changeset.t(), Ash.Query.t()}
           | {:error, Ash.Error.t()}
-  def can(action_or_query_or_changeset, domain, actor, opts \\ []) do
+  def can(action_or_query_or_changeset, domain, actor_or_scope, opts \\ []) do
     opts = Keyword.put_new(opts, :maybe_is, :maybe)
     opts = Keyword.put_new(opts, :run_queries?, true)
     opts = Keyword.put_new(opts, :filter_with, :filter)
+
+    {actor, opts} =
+      if Ash.Scope.impl_for(actor_or_scope) do
+        actor = Ash.Scope.get_actor(actor_or_scope)
+        tenant = Ash.Scope.get_tenant(actor_or_scope)
+        context = Ash.Scope.get_context(actor_or_scope)
+
+        opts
+        |> Ash.Actions.Helpers.set_when_ok(:tenant, tenant)
+        |> Ash.Actions.Helpers.set_when_ok(
+          :context,
+          context,
+          &Ash.Helpers.deep_merge_maps(&1, &2)
+        )
+
+        case actor do
+          {:ok, actor} ->
+            {actor, opts}
+
+          :error ->
+            {nil, opts}
+        end
+      else
+        {actor_or_scope, opts}
+      end
 
     {resource, action_or_query_or_changeset, input, opts} =
       case resource_subject_input(action_or_query_or_changeset, domain, actor, opts) do
