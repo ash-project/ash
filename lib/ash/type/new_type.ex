@@ -69,8 +69,22 @@ defmodule Ash.Type.NewType do
   @doc "Returns the constraints schema."
   @spec constraints(Ash.Type.t(), Keyword.t()) :: Keyword.t()
   def constraints({:array, type}, constraints) do
-    item_constraints = constraints(type, constraints)
-    Keyword.update(constraints, :items, item_constraints, &Keyword.merge(&1, item_constraints))
+    if new_type?(type) do
+      if type.lazy_init?() do
+        item_constraints = constraints(type, constraints)
+
+        Keyword.update(
+          constraints,
+          :items,
+          item_constraints,
+          &Keyword.merge(&1, item_constraints)
+        )
+      else
+        constraints
+      end
+    else
+      constraints
+    end
   end
 
   def constraints(type, constraints) do

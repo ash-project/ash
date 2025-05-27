@@ -4,9 +4,30 @@ defmodule Mix.Tasks.Ash.Codegen do
 
   ## Flags
 
-  * `dry-run` - no files are created, instead the new generated code is printed to the console
-  * `check` - no files are created, returns an exit(1) code if any code would need to be generated
+  * `--dry-run` - no files are created, instead the new generated code is printed to the console
+  * `--check` - no files are created, returns an exit(1) code if any code would need to be generated
+  * `--dev` - runs codegen tasks in dev mode. See the section on dev mode below
+  * Individual extensions may use additional flags.
 
+  ## Dev Mode
+
+  Some extensions that do `codegen` require providing a `name`. Those extensions (should) support a `--dev`
+  flag, which indicates that the codegen can have a temporary name chosen by the extension. Then, once you
+  are ready to commit the changes, you can run the codegen tasks again without the `--dev` flag and with a
+  name to generate the final code.
+
+  For example, using AshPostgres:
+
+  - First we add `first_name` to `MyApp.Accounts.User`
+  - `mix ash.codegen --dev`, which generates a migration for adding `first_name` to the `"users"` table,
+    but the migration is suffixed with `_dev`
+  - `mix ash.migrate` apply the migrations
+  - Then we add `last_name` to `MyApp.Accounts.User`
+  - `mix ash.codegen --dev` which generates a migration for adding `last_name` to the `"users"` table,
+    but the migration is suffixed with `_dev`
+  - We review our changes, and are ready to save them as a unit
+  - `mix ash.codegen add_name_to_user`, which rolls back and deletes the dev migrations & snapshots, and creates new
+    ones using the provided name
   """
   use Mix.Task
 
@@ -26,29 +47,6 @@ defmodule Mix.Tasks.Ash.Codegen do
         [] ->
           {nil, []}
       end
-
-    {opts, _} =
-      OptionParser.parse!(argv,
-        strict: [
-          name: :string,
-          no_format: :boolean,
-          dry_run: :boolean,
-          check: :boolean,
-          drop_columns: :boolean
-        ]
-      )
-
-    opts = Keyword.put_new(opts, :name, name)
-
-    if !opts[:name] && !opts[:dry_run] && !opts[:check] do
-      raise ArgumentError, """
-      Name must be provided when running `ash.codegen`, unless `--dry-run` or `--check` is also provided.
-
-      Please provide a name. for example:
-
-          mix ash.codegen add_feature_for_reticulating_splines #{Enum.join(argv, " ")}
-      """
-    end
 
     argv
     |> Ash.Mix.Tasks.Helpers.extensions!()
