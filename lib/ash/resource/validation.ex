@@ -45,12 +45,13 @@ defmodule Ash.Resource.Validation do
     @moduledoc """
     Context for a validation.
     """
-    defstruct [:actor, :tenant, :authorize?, :tracer, :message, bulk?: false]
+    defstruct [:actor, :tenant, :authorize?, :tracer, :message, bulk?: false, source_context: %{}]
 
     @type t :: %__MODULE__{
             actor: Ash.Resource.record() | nil,
             message: String.t() | nil,
             tenant: term(),
+            source_context: map(),
             authorize?: boolean() | nil,
             tracer: Ash.Tracer.t() | [Ash.Tracer.t()] | nil,
             bulk?: boolean()

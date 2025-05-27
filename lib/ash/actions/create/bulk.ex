@@ -1114,12 +1114,22 @@ defmodule Ash.Actions.Create.Bulk do
           result =
             case action.manual do
               {mod, manual_opts} ->
+                source_context =
+                  case batch do
+                    [cs | _] ->
+                      cs.context
+
+                    _ ->
+                      %{}
+                  end
+
                 if function_exported?(mod, :bulk_create, 3) do
                   mod.bulk_create(batch, manual_opts, %Ash.Resource.ManualCreate.BulkContext{
                     actor: opts[:actor],
                     select: opts[:select],
                     batch_size: opts[:batch_size],
                     authorize?: opts[:authorize?],
+                    source_context: source_context,
                     tracer: opts[:tracer],
                     domain: domain,
                     upsert?: opts[:upsert?] || action.upsert?,
@@ -1147,6 +1157,7 @@ defmodule Ash.Actions.Create.Bulk do
                     actor: opts[:actor],
                     select: opts[:select],
                     authorize?: opts[:authorize?],
+                    source_context: source_context,
                     tracer: opts[:tracer],
                     domain: domain,
                     upsert?: opts[:upsert?] || action.upsert?,
@@ -1486,8 +1497,18 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp run_action_changes(batch, all_changes, _action, actor, authorize?, tracer, tenant) do
+    source_context =
+      case batch do
+        [cs | _] ->
+          cs.context
+
+        _ ->
+          %{}
+      end
+
     context = %{
       actor: actor,
+      source_context: source_context,
       authorize?: authorize? || false,
       tracer: tracer,
       tenant: tenant

@@ -47,6 +47,7 @@ defmodule Ash.Actions.ManagedRelationships do
           case Ash.load(acc, key,
                  authorize?: authorize?,
                  actor: actor,
+                 context: Map.take(changeset.context, [:shared]),
                  tenant: tenant,
                  domain: domain
                ) do
@@ -95,6 +96,7 @@ defmodule Ash.Actions.ManagedRelationships do
                    domain: changeset.domain,
                    authorize?: opts[:authorize?],
                    actor: actor,
+                   context: Map.take(changeset.context, [:shared]),
                    tenant: engine_opts[:tenant]
                  ) do
               {:ok, result} ->
@@ -217,6 +219,7 @@ defmodule Ash.Actions.ManagedRelationships do
                           relationship.destination
                           |> Ash.Query.for_read(read, %{},
                             actor: actor,
+                            context: Map.take(changeset.context, [:shared]),
                             authorize?: opts[:authorize?],
                             domain: domain(changeset, relationship),
                             tenant: changeset.tenant
@@ -491,6 +494,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Changeset.for_create(action_name, input,
       require?: false,
       actor: actor,
+      context: Map.take(changeset.context, [:shared]),
       tenant: changeset.tenant,
       authorize?: opts[:authorize?],
       skip_unknown_inputs: Map.keys(input),
@@ -914,6 +918,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   relationship.destination
                   |> Ash.Query.for_read(read, %{},
                     actor: actor,
+                    context: Map.take(changeset.context, [:shared]),
                     authorize?: opts[:authorize?],
                     domain: domain(changeset, relationship),
                     tenant: changeset.tenant
@@ -996,6 +1001,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 })
                 |> Ash.Changeset.for_update(action_name, input,
                   actor: actor,
+                  context: Map.take(changeset.context, [:shared]),
                   tenant: changeset.tenant,
                   authorize?: opts[:authorize?],
                   domain: domain,
@@ -1084,6 +1090,7 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_create(create_or_update, join_input,
           actor: actor,
+          context: Map.take(changeset.context, [:shared]),
           tenant: changeset.tenant,
           authorize?: opts[:authorize?],
           require?: false,
@@ -1170,6 +1177,7 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_update(create_or_update, input,
           actor: actor,
+          context: Map.take(changeset.context, [:shared]),
           tenant: changeset.tenant,
           authorize?: opts[:authorize?],
           skip_unknown_inputs: Map.keys(input),
@@ -1252,6 +1260,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.Changeset.for_create(action_name, input,
                   require?: false,
                   actor: actor,
+                  context: Map.take(changeset.context, [:shared]),
                   tenant: changeset.tenant,
                   authorize?: opts[:authorize?],
                   skip_unknown_inputs: Map.keys(input),
@@ -1332,6 +1341,7 @@ defmodule Ash.Actions.ManagedRelationships do
               require?: false,
               authorize?: opts[:authorize?],
               actor: actor,
+              context: Map.take(changeset.context, [:shared]),
               tenant: changeset.tenant,
               skip_unknown_inputs: Map.keys(regular_params),
               domain: domain(changeset, relationship)
@@ -1362,6 +1372,7 @@ defmodule Ash.Actions.ManagedRelationships do
               require?: false,
               authorize?: opts[:authorize?],
               actor: actor,
+              context: Map.take(changeset.context, [:shared]),
               tenant: changeset.tenant,
               skip_unknown_inputs: Map.keys(join_params),
               domain: domain(changeset, join_relationship)
@@ -1512,6 +1523,7 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.for_update(action_name, input,
           actor: actor,
+          context: Map.take(changeset.context, [:shared]),
           tenant: changeset.tenant,
           authorize?: opts[:authorize?],
           domain: domain,
@@ -1569,6 +1581,7 @@ defmodule Ash.Actions.ManagedRelationships do
             })
             |> Ash.Changeset.for_update(action_name, regular_params,
               actor: actor,
+              context: Map.take(changeset.context, [:shared]),
               tenant: changeset.tenant,
               authorize?: opts[:authorize?],
               domain: domain,
@@ -1605,7 +1618,8 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.read_one(
               domain: domain(changeset, join_relationship),
               authorize?: opts[:authorize?],
-              actor: actor
+              actor: actor,
+              context: Map.take(changeset.context, [:shared])
             )
             |> case do
               {:ok, result} ->
@@ -1627,6 +1641,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 })
                 |> Ash.Changeset.for_update(join_action_name, join_params,
                   actor: actor,
+                  context: Map.take(changeset.context, [:shared]),
                   tenant: changeset.tenant,
                   authorize?: opts[:authorize?],
                   skip_unknown_inputs: Map.keys(join_params),
@@ -1819,7 +1834,8 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.read_one(
               domain: domain(changeset, join_relationship),
               authorize?: opts[:authorize?],
-              actor: actor
+              actor: actor,
+              context: Map.take(changeset.context, [:shared])
             )
             |> case do
               {:ok, result} ->
@@ -1837,6 +1853,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   join_action_name,
                   %{},
                   actor: actor,
+                  context: Map.take(changeset.context, [:shared]),
                   tenant: changeset.tenant,
                   authorize?: opts[:authorize?],
                   domain: domain(changeset, join_relationship)
@@ -1922,6 +1939,7 @@ defmodule Ash.Actions.ManagedRelationships do
             })
             |> Ash.Changeset.for_destroy(action_name, %{},
               actor: actor,
+              context: Map.take(changeset.context, [:shared]),
               tenant: changeset.tenant,
               authorize?: opts[:authorize?],
               domain: domain
@@ -2013,6 +2031,7 @@ defmodule Ash.Actions.ManagedRelationships do
     })
     |> Ash.Changeset.for_destroy(action_name, %{},
       actor: actor,
+      context: Map.take(changeset.context, [:shared]),
       tenant: tenant,
       authorize?: authorize?,
       domain: domain
@@ -2069,6 +2088,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.read_one(
       authorize?: opts[:authorize?],
       actor: actor,
+      context: Map.take(changeset.context, [:shared]),
       domain: domain(changeset, join_relationship)
     )
     |> case do
@@ -2082,6 +2102,7 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_destroy(action_name, %{},
           actor: actor,
+          context: Map.take(changeset.context, [:shared]),
           authorize?: opts[:authorize?],
           domain: domain(changeset, join_relationship)
         )
@@ -2134,6 +2155,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Changeset.for_update(action_name, %{},
       authorize?: opts[:authorize?],
       actor: actor,
+      context: Map.take(changeset.context, [:shared]),
       domain: domain
     )
     |> maybe_force_change_attribute(relationship, :destination_attribute, nil)
@@ -2201,6 +2223,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.read_one(
       authorize?: opts[:authorize?],
       actor: actor,
+      context: Map.take(changeset.context, [:shared]),
       domain: domain(changeset, join_relationship)
     )
     |> case do
@@ -2214,6 +2237,7 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_destroy(action_name, %{},
           actor: actor,
+          context: Map.take(changeset.context, [:shared]),
           authorize?: opts[:authorize?],
           domain: domain(changeset, join_relationship)
         )
@@ -2263,6 +2287,7 @@ defmodule Ash.Actions.ManagedRelationships do
     })
     |> Ash.Changeset.for_destroy(action_name, %{},
       actor: actor,
+      context: Map.take(changeset.context, [:shared]),
       authorize?: opts[:authorize?],
       domain: domain
     )

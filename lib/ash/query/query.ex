@@ -1024,6 +1024,7 @@ defmodule Ash.Query do
               case module.prepare(query, opts, %Ash.Resource.Preparation.Context{
                      tenant: query.tenant,
                      actor: actor,
+                     source_context: query.context,
                      authorize?: authorize?,
                      tracer: tracer
                    }) do
@@ -2160,7 +2161,13 @@ defmodule Ash.Query do
   def set_context(query, map) do
     query = new(query)
 
-    %{query | context: Ash.Helpers.deep_merge_maps(query.context, map)}
+    %{
+      query
+      | context:
+          query.context
+          |> Ash.Helpers.deep_merge_maps(map)
+          |> then(&Ash.Helpers.deep_merge_maps(&1, map[:shared] || %{}))
+    }
   end
 
   @doc "Gets the value of an argument provided to the query"

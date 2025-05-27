@@ -309,6 +309,7 @@ defmodule Ash.Actions.Create do
                       mod.create(changeset, action_opts, %Ash.Resource.ManualCreate.Context{
                         select: opts[:select],
                         actor: opts[:actor],
+                        source_context: changeset.context,
                         tenant: changeset.tenant,
                         tracer: opts[:tracer],
                         authorize?: opts[:authorize?],

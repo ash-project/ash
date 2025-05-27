@@ -1024,6 +1024,7 @@ defmodule Ash.Changeset do
     change_opts =
       Ash.Expr.fill_template(
         change_opts,
+        source_context: changeset.context,
         actor: changeset.context.private[:actor],
         tenant: changeset.to_tenant,
         args: changeset.arguments,
@@ -2692,6 +2693,7 @@ defmodule Ash.Changeset do
 
     context = %{
       actor: actor,
+      source_context: changeset.context,
       tenant: changeset.tenant,
       authorize?: authorize? || false,
       tracer: tracer
@@ -3369,6 +3371,7 @@ defmodule Ash.Changeset do
         context = %{
           actor: changeset.context[:private][:actor],
           tenant: changeset.tenant,
+          source_context: changeset.context,
           authorize?: changeset.context[:private][:authorize?] || false,
           tracer: changeset.context[:private][:tracer]
         }
@@ -3391,6 +3394,7 @@ defmodule Ash.Changeset do
     context = %{
       actor: changeset.context[:private][:actor],
       tenant: changeset.tenant,
+      source_context: changeset.context,
       authorize?: changeset.context[:private][:authorize?] || false,
       tracer: changeset.context[:private][:tracer]
     }
@@ -4478,7 +4482,13 @@ defmodule Ash.Changeset do
   def set_context(changeset, nil), do: changeset
 
   def set_context(changeset, map) do
-    %{changeset | context: Ash.Helpers.deep_merge_maps(changeset.context, map)}
+    %{
+      changeset
+      | context:
+          changeset.context
+          |> Ash.Helpers.deep_merge_maps(map)
+          |> then(&Ash.Helpers.deep_merge_maps(&1, map[:shared] || %{}))
+    }
     |> store_context_changes(map)
   end
 

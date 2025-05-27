@@ -198,6 +198,7 @@ defmodule Ash.Actions.Update.Bulk do
               Ash.Resource.Change.Context,
               %{
                 bulk?: true,
+                source_context: atomic_changeset.context,
                 actor: opts[:actor],
                 tenant: opts[:tenant],
                 tracer: opts[:tracer],
@@ -480,6 +481,7 @@ defmodule Ash.Actions.Update.Bulk do
         Ash.Resource.Change.Context,
         %{
           bulk?: true,
+          source_context: atomic_changeset.context,
           actor: opts[:actor],
           tenant: opts[:tenant],
           tracer: opts[:tracer],
@@ -2078,6 +2080,18 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   @doc false
+
+  def run_bulk_before_batches(
+        [],
+        _changes,
+        _all_changes,
+        _opts,
+        _ref,
+        _context_key
+      ) do
+    []
+  end
+
   def run_bulk_before_batches(
         batch,
         changes,
@@ -2098,6 +2112,7 @@ defmodule Ash.Actions.Update.Bulk do
         context =
           struct(Ash.Resource.Change.Context, %{
             bulk?: true,
+            source_context: Enum.at(batch, 0).context,
             actor: opts[:actor],
             tenant: opts[:tenant],
             tracer: opts[:tracer],
@@ -2430,10 +2445,17 @@ defmodule Ash.Actions.Update.Bulk do
             result =
               case action.manual do
                 {mod, manual_opts} ->
+                  source_context =
+                    case batch do
+                      [cs | _] -> cs.context
+                      [] -> %{}
+                    end
+
                   if function_exported?(mod, :bulk_update, 3) do
                     mod.bulk_update(batch, manual_opts, %Ash.Resource.ManualUpdate.BulkContext{
                       actor: opts[:actor],
                       select: opts[:select],
+                      source_context: source_context,
                       batch_size: opts[:batch_size],
                       authorize?: opts[:authorize?],
                       tracer: opts[:tracer],
@@ -2448,6 +2470,7 @@ defmodule Ash.Actions.Update.Bulk do
                   else
                     ctx = %Ash.Resource.ManualUpdate.Context{
                       actor: opts[:actor],
+                      source_context: source_context,
                       select: opts[:select],
                       authorize?: opts[:authorize?],
                       tracer: opts[:tracer],
@@ -2723,12 +2746,19 @@ defmodule Ash.Actions.Update.Bulk do
         resource,
         metadata_key
       ) do
+    source_context =
+      case changesets do
+        [cs | _] -> cs.context
+        _ -> %{}
+      end
+
     context =
       struct(
         Ash.Resource.Change.Context,
         %{
           bulk?: true,
           actor: opts[:actor],
+          source_context: source_context,
           tenant: opts[:tenant],
           tracer: opts[:tracer],
           authorize?: opts[:authorize?]
@@ -2820,6 +2850,7 @@ defmodule Ash.Actions.Update.Bulk do
                       Ash.Resource.Change.Context,
                       %{
                         bulk?: true,
+                        source_context: source_context,
                         actor: opts[:actor],
                         tenant: opts[:tenant],
                         tracer: opts[:tracer],
@@ -2853,6 +2884,7 @@ defmodule Ash.Actions.Update.Bulk do
                         Ash.Resource.Change.Context,
                         %{
                           bulk?: true,
+                          source_context: source_context,
                           actor: opts[:actor],
                           tenant: opts[:tenant],
                           tracer: opts[:tracer],
@@ -2923,8 +2955,18 @@ defmodule Ash.Actions.Update.Bulk do
         tenant,
         context_key
       ) do
+    source_context =
+      case batch do
+        [cs | _] ->
+          cs.context
+
+        _ ->
+          %{}
+      end
+
     context = %{
       actor: actor,
+      source_context: source_context,
       authorize?: authorize? || false,
       tracer: tracer,
       tenant: tenant

@@ -11,7 +11,8 @@ defmodule Ash.Resource.ManualRelationship do
       :actor,
       :tenant,
       :authorize?,
-      :domain
+      :domain,
+      source_context: %{}
     ]
 
     @type t :: %__MODULE__{
@@ -19,6 +20,7 @@ defmodule Ash.Resource.ManualRelationship do
             query: Ash.Query.t(),
             actor: term,
             tenant: term,
+            source_context: map(),
             authorize?: boolean,
             domain: module
           }

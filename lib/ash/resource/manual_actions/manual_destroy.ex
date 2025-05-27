@@ -16,7 +16,8 @@ defmodule Ash.Resource.ManualDestroy do
       :authorize?,
       :domain,
       :return_notifications?,
-      :return_destroyed?
+      :return_destroyed?,
+      source_context: %{}
     ]
 
     @type t :: %__MODULE__{
@@ -24,6 +25,7 @@ defmodule Ash.Resource.ManualDestroy do
             select: list(atom),
             tenant: any(),
             tracer: list(module),
+            source_context: %{},
             authorize?: boolean(),
             domain: Ash.Domain.t(),
             return_notifications?: boolean(),
@@ -44,7 +46,8 @@ defmodule Ash.Resource.ManualDestroy do
       :return_records?,
       :return_notifications?,
       :return_errors?,
-      :batch_size
+      :batch_size,
+      source_context: %{}
     ]
 
     @type t :: %__MODULE__{
@@ -52,6 +55,7 @@ defmodule Ash.Resource.ManualDestroy do
             select: list(atom),
             tenant: any(),
             tracer: list(module),
+            source_context: map(),
             authorize?: boolean(),
             domain: Ash.Domain.t(),
             return_records?: boolean(),

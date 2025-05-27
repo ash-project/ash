@@ -50,13 +50,15 @@ defprotocol Ash.Scope do
     defimpl Ash.Scope do
       def get_actor(%{current_user: current_user}), do: {:ok, current_user}
       def get_tenant(%{current_tenant: current_tenant}), do: {:ok, current_tenant}
-      def get_context(%{locale: locale}), do: {:ok, %{locale: locale}}
+      def get_context(%{locale: locale}), do: {:ok, %{shared: %{locale: locale}}}
       # You typically configure tracers in config giles
       # so this will typically return :error
       def get_tracer(_), do: :error
     end
   end
   ```
+
+  For more on context, and what the `shared` key is used for, see the [actions guide](/documentation/topics/actions/actions.md#context)
 
   You could then use this in various places by passing the `scope` option.
 
@@ -112,14 +114,20 @@ defimpl Ash.Scope,
     Ash.Resource.Calculation.Context,
     Ash.Resource.Change.Context,
     Ash.Resource.ManualCreate.Context,
+    Ash.Resource.ManualCreate.BulkContext,
     Ash.Resource.ManualDestroy.Context,
+    Ash.Resource.ManualDestroy.BulkContext,
     Ash.Resource.ManualUpdate.Context,
+    Ash.Resource.ManualUpdate.BulkContext,
     Ash.Resource.ManualRelationship.Context,
     Ash.Resource.Preparation.Context,
     Ash.Resource.Validation.Context
   ] do
   def get_actor(%{actor: actor}), do: {:ok, actor}
   def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
-  def get_context(_), do: {:ok, %{}}
+
+  def get_context(%{source_context: source_context}),
+    do: {:ok, Map.take(source_context, [:shared])}
+
   def get_tracer(%{tracer: tracer}), do: {:ok, tracer}
 end

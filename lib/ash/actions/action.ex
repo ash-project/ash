@@ -14,6 +14,7 @@ defmodule Ash.Actions.Action do
       %Ash.Resource.Actions.Implementation.Context{
         actor: opts[:actor],
         tenant: opts[:tenant],
+        source_context: input.context,
         authorize?: opts[:authorize?],
         domain: opts[:domain]
       }

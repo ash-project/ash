@@ -404,7 +404,13 @@ defmodule Ash.ActionInput do
   def set_context(input, nil), do: input
 
   def set_context(input, map) do
-    %{input | context: Ash.Helpers.deep_merge_maps(input.context, map)}
+    %{
+      input
+      | context:
+          input.context
+          |> Ash.Helpers.deep_merge_maps(map)
+          |> then(&Ash.Helpers.deep_merge_maps(&1, map[:shared] || %{}))
+    }
   end
 
   defp cast_params(input, params, opts) do

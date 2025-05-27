@@ -17,13 +17,15 @@ defmodule Ash.Resource.ManualCreate do
       :upsert_keys,
       :identity,
       :upsert_fields,
-      :return_notifications?
+      :return_notifications?,
+      source_context: %{}
     ]
 
     @type t :: %__MODULE__{
             actor: any(),
             select: list(atom),
             tenant: any(),
+            source_context: map(),
             tracer: list(module),
             authorize?: boolean(),
             domain: Ash.Domain.t(),
@@ -52,13 +54,15 @@ defmodule Ash.Resource.ManualCreate do
       :batch_size,
       :return_errors?,
       :return_notifications?,
-      :return_records?
+      :return_records?,
+      source_context: %{}
     ]
 
     @type t :: %__MODULE__{
             actor: any(),
             select: list(atom),
             tenant: any(),
+            source_context: map(),
             tracer: list(module),
             authorize?: boolean(),
             domain: Ash.Domain.t(),

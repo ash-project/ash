@@ -61,6 +61,16 @@ defmodule Ash.Test.ManageRelationshipTest do
       end
     end
 
+    changes do
+      change fn changeset, context ->
+        if changeset.context[:fail?] do
+          throw({:fail, context})
+        else
+          changeset
+        end
+      end
+    end
+
     attributes do
       uuid_primary_key :id
       attribute :name, :string
@@ -302,6 +312,36 @@ defmodule Ash.Test.ManageRelationshipTest do
       |> Ash.load(:parent_resource)
 
     assert related.parent_resource.name == "Even newer name"
+  end
+
+  test "passes shared context down" do
+    parent =
+      ParentResource
+      |> Ash.Changeset.for_create(:create, %{name: "Initial name"})
+      |> Ash.create!()
+
+    try do
+      RelatedResource
+      |> Ash.Changeset.for_create(
+        :create_with_existing_parent,
+        %{
+          required_attribute: "string",
+          parent_resource: %{id: parent.id, name: "New name"}
+        },
+        context: %{shared: %{fail?: true}}
+      )
+      |> Ash.create!()
+
+      flunk()
+    catch
+      {:fail, context} ->
+        assert %Ash.Resource.Change.Context{
+                 source_context: %{
+                   shared: %{fail?: true},
+                   fail?: true
+                 }
+               } = context
+    end
   end
 
   test "can create and update a related resource" do

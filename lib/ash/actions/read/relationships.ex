@@ -253,6 +253,7 @@ defmodule Ash.Actions.Read.Relationships do
           |> Ash.Query.set_context(%{
             private: %{async_limiter: query.context[:private][:async_limiter]}
           })
+          |> Ash.Query.set_context(Map.take(query.context, [:shared]))
           |> Ash.Query.for_read(
             read_action_name,
             arguments,
@@ -303,6 +304,7 @@ defmodule Ash.Actions.Read.Relationships do
         }
       })
       |> Ash.Query.set_tenant(query.tenant || related_query.tenant)
+      |> Ash.Query.set_context(Map.take(query.context, [:shared]))
       |> Ash.Actions.Read.for_read(read_action, nil, arguments,
         domain: domain,
         authorize?: query.context[:private][:authorize?],
@@ -480,6 +482,7 @@ defmodule Ash.Actions.Read.Relationships do
         result =
           module.load(records, opts, %Ash.Resource.ManualRelationship.Context{
             relationship: relationship,
+            source_context: query.context,
             query:
               related_query
               |> Ash.Query.sort(relationship.sort)

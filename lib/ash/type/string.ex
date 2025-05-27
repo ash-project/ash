@@ -245,7 +245,8 @@ defmodule Ash.Type.String do
             %Regex{} = regex ->
               regex
 
-            {regex, flags} -> Regex.compile!(regex, flags)
+            {regex, flags} ->
+              Regex.compile!(regex, flags)
 
             string ->
               Regex.compile!(string)

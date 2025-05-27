@@ -66,6 +66,60 @@ end
 
 In the example above, you can provide `%{name: "a name", description: "a description"}` to both the `:create` and `:update` actions, but only `%{something_else: "some_value"}` to `:special_update`.
 
+## Context
+
+There are two kinds of contexts in Ash:
+
+1. the context given to a changeset/action call, stored in `changeset.context`,
+2. the context given to a callback function like `c:Ash.Resource.Change.change/3`, which contains
+  the above context in it's `source_context` key, as well as additional information specific to the callback,
+  and/or commonly needed keys for callbacks (actor, tenant, etc.).
+
+Actions accept a free-form map of context, which can be used for whatever you like. Whenever context is set, it is *deep merged*. I.e if you do `changeset |> Ash.Changeset.set_context(%{a: %{b: 1}}) |> Ash.Changeset.set_context(%{a: %{c: 2}})`, the resulting context will be `%{a: %{b: 1, c: 2}}`. Structs are not merged.
+
+There are two special keys to note:
+
+### `:private`
+
+The `:private` key is reserved for use by `Ash` itself. You shouldn't read from or write to it.
+
+### `:shared`
+
+The `:shared` key will be passed to all nested actions built by Ash, and should be passed by you to any actions you call within changes/preparations etc. Whenever `:shared` context
+is set, it is also written to the outer context. For example `set_context(%{shared: %{locale: "en"}})` is equivalent to `set_context(%{shared: %{locale: "en"}, locale: "en"})`
+
+This will generally happen automatically if you use one of the two abstractions provided by Ash for threading options through to nested action calls.
+
+> ### Careful with shared {: .warning}
+>
+> Shared context is passed to all nested actions, so don't pass massive values around, and also don't set context
+
+#### `Ash.Scope`
+
+`Ash.Scope` is newer and is the recommended way to do this. In action callbacks in Ash, you will be provided with a context, which can be passed down as a `scope` option when running nested actions or building nested changesets/queries. For example:
+
+```elixir
+def change(changeset, opts, context) do
+  Ash.Changeset.after_action(changeset, fn changeset, result ->
+    # automatically passes the `shared` context to the nested action
+    MyApp.MyDomain.create_something_else(..., scope: context, other: :options)
+  end)
+end
+```
+
+#### `Ash.Context.to_opts/2`
+
+`Ash.Context.to_opts/2` is a helper function that converts a context map into a list of options that can be passed to nested actions. It automatically passes the `shared` context to the nested action as well.
+
+```elixir
+def change(changeset, opts, context) do
+  Ash.Changeset.after_action(changeset, fn changeset, result ->
+    # automatically passes the `shared` context to the nested action
+    MyApp.MyDomain.create_something_else(..., Ash.Context.to_opts(context, other: :options))
+  end)
+end
+```
+
 ## Idiomatic Actions
 
 ### Name Your Actions

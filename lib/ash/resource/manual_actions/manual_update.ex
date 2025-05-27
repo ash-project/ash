@@ -13,7 +13,8 @@ defmodule Ash.Resource.ManualUpdate do
       :tracer,
       :authorize?,
       :domain,
-      :return_notifications?
+      :return_notifications?,
+      source_context: %{}
     ]
 
     @type t :: %__MODULE__{
@@ -21,6 +22,7 @@ defmodule Ash.Resource.ManualUpdate do
             select: list(atom),
             tenant: any(),
             tracer: list(module),
+            source_context: map(),
             authorize?: boolean(),
             domain: Ash.Domain.t(),
             return_notifications?: boolean()
@@ -34,6 +36,7 @@ defmodule Ash.Resource.ManualUpdate do
       :actor,
       :select,
       :tenant,
+      :source_context,
       :tracer,
       :authorize?,
       :domain,
@@ -46,6 +49,7 @@ defmodule Ash.Resource.ManualUpdate do
     @type t :: %__MODULE__{
             actor: any(),
             select: list(atom),
+            source_context: map(),
             tenant: any(),
             tracer: list(module),
             authorize?: boolean(),

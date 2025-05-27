@@ -28,10 +28,18 @@ defmodule Ash.Actions.Helpers do
     must_be_simple = must_be_simple |> Enum.reverse()
 
     context =
+      case {batch, must_be_simple} do
+        {[cs | _], _} -> cs.context
+        {_, [cs | _]} -> cs.context
+        {_, _} -> %{}
+      end
+
+    context =
       struct(
         Ash.Resource.Change.Context,
         %{
           bulk?: true,
+          source_context: context,
           actor: opts[:actor],
           tenant: opts[:tenant],
           tracer: opts[:tracer],

@@ -90,11 +90,12 @@ defmodule Ash.Resource.Change do
 
     This is passed into various callbacks for `Ash.Resource.Change`.
     """
-    defstruct [:actor, :tenant, :authorize?, :tracer, bulk?: false]
+    defstruct [:actor, :tenant, :authorize?, :tracer, bulk?: false, source_context: %{}]
 
     @type t :: %__MODULE__{
             actor: Ash.Resource.record() | nil,
             tenant: term(),
+            source_context: map(),
             authorize?: boolean() | nil,
             tracer: Ash.Tracer.t() | [Ash.Tracer.t()] | nil,
             bulk?: boolean

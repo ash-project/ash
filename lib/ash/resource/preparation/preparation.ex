@@ -51,12 +51,13 @@ defmodule Ash.Resource.Preparation do
     @moduledoc """
     The context for a preparation.
     """
-    defstruct [:actor, :tenant, :authorize?, :tracer]
+    defstruct [:actor, :tenant, :authorize?, :tracer, source_context: %{}]
 
     @type t :: %__MODULE__{
             actor: Ash.Resource.record() | nil,
             tenant: term(),
             authorize?: boolean() | nil,
+            source_context: map(),
             tracer: Ash.Tracer.t() | [Ash.Tracer.t()] | nil
           }
   end

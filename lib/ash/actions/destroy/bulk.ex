@@ -248,6 +248,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               Ash.Resource.Change.Context,
               %{
                 bulk?: true,
+                source_context: atomic_changeset.context,
                 actor: opts[:actor],
                 tenant: opts[:tenant],
                 tracer: opts[:tracer],
@@ -516,6 +517,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     context =
       struct(Ash.Resource.Change.Context, %{
         bulk?: true,
+        source_context: atomic_changeset.context,
         actor: opts[:actor],
         tenant: opts[:tenant],
         tracer: opts[:tracer],
@@ -1980,10 +1982,17 @@ defmodule Ash.Actions.Destroy.Bulk do
           result =
             case action.manual do
               {mod, manual_opts} ->
+                source_context =
+                  case batch do
+                    [cs | _] -> cs.context
+                    [] -> %{}
+                  end
+
                 if function_exported?(mod, :bulk_destroy, 3) do
-                  mod.bulk_destroy(batch, manual_opts, %{
+                  mod.bulk_destroy(batch, manual_opts, %Ash.Resource.ManualDestroy.BulkContext{
                     actor: opts[:actor],
                     select: opts[:select],
+                    source_context: source_context,
                     batch_size: opts[:batch_size],
                     authorize?: opts[:authorize?],
                     tracer: opts[:tracer],
@@ -1999,6 +2008,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                   ctx =
                     %Ash.Resource.ManualDestroy.Context{
                       select: opts[:select],
+                      source_context: source_context,
                       actor: opts[:actor],
                       tenant: opts[:tenant],
                       authorize?: opts[:authorize?],

@@ -19,6 +19,7 @@ defmodule Ash.Context do
   * `:authorize?`
   * `:tracer`
   * `:tenant`
+  * `context[:shared]` -> `:context`
   """
   @spec to_opts(map(), Keyword.t()) :: context_keyword_list()
   def to_opts(map, opts \\ []) when is_map(map) do
@@ -27,6 +28,20 @@ defmodule Ash.Context do
     |> add_if_present(map, :authorize?)
     |> add_if_present(map, :tracer)
     |> add_if_present(map, :tenant)
+    |> then(fn opts ->
+      with {:ok, context} <- Map.fetch(map, :context),
+           {:ok, shared} <- Map.fetch(context, :shared) do
+        Keyword.update(
+          opts,
+          :context,
+          %{shared: shared},
+          &Ash.Helpers.deep_merge_maps(&1, %{shared: shared})
+        )
+      else
+        _ ->
+          opts
+      end
+    end)
   end
 
   defp add_if_present(opts, map, key) do
