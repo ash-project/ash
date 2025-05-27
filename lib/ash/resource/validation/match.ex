@@ -13,7 +13,7 @@ defmodule Ash.Resource.Validation.Match do
       hide: true
     ],
     match: [
-      type: {:custom, __MODULE__, :match, []},
+      type: {:custom, Ash.Type.String, :match, []},
       required: true,
       doc: "The value that the attribute should match against"
     ],
@@ -66,7 +66,7 @@ defmodule Ash.Resource.Validation.Match do
             if String.match?(value, match) do
               :ok
             else
-              {:error, exception(value, opts)}
+              {:error, exception(value, Keyword.put(opts, :match, match))}
             end
 
           {:error, error} ->
@@ -141,36 +141,5 @@ defmodule Ash.Resource.Validation.Match do
     [value: string_value, field: opts[:attribute]]
     |> with_description(opts)
     |> InvalidAttribute.exception()
-  end
-
-  @doc false
-  def match(%Regex{} = regex) do
-    IO.warn("""
-    Providing a regex in the `match` constraint is deprecated, as OTP 28 does not support it.
-    Please provide a string or a tuple of regex and flags instead.
-
-    For example:
-
-    Instead of
-        ~r/^[a-z]+$/i
-    Use
-        {~S/^[a-z]+$/, "i"}
-
-    Instead of
-        ~r/^[a-z]+$/
-    Use
-        ~S/^[a-z]+$/
-    """)
-
-    {:ok, regex}
-  end
-
-  def match(regex) when is_binary(regex) do
-    {:ok, regex}
-  end
-
-  def match(value) do
-    {:error,
-     "Must provide a zero argument function for the match constraint, got: #{inspect(value)}"}
   end
 end

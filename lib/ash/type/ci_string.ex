@@ -184,15 +184,17 @@ defmodule Ash.Type.CiString do
         end
 
       {:match, regex}, errors ->
+        # TODO: This should automatically add the "i" flag?
         regex =
           case regex do
             %Regex{} = regex ->
               regex
 
-            {regex, flags} -> Regex.compile!(regex, flags <> "i")
+            {regex, flags} ->
+              Regex.compile!(regex, flags)
 
             string ->
-              Regex.compile!(string, "i")
+              Regex.compile!(string)
           end
 
         if String.match?(value, regex) do
