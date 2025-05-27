@@ -81,7 +81,7 @@ The framework acts as a **spinal cord** for your application: providing structur
 
 ## Resources and Actions: The Core Abstractions
 
-The foremost abstraction in Ash is a **Resource** and its **Actions**. Resources represent the core entities in your domain - things like `User`, `Post`, `Order`, or `Invoice`. Each resource defines a set of typed actions that describe what can be done with that entity.
+The foremost abstraction in Ash is **Actions** - the things you can do in your domain like `:create_user`, `:publish_post`, `:approve_order`, or `:calculate_shipping`. These actions are organized into **Resources** that group related behaviors around domain concepts like `User`, `Post`, `Order`, or `Invoice`. Using resources, you can easily model actions, alongside the state that they operate on, or just actions in isolation.
 
 These actions are **introspectable** (your code can examine them at runtime) and **fully typed**. This means the rest of your application (and **extensions** - add-on packages that enhance Ash) can automatically understand and build functionality around them. When you define a `create` action that accepts a `:title` string and `:content` text, extensions like AshGraphql can automatically generate GraphQL mutations, AshJsonApi can create REST endpoints, and AshPostgres can handle database persistence - all without additional configuration.
 
