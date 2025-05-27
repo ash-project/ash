@@ -187,6 +187,8 @@ defmodule HelpDesk.Changes.ProcessUrgentTicket do
 
   defp cleanup_and_notify({:ok, ticket}, changeset) do
     # Success case - perform cleanup and notifications
+    # Any more complex cleanup than this should be
+    # pushing you to consider reactor and/or oban
     if slot_id = Ash.Changeset.get_context(changeset, :reserved_slot) do
       HelpDesk.ResourceManager.release_slot(slot_id)
     end
