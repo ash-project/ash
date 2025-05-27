@@ -1,6 +1,6 @@
 # Multi-Step Actions
 
-Actions in Ash allow you to create sophisticated workflows that coordinate multiple changes or processes together. Often business logic crosses multiple resources, and we often want it to be transcational. By leveraging action lifecycle hooks, you can build powerful domain-specific operations. This guide will explore how to build and use multi-step actions using a helpdesk example. In some cases, hooks can grow to a point where they are unwieldy.
+Actions in Ash allow you to create sophisticated workflows that coordinate multiple changes or processes together. Often business logic crosses multiple resources, and we often want it to be transactional. By leveraging action lifecycle hooks, you can build powerful domain-specific operations. This guide will explore how to build and use multi-step actions using a helpdesk example. In some cases, hooks can grow to a point where they are unwieldy.
 
 For most use cases, hooks are the preferred approach due to their simplicity and tight integration with Ash's action lifecycle. [Reactor](/documentation/topics/advanced/reactor.md) is the comprehensive solution for truly complex orchestration scenarios.
 Reactors can be used as the `run` function for generic actions, giving them first class support in Ash extensions.
@@ -22,7 +22,7 @@ You should use hooks for most multi-step workflow scenarios as they provide simp
 
 > ### Durable Workflows {: .info}
 >
-> For durabile workflows, we suggest to use Oban. We provide tools to integrate with oban in [AshOban](https://hexdocs.pm/ash_oban). AshOban supports very specific types of common workflows, like "triggers" that run periodically for resources, and "scheduled actions" which run generic actions on a cron. You should not be afraid to write "standard" oban jobs and code where possible. Don't bend over backwards trying to fit everything into AshOban.
+> For durable workflows, we suggest to use Oban. We provide tools to integrate with Oban in [AshOban](https://hexdocs.pm/ash_oban). AshOban supports very specific types of common workflows, like "triggers" that run periodically for resources, and "scheduled actions" which run generic actions on a cron. You should not be afraid to write "standard" Oban jobs and code where possible. Don't bend over backwards trying to fit everything into AshOban.
 
 ## Action Lifecycle Hooks
 
@@ -245,7 +245,7 @@ end
 
 #### Builtin Hook Changes
 
-If you know that you just want to add a single hook to an action, you can use some of the functions in `Ash.Resource.Change.Builtins`, which are simple shorhands for the above form. For example:
+If you know that you just want to add a single hook to an action, you can use some of the functions in `Ash.Resource.Change.Builtins`, which are simple shorthands for the above form. For example:
 
 ```elixir
 create :open_and_assign do
