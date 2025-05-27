@@ -115,20 +115,6 @@ The intent behind Ash is _not_ to have you building simple CRUD-style applicatio
 > Ash derives significant portions of your application directly from your resources, with little to no effort required. This allows you to focus on what matters most: your business logic.
 > We leverage the best of the Elixir ecosystem under the hood, providing a single unified tool-chain for our users.
 
-## Why should I use it?
-
-The fundamental idea behind Ash is that when the various components of your system can have consistent expectations of how the other components around them work, you can ultimately do a significant amount more, with less. For example, once you've defined your resources, it takes only a few additional lines of code to have your database structure generated, and a full featured API built around it.
-
-Ash has many use cases, with varying degrees of complexity. Ash helps you on day 1 of your project, removing boilerplate and allowing you to focus on the essential complexity of your application. It also helps you on year 5, lending consistency, code reuse, and maintainability.
-
-> #### Ash is a force multiplier {: .tip}
->
-> **Adding a GraphQL API**: Traditionally requires setting up Absinthe schemas, resolvers, and type definitions across multiple files. With Ash: add `extensions: [AshGraphql.Resource]` and `type :post` - you're done.
->
-> **Database + API + Validation**: Normally requires separate Ecto schemas, Phoenix controllers, changesets, and API serializers. With Ash: define one resource with actions, get all of them automatically synchronized.
->
-> **Preventing API/Database drift**: Traditional approaches require manual synchronization between your API documentation, validation rules, and database constraints. Ash eliminates this entire category of bugs because everything derives from the same source.
-
 ## Community
 
 Ash has a vibrant community of developers who contribute to the project, provide support, and share knowledge. Join us on [Discord](https://discord.gg/w3AXeARR2p), [ElixirForum](https://elixirforum.com/ash) and [GitHub](https://github.com/ash-project/ash) to contribute, ask questions, and stay updated on the latest developments.
@@ -139,7 +125,7 @@ Our community is one of the best features of Ash and **you should use it**. Lots
 >
 > — Brett Kolodny, Full stack engineer, MEW
 
-## A Complete Example: From Simple to Sophisticated
+## An Example: From Simple to Sophisticated
 
 To illustrate how Ash grows with your application, let's start with a simple blog post resource and see how extensions enhance it:
 
@@ -147,7 +133,9 @@ To illustrate how Ash grows with your application, let's start with a simple blo
 >
 > The following examples are meant to give you a sense of how Ash works and grows with your application. You're not expected to understand every detail of the syntax - focus on the concepts and how it changes over time.
 
-### 1. Basic Resource
+<!-- tabs-open -->
+
+### 1. Actions
 
 ```elixir
 # lib/my_blog/blog.ex
@@ -215,7 +203,7 @@ The action is **typed** (it knows it takes a string and returns a map) and **int
 > using it wrong. You can build your own custom state system under the hood, use Phoenix contexts,
 > call directly into Ecto, totally up to you.
 
-### 2. Adding State and Persistence with AshPostgres
+### 2. Persistence
 
 Now let's add state to support persistent storage, while keeping our existing behavior:
 
@@ -286,7 +274,7 @@ Now your resource combines behavior and state. The original `analyze_text` actio
 {:ok, post} = MyBlog.Blog.create_post("My First Post", "This is some content")
 ```
 
-### 3. Adding GraphQL API with AshGraphql
+### 3. GraphQL
 
 This is just one example of an API extension. We also have [ash_json_api](https://hexdocs.pm/ash_json_api) with more on the way.
 Ash also comes with all the tools you need to build *your own* API extension.
@@ -338,7 +326,7 @@ That is actually all of the code you need to do it.
 >
 > — Alan Heywood, CTO, HereTask
 
-### 4. Adding Encryption with AshCloak
+### 4. Encryption
 
 ```elixir
 defmodule MyBlog.Blog.Post do
@@ -358,7 +346,7 @@ end
 
 Your post content is now automatically encrypted at rest and decrypted when read, with no changes to your existing API or business logic.
 
-### 5. Adding State Management with AshStateMachine
+### 5. State Machines
 
 ```elixir
 defmodule MyBlog.Blog.Post do
@@ -395,6 +383,8 @@ end
 ```
 
 Now your posts have a proper state machine with transition actions, state validation, and automatic GraphQL mutations for state changes.
+
+<!-- tabs-close -->
 
 ## The Ash Advantage
 
