@@ -269,6 +269,10 @@ Batch callbacks are optional methods you can implement in your change modules:
 - **`before_batch/3`**: Runs before the batch is sent to the data layer
 - **`after_batch/3`**: Runs after the batch completes, receiving changeset-result pairs
 
+> ### Batch Operations and Transactions {: .info}
+>
+> The batch logic is currently all within transactions. There is no `before_batch_transaction` or `after_batch_transaction` hooks yet.
+
 > ### When are batch callbacks used? {: .warning}
 >
 > - `batch_change/3` must be defined for `before_batch/3` and `after_batch/3` to be called
