@@ -4,8 +4,14 @@ defprotocol Ash.Scope do
 
   This is inspired by the same feature in `Phoenix`, however the `actor`, `tenant` and `context`
   options will always remain available, as they are standardized representations of things that
-  actions can use to do their work. This exists as a convenience, especially for those who are
-  using an application with a version of Phoenix that has a concept of scopes.
+  actions can use to do their work.
+
+  ## Setup
+
+  If you are using Phoenix, you will want to assign your `scope` module in a plug that runs
+  after your plugs that determine actor/tenant/context. Then, you will want to add an `on_mount`
+  hook for LiveViews that sets your `scope` assign. This is especially true for `AshAuthentication`,
+  as it does not currently have a concept of scopes.
 
   ## Passing scope and options
 
