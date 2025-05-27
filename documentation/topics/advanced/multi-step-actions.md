@@ -2,7 +2,9 @@
 
 Actions in Ash allow you to create sophisticated workflows that coordinate multiple changes or processes together. Often business logic crosses multiple resources, and we often want it to be transcational. By leveraging action lifecycle hooks, you can build powerful domain-specific operations. This guide will explore how to build and use multi-step actions using a helpdesk example. In some cases, hooks can grow to a point where they are unwieldy.
 
-## When to use hooks vs reactor
+For most use cases, hooks are the preferred approach due to their simplicity and tight integration with Ash's action lifecycle. [Reactor](/documentation/topics/advanced/reactor.md) is the comprehensive solution for truly complex orchestration scenarios.
+
+## When to use reactors over hooks
 
 You should use hooks for most multi-step workflow scenarios as they provide simplicity and leverage Ash's transactional nature. The key decision point is whether you need compensation/rollback across external services:
 
@@ -16,8 +18,6 @@ You should use hooks for most multi-step workflow scenarios as they provide simp
 - You need to compensate/undo changes across multiple external services
 - Building complex workflows that require sophisticated error handling and rollback logic
 - Coordinating long-running processes that span multiple systems
-
-For most use cases, hooks are the preferred approach due to their simplicity and tight integration with Ash's action lifecycle. Reactor is the comprehensive solution for truly complex orchestration scenarios.
 
 > ### Durable Workflows {: .info}
 >
