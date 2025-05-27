@@ -72,6 +72,11 @@ defmodule Ash.ActionInput do
       type: :any,
       doc: "The tenant to use for the action."
     ],
+    scope: [
+      type: :any,
+      doc:
+        "A value that implements the `Ash.Scope` protocol, for passing around actor/tenant/context in a single value. See `Ash.Scope` for more."
+    ],
     actor: [
       type: :any,
       doc: "The actor performing the action"

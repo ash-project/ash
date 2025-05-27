@@ -7,6 +7,17 @@ defprotocol Ash.Scope do
   actions can use to do their work. This exists as a convenience, especially for those who are
   using an application with a version of Phoenix that has a concept of scopes.
 
+  ## Passing scope and options
+
+  For the `actor` and `tenant` extracted from scopes, if you also pass those values via options, i.e:
+
+  `scope: %MyApp.Scope{current_user: user1}, actor: user2`
+
+  if both values are non-nil and are not equal, we raise an error.
+  Otherwise, we choose the one that is not nil (or nil if both are nil).
+
+  For `context`, the values are deep merged.
+
   ## Example
 
   You would implement `Ash.Scope` for a module like so:

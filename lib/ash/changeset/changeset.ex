@@ -1500,6 +1500,11 @@ defmodule Ash.Changeset do
       type: :map,
       doc: "Context to set on the query, changeset, or input"
     ],
+    scope: [
+      type: :any,
+      doc:
+        "A value that implements the `Ash.Scope` protocol, for passing around actor/tenant/context in a single value. See `Ash.Scope` for more."
+    ],
     private_arguments: [
       type: :map,
       doc: "Private argument values to set before validations and changes.",

@@ -78,7 +78,11 @@ defmodule Ash.Can do
 
         opts
         |> Ash.Actions.Helpers.set_when_ok(:tenant, tenant)
-        |> Ash.Actions.Helpers.set_when_ok(:context, context, &Ash.Helpers.deep_merge_maps(&1, &2))
+        |> Ash.Actions.Helpers.set_when_ok(
+          :context,
+          context,
+          &Ash.Helpers.deep_merge_maps(&1, &2)
+        )
 
         case actor do
           {:ok, actor} ->
