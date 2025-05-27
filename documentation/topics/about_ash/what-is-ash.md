@@ -131,7 +131,7 @@ Our community is one of the best features of Ash and **you should use it**. Lots
 
 ### Introduction
 
-If you're the kind of person who wants to see the code, click through these tabs to see an example of evolving a blog post resource over time with Ash & its extensions to get a sense for how it works.
+If you're the "just show me the code" type, click through these tabs to see an example of evolving a blog post resource over time with Ash & its extensions to get a sense for how it works.
 
 > #### Don't worry about understanding all the code {: .info}
 >
