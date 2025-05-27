@@ -115,6 +115,33 @@ Ash provides two basic types of policy checks - _simple_ checks and _filter_ che
 
 Filter checks are applied to all read actions, including those generated for bulk updates and destroys.
 
+### Read Actions and Filtering Behavior
+
+An important characteristic of read actions is that, by default, they are **filtered** by policies rather than returning authorization errors. This means:
+
+- When a user is not allowed to see certain records, those records are simply filtered out of the results
+- Instead of receiving a `Forbidden` error, users typically get a `NotFound` error (for single record queries) or an empty/reduced result set (for multi-record queries)
+- This filtering behavior applies to all read actions, including `get`, `read`, and any custom read actions you define
+
+For example, if a policy restricts users to only see their own posts, a query for all posts will automatically filter to only return the current user's posts, rather than raising an authorization error. Similarly, attempting to fetch a specific post that belongs to another user will result in a `NotFound` error rather than `Forbidden`.
+
+This design is a security feature that prevents **enumeration attacks** and **information disclosure**. By not distinguishing between "record doesn't exist" and "record exists but you can't access it", the system prevents attackers from probing to discover the existence of protected data, mapping out the system's data structure, or conducting reconnaissance attacks through systematic querying.
+
+#### Bypassing this behavior
+
+You can bypass this behavior on a case-by-case basis with the `authorize_with` option, for data layers that support error expressions (all of the core ones except `AshSqlite`).
+
+For example, given a post that the user cannot see:
+
+```elixir
+Ash.get!(Post, 123)
+# * Invalid:
+# not found
+
+Ash.get!(Post, 123, authorize_with: :error)
+# * Forbidden
+```
+
 ### Bypass policies
 
 A bypass policy is just like a regular policy, except if a bypass passes, then other policies after it _do not need to pass_. This can be useful for writing complex access rules, or for a simple rule like "an admin can do anything" without needing to specify it as part of every other policy.
