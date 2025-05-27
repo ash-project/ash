@@ -6,6 +6,18 @@ defprotocol Ash.Scope do
   options will always remain available, as they are standardized representations of things that
   actions can use to do their work.
 
+  When you have a scope, you can group up actor/tenant/context into one struct and pass that around,
+  for example:
+
+  ```elixir
+  scope = %MyApp.Scope{current_user: user, current_tenant: tenant, locale: "en"}
+  # instead of
+  MyDomain.create_thing(actor: current_user, tenant: tenant)
+
+  # you can do
+  MyDomain.create_thing(scope: socket.assigns.scope)
+  ```
+
   ## Setup
 
   If you are using Phoenix, you will want to assign your `scope` module in a plug that runs
