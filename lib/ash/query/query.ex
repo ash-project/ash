@@ -845,6 +845,7 @@ defmodule Ash.Query do
     end
   end
 
+  @spec timeout(t(), pos_integer() | :infinity | nil) :: t()
   def timeout(query, timeout) do
     query = new(query)
 
