@@ -127,15 +127,17 @@ Our community is one of the best features of Ash and **you should use it**. Lots
 
 ## An Example: From Simple to Sophisticated
 
-To illustrate how Ash grows with your application, let's start with a simple blog post resource and see how extensions enhance it:
+<!-- tabs-open -->
+
+### Introduction
+
+If you're the kind of person who wants to see the code, click through these tabs to see an example of evolving a blog post resource over time with Ash & its extensions to get a sense for how it works.
 
 > #### Don't worry about understanding all the code {: .info}
 >
-> The following examples are meant to give you a sense of how Ash works and grows with your application. You're not expected to understand every detail of the syntax - focus on the concepts and how it changes over time.
+> You're not expected to understand every detail of the syntax - focus on the concepts and how it changes over time. If you want a gentler introduction, head over to the [getting started](/documentation/tutorials/get-started.md) guide.
 
-<!-- tabs-open -->
-
-### 1. Actions
+### Actions
 
 ```elixir
 # lib/my_blog/blog.ex
@@ -201,7 +203,7 @@ The action is **typed** (it knows it takes a string and returns a map) and **int
 > using it wrong. You can build your own custom state system under the hood, use Phoenix contexts,
 > call directly into Ecto, totally up to you.
 
-### 2. Persistence
+### Persistence
 
 Now let's add state to support persistent storage, while keeping our existing behavior:
 
@@ -272,7 +274,7 @@ Now your resource combines behavior and state. The original `analyze_text` actio
 {:ok, post} = MyBlog.Blog.create_post("My First Post", "This is some content")
 ```
 
-### 3. GraphQL
+### GraphQL
 
 This is just one example of an API extension. We also have [ash_json_api](https://hexdocs.pm/ash_json_api) with more on the way.
 Ash also comes with all the tools you need to build *your own* API extension.
@@ -324,7 +326,7 @@ That is actually all of the code you need to do it.
 >
 > — Alan Heywood, CTO, HereTask
 
-### 4. Encryption
+### Encryption
 
 ```elixir
 defmodule MyBlog.Blog.Post do
@@ -344,7 +346,7 @@ end
 
 Your post content is now automatically encrypted at rest and decrypted when read, with no changes to your existing API or business logic.
 
-### 5. State Machines
+### State Machines
 
 ```elixir
 defmodule MyBlog.Blog.Post do
