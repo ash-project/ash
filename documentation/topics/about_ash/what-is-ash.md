@@ -7,7 +7,7 @@ Ash brings the batteries included experience to Elixir applications in a way tha
 > — Frank Dugan III, System Specialist, SunnyCor Inc.
 
 Ash is an opinionated, composable set of application building blocks designed for extensibility. It shines when building web apps, APIs and services, but can be used for any kind of Elixir application. It integrates with the best that the
-Elixir ecoystem has to offer, and sits directly inside a standard Elixiir codebase alongside the rest of your code.
+Elixir ecoystem has to offer, and sits directly inside a standard Elixir codebase alongside the rest of your code.
 
 At its heart, Ash is a framework for modeling your application's domain through **Resources** and their **Actions**. These are the fundamental abstractions that everything else builds upon.
 
