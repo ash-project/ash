@@ -35,7 +35,7 @@ The framework acts as a **spinal cord** for your application: providing structur
 
 <!-- tabs-open -->
 
-### Elixir Programmers
+### Elixir Developers
 
 **Ash builds on the best of the Elixir ecosystem** rather than replacing it. Ash leverages Ecto for database operations, Phoenix for web interfaces, Oban for background jobs, Absinthe for GraphQL, etc. Ash unifies all of this tooling and significantly simplifies and enhances they way you use them together.
 
