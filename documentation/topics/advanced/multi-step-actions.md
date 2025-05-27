@@ -102,12 +102,8 @@ defmodule HelpDesk.Changes.AssignTicket do
     end
   end
 
-  defp notify_assignment(_changeset, ticket) do
-    if agent_id = ticket.agent_id do
-      # Load the agent to get notification details
-      agent = HelpDesk.Agent |> Ash.get!(agent_id)
-      HelpDesk.Notifications.notify_assignment(agent, ticket)
-    end
+  defp notify_assignment(changeset, ticket) do
+    HelpDesk.Notifications.notify_assignment(agent, ticket)
 
     {:ok, ticket}
   end
