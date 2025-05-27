@@ -1,5 +1,11 @@
 # What is Ash?
 
+Ash brings the batteries included experience to Elixir applications in a way that isn't tied to any one particular web framework or API/Frontend technology. It acts as the one universal element that you can take with you no matter what changes about your application or how it interfaces with the outside world.
+
+> Through its declarative extensibility, Ash delivers more than you'd expect: Powerful APIs with filtering/sorting/pagination/calculations/aggregations, pub/sub, authorization, rich introspection, GraphQL... It's what empowers this solo developer to build an ambitious ERP!
+>
+> — Frank Dugan III, System Specialist, SunnyCor Inc.
+
 Ash is an opinionated, composable set of application building blocks designed for extensibility. It shines when building web apps, APIs and services, but can be used for any kind of Elixir application. It integrates with the best that the
 Elixir ecoystem has to offer, and sits directly inside a standard Elixiir codebase alongside the rest of your code.
 
@@ -30,6 +36,13 @@ Ash is built from the collective experience of working with inflexible abstracti
 This isn't accidental - it's core to Ash's design. We provide powerful defaults that work for 80% of cases, extensive configuration options for the next 15%, and escape hatches for the remaining 5%. Your Ash application is just an Elixir application, so when you need to do something completely custom, Ash won't get in your way.
 
 The framework acts as a **spinal cord** for your application: providing structure and coordination while allowing complete customization at every level.
+
+> I'd consider Phoenix to be like Flask. Ash fills the gap that brings Phoenix up to feature parity with a batteries included framework like Django.
+> Ash Admin (Django admin), Ash Resource & Domain (Django models & ORM), AshJsonApi (Django REST Framework), Ash Authentication (Django Allauth), Ash Phoenix (Django Forms), Ash Policies (Django Permissions)
+>
+> But you aren't required to use Phoenix with an Ash project. Ash will happily work as a standalone CLI, terminal app or some other Elixir web framework that comes out tomorrow.
+>
+> Scott Woodall - Principal Software Engineer, Microsoft
 
 ## Essential Context
 
@@ -91,6 +104,10 @@ This **declarative approach** means your resources become the single source of t
 
 Ash is not a web framework, like Phoenix or Rails. It is a framework for building your application layer, independent of how it is exposed or consumed. It is not an **alternative** to frameworks like Phoenix, rather a **complement** to them.
 
+> Ash Framework enabled us to build a robust platform for delivering financial services using bitcoin. Ash proved itself to our team by handling innovative use cases with ease and it continues to evolve ahead of our growing list of needs.
+>
+> — Yousef Janajri, CTO & Co-Founder, Coinbits
+
 The intent behind Ash is _not_ to have you building simple CRUD-style applications, although we do provide conveniences for these cases. The real power comes from defining rich, domain-specific actions with meaningful names like `:publish_post`, `:approve_order`, or `:calculate_shipping`. These actions encapsulate your business logic and can be composed, validated, authorized, and extended in powerful ways.
 
 > #### Model your domain, derive the rest {: .info}
@@ -111,6 +128,16 @@ Ash has many use cases, with varying degrees of complexity. Ash helps you on day
 > **Database + API + Validation**: Normally requires separate Ecto schemas, Phoenix controllers, changesets, and API serializers. With Ash: define one resource with actions, get all of them automatically synchronized.
 >
 > **Preventing API/Database drift**: Traditional approaches require manual synchronization between your API documentation, validation rules, and database constraints. Ash eliminates this entire category of bugs because everything derives from the same source.
+
+## Community
+
+Ash has a vibrant community of developers who contribute to the project, provide support, and share knowledge. Join us on [Discord](https://discord.gg/w3AXeARR2p), [ElixirForum](https://elixirforum.com/ash) and [GitHub](https://github.com/ash-project/ash) to contribute, ask questions, and stay updated on the latest developments.
+
+Our community is one of the best features of Ash and **you should use it**. Lots of folks using Ash in production, with a shared mission of making better software.
+
+> I'm constantly blown away with the quality of work and support the Ash community has put into this project. It's gotten to the point that I can't imagine starting a new Elixir project that doesn't use Ash.
+>
+> — Brett Kolodny, Full stack engineer, MEW
 
 ## A Complete Example: From Simple to Sophisticated
 
@@ -306,6 +333,10 @@ end
 
 Now you have a full GraphQL API with queries, mutations, and custom actions automatically generated from your resource definition.
 That is actually all of the code you need to do it.
+
+> The ease of defining our domain model and configuring Ash to generate a powerful GraphQL API has been a game-changer. What used to be complex and time-consuming has become simplicity itself.
+>
+> — Alan Heywood, CTO, HereTask
 
 ### 4. Adding Encryption with AshCloak
 
