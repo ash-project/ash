@@ -88,6 +88,7 @@ bar to find relevant reference information. Place the text `dsl` before your sea
 
 ### Advanced
 
+- [Multi-step Actions](documentation/topics/advanced/multi-step-actions.md)
 - [Monitoring](documentation/topics/advanced/monitoring.md)
 - [Multitenancy](documentation/topics/advanced/multitenancy.md)
 - [Reactor](documentation/topics/advanced/reactor.md)

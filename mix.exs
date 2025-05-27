@@ -87,6 +87,7 @@ defmodule Ash.MixProject do
         "documentation/topics/actions/destroy-actions.md",
         "documentation/topics/actions/generic-actions.md",
         "documentation/topics/actions/manual-actions.md",
+        "documentation/topics/advanced/multi-step-actions.md",
         "documentation/topics/advanced/reactor.md",
         "documentation/topics/advanced/monitoring.md",
         "documentation/topics/advanced/pagination.livemd",
