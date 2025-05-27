@@ -9,7 +9,7 @@ defmodule Ash.Type.CiString do
       doc: "Enforces a minimum length on the value"
     ],
     match: [
-      type: {:custom, __MODULE__, :match, []},
+      type: {:custom, Ash.Type.String, :match, []},
       doc: "Enforces that the string matches a passed in regex"
     ],
     trim?: [
@@ -184,6 +184,17 @@ defmodule Ash.Type.CiString do
         end
 
       {:match, regex}, errors ->
+        regex =
+          case regex do
+            %Regex{} = regex ->
+              regex
+
+            {regex, flags} -> Regex.compile!(regex, flags <> "i")
+
+            string ->
+              Regex.compile!(string, "i")
+          end
+
         if String.match?(value, regex) do
           errors
         else
@@ -237,11 +248,5 @@ defmodule Ash.Type.CiString do
   @impl true
   def equal?(left, right) do
     Ash.CiString.compare(left, right) == :eq
-  end
-
-  def match(%Regex{} = regex), do: {:ok, regex}
-
-  def match(_) do
-    {:error, "Must provide a regex to match, e.g ~r/foobar/"}
   end
 end

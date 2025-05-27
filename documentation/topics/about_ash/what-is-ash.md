@@ -264,7 +264,7 @@ Now your resource combines behavior and state. The original `analyze_text` actio
 This is just one example of an API extension. We also have [ash_json_api](https://hexdocs.pm/ash_json_api) with more on the way.
 Ash also comes with all the tools you need to build *your own* API extension.
 
-The types & impelemtations
+The types & implementations
 
 ```elixir
 # Add to your domain

@@ -245,6 +245,8 @@ defmodule Ash.Type.String do
             %Regex{} = regex ->
               regex
 
+            {regex, flags} -> Regex.compile!(regex, flags)
+
             string ->
               Regex.compile!(string)
           end
@@ -311,7 +313,19 @@ defmodule Ash.Type.String do
   def match(%Regex{} = regex) do
     IO.warn("""
     Providing a regex in the `match` constraint is deprecated, as OTP 28 does not support it.
-    Please provide a zero argument function instead.
+    Please provide a string or a tuple of regex and flags instead.
+
+    For example:
+
+    Instead of
+        ~r/^[a-z]+$/i
+    Use
+        {"^[a-z]+$", "i"}
+
+    Instead of
+        ~r/^[a-z]+$/
+    Use
+        "^[a-z]+$"
     """)
 
     {:ok, regex}
