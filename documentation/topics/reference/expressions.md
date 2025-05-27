@@ -37,9 +37,22 @@ The following operators are available and they behave the same as they do in Eli
 - `-`
 - `/`
 - `<>`
-- `||`
-- `&&`
+- `and` - Boolean and operator
+- `or` - Boolean or operator
+- `||` - Elixir-ish or operator, if left is not `nil` or `false`, then left. Othewise right.
+- `&&` - Elixir-ish and operator, if left is not `nil` or `false`, then right. Otherwise left.
 - `is_nil` | Only works as an operator in maps/keyword list syntax. i.e `[x: [is_nil: true]]`
+
+### Elixir-ish operators
+
+Prefer to use `and` and `or` if you are dealing with booleans, as they will typically perform much
+better in SQL data layers. `&&` and `||` should only be used when you want to deal with more than boolaens.
+
+For example:
+
+```elixir
+calculate :identifier, expr(manual_identifier || employee_id <> " " <> location_code)
+```
 
 ## Functions
 
