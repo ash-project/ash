@@ -320,12 +320,12 @@ defmodule Ash.Type.String do
     Instead of
         ~r/^[a-z]+$/i
     Use
-        {"^[a-z]+$", "i"}
+        {~S/^[a-z]+$/, "i"}
 
     Instead of
         ~r/^[a-z]+$/
     Use
-        "^[a-z]+$"
+        ~S/^[a-z]+$/
     """)
 
     {:ok, regex}
