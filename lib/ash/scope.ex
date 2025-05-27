@@ -11,11 +11,12 @@ defprotocol Ash.Scope do
 
   ```elixir
   scope = %MyApp.Scope{current_user: user, current_tenant: tenant, locale: "en"}
+
   # instead of
   MyDomain.create_thing(actor: current_user, tenant: tenant)
 
   # you can do
-  MyDomain.create_thing(scope: socket.assigns.scope)
+  MyDomain.create_thing(scope: scope)
   ```
 
   ## Setup
