@@ -16,6 +16,41 @@ end
 
 or for your convenience you can use `use Ash.Reactor` which expands to exactly the same as above.
 
+## Running Reactors as an action
+
+Ash's [generic actions](actions.md#generic-actions) support providing a Reactor module directly as their `run` option.
+This is the preferred way for you to initiate reactors in your application. These actions could be defined on your existing resources, your you could even have a resource w/ a single action on it that runs a reactor, and no attributes/data layer etc. for example.
+
+Notes:
+
+- Every Reactor input must have a corresponding action argument.
+- Ash's action context is passed in as the Reactor's context (including things like actor, tenant, etc).
+- [Reactor runtime options](`t:Reactor.options/0`) can be set by setting `run {MyReactor, opts}` instead of just `run MyReactor`.
+- If you set the `transaction?` action DSL option to true then the Reactor will be run synchronously - regardless of the value of the `async?` runtime option.
+
+### Example
+
+> ### Resources can just have generic actions {: .info}
+>
+> Below is a fully valid resource in its entirety. Not all resources need to have state/data layers associated with them
+
+
+```elixir
+defmodule MyApp.Blog.Actions do
+  use Ash.Resource
+
+  action :create_post, :struct do
+    constraints instance_of: MyBlog.Post
+
+    argument :blog_title, :string, allow_nil?: false
+    argument :blog_body, :string, allow_nil?: false
+    argument :author_email, :ci_string, allow_nil?: false
+
+    run MyApp.Blog.Reactors.CreatePost
+  end
+end
+```
+
 ## Example
 
 An example is worth 1000 words of prose:
@@ -179,28 +214,3 @@ return :create_post_transaction
 ## Notifications
 
 Because a reactor has transaction-like semantics notifications are automatically batched and only sent upon successful completion of the reactor.
-
-## Running Reactors as an action
-
-Ash's [generic actions](actions.md#generic-actions) now support providing a Reactor module directly as their `run` option.
-
-Notes:
-
-- Every Reactor input must have a corresponding action argument.
-- Ash's action context is passed in as the Reactor's context (including things like actor, tenant, etc).
-- [Reactor runtime options](`t:Reactor.options/0`) can be set by setting `run {MyReactor, opts}` instead of just `run MyReactor`.
-- If you set the `transaction?` action DSL option to true then the Reactor will be run synchronously - regardless of the value of the `async?` runtime option.
-
-### Example
-
-```elixir
-action :run_reactor, :struct do
-  constraints instance_of: MyBlog.Post
-
-  argument :blog_title, :string, allow_nil?: false
-  argument :blog_body, :string, allow_nil?: false
-  argument :author_email, :ci_string, allow_nil?: false
-
-  run MyBlog.CreatePostReactor
-end
-```
