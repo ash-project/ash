@@ -516,7 +516,7 @@ defmodule HelpDesk.Reactors.ProcessUrgentTicket do
   input :changeset_attrs
 
   # Step 1: Validate external services (outside transaction)
-  ash_step :validate_external_services do
+  step :validate_external_services do
     run fn _args, _context ->
       case HelpDesk.ExternalServices.health_check() do
         :ok ->
@@ -532,7 +532,7 @@ defmodule HelpDesk.Reactors.ProcessUrgentTicket do
   # Do the following in a transaction
   transaction :update_ticket_transaction, HelpDesk.Ticket do
     # Step 2: Check if ticket is urgent and reserve resources
-    ash_step :reserve_urgent_slot do
+    step :reserve_urgent_slot do
       argument :priority, input(:priority)
       wait_for :validate_external_services
 
@@ -673,7 +673,7 @@ defmodule HelpDesk.Reactors.ProcessUrgentTicket do
   end
 
   # Step 9: Cleanup reserved slot (always runs, even on failure)
-  ash_step :cleanup_slot do
+  step :cleanup_slot do
     argument :slot_info, result(:reserve_urgent_slot)
     wait_for :update_metrics
 
