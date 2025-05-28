@@ -139,6 +139,10 @@ The Ash ecosystem consists of numerous packages, all of which have their own doc
 - [AshJsonApi](https://hexdocs.pm/ash_json_api) | JSON:API builder
 - [AshGraphql](https://hexdocs.pm/ash_graphql) | GraphQL builder
 
+### AI
+
+- [AshAI](https://hexdocs.pm/ash_ai) | Structured Outpus, MCP, Vectorization and more
+
 ### Web
 
 - [AshPhoenix](https://hexdocs.pm/ash_phoenix) | Phoenix integrations
