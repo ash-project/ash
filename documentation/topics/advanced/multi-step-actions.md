@@ -1,11 +1,10 @@
 # Multi-Step Actions
 
-Actions in Ash allow you to create sophisticated workflows that coordinate multiple changes or processes together. Often business logic crosses multiple resources, and we often want it to be transactional. By leveraging action lifecycle hooks, you can build powerful domain-specific operations. This guide will explore how to build and use multi-step actions using a helpdesk example.
+Actions in Ash allow you to create sophisticated workflows that coordinate multiple changes or processes. Often business logic crosses multiple resources, and we often want it to be transactional. By leveraging action lifecycle hooks, you can build powerful domain-specific operations. This guide will explore how to build and use multi-step actions using a helpdesk example.
 
-For most use cases, hooks are the preferred approach due to their simplicity and tight integration with Ash's action lifecycle. [Reactor](/documentation/topics/advanced/reactor.md) is the comprehensive solution for truly complex orchestration scenarios.
-Reactors can be used as the `run` function for generic actions, giving them first class support in Ash extensions.
+For most use cases, hooks are the preferred approach due to their simplicity and tight integration with Ash's action lifecycle. [Reactor](/documentation/topics/advanced/reactor.md) is the comprehensive solution for truly complex orchestration scenarios. Additionally, you can write [generic actions](/documentation/topics/advanced/generic-actions.md) by hand, implementing an action with fully custom code. Reactors can be used as the `run` function for generic actions, giving them first class support in Ash extensions. See [below](#generic-action-example) for an example.
 
-## When to use reactors over hooks
+## When to use hooks vs reactors vs generic actions
 
 You should use hooks for most multi-step workflow scenarios as they provide simplicity and leverage Ash's transactional nature. The key decision point is whether you need compensation/rollback across external services:
 
@@ -19,6 +18,11 @@ You should use hooks for most multi-step workflow scenarios as they provide simp
 - You need to compensate/undo changes across multiple external services
 - Building complex workflows that require sophisticated error handling and rollback logic
 - Coordinating long-running processes that span multiple systems
+
+**Use [generic actions](/documentation/topics/actions/generic-actions.md) when:**
+- You need a high-level action that works on multiple resources, and reactor or hooks are not fitting
+- There aren't side effects or external servies
+- Short transactional operations that can be understood at a glance
 
 > ### Durable Workflows {: .info}
 >
@@ -47,7 +51,7 @@ Let's explore multi-step actions through a series of increasingly complex exampl
 
 ### Example 1: Simple Activity Logging
 
-The simplest multi-step action uses a single hook to perform a side effect. Here's a basic example that logs ticket creation:
+The simplest multi-step action uses a single hook to perform a transactional effect. Here's a basic example that logs ticket creation by inserting an activity log.
 
 ```elixir
 defmodule HelpDesk.Changes.LogActivity do
@@ -77,7 +81,7 @@ end
 
 ### Example 2: Multi-Hook Ticket Assignment
 
-Building on the first example, let's add ticket assignment logic that uses multiple hooks to coordinate the workflow:
+Building on the first example, let's add ticket assignment logic that uses multiple hooks to coordinate a transactional workflow:
 
 ```elixir
 defmodule HelpDesk.Changes.AssignTicket do
@@ -94,8 +98,8 @@ defmodule HelpDesk.Changes.AssignTicket do
     case HelpDesk.AgentManager.find_available_agent() do
       {:ok, agent} ->
         changeset
-        |> Ash.Changeset.change_attribute(:agent_id, agent.id)
-        |> Ash.Changeset.change_attribute(:status, "assigned")
+        |> Ash.Changeset.force_change_attribute(:agent_id, agent.id)
+        |> Ash.Changeset.force_change_attribute(:status, "assigned")
         |> Ash.Changeset.put_context(:assigned_agent, agent)
 
       {:error, reason} ->
@@ -122,9 +126,14 @@ defmodule HelpDesk.Changes.ProcessUrgentTicket do
   @impl true
   def change(changeset, _opts, _context) do
     changeset
+    # uses before_transaction as it communicates with an external service
+    # and we don't want to keep a transaction longer than necessary
     |> Ash.Changeset.before_transaction(&validate_external_services/1)
+    # Prepare for processing transactionally
     |> Ash.Changeset.before_action(&prepare_urgent_processing/1)
+    # Complete the workflow transactionally
     |> Ash.Changeset.after_action(&complete_urgent_workflow/2)
+    # Perform success or failure logic after the transaction
     |> Ash.Changeset.after_transaction(&cleanup_and_notify/2)
   end
 
@@ -148,14 +157,14 @@ defmodule HelpDesk.Changes.ProcessUrgentTicket do
       case HelpDesk.ResourceManager.reserve_urgent_slot() do
         {:ok, slot_id} ->
           changeset
-          |> Ash.Changeset.change_attribute(:status, "urgent_processing")
-          |> Ash.Changeset.change_attribute(:processing_slot_id, slot_id)
+          |> Ash.Changeset.force_change_attribute(:status, "urgent_processing")
+          |> Ash.Changeset.force_change_attribute(:processing_slot_id, slot_id)
           |> Ash.Changeset.put_context(:reserved_slot, slot_id)
 
         {:error, :no_slots_available} ->
           # Fallback to normal priority with notification
           changeset
-          |> Ash.Changeset.change_attribute(:priority, "high")
+          |> Ash.Changeset.force_change_attribute(:priority, "high")
           |> Ash.Changeset.put_context(:priority_downgraded, true)
       end
     else
@@ -463,3 +472,251 @@ end
 2. **Keep individual operations fast**: If your change is already fast, batch callbacks may not be worth the complexity
 3. **Handle errors gracefully**: Return appropriate error tuples from `after_batch/3` when things go wrong
 4. **Test both paths**: Ensure your change works correctly both individually and in batches
+
+
+## Generic Action Example
+
+```elixir
+# Define a plain-old elixir module/function to express the action
+defmodule HelpDesk.Actions.AssignTicket do
+  def run(input, context) do
+    with {:ok, agent} <- HelpDesk.AgentManager.find_available_agent(),
+         {:ok, ticket} <- HelpDesk.get_ticket_by_id(input.arguments.ticket_id),
+         {:ok, ticket} <- HelpDesk.update_ticket(ticket, %{agent_id: agent.id, status: :assigned}, actor: input.actor)
+         :ok <- Helpdesk.Notifications.notify_assignment(agent, ticket)
+    end
+  end
+end
+
+# Invoke the action from Resource
+actions do
+  action :assign_to_available_agent do
+    transaction? true
+    argument :ticket_id, :uuid
+    run HelpDesk.Actions.AssignTicket
+  end
+end
+```
+
+## Reactor Example
+
+Lets implement our complex workflow from Example 3 as a reactor. Reactors are better for modeling complex error states and rollback flows.
+
+```elixir
+defmodule HelpDesk.Reactors.ProcessUrgentTicket do
+  use Ash.Reactor
+
+  ash do
+    default_domain HelpDesk
+  end
+
+  # Inputs
+  input :ticket_id
+  input :priority
+  input :changeset_attrs
+
+  # Step 1: Validate external services (outside transaction)
+  ash_step :validate_external_services do
+    run fn _args, _context ->
+      case HelpDesk.ExternalServices.health_check() do
+        :ok ->
+          {:ok, :services_available}
+
+        {:error, service} ->
+          {:error, "External service #{service} unavailable for urgent processing"}
+      end
+    end
+  end
+
+
+  # Do the following in a transaction
+  transaction :update_ticket_transaction, HelpDesk.Ticket do
+    # Step 2: Check if ticket is urgent and reserve resources
+    ash_step :reserve_urgent_slot do
+      argument :priority, input(:priority)
+      wait_for :validate_external_services
+
+      run fn %{priority: priority}, _context ->
+        if priority == "urgent" do
+          case HelpDesk.ResourceManager.reserve_urgent_slot() do
+            {:ok, slot_id} ->
+              {:ok, %{slot_id: slot_id, status: "urgent_processing", priority_downgraded: false}}
+
+            {:error, :no_slots_available} ->
+              # Fallback to high priority
+              {:ok, %{slot_id: nil, status: "open", priority_downgraded: true}}
+          end
+        else
+          {:ok, %{slot_id: nil, status: "open", priority_downgraded: false}}
+        end
+      end
+
+      # Compensate by releasing slot if downstream fails
+      compensate fn _reason, %{priority: priority}, _context, _options ->
+        if priority == "urgent" do
+          # Try to find and release any slot we might have reserved
+          case HelpDesk.ResourceManager.find_reserved_slot_for_ticket(input(:ticket_id)) do
+            {:ok, slot_id} -> HelpDesk.ResourceManager.release_slot(slot_id)
+            _ -> :ok
+          end
+        end
+        :ok
+      end
+    end
+
+    # Step 3: Update ticket status and processing slot (in transaction)
+    update :update_ticket_status, HelpDesk.Ticket, :update do
+      initial input(:ticket_id)
+      inputs %{
+        status: result(:reserve_urgent_slot, [:status]),
+        processing_slot_id: result(:reserve_urgent_slot, [:slot_id]),
+        priority: fn ->
+          if result(:reserve_urgent_slot, [:priority_downgraded]) do
+            "high"
+          else
+            input(:priority)
+          end
+        end
+      }
+    end
+
+    return :update_ticket_status
+
+    # Step 4: Create escalation path for urgent tickets
+    create :create_escalation, HelpDesk.Escalation, :create do
+      inputs %{
+        ticket_id: result(:update_ticket_status, [:id]),
+        level: value(1),
+        escalated_at: value({DateTime, :utc_now, []})
+      }
+
+      # Only create escalation if ticket is urgent processing
+      where fn args, _context ->
+        ticket = result(:update_ticket_status)
+        ticket.status == "urgent_processing"
+      end
+
+      # Undo by deleting the escalation
+      undo_action :destroy
+      undo :always
+    end
+
+    # Step 5: Create external urgent case
+    step :create_external_case do
+      argument :ticket, result(:update_ticket_status)
+      wait_for :create_escalation
+
+      run fn %{ticket: ticket}, _context ->
+        if ticket.status == "urgent_processing" do
+          HelpDesk.ExternalServices.create_urgent_case(ticket)
+        else
+          {:ok, nil}
+        end
+      end
+
+      # Compensate by canceling external case
+      compensate fn _reason, %{ticket: ticket}, _context, _options ->
+        if ticket.status == "urgent_processing" && ticket.external_ref do
+          case HelpDesk.ExternalServices.cancel_urgent_case(ticket.external_ref) do
+            :ok -> :ok
+            {:error, _} ->
+              HelpDesk.Logger.warn("Failed to cancel external case #{ticket.external_ref}")
+              :ok # Don't fail the compensation
+          end
+        else
+          :ok
+        end
+      end
+    end
+  end
+
+  # Step 6: Update ticket with external reference
+  update :add_external_reference, HelpDesk.Ticket, :add_external_reference do
+    initial result(:update_ticket_status)
+    inputs %{
+      external_ref: fn ->
+        case result(:create_external_case) do
+          nil -> nil
+          external_ref -> "URG-#{result(:update_ticket_status, [:id])}-#{System.system_time(:second)}"
+        end
+      end
+    }
+
+    # Only update if we have an external reference
+    where fn _args, _context ->
+      result(:create_external_case) != nil
+    end
+  end
+
+  # Step 7: Send priority downgrade notification (if needed)
+  step :notify_priority_downgrade do
+    argument :ticket, result(:add_external_reference)
+    argument :priority_downgraded, result(:reserve_urgent_slot, [:priority_downgraded])
+
+    run fn %{ticket: ticket, priority_downgraded: priority_downgraded}, _context ->
+      if priority_downgraded do
+        HelpDesk.Notifications.notify_priority_downgrade(ticket)
+      else
+        {:ok, :no_notification_needed}
+      end
+    end
+  end
+
+  # Step 8: Update metrics
+  step :update_metrics do
+    wait_for :notify_priority_downgrade
+
+    run fn _args, _context ->
+      HelpDesk.Metrics.increment_urgent_tickets()
+      {:ok, :metrics_updated}
+    end
+  end
+
+  # Step 9: Cleanup reserved slot (always runs, even on failure)
+  ash_step :cleanup_slot do
+    argument :slot_info, result(:reserve_urgent_slot)
+    wait_for :update_metrics
+
+    run fn %{slot_info: %{slot_id: slot_id}}, _context ->
+      if slot_id do
+        HelpDesk.ResourceManager.release_slot(slot_id)
+      else
+        {:ok, :no_slot_to_release}
+      end
+    end
+  end
+
+  # Return the final ticket
+  return :add_external_reference
+end
+```
+
+### Usage as an Action
+
+You can use this reactor directly as a generic action:
+
+```elixir
+# In your Ticket resource
+actions do
+  action :process_urgent, :struct do
+    constraints instance_of: HelpDesk.Ticket
+
+    argument :ticket_id, :uuid, allow_nil?: false
+    argument :priority, :string, allow_nil?: false
+    argument :changeset_attrs, :map, default: %{}
+
+    run HelpDesk.Reactors.ProcessUrgentTicket
+  end
+end
+```
+
+### Benefits of the Reactor Approach
+
+1. **Clear Step Isolation**: Each step has a single responsibility and clear inputs/outputs
+2. **Automatic Compensation**: Failed steps automatically trigger compensation for completed steps
+3. **Dependency Management**: Steps run in optimal order based on data dependencies, not declaration order
+4. **Transaction Control**: Fine-grained control over what runs inside vs outside transactions
+5. **Error Handling**: Built-in retry and error handling mechanisms
+6. **Testability**: Each step can be tested independently
+
+The reactor version provides much better error handling, automatic cleanup, and clearer separation of concerns compared to the hook-based approach.

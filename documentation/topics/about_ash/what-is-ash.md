@@ -142,7 +142,8 @@ defmodule MyBlog.Blog do
 
   resources do
     resource MyBlog.Blog.Post do
-      # Defines a function called `analyze_text/1`
+      # Defines the `analyze_text/1` function which calls
+      # the action of the same name on the Post resource.
       define :analyze_text, args: [:text]
     end
   end
