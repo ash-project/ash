@@ -1,13 +1,10 @@
 # What is Ash?
 
-Ash brings the batteries-included experience to Elixir applications in a way that isn't tied to any one particular web framework or API/frontend technology. It acts as the one universal element that you can take with you no matter what changes about your application or how it interfaces with the outside world. Ash is built for velocity at day 1, but also for maintainability at year 5, a place where many frameworks and tools leave you high and dry.
+Ash is a opinionated, declarative application framework that brings the batteries-included experience to Elixir. It shines when building web apps, APIs and services, but can be used for any kind of Elixir application. It integrates with the best that the Elixir ecoystem has to offer, often used with Phoenix and PostgreSQL, slotting directly into a standard Elixir codebase. Ash is built for velocity at day 1, but also for maintainability at year 5, a place where many frameworks and tools leave you high and dry.
 
 > Through its declarative extensibility, Ash delivers more than you'd expect: Powerful APIs with filtering/sorting/pagination/calculations/aggregations, pub/sub, authorization, rich introspection, GraphQL... It's what empowers this solo developer to build an ambitious ERP!
 >
 > — Frank Dugan III, System Specialist, SunnyCor Inc.
-
-Ash is an opinionated, composable set of application building blocks designed for extensibility. It shines when building web apps, APIs and services, but can be used for any kind of Elixir application. It integrates with the best that the
-Elixir ecoystem has to offer, often used with Phoenix and PostgreSQL, sitting directly inside a standard Elixir codebase alongside the rest of your code.
 
 At its heart, Ash is a framework for modeling your application's domain through **Resources** and their **Actions**. These are the fundamental abstractions that everything else builds upon.
 
