@@ -1,41 +1,27 @@
 # What is Ash?
 
-Ash brings the batteries included experience to Elixir applications in a way that isn't tied to any one particular web framework or API/frontend technology. It acts as the one universal element that you can take with you no matter what changes about your application or how it interfaces with the outside world.
+Ash brings the batteries-included experience to Elixir applications in a way that isn't tied to any one particular web framework or API/frontend technology. It acts as the one universal element that you can take with you no matter what changes about your application or how it interfaces with the outside world. Ash is built for velocity at day 1, but also for maintainability at year 5, a place where many frameworks and tools leave you high and dry.
 
 > Through its declarative extensibility, Ash delivers more than you'd expect: Powerful APIs with filtering/sorting/pagination/calculations/aggregations, pub/sub, authorization, rich introspection, GraphQL... It's what empowers this solo developer to build an ambitious ERP!
 >
 > — Frank Dugan III, System Specialist, SunnyCor Inc.
 
 Ash is an opinionated, composable set of application building blocks designed for extensibility. It shines when building web apps, APIs and services, but can be used for any kind of Elixir application. It integrates with the best that the
-Elixir ecoystem has to offer, and sits directly inside a standard Elixir codebase alongside the rest of your code.
+Elixir ecoystem has to offer, often used with Phoenix and PostgreSQL, sitting directly inside a standard Elixir codebase alongside the rest of your code.
 
 At its heart, Ash is a framework for modeling your application's domain through **Resources** and their **Actions**. These are the fundamental abstractions that everything else builds upon.
 
 ## Why Ash?
 
-If you've ever built a web application, you've probably experienced this: you write the same code over and over. Create a user? Write the database schema, API endpoints, validation logic, authorization rules, and tests. Add a new field? Update the database, API, frontend, and documentation separately. Want GraphQL instead of REST? Rewrite everything.
+If you've ever built software professionally, you've almost certainly experienced one or more of the following:
 
-**The problem**: Every piece of functionality gets implemented multiple times across different layers of your application. This creates:
-- **Repetitive work** - The same business logic scattered across multiple files
-- **Inconsistencies** - Different parts of your app handle the same data differently
-- **Maintenance burden** - Change one thing, update five different places
-- **Knowledge silos** - Each developer builds things their own way
+**The problem**:
+- **Repetitive work** - The same business logic scattered across our application
+- **Inconsistencies** - Different parts of your app handling the same data differently
+- **Maintenance burden** - Changing one thing requires updating five different places
+- **Knowledge silos** - Each developer builds everything slightly differently, leading to inconsistencies and inefficiencies.
 
-**Ash's solution**: Model your application's **behavior** first, derive everything else automatically. Ash resources center around **actions** that represent rich business operations. Instead of exposing raw data models, you define meaningful operations like `:publish_post`, `:approve_order`, or `:calculate_shipping_cost` that encapsulate your business logic, validation, and authorization rules.
-
-Why are actions "introspectable"? Because when your code can examine what an action does at runtime, other tools can automatically build around it. Define a "publish post" action with its validation rules and authorization policies, and extensions can automatically generate appropriate REST endpoints, GraphQL mutations, admin interfaces, and API documentation - all respecting your business rules.
-
-This isn't just about convenience - it's about **modeling your domain properly**. When everything derives from well-designed business operations rather than raw database tables, your entire application becomes more maintainable and aligned with how your business actually works.
-
-## Built for Flexibility
-
-Ash is built from the collective experience of working with inflexible abstractions that eventually paint you into a corner. That's why Ash is designed with **multi-tiered configurability** and **escape hatches all the way down**.
-
-**You're never locked out of custom behavior**. Need to customize how an action works? Use preparations, changes, and validations. Need to override how data is fetched? Implement a manual action. Need to completely bypass Ash for a specific operation? Drop down to Ecto or raw SQL. Need to extend Ash itself? Use the same extension toolkit that powers AshPostgres and AshGraphql.
-
-This isn't accidental - it's core to Ash's design. We provide powerful defaults that work for 80% of cases, extensive configuration options for the next 15%, and escape hatches for the remaining 5%. Your Ash application is just an Elixir application, so when you need to do something completely custom, Ash won't get in your way.
-
-The framework acts as a **spinal cord** for your application: providing structure and coordination while allowing complete customization at every level.
+**Ash's solution**: Model your application's **behavior** first, as data, and derive everything else automatically. Ash resources center around **actions** that represent domain logic. Instead of exposing raw data models, you define meaningful operations like `:publish_post`, `:approve_order`, or `:calculate_shipping_cost` that encapsulate your business logic, validation, and authorization rules. This is coupled with a rich suite of extensions to fill the most common needs of Elixir applications.
 
 > Ash fills the gap that brings Phoenix up to feature parity with a batteries included framework like Django.
 > Ash Admin (Django admin), Ash Resource & Domain (Django models & ORM), AshJsonApi (Django REST Framework), Ash Authentication (Django Allauth), Ash Phoenix (Django Forms), Ash Policies (Django Permissions)
@@ -43,6 +29,16 @@ The framework acts as a **spinal cord** for your application: providing structur
 > But you aren't required to use Phoenix with an Ash project. Ash will happily work as a standalone CLI, terminal app or some other Elixir web framework that comes out tomorrow.
 >
 > Scott Woodall - Principal Software Engineer, Microsoft
+
+## Built for Flexibility
+
+Ash was born out of the battle-scars from inflexible abstractions that eventually paint you into a corner. That's why Ash is designed with **multi-tiered configurability** and **escape hatches all the way down**. Instead of deciding that abstraction was bad, we decided that it just needed to be done better. Elixir & the BEAM have our backs, providing a solid foundation upon which to build high quality applications.
+
+**You're never locked out of custom behavior**. Need to customize how an action works? Use preparations, changes, and validations. Need to override how data is fetched? Implement a manual action. Need to completely bypass Ash for a specific operation? Drop down to Ecto or raw SQL. Need to extend Ash itself? Use the same extension toolkit that powers AshPostgres and AshGraphql.
+
+This isn't accidental - it's core to Ash's design. We provide powerful defaults that work for 80% of cases, extensive configuration options for the next 15%, and escape hatches for the remaining 5%. Your Ash application is just an Elixir application, so when you need to do something completely custom, Ash won't get in your way.
+
+The framework acts as a **spinal cord** for your application: providing structure and coordination while allowing complete customization at every level.
 
 ## Essential Context
 
@@ -96,7 +92,7 @@ The framework acts as a **spinal cord** for your application: providing structur
 
 The foremost abstraction in Ash is **Actions** - the things you can do in your domain like `:create_user`, `:publish_post`, `:approve_order`, or `:calculate_shipping`. These actions are organized into **Resources** that group related behaviors around domain concepts like `User`, `Post`, `Order`, or `Invoice`. Using resources, you can easily model actions, alongside the state that they operate on, or just actions in isolation.
 
-These actions are **introspectable** (your code can examine them at runtime) and **fully typed**. This means the rest of your application (and **extensions** - add-on packages that enhance Ash) can automatically understand and build functionality around them. When you define a `create` action that accepts a `:title` string and `:content` text, extensions like AshGraphql can automatically generate GraphQL mutations, AshJsonApi can create REST endpoints, and AshPostgres can handle database persistence - all without additional configuration.
+These actions are **introspectable** and **fully typed**. This means the rest of your application (and **extensions** - add-on packages that enhance Ash) can automatically understand and build functionality around them. When you define a `create` action that accepts a `:title` string and `:content` text, extensions like AshGraphql can automatically generate GraphQL mutations, AshJsonApi can create REST endpoints, and AshPostgres can handle database persistence - all without additional configuration.
 
 This **declarative approach** means your resources become the single source of truth for your entire application. Database schemas, API endpoints, authorization rules, state machines, background jobs, and more all stem directly from your resource definitions.
 
@@ -146,9 +142,7 @@ defmodule MyBlog.Blog do
 
   resources do
     resource MyBlog.Blog.Post do
-      # Define idiomatic context functions on-demand
-      # This is opt-in, no auto-magic function definitions
-      # based on action names, you're in control
+      # Defines a function called `analyze_text/1`
       define :analyze_text, args: [:text]
     end
   end
@@ -279,8 +273,6 @@ Now your resource combines behavior and state. The original `analyze_text` actio
 This is just one example of an API extension. We also have [ash_json_api](https://hexdocs.pm/ash_json_api) with more on the way.
 Ash also comes with all the tools you need to build *your own* API extension.
 
-The types & implementations
-
 ```elixir
 # Add to your domain
 defmodule MyBlog.Blog do
@@ -328,6 +320,8 @@ That is actually all of the code you need to do it.
 
 ### Encryption
 
+[Cloak](https://hexdocs.pm/cloak) is a powerful library for encrypting data at rest and in transit. Ash provides a first class extension that integrates with it directly.
+
 ```elixir
 defmodule MyBlog.Blog.Post do
   use Ash.Resource,
@@ -347,6 +341,8 @@ end
 Your post content is now automatically encrypted at rest and decrypted when read, with no changes to your existing API or business logic.
 
 ### State Machines
+
+A state machine is a way to model the valid states for some piece of data. It allows you to define the states a record can be in, and the transitions between those states.
 
 ```elixir
 defmodule MyBlog.Blog.Post do
