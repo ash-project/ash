@@ -237,3 +237,30 @@ define :follow_artist do
   end
 end
 ```
+
+### Authorization Functions
+
+For each action defined in a code interface, Ash automatically generates corresponding authorization check functions:
+
+- `can_action_name?(actor, params \\ %{}, opts \\ [])` - Returns `true`/`false` for authorization checks
+- `can_action_name(actor, params \\ %{}, opts \\ [])` - Returns `{:ok, true/false}` or `{:error, reason}`
+
+Example usage:
+```elixir
+# Check if user can create a post
+if MyApp.Blog.can_create_post?(current_user) do
+  # Show create button
+end
+
+# Check if user can update a specific post
+if MyApp.Blog.can_update_post?(current_user, post) do
+  # Show edit button
+end
+
+# Check if user can destroy a specific comment
+if MyApp.Blog.can_destroy_comment?(current_user, comment) do
+  # Show delete button
+end
+```
+
+These functions are particularly useful for conditional rendering of UI elements based on user permissions.
