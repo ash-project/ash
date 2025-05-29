@@ -221,10 +221,12 @@ defmodule Ash.Actions.Helpers do
         actor = Ash.Scope.get_actor(scope)
         tenant = Ash.Scope.get_tenant(scope)
         context = Ash.Scope.get_context(scope)
+        authorize? = Ash.Scope.get_authorize?(scope)
 
         opts
         |> set_when_ok(:actor, actor, fn l, _r -> l end)
         |> set_when_ok(:tenant, tenant, fn l, _r -> l end)
+        |> set_when_ok(:authorize?, authorize?, fn l, _r -> l end)
         |> set_when_ok(:context, context, &Ash.Helpers.deep_merge_maps(&1, &2))
         |> Keyword.delete(:scope)
       else

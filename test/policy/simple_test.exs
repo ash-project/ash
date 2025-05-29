@@ -219,6 +219,7 @@ defmodule Ash.Test.Policy.SimpleTest do
       def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
       def get_context(%{context: context}), do: {:ok, context}
       def get_tracer(_), do: :error
+      def get_authorize?(_), do: :error
     end
   end
 

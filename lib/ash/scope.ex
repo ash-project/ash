@@ -28,7 +28,7 @@ defprotocol Ash.Scope do
 
   ## Passing scope and options
 
-  For the `actor` and `tenant` extracted from scopes, the values from the scope are *discarded* if also present in `opts`.
+  For the `actor`, `tenant` and `authorize?`, extracted from scopes, the values from the scope are *discarded* if also present in `opts`.
 
   i.e `scope: scope, actor: nil` will remove the set actor. `scope: scope, actor: some_other_actor` will set the actor to `some_other_actor`.
 
@@ -51,6 +51,10 @@ defprotocol Ash.Scope do
       # You typically configure tracers in config giles
       # so this will typically return :error
       def get_tracer(_), do: :error
+
+      # This should likely always return :error
+      # unless you want a way to bypass authorization configured in your scope
+      def get_authorize?(_), do: :error
     end
   end
   ```
@@ -103,6 +107,10 @@ defprotocol Ash.Scope do
   @doc "Extracts the tracer(s) from the scope"
   @spec get_tracer(term()) :: {:ok, module | list(module)} | :error
   def get_tracer(scope)
+
+  @doc "Extracts the `authorize?` option from the scope"
+  @spec get_authorize?(term()) :: {:ok, boolean()} | :error
+  def get_authorize?(scope)
 end
 
 defimpl Ash.Scope,
@@ -127,4 +135,5 @@ defimpl Ash.Scope,
     do: {:ok, Map.take(source_context, [:shared])}
 
   def get_tracer(%{tracer: tracer}), do: {:ok, tracer}
+  def get_authorize?(%{authorize?: authorize?}), do: {:ok, authorize?}
 end
