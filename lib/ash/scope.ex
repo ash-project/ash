@@ -28,16 +28,13 @@ defprotocol Ash.Scope do
 
   ## Passing scope and options
 
-  For the `actor` and `tenant` extracted from scopes, if you also pass those values via options, i.e:
+  For the `actor` and `tenant` extracted from scopes, the values from the scope are *discarded* if also present in `opts`.
 
-  `scope: %MyApp.Scope{current_user: user1}, actor: user2`
-
-  if both values are non-nil and are not equal, we raise an error.
-  Otherwise, we choose the one that is not nil (or nil if both are nil).
+  i.e `scope: scope, actor: nil` will remove the set actor. `scope: scope, actor: some_other_actor` will set the actor to `some_other_actor`.
 
   For `context`, the values are deep merged.
 
-  For `tracer`, the value(s) are concatenated.
+  For `tracer`, the value(s) are concatenated into a single list.
 
   ## Example
 

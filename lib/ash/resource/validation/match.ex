@@ -85,8 +85,7 @@ defmodule Ash.Resource.Validation.Match do
         validate(changeset, opts, context)
 
       not (Map.has_key?(changeset.attributes, opts[:attribute]) or
-             Keyword.has_key?(changeset.atomics, opts[:attribute]) or
-               has_attr?(changeset.data, opts[:attribute])) ->
+               Keyword.has_key?(changeset.atomics, opts[:attribute])) ->
         {:not_atomic,
          "can't atomically run match validation on attribute `#{opts[:attribute]}` that is not changing"}
 
@@ -110,16 +109,6 @@ defmodule Ash.Resource.Validation.Match do
           end
 
         validate(changeset, opts, context)
-    end
-  end
-
-  defp has_attr?(%Ash.Changeset.OriginalDataNotAvailable{}, _), do: false
-
-  defp has_attr?(data, attribute) do
-    case Map.fetch(data, attribute) do
-      {:ok, %Ash.NotLoaded{}} -> false
-      {:ok, _v} -> true
-      _ -> false
     end
   end
 

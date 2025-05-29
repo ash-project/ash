@@ -223,48 +223,8 @@ defmodule Ash.Actions.Helpers do
         context = Ash.Scope.get_context(scope)
 
         opts
-        |> set_when_ok(:actor, actor, fn l, r ->
-          if is_nil(l) or is_nil(r) do
-            r || l
-          else
-            if l == r do
-              r
-            else
-              raise ArgumentError, """
-              Got an actor via the `actor` option and the `scope` option, but they did not match.
-
-              Actor Option:
-
-              #{inspect(l)}
-
-              Scope Options:
-
-              #{inspect(r)}
-              """
-            end
-          end
-        end)
-        |> set_when_ok(:tenant, tenant, fn l, r ->
-          if is_nil(l) or is_nil(r) do
-            r || l
-          else
-            if l == r do
-              r
-            else
-              raise ArgumentError, """
-              Got a tenant via the `tenant` option and the `scope` option, but they did not match.
-
-              Actor Option:
-
-              #{inspect(l)}
-
-              Scope Options:
-
-              #{inspect(r)}
-              """
-            end
-          end
-        end)
+        |> set_when_ok(:actor, actor, fn l, _r -> l end)
+        |> set_when_ok(:tenant, tenant, fn l, _r -> l end)
         |> set_when_ok(:context, context, &Ash.Helpers.deep_merge_maps(&1, &2))
       else
         opts

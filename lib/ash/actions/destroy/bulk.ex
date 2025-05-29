@@ -624,7 +624,8 @@ defmodule Ash.Actions.Destroy.Bulk do
                 else
                   Enum.reduce(results, {[], [], 0, notifications}, fn result,
                                                                       {results, errors,
-                                                                       error_count, notifications} ->
+                                                                       error_count,
+                                                                       notifications} ->
                     case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
                       {:error, error} ->
                         if opts[:transaction] && opts[:rollback_on_error?] do

@@ -623,10 +623,7 @@ defmodule Ash.Test.CodeInterfaceTest do
   test "uses scope options" do
     scope = %Scope{actor: %{name: "Jelly Belly"}}
     assert "Hello, Jelly Belly." = User.hello_actor!(scope: scope)
-
-    assert_raise ArgumentError, ~r/Got an actor via the/, fn ->
-      User.hello_actor!(scope: scope, actor: %{foobar: true})
-    end
+    assert "Hello, Jimmy Bimmy." = User.hello_actor!(scope: scope, actor: %{name: "Jimmy Bimmy"})
 
     assert "Hello, William Shatner." = User.hello_actor_with_default!()
   end

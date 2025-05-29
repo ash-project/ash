@@ -71,7 +71,7 @@ defmodule Ash.Test.Resource.Validation.MatchTest do
       post
       |> Ash.Changeset.new()
       |> Ash.Changeset.atomic_update(:language_code, "it")
-      |> Ash.Changeset.for_update(:atomic_update, %{})
+      |> Ash.Changeset.for_update(:atomic_update, %{language_code: "ab"})
       |> Ash.update!()
     end
   end
