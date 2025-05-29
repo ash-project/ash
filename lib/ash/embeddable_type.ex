@@ -741,12 +741,6 @@ defmodule Ash.EmbeddableType do
 
               {:not_atomic, msg} ->
                 {:not_atomic, msg}
-
-              _ ->
-                {:not_atomic,
-                 """
-                 Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`, or the update action accepts all public attributes and has no changes.
-                 """}
             end
           end
         end
