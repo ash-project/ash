@@ -60,6 +60,68 @@ functions, i.e
 iex> h Accounts.register_user/3
 ```
 
+### get_by functions
+
+A common pattern in Ash applications is the "get by" function for retrieving individual records. This pattern provides a clean alternative to using `Ash.get!/2` directly in your web modules.
+
+**Avoid this pattern:**
+
+```elixir
+# In a LiveView or Controller - DON'T DO THIS
+group =
+  MyApp.Ash.Dashboards.DashboardGroup
+  |> Ash.get!(group_id)
+  |> Ash.load!(students: [:user])
+```
+
+This is similar to using `Repo.get/2` and `Repo.preload/2` directly outside of context modules, which is generally considered a bad practice.
+
+**Use this pattern instead:**
+
+```elixir
+# In your domain
+resource DashboardGroup do
+  define :get_by_id, action: :read, get_by: [:id]
+end
+
+# In your LiveView or Controller
+group = MyApp.Dashboards.get_dashboard_group_by_id!(group_id)
+```
+
+The `get_by` option automatically creates a function that:
+- Uses the primary read action with an applied filter
+- Supports dynamic loading and filtering through the standard options
+- Provides both raising (`!`) and non-raising versions
+
+**Dynamic loading and filtering:**
+
+Code interfaces automatically support loading and filtering options:
+
+```elixir
+# Load relationships
+MyApp.Dashboards.get_dashboard_group_by_id!(id, load: [students: [:user]])
+
+# Apply additional filters
+MyApp.Dashboards.get_dashboard_group_by_id!(id, query: [filter: [status: :active]])
+
+# Combine both
+MyApp.Dashboards.get_dashboard_group_by_id!(id,
+  load: [students: [:user]],
+  query: [filter: [status: :active]]
+)
+```
+
+The `query` option accepts either an `Ash.Query` struct or a keyword list that gets passed to `Ash.Query.build/2`.
+
+**When to use actions vs code interfaces:**
+
+- **Actions** define what operations are possible on your resource
+- **Code interfaces** provide function-based access to those actions
+- Actions don't require code interfaces and can be used by extensions like `AshJsonApi`
+- Code interfaces make actions callable as functions (e.g., `DashboardGroup.get_by_id/1`)
+
+This pattern encourages proper separation of concerns by keeping domain logic in your resources and providing clean interfaces for your web layer.
+
 ## Calculations
 
 Resource calculations can be run dynamically using `Ash.calculate/3`, but

@@ -48,6 +48,22 @@ resource ResourceName do
 end
 ```
 
+**Avoid direct Ash calls in web modules** - Don't use `Ash.get!/2` and `Ash.load!/2` directly in LiveViews/Controllers, similar to avoiding `Repo.get/2` outside context modules:
+
+```elixir
+# BAD - in LiveView/Controller
+group = MyApp.Resource |> Ash.get!(id) |> Ash.load!(rel: [:nested])
+
+# GOOD - use code interface with get_by
+resource DashboardGroup do
+  define :get_by_id, action: :read, get_by: [:id]
+end
+
+# Then call: MyApp.Domain.get_dashboard_group_by_id!(id, load: [rel: [:nested]])
+```
+
+Code interfaces automatically support options like `load:` and `query:` options for dynamic loading and filtering.
+
 ### Authorization Functions
 
 For each action defined in a code interface, Ash automatically generates corresponding authorization check functions:
