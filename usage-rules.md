@@ -64,6 +64,22 @@ end
 
 Code interfaces automatically support options like `load:` and `query:` options for dynamic loading and filtering.
 
+**Using Scopes in LiveViews** - When using `Ash.Scope`, the scope will typically be assigned to `current_scope` in LiveViews and used like so:
+
+```elixir
+# In your LiveView
+MyApp.Blog.create_post!("new post", scope: socket.assigns.current_scope)
+```
+
+Inside action hooks and callbacks, use the provided `context` parameter as your scope instead:
+
+```elixir
+|> Ash.Changeset.before_transaction(fn changeset, context ->
+  MyApp.ExternalService.reserve_inventory(changeset, scope: context)
+  changeset
+end)
+```
+
 ### Authorization Functions
 
 For each action defined in a code interface, Ash automatically generates corresponding authorization check functions:
@@ -359,12 +375,12 @@ end
 defmodule MyApp.Changes.ProcessOrder do
   use Ash.Resource.Change
 
-  def change(changeset, _opts, _context) do
+  def change(changeset, _opts, context) do
     changeset
     |> Ash.Changeset.before_transaction(fn changeset ->
       # Runs before the transaction starts
       # Use for external API calls, logging, etc.
-      MyApp.ExternalService.reserve_inventory(changeset)
+      MyApp.ExternalService.reserve_inventory(changeset, scope: context)
       changeset
     end)
     |> Ash.Changeset.before_action(fn changeset ->
@@ -375,20 +391,20 @@ defmodule MyApp.Changes.ProcessOrder do
     |> Ash.Changeset.after_action(fn changeset, result ->
       # Runs inside the transaction after the main action, only on success
       # Use for related database changes that depend on the result
-      MyApp.Inventory.update_stock_levels(result)
+      MyApp.Inventory.update_stock_levels(result, scope: context)
       {changeset, result}
     end)
     |> Ash.Changeset.after_transaction(fn changeset,
       {:ok, result} ->
         # Runs after the transaction completes (success or failure)
         # Use for notifications, external systems, etc.
-        MyApp.Mailer.send_order_confirmation(result)
+        MyApp.Mailer.send_order_confirmation(result, scope: context)
         {changeset, result}
 
       {:error, error} ->
         # Runs after the transaction completes (success or failure)
         # Use for notifications, external systems, etc.
-        MyApp.Mailer.send_order_issue_notice(result)
+        MyApp.Mailer.send_order_issue_notice(result, scope: context)
         {:error, error}
     end)
   end
