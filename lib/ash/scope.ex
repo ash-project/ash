@@ -87,7 +87,6 @@ defmodule Ash.Scope do
   end
   ```
 
-  @type t :: Ash.Scope.ToOpts.t()
 
   Extensions should not use this option, only end users.
   """
@@ -108,6 +107,8 @@ defmodule Ash.Scope do
     end)
     |> Keyword.merge(overrides)
   end
+
+  @type t :: Ash.Scope.ToOpts.t()
 
   defprotocol ToOpts do
     @type t :: term()
@@ -156,5 +157,19 @@ defmodule Ash.Scope do
 
     def get_tracer(%{tracer: tracer}), do: {:ok, tracer}
     def get_authorize?(%{authorize?: authorize?}), do: {:ok, authorize?}
+  end
+
+  defimpl Ash.Scope.ToOpts, for: Map do
+    def get_actor(map), do: Map.fetch(map, :actor)
+    def get_tenant(map), do: Map.fetch(map, :tenant)
+
+    def get_context(map) do
+      with {:ok, context} <- Map.fetch(map, :context) do
+        {:ok, Map.take(context, [:shared])}
+      end
+    end
+
+    def get_tracer(map), do: Map.fetch(map, :tracer)
+    def get_authorize?(map), do: Map.fetch(map, :authorize?)
   end
 end

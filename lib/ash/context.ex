@@ -21,33 +21,9 @@ defmodule Ash.Context do
   * `:tenant`
   * `context[:shared]` -> `:context`
   """
-  @spec to_opts(map(), Keyword.t()) :: context_keyword_list()
+  @doc deprecated: "Use `Ash.Scope.to_opts/2` instead"
+  @spec to_opts(Ash.Scope.t(), Keyword.t()) :: context_keyword_list()
   def to_opts(map, opts \\ []) when is_map(map) do
-    opts
-    |> add_if_present(map, :actor)
-    |> add_if_present(map, :authorize?)
-    |> add_if_present(map, :tracer)
-    |> add_if_present(map, :tenant)
-    |> then(fn opts ->
-      with {:ok, context} <- Map.fetch(map, :context),
-           {:ok, shared} <- Map.fetch(context, :shared) do
-        Keyword.update(
-          opts,
-          :context,
-          %{shared: shared},
-          &Ash.Helpers.deep_merge_maps(&1, %{shared: shared})
-        )
-      else
-        _ ->
-          opts
-      end
-    end)
-  end
-
-  defp add_if_present(opts, map, key) do
-    case Map.fetch(map, key) do
-      {:ok, value} -> Keyword.put_new(opts, key, value)
-      :error -> opts
-    end
+    Ash.Scope.to_opts(map, opts)
   end
 end
