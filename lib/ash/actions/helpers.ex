@@ -226,6 +226,7 @@ defmodule Ash.Actions.Helpers do
         |> set_when_ok(:actor, actor, fn l, _r -> l end)
         |> set_when_ok(:tenant, tenant, fn l, _r -> l end)
         |> set_when_ok(:context, context, &Ash.Helpers.deep_merge_maps(&1, &2))
+        |> Keyword.delete(:scope)
       else
         opts
       end
