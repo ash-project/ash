@@ -225,7 +225,7 @@ defmodule Ash.Resource do
                     field in @show_fields,
                     not (field == :aggregates && record.aggregates == %{}),
                     not (field == :calculations && record.calculations == %{}),
-                    do: field
+                    do: info
 
               apply(Inspect.Map, :inspect_as_struct, [
                 record,

@@ -124,7 +124,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     ## Example
 
         iex> conn = build_conn() |> set_tenant("my-tenant")
-        %Plug.Conn{private: %{ash: %{tenant: "my-tenant}}} = conn
+        %Plug.Conn{private: %{ash: %{tenant: "my-tenant"}}} = conn
     """
     @spec set_tenant(Conn.t(), Ash.ToTenant.t()) :: Conn.t()
     def set_tenant(conn, tenant) do
@@ -158,11 +158,11 @@ if Code.ensure_loaded?(Plug.Conn) do
 
         iex> conn = build_conn() |> put_private(:ash, %{tenant: "my-tenant"})
         ...> tenant = get_tenant(conn)
-        "my_tenant" = tenant
+        "my-tenant" = tenant
 
         iex> conn = build_conn() |> assign(:tenant, "my-tenant")
         ...> tenant = get_tenant(conn)
-        "my_tenant" = tenant
+        "my-tenant" = tenant
     """
     @spec get_tenant(Conn.t()) :: term()
     def get_tenant(%{assigns: %{tenant: tenant}}) when not is_nil(tenant) do
@@ -187,7 +187,7 @@ if Code.ensure_loaded?(Plug.Conn) do
 
         iex> context = %{fraud_score: 0.427}
         ...> conn = build_conn() |> set_context(context)
-        %Plug.Conn{private: %{ash: %{context: %{fraud_score: 0.427}}}}
+        %Plug.Conn{private: %{ash: %{context: %{fraud_score: 0.427}}}} = conn
 
     """
     @spec set_context(Conn.t(), map()) :: Conn.t()
@@ -229,13 +229,13 @@ if Code.ensure_loaded?(Plug.Conn) do
         iex> context = %{species: "Fythetropozoat"}
         ...> conn = build_conn() |> put_private(:ash, %{context: context})
         ...> context = get_context(conn)
-        %{fraud_score: 0.427}
+        %{fraud_score: 0.427} = context
         ...> conn = update_context(conn, fn context -> Map.put(context, :location, "Barnard's Loop") end)
         ...> context = get_context(conn)
-        %{species: "Fythetropozoat", location: "Barnard's Loop"}
+        %{species: "Fythetropozoat", location: "Barnard's Loop"} = context
         ...> conn = update_context(conn, fn context -> Map.delete(context, :fraud_score) end)
         ...> context = get_context(conn)
-        %{location: "Barnard's Loop"}
+        %{location: "Barnard's Loop"} = context
     """
     @spec update_context(Conn.t(), (nil | map() -> nil | map())) ::
             Conn.t()

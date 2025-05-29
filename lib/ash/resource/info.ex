@@ -720,7 +720,7 @@ defmodule Ash.Resource.Info do
   def static_default_attributes(resource, :create) do
     Extension.get_persisted(resource, :create_attributes_with_static_defaults) ||
       resource
-      |> attributes
+      |> attributes()
       |> Enum.filter(fn attribute ->
         not is_nil(attribute.default) &&
           not (is_function(attribute.default) or
@@ -731,7 +731,7 @@ defmodule Ash.Resource.Info do
   def static_default_attributes(resource, :update) do
     Extension.get_persisted(resource, :update_attributes_with_static_defaults) ||
       resource
-      |> attributes
+      |> attributes()
       |> Enum.filter(fn attribute ->
         not is_nil(attribute.update_default) &&
           not (is_function(attribute.update_default) or
