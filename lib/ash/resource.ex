@@ -198,20 +198,42 @@ defmodule Ash.Resource do
                        |> Enum.concat([:__meta__, :calculations, :aggregates])
 
           def inspect(record, opts) do
-            record = %{
-              record
-              | calculations:
-                  Ash.Actions.Read.Calculations.map_without_calc_deps(record.calculations)
-            }
+            if function_exported?(Inspect.Map, :inspect, 4) do
+              record = %{
+                record
+                | calculations:
+                    Ash.Actions.Read.Calculations.map_without_calc_deps(record.calculations)
+              }
 
-            infos =
-              for %{field: field} = info <- record.__struct__.__info__(:struct),
-                  field in @show_fields,
-                  not (field == :aggregates && record.aggregates == %{}),
-                  not (field == :calculations && record.calculations == %{}),
-                  do: info
+              infos =
+                for %{field: field} = info <- record.__struct__.__info__(:struct),
+                    field in @show_fields,
+                    not (field == :aggregates && record.aggregates == %{}),
+                    not (field == :calculations && record.calculations == %{}),
+                    do: info
 
-            Inspect.Map.inspect(record, inspect(record.__struct__), infos, opts)
+              apply(Inspect.Map, :inspect, [record, inspect(record.__struct__), infos, opts])
+            else
+              record = %{
+                record
+                | calculations:
+                    Ash.Actions.Read.Calculations.map_without_calc_deps(record.calculations)
+              }
+
+              infos =
+                for %{field: field} = info <- record.__struct__.__info__(:struct),
+                    field in @show_fields,
+                    not (field == :aggregates && record.aggregates == %{}),
+                    not (field == :calculations && record.calculations == %{}),
+                    do: field
+
+              apply(Inspect.Map, :inspect_as_struct, [
+                record,
+                inspect(record.__struct__),
+                infos,
+                opts
+              ])
+            end
           end
         end
       end

@@ -494,6 +494,7 @@ defmodule Ash.Actions.Read.Relationships do
               }),
             actor: related_query.context[:private][:actor],
             authorize?: related_query.context[:private][:authorize?],
+            tracer: related_query.context[:private][:tracer],
             domain: related_query.domain,
             tenant: related_query.tenant
           })

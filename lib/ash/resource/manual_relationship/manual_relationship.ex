@@ -10,6 +10,7 @@ defmodule Ash.Resource.ManualRelationship do
       :query,
       :actor,
       :tenant,
+      :tracer,
       :authorize?,
       :domain,
       source_context: %{}
@@ -19,6 +20,7 @@ defmodule Ash.Resource.ManualRelationship do
             relationship: Ash.Resource.Relationships.relationship(),
             query: Ash.Query.t(),
             actor: term,
+            tracer: atom | list(atom) | nil,
             tenant: term,
             source_context: map(),
             authorize?: boolean,

@@ -18,11 +18,12 @@ defmodule Ash.Resource.Actions.Implementation do
   defmodule Context do
     @moduledoc "The context passed into generic action functions"
 
-    defstruct [:actor, :tenant, :authorize?, :domain, source_context: %{}]
+    defstruct [:actor, :tenant, :authorize?, :domain, :tracer, source_context: %{}]
 
     @type t :: %__MODULE__{
             actor: term,
             tenant: term,
+            tracer: atom | list(atom) | nil,
             source_context: map(),
             authorize?: boolean,
             domain: module
