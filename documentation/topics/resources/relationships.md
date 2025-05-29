@@ -37,7 +37,7 @@ Your data layer may enforce foreign key constraints, see the following guides fo
 
 > #### Order of operations {: .warning}
 >
-> Relationships are managed **after** the main action is performed. This means if you're using `manage_relationship` to remove related records in a destroy action, and your database has foreign key constraints with "no action" settings, you may encounter constraint violations because Ash tries to destroy the primary resource first.
+> In destroy actions, relationships are managed **after** the main action is performed. This means if you're using `manage_relationship` to remove related records in a destroy action, and your database has foreign key constraints with "no action" or "restrict" settings, you may encounter constraint violations because Ash tries to destroy the primary resource first.
 >
 > To work around this, you can:
 > - Use the `cascade_destroy` builtin change instead of `manage_relationship`
