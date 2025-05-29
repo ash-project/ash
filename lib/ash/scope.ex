@@ -91,7 +91,7 @@ defmodule Ash.Scope do
 
   Extensions should not use this option, only end users.
   """
-  def to_opts(scope) do
+  def to_opts(scope, overrides \\ []) do
     [
       actor: Ash.Scope.ToOpts.get_actor(scope),
       tenant: Ash.Scope.ToOpts.get_tenant(scope),
@@ -106,6 +106,7 @@ defmodule Ash.Scope do
       _ ->
         []
     end)
+    |> Keyword.merge(overrides)
   end
 
   defprotocol ToOpts do
