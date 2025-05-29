@@ -71,7 +71,7 @@ defmodule Ash.Can do
     opts = Keyword.put_new(opts, :filter_with, :filter)
 
     {actor, opts} =
-      if Ash.Scope.ToOpts.impl_for(actor_or_scope) do
+      if is_struct(actor_or_scope) and Ash.Scope.ToOpts.impl_for(actor_or_scope) do
         opts
         |> Keyword.put(:scope, actor_or_scope)
         |> Ash.Actions.Helpers.apply_scope_to_opts()
