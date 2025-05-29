@@ -64,11 +64,11 @@ end
 
 Code interfaces automatically support options like `load:` and `query:` options for dynamic loading and filtering.
 
-**Using Scopes in LiveViews** - When using `Ash.Scope`, the scope will typically be assigned to `current_scope` in LiveViews and used like so:
+**Using Scopes in LiveViews** - When using `Ash.Scope`, the scope will typically be assigned to `scope` in LiveViews and used like so:
 
 ```elixir
 # In your LiveView
-MyApp.Blog.create_post!("new post", scope: socket.assigns.current_scope)
+MyApp.Blog.create_post!("new post", scope: socket.assigns.scope)
 ```
 
 Inside action hooks and callbacks, use the provided `context` parameter as your scope instead:
