@@ -19,6 +19,16 @@ defmodule Ash.Scope do
   MyDomain.create_thing(scope: scope)
   ```
 
+  > ### Scope is left at the front door {: .info}
+  >
+  > Your scope is "left at the front door". That is, when you pass a scope to an action, the options
+  > are extracted and the scope is removed from those options. Within hooks, you are meant to use
+  > the `context` provided to your functions as the new `scope`. This is very important, because
+  > you don't want a bunch of your code or extension code having to switch on `if opts[:scope]`,
+  > extracting the things that it needs, etc.
+  >
+  > See [the actions guide](/documentation/topics/actions/actions.md#context) for more information.
+
   ## Setup
 
   If you are using Phoenix, you will want to assign your `scope` module in a plug that runs
