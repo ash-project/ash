@@ -62,6 +62,21 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  test "won't compile with integer primary key" do
+    assert_raise Spark.Error.DslError, ~r/does not support integer primary key/, fn ->
+      defmodule Example do
+        use Ash.Resource,
+          domain: Domain,
+          data_layer: Ash.DataLayer.Ets
+
+        attributes do
+          integer_primary_key :id
+          attribute :name, :string, public?: true
+        end
+      end
+    end
+  end
+
   test "resource_to_query" do
     assert %Query{resource: EtsTestUser} = EtsDataLayer.resource_to_query(EtsTestUser, nil)
   end

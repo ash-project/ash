@@ -42,7 +42,10 @@ defmodule Ash.DataLayer.Ets do
 
   use Spark.Dsl.Extension,
     sections: [@ets],
-    verifiers: [Ash.DataLayer.Verifiers.RequirePreCheckWith]
+    verifiers: [
+      Ash.DataLayer.Verifiers.RequirePreCheckWith,
+      Ash.DataLayer.Verifiers.IntegerPrimaryKeyNotUsed
+    ]
 
   alias Ash.Actions.Sort
 
