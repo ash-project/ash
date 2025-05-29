@@ -94,9 +94,9 @@ This will generally happen automatically if you use one of the two abstractions 
 >
 > Shared context is passed to all nested actions, so don't pass massive values around, and also don't set context
 
-#### `Ash.Scope`
+#### `Ash.Scope.ToOpts`
 
-`Ash.Scope` is newer and is the recommended way to do this. In action callbacks in Ash, you will be provided with a context, which can be passed down as a `scope` option when running nested actions or building nested changesets/queries. For example:
+`Ash.Scope.ToOpts` is newer and is the recommended way to do this. In action callbacks in Ash, you will be provided with a context, which can be passed down as a `scope` option when running nested actions or building nested changesets/queries. For example:
 
 ```elixir
 def change(changeset, opts, context) do
@@ -106,6 +106,9 @@ def change(changeset, opts, context) do
   end)
 end
 ```
+
+To get the opts for a given scope, you can use `Ash.Scope.to_opts(scope)`, but this is typically not
+necessary.
 
 #### `Ash.Context.to_opts/2`
 

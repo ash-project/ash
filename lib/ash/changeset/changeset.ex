@@ -1504,7 +1504,7 @@ defmodule Ash.Changeset do
     scope: [
       type: :any,
       doc:
-        "A value that implements the `Ash.Scope` protocol, for passing around actor/tenant/context in a single value. See `Ash.Scope` for more."
+        "A value that implements the `Ash.Scope.ToOpts` protocol, for passing around actor/tenant/context in a single value. See `Ash.Scope.ToOpts` for more."
     ],
     private_arguments: [
       type: :map,

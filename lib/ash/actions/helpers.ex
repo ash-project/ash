@@ -215,23 +215,26 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  def set_context_and_get_opts(domain, query_or_changeset, opts) do
-    opts =
-      if scope = opts[:scope] do
-        actor = Ash.Scope.get_actor(scope)
-        tenant = Ash.Scope.get_tenant(scope)
-        context = Ash.Scope.get_context(scope)
-        authorize? = Ash.Scope.get_authorize?(scope)
+  def apply_scope_to_opts(opts) do
+    if scope = opts[:scope] do
+      actor = Ash.Scope.ToOpts.get_actor(scope)
+      tenant = Ash.Scope.ToOpts.get_tenant(scope)
+      context = Ash.Scope.ToOpts.get_context(scope)
+      authorize? = Ash.Scope.ToOpts.get_authorize?(scope)
 
-        opts
-        |> set_when_ok(:actor, actor, fn l, _r -> l end)
-        |> set_when_ok(:tenant, tenant, fn l, _r -> l end)
-        |> set_when_ok(:authorize?, authorize?, fn l, _r -> l end)
-        |> set_when_ok(:context, context, &Ash.Helpers.deep_merge_maps(&1, &2))
-        |> Keyword.delete(:scope)
-      else
-        opts
-      end
+      opts
+      |> set_when_ok(:actor, actor, fn l, _r -> l end)
+      |> set_when_ok(:tenant, tenant, fn l, _r -> l end)
+      |> set_when_ok(:authorize?, authorize?, fn l, _r -> l end)
+      |> set_when_ok(:context, context, &Ash.Helpers.deep_merge_maps(&1, &2))
+      |> Keyword.delete(:scope)
+    else
+      opts
+    end
+  end
+
+  def set_context_and_get_opts(domain, query_or_changeset, opts) do
+    opts = apply_scope_to_opts(opts)
 
     opts = set_skip_unknown_opts(opts, query_or_changeset)
     query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})

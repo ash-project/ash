@@ -1,4 +1,4 @@
-defprotocol Ash.Scope do
+defmodule Ash.Scope do
   @moduledoc """
   Determines how the `actor`, `tenant` and `context` are extracted from a data structure.
 
@@ -38,13 +38,13 @@ defprotocol Ash.Scope do
 
   ## Example
 
-  You would implement `Ash.Scope` for a module like so:
+  You would implement `Ash.Scope.ToOpts` for a module like so:
 
   ```elixir
   defmodule MyApp.Scope do
     defstruct [:current_user, :current_tenant, :locale]
 
-    defimpl Ash.Scope do
+    defimpl Ash.Scope.ToOpts do
       def get_actor(%{current_user: current_user}), do: {:ok, current_user}
       def get_tenant(%{current_tenant: current_tenant}), do: {:ok, current_tenant}
       def get_context(%{locale: locale}), do: {:ok, %{shared: %{locale: locale}}}
@@ -87,53 +87,73 @@ defprotocol Ash.Scope do
   end
   ```
 
+  @type t :: Ash.Scope.ToOpts.t()
+
   Extensions should not use this option, only end users.
   """
+  def to_opts(scope) do
+    [
+      actor: Ash.Scope.ToOpts.get_actor(scope),
+      tenant: Ash.Scope.ToOpts.get_tenant(scope),
+      context: Ash.Scope.ToOpts.get_context(scope),
+      tracer: Ash.Scope.ToOpts.get_tracer(scope),
+      authorize?: Ash.Scope.ToOpts.get_authorize?(scope)
+    ]
+    |> Enum.flat_map(fn
+      {key, {:ok, value}} ->
+        [{key, value}]
 
-  @type t :: term()
+      _ ->
+        []
+    end)
+  end
 
-  @doc "Extracts the actor from the scope"
-  @spec get_actor(term()) :: {:ok, term} | :error
-  def get_actor(scope)
+  defprotocol ToOpts do
+    @type t :: term()
 
-  @doc "Extracts the tenant from the scope"
-  @spec get_tenant(term()) :: {:ok, term} | :error
-  def get_tenant(scope)
+    @doc "Extracts the actor from the scope"
+    @spec get_actor(term()) :: {:ok, term} | :error
+    def get_actor(scope)
 
-  @doc "Extracts the context from the scope"
-  @spec get_context(term()) :: {:ok, term} | :error
-  def get_context(scope)
+    @doc "Extracts the tenant from the scope"
+    @spec get_tenant(term()) :: {:ok, term} | :error
+    def get_tenant(scope)
 
-  @doc "Extracts the tracer(s) from the scope"
-  @spec get_tracer(term()) :: {:ok, module | list(module)} | :error
-  def get_tracer(scope)
+    @doc "Extracts the context from the scope"
+    @spec get_context(term()) :: {:ok, term} | :error
+    def get_context(scope)
 
-  @doc "Extracts the `authorize?` option from the scope"
-  @spec get_authorize?(term()) :: {:ok, boolean()} | :error
-  def get_authorize?(scope)
-end
+    @doc "Extracts the tracer(s) from the scope"
+    @spec get_tracer(term()) :: {:ok, module | list(module)} | :error
+    def get_tracer(scope)
 
-defimpl Ash.Scope,
-  for: [
-    Ash.Resource.Actions.Implementation.Context,
-    Ash.Resource.Calculation.Context,
-    Ash.Resource.Change.Context,
-    Ash.Resource.ManualCreate.Context,
-    Ash.Resource.ManualCreate.BulkContext,
-    Ash.Resource.ManualDestroy.Context,
-    Ash.Resource.ManualDestroy.BulkContext,
-    Ash.Resource.ManualUpdate.Context,
-    Ash.Resource.ManualUpdate.BulkContext,
-    Ash.Resource.ManualRelationship.Context,
-    Ash.Resource.Preparation.Context,
-    Ash.Resource.Validation.Context
-  ] do
-  def get_actor(%{actor: actor}), do: {:ok, actor}
-  def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
+    @doc "Extracts the `authorize?` option from the scope"
+    @spec get_authorize?(term()) :: {:ok, boolean()} | :error
+    def get_authorize?(scope)
+  end
 
-  def get_context(%{source_context: source_context}),
-    do: {:ok, Map.take(source_context, [:shared])}
+  defimpl Ash.Scope.ToOpts,
+    for: [
+      Ash.Resource.Actions.Implementation.Context,
+      Ash.Resource.Calculation.Context,
+      Ash.Resource.Change.Context,
+      Ash.Resource.ManualCreate.Context,
+      Ash.Resource.ManualCreate.BulkContext,
+      Ash.Resource.ManualDestroy.Context,
+      Ash.Resource.ManualDestroy.BulkContext,
+      Ash.Resource.ManualUpdate.Context,
+      Ash.Resource.ManualUpdate.BulkContext,
+      Ash.Resource.ManualRelationship.Context,
+      Ash.Resource.Preparation.Context,
+      Ash.Resource.Validation.Context
+    ] do
+    def get_actor(%{actor: actor}), do: {:ok, actor}
+    def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
 
-  def get_tracer(%{tracer: tracer}), do: {:ok, tracer}
-  def get_authorize?(%{authorize?: authorize?}), do: {:ok, authorize?}
+    def get_context(%{source_context: source_context}),
+      do: {:ok, Map.take(source_context, [:shared])}
+
+    def get_tracer(%{tracer: tracer}), do: {:ok, tracer}
+    def get_authorize?(%{authorize?: authorize?}), do: {:ok, authorize?}
+  end
 end

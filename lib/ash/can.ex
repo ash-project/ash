@@ -71,26 +71,11 @@ defmodule Ash.Can do
     opts = Keyword.put_new(opts, :filter_with, :filter)
 
     {actor, opts} =
-      if Ash.Scope.impl_for(actor_or_scope) do
-        actor = Ash.Scope.get_actor(actor_or_scope)
-        tenant = Ash.Scope.get_tenant(actor_or_scope)
-        context = Ash.Scope.get_context(actor_or_scope)
-
+      if Ash.Scope.ToOpts.impl_for(actor_or_scope) do
         opts
-        |> Ash.Actions.Helpers.set_when_ok(:tenant, tenant)
-        |> Ash.Actions.Helpers.set_when_ok(
-          :context,
-          context,
-          &Ash.Helpers.deep_merge_maps(&1, &2)
-        )
-
-        case actor do
-          {:ok, actor} ->
-            {actor, opts}
-
-          :error ->
-            {nil, opts}
-        end
+        |> Keyword.put(:scope, actor_or_scope)
+        |> Ash.Actions.Helpers.apply_scope_to_opts()
+        |> Keyword.pop(:actor)
       else
         {actor_or_scope, opts}
       end

@@ -214,7 +214,7 @@ defmodule Ash.Test.Policy.SimpleTest do
   defmodule Scope do
     defstruct [:actor, :tenant, :context]
 
-    defimpl Ash.Scope do
+    defimpl Ash.Scope.ToOpts do
       def get_actor(%{actor: actor}), do: {:ok, actor}
       def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
       def get_context(%{context: context}), do: {:ok, context}

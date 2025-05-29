@@ -67,7 +67,7 @@ defmodule Ash do
     scope: [
       type: :any,
       doc:
-        "A value that implements the `Ash.Scope` protocol, for passing around actor/tenant/context in a single value. See `Ash.Scope` for more."
+        "A value that implements the `Ash.Scope.ToOpts` protocol, for passing around actor/tenant/context in a single value. See `Ash.Scope.ToOpts` for more."
     ]
   ]
 
@@ -734,7 +734,7 @@ defmodule Ash do
     scope: [
       type: :any,
       doc:
-        "A value that implements the `Ash.Scope` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
+        "A value that implements the `Ash.Scope.ToOpts` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
     ],
     tenant: [
       type: {:protocol, Ash.ToTenant},
@@ -793,7 +793,7 @@ defmodule Ash do
     scope: [
       type: :any,
       doc:
-        "A value that implements the `Ash.Scope` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
+        "A value that implements the `Ash.Scope.ToOpts` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
     ],
     tenant: [
       type: {:protocol, Ash.ToTenant},
@@ -863,7 +863,7 @@ defmodule Ash do
     scope: [
       type: :any,
       doc:
-        "A value that implements the `Ash.Scope` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
+        "A value that implements the `Ash.Scope.ToOpts` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
     ],
     run_queries?: [
       type: :boolean,
