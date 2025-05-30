@@ -24,7 +24,7 @@ defmodule Ash.Type.Duration do
   end
 
   @impl true
-  def matches_type?(%Duration{}, _), do: true
+  def matches_type?(%Ash.Duration{}, _), do: true
   def matches_type?(_, _), do: false
 
   @impl true
