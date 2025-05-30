@@ -955,7 +955,7 @@ defmodule Ash.Query do
   end
 
   defp cast_params(query, action, args, opts) do
-    skip_unknown_inputs = opts[:skip_unknown_inputs] || action.skip_unknown_inputs
+    skip_unknown_inputs = List.wrap(opts[:skip_unknown_inputs] || action.skip_unknown_inputs)
 
     Enum.reduce(args, query, fn {name, value}, query ->
       cond do
