@@ -2,6 +2,49 @@
 
 <!-- changelog -->
 
+## [v3.5.13](https://github.com/ash-project/ash/compare/v3.5.12...v3.5.13) (2025-05-30)
+
+
+### OTP 28 Compatibility
+
+`Ash.Type.String`, `Ash.Type.CiString` and the built in `match` validation all now warn on the use
+of regexes. OTP 28 no longer supports building regexes at compile time. The warning will explain.
+
+## Notable Features
+
+* `:shared` context key is now automatically passed down to child actions. See [the actions guide](/documentation/topics/actions/actions.md#context) for more information.
+
+* add `Ash.Scope`, mirroring the Phoenix pattern, and extend that to all Ash callback contexts. See `Ash.Scope` for more. (#2050)
+
+### Bug Fixes:
+
+* [`Ash.Query`] Allow non-list input to skip_unknown_inputs opt of query (#2074)
+
+* [`Ash.Query`] handle single tuple & string values in sort
+
+* [`Ash.Query`] use proper read action calls when building aggregates
+
+* [`Ash.Generator`] don't generate values for attributes that are `writable?: false` and `generated?: true`
+
+* [`:embedded` resources] ensure we detect all cases where embedded attributes can't be atomically updated
+
+* [`Ash.Type.NewType`] fix issue with expanding constraints for lazy initialized new types
+
+* [`Ash.Changeset`] properly pass tenant in bulk_update to managed_relationships (#2061)
+
+### Improvements:
+
+* [`mix ash.codegen`] add `Ash.Error.Framework.PendingCodegen` error, used for the new `AshPhoenix.Plug.CheckCodegenStatus` plug
+
+* [`Ash.Generator`] support upsert/upsert_identity in changeset generator
+
+* [`usage-rules.md`] Improve LLM rules in `usage-rules.md`. See [usage_rules](https://hexdocs.pm/usage-rules) for more.
+
+* [`Ash.Type.Decimal`] - Add `precision` and `scale` constraints.
+
+
+
+
 ## [v3.5.12](https://github.com/ash-project/ash/compare/v3.5.11...v3.5.12) (2025-05-22)
 
 
