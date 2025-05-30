@@ -31,4 +31,6 @@ defmodule Ash.Error.Framework.PendingCodegen do
            mix ash.codegen <describe_your_changes>
     """
   end
+
+  defp explain(_), do: ""
 end
