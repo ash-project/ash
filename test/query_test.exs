@@ -69,6 +69,15 @@ defmodule Ash.Test.QueryTest do
       assert [%Ash.Error.Query.InvalidArgument{field: :name_substring, vars: [min: 4]}] =
                query.errors
     end
+
+    test "it ignores unknown inputs with skip_unknown_inputs" do
+      query =
+        Ash.Query.for_read(User, :by_id, %{id: Ash.UUID.generate(), unknown_input: "ignored"},
+          skip_unknown_inputs: :*
+        )
+
+      assert query.errors == []
+    end
   end
 
   describe "page validation" do
