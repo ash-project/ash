@@ -237,7 +237,7 @@ authorize_unless check
 ```
 
 
-If the check is false, the request is authorized, otherwise run remaining checks.
+If the check is true, run remaining checks, otherwise the request is authorized.
 
 
 
@@ -277,7 +277,7 @@ forbid_unless check
 ```
 
 
-If the check is true, the request is forbidden, otherwise run remaining checks.
+If the check is true, run remaining checks, otherwise the request is forbidden.
 
 
 
@@ -519,7 +519,7 @@ authorize_unless check
 ```
 
 
-If the check is false, the request is authorized, otherwise run remaining checks.
+If the check is true, run remaining checks, otherwise the request is authorized.
 
 
 
@@ -559,7 +559,7 @@ forbid_unless check
 ```
 
 
-If the check is true, the request is forbidden, otherwise run remaining checks.
+If the check is true, run remaining checks, otherwise the request is forbidden.
 
 
 
@@ -723,7 +723,7 @@ authorize_unless check
 ```
 
 
-If the check is false, the request is authorized, otherwise run remaining checks.
+If the check is true, run remaining checks, otherwise the request is authorized.
 
 
 
@@ -763,7 +763,7 @@ forbid_unless check
 ```
 
 
-If the check is true, the request is forbidden, otherwise run remaining checks.
+If the check is true, run remaining checks, otherwise the request is forbidden.
 
 
 
@@ -1003,7 +1003,7 @@ authorize_unless check
 ```
 
 
-If the check is false, the request is authorized, otherwise run remaining checks.
+If the check is true, run remaining checks, otherwise the request is authorized.
 
 
 
@@ -1043,7 +1043,7 @@ forbid_unless check
 ```
 
 
-If the check is true, the request is forbidden, otherwise run remaining checks.
+If the check is true, run remaining checks, otherwise the request is forbidden.
 
 
 
@@ -1202,7 +1202,7 @@ authorize_unless check
 ```
 
 
-If the check is false, the request is authorized, otherwise run remaining checks.
+If the check is true, run remaining checks, otherwise the request is authorized.
 
 
 
@@ -1242,7 +1242,7 @@ forbid_unless check
 ```
 
 
-If the check is true, the request is forbidden, otherwise run remaining checks.
+If the check is true, run remaining checks, otherwise the request is forbidden.
 
 
 

@@ -259,14 +259,9 @@ and add the following contents to it.
 # in config/config.exs
 import Config
 
+# This tells Ash about your domain, which is used to find
+# available resource and actions
 config :helpdesk, :ash_domains, [Helpdesk.Support]
-
-config :ash,
-  include_embedded_source_by_default?: false,
-  default_page_type: :keyset
-
-config :ash, :policies,
-  no_filter_static_forbidden_reads?: false
 ```
 
 ### Try our first resource out
