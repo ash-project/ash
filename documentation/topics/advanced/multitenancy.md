@@ -125,7 +125,7 @@ User
 ## Context Multitenancy
 
 ```elixir
-defmodule MyApp.Project do
+defmodule MyApp.Projects.Project do
   use Ash.Resource, data_layer: AshPostgres.DataLayer
 
   multitenancy do
