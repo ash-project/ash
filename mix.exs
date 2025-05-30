@@ -87,6 +87,7 @@ defmodule Ash.MixProject do
         "documentation/topics/actions/destroy-actions.md",
         "documentation/topics/actions/generic-actions.md",
         "documentation/topics/actions/manual-actions.md",
+        "documentation/topics/advanced/manual-installation.md",
         "documentation/topics/advanced/multi-step-actions.md",
         "documentation/topics/advanced/reactor.md",
         "documentation/topics/advanced/monitoring.md",
@@ -389,6 +390,7 @@ defmodule Ash.MixProject do
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
       {:ex_doc, "~> 0.37-rc", only: [:dev, :test], runtime: false},
+      {:makeup_diff, "~> 0.1.0", only: [:dev, :test], runtime: false},
       {:ex_check, "~> 0.12", only: [:dev, :test]},
       {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev, :test], runtime: false},
@@ -407,6 +409,7 @@ defmodule Ash.MixProject do
       sobelow: "sobelow --skip",
       credo: "credo --strict",
       docs: [
+        "ash.install --scribe documentation/topics/advanced/manual-installation.md",
         "spark.cheat_sheets",
         "docs",
         "spark.replace_doc_links"

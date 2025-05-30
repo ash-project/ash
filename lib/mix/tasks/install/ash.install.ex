@@ -7,7 +7,7 @@ if Code.ensure_loaded?(Igniter) do
 
     ## Options
 
-    - `--example` - Creates some example resources. When used, will pass 
+    - `--example` - Creates some example resources. When used, will pass
       through options to `mix ash.gen.resource`. See that task docs for more.
     """
 
@@ -42,6 +42,27 @@ if Code.ensure_loaded?(Igniter) do
       :execution
     ]
 
+    @manual_lead_in """
+    This guide will walk you through the process of manually installing Ash into your project.
+    If you are starting from scratch, you can use `mix new` or `mix igniter.new` and follow these instructions.
+    These installation instructions apply both to new projects and existing ones.
+    """
+
+    @dependency_setup """
+    See the readmes for `spark` and `reactor` for more information on their installation.
+    We've included their changes here for your convenience.
+    """
+
+    @setup_formatter """
+    Configure the DSL auto-formatter. This tells the formatter to remove excess parentheses
+    and how to sort sections in your Ash.Resource & Ash.Domain modules for consistency.
+    """
+
+    @setup_backwards_compatibility """
+    Configure backwards compatibility settings. See the [backwards compatibility guide](https://hexdocs.pm/ash/backwards-compatibility-config.html)
+    for an explanation of each of the configurations.
+    """
+
     @impl Igniter.Mix.Task
     def info(_argv, _source) do
       %Igniter.Mix.Task.Info{
@@ -52,70 +73,93 @@ if Code.ensure_loaded?(Igniter) do
     @impl Igniter.Mix.Task
     def igniter(igniter) do
       igniter
-      |> Igniter.compose_task("spark.install")
-      |> Igniter.compose_task("reactor.install")
-      |> Igniter.Project.Formatter.import_dep(:ash)
-      |> Spark.Igniter.prepend_to_section_order(
-        :"Ash.Resource",
-        @resource_default_section_order
+      |> Igniter.Scribe.start_document(
+        "Manual Installation",
+        @manual_lead_in,
+        app_name: :my_app
       )
-      |> Spark.Igniter.prepend_to_section_order(
-        :"Ash.Domain",
-        @domain_default_section_order
-      )
-      |> Igniter.Project.Config.configure(
-        "config.exs",
-        :ash,
-        [:allow_forbidden_field_for_relationships_by_default?],
-        true
-      )
-      |> Igniter.Project.Config.configure(
-        "config.exs",
-        :ash,
-        [:include_embedded_source_by_default?],
-        false
-      )
-      |> Igniter.Project.Config.configure(
-        "config.exs",
-        :ash,
-        [:show_keysets_for_all_actions?],
-        false
-      )
-      |> Igniter.Project.Config.configure(
-        "config.exs",
-        :ash,
-        [:default_page_type],
-        :keyset
-      )
-      |> Igniter.Project.Config.configure(
-        "config.exs",
-        :ash,
-        [:policies, :no_filter_static_forbidden_reads?],
-        false
-      )
-      |> Igniter.Project.Config.configure(
-        "config.exs",
-        :ash,
-        [:keep_read_action_loads_when_loading?],
-        false
-      )
-      |> Igniter.Project.Config.configure(
-        "config.exs",
-        :ash,
-        [:default_actions_require_atomic?],
-        true
-      )
-      |> Igniter.Project.Config.configure(
-        "config.exs",
-        :ash,
-        [:read_action_after_action_hooks_in_order?],
-        true
-      )
-      |> Igniter.Project.Config.configure(
-        "config.exs",
-        :ash,
-        [:bulk_actions_default_to_errors?],
-        true
+      |> Igniter.Scribe.section("Install & Setup Dependencies", @dependency_setup, fn igniter ->
+        igniter
+        |> Igniter.Scribe.patch(&Igniter.compose_task(&1, "spark.install"))
+        |> Igniter.Scribe.patch(&Igniter.compose_task(&1, "reactor.install"))
+      end)
+      |> Igniter.Scribe.section("Setup The Formatter", @setup_formatter, fn igniter ->
+        igniter
+        |> Igniter.Scribe.patch(&Igniter.Project.Formatter.import_dep(&1, :ash))
+        |> Igniter.Scribe.patch(fn igniter ->
+          igniter
+          |> Spark.Igniter.prepend_to_section_order(
+            :"Ash.Resource",
+            @resource_default_section_order
+          )
+          |> Spark.Igniter.prepend_to_section_order(
+            :"Ash.Domain",
+            @domain_default_section_order
+          )
+        end)
+      end)
+      |> Igniter.Scribe.section(
+        "Setup Backwards Compatibility Configurations",
+        @setup_backwards_compatibility,
+        fn igniter ->
+          Igniter.Scribe.patch(igniter, fn igniter ->
+            igniter
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:allow_forbidden_field_for_relationships_by_default?],
+              true
+            )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:include_embedded_source_by_default?],
+              false
+            )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:show_keysets_for_all_actions?],
+              false
+            )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:default_page_type],
+              :keyset
+            )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:policies, :no_filter_static_forbidden_reads?],
+              false
+            )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:keep_read_action_loads_when_loading?],
+              false
+            )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:default_actions_require_atomic?],
+              true
+            )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:read_action_after_action_hooks_in_order?],
+              true
+            )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:bulk_actions_default_to_errors?],
+              true
+            )
+          end)
+        end
       )
       |> then(fn igniter ->
         if "--example" in igniter.args.argv_flags do

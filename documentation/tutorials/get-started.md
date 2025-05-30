@@ -40,123 +40,49 @@ The actions we will be able to take on these resources include:
 
 ### Create a new project
 
+This guide focuses on getting you introduced to Ash quickly. For that reason, we recommend starting a fresh
+project to explore the concepts. You can, however, add Ash to your existing project if desired.
+See the options below for more.
+
 <!-- tabs-open -->
 
-### Using Igniter (recommended)
+### New project
 
 First, to use `mix igniter.new`, the archive must be installed.
 
-To install it, run
-
 ```bash
+# install igniter.enw
 mix archive.install hex igniter_new
-```
 
-Then, create a new project:
-
-```elixir
+# create a new application with Ash in it
 mix igniter.new helpdesk --install ash && cd helpdesk
 ```
+
+### New Phoenix project
 
 If you already know that you want to use Phoenix and Ash together, you can use
 
 ```elixir
 # install the archive
 mix archive.install hex phx_new
+mix archive.install hex igniter_new
 
 # use the `--with` flag to generate the project with phx.new and add Ash
 mix igniter.new helpdesk --install ash,ash_phoenix --with phx.new && cd helpdesk
 ```
 
-It is a good idea to make it a git repository and commit the initial project. You'll be able to see what changes we made, and can save your changes once we're done.
+### Existing Project
 
-```bash
-# Run in your terminal
-git init
-git add -A
-git commit -m "first commit"
-git branch -M main
-```
-
-Open the project in your text editor, and we'll get started.
-
-> ### Want to skip to the end? {: .info}
->
-> Add the `--example` flag to get the example code add directly to your app!
->
-> ```bash
-> mix igniter.new helpdesk --install ash --extend ets --example
-> ```
->
-> Already know you want to use `AshPostgres`? Use the `--extend` argument.
->
-> ```bash
-> mix igniter.new helpdesk --install ash,ash_postgres --example --extend postgres
-> ```
->
-> Want to start with a Phoenix app setup too? Use the `--with` argument.
->
-> ```bash
-> mix archive.install hex phx_new
->
-> mix igniter.new helpdesk \
->   --install ash,ash_postgres,ash_phoenix \
->   --with phx.new \
->   --extend postgres \
->   --example
-> ```
->
-> Afterwards change the active directory to the newly created folder `helpdesk`, edit `config/dev.exs` to reflect your database credentials and run ```mix ash.setup``` which will setup your postgres database.
-> If you like you can now browse the rest of the guide, but the code shown will already be present in your application 🥳
-
-### Using Mix
-
-We first create a new project with the `--sup` flag to add a supervision tree. This will be necessary for other follow-up tutorials.
-
-```bash
-# In your terminal
-mix new --sup helpdesk && cd helpdesk
-```
-
-#### Add Ash to your application
-
-Add the `ash` and `picosat_elixir` dependencies to your `mix.exs`
+You can use igniter to add Ash to your existing project as well.
 
 ```elixir
-defp deps do
-  [
-    {:ash, "~> 3.0"},
-    {:picosat_elixir, "~> 0.2"}
-  ]
-end
+mix archive.install hex igniter_new
+mix igniter.install ash
 ```
 
-And then run `mix deps.get && mix deps.compile` to install the dependencies
+### Manual Installation Instructions
 
-It is a good idea to make it a git repository and commit the initial project. You'll be able to see what changes we made, and can save your changes once we're done.
-
-```bash
-# Run in your terminal
-git init
-git add -A
-git commit -m "first commit"
-git branch -M main
-```
-
-Open the project in your text editor, and we'll get started.
-
-
-#### Formatting
-
-To ensure that your code stays formatted like the examples here, you can add `:ash` as an import dependency in your `.formatter.exs`:
-
-```elixir
-[
-  # ...
-  import_deps: [..., :ash],
-  # ...
-]
-```
+Finally, if you want to install Ash manually, step by step, follow the [manual installation guide](/documentation/topics/advanced/manual-installation.md).
 
 <!-- tabs-close -->
 
@@ -164,10 +90,6 @@ To ensure that your code stays formatted like the examples here, you can add `:a
 >
 > If you have trouble compiling `picosat_elixir`, then replace `{:picosat_elixir, "~> 0.2"}` with `{:simple_sat, "~> 0.1"}` to use a simpler (but mildly slower) solver. You can always switch back to `picosat_elixir` later once you're done with the tutorial.
 > And run `mix deps.get`, to install the dependency.
-
-> #### Note {: .neutral}
->
-> For more auto-formatting options, see the [Development Utilities guide](/documentation/topics/development/development-utilities.md).
 
 ### Building your first Ash Domain
 
@@ -190,8 +112,9 @@ Let's start by creating our first resource along with our first domain. We will 
 To create the required folders and files, you can use the following command in your terminal:
 
 ```bash
-mkdir -p lib/helpdesk/support && touch $_/ticket.ex
-touch lib/helpdesk/support.ex
+mkdir -p lib/helpdesk/support && \
+  touch $_/ticket.ex && \
+  touch lib/helpdesk/support.ex
 ```
 
 Your project structure should now include the following files:

@@ -13,7 +13,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 ## Dive In
 
 - [What is Ash?](documentation/topics/about_ash/what-is-ash.md)
-- [Get Started Livebook](documentation/tutorials/get-started.md)
+- [Getting Started Tutorial](documentation/tutorials/get-started.md)
 - [See the roadmap](https://github.com/orgs/ash-project/projects/3)
 
 ## About the Documentation
