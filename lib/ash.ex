@@ -1382,6 +1382,62 @@ defmodule Ash do
   {Ash.Resource.t(), %Action{}, %{...input}}
   ```
 
+  ### Examples
+
+  ```elixir
+  # no actor
+  Ash.can?({MyApp.Accounts.Organization, :create}, nil)
+  # => false
+
+  # admin user actor
+  Ash.can?({MyApp.Accounts.Organization, :create}, %MyApp.Accounts.User{role: :admin})
+  # => true
+
+  # check for permission to update a specific thing
+  user = MyApp.Accounts.get_post_by_id!(«uuid»)
+  Ash.can?({user, :update}, %{role: :user})
+  # => false
+
+  # read actions
+  # no logged in user. Will say `true` because the action
+  # is allowed, but will just be filtered
+  Ash.can?({MyApp.Accounts.Organization, :read}, nil)
+  # => true
+
+  # check for permission to read a specific thing
+  Ash.can?({organization, :read}, nil)
+  # => false
+  ```
+
+  ### Code Interfaces
+
+  When you define code interfaces, they provide `can_*` functions, which can be used like so:
+
+  ```elixir
+  # no actor
+  MyApp.Accounts.can_create_organization?(nil)
+  # => false
+
+  # admin user actor
+  MyApp.Accounts.can_create_organization?(%MyApp.Accounts.User{role: :admin})
+  # => true
+
+  # check for permission to update a specific thing
+  user = MyApp.Accounts.get_post_by_id!(«uuid»)
+  MyApp.Accounts.can_update_user(user, %{role: :user})
+  # => false
+
+  # read actions
+  # no logged in user. Will say `true` because the action
+  # is allowed, but will just be filtered
+  MyApp.Accounts.can_read_organizations?(nil)
+  # => true
+
+  # check for permission to read a specific thing
+  MyApp.Accounts.can_read_organizations?(nil, data: organization)
+  # => false
+  ```
+
   ### Options
 
   #{Spark.Options.docs(@can_opts)}
