@@ -43,6 +43,19 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsIntegerPrimaryKeyTestUser do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:read, :destroy, create: :*]
+    end
+
+    attributes do
+      integer_primary_key :id, writable?: true
+      attribute :name, :string, public?: true
+    end
+  end
+
   test "won't compile with identities that don't precheck" do
     assert_raise Spark.Error.DslError, ~r/pre_check_with/, fn ->
       defmodule Example do
@@ -231,6 +244,54 @@ defmodule Ash.DataLayer.EtsTest do
 
     test "is_nil", %{zachary: zachary, matthew: matthew, joe: joe} do
       assert [^joe, ^matthew, ^zachary] = strip_metadata(filter_users(title: [is_nil: true]))
+    end
+  end
+
+  describe "integer primary key" do
+    test "create" do
+      supplied_id = 1
+
+      %EtsIntegerPrimaryKeyTestUser{id: id} =
+        EtsIntegerPrimaryKeyTestUser
+        |> Ash.Changeset.for_create(:create, %{id: supplied_id, name: "Mike"})
+        |> Ash.create!()
+
+      assert supplied_id == id
+    end
+
+    test "create id key not supplied" do
+      assert_raise(Ash.Error.Invalid, ~r/invalid primary key/i, fn ->
+        EtsIntegerPrimaryKeyTestUser
+        |> Ash.Changeset.for_create(:create, %{name: "Mike"})
+        |> Ash.create!()
+      end)
+    end
+
+    test "bulk create" do
+      supplied_ids = [1, 2]
+
+      result =
+        Ash.bulk_create!(
+          [
+            %{id: List.first(supplied_ids), name: "Foo"},
+            %{id: List.last(supplied_ids), name: "Bar"}
+          ],
+          EtsIntegerPrimaryKeyTestUser,
+          :create,
+          return_records?: true
+        )
+
+      ids =
+        result.records
+        |> Enum.map(& &1.id)
+
+      assert Enum.sort(supplied_ids) == Enum.sort(ids)
+    end
+
+    test "bulk create id key not supplied" do
+      assert_raise(Ash.Error.Invalid, ~r/invalid primary key/i, fn ->
+        Ash.bulk_create!([%{name: "Foo"}, %{name: "Bar"}], EtsIntegerPrimaryKeyTestUser, :create)
+      end)
     end
   end
 
