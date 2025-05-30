@@ -18,19 +18,17 @@ defmodule Ash.Error.Framework.PendingCodegen do
 
     Here's what you can do:
 
-    🚀 Ready to generate the files?
-       Run: `mix ash.codegen --dev`
-       (This creates temporary development files so you can keep working)
+    🚀 Ready to generate the files? Create temporary development files so you can keep working:
+
+           mix ash.codegen --dev
 
     🔍 Want to see what will be generated?
-       Run: `mix ash.codegen --dry-run`
 
-    ✅ Finished with your changes?
-       Run: `mix ash.codegen <describe_your_changes>`
-       (This creates the final, production-ready files)
+           mix ash.codegen --dry-run
 
-    💡 The --dev flag is handy because it creates temporary files (like migrations ending in `_dev`)
-       that get cleaned up and properly named when you're ready to finalize everything.
+    ✅ Finished with your changes? Create final production-ready files:
+
+           mix ash.codegen <describe_your_changes>
     """
   end
 end

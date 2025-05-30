@@ -102,7 +102,7 @@ defmodule Ash.Policy.Authorizer do
 
   @authorize_unless %Spark.Dsl.Entity{
     name: :authorize_unless,
-    describe: "If the check is false, the request is authorized, otherwise run remaining checks.",
+    describe: "If the check is true, run remaining checks, otherwise the request is authorized.",
     args: [:check],
     schema: @check_schema,
     target: Ash.Policy.Check,
@@ -119,7 +119,7 @@ defmodule Ash.Policy.Authorizer do
 
   @forbid_unless %Spark.Dsl.Entity{
     name: :forbid_unless,
-    describe: "If the check is true, the request is forbidden, otherwise run remaining checks.",
+    describe: "If the check is true, run remaining checks, otherwise the request is forbidden.",
     args: [:check],
     schema: @check_schema,
     target: Ash.Policy.Check,
