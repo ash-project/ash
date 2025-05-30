@@ -135,7 +135,7 @@ defmodule MyApp.Project do
   ...
 
   relationships do
-    belongs_to :organization, MyApp.Organization
+    belongs_to :organization, MyApp.Accounts.Organization
   end
 end
 ```
