@@ -45,6 +45,7 @@ defmodule Ash.DataLayer.Ets do
     verifiers: [Ash.DataLayer.Verifiers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
+  alias Ash.Error.Invalid.InvalidPrimaryKey
 
   defmodule Query do
     @moduledoc false
@@ -1528,14 +1529,8 @@ defmodule Ash.DataLayer.Ets do
     else
       with {:ok, table} <- wrap_or_create_table(resource, options.tenant) do
         Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
-          pkey =
-            resource
-            |> Ash.Resource.Info.primary_key()
-            |> Enum.into(%{}, fn attr ->
-              {attr, Ash.Changeset.get_attribute(changeset, attr)}
-            end)
-
-          with {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+          with {:ok, pkey} <- get_valid_pkey(resource, changeset),
+               {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
                record <- unload_relationships(resource, record) do
             {:cont, {:ok, [{pkey, changeset.context.bulk_create.index, record} | results]}}
           else
@@ -1570,14 +1565,8 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def create(resource, changeset, from_bulk_create? \\ false) do
-    pkey =
-      resource
-      |> Ash.Resource.Info.primary_key()
-      |> Enum.into(%{}, fn attr ->
-        {attr, Ash.Changeset.get_attribute(changeset, attr)}
-      end)
-
-    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+    with {:ok, pkey} <- get_valid_pkey(resource, changeset),
+         {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          record <- unload_relationships(resource, record),
@@ -1650,6 +1639,21 @@ defmodule Ash.DataLayer.Ets do
 
       other ->
         other
+    end
+  end
+
+  defp get_valid_pkey(resource, changeset) do
+    pkey =
+      resource
+      |> Ash.Resource.Info.primary_key()
+      |> Enum.into(%{}, fn attr ->
+        {attr, Ash.Changeset.get_attribute(changeset, attr)}
+      end)
+
+    if !Enum.empty?(pkey) && Enum.any?(pkey, fn {_, v} -> is_nil(v) end) do
+      {:error, InvalidPrimaryKey.exception(resource: resource, value: pkey)}
+    else
+      {:ok, pkey}
     end
   end
 
