@@ -71,5 +71,8 @@ defmodule Mix.Tasks.Ash.Codegen do
         extension.codegen(argv)
       end
     end)
+  rescue
+    e in Ash.Error.Framework.PendingCodegen ->
+      Mix.raise(Exception.message(e) <> "\n\nRun with --dry-run to view pending changes")
   end
 end
