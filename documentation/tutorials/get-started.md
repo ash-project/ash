@@ -44,6 +44,12 @@ This guide focuses on getting you introduced to Ash quickly. For that reason, we
 project to explore the concepts. You can, however, add Ash to your existing project if desired.
 See the options below for more.
 
+
+> ### What is igniter? {: .tip}
+> 
+> Igniter is a code generation and project setup tool that automates the installation and configuration of Elixir packages. Instead of manually adding dependencies and writing boilerplate code, Igniter handles this for you. When you run `mix igniter.install ash`, it automatically adds Ash to your project and sets up the necessary configuration files.
+
+
 <!-- tabs-open -->
 
 ### New project
@@ -86,10 +92,10 @@ Finally, if you want to install Ash manually, step by step, follow the [manual i
 
 <!-- tabs-close -->
 
-> ### Picosat installation issues? {: .info}
+> ### Picosat installation issues? {: .warning}
 >
-> If you have trouble compiling `picosat_elixir`, then replace `{:picosat_elixir, "~> 0.2"}` with `{:simple_sat, "~> 0.1"}` to use a simpler (but mildly slower) solver. You can always switch back to `picosat_elixir` later once you're done with the tutorial.
-> And run `mix deps.get`, to install the dependency.
+> If you have trouble compiling `picosat_elixir`, then alter your `mix.exs` file to replace `{:picosat_elixir, "~> 0.2"}` with `{:simple_sat, "~> 0.1"}` to use a simpler (but mildly slower) solver. You can always switch back to `picosat_elixir` later once you're done with the tutorial.
+> Then, run `mix deps.get && mix deps.compile ash --force`
 
 ### Building your first Ash Domain
 
