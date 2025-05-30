@@ -259,7 +259,16 @@ defmodule Ash.Generator do
           changeset_opts =
             StreamData.fixed_map(
               Map.put(
-                to_generators(Keyword.take(opts, [:actor, :tenant, :authorize?, :context])),
+                to_generators(
+                  Keyword.take(opts, [
+                    :actor,
+                    :tenant,
+                    :authorize?,
+                    :context,
+                    :upsert?,
+                    :upsert_identity
+                  ])
+                ),
                 :private_arguments,
                 private_arguments
               )
@@ -294,7 +303,16 @@ defmodule Ash.Generator do
         changeset_opts =
           StreamData.fixed_map(
             Map.put(
-              to_generators(Keyword.take(opts, [:actor, :tenant, :authorize?, :context])),
+              to_generators(
+                Keyword.take(opts, [
+                  :actor,
+                  :tenant,
+                  :authorize?,
+                  :context,
+                  :upsert?,
+                  :upsert_identity
+                ])
+              ),
               :private_arguments,
               private_arguments
             )
