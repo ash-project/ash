@@ -7,7 +7,7 @@ In Ash, there are two primary strategies for implementing multitenancy. The firs
 ## Attribute Multitenancy
 
 ```elixir
-defmodule MyApp.User do
+defmodule MyApp.Accounts.User do
   use Ash.Resource, ...
 
   multitenancy do
