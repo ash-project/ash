@@ -56,8 +56,8 @@ See the options below for more.
 
 First, to use `mix igniter.new`, the archive must be installed.
 
-```bash
-# install igniter.enw
+```elixir
+# install igniter.new
 mix archive.install hex igniter_new
 
 # create a new application with Ash in it
