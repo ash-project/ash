@@ -181,11 +181,9 @@ defmodule Ash.MixProject do
       groups_for_modules: [
         "Core API": [
           Ash,
-          Ash.Domain,
           Ash.Query,
           Ash.Changeset,
-          Ash.ActionInput,
-          Ash.BulkResult
+          Ash.ActionInput
         ],
         Resources: [
           Ash.Resource.Calculation,
@@ -198,7 +196,7 @@ defmodule Ash.MixProject do
           Ash.Resource.ManualUpdate,
           Ash.Resource.ManualDestroy,
           Ash.Resource.ManualRelationship,
-          Ash.Resource.Attribute.Helpers
+          Ash.Domain
         ],
         Queries: [
           Ash.Query,
@@ -261,6 +259,7 @@ defmodule Ash.MixProject do
           Ash.Tracer.Simple.Span
         ],
         Utilities: [
+          Ash.BulkResult,
           Ash.Expr,
           Ash.Page,
           Ash.Page.Keyset,
