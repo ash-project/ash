@@ -917,14 +917,29 @@ defmodule Ash do
   def can_question_mark_opts, do: @can_question_mark_opts
 
   @doc """
-  Runs an aggregate or aggregates over a resource query. See `aggregate/3` for more.
+  Runs an aggregate or aggregates over a resource query, returning the result or raising an error.
+
+  This is the bang version of `aggregate/3` that raises an error if the operation fails.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.aggregate!({:count, :count})
+      42
+
+      iex> query |> Ash.aggregate!([{:avg_likes, :avg, field: :likes}, {:count, :count}])
+      %{avg_likes: 10.5, count: 42}
+
+  ## See also
+
+  - `aggregate/3` for the non-raising version
+  - `count!/2` for counting records specifically
+  - `sum!/3` for summing field values
   """
   @spec aggregate!(
           Ash.Query.t() | Ash.Resource.t(),
-          aggregates :: aggregate | list(aggregate),
+          aggregate | list(aggregate),
           opts :: Keyword.t()
-        ) ::
-          term | no_return
+        ) :: term | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
   def aggregate!(query, aggregate_or_aggregates, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -984,7 +999,21 @@ defmodule Ash do
 
   @doc """
   Fetches the count of results that would be returned from a given query, or raises an error.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.count!()
+      42
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.count!()
+      15
+
+  ## See also
+
+  - `count/2` for the non-raising version
+  - `aggregate!/3` for running multiple aggregates
   """
+  @spec count!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) :: non_neg_integer() | no_return
   @doc spark_opts: [{1, @aggregate_opts}]
   def count!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -997,7 +1026,21 @@ defmodule Ash do
 
   @doc """
   Fetches the count of results that would be returned from a given query.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.count()
+      {:ok, 42}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.count()
+      {:ok, 15}
+
+  ## See also
+
+  - `count!/2` for the raising version
+  - `aggregate/3` for running multiple aggregates
   """
+  @spec count(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) :: {:ok, non_neg_integer()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{1, @aggregate_opts}]
   def count(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1017,7 +1060,21 @@ defmodule Ash do
 
   @doc """
   Returns whether or not the query would return any results, or raises an error.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.exists?()
+      true
+
+      iex> MyApp.Post |> Ash.Query.filter(published: false) |> Ash.exists?()
+      false
+
+  ## See also
+
+  - `exists/2` for the non-raising version
+  - `count!/2` for getting the actual count
   """
+  @spec exists?(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) :: boolean() | no_return
   @doc spark_opts: [{1, @aggregate_opts}]
   def exists?(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1030,7 +1087,21 @@ defmodule Ash do
 
   @doc """
   Returns whether or not the query would return any results.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.exists()
+      {:ok, true}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: false) |> Ash.exists()
+      {:ok, false}
+
+  ## See also
+
+  - `exists?/2` for the raising version
+  - `count/2` for getting the actual count
   """
+  @spec exists(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) :: {:ok, boolean()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{1, @aggregate_opts}]
   def exists(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1049,8 +1120,22 @@ defmodule Ash do
   end
 
   @doc """
-  Fetches the first value for a given field, or raises an error.
+  Fetches the first value for a given field.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.first(:title)
+      {:ok, "Hello World"}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.first(:view_count)
+      {:ok, 42}
+
+  ## See also
+
+  - `first!/3` for the raising version
+  - `list/3` for getting all values of a field
   """
+  @spec first(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, term()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def first(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1100,8 +1185,22 @@ defmodule Ash do
   end
 
   @doc """
-  Fetches the first value for a given field.
+  Fetches the first value for a given field, or raises an error.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.first!(:title)
+      "Hello World"
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.first!(:view_count)
+      42
+
+  ## See also
+
+  - `first/3` for the non-raising version
+  - `list!/3` for getting all values of a field
   """
+  @spec first!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: term() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
   def first!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1114,7 +1213,21 @@ defmodule Ash do
 
   @doc """
   Fetches the sum of a given field.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.sum(:view_count)
+      {:ok, 1542}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.sum(:likes)
+      {:ok, 238}
+
+  ## See also
+
+  - `sum!/3` for the raising version
+  - `avg/3` for getting the average value
   """
+  @spec sum(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, number()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def sum(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1136,7 +1249,21 @@ defmodule Ash do
 
   @doc """
   Fetches the sum of a given field or raises an error.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.sum!(:view_count)
+      1542
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.sum!(:likes)
+      238
+
+  ## See also
+
+  - `sum/3` for the non-raising version
+  - `avg!/3` for getting the average value
   """
+  @spec sum!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: number() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
   def sum!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1149,7 +1276,21 @@ defmodule Ash do
 
   @doc """
   Fetches a list of all values of a given field.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.list(:title)
+      {:ok, ["Hello World", "Another Post", "Final Post"]}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.list(:view_count)
+      {:ok, [42, 15, 89]}
+
+  ## See also
+
+  - `list!/3` for the raising version
+  - `first/3` for getting just the first value
   """
+  @spec list(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, list(term())} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def list(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1206,7 +1347,21 @@ defmodule Ash do
 
   @doc """
   Fetches a list of all values of a given field or raises an error.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.list!(:title)
+      ["Hello World", "Another Post", "Final Post"]
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.list!(:view_count)
+      [42, 15, 89]
+
+  ## See also
+
+  - `list/3` for the non-raising version
+  - `first!/3` for getting just the first value
   """
+  @spec list!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: list(term()) | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
   def list!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1219,7 +1374,21 @@ defmodule Ash do
 
   @doc """
   Fetches the greatest of all values of a given field.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.max(:view_count)
+      {:ok, 1542}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.max(:created_at)
+      {:ok, ~U[2023-12-25 10:30:00Z]}
+
+  ## See also
+
+  - `max!/3` for the raising version
+  - `min/3` for getting the minimum value
   """
+  @spec max(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, term()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def max(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1241,7 +1410,21 @@ defmodule Ash do
 
   @doc """
   Fetches the greatest of all values of a given field or raises an error.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.max!(:view_count)
+      1542
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.max!(:created_at)
+      ~U[2023-12-25 10:30:00Z]
+
+  ## See also
+
+  - `max/3` for the non-raising version
+  - `min!/3` for getting the minimum value
   """
+  @spec max!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: term() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
   def max!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1254,7 +1437,21 @@ defmodule Ash do
 
   @doc """
   Fetches the least of all values of a given field.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.min(:view_count)
+      {:ok, 5}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.min(:created_at)
+      {:ok, ~U[2023-01-01 08:00:00Z]}
+
+  ## See also
+
+  - `min!/3` for the raising version
+  - `max/3` for getting the maximum value
   """
+  @spec min(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, term()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def min(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1276,7 +1473,21 @@ defmodule Ash do
 
   @doc """
   Fetches the least of all values of a given field or raises an error.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.min!(:view_count)
+      5
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.min!(:created_at)
+      ~U[2023-01-01 08:00:00Z]
+
+  ## See also
+
+  - `min/3` for the non-raising version
+  - `max!/3` for getting the maximum value
   """
+  @spec min!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: term() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
   def min!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1289,7 +1500,21 @@ defmodule Ash do
 
   @doc """
   Fetches the average of all values of a given field.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.avg(:view_count)
+      {:ok, 42.5}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.avg(:likes)
+      {:ok, 15.8}
+
+  ## See also
+
+  - `avg!/3` for the raising version
+  - `sum/3` for getting the total sum
   """
+  @spec avg(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, number()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def avg(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1311,7 +1536,21 @@ defmodule Ash do
 
   @doc """
   Fetches the average of all values of a given field or raises an error.
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.avg!(:view_count)
+      42.5
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.avg!(:likes)
+      15.8
+
+  ## See also
+
+  - `avg/3` for the non-raising version
+  - `sum!/3` for getting the total sum
   """
+  @spec avg!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: number() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
   def avg!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
