@@ -2457,13 +2457,6 @@ defmodule Ash do
 
   This reads the entire table into memory with no limit. This is, generally speaking, the least efficient.
 
-  ## Options
-
-  #{Spark.Options.docs(@stream_opts)}
-  """
-  @spec stream!(query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
-          Enumerable.t(Ash.Resource.record())
-
   ## Examples
 
       iex> MyApp.Post |> Ash.stream!() |> Enum.take(10)
@@ -2474,6 +2467,13 @@ defmodule Ash do
 
       iex> MyApp.Post |> Ash.stream!(strategy: :offset, batch_size: 50) |> Stream.filter(& &1.likes > 10) |> Enum.to_list()
       [%MyApp.Post{likes: 15}, ...]
+
+  ## Options
+
+  #{Spark.Options.docs(@stream_opts)}
+  """
+  @spec stream!(query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
+          Enumerable.t(Ash.Resource.record())
 
   @doc spark_opts: [{1, @stream_opts}]
   def stream!(query, opts \\ []) do
