@@ -213,28 +213,84 @@ defmodule Ash.Changeset do
     end
   end
 
+  @typedoc """
+  Function type for after action hooks.
+  
+  Receives the changeset and the successfully created/updated record, and can return
+  the record optionally with notifications, or an error.
+  """
   @type after_action_fun ::
           (t, Ash.Resource.record() ->
              {:ok, Ash.Resource.record()}
              | {:ok, Ash.Resource.record(), [Ash.Notifier.Notification.t()]}
              | {:error, any})
 
+  @typedoc """
+  Function type for after transaction hooks.
+  
+  Receives the changeset and the result (success or failure) of the action,
+  and returns the result (potentially modified).
+  """
   @type after_transaction_fun ::
           (t, {:ok, Ash.Resource.record()} | {:error, any} ->
              {:ok, Ash.Resource.record()} | {:error, any})
 
+  @typedoc """
+  Function type for before action hooks.
+  
+  Receives a changeset and returns a modified changeset, optionally with notifications.
+  """
   @type before_action_fun :: (t -> t | {t, %{notifications: [Ash.Notifier.Notification.t()]}})
 
+  @typedoc """
+  Function type for before transaction hooks.
+  
+  Receives a changeset and returns a modified changeset.
+  """
   @type before_transaction_fun :: (t -> t)
 
+  @typedoc """
+  Result type for around action callbacks.
+  
+  Contains the successful result with record, changeset, and notifications, or an error.
+  """
   @type around_action_result ::
           {:ok, Ash.Resource.record(), t(), %{notifications: list(Ash.Notifier.Notification.t())}}
           | {:error, Ash.Error.t()}
+  
+  @typedoc """
+  Callback function type for around action hooks.
+  
+  A function that takes a changeset and returns an around action result.
+  """
   @type around_action_callback :: (t -> around_action_result)
+  
+  @typedoc """
+  Function type for around action hooks.
+  
+  Receives a changeset and a callback function that must be called with the changeset.
+  """
   @type around_action_fun :: (t, around_action_callback -> around_action_result)
 
+  @typedoc """
+  Result type for around transaction callbacks.
+  
+  Contains either a successful result with the record or an error.
+  """
   @type around_transaction_result :: {:ok, Ash.Resource.record()} | {:error, any}
+  
+  @typedoc """
+  Callback function type for around transaction hooks.
+  
+  A function that takes a changeset and returns an around transaction result.
+  """
   @type around_transaction_callback :: (t -> around_transaction_result)
+  
+  @typedoc """
+  Function type for around transaction hooks.
+  
+  Receives a changeset and a callback function that must be called with the changeset.
+  """
   @type around_transaction_fun :: (t, around_transaction_callback -> around_transaction_result)
 
   @phases [
@@ -249,8 +305,19 @@ defmodule Ash.Changeset do
     :around_transaction
   ]
 
+  @typedoc """
+  The current phase of changeset processing.
+  
+  Represents where the changeset is in its lifecycle, from pending through various hook phases.
+  """
   @type phase :: unquote(Enum.reduce(@phases, &{:|, [], [&1, &2]}))
 
+  @typedoc """
+  The changeset struct containing all the information about a pending action.
+  
+  This struct tracks changes to attributes, arguments for the action, validation state,
+  hooks to run at various points, and other metadata needed to execute an action.
+  """
   @type t :: %__MODULE__{
           __validated_for_action__: atom | nil,
           action: Ash.Resource.Actions.action() | nil,
@@ -311,6 +378,11 @@ defmodule Ash.Changeset do
   defmodule OriginalDataNotAvailable do
     @moduledoc "A value placed in changeset.data to indicate that the original data is not available"
     defstruct reason: :atomic_query_update
+    @typedoc """
+    Placeholder struct used when original data is not available.
+    
+    Used in atomic operations where the original record data cannot be loaded.
+    """
     @type t :: %__MODULE__{reason: :atomic_query_update}
   end
 
@@ -383,14 +455,33 @@ defmodule Ash.Changeset do
   *Warning*: You almost always want to use `for_action` or `for_create`, etc. over this function if possible.
 
   You can use this to start a changeset and make changes prior to calling `for_action`. This is not typically
-  necessary, but can be useful as an escape hatch. For example:
+  necessary, but can be useful as an escape hatch.
 
-  ```elixir
-  Resource
-  |> Ash.Changeset.new()
-  |> Ash.Changeset.change_attribute(:name, "foobar")
-  |> Ash.Changeset.for_action(...)
-  ```
+  ## Examples
+
+      # Create a changeset for a new record
+      iex> changeset = Ash.Changeset.new(MyApp.Post)
+      iex> changeset.action_type
+      :create
+
+      # Create a changeset for updating an existing record
+      iex> post = %MyApp.Post{id: 1, title: "Original Title"}
+      iex> changeset = Ash.Changeset.new(post)
+      iex> changeset.action_type
+      :update
+
+      # Use as an escape hatch before calling for_action
+      iex> MyApp.Post
+      ...> |> Ash.Changeset.new()
+      ...> |> Ash.Changeset.change_attribute(:title, "Draft Title")
+      ...> |> Ash.Changeset.for_action(:create, %{content: "Post content"})
+
+  ## See also
+
+  - `for_action/4` for the recommended way to create changesets
+  - `for_create/4` for creating new records
+  - `for_update/4` for updating existing records
+  - `for_destroy/4` for destroying records
   """
   @spec new(Ash.Resource.t() | Ash.Resource.record()) :: t
 
@@ -444,7 +535,39 @@ defmodule Ash.Changeset do
   A select provided on a changeset sets the unselected fields to `nil` before returning the result.
 
   Use `ensure_selected/2` if you wish to make sure a field has been selected, without deselecting any other fields.
+
+  ## Examples
+
+      # Select specific fields
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create)
+      iex> changeset = Ash.Changeset.select(changeset, [:title, :content])
+      iex> changeset.select
+      [:title, :content]
+
+      # Combine multiple select calls (default behavior)
+      iex> changeset = Ash.Changeset.for_create(MyApp.User, :create)
+      iex> changeset = changeset
+      ...> |> Ash.Changeset.select([:name, :email])
+      ...> |> Ash.Changeset.select([:created_at])
+      iex> changeset.select
+      [:name, :email, :created_at]
+
+      # Replace previous selection
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create)
+      iex> changeset = changeset
+      ...> |> Ash.Changeset.select([:title, :content])
+      ...> |> Ash.Changeset.select([:title, :published_at], replace?: true)
+      iex> changeset.select
+      [:title, :published_at]
+
+  ## See also
+
+  - `ensure_selected/2` for adding fields without replacing existing selection
+  - `deselect/2` for removing fields from selection
+  - `selecting?/2` for checking if a field is selected
+  - `load/2` for loading relationships and calculations
   """
+  @spec select(t(), list(atom()) | atom(), Keyword.t()) :: t()
   def select(changeset, fields, opts \\ []) do
     if opts[:replace?] do
       case fields do
@@ -504,6 +627,40 @@ defmodule Ash.Changeset do
 
   @doc """
   Calls the provided load statement on the result of the action at the very end of the action.
+
+  ## Examples
+
+      # Load a single relationship
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create, %{title: "My Post"})
+      iex> changeset = Ash.Changeset.load(changeset, :comments)
+      iex> changeset.load
+      [:comments]
+
+      # Load multiple relationships
+      iex> changeset = Ash.Changeset.for_update(user, :update, %{name: "John Doe"})
+      iex> changeset = Ash.Changeset.load(changeset, [:posts, :profile])
+      iex> changeset.load
+      [:posts, :profile]
+
+      # Load nested relationships
+      iex> changeset = Ash.Changeset.for_create(MyApp.Comment, :create, %{body: "Great post!"})
+      iex> changeset = Ash.Changeset.load(changeset, [post: [:author, :comments]])
+      iex> changeset.load
+      [[post: [:author, :comments]]]
+
+      # Chain multiple load calls (they accumulate)
+      iex> changeset = Ash.Changeset.for_update(post, :update, %{title: "Updated Title"})
+      iex> changeset = changeset
+      ...> |> Ash.Changeset.load(:author)
+      ...> |> Ash.Changeset.load(:comments)
+      iex> changeset.load
+      [:author, :comments]
+
+  ## See also
+
+  - `select/3` for controlling which attributes are returned
+  - `loading?/2` for checking if something is being loaded
+  - `Ash.Query.load/2` for loading in queries
   """
   @spec load(t(), term()) :: t()
   def load(changeset, load) do
@@ -530,6 +687,7 @@ defmodule Ash.Changeset do
 
   See `select/2` for more.
   """
+  @spec ensure_selected(t(), list(atom()) | atom()) :: t()
   def ensure_selected(changeset, fields) do
     if changeset.select do
       Ash.Changeset.select(changeset, List.wrap(fields))
@@ -543,6 +701,7 @@ defmodule Ash.Changeset do
   @doc """
   Ensure the the specified attributes are `nil` in the changeset results.
   """
+  @spec deselect(t(), list(atom()) | atom()) :: t()
   def deselect(changeset, fields) do
     select =
       if changeset.select do
@@ -1570,6 +1729,29 @@ defmodule Ash.Changeset do
   - Set any default values for attributes
   - Run action changes & validations
   - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.create.validate|before_action?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
+
+  ## Examples
+
+      # Basic create changeset with attributes
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create, %{title: "Hello World", content: "This is my first post"})
+      iex> changeset.valid?
+      true
+
+      # Create changeset with custom actor and tenant
+      iex> changeset = Ash.Changeset.for_create(MyApp.Comment, :create,
+      ...>   %{body: "Great post!"},
+      ...>   actor: current_user,
+      ...>   tenant: "org_123"
+      ...> )
+      iex> changeset.tenant
+      "org_123"
+
+  ## See also
+
+  - `for_action/4` for a generic action constructor
+  - `for_update/4` for updating existing records
+  - `for_destroy/4` for destroying records
+  - `Ash.create/2` to execute the changeset
   """
   def for_create(initial, action, params \\ %{}, opts \\ []) do
     changeset =
@@ -1656,6 +1838,31 @@ defmodule Ash.Changeset do
   - Set any default values for attributes
   - Run action changes & validations
   - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.update.validate|before_action?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
+
+  ## Examples
+
+      # Basic update changeset with attributes
+      iex> post = %MyApp.Post{id: 1, title: "Original Title", content: "Original content"}
+      iex> changeset = Ash.Changeset.for_update(post, :update, %{title: "Updated Title"})
+      iex> changeset.valid?
+      true
+
+      # Update changeset with custom actor and load related data
+      iex> comment = %MyApp.Comment{id: 1, body: "Original comment", post_id: 1}
+      iex> changeset = Ash.Changeset.for_update(comment, :update,
+      ...>   %{body: "Updated comment"},
+      ...>   actor: current_user,
+      ...>   load: [:post, :author]
+      ...> )
+      iex> changeset.load
+      [:post, :author]
+
+  ## See also
+
+  - `for_action/4` for a generic action constructor
+  - `for_create/4` for creating new records
+  - `for_destroy/4` for destroying records
+  - `Ash.update/2` to execute the changeset
   """
   def for_update(initial, action, params \\ %{}, opts \\ []) do
     changeset =
@@ -1706,6 +1913,31 @@ defmodule Ash.Changeset do
   - Set any default values for attributes
   - Run action changes & validations
   - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.destroy.validate|before_action?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
+
+  ## Examples
+
+      # Basic destroy changeset
+      iex> post = %MyApp.Post{id: 1, title: "My Post", content: "Content"}
+      iex> changeset = Ash.Changeset.for_destroy(post, :destroy)
+      iex> changeset.valid?
+      true
+
+      # Destroy changeset with inputs for the action
+      iex> user = %MyApp.User{id: 1, name: "John", email: "john@example.com"}
+      iex> changeset = Ash.Changeset.for_destroy(user, :archive, %{reason: "User requested deletion"}, actor: current_user)
+
+      # Soft delete changeset (if action is configured as soft)
+      iex> comment = %MyApp.Comment{id: 1, body: "My comment", post_id: 1}
+      iex> changeset = Ash.Changeset.for_destroy(comment, :soft_delete, %{}, actor: current_user, tenant: "org_123")
+      iex> changeset.tenant
+      "org_123"
+
+  ## See also
+
+  - `for_action/4` for a generic action constructor
+  - `for_create/4` for creating new records
+  - `for_update/4` for updating records
+  - `Ash.destroy/2` to execute the changeset
   """
   def for_destroy(initial, action_or_name, params \\ %{}, opts \\ []) do
     changeset =
@@ -1880,6 +2112,40 @@ defmodule Ash.Changeset do
   and implement the appropriate atomic callbacks on those modules. All builtin validations and changes
   implement these callbacks in addition to the standard callbacks. Validations will only be run atomically
   when the entire action is being run atomically or if one of the relevant fields is being updated atomically.
+
+  ## Examples
+
+      # Basic atomic increment
+      iex> changeset = Ash.Changeset.for_update(post, :update)
+      iex> changeset = Ash.Changeset.atomic_update(changeset, :view_count, expr(view_count + 1))
+      iex> changeset.atomics
+      [view_count: %Ash.Expr{...}]
+
+      # Multiple atomic updates
+      iex> changeset = Ash.Changeset.for_update(user, :update)
+      iex> changeset = changeset
+      ...> |> Ash.Changeset.atomic_update(:login_count, expr(login_count + 1))
+      ...> |> Ash.Changeset.atomic_update(:last_login, expr(now()))
+      iex> length(changeset.atomics)
+      2
+
+      # Atomic update with conditional logic
+      iex> changeset = Ash.Changeset.for_update(post, :update)
+      iex> changeset = Ash.Changeset.atomic_update(changeset, :status,
+      ...>   expr(if view_count > 1000, do: "popular", else: "normal"))
+
+      # Using the map/keyword syntax for multiple atomics
+      iex> changeset = Ash.Changeset.for_update(user, :update)
+      iex> changeset = Ash.Changeset.atomic_update(changeset, %{
+      ...>   login_count: expr(login_count + 1),
+      ...>   last_seen: expr(now())
+      ...> })
+
+  ## See also
+
+  - `atomic_ref/2` for referencing atomic values in expressions
+  - `fully_atomic_changeset/4` for creating fully atomic changesets
+  - `change_attribute/3` for regular (non-atomic) attribute changes
   """
   @spec atomic_update(t(), atom(), {:atomic, Ash.Expr.t()} | Ash.Expr.t()) :: t()
   def atomic_update(changeset, key, {:atomic, value}) do
@@ -2221,6 +2487,37 @@ defmodule Ash.Changeset do
 
   This also accounts for the `accessing_from` context that is set when using `manage_relationship`, so it is aware that a particular value
   *will* be set by `manage_relationship` even if it isn't currently being set.
+
+  ## Examples
+
+      # Check if attribute is present in original data
+      iex> post = %MyApp.Post{id: 1, title: "My Post", content: nil}
+      iex> changeset = Ash.Changeset.for_update(post, :update)
+      iex> Ash.Changeset.present?(changeset, :title)
+      true
+      iex> Ash.Changeset.present?(changeset, :content)
+      false
+
+      # Check if attribute is being changed to a non-nil value
+      iex> post = %MyApp.Post{id: 1, title: nil, content: "Content"}
+      iex> changeset = Ash.Changeset.for_update(post, :update, %{title: "New Title"})
+      iex> Ash.Changeset.present?(changeset, :title)
+      true
+
+      # Check if argument is present
+      iex> changeset = MyApp.User
+      ...> |> Ash.Changeset.new()
+      ...> |> Ash.Changeset.set_argument(:send_email, true)
+      iex> Ash.Changeset.present?(changeset, :send_email)
+      true
+      iex> Ash.Changeset.present?(changeset, :other_arg)
+      false
+
+  ## See also
+
+  - `attribute_present?/2` for checking only attributes (not arguments)
+  - `changing_attribute?/2` for checking if an attribute is being changed
+  - `get_argument/2` and `get_attribute/2` for retrieving values
   """
   def present?(changeset, attribute) do
     arg_or_attribute_value =
@@ -3000,10 +3297,12 @@ defmodule Ash.Changeset do
           changeset ->
             Enum.reduce_while(arguments, {:ok, []}, fn argument, {:ok, args} ->
               IO.inspect(argument)
+
               case Ash.Expr.eval(argument,
                      resource: changeset.resource,
                      unknown_on_unknown_refs?: true
-                   ) |> IO.inspect() do
+                   )
+                   |> IO.inspect() do
                 {:ok, value} ->
                   {:cont, {:ok, [value | args]}}
 
@@ -4359,7 +4658,36 @@ defmodule Ash.Changeset do
     Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, ability})
   end
 
-  @doc "Gets the value of an argument provided to the changeset."
+  @doc """
+  Gets the value of an argument provided to the changeset.
+
+  ## Examples
+
+      # Get an argument that was set
+      iex> changeset = MyApp.Post
+      ...> |> Ash.Changeset.new()
+      ...> |> Ash.Changeset.set_argument(:auto_publish, true)
+      iex> Ash.Changeset.get_argument(changeset, :auto_publish)
+      true
+
+      # Get an argument that doesn't exist (returns nil)
+      iex> changeset = Ash.Changeset.new(MyApp.Post)
+      iex> Ash.Changeset.get_argument(changeset, :nonexistent)
+      nil
+
+      # Get argument with string key
+      iex> changeset = MyApp.User
+      ...> |> Ash.Changeset.new()
+      ...> |> Ash.Changeset.set_argument(:send_email, false)
+      iex> Ash.Changeset.get_argument(changeset, "send_email")
+      false
+
+  ## See also
+
+  - `set_argument/3` for setting argument values
+  - `fetch_argument/2` for getting arguments with error handling
+  - `get_argument_or_attribute/2` for fallback to attributes
+  """
   @spec get_argument(t, atom) :: term
   def get_argument(changeset, argument) when is_atom(argument) do
     if Map.has_key?(changeset.arguments, argument) do
@@ -4499,6 +4827,11 @@ defmodule Ash.Changeset do
 
   defp store_context_changes(changeset, _), do: changeset
 
+  @typedoc """
+  The type of relationship management strategy to use.
+  
+  Defines how related records should be handled when managing relationships.
+  """
   @type manage_relationship_type ::
           :append_and_remove | :append | :remove | :direct_control | :create
 
@@ -5332,7 +5665,40 @@ defmodule Ash.Changeset do
     |> Enum.any?(&changing_attribute?(changeset, &1.name))
   end
 
-  @doc "Returns true if an attribute exists in the changes"
+  @doc """
+  Returns true if an attribute exists in the changes.
+
+  ## Examples
+
+      # Check if an attribute is being changed
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create)
+      iex> changeset = Ash.Changeset.change_attribute(changeset, :title, "New Title")
+      iex> Ash.Changeset.changing_attribute?(changeset, :title)
+      true
+      iex> Ash.Changeset.changing_attribute?(changeset, :content)
+      false
+
+      # Works with atomic updates too
+      iex> changeset = Ash.Changeset.for_update(post, :update)
+      iex> changeset = Ash.Changeset.atomic_update(changeset, :view_count, {:atomic, expr(view_count + 1)})
+      iex> Ash.Changeset.changing_attribute?(changeset, :view_count)
+      true
+
+      # Check multiple attributes
+      iex> changeset = Ash.Changeset.for_create(MyApp.User, :create)
+      iex> changeset = Ash.Changeset.change_attributes(changeset, %{name: "John", email: "john@example.com"})
+      iex> Ash.Changeset.changing_attribute?(changeset, :name)
+      true
+      iex> Ash.Changeset.changing_attribute?(changeset, :age)
+      false
+
+  ## See also
+
+  - `changing_attributes?/1` for checking if any attributes are changing
+  - `changing_relationship?/2` for checking relationship changes
+  - `present?/2` for checking if a value is present
+  - `fetch_change/2` for getting the changed value
+  """
   @spec changing_attribute?(t(), atom) :: boolean
   def changing_attribute?(changeset, attribute) do
     Map.has_key?(changeset.attributes, attribute) ||
@@ -5411,6 +5777,42 @@ defmodule Ash.Changeset do
 
   @doc """
   Add an argument to the changeset, which will be provided to the action.
+
+  Arguments can be set on a changeset before calling `for_action/4` (or the specific `for_*` functions).
+  When `for_action/4` is called, arguments are validated and cast according to the action's argument
+  definitions. Use this function to set arguments that will be available during the action's execution.
+
+  ## Examples
+
+      # Set arguments before calling for_action
+      iex> changeset = MyApp.Post
+      ...> |> Ash.Changeset.new()
+      ...> |> Ash.Changeset.set_argument(:auto_publish, true)
+      ...> |> Ash.Changeset.set_argument(:slug_prefix, "blog")
+      iex> changeset.arguments
+      %{auto_publish: true, slug_prefix: "blog"}
+
+      # Arguments are validated and cast when for_action is called
+      iex> changeset = MyApp.User
+      ...> |> Ash.Changeset.new()
+      ...> |> Ash.Changeset.set_argument(:age, "25")  # String will be cast to integer
+      ...> |> Ash.Changeset.for_action(:create, %{name: "John"})
+      iex> changeset.arguments
+      %{age: 25}
+
+      # Chain argument setting with attribute changes
+      iex> changeset = MyApp.Post
+      ...> |> Ash.Changeset.new()
+      ...> |> Ash.Changeset.set_argument(:generate_excerpt, true)
+      ...> |> Ash.Changeset.change_attribute(:title, "My Post")
+      ...> |> Ash.Changeset.for_action(:create, %{content: "Post content"})
+
+  ## See also
+
+  - `set_arguments/2` for setting multiple arguments at once
+  - `get_argument/2` for retrieving argument values
+  - `force_set_argument/3` for setting arguments in hooks without warnings
+  - `delete_argument/2` for removing arguments
   """
   def set_argument(changeset, argument, value) do
     maybe_already_validated_error!(changeset, :force_set_argument)
@@ -5597,7 +5999,35 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc "Calls `change_attribute/3` for each key/value pair provided."
+  @doc """
+  Calls `change_attribute/3` for each key/value pair provided.
+
+  ## Examples
+
+      # Change multiple attributes with a map
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create)
+      iex> changeset = Ash.Changeset.change_attributes(changeset, %{title: "Hello World", content: "Post content"})
+      iex> changeset.attributes
+      %{title: "Hello World", content: "Post content"}
+
+      # Change multiple attributes with a keyword list
+      iex> changeset = Ash.Changeset.for_create(MyApp.User, :create)
+      iex> changeset = Ash.Changeset.change_attributes(changeset, [name: "John Doe", email: "john@example.com", age: 30])
+      iex> changeset.attributes
+      %{name: "John Doe", email: "john@example.com", age: 30}
+
+      # Values are cast according to their attribute types
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create)
+      iex> changeset = Ash.Changeset.change_attributes(changeset, %{view_count: "42", published: "true"})
+      iex> changeset.attributes
+      %{view_count: 42, published: true}
+
+  ## See also
+
+  - `change_attribute/3` for changing individual attributes
+  - `force_change_attribute/3` for writing attributes not accepted by the action, or changing attributes in hooks
+  - `set_arguments/2` for setting action arguments
+  """
   @spec change_attributes(t(), map | Keyword.t()) :: t()
   def change_attributes(changeset, changes) do
     maybe_already_validated_error!(changeset, :force_change_attributes)
@@ -5607,7 +6037,38 @@ defmodule Ash.Changeset do
     end)
   end
 
-  @doc "Adds a change to the changeset, unless the value matches the existing value."
+  @doc """
+  Adds a change to the changeset, unless the value matches the existing value.
+
+  ## Examples
+
+      # Basic attribute change
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create)
+      iex> changeset = Ash.Changeset.change_attribute(changeset, :title, "New Title")
+      iex> changeset.attributes
+      %{title: "New Title"}
+
+      # Change multiple attributes in sequence
+      iex> changeset = Ash.Changeset.for_create(MyApp.User, :create)
+      iex> changeset = changeset
+      ...> |> Ash.Changeset.change_attribute(:name, "John Doe")
+      ...> |> Ash.Changeset.change_attribute(:email, "john@example.com")
+      iex> changeset.attributes
+      %{name: "John Doe", email: "john@example.com"}
+
+      # Value is cast according to the attribute type
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :create)
+      iex> changeset = Ash.Changeset.change_attribute(changeset, :view_count, "42")
+      iex> changeset.attributes
+      %{view_count: 42}
+
+  ## See also
+
+  - `change_attributes/2` for changing multiple attributes at once
+  - `force_change_attribute/3` for writing attributes not accepted by the action, or changing attributes in hooks
+  - `change_new_attribute/3` for changing an attribute unless its already being changed
+  - `update_change/3` for updating existing changes
+  """
   @spec change_attribute(t(), atom, any) :: t()
   def change_attribute(changeset, attribute, value) do
     maybe_already_validated_error!(changeset, :force_change_attribute)
@@ -5871,8 +6332,65 @@ defmodule Ash.Changeset do
   @doc """
   Adds a before_action hook to the changeset.
 
-  Provide the option `prepend?: true` to place the hook before all
-  other hooks instead of after.
+  Before action hooks are essential for multi-step workflows where you need to:
+
+  - Validate complex business logic that requires database queries
+  - Set computed attributes based on other changes
+  - Prepare data for external service calls
+  - Implement conditional logic that depends on the current state
+
+  The hook runs after validations and changes but before the data layer action is executed.
+  This gives you access to the final validated changeset while still being able to modify it.
+
+  Provide the option `prepend?: true` to place the hook before all other hooks instead of after.
+
+  ## Examples
+
+      # Set computed fields based on other attributes
+      iex> changeset = Ash.Changeset.for_create(MyApp.Order, :create, %{items: [%{price: 10}, %{price: 15}]})
+      iex> changeset = Ash.Changeset.before_action(changeset, fn changeset ->
+      ...>   total = changeset.attributes.items |> Enum.map(& &1.price) |> Enum.sum()
+      ...>   tax = total * 0.08
+      ...>   changeset
+      ...>   |> Ash.Changeset.change_attribute(:subtotal, total)
+      ...>   |> Ash.Changeset.change_attribute(:tax, tax)
+      ...>   |> Ash.Changeset.change_attribute(:total, total + tax)
+      ...> end)
+
+      # Assign resources based on complex business logic
+      iex> changeset = Ash.Changeset.for_create(MyApp.Ticket, :create, %{title: "Help needed", priority: :urgent})
+      iex> changeset = Ash.Changeset.before_action(changeset, fn changeset ->
+      ...>   case changeset.attributes.priority do
+      ...>     :urgent ->
+      ...>       # Query for available senior agents
+      ...>       agent = MyApp.Agent |> MyApp.Query.for_read(:available_senior) |> MyApp.read_one!()
+      ...>       Ash.Changeset.change_attribute(changeset, :assigned_agent_id, agent.id)
+      ...>     _ ->
+      ...>       changeset
+      ...>   end
+      ...> end)
+
+      # Validate complex business rules that require database access
+      iex> changeset = Ash.Changeset.for_update(user, :upgrade_plan, %{plan: :premium})
+      iex> changeset = Ash.Changeset.before_action(changeset, fn changeset ->
+      ...>   existing_subscription = MyApp.Subscription
+      ...>   |> MyApp.Query.filter(user_id == ^user.id, status == :active)
+      ...>   |> MyApp.read_one()
+      ...>
+      ...>   case existing_subscription do
+      ...>     {:ok, %{plan: :premium}} ->
+      ...>       Ash.Changeset.add_error(changeset, field: :plan, message: "already on premium plan")
+      ...>     _ ->
+      ...>       changeset
+      ...>   end
+      ...> end)
+
+  ## See also
+
+  - `after_action/3` for hooks that run after the action succeeds
+  - `around_action/2` for hooks that wrap the entire action
+  - `before_transaction/3` for hooks that run before the database transaction
+  - Multi-step actions guide for complex workflow patterns
   """
   @spec before_action(
           changeset :: t(),
@@ -5893,8 +6411,50 @@ defmodule Ash.Changeset do
   @doc """
   Adds a before_transaction hook to the changeset.
 
-  Provide the option `prepend?: true` to place the hook before all
-  other hooks instead of after.
+  Before transaction hooks run outside the database transaction and are ideal for:
+
+  - Making external API calls that shouldn't be rolled back
+  - Validating external resources or permissions
+  - Setting up external state that the action depends on
+  - Logging or auditing that should happen regardless of transaction success
+  - Preparing data from external services
+
+  These hooks run before any database transaction is started, so they can't access
+  the final result but can prepare the changeset with external data.
+
+  Provide the option `prepend?: true` to place the hook before all other hooks instead of after.
+
+  ## Examples
+
+      # Validate external service availability before processing
+      iex> changeset = Ash.Changeset.for_create(MyApp.Order, :create, %{items: [%{sku: "ABC123"}]})
+      iex> changeset = Ash.Changeset.before_transaction(changeset, fn changeset ->
+      ...>   case ExternalInventoryService.check_availability(changeset.attributes.items) do
+      ...>     {:ok, _} ->
+      ...>       changeset
+      ...>     {:error, :out_of_stock} ->
+      ...>       Ash.Changeset.add_error(changeset, field: :items, message: "items out of stock")
+      ...>   end
+      ...> end)
+
+      # Fetch and set data from external service
+      iex> changeset = Ash.Changeset.for_create(MyApp.User, :create, %{email: "user@example.com"})
+      iex> changeset = Ash.Changeset.before_transaction(changeset, fn changeset ->
+      ...>   case UserService.get_profile_data(changeset.attributes.email) do
+      ...>     {:ok, profile} ->
+      ...>       changeset
+      ...>       |> Ash.Changeset.change_attribute(:display_name, profile.name)
+      ...>       |> Ash.Changeset.change_attribute(:avatar_url, profile.avatar)
+      ...>     {:error, _} ->
+      ...>       changeset  # Continue without external data
+      ...>   end
+      ...> end)
+
+  ## See also
+
+  - `before_action/3` for hooks that run within the transaction
+  - `after_transaction/3` for hooks that run after the transaction completes
+  - `around_transaction/2` for hooks that wrap the entire transaction
   """
   @spec before_transaction(
           t(),
@@ -5914,8 +6474,63 @@ defmodule Ash.Changeset do
   @doc """
   Adds an after_action hook to the changeset.
 
-  Provide the option `prepend?: true` to place the hook before all
-  other hooks instead of after.
+  After action hooks run within the database transaction after the data layer action succeeds.
+  They are perfect for:
+
+  - Creating related records that depend on the main action's result
+  - Sending notifications with the final record data
+  - Updating derived data or maintaining referential integrity
+  - Triggering business logic that needs the persisted record
+  - Creating audit trails with the actual saved data
+
+  The hook receives both the changeset and the successfully created/updated record.
+  Any errors returned will roll back the entire transaction.
+
+  Provide the option `prepend?: true` to place the hook before all other hooks instead of after.
+
+  ## Examples
+
+      # Create related audit record with the final data
+      iex> changeset = Ash.Changeset.for_update(user, :update_profile, %{email: "new@example.com"})
+      iex> changeset = Ash.Changeset.after_action(changeset, fn changeset, updated_user ->
+      ...>   {:ok, _audit} = MyApp.AuditLog.create(%{
+      ...>     action: "profile_updated",
+      ...>     user_id: updated_user.id,
+      ...>     changes: changeset.attributes,
+      ...>     actor_id: changeset.context.actor.id,
+      ...>     timestamp: DateTime.utc_now()
+      ...>   })
+      ...>   {:ok, updated_user}
+      ...> end)
+
+      # Send notification with the final record
+      iex> changeset = Ash.Changeset.for_create(MyApp.Order, :create, %{total: 100.00})
+      iex> changeset = Ash.Changeset.after_action(changeset, fn _changeset, order ->
+      ...>   NotificationService.send_order_confirmation(%{
+      ...>     order_id: order.id,
+      ...>     customer_email: order.customer_email,
+      ...>     total: order.total,
+      ...>     order_number: order.number  # Generated by the database
+      ...>   })
+      ...>   {:ok, order}
+      ...> end)
+
+      # Update related records that depend on the main record
+      iex> changeset = Ash.Changeset.for_create(MyApp.Post, :publish, %{title: "My Post"})
+      iex> changeset = Ash.Changeset.after_action(changeset, fn _changeset, post ->
+      ...>   # Update author's post count
+      ...>   {:ok, _author} = MyApp.User
+      ...>   |> Ash.Changeset.for_update(:increment_post_count, %{})
+      ...>   |> Ash.update()
+      ...>
+      ...>   {:ok, post}
+      ...> end)
+
+  ## See also
+
+  - `before_action/3` for hooks that run before the data layer action
+  - `after_transaction/3` for hooks that run after the transaction commits
+  - `around_action/2` for hooks that wrap the data layer action
   """
   @spec after_action(
           t(),
@@ -5951,11 +6566,73 @@ defmodule Ash.Changeset do
   @doc """
   Adds an after_transaction hook to the changeset. Cannot be called within other hooks.
 
-  `after_transaction` hooks differ from `after_action` hooks in that they are run
-  on success *and* failure of the action or some previous hook.
+  After transaction hooks run outside the database transaction and are called regardless
+  of whether the action succeeded or failed. They are essential for:
 
-  Provide the option `prepend?: true` to place the hook before all
-  other hooks instead of after.
+  - Cleanup operations that must happen regardless of success/failure
+  - External service notifications that shouldn't be rolled back
+  - Logging final outcomes for auditing purposes
+  - Releasing external resources or locks
+  - Sending emails or notifications that should persist even if the action failed
+
+  The hook receives the changeset and either `{:ok, result}` or `{:error, error}`,
+  allowing you to handle both success and failure cases appropriately.
+
+  Provide the option `prepend?: true` to place the hook before all other hooks instead of after.
+
+  ## Examples
+
+      # Send notification regardless of order creation success/failure
+      iex> changeset = Ash.Changeset.for_create(MyApp.Order, :create, %{total: 100.00})
+      iex> changeset = Ash.Changeset.after_transaction(changeset, fn changeset, result ->
+      ...>   case result do
+      ...>     {:ok, order} ->
+      ...>       NotificationService.order_created_successfully(order.id, changeset.context.actor)
+      ...>     {:error, _error} ->
+      ...>       NotificationService.order_creation_failed(changeset.attributes, changeset.context.actor)
+      ...>   end
+      ...>   result  # Always return the original result
+      ...> end)
+
+      # Release external resources or cleanup
+      iex> changeset = Ash.Changeset.for_update(file, :process, %{status: "processing"})
+      iex> changeset = Ash.Changeset.after_transaction(changeset, fn changeset, result ->
+      ...>   # Always release the file lock, regardless of processing outcome
+      ...>   ExternalFileService.release_lock(changeset.data.file_path)
+      ...>
+      ...>   case result do
+      ...>     {:ok, processed_file} ->
+      ...>       Logger.info("File processing completed successfully: \#{processed_file.id}")
+      ...>     {:error, error} ->
+      ...>       Logger.error("File processing failed: \#{inspect(error)}")
+      ...>       # Could trigger retry mechanism here
+      ...>   end
+      ...>   result
+      ...> end)
+
+      # Audit final outcome for compliance
+      iex> changeset = Ash.Changeset.for_update(sensitive_record, :update, %{classification: "top_secret"})
+      iex> changeset = Ash.Changeset.after_transaction(changeset, fn changeset, result ->
+      ...>   outcome = case result do
+      ...>     {:ok, _} -> "success"
+      ...>     {:error, _} -> "failure"
+      ...>   end
+      ...>
+      ...>   ComplianceLogger.log_security_action(%{
+      ...>     action: :update_classification,
+      ...>     actor: changeset.context.actor,
+      ...>     resource_id: changeset.data.id,
+      ...>     outcome: outcome,
+      ...>     timestamp: DateTime.utc_now()
+      ...>   })
+      ...>   result
+      ...> end)
+
+  ## See also
+
+  - `after_action/3` for hooks that run within the transaction on success only
+  - `before_transaction/3` for hooks that run before the transaction starts
+  - `around_transaction/2` for hooks that wrap the entire transaction
   """
   @spec after_transaction(
           t(),
@@ -5982,69 +6659,40 @@ defmodule Ash.Changeset do
   @doc """
   Adds an around_action hook to the changeset.
 
-  Your function will get the changeset, and a callback that must be called with a changeset (that may be modified).
-  The callback will return `{:ok, result, changeset, instructions}` or `{:error, error}`. You can modify these values, but the
-  return value must be one of those types. Instructions contains the notifications in its `notifications` key, i.e
-  `%{notifications: [%Ash.Resource.Notification{}, ...]}`.
+  Around action hooks wrap the data layer action execution within the transaction.
+  This is a specialized hook primarily useful for:
 
-  The around_action calls happen first, and then (after they each resolve their callbacks) the `before_action`
-  hooks are called, followed by the action itself occurring at the data layer and then the `after_action` hooks being run.
-  Then, the code that appeared *after* the callbacks were called is then run.
+  - Debugging and development tooling that needs to wrap action execution
+  - Action timing and performance monitoring for profiling
+  - Testing frameworks that need to intercept action execution
+  - Advanced error handling that requires wrapping the action itself
 
-  For example:
-  ```elixir
-  changeset
-  |> Ash.Changeset.around_action(fn changeset, callback ->
-    IO.puts("first around: before")
-    result = callback.(changeset)
-    IO.puts("first around: after")
+  Your function receives the changeset and a callback that must be called with a changeset.
+  The callback returns `{:ok, result, changeset, instructions}` or `{:error, error}`.
+  You can modify these values, but must return the same structure.
 
-    result
-  end)
-  |> Ash.Changeset.around_action(fn changeset, callback ->
-    IO.puts("second around: before")
-    result = callback.(changeset)
-    IO.puts("second around: after")
+  **Warning**: This is an advanced hook that runs within the database transaction.
+  You *must* call the callback function. For most use cases, `before_action/3` and
+  `after_action/3` are simpler and more appropriate.
 
-    result
-  end)
-  |> Ash.Changeset.before_action(fn changeset ->
-    IO.puts("first before")
-    changeset
-  end)
-  |> Ash.Changeset.before_action(fn changeset ->
-    IO.puts("second before")
-    changeset
-  end)
-  |> Ash.Changeset.after_action(fn changeset, result ->
-    IO.puts("first after")
-    {:ok, result}
-  end)
-  |> Ash.Changeset.after_action(fn changeset, result ->
-    IO.puts("second after")
-    {:ok, result}
-  end)
-  ```
+  ## Examples
 
-  This would print:
-  ```
-  first around: before
-  second around: before
-  first before
-  second before
-               <-- action happens here
-  first after
-  second after
-  second around: after <-- Notice that because of the callbacks, the after of the around hooks is reversed from the before
-  first around: after
-  ```
+      # Monitor action execution time for debugging
+      iex> changeset = Ash.Changeset.for_create(MyApp.Order, :create, %{total: 100.00})
+      iex> changeset = Ash.Changeset.around_action(changeset, fn changeset, callback ->
+      ...>   start_time = System.monotonic_time(:microsecond)
+      ...>   result = callback.(changeset)
+      ...>   duration = System.monotonic_time(:microsecond) - start_time
+      ...>
+      ...>   Logger.debug("Action \#{changeset.action.name} took \#{duration}μs")
+      ...>   result
+      ...> end)
 
-  Warning: using this without understanding how it works can cause big problems.
-  You *must* call the callback function that is provided to your hook, and the return value must
-  contain the same structure that was given to you, i.e `{:ok, result_of_action, instructions}`.
+  ## See also
 
-  You can almost always get the same effect by using `before_action`, setting some context on the changeset
-  and reading it out in an `after_action` hook.
+  - `before_action/3` and `after_action/3` for most workflow needs
+  - `around_transaction/2` for wrapping the entire transaction
+  - Multi-step actions guide for complex workflow patterns
   """
 
   @spec around_action(t(), around_action_fun()) :: t()
@@ -6056,70 +6704,40 @@ defmodule Ash.Changeset do
   @doc """
   Adds an around_transaction hook to the changeset.
 
-  Your function will get the changeset, and a callback that must be called with a changeset (that may be modified).
-  The callback will return `{:ok, result}` or `{:error, error}`. You can modify these values, but the return value
-  must be one of those types.
+  Around transaction hooks wrap the entire database transaction execution.
+  This is a specialized hook primarily useful for:
 
-  The around_transaction calls happen first, and then (after they each resolve their callbacks) the `before_transaction`
-  hooks are called, followed by the action hooks and then the `after_transaction` hooks being run.
-  Then, the code that appeared *after* the callbacks were called is then run.
+  - Debugging and development tooling that needs to wrap transaction execution
+  - Transaction timing and monitoring for performance analysis
+  - Testing frameworks that need to intercept transaction behavior
+  - Advanced transaction management that requires wrapping all hook execution
 
-  For example:
+  Your function receives the changeset and a callback that must be called with a changeset.
+  The callback returns `{:ok, result}` or `{:error, error}`. You can modify these values,
+  but must return the same structure.
 
-  ```elixir
-  changeset
-  |> Ash.Changeset.around_transaction(fn changeset, callback ->
-    IO.puts("first around: before")
-    result = callback.(changeset)
-    IO.puts("first around: after")
+  **Warning**: This is an advanced hook that controls transaction execution.
+  You *must* call the callback function. For most use cases, `before_transaction/3`
+  and `after_transaction/3` are simpler and more appropriate.
 
-    result
-  end)
-  |> Ash.Changeset.around_transaction(fn changeset, callback ->
-    IO.puts("second around: before")
-    result = callback.(changeset)
-    IO.puts("second around: after")
+  ## Examples
 
-    result
-  end)
-  |> Ash.Changeset.before_transaction(fn changeset ->
-    IO.puts("first before")
-    changeset
-  end)
-  |> Ash.Changeset.before_transaction(fn changeset ->
-    IO.puts("second before")
-    changeset
-  end)
-  |> Ash.Changeset.after_transaction(fn changeset, result ->
-    IO.puts("first after")
-    result
-  end)
-  |> Ash.Changeset.after_transaction(fn changeset, result ->
-    IO.puts("second after")
-    result
-  end)
-  ```
+      # Monitor transaction execution time
+      iex> changeset = Ash.Changeset.for_create(MyApp.Order, :create, %{total: 100.00})
+      iex> changeset = Ash.Changeset.around_transaction(changeset, fn changeset, callback ->
+      ...>   tx_start = System.monotonic_time(:microsecond)
+      ...>   result = callback.(changeset)
+      ...>   tx_duration = System.monotonic_time(:microsecond) - tx_start
+      ...>
+      ...>   Logger.debug("Transaction for \#{changeset.action.name} took \#{tx_duration}μs")
+      ...>   result
+      ...> end)
 
-  This would print:
+  ## See also
 
-  ```
-  first around: before
-  second around: before
-  first before
-  second before
-               <-- action hooks happens here
-  first after
-  second after
-  second around: after <-- Notice that because of the callbacks, the after of the around hooks is reversed from the before
-  first around: after
-  ```
-
-  Warning: using this without understanding how it works can cause big problems.
-  You *must* call the callback function that is provided to your hook, and the return value must
-  contain the same structure that was given to you, i.e `{:ok, result_of_action}`.
-
-  You can almost always get the same effect by using `before_transaction`, setting some context on the changeset
-  and reading it out in an `after_transaction` hook.
+  - `before_transaction/3` and `after_transaction/3` for most workflow needs
+  - `around_action/2` for wrapping the data layer action
+  - Multi-step actions guide for complex workflow patterns
   """
 
   @spec around_transaction(t(), around_transaction_fun()) :: t()

@@ -6,24 +6,35 @@ defmodule Ash do
   require Ash.Query
   require Ash.Helpers
 
+  @typedoc """
+  Page request options for paginated queries.
+
+  Can be atoms for navigation (`:next`, `:prev`, `:first`, `:last`, `:self`) or an integer for specific page numbers.
+  """
   @type page_request ::
           :next | :prev | :first | :last | :self | integer
 
+  @typedoc """
+  Aggregate specification for queries.
+
+  Can be an `Ash.Query.Aggregate` struct, a `{name, kind}` tuple, or a `{name, kind, opts}` tuple with options.
+  """
   @type aggregate ::
           Ash.Query.Aggregate.t()
           | {name :: atom, kind :: atom}
           | {name :: atom, kind :: atom, opts :: Keyword.t()}
 
+  @typedoc """
+  Load statement for relationships and calculations.
+
+  Can be a query, a list of atoms, a single atom, keywords, or a list of atoms and tuples with options.
+  """
   @type load_statement ::
           Ash.Query.t()
           | [atom]
           | atom
           | Keyword.t()
           | list(atom | {atom, atom | Keyword.t()})
-
-  @type resource_with_args :: {Ash.Resource.t(), map() | Keyword.t()}
-
-  @type record_with_args :: {Ash.Resource.record(), map() | Keyword.t()}
 
   @global_opts [
     domain: [
@@ -2245,7 +2256,14 @@ defmodule Ash do
     end
   end
 
+  @typedoc """
+  A single record or a list of records.
+  """
   @type record_or_records :: Ash.Resource.record() | [Ash.Resource.record()]
+
+  @typedoc """
+  The actor performing the action - can be any term.
+  """
   @type actor :: any()
 
   @doc """
@@ -2495,12 +2513,10 @@ defmodule Ash do
   end
 
   @typedoc """
-  Fields:
+  A data layer query structure with execution and counting functions.
 
-  - `query` - The query that would be executed
-  - `count` - A function that returns the count of the query, if pagination would have happened
-  - `run` - A function that runs the query
-  - `load` - A function that loads any runtime data needed
+  Contains the query that would be executed along with functions for counting,
+  running the query, and loading any runtime data needed for the operation.
   """
   @type data_layer_query :: %{
           query: Ash.DataLayer.data_layer_query(),
