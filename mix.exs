@@ -179,11 +179,18 @@ defmodule Ash.MixProject do
         end
       end,
       groups_for_modules: [
+        "Core API": [
+          Ash,
+          Ash.Domain,
+          Ash.Query,
+          Ash.Changeset,
+          Ash.ActionInput,
+          Ash.BulkResult
+        ],
         Resources: [
           Ash.Resource.Calculation,
           Ash.Resource.Calculation.Builtins,
           Ash.CodeInterface,
-          Ash.DataLayer,
           Ash.Notifier,
           Ash.Notifier.Notification,
           Ash.Resource.ManualRead,
@@ -192,14 +199,6 @@ defmodule Ash.MixProject do
           Ash.Resource.ManualDestroy,
           Ash.Resource.ManualRelationship,
           Ash.Resource.Attribute.Helpers
-        ],
-        "Action Input & Interface": [
-          Ash,
-          Ash.Domain,
-          Ash.Query,
-          Ash.Changeset,
-          Ash.ActionInput,
-          Ash.BulkResult
         ],
         Queries: [
           Ash.Query,
@@ -239,8 +238,27 @@ defmodule Ash.MixProject do
           Ash.Policy.Info,
           Ash.DataLayer.Ets.Info,
           Ash.DataLayer.Mnesia.Info,
-          Ash.Notifier.PubSub.Info,
-          ~r/Ash.Domain.Dsl.*/
+          Ash.Notifier.PubSub.Info
+        ],
+        Visualizations: [
+          Ash.Domain.Info.Diagram,
+          Ash.Domain.Info.Livebook,
+          Ash.Policy.Chart.Mermaid
+        ],
+        Testing: [
+          Ash.Generator,
+          Ash.Seed,
+          Ash.Test
+        ],
+        Builtins: [
+          ~r/Ash.Resource.Validation/,
+          ~r/Ash.Resource.Change/,
+          ~r/Ash.Policy.Check/
+        ],
+        Tracing: [
+          Ash.Tracer,
+          Ash.Tracer.Simple,
+          Ash.Tracer.Simple.Span
         ],
         Utilities: [
           Ash.Expr,
@@ -268,21 +286,6 @@ defmodule Ash.MixProject do
           Ash.PlugHelpers,
           Ash.SatSolver
         ],
-        Visualizations: [
-          Ash.Domain.Info.Diagram,
-          Ash.Domain.Info.Livebook,
-          Ash.Policy.Chart.Mermaid
-        ],
-        Testing: [
-          Ash.Generator,
-          Ash.Seed,
-          Ash.Test
-        ],
-        Tracing: [
-          Ash.Tracer,
-          Ash.Tracer.Simple,
-          Ash.Tracer.Simple.Span
-        ],
         Types: [
           "Ash.Type",
           ~r/Ash.Type\./
@@ -308,16 +311,12 @@ defmodule Ash.MixProject do
           Ash.Query.Exists,
           Ash.Query.Parent
         ],
-        Builtins: [
-          ~r/Ash.Resource.Validation/,
-          ~r/Ash.Resource.Change/,
-          ~r/Ash.Policy.Check/
-        ],
-        Introspection: [
+        "DSL Structs": [
           ~r/Ash.Resource.Relationships/,
           ~r/Ash.Resource.Calculation/,
           ~r/Ash.Resource.Interface/,
           ~r/Ash.Resource.Identity/,
+          ~r/Ash.Resource.Attribute/,
           ~r/Ash.Resource.Attribute/,
           ~r/Ash.Resource.Attribute/,
           ~r/Ash.Resource.Aggregate/,
@@ -327,7 +326,12 @@ defmodule Ash.MixProject do
           Ash.Policy.Policy,
           Ash.Notifier.PubSub.Publication
         ],
-        Internals: ~r/.*/
+        "Data Layers": [
+          Ash.DataLayer.Ets,
+          Ash.DataLayer.Mnesia,
+          Ash.DataLayer.Simple
+        ],
+        Other: ~r/.*/
       ]
     ]
   end

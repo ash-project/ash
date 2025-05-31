@@ -125,6 +125,8 @@ defmodule Ash.Resource do
       @persist {:simple_notifiers, List.wrap(opts[:simple_notifiers])}
       @persist {:primary_read_warning?, Keyword.get(opts, :primary_read_warning?, true)}
 
+      import Ash.Resource, only: [timestamps: 0, timestamps: 1]
+
       if !(embedded? || has_domain?) do
         IO.warn("""
         Configuration Error:
@@ -150,6 +152,21 @@ defmodule Ash.Resource do
 
         Ash.EmbeddableType.define_embeddable_type(embed_nil_values?: embed_nil_values?)
       end
+    end
+  end
+
+  @doc """
+  Defines create and update timestamp attributes.
+
+  Shorthand for `d:Ash.Resource.Dsl.attributes.create_timestamp` and
+  `d:Ash.Resource.Dsl.attributes.update_timestamp` with the attribute names
+  `:inserted_at` and `:updated_at` respectively.  Any options passed to this
+  helper are passed to both timestamp macros.
+  """
+  defmacro timestamps(opts \\ []) do
+    quote do
+      create_timestamp :inserted_at, unquote(opts)
+      update_timestamp :updated_at, unquote(opts)
     end
   end
 
