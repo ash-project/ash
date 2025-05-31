@@ -970,6 +970,23 @@ defmodule Ash do
   Over this:
   `Api.aggregate(query, Ash.Query.Aggregate.new(...))`
 
+  ## Examples
+
+      iex> MyApp.Post |> Ash.aggregate({:count, :count})
+      {:ok, %{count: 42}}
+
+      iex> query |> Ash.aggregate([{:avg_likes, :avg, field: :likes}, {:count, :count}])
+      {:ok, %{avg_likes: 10.5, count: 42}}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.aggregate({:sum_views, :sum, field: :view_count})
+      {:ok, %{sum_views: 1542}}
+
+  ## See also
+
+  - `aggregate!/3` for the raising version
+  - `count/2` for counting records specifically
+  - `sum/3` for summing field values
+
   #{Spark.Options.docs(@aggregate_opts)}
   """
   @spec aggregate(
@@ -1040,7 +1057,8 @@ defmodule Ash do
   - `count!/2` for the raising version
   - `aggregate/3` for running multiple aggregates
   """
-  @spec count(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) :: {:ok, non_neg_integer()} | {:error, Ash.Error.t()}
+  @spec count(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
+          {:ok, non_neg_integer()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{1, @aggregate_opts}]
   def count(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1101,7 +1119,8 @@ defmodule Ash do
   - `exists?/2` for the raising version
   - `count/2` for getting the actual count
   """
-  @spec exists(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) :: {:ok, boolean()} | {:error, Ash.Error.t()}
+  @spec exists(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
+          {:ok, boolean()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{1, @aggregate_opts}]
   def exists(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1135,7 +1154,8 @@ defmodule Ash do
   - `first!/3` for the raising version
   - `list/3` for getting all values of a field
   """
-  @spec first(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, term()} | {:error, Ash.Error.t()}
+  @spec first(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
+          {:ok, term()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def first(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1227,7 +1247,8 @@ defmodule Ash do
   - `sum!/3` for the raising version
   - `avg/3` for getting the average value
   """
-  @spec sum(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, number()} | {:error, Ash.Error.t()}
+  @spec sum(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
+          {:ok, number()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def sum(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1290,7 +1311,8 @@ defmodule Ash do
   - `list!/3` for the raising version
   - `first/3` for getting just the first value
   """
-  @spec list(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, list(term())} | {:error, Ash.Error.t()}
+  @spec list(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
+          {:ok, list(term())} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def list(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1388,7 +1410,8 @@ defmodule Ash do
   - `max!/3` for the raising version
   - `min/3` for getting the minimum value
   """
-  @spec max(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, term()} | {:error, Ash.Error.t()}
+  @spec max(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
+          {:ok, term()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def max(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1451,7 +1474,8 @@ defmodule Ash do
   - `min!/3` for the raising version
   - `max/3` for getting the maximum value
   """
-  @spec min(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, term()} | {:error, Ash.Error.t()}
+  @spec min(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
+          {:ok, term()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def min(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1514,7 +1538,8 @@ defmodule Ash do
   - `avg!/3` for the raising version
   - `sum/3` for getting the total sum
   """
-  @spec avg(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: {:ok, number()} | {:error, Ash.Error.t()}
+  @spec avg(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
+          {:ok, number()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{2, @aggregate_opts}]
   def avg(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1565,6 +1590,21 @@ defmodule Ash do
   Returns whether or not the user can perform the action, or raises on errors.
 
   Calls `can/3` with a `maybe_is: true`. See `can/3` for more info.
+
+  ## Examples
+
+      iex> Ash.can?({MyApp.Post, :create}, actor)
+      true
+
+      iex> Ash.can?({MyApp.Post, :read}, nil)
+      true
+
+      iex> Ash.can?({post, :update}, actor)
+      false
+
+  ## See also
+
+  - `can/3` for the non-raising version that returns detailed results
 
   ### Options
 
@@ -1717,6 +1757,20 @@ defmodule Ash do
 
   @doc """
   Runs a generic action or raises an error. See `run_action/2` for more
+
+  ## Examples
+
+      iex> input = Ash.ActionInput.for_action(MyApp.Post, :send_email, %{email: "test@example.com"})
+      iex> Ash.run_action!(input)
+      :ok
+
+      iex> input = Ash.ActionInput.for_action(MyApp.Calculator, :calculate_tax, %{amount: 100})
+      iex> Ash.run_action!(input)
+      8.25
+
+  ## See also
+
+  - `run_action/2` for the non-raising version
   """
   @spec run_action!(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
           term | no_return
@@ -1738,6 +1792,20 @@ defmodule Ash do
 
   @doc """
   Runs a generic action.
+
+  ## Examples
+
+      iex> input = Ash.ActionInput.for_action(MyApp.Post, :send_email, %{email: "test@example.com"})
+      iex> Ash.run_action(input)
+      {:ok, :ok}
+
+      iex> input = Ash.ActionInput.for_action(MyApp.Calculator, :calculate_tax, %{amount: 100})
+      iex> Ash.run_action(input)
+      {:ok, 8.25}
+
+  ## See also
+
+  - `run_action!/2` for the raising version
 
   Options:
 
@@ -1767,6 +1835,18 @@ defmodule Ash do
 
   @doc """
   Evaluates the calculation on the resource or raises an error. See `calculate/3` for more.
+
+  ## Examples
+
+      iex> Ash.calculate!(post, :word_count)
+      142
+
+      iex> Ash.calculate!(MyApp.User, :age, args: %{birth_date: ~D[1990-01-01]})
+      34
+
+  ## See also
+
+  - `calculate/3` for the non-raising version
   """
   @spec calculate!(
           resource_or_record :: Ash.Resource.t() | Ash.Resource.record(),
@@ -1796,6 +1876,18 @@ defmodule Ash do
 
   If a record is provided, its field values will be used to evaluate the calculation.
 
+  ## Examples
+
+      iex> Ash.calculate(post, :word_count)
+      {:ok, 142}
+
+      iex> Ash.calculate(MyApp.User, :age, args: %{birth_date: ~D[1990-01-01]})
+      {:ok, 34}
+
+  ## See also
+
+  - `calculate!/3` for the raising version
+
   #{Spark.Options.docs(@calculate_opts)}
   """
   @doc spark_opts: [{2, @calculate_opts}]
@@ -1817,6 +1909,21 @@ defmodule Ash do
 
   @doc """
   Get a record by an identifier, or raises an error. See `get/3` for more.
+
+  ## Examples
+
+      iex> Ash.get!(MyApp.Post, 1)
+      %MyApp.Post{id: 1, title: "Hello World"}
+
+      iex> Ash.get!(MyApp.User, %{email: "user@example.com"})
+      %MyApp.User{id: 5, email: "user@example.com"}
+
+      iex> Ash.get!(MyApp.Post, %{first_key: 1, second_key: 2})
+      %MyApp.Post{first_key: 1, second_key: 2}
+
+  ## See also
+
+  - `get/3` for the non-raising version
   """
   @spec get!(Ash.Resource.t(), term(), Keyword.t()) ::
           Ash.Resource.record() | no_return
@@ -1844,6 +1951,21 @@ defmodule Ash do
   `Ash.get(MyResource, %{first_key: 1, second_key: 2})`
 
   Additionally, a keyword list or map of keys matching an identity can be provided.
+
+  ## Examples
+
+      iex> Ash.get(MyApp.Post, 1)
+      {:ok, %MyApp.Post{id: 1, title: "Hello World"}}
+
+      iex> Ash.get(MyApp.User, %{email: "user@example.com"})
+      {:ok, %MyApp.User{id: 5, email: "user@example.com"}}
+
+      iex> Ash.get(MyApp.Post, %{first_key: 1, second_key: 2})
+      {:ok, %MyApp.Post{first_key: 1, second_key: 2}}
+
+  ## See also
+
+  - `get!/3` for the raising version
 
   #{Spark.Options.docs(@get_opts_schema)}
   """
@@ -1936,6 +2058,21 @@ defmodule Ash do
 
   @doc """
   Fetch a page relative to the provided page or raises an error
+
+  ## Examples
+
+      iex> Ash.page!(page, :next)
+      %Ash.Page.Offset{results: [...], more?: true}
+
+      iex> Ash.page!(page, :prev)
+      %Ash.Page.Offset{results: [...], more?: false}
+
+      iex> Ash.page!(page, 3)
+      %Ash.Page.Offset{results: [...], offset: 40}
+
+  ## See also
+
+  - `page/2` for the non-raising version
   """
   @spec page!(Ash.Page.page(), page_request) ::
           Ash.Page.page() | no_return
@@ -1947,6 +2084,21 @@ defmodule Ash do
 
   @doc """
   Fetch a page relative to the provided page.
+
+  ## Examples
+
+      iex> Ash.page(page, :next)
+      {:ok, %Ash.Page.Offset{results: [...], more?: true}}
+
+      iex> Ash.page(page, :prev)
+      {:ok, %Ash.Page.Offset{results: [...], more?: false}}
+
+      iex> Ash.page(page, 3)
+      {:ok, %Ash.Page.Offset{results: [...], offset: 40}}
+
+  ## See also
+
+  - `page!/2` for the raising version
   """
   @spec page(Ash.Page.page(), page_request) ::
           {:ok, Ash.Page.page()} | {:error, Ash.Error.t()}
@@ -2098,6 +2250,21 @@ defmodule Ash do
 
   @doc """
   Load fields or relationships on already fetched records. See `load/3` for more information.
+
+  ## Examples
+
+      iex> Ash.load!(post, :comments)
+      %MyApp.Post{comments: [%MyApp.Comment{}, ...]}
+
+      iex> Ash.load!(posts, [:author, :comments])
+      [%MyApp.Post{author: %MyApp.User{}, comments: [...]}, ...]
+
+      iex> Ash.load!(user, [posts: [:comments]])
+      %MyApp.User{posts: [%MyApp.Post{comments: [...]}]}
+
+  ## See also
+
+  - `load/3` for the non-raising version
   """
   @spec load!(
           record_or_records ::
@@ -2131,6 +2298,21 @@ defmodule Ash do
   Accepts a list of non-loaded fields and loads them on the provided records or a query, in
   which case the loaded fields of the query are used. Relationship loads can be nested, for
   example: `Ash.load(record, [posts: [:comments]])`.
+
+  ## Examples
+
+      iex> Ash.load(post, :comments)
+      {:ok, %MyApp.Post{comments: [%MyApp.Comment{}, ...]}}
+
+      iex> Ash.load(posts, [:author, :comments])
+      {:ok, [%MyApp.Post{author: %MyApp.User{}, comments: [...]}, ...]}
+
+      iex> Ash.load(user, [posts: [:comments]])
+      {:ok, %MyApp.User{posts: [%MyApp.Post{comments: [...]}]}}
+
+  ## See also
+
+  - `load!/3` for the raising version
 
   #{Spark.Options.docs(@load_opts_schema)}
   """
@@ -2281,6 +2463,18 @@ defmodule Ash do
   """
   @spec stream!(query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
           Enumerable.t(Ash.Resource.record())
+
+  ## Examples
+
+      iex> MyApp.Post |> Ash.stream!() |> Enum.take(10)
+      [%MyApp.Post{}, %MyApp.Post{}, ...]
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.stream!(strategy: :keyset) |> Enum.map(& &1.title)
+      ["Hello World", "Another Post", ...]
+
+      iex> MyApp.Post |> Ash.stream!(strategy: :offset, batch_size: 50) |> Stream.filter(& &1.likes > 10) |> Enum.to_list()
+      [%MyApp.Post{likes: 15}, ...]
+
   @doc spark_opts: [{1, @stream_opts}]
   def stream!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -2321,6 +2515,19 @@ defmodule Ash do
 
   @doc """
   Gets the full query and any runtime calculations that would be loaded
+
+  ## Examples
+
+      iex> query = MyApp.Post |> Ash.Query.filter(published: true)
+      iex> Ash.data_layer_query(query)
+      {:ok, %{query: #Ecto.Query<...>, ash_query: %Ash.Query{}, count: #Function<...>, run: #Function<...>, load: #Function<...>}}
+
+      iex> MyApp.Post |> Ash.Query.limit(10) |> Ash.data_layer_query()
+      {:ok, %{query: #Ecto.Query<...>, ...}}
+
+  ## See also
+
+  - `data_layer_query!/2` for the raising version
   """
   @spec data_layer_query(Ash.Query.t(), opts :: Keyword.t()) ::
           {:ok, data_layer_query} | {:error, Ash.Error.t()}
@@ -2330,6 +2537,19 @@ defmodule Ash do
 
   @doc """
   Gets the full query and any runtime calculations that would be loaded, raising any errors.
+
+  ## Examples
+
+      iex> query = MyApp.Post |> Ash.Query.filter(published: true)
+      iex> Ash.data_layer_query!(query)
+      %{query: #Ecto.Query<...>, ash_query: %Ash.Query{}, count: #Function<...>, run: #Function<...>, load: #Function<...>}
+
+      iex> MyApp.Post |> Ash.Query.limit(10) |> Ash.data_layer_query!()
+      %{query: #Ecto.Query<...>, ...}
+
+  ## See also
+
+  - `data_layer_query/2` for the non-raising version
 
   See `data_layer_query/2` for more.
   """
@@ -2342,6 +2562,21 @@ defmodule Ash do
 
   @doc """
   Run an `Ash.Query`. See `read/2` for more.
+
+  ## Examples
+
+      iex> Ash.read!(MyApp.Post)
+      [%MyApp.Post{id: 1, title: "Hello"}, %MyApp.Post{id: 2, title: "World"}]
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.read!()
+      [%MyApp.Post{id: 1, title: "Hello", published: true}]
+
+      iex> MyApp.Post |> Ash.Query.limit(5) |> Ash.read!()
+      [%MyApp.Post{}, %MyApp.Post{}, ...]
+
+  ## See also
+
+  - `read/2` for the non-raising version
   """
   @spec read!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           list(Ash.Resource.record()) | Ash.Page.page() | no_return
@@ -2359,6 +2594,21 @@ defmodule Ash do
   Runs an `Ash.Query`.
 
   For more information on building a query, see `Ash.Query`.
+
+  ## Examples
+
+      iex> Ash.read(MyApp.Post)
+      {:ok, [%MyApp.Post{id: 1, title: "Hello"}, %MyApp.Post{id: 2, title: "World"}]}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.read()
+      {:ok, [%MyApp.Post{id: 1, title: "Hello", published: true}]}
+
+      iex> MyApp.Post |> Ash.Query.limit(5) |> Ash.read()
+      {:ok, [%MyApp.Post{}, %MyApp.Post{}, ...]}
+
+  ## See also
+
+  - `read!/2` for the raising version
 
   #{Spark.Options.docs(@read_opts_schema)}
 
@@ -2412,6 +2662,18 @@ defmodule Ash do
 
   @doc """
   Refetches a record by primary key or raises an error. See `reload/2` for more.
+
+  ## Examples
+
+      iex> Ash.reload!(post)
+      %MyApp.Post{id: 1, title: "Updated Title", updated_at: ~U[2023-12-25 10:30:00Z]}
+
+      iex> Ash.reload!(user, load: [:posts])
+      %MyApp.User{id: 1, posts: [%MyApp.Post{}, ...]}
+
+  ## See also
+
+  - `reload/2` for the non-raising version
   """
   @spec reload!(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
           Ash.Resource.record() | no_return
@@ -2427,6 +2689,18 @@ defmodule Ash do
 
   @doc """
   Refetches a record by primary key. See `get/2` for more.
+
+  ## Examples
+
+      iex> Ash.reload(post)
+      {:ok, %MyApp.Post{id: 1, title: "Updated Title", updated_at: ~U[2023-12-25 10:30:00Z]}}
+
+      iex> Ash.reload(user, load: [:posts])
+      {:ok, %MyApp.User{id: 1, posts: [%MyApp.Post{}, ...]}}
+
+  ## See also
+
+  - `reload!/2` for the raising version
   """
   @spec reload(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
           {:ok, Ash.Resource.record()} | {:error, Ash.Error.t()}
@@ -2442,6 +2716,21 @@ defmodule Ash do
 
   @doc """
   Runs an ash query, returning a single result or raise an error. See `read_one/2` for more.
+
+  ## Examples
+
+      iex> Ash.read_one!(MyApp.User, email: "user@example.com")
+      %MyApp.User{id: 1, email: "user@example.com"}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.read_one!()
+      %MyApp.Post{id: 1, published: true}
+
+      iex> MyApp.User |> Ash.Query.filter(email: "nonexistent@example.com") |> Ash.read_one!()
+      nil
+
+  ## See also
+
+  - `read_one/2` for the non-raising version
   """
   @doc spark_opts: [{1, @read_one_opts_schema}]
   @spec read_one!(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
@@ -2467,6 +2756,21 @@ defmodule Ash do
   Runs a query on a resource, returning a single result, nil, or an error.
 
   If more than one result would be returned, an error is returned instead.
+
+  ## Examples
+
+      iex> Ash.read_one(MyApp.User, email: "user@example.com")
+      {:ok, %MyApp.User{id: 1, email: "user@example.com"}}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.read_one()
+      {:ok, %MyApp.Post{id: 1, published: true}}
+
+      iex> MyApp.User |> Ash.Query.filter(email: "nonexistent@example.com") |> Ash.read_one()
+      {:ok, nil}
+
+  ## See also
+
+  - `read_one!/2` for the raising version
 
   ## Options
 
@@ -2499,6 +2803,21 @@ defmodule Ash do
 
   @doc """
   Runs an Ash query, returning the first result or nil, or raising an error. See `read_first/2` for more.
+
+  ## Examples
+
+      iex> Ash.read_first!(MyApp.Post)
+      %MyApp.Post{id: 1, title: "First Post"}
+
+      iex> MyApp.Post |> Ash.Query.sort(:created_at) |> Ash.read_first!()
+      %MyApp.Post{id: 1, created_at: ~U[2023-01-01 00:00:00Z]}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: false) |> Ash.read_first!()
+      nil
+
+  ## See also
+
+  - `read_first/2` for the non-raising version
   """
   @spec read_first!(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
           Ash.Resource.record() | nil
@@ -2516,6 +2835,21 @@ defmodule Ash do
   Runs a query on a resource, returning a first result, nil, or an error.
 
   Query is automatically limited to only return one result, unlike `read_one/3`
+
+  ## Examples
+
+      iex> Ash.read_first(MyApp.Post)
+      {:ok, %MyApp.Post{id: 1, title: "First Post"}}
+
+      iex> MyApp.Post |> Ash.Query.sort(:created_at) |> Ash.read_first()
+      {:ok, %MyApp.Post{id: 1, created_at: ~U[2023-01-01 00:00:00Z]}}
+
+      iex> MyApp.Post |> Ash.Query.filter(published: false) |> Ash.read_first()
+      {:ok, nil}
+
+  ## See also
+
+  - `read_first!/2` for the raising version
 
   ## Options
 
@@ -2565,7 +2899,23 @@ defmodule Ash do
   end
 
   @doc """
-  Create a record or raises an error. See `create/2` for more information.
+  Create a record. See `create/2` for more information.
+
+  ## Examples
+
+      iex> Ash.create!(MyApp.Post, %{title: "Hello World", content: "..."})
+      %MyApp.Post{id: 1, title: "Hello World", content: "..."}
+
+      iex> changeset = Ash.Changeset.for_create(MyApp.User, :create, %{name: "John"})
+      iex> Ash.create!(changeset)
+      %MyApp.User{id: 1, name: "John"}
+
+      iex> Ash.create!(MyApp.Post, %{title: "New Post"}, return_notifications?: true)
+      {%MyApp.Post{id: 2, title: "New Post"}, [%Ash.Notifier.Notification{}]}
+
+  ## See also
+
+  - `create/3` for the non-raising version
   """
   @doc spark_opts: [{1, @create_opts_schema}]
   @spec create!(
@@ -2591,6 +2941,22 @@ defmodule Ash do
 
   @doc """
   Create a record.
+
+  ## Examples
+
+      iex> Ash.create(MyApp.Post, %{title: "Hello World", content: "..."})
+      {:ok, %MyApp.Post{id: 1, title: "Hello World", content: "..."}}
+
+      iex> changeset = Ash.Changeset.for_create(MyApp.User, :create, %{name: "John"})
+      iex> Ash.create(changeset)
+      {:ok, %MyApp.User{id: 1, name: "John"}}
+
+      iex> Ash.create(MyApp.Post, %{title: "New Post"}, return_notifications?: true)
+      {:ok, %MyApp.Post{id: 2, title: "New Post"}, [%Ash.Notifier.Notification{}]}
+
+  ## See also
+
+  - `create!/3` for the raising version
 
   #{Spark.Options.docs(@create_opts_schema)}
   """
@@ -3020,6 +3386,22 @@ defmodule Ash do
 
   @doc """
   Update a record. See `update/2` for more information.
+
+  ## Examples
+
+      iex> Ash.update!(post, %{title: "Updated Title"})
+      %MyApp.Post{id: 1, title: "Updated Title"}
+
+      iex> changeset = Ash.Changeset.for_update(user, :update, %{name: "Jane"})
+      iex> Ash.update!(changeset)
+      %MyApp.User{id: 1, name: "Jane"}
+
+      iex> Ash.update!(post, %{content: "New content"}, return_notifications?: true)
+      {%MyApp.Post{id: 1, content: "New content"}, [%Ash.Notifier.Notification{}]}
+
+  ## See also
+
+  - `update/3` for the non-raising version
   """
   @doc spark_opts: [{1, @update_opts_schema}]
   @spec update!(
@@ -3045,6 +3427,22 @@ defmodule Ash do
 
   @doc """
   Update a record.
+
+  ## Examples
+
+      iex> Ash.update(post, %{title: "Updated Title"})
+      {:ok, %MyApp.Post{id: 1, title: "Updated Title"}}
+
+      iex> changeset = Ash.Changeset.for_update(user, :update, %{name: "Jane"})
+      iex> Ash.update(changeset)
+      {:ok, %MyApp.User{id: 1, name: "Jane"}}
+
+      iex> Ash.update(post, %{content: "New content"}, return_notifications?: true)
+      {:ok, %MyApp.Post{id: 1, content: "New content"}, [%Ash.Notifier.Notification{}]}
+
+  ## See also
+
+  - `update!/3` for the raising version
 
   #{Spark.Options.docs(@update_opts_schema)}
   """
@@ -3123,6 +3521,25 @@ defmodule Ash do
 
   @doc """
   Destroy a record. See `destroy/2` for more information.
+
+  ## Examples
+
+      iex> Ash.destroy!(post)
+      :ok
+
+      iex> changeset = Ash.Changeset.for_destroy(user, :archive)
+      iex> Ash.destroy!(changeset)
+      :ok
+
+      iex> Ash.destroy!(post, return_destroyed?: true)
+      %MyApp.Post{id: 1, title: "Deleted Post"}
+
+      iex> Ash.destroy!(user, return_notifications?: true)
+      [%Ash.Notifier.Notification{}]
+
+  ## See also
+
+  - `destroy/2` for the non-raising version
   """
   @spec destroy!(Ash.Changeset.t() | Ash.Resource.record(), opts :: Keyword.t()) ::
           :ok
@@ -3150,6 +3567,25 @@ defmodule Ash do
 
   @doc """
   Destroy a record.
+
+  ## Examples
+
+      iex> Ash.destroy(post)
+      :ok
+
+      iex> changeset = Ash.Changeset.for_destroy(user, :archive)
+      iex> Ash.destroy(changeset)
+      {:ok, :ok}
+
+      iex> Ash.destroy(post, return_destroyed?: true)
+      {:ok, %MyApp.Post{id: 1, title: "Deleted Post"}}
+
+      iex> Ash.destroy(user, return_notifications?: true)
+      {:ok, [%Ash.Notifier.Notification{}]}
+
+  ## See also
+
+  - `destroy!/2` for the raising version
 
   #{Spark.Options.docs(@destroy_opts_schema)}
   """
@@ -3230,6 +3666,25 @@ defmodule Ash do
   @doc """
   Wraps the execution of the function in a transaction with the resource's data_layer.
   Collects notifications during the function's execution and sends them if the transaction was successful.
+
+  ## Examples
+
+      iex> Ash.transaction(MyApp.Post, fn ->
+      ...>   post = Ash.create!(MyApp.Post, %{title: "Hello"})
+      ...>   Ash.update!(post, %{content: "World"})
+      ...> end)
+      {:ok, %MyApp.Post{title: "Hello", content: "World"}}
+
+      iex> Ash.transaction([MyApp.User, MyApp.Post], fn ->
+      ...>   user = Ash.create!(MyApp.User, %{name: "John"})
+      ...>   Ash.create!(MyApp.Post, %{title: "Hello", author_id: user.id})
+      ...> end)
+      {:ok, %MyApp.Post{title: "Hello"}}
+
+      iex> Ash.transaction(MyApp.Post, fn ->
+      ...>   Ash.create!(MyApp.Post, %{title: "Test"})
+      ...> end, return_notifications?: true)
+      {:ok, %MyApp.Post{title: "Test"}, [%Ash.Notifier.Notification{}]}
 
   #{Spark.Options.docs(@transaction_opts_schema)}
   """
