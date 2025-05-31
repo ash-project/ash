@@ -946,6 +946,8 @@ defmodule Ash do
   - `count!/2` for counting records specifically
   - `sum!/3` for summing field values
   - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
+  - [Aggregates Guide](/documentation/topics/resources/aggregates.md) for resource-level aggregates
   """
   @spec aggregate!(
           Ash.Query.t() | Ash.Resource.t(),
@@ -999,6 +1001,8 @@ defmodule Ash do
   - `count/2` for counting records specifically
   - `sum/3` for summing field values
   - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
+  - [Aggregates Guide](/documentation/topics/resources/aggregates.md) for resource-level aggregates
 
   ## Options
 
@@ -1045,6 +1049,8 @@ defmodule Ash do
   - `count/2` for the non-raising version
   - `aggregate!/3` for running multiple aggregates
   - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
+  - [Aggregates Guide](/documentation/topics/resources/aggregates.md) for resource-level aggregates
   """
   @spec count!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) :: non_neg_integer() | no_return
   @doc spark_opts: [{1, @aggregate_opts}]
@@ -1073,6 +1079,8 @@ defmodule Ash do
   - `count!/2` for the raising version
   - `aggregate/3` for running multiple aggregates
   - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
+  - [Aggregates Guide](/documentation/topics/resources/aggregates.md) for resource-level aggregates
   """
   @spec count(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           {:ok, non_neg_integer()} | {:error, Ash.Error.t()}
@@ -1109,6 +1117,7 @@ defmodule Ash do
   - `exists/2` for the non-raising version
   - `count!/2` for getting the actual count
   - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
   """
   @spec exists?(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) :: boolean() | no_return
   @doc spark_opts: [{1, @aggregate_opts}]
@@ -1137,6 +1146,7 @@ defmodule Ash do
   - `exists?/2` for the raising version
   - `count/2` for getting the actual count
   - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
   """
   @spec exists(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           {:ok, boolean()} | {:error, Ash.Error.t()}
@@ -1173,6 +1183,8 @@ defmodule Ash do
   - `first!/3` for the raising version
   - `list/3` for getting all values of a field
   - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
+  - [Aggregates Guide](/documentation/topics/resources/aggregates.md) for resource-level aggregates
   """
   @spec first(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
           {:ok, term()} | {:error, Ash.Error.t()}
@@ -1240,6 +1252,8 @@ defmodule Ash do
   - `first/3` for the non-raising version
   - `list!/3` for getting all values of a field
   - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
+  - [Aggregates Guide](/documentation/topics/resources/aggregates.md) for resource-level aggregates
   """
   @spec first!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: term() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
@@ -1268,6 +1282,8 @@ defmodule Ash do
   - `sum!/3` for the raising version
   - `avg/3` for getting the average value
   - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
+  - [Aggregates Guide](/documentation/topics/resources/aggregates.md) for resource-level aggregates
   """
   @spec sum(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
           {:ok, number()} | {:error, Ash.Error.t()}
@@ -1637,6 +1653,8 @@ defmodule Ash do
 
   - `can/3` for the non-raising version that returns detailed results
   - `d:Ash.Policy.Authorizer.policies` for defining authorization policies
+  - [Actors and Authorization Guide](/documentation/topics/security/actors-and-authorization.md) for understanding authorization
+  - [Policies Guide](/documentation/topics/security/policies.md) for defining authorization policies
 
   ### Options
 
@@ -1753,6 +1771,8 @@ defmodule Ash do
 
   - `can?/3` for the raising version that returns true/false
   - `d:Ash.Policy.Authorizer.policies` for defining authorization policies
+  - [Actors and Authorization Guide](/documentation/topics/security/actors-and-authorization.md) for understanding authorization
+  - [Policies Guide](/documentation/topics/security/policies.md) for defining authorization policies
 
   ## Options
 
@@ -1809,6 +1829,8 @@ defmodule Ash do
 
   - `run_action/2` for the non-raising version
   - `d:Ash.Resource.Dsl.actions.action` for defining generic actions
+  - [Generic Actions Guide](/documentation/topics/actions/generic-actions.md) for understanding generic actions
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
   """
   @spec run_action!(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
           term | no_return
@@ -1845,6 +1867,8 @@ defmodule Ash do
 
   - `run_action!/2` for the raising version
   - `d:Ash.Resource.Dsl.actions.action` for defining generic actions
+  - [Generic Actions Guide](/documentation/topics/actions/generic-actions.md) for understanding generic actions
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
 
   ## Options
 
@@ -1887,6 +1911,7 @@ defmodule Ash do
 
   - `calculate/3` for the non-raising version
   - `d:Ash.Resource.Dsl.calculations` for defining calculations on resources
+  - [Calculations Guide](/documentation/topics/resources/calculations.md) for understanding calculations
   """
   @spec calculate!(
           resource_or_record :: Ash.Resource.t() | Ash.Resource.record(),
@@ -1928,6 +1953,7 @@ defmodule Ash do
 
   - `calculate!/3` for the raising version
   - `d:Ash.Resource.Dsl.calculations` for defining calculations on resources
+  - [Calculations Guide](/documentation/topics/resources/calculations.md) for understanding calculations
 
   ## Options
 
@@ -1967,6 +1993,7 @@ defmodule Ash do
   ## See also
 
   - `get/3` for the non-raising version
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
   """
   @spec get!(Ash.Resource.t(), term(), Keyword.t()) ::
           Ash.Resource.record() | no_return
@@ -2009,6 +2036,7 @@ defmodule Ash do
   ## See also
 
   - `get!/3` for the raising version
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
 
   ## Options
 
@@ -2319,6 +2347,8 @@ defmodule Ash do
   - `load/3` for the non-raising version
   - `d:Ash.Resource.Dsl.relationships` for defining relationships to load
   - `d:Ash.Resource.Dsl.calculations` for defining calculations to load
+  - [Relationships Guide](/documentation/topics/resources/relationships.md) for understanding relationships
+  - [Calculations Guide](/documentation/topics/resources/calculations.md) for understanding calculations
   """
   @spec load!(
           record_or_records ::
@@ -2639,6 +2669,7 @@ defmodule Ash do
   ## See also
 
   - `read/2` for the non-raising version
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
   """
   @spec read!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           list(Ash.Resource.record()) | Ash.Page.page() | no_return
@@ -2673,6 +2704,8 @@ defmodule Ash do
   - `read!/2` for the raising version
   - `d:Ash.Resource.Dsl.actions.read` for defining read actions
   - `d:Ash.Resource.Dsl.actions.read.pagination` for pagination configuration
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
 
   ## Options
 
@@ -2983,6 +3016,8 @@ defmodule Ash do
   ## See also
 
   - `create/3` for the non-raising version
+  - [Create Actions Guide](/documentation/topics/actions/create-actions.md) for understanding create operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
   """
   @doc spark_opts: [{1, @create_opts_schema}]
   @spec create!(
@@ -3026,6 +3061,8 @@ defmodule Ash do
   - `create!/3` for the raising version
   - `d:Ash.Resource.Dsl.actions.create` for defining create actions
   - `d:Ash.Resource.Dsl.attributes` for defining attributes
+  - [Create Actions Guide](/documentation/topics/actions/create-actions.md) for understanding create operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
 
   ## Options
 
@@ -3180,6 +3217,13 @@ defmodule Ash do
   This allows for setting up `after_action` hooks that don't need access to the returned record,
   or `after_action` hooks that can operate on the entire list at once.  See the documentation for that callback for more on
   how to do accomplish that.
+
+  ## See also
+
+  - `bulk_create!/4` for the raising version
+  - `create/3` for creating single records
+  - [Create Actions Guide](/documentation/topics/actions/create-actions.md) for understanding create operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
 
   ## Options
 
@@ -3474,6 +3518,8 @@ defmodule Ash do
 
   - `update/3` for the non-raising version
   - `d:Ash.Resource.Dsl.actions.update` for defining update actions
+  - [Update Actions Guide](/documentation/topics/actions/update-actions.md) for understanding update operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
   """
   @doc spark_opts: [{1, @update_opts_schema}]
   @spec update!(
@@ -3517,6 +3563,8 @@ defmodule Ash do
   - `update!/3` for the raising version
   - `d:Ash.Resource.Dsl.actions.update` for defining update actions
   - `d:Ash.Resource.Dsl.changes` for defining changes
+  - [Update Actions Guide](/documentation/topics/actions/update-actions.md) for understanding update operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
 
   ## Options
 
@@ -3617,6 +3665,8 @@ defmodule Ash do
 
   - `destroy/2` for the non-raising version
   - `d:Ash.Resource.Dsl.actions.destroy` for defining destroy actions
+  - [Destroy Actions Guide](/documentation/topics/actions/destroy-actions.md) for understanding destroy operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
   """
   @spec destroy!(Ash.Changeset.t() | Ash.Resource.record(), opts :: Keyword.t()) ::
           :ok
@@ -3664,6 +3714,8 @@ defmodule Ash do
 
   - `destroy!/2` for the raising version
   - `d:Ash.Resource.Dsl.actions.destroy` for defining destroy actions
+  - [Destroy Actions Guide](/documentation/topics/actions/destroy-actions.md) for understanding destroy operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
 
   ## Options
 
@@ -3765,6 +3817,11 @@ defmodule Ash do
       ...>   Ash.create!(MyApp.Post, %{title: "Test"})
       ...> end, return_notifications?: true)
       {:ok, %MyApp.Post{title: "Test"}, [%Ash.Notifier.Notification{}]}
+
+  ## See also
+
+  - [Actions Guide](/documentation/topics/actions/actions.md) for understanding action concepts
+  - [Development Testing Guide](/documentation/topics/development/testing.md) for testing with transactions
 
   ## Options
 

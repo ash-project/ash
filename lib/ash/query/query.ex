@@ -228,7 +228,7 @@ defmodule Ash.Query do
           limit: nil | non_neg_integer(),
           load: keyword(keyword),
           offset: non_neg_integer(),
-          page: keyword() | nil,
+          page: keyword() | nil | false,
           params: %{optional(atom | binary) => any},
           phase: :preparing | :before_action | :after_action | :executing,
           select: nil | [atom],
@@ -705,6 +705,8 @@ defmodule Ash.Query do
   - `for_read/4` for creating queries bound to specific read actions
   - `filter/2` for adding filter conditions
   - `sort/3` for adding sort criteria
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
   """
   @spec new(Ash.Resource.t() | Ash.Query.t(), opts :: Keyword.t()) :: Ash.Query.t()
   def new(resource, opts \\ [])
@@ -838,6 +840,8 @@ defmodule Ash.Query do
   - `new/2` for creating basic queries without specific actions
   - `load/3` for adding relationship loading to queries
   - `d:Ash.Resource.Dsl.actions.read` for defining read actions
+  - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
   """
   @spec for_read(t() | Ash.Resource.t(), atom(), map() | Keyword.t(), Keyword.t()) :: t()
   # 4.0: make args required, same with action input and changeset
@@ -1905,6 +1909,8 @@ defmodule Ash.Query do
   - `select/3` for controlling which attributes are returned
   - `ensure_selected/2` for ensuring specific fields are selected
   - `Ash.read/2` for executing queries with loaded data
+  - [Relationships Guide](/documentation/topics/resources/relationships.md) for understanding relationships
+  - [Calculations Guide](/documentation/topics/resources/calculations.md) for understanding calculations
   """
   @spec load(
           t() | Ash.Resource.t(),
@@ -3116,12 +3122,12 @@ defmodule Ash.Query do
   - `calculate/8` for custom calculations
   - `Ash.read/2` for executing queries with aggregates
   """
-  @spec aggregate(t() | Ash.Resource.t(), atom(), atom(), atom()) :: t()
+  @spec aggregate(t() | Ash.Resource.t(), atom() | String.t(), atom(), atom()) :: t()
   def aggregate(query, name, kind, relationship) do
     aggregate(query, name, kind, relationship, [])
   end
 
-  @spec aggregate(t() | Ash.Resource.t(), atom(), atom(), atom(), Keyword.t()) :: t()
+  @spec aggregate(t() | Ash.Resource.t(), atom() | String.t(), atom(), atom(), Keyword.t()) :: t()
 
   def aggregate(query, name, kind, relationship, opts) when is_list(opts) do
     agg_query = opts[:query]

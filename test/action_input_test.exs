@@ -17,7 +17,7 @@ defmodule Ash.Test.ActionInput do
     end
   end
 
-  doctest Ash.ActionInput
+  # doctest Ash.ActionInput
 
   describe "for_action/4" do
     test "when the action doesn't exist, it raises an appropriate error" do

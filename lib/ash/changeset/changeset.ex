@@ -215,7 +215,7 @@ defmodule Ash.Changeset do
 
   @typedoc """
   Function type for after action hooks.
-  
+
   Receives the changeset and the successfully created/updated record, and can return
   the record optionally with notifications, or an error.
   """
@@ -227,7 +227,7 @@ defmodule Ash.Changeset do
 
   @typedoc """
   Function type for after transaction hooks.
-  
+
   Receives the changeset and the result (success or failure) of the action,
   and returns the result (potentially modified).
   """
@@ -237,58 +237,58 @@ defmodule Ash.Changeset do
 
   @typedoc """
   Function type for before action hooks.
-  
+
   Receives a changeset and returns a modified changeset, optionally with notifications.
   """
   @type before_action_fun :: (t -> t | {t, %{notifications: [Ash.Notifier.Notification.t()]}})
 
   @typedoc """
   Function type for before transaction hooks.
-  
+
   Receives a changeset and returns a modified changeset.
   """
   @type before_transaction_fun :: (t -> t)
 
   @typedoc """
   Result type for around action callbacks.
-  
+
   Contains the successful result with record, changeset, and notifications, or an error.
   """
   @type around_action_result ::
           {:ok, Ash.Resource.record(), t(), %{notifications: list(Ash.Notifier.Notification.t())}}
           | {:error, Ash.Error.t()}
-  
+
   @typedoc """
   Callback function type for around action hooks.
-  
+
   A function that takes a changeset and returns an around action result.
   """
   @type around_action_callback :: (t -> around_action_result)
-  
+
   @typedoc """
   Function type for around action hooks.
-  
+
   Receives a changeset and a callback function that must be called with the changeset.
   """
   @type around_action_fun :: (t, around_action_callback -> around_action_result)
 
   @typedoc """
   Result type for around transaction callbacks.
-  
+
   Contains either a successful result with the record or an error.
   """
   @type around_transaction_result :: {:ok, Ash.Resource.record()} | {:error, any}
-  
+
   @typedoc """
   Callback function type for around transaction hooks.
-  
+
   A function that takes a changeset and returns an around transaction result.
   """
   @type around_transaction_callback :: (t -> around_transaction_result)
-  
+
   @typedoc """
   Function type for around transaction hooks.
-  
+
   Receives a changeset and a callback function that must be called with the changeset.
   """
   @type around_transaction_fun :: (t, around_transaction_callback -> around_transaction_result)
@@ -307,14 +307,14 @@ defmodule Ash.Changeset do
 
   @typedoc """
   The current phase of changeset processing.
-  
+
   Represents where the changeset is in its lifecycle, from pending through various hook phases.
   """
   @type phase :: unquote(Enum.reduce(@phases, &{:|, [], [&1, &2]}))
 
   @typedoc """
   The changeset struct containing all the information about a pending action.
-  
+
   This struct tracks changes to attributes, arguments for the action, validation state,
   hooks to run at various points, and other metadata needed to execute an action.
   """
@@ -378,9 +378,10 @@ defmodule Ash.Changeset do
   defmodule OriginalDataNotAvailable do
     @moduledoc "A value placed in changeset.data to indicate that the original data is not available"
     defstruct reason: :atomic_query_update
+
     @typedoc """
     Placeholder struct used when original data is not available.
-    
+
     Used in atomic operations where the original record data cannot be loaded.
     """
     @type t :: %__MODULE__{reason: :atomic_query_update}
@@ -692,7 +693,9 @@ defmodule Ash.Changeset do
     if changeset.select do
       Ash.Changeset.select(changeset, List.wrap(fields))
     else
-      to_select = Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource)
+      to_select =
+        Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource)
+        |> MapSet.to_list()
 
       Ash.Changeset.select(changeset, to_select)
     end
@@ -1753,6 +1756,8 @@ defmodule Ash.Changeset do
   - `for_destroy/4` for destroying records
   - `Ash.create/2` to execute the changeset
   - `d:Ash.Resource.Dsl.actions.create` for defining create actions
+  - [Create Actions Guide](/documentation/topics/actions/create-actions.md) for understanding create operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
   """
   def for_create(initial, action, params \\ %{}, opts \\ []) do
     changeset =
@@ -1865,6 +1870,8 @@ defmodule Ash.Changeset do
   - `for_destroy/4` for destroying records
   - `Ash.update/2` to execute the changeset
   - `d:Ash.Resource.Dsl.actions.update` for defining update actions
+  - [Update Actions Guide](/documentation/topics/actions/update-actions.md) for understanding update operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
   """
   def for_update(initial, action, params \\ %{}, opts \\ []) do
     changeset =
@@ -1941,6 +1948,8 @@ defmodule Ash.Changeset do
   - `for_update/4` for updating records
   - `Ash.destroy/2` to execute the changeset
   - `d:Ash.Resource.Dsl.actions.destroy` for defining destroy actions
+  - [Destroy Actions Guide](/documentation/topics/actions/destroy-actions.md) for understanding destroy operations
+  - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
   """
   def for_destroy(initial, action_or_name, params \\ %{}, opts \\ []) do
     changeset =
@@ -3299,13 +3308,10 @@ defmodule Ash.Changeset do
            } = error},
           changeset ->
             Enum.reduce_while(arguments, {:ok, []}, fn argument, {:ok, args} ->
-              IO.inspect(argument)
-
               case Ash.Expr.eval(argument,
                      resource: changeset.resource,
                      unknown_on_unknown_refs?: true
-                   )
-                   |> IO.inspect() do
+                   ) do
                 {:ok, value} ->
                   {:cont, {:ok, [value | args]}}
 
@@ -4832,7 +4838,7 @@ defmodule Ash.Changeset do
 
   @typedoc """
   The type of relationship management strategy to use.
-  
+
   Defines how related records should be handled when managing relationships.
   """
   @type manage_relationship_type ::
