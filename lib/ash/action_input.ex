@@ -159,6 +159,7 @@ defmodule Ash.ActionInput do
   - `new/2` for creating basic inputs
   - `set_argument/3` for adding arguments after creation
   - `Ash.run_action/2` for executing the action with the input
+  - `d:Ash.Resource.Dsl.actions.action` for defining generic actions
   """
   @doc spark_opts: [{4, @for_action_opts}]
   @spec for_action(

@@ -837,6 +837,7 @@ defmodule Ash.Query do
   - `Ash.read/2` for executing the prepared query
   - `new/2` for creating basic queries without specific actions
   - `load/3` for adding relationship loading to queries
+  - `d:Ash.Resource.Dsl.actions.read` for defining read actions
   """
   @spec for_read(t() | Ash.Resource.t(), atom(), map() | Keyword.t(), Keyword.t()) :: t()
   # 4.0: make args required, same with action input and changeset

@@ -945,6 +945,7 @@ defmodule Ash do
   - `aggregate/3` for the non-raising version
   - `count!/2` for counting records specifically
   - `sum!/3` for summing field values
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec aggregate!(
           Ash.Query.t() | Ash.Resource.t(),
@@ -997,6 +998,9 @@ defmodule Ash do
   - `aggregate!/3` for the raising version
   - `count/2` for counting records specifically
   - `sum/3` for summing field values
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
+
+  ## Options
 
   #{Spark.Options.docs(@aggregate_opts)}
   """
@@ -1040,6 +1044,7 @@ defmodule Ash do
 
   - `count/2` for the non-raising version
   - `aggregate!/3` for running multiple aggregates
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec count!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) :: non_neg_integer() | no_return
   @doc spark_opts: [{1, @aggregate_opts}]
@@ -1067,6 +1072,7 @@ defmodule Ash do
 
   - `count!/2` for the raising version
   - `aggregate/3` for running multiple aggregates
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec count(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           {:ok, non_neg_integer()} | {:error, Ash.Error.t()}
@@ -1102,6 +1108,7 @@ defmodule Ash do
 
   - `exists/2` for the non-raising version
   - `count!/2` for getting the actual count
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec exists?(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) :: boolean() | no_return
   @doc spark_opts: [{1, @aggregate_opts}]
@@ -1129,6 +1136,7 @@ defmodule Ash do
 
   - `exists?/2` for the raising version
   - `count/2` for getting the actual count
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec exists(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           {:ok, boolean()} | {:error, Ash.Error.t()}
@@ -1164,6 +1172,7 @@ defmodule Ash do
 
   - `first!/3` for the raising version
   - `list/3` for getting all values of a field
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec first(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
           {:ok, term()} | {:error, Ash.Error.t()}
@@ -1230,6 +1239,7 @@ defmodule Ash do
 
   - `first/3` for the non-raising version
   - `list!/3` for getting all values of a field
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec first!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: term() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
@@ -1257,6 +1267,7 @@ defmodule Ash do
 
   - `sum!/3` for the raising version
   - `avg/3` for getting the average value
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec sum(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
           {:ok, number()} | {:error, Ash.Error.t()}
@@ -1294,6 +1305,7 @@ defmodule Ash do
 
   - `sum/3` for the non-raising version
   - `avg!/3` for getting the average value
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec sum!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: number() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
@@ -1321,6 +1333,7 @@ defmodule Ash do
 
   - `list!/3` for the raising version
   - `first/3` for getting just the first value
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec list(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
           {:ok, list(term())} | {:error, Ash.Error.t()}
@@ -1393,6 +1406,7 @@ defmodule Ash do
 
   - `list/3` for the non-raising version
   - `first!/3` for getting just the first value
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec list!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: list(term()) | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
@@ -1420,6 +1434,7 @@ defmodule Ash do
 
   - `max!/3` for the raising version
   - `min/3` for getting the minimum value
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec max(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
           {:ok, term()} | {:error, Ash.Error.t()}
@@ -1457,6 +1472,7 @@ defmodule Ash do
 
   - `max/3` for the non-raising version
   - `min!/3` for getting the minimum value
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec max!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: term() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
@@ -1484,6 +1500,7 @@ defmodule Ash do
 
   - `min!/3` for the raising version
   - `max/3` for getting the maximum value
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec min(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
           {:ok, term()} | {:error, Ash.Error.t()}
@@ -1521,6 +1538,7 @@ defmodule Ash do
 
   - `min/3` for the non-raising version
   - `max!/3` for getting the maximum value
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec min!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: term() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
@@ -1548,6 +1566,7 @@ defmodule Ash do
 
   - `avg!/3` for the raising version
   - `sum/3` for getting the total sum
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec avg(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) ::
           {:ok, number()} | {:error, Ash.Error.t()}
@@ -1585,6 +1604,7 @@ defmodule Ash do
 
   - `avg/3` for the non-raising version
   - `sum!/3` for getting the total sum
+  - `d:Ash.Resource.Dsl.aggregates` for defining aggregates on resources
   """
   @spec avg!(Ash.Query.t() | Ash.Resource.t(), atom(), Keyword.t()) :: number() | no_return
   @doc spark_opts: [{2, @aggregate_opts}]
@@ -1616,6 +1636,7 @@ defmodule Ash do
   ## See also
 
   - `can/3` for the non-raising version that returns detailed results
+  - `d:Ash.Policy.Authorizer.policies` for defining authorization policies
 
   ### Options
 
@@ -1728,7 +1749,12 @@ defmodule Ash do
   # => false
   ```
 
-  ### Options
+  ## See also
+
+  - `can?/3` for the raising version that returns true/false
+  - `d:Ash.Policy.Authorizer.policies` for defining authorization policies
+
+  ## Options
 
   #{Spark.Options.docs(@can_opts)}
   """
@@ -1782,6 +1808,7 @@ defmodule Ash do
   ## See also
 
   - `run_action/2` for the non-raising version
+  - `d:Ash.Resource.Dsl.actions.action` for defining generic actions
   """
   @spec run_action!(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
           term | no_return
@@ -1817,8 +1844,9 @@ defmodule Ash do
   ## See also
 
   - `run_action!/2` for the raising version
+  - `d:Ash.Resource.Dsl.actions.action` for defining generic actions
 
-  Options:
+  ## Options
 
   #{Spark.Options.docs(@run_action_opts)}
   """
@@ -1858,6 +1886,7 @@ defmodule Ash do
   ## See also
 
   - `calculate/3` for the non-raising version
+  - `d:Ash.Resource.Dsl.calculations` for defining calculations on resources
   """
   @spec calculate!(
           resource_or_record :: Ash.Resource.t() | Ash.Resource.record(),
@@ -1898,6 +1927,9 @@ defmodule Ash do
   ## See also
 
   - `calculate!/3` for the raising version
+  - `d:Ash.Resource.Dsl.calculations` for defining calculations on resources
+
+  ## Options
 
   #{Spark.Options.docs(@calculate_opts)}
   """
@@ -1977,6 +2009,8 @@ defmodule Ash do
   ## See also
 
   - `get!/3` for the raising version
+
+  ## Options
 
   #{Spark.Options.docs(@get_opts_schema)}
   """
@@ -2283,6 +2317,8 @@ defmodule Ash do
   ## See also
 
   - `load/3` for the non-raising version
+  - `d:Ash.Resource.Dsl.relationships` for defining relationships to load
+  - `d:Ash.Resource.Dsl.calculations` for defining calculations to load
   """
   @spec load!(
           record_or_records ::
@@ -2331,6 +2367,10 @@ defmodule Ash do
   ## See also
 
   - `load!/3` for the raising version
+  - `d:Ash.Resource.Dsl.relationships` for defining relationships to load
+  - `d:Ash.Resource.Dsl.calculations` for defining calculations to load
+
+  ## Options
 
   #{Spark.Options.docs(@load_opts_schema)}
   """
@@ -2486,6 +2526,12 @@ defmodule Ash do
       iex> MyApp.Post |> Ash.stream!(strategy: :offset, batch_size: 50) |> Stream.filter(& &1.likes > 10) |> Enum.to_list()
       [%MyApp.Post{likes: 15}, ...]
 
+  ## See also
+
+  - `read/2` for non-streaming reads
+  - `d:Ash.Resource.Dsl.actions.read` for defining read actions
+  - `d:Ash.Resource.Dsl.actions.read.pagination` for pagination configuration
+
   ## Options
 
   #{Spark.Options.docs(@stream_opts)}
@@ -2625,6 +2671,10 @@ defmodule Ash do
   ## See also
 
   - `read!/2` for the raising version
+  - `d:Ash.Resource.Dsl.actions.read` for defining read actions
+  - `d:Ash.Resource.Dsl.actions.read.pagination` for pagination configuration
+
+  ## Options
 
   #{Spark.Options.docs(@read_opts_schema)}
 
@@ -2690,6 +2740,7 @@ defmodule Ash do
   ## See also
 
   - `reload/2` for the non-raising version
+  - `d:Ash.Resource.Dsl.relationships` for defining relationships to load
   """
   @spec reload!(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
           Ash.Resource.record() | no_return
@@ -2973,6 +3024,10 @@ defmodule Ash do
   ## See also
 
   - `create!/3` for the raising version
+  - `d:Ash.Resource.Dsl.actions.create` for defining create actions
+  - `d:Ash.Resource.Dsl.attributes` for defining attributes
+
+  ## Options
 
   #{Spark.Options.docs(@create_opts_schema)}
   """
@@ -3418,6 +3473,7 @@ defmodule Ash do
   ## See also
 
   - `update/3` for the non-raising version
+  - `d:Ash.Resource.Dsl.actions.update` for defining update actions
   """
   @doc spark_opts: [{1, @update_opts_schema}]
   @spec update!(
@@ -3459,6 +3515,10 @@ defmodule Ash do
   ## See also
 
   - `update!/3` for the raising version
+  - `d:Ash.Resource.Dsl.actions.update` for defining update actions
+  - `d:Ash.Resource.Dsl.changes` for defining changes
+
+  ## Options
 
   #{Spark.Options.docs(@update_opts_schema)}
   """
@@ -3556,6 +3616,7 @@ defmodule Ash do
   ## See also
 
   - `destroy/2` for the non-raising version
+  - `d:Ash.Resource.Dsl.actions.destroy` for defining destroy actions
   """
   @spec destroy!(Ash.Changeset.t() | Ash.Resource.record(), opts :: Keyword.t()) ::
           :ok
@@ -3602,6 +3663,9 @@ defmodule Ash do
   ## See also
 
   - `destroy!/2` for the raising version
+  - `d:Ash.Resource.Dsl.actions.destroy` for defining destroy actions
+
+  ## Options
 
   #{Spark.Options.docs(@destroy_opts_schema)}
   """
@@ -3701,6 +3765,8 @@ defmodule Ash do
       ...>   Ash.create!(MyApp.Post, %{title: "Test"})
       ...> end, return_notifications?: true)
       {:ok, %MyApp.Post{title: "Test"}, [%Ash.Notifier.Notification{}]}
+
+  ## Options
 
   #{Spark.Options.docs(@transaction_opts_schema)}
   """

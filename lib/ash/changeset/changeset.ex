@@ -1697,7 +1697,7 @@ defmodule Ash.Changeset do
   Customization section below. `params` are stored directly as given in the `params` field of the changeset, which can be
   used to retrieve the originally input value.
 
-  ### Opts
+  ## Options
 
   #{Spark.Options.docs(@for_create_opts)}
 
@@ -1752,6 +1752,7 @@ defmodule Ash.Changeset do
   - `for_update/4` for updating existing records
   - `for_destroy/4` for destroying records
   - `Ash.create/2` to execute the changeset
+  - `d:Ash.Resource.Dsl.actions.create` for defining create actions
   """
   def for_create(initial, action, params \\ %{}, opts \\ []) do
     changeset =
@@ -1863,6 +1864,7 @@ defmodule Ash.Changeset do
   - `for_create/4` for creating new records
   - `for_destroy/4` for destroying records
   - `Ash.update/2` to execute the changeset
+  - `d:Ash.Resource.Dsl.actions.update` for defining update actions
   """
   def for_update(initial, action, params \\ %{}, opts \\ []) do
     changeset =
@@ -1938,6 +1940,7 @@ defmodule Ash.Changeset do
   - `for_create/4` for creating new records
   - `for_update/4` for updating records
   - `Ash.destroy/2` to execute the changeset
+  - `d:Ash.Resource.Dsl.actions.destroy` for defining destroy actions
   """
   def for_destroy(initial, action_or_name, params \\ %{}, opts \\ []) do
     changeset =
