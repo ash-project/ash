@@ -25,6 +25,13 @@ defmodule Ash.ActionInput do
     errors: []
   ]
 
+  @typedoc """
+  An action input struct for generic (non-CRUD) actions.
+
+  Contains all the information needed to execute a generic action including
+  arguments, context, tenant information, and validation state. Built using
+  `for_action/4` and modified with functions like `set_argument/3` and `set_context/2`.
+  """
   @type t :: %__MODULE__{
           arguments: map(),
           params: map(),
@@ -38,15 +45,28 @@ defmodule Ash.ActionInput do
         }
 
   @doc """
-  Create a new action input from a resource.
+  Creates a new action input from a resource.
+
+  This creates a basic action input struct that can be used as a starting point
+  for building inputs for generic actions. Use `for_action/4` to create an input
+  bound to a specific action.
 
   ## Examples
 
-      iex> Ash.ActionInput.new(Post)
-      %Ash.ActionInput{resource: Post}
+      # Create a new action input for a resource
+      iex> Ash.ActionInput.new(MyApp.Post)
+      %Ash.ActionInput{resource: MyApp.Post, domain: nil, ...}
 
-      iex> Ash.ActionInput.new(Post, Domain)
-      %Ash.ActionInput{resource: Post, domain: Domain}
+
+      # Usually you'll want to use for_action/4 instead
+      iex> MyApp.Post |> Ash.ActionInput.for_action(:send_notification, %{message: "Hello"})
+      %Ash.ActionInput{action: %{name: :send_notification}, arguments: %{message: "Hello"}, ...}
+
+  ## See also
+
+  - `for_action/4` for creating action-specific inputs
+  - `set_argument/3` for adding arguments
+  - `set_context/2` for adding context
   """
   @spec new(Ash.Resource.t(), Ash.Domain.t()) :: t
   def new(resource, domain \\ nil) do
@@ -104,18 +124,41 @@ defmodule Ash.ActionInput do
   end
 
   @doc """
-  Creates a new input for a generic action
+  Creates a new input for a generic action.
+
+  This is the primary way to create action inputs for generic actions. It validates
+  the action exists, sets up the input with proper defaults, and validates any
+  provided arguments according to the action's argument definitions.
+
+  ## Examples
+
+      # Create input for a simple action
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:send_notification, %{message: "Hello"})
+      %Ash.ActionInput{action: %{name: :send_notification}, arguments: %{message: "Hello"}, ...}
+
+      # Create input with options
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:complex_action, %{data: "test"},
+      ...>   actor: current_user, authorize?: true)
+      %Ash.ActionInput{arguments: %{data: "test"}, ...}
+
+      # Create input and then modify it
+      iex> input = MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:example, %{})
+      ...> |> Ash.ActionInput.set_context(%{source: "api"})
+      iex> input.action.name
+      :example
 
   ## Options
 
   #{Opts.docs()}
 
-  ## Examples
+  ## See also
 
-      iex> Post
-      ...> |> Ash.ActionInput.for_action(:example, %{})
-      ...> |> then(& &1.action.name)
-      :example
+  - `new/2` for creating basic inputs
+  - `set_argument/3` for adding arguments after creation
+  - `Ash.run_action/2` for executing the action with the input
   """
   @doc spark_opts: [{4, @for_action_opts}]
   @spec for_action(
@@ -191,15 +234,39 @@ defmodule Ash.ActionInput do
   end
 
   @doc """
-  Set the tenant to use when calling the action.
+  Sets the tenant to use when calling the action.
 
-  ## Example
+  In multitenant applications, this configures which tenant's data the action
+  should operate on. The tenant value is used for data isolation and access control.
 
-      iex> Post
+  ## Examples
+
+      # Set tenant using a string identifier
+      iex> MyApp.Post
       ...> |> Ash.ActionInput.new()
-      ...> |> Ash.ActionInput.set_tenant("banana")
+      ...> |> Ash.ActionInput.set_tenant("org_123")
       ...> |> then(& &1.tenant)
-      "banana"
+      "org_123"
+
+      # Set tenant using a struct that implements Ash.ToTenant
+      iex> org = %MyApp.Organization{id: 456}
+      iex> input = MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:send_notification, %{})
+      ...> |> Ash.ActionInput.set_tenant(org)
+      iex> input.tenant == org
+      true
+
+      # Use with action execution
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:cleanup, %{})
+      ...> |> Ash.ActionInput.set_tenant("tenant_456")
+      ...> |> Ash.run_action()
+
+  ## See also
+
+  - `for_action/4` for setting tenant when creating inputs
+  - `Ash.ToTenant` protocol for custom tenant conversion
+  - `set_context/2` for adding tenant to action context
   """
   @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(input, tenant) do
@@ -256,12 +323,34 @@ defmodule Ash.ActionInput do
   @doc """
   Gets the value of an argument provided to the input.
 
-  ## Example
+  Returns the argument value if found, or `nil` if not found. Arguments are
+  validated and cast according to the action's argument definitions when set.
 
-      iex> Post
-      ...> |> Ash.ActionInput.for_action(:example, %{arg: "banana"})
-      ...> |> Ash.ActionInput.get_argument(:arg)
-      "banana"
+  ## Examples
+
+      # Get an argument that exists
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:send_email, %{recipient: "user@example.com"})
+      ...> |> Ash.ActionInput.get_argument(:recipient)
+      "user@example.com"
+
+      # Get an argument that doesn't exist returns nil
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:send_email, %{})
+      ...> |> Ash.ActionInput.get_argument(:missing_arg)
+      nil
+
+      # Arguments can be accessed by string or atom key
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:example, %{"message" => "hello"})
+      ...> |> Ash.ActionInput.get_argument(:message)
+      "hello"
+
+  ## See also
+
+  - `fetch_argument/2` for safer argument access with explicit error handling
+  - `set_argument/3` for setting argument values
+  - `for_action/4` for providing initial arguments
   """
   @spec get_argument(t, atom | String.t()) :: term
   def get_argument(input, argument) when is_atom(argument) or is_binary(argument) do
@@ -272,19 +361,45 @@ defmodule Ash.ActionInput do
   end
 
   @doc """
-  Fetches the value of an argument provided to the input or `:error`.
+  Fetches the value of an argument provided to the input.
+
+  Returns `{:ok, value}` if the argument exists, or `:error` if not found.
+  This is the safer alternative to `get_argument/2` when you need to distinguish
+  between a `nil` value and a missing argument.
 
   ## Examples
 
-      iex> Post
-      ...> |> Ash.ActionInput.for_action(:example, %{arg: "banana"})
-      ...> |> Ash.ActionInput.fetch_argument(:arg)
-      {:ok, "banana"}
+      # Fetch an argument that exists
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:send_notification, %{priority: :high})
+      ...> |> Ash.ActionInput.fetch_argument(:priority)
+      {:ok, :high}
 
-      iex> Post
-      ...> |> Ash.ActionInput.for_action(:example, %{})
-      ...> |> Ash.ActionInput.fetch_argument(:banana)
+      # Fetch an argument that doesn't exist
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:send_notification, %{})
+      ...> |> Ash.ActionInput.fetch_argument(:missing_arg)
       :error
+
+      # Distinguish between nil and missing arguments
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:example, %{optional_field: nil})
+      ...> |> Ash.ActionInput.fetch_argument(:optional_field)
+      {:ok, nil}
+
+      # Use in conditional logic
+      iex> input = MyApp.Post |> Ash.ActionInput.for_action(:process, %{})
+      iex> case Ash.ActionInput.fetch_argument(input, :mode) do
+      ...>   {:ok, mode} -> "Processing in \#{mode} mode"
+      ...>   :error -> "Using default processing mode"
+      ...> end
+      "Using default processing mode"
+
+  ## See also
+
+  - `get_argument/2` for simpler argument access
+  - `set_argument/3` for setting argument values
+  - `for_action/4` for providing initial arguments
   """
   @spec fetch_argument(t, atom | String.t()) :: {:ok, term()} | :error
   def fetch_argument(input, argument) when is_atom(argument) or is_binary(argument) do
@@ -294,15 +409,41 @@ defmodule Ash.ActionInput do
   end
 
   @doc """
-  Set an argument value
+  Sets an argument value on the action input.
 
-  ## Example
+  The argument value is validated and cast according to the action's argument
+  definition. If validation fails, errors will be added to the input and it
+  will be marked as invalid.
 
-      iex> Post
-      ...> |> Ash.ActionInput.for_action(:example, %{})
-      ...> |> Ash.ActionInput.set_argument(:arg, "banana")
-      ...> |> Ash.ActionInput.get_argument(:arg)
-      "banana"
+  ## Examples
+
+      # Set a simple argument
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:send_notification, %{})
+      ...> |> Ash.ActionInput.set_argument(:message, "Hello World")
+      ...> |> Ash.ActionInput.get_argument(:message)
+      "Hello World"
+
+      # Set multiple arguments by chaining
+      iex> input = MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:complex_action, %{})
+      ...> |> Ash.ActionInput.set_argument(:priority, :high)
+      ...> |> Ash.ActionInput.set_argument(:batch_size, 100)
+      iex> Ash.ActionInput.get_argument(input, :priority)
+      :high
+
+      # Arguments are validated according to type
+      iex> input = MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:schedule_job, %{})
+      ...> |> Ash.ActionInput.set_argument(:run_at, ~U[2024-01-01 10:00:00Z])
+      iex> input.valid?
+      true
+
+  ## See also
+
+  - `get_argument/2` for retrieving argument values
+  - `set_private_argument/3` for setting private arguments
+  - `for_action/4` for providing initial arguments
   """
   @spec set_argument(input :: t(), name :: atom, value :: term()) :: t()
   def set_argument(input, argument, value) do
@@ -351,15 +492,38 @@ defmodule Ash.ActionInput do
   end
 
   @doc """
-  Sets a private argument value
+  Sets a private argument value on the action input.
 
-  ## Example
+  Private arguments are not exposed in the public API and can only be set
+  internally. This function will only work for arguments marked as `public?: false`
+  in the action definition.
 
-      iex> Post
+  ## Examples
+
+      # Set a private argument (assuming :internal_flag is private)
+      iex> MyApp.Post
       ...> |> Ash.ActionInput.for_action(:example, %{})
-      ...> |> Ash.ActionInput.set_private_argument(:private_arg, "banana")
-      ...> |> Ash.ActionInput.get_argument(:private_arg)
-      "banana"
+      ...> |> Ash.ActionInput.set_private_argument(:internal_flag, true)
+      ...> |> Ash.ActionInput.get_argument(:internal_flag)
+      true
+
+      # Attempting to set a public argument as private will error
+      iex> input = MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:example, %{})
+      ...> |> Ash.ActionInput.set_private_argument(:public_arg, "value")
+      iex> input.valid?
+      false
+
+      # Use in action implementations for internal state
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:complex_workflow, %{data: "user_data"})
+      ...> |> Ash.ActionInput.set_private_argument(:workflow_step, 1)
+
+  ## See also
+
+  - `set_argument/3` for setting public arguments
+  - `get_argument/2` for retrieving argument values
+  - Action argument definitions with `public?: false`
   """
   @spec set_private_argument(input :: t(), name :: atom, value :: term()) :: t()
   def set_private_argument(input, name, value) do
@@ -387,18 +551,45 @@ defmodule Ash.ActionInput do
   end
 
   @doc """
-  Deep merges the provided map into the input context that can be used later
+  Deep merges the provided map into the input context.
+
+  Context is used to pass additional information through the action pipeline
+  that can be accessed by action implementations, changes, and validations.
+  The context is merged deeply, so nested maps will be combined rather than replaced.
 
   Do not use the `private` key in your custom context, as that is reserved for
   internal use.
 
-  ## Example
+  ## Examples
 
-      iex> Post
+      # Set simple context values
+      iex> MyApp.Post
       ...> |> Ash.ActionInput.new()
-      ...> |> Ash.ActionInput.set_context(%{favourite_fruit: :banana})
-      ...> |> then(& &1.context.favourite_fruit)
-      :banana
+      ...> |> Ash.ActionInput.set_context(%{source: "api", user_id: 123})
+      ...> |> then(& &1.context.source)
+      "api"
+
+      # Context is merged deeply
+      iex> input = MyApp.Post
+      ...> |> Ash.ActionInput.new()
+      ...> |> Ash.ActionInput.set_context(%{metadata: %{version: 1}})
+      ...> |> Ash.ActionInput.set_context(%{metadata: %{trace_id: "abc123"}})
+      iex> input.context.metadata
+      %{version: 1, trace_id: "abc123"}
+
+      # Use context in action implementations
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:process_data, %{data: "test"})
+      ...> |> Ash.ActionInput.set_context(%{
+      ...>   request_id: "req_456",
+      ...>   feature_flags: %{new_algorithm: true}
+      ...> })
+
+  ## See also
+
+  - `for_action/4` for setting context when creating inputs
+  - Action implementations can access context for custom logic
+  - `set_tenant/2` for tenant-specific context
   """
   @spec set_context(t(), map | nil) :: t()
   def set_context(input, nil), do: input
@@ -518,9 +709,45 @@ defmodule Ash.ActionInput do
   end
 
   @doc """
-  Add an error to the errors list and mark the action input as invalid.
+  Adds an error to the errors list and marks the action input as invalid.
 
-  See `Ash.Error.to_ash_error/3` for more on supported values for `error`
+  This function allows you to add validation errors or other issues to the
+  action input. Once an error is added, the input will be marked as invalid
+  and action execution will be prevented.
+
+  ## Examples
+
+      # Add a simple string error
+      iex> input = MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:send_notification, %{})
+      ...> |> Ash.ActionInput.add_error("Missing required configuration")
+      iex> input.valid?
+      false
+
+      # Add an error with a specific path
+      iex> input = MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:process_data, %{})
+      ...> |> Ash.ActionInput.add_error("Invalid format", [:data, :format])
+      iex> input.errors |> List.first() |> Map.get(:path)
+      [:data, :format]
+
+      # Add multiple errors
+      iex> input = MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:complex_action, %{})
+      ...> |> Ash.ActionInput.add_error(["Error 1", "Error 2"])
+      iex> length(input.errors)
+      2
+
+      # Add structured error with keyword list
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:validate_input, %{})
+      ...> |> Ash.ActionInput.add_error(field: :email, message: "is invalid")
+
+  ## See also
+
+  - `Ash.Error.to_ash_error/3` for more on supported error values
+  - Action implementations can use this to add custom validation errors
+  - `set_argument/3` automatically adds errors for invalid argument values
   """
   @spec add_error(
           t(),

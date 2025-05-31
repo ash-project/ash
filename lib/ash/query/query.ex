@@ -45,7 +45,7 @@ defmodule Ash.Query do
 
   While Ash's query tools often eliminate the need for direct database queries, Ash is not itself designed to be a comprehensive ORM or database query builder.
 
-  For specialized querying needs that fall outside Ash's standard capabilities, the framework provides escape hatches. These mechanisms allow developers to implement custom query logic when necessary. For detailed information about these escape hatches, refer to the `Ash.Query` module documentation.
+  For specialized querying needs that fall outside Ash's standard capabilities, the framework provides escape hatches. These mechanisms allow developers to implement custom query logic when necessary.
 
   ### Important Considerations
 
@@ -57,7 +57,7 @@ defmodule Ash.Query do
 
   ## Escape Hatches
 
-  Many of these tools are surprisingly deep and capable, covering everything you
+  Many of the tools in `Ash.Query` are surprisingly deep and capable, covering everything you
   need to build your domain logic. With that said, these tools are *not*
   designed to encompass *every kind of query* that you could possibly want to
   write over your data. `Ash` is *not* an ORM or a database query tool, despite
@@ -140,9 +140,9 @@ defmodule Ash.Query do
   ```elixir
   MyApp.Post
   |> Ash.Query.for_read(:read)
-  |> Ash.Query.data_layer_query()
+  |> Ash.data_layer_query()
   |> case do
-    {:ok, ecto_query} ->
+    {:ok, %{query: ecto_query}} ->
       ecto_query
       |> Ecto.Query.where([p], p.likes > 100)
       |> MyApp.Repo.all()
@@ -170,7 +170,6 @@ defmodule Ash.Query do
     load_through: %{},
     action_failed?: false,
     combination_of: [],
-    combination_calcs: [],
     after_action: [],
     authorize_results: [],
     aggregates: %{},
@@ -191,6 +190,13 @@ defmodule Ash.Query do
     valid?: true
   ]
 
+  @typedoc """
+  A query struct for reading data from a resource.
+
+  Contains all the configuration needed to read data including filters, sorting,
+  pagination, field selection, and relationship loading. Built incrementally
+  through functions like `filter/2`, `sort/2`, `load/2`, etc.
+  """
   @type t :: %__MODULE__{
           __validated_for_action__: atom | nil,
           action: Ash.Resource.Actions.Read.t() | nil,
@@ -200,7 +206,6 @@ defmodule Ash.Query do
           resource: module,
           tenant: term(),
           combination_of: [Ash.Query.Combination.t()],
-          combination_calcs: list(atom),
           timeout: pos_integer() | nil,
           action_failed?: boolean,
           after_action: [
@@ -237,12 +242,18 @@ defmodule Ash.Query do
                                               false
                                             )
 
+  @typedoc "Result type for around_transaction hooks, containing either successful records or an error."
   @type around_result ::
           {:ok, list(Ash.Resource.record())}
           | {:error, Ash.Error.t()}
+
+  @typedoc "Callback function type that takes a query and returns an around_result."
   @type around_callback :: (t() -> around_result)
+
+  @typedoc "Function type for around_action hooks that modify query execution flow."
   @type around_action_fun :: (t, around_callback -> around_result)
 
+  @typedoc "Function type for around_transaction hooks that wrap query execution in a transaction."
   @type around_transaction_fun :: (t -> {:ok, Ash.Resource.record()} | {:error, any})
 
   alias Ash.Actions.Sort
@@ -517,13 +528,6 @@ defmodule Ash.Query do
     %{query | combination_of: query.combination_of ++ List.wrap(combinations)}
   end
 
-  @spec combination_calcs(t(), list(atom)) :: t()
-  def combination_calcs(query, fields) do
-    query = new(query)
-
-    %{query | combination_calcs: fields}
-  end
-
   @doc """
   Attach a sort statement to the query labelled as user input.
 
@@ -615,7 +619,30 @@ defmodule Ash.Query do
   Attach a filter statement to the query.
 
   The filter is applied as an "and" to any filters currently on the query.
-  For more information on writing filters, see: `Ash.Filter`.
+  Filters allow you to specify conditions that records must meet to be included
+  in the query results. Multiple filters on the same query are combined with "and" logic.
+
+  ## Examples
+
+      # Filter with simple equality
+      MyApp.Post
+      |> Ash.Query.filter(published: true)
+
+      # Filter with comparison operators
+      MyApp.Post
+      |> Ash.Query.filter(view_count > 100)
+
+      # Filter with complex expressions using do block
+      MyApp.Post
+      |> Ash.Query.filter do
+        published == true and view_count > 100
+      end
+
+  ## See also
+
+  - `Ash.Filter` for comprehensive filter documentation
+  - `sort/3` for ordering query results
+  - `Ash.read/2` for executing filtered queries
   """
   defmacro filter(query, %Ash.Filter{} = filter) do
     quote location: :keep do
@@ -652,7 +679,33 @@ defmodule Ash.Query do
     end
   end
 
-  @doc "Create a new query"
+  @doc """
+  Creates a new query for the given resource.
+
+  This is the starting point for building queries.  The query will automatically include the resource's base filter
+  and default context.
+
+  ## Examples
+
+      # Create a new query for a resource
+      iex> Ash.Query.new(MyApp.Post)
+      %Ash.Query{resource: MyApp.Post, ...}
+
+      # Create a query with options
+      iex> Ash.Query.new(MyApp.Post, domain: MyApp.Blog)
+      %Ash.Query{resource: MyApp.Post, domain: MyApp.Blog, ...}
+
+      # Pass an existing query (returns the query unchanged)
+      iex> query = Ash.Query.new(MyApp.Post)
+      iex> Ash.Query.new(query)
+      %Ash.Query{resource: MyApp.Post, ...}
+
+  ## See also
+
+  - `for_read/4` for creating queries bound to specific read actions
+  - `filter/2` for adding filter conditions
+  - `sort/3` for adding sort criteria
+  """
   @spec new(Ash.Resource.t() | Ash.Query.t(), opts :: Keyword.t()) :: Ash.Query.t()
   def new(resource, opts \\ [])
   def new(%__MODULE__{} = query, _opts), do: query
@@ -754,17 +807,38 @@ defmodule Ash.Query do
   @doc """
   Creates a query for a given read action and prepares it.
 
-  Multitenancy is *not* validated until an action is called. This allows you to avoid specifying a tenant until just before calling
-  the domain action.
+  This function configures the query to use a specific read action with the provided
+  arguments and options. The query will be validated and prepared according to the
+  action's configuration, including applying preparations and action filters.
 
-  ### Arguments
-  Provide a map or keyword list of arguments for the read action
+  Multitenancy is *not* validated until an action is called. This allows you to avoid
+  specifying a tenant until just before calling the domain action.
 
-  ### Opts
+  ## Examples
+
+      # Create a query for a simple read action
+      iex> Ash.Query.for_read(MyApp.Post, :read)
+      %Ash.Query{action: %{name: :read}, ...}
+
+      # Create a query with arguments for a parameterized action
+      iex> Ash.Query.for_read(MyApp.Post, :published, %{since: ~D[2023-01-01]})
+      %Ash.Query{action: %{name: :published}, arguments: %{since: ~D[2023-01-01]}, ...}
+
+      # Create a query with options
+      iex> Ash.Query.for_read(MyApp.Post, :read, %{}, actor: current_user, authorize?: true)
+      %Ash.Query{action: %{name: :read}, ...}
+
+  ## Options
 
   #{Spark.Options.docs(@for_read_opts)}
 
+  ## See also
+
+  - `Ash.read/2` for executing the prepared query
+  - `new/2` for creating basic queries without specific actions
+  - `load/3` for adding relationship loading to queries
   """
+  @spec for_read(t() | Ash.Resource.t(), atom(), map() | Keyword.t(), Keyword.t()) :: t()
   # 4.0: make args required, same with action input and changeset
   def for_read(query, action_name, args \\ %{}, opts \\ []) do
     query = new(query)
@@ -1057,9 +1131,37 @@ defmodule Ash.Query do
   The around_transaction calls happen first, and then (after they each resolve their callbacks) the `before_action`
   hooks are called, followed by the `after_action` hooks being run. Then, the code that appeared *after* the callbacks were called is then run.
 
-  Warning: using this without understanding how it works can cause big problems.
+  ## Examples
+
+      # Add logging around the transaction
+      iex> query = MyApp.Post |> Ash.Query.around_transaction(fn query, callback ->
+      ...>   IO.puts("Starting transaction for \#{inspect(query.resource)}")
+      ...>   result = callback.(query)
+      ...>   IO.puts("Transaction completed: \#{inspect(result)}")
+      ...>   result
+      ...> end)
+
+      # Add error handling and retry logic
+      iex> query = MyApp.Post |> Ash.Query.around_transaction(fn query, callback ->
+      ...>   case callback.(query) do
+      ...>     {:ok, results} = success -> success
+      ...>     {:error, %{retryable?: true}} ->
+      ...>       callback.(query)  # Retry once
+      ...>     error -> error
+      ...>   end
+      ...> end)
+
+  ## Warning
+
+  Using this without understanding how it works can cause big problems.
   You *must* call the callback function that is provided to your hook, and the return value must
   contain the same structure that was given to you, i.e `{:ok, result_of_action}`.
+
+  ## See also
+
+  - `before_action/3` for hooks that run before the action executes
+  - `after_action/2` for hooks that run after the action completes
+  - `Ash.read/2` for executing queries with hooks
   """
 
   @spec around_transaction(t(), around_transaction_fun()) :: t()
@@ -1071,8 +1173,43 @@ defmodule Ash.Query do
   @doc """
   Adds a before_action hook to the query.
 
-  Provide the option `prepend?: true` to place the hook before all
-  other hooks instead of after.
+  Before action hooks are called after preparations but before the actual
+  data layer query is executed. They receive the prepared query and can
+  modify it or perform side effects before the action runs.
+
+  ## Examples
+
+      # Add validation before the query runs
+      iex> query = MyApp.Post
+      ...> |> Ash.Query.before_action(fn query ->
+      ...>   if Enum.empty?(query.sort) do
+      ...>     Ash.Query.sort(query, :created_at)
+      ...>   else
+      ...>     query
+      ...>   end
+      ...> end)
+
+      # Add logging before the action
+      iex> query = MyApp.Post
+      ...> |> Ash.Query.before_action(fn query ->
+      ...>   IO.puts("Executing query for \#{length(query.filter || [])} filters")
+      ...>   query
+      ...> end)
+
+      # Prepend a hook to run first
+      iex> query = MyApp.Post
+      ...> |> Ash.Query.before_action(&setup_query/1)
+      ...> |> Ash.Query.before_action(&early_validation/1, prepend?: true)
+
+  ## Options
+
+  - `prepend?` - when `true`, places the hook before all other hooks instead of after
+
+  ## See also
+
+  - `after_action/2` for hooks that run after the action completes
+  - `around_transaction/2` for hooks that wrap the entire transaction
+  - `Ash.read/2` for executing queries with hooks
   """
   @spec before_action(
           query :: t(),
@@ -1090,6 +1227,7 @@ defmodule Ash.Query do
     end
   end
 
+  @doc false
   @spec authorize_results(
           t(),
           (t(), [Ash.Resource.record()] ->
@@ -1105,6 +1243,52 @@ defmodule Ash.Query do
   # remove when 4.0 happens and `@read_action_after_action_hooks_in_order?` goes away
   @dialyzer {:nowarn_function, after_action: 2}
 
+  @doc """
+  Adds an after_action hook to the query.
+
+  After action hooks are called with the query and the list of records returned
+  from the action. They can modify the records, perform side effects, or return
+  errors to halt processing. The hook can return notifications alongside the records.
+
+  ## Examples
+
+      # Transform records after loading
+      iex> query = MyApp.Post
+      ...> |> Ash.Query.after_action(fn query, records ->
+      ...>   enriched_records = Enum.map(records, &add_computed_field/1)
+      ...>   {:ok, enriched_records}
+      ...> end)
+
+      # Log successful reads
+      iex> query = MyApp.Post
+      ...> |> Ash.Query.after_action(fn query, records ->
+      ...>   IO.puts("Successfully loaded \#{length(records)} posts")
+      ...>   {:ok, records}
+      ...> end)
+
+      # Add notifications after the action
+      iex> query = MyApp.Post
+      ...> |> Ash.Query.after_action(fn query, records ->
+      ...>   notifications = create_read_notifications(records)
+      ...>   {:ok, records, notifications}
+      ...> end)
+
+      # Validate results and potentially error
+      iex> query = MyApp.Post
+      ...> |> Ash.Query.after_action(fn query, records ->
+      ...>   if Enum.any?(records, &restricted?/1) do
+      ...>     {:error, "Access denied to restricted posts"}
+      ...>   else
+      ...>     {:ok, records}
+      ...>   end
+      ...> end)
+
+  ## See also
+
+  - `before_action/3` for hooks that run before the action executes
+  - `around_transaction/2` for hooks that wrap the entire transaction
+  - `Ash.read/2` for executing queries with hooks
+  """
   @spec after_action(
           t(),
           (t(), [Ash.Resource.record()] ->
@@ -1159,7 +1343,32 @@ defmodule Ash.Query do
   of the relationship.
 
   Use `ensure_selected/2` if you wish to make sure a field has been selected, without deselecting any other fields.
+
+  ## Examples
+
+      # Select specific attributes
+      iex> MyApp.Post |> Ash.Query.select([:title, :content])
+      %Ash.Query{select: [:id, :title, :content], ...}
+
+      # Select additional attributes (combines with existing selection)
+      iex> MyApp.Post
+      ...> |> Ash.Query.select([:title])
+      ...> |> Ash.Query.select([:content])
+      %Ash.Query{select: [:id, :title, :content], ...}
+
+      # Replace existing selection
+      iex> MyApp.Post
+      ...> |> Ash.Query.select([:title])
+      ...> |> Ash.Query.select([:content], replace?: true)
+      %Ash.Query{select: [:id, :content], ...}
+
+  ## See also
+
+  - `ensure_selected/2` for adding fields without deselecting others
+  - `deselect/2` for removing specific fields from selection
+  - `load/3` for loading relationships and calculations
   """
+  @spec select(t() | Ash.Resource.t(), list(atom) | atom, Keyword.t()) :: t()
   def select(query, fields, opts \\ []) do
     fields =
       case fields do
@@ -1334,9 +1543,33 @@ defmodule Ash.Query do
 
   The first call to `select/2` will *limit* the fields to only the provided fields.
   Use `ensure_selected/2` to say "select this field (or these fields) without deselecting anything else".
+  This function is additive - it will not remove any fields that are already selected.
 
-  See `select/2` for more.
+  ## Examples
+
+      # Ensure specific fields are selected (additive)
+      iex> MyApp.Post |> Ash.Query.ensure_selected([:title])
+      %Ash.Query{select: [:id, :title, :content, :created_at], ...}
+
+      # Add to existing selection
+      iex> MyApp.Post
+      ...> |> Ash.Query.select([:title])
+      ...> |> Ash.Query.ensure_selected([:content, :author_id])
+      %Ash.Query{select: [:id, :title, :content, :author_id], ...}
+
+      # Ensure fields for relationship loading
+      iex> MyApp.Post
+      ...> |> Ash.Query.ensure_selected([:author_id])
+      ...> |> Ash.Query.load(:author)
+      %Ash.Query{select: [..., :author_id], load: [author: []], ...}
+
+  ## See also
+
+  - `select/3` for explicitly controlling field selection
+  - `deselect/2` for removing specific fields from selection
+  - `load/3` for loading relationships that may require specific fields
   """
+  @spec ensure_selected(t() | Ash.Resource.t(), list(atom) | atom) :: t()
   def ensure_selected(query, fields) do
     query = new(query)
 
@@ -1375,8 +1608,40 @@ defmodule Ash.Query do
   end
 
   @doc """
-  Ensure the the specified attributes are `nil` in the query results.
+  Ensures that the specified attributes are `nil` in the query results.
+
+  This function removes specified fields from the selection, causing them to be
+  excluded from the query results. If no fields are currently selected (meaning
+  all fields would be returned by default), this will first select all default
+  fields and then remove the specified ones.
+
+  ## Examples
+
+      # Remove specific fields from results
+      iex> MyApp.Post |> Ash.Query.deselect([:content])
+      %Ash.Query{select: [:id, :title, :created_at, ...], ...}
+
+      # Remove multiple fields
+      iex> MyApp.Post |> Ash.Query.deselect([:content, :metadata])
+      %Ash.Query{select: [:id, :title, :created_at, ...], ...}
+
+      # Deselect from existing selection
+      iex> MyApp.Post
+      ...> |> Ash.Query.select([:title, :content, :author_id])
+      ...> |> Ash.Query.deselect([:content])
+      %Ash.Query{select: [:id, :title, :author_id], ...}
+
+      # Deselect empty list (no-op)
+      iex> MyApp.Post |> Ash.Query.deselect([])
+      %Ash.Query{...}
+
+  ## See also
+
+  - `select/3` for explicitly controlling field selection
+  - `ensure_selected/2` for adding fields without removing others
+  - Primary key fields cannot be deselected and will always be included
   """
+  @spec deselect(t() | Ash.Resource.t(), list(atom)) :: t()
   def deselect(query, []), do: new(query)
 
   def deselect(query, fields) do
@@ -1395,6 +1660,39 @@ defmodule Ash.Query do
     select(query, select, replace?: true)
   end
 
+  @doc """
+  Checks if a specific field is currently selected in the query.
+
+  Returns `true` if the field will be included in the query results, either
+  because it's explicitly selected, it's selected by default, or it's a
+  primary key field (which are always selected).
+
+  ## Examples
+
+      # Check selection when no explicit select is set (uses defaults)
+      iex> query = MyApp.Post |> Ash.Query.new()
+      iex> Ash.Query.selecting?(query, :title)
+      true
+
+      # Check selection with explicit select
+      iex> query = MyApp.Post |> Ash.Query.select([:title, :content])
+      iex> Ash.Query.selecting?(query, :title)
+      true
+      iex> Ash.Query.selecting?(query, :metadata)
+      false
+
+      # Primary key fields are always selected
+      iex> query = MyApp.Post |> Ash.Query.select([:title])
+      iex> Ash.Query.selecting?(query, :id)  # assuming :id is primary key
+      true
+
+  ## See also
+
+  - `select/3` for controlling field selection
+  - `ensure_selected/2` for adding fields to selection
+  - `load/3` for loading relationships that may require specific fields
+  """
+  @spec selecting?(t(), atom()) :: boolean()
   def selecting?(query, field) do
     case query.select do
       nil ->
@@ -1563,44 +1861,49 @@ defmodule Ash.Query do
   @doc """
   Loads relationships, calculations, or aggregates on the resource.
 
-  By default, loading attributes has no effects, as all attributes are returned.
+  By default, loading attributes has no effect, as all attributes are returned.
+  See the section below on "Strict Loading" for more.
 
-  ```elixir
-  # Loading nested relationships
-  Ash.Query.load(query, [comments: [:author, :ratings]])
+  ## Examples
 
-  # Loading relationships with a query
-  Ash.Query.load(query, [comments: [author: author_query]])
-  ```
+      # Load simple relationships
+      iex> Ash.Query.load(MyApp.Post, :author)
+      %Ash.Query{load: [author: []], ...}
 
-  By passing the `strict?: true` option, only specified attributes will be loaded when passing
+      # Load nested relationships
+      iex> Ash.Query.load(MyApp.Post, [comments: [:author, :ratings]])
+      %Ash.Query{load: [comments: [author: [], ratings: []]], ...}
+
+      # Load relationships with custom queries
+      iex> author_query = Ash.Query.filter(MyApp.User, active: true)
+      iex> Ash.Query.load(MyApp.Post, [comments: [author: author_query]])
+      %Ash.Query{load: [comments: [author: %Ash.Query{...}]], ...}
+
+      # Load calculations with arguments
+      iex> Ash.Query.load(MyApp.User, full_name: %{format: :last_first})
+      %Ash.Query{calculations: %{full_name: %Ash.Query.Calculation{...}}, ...}
+
+  ## Strict Loading
+
+  By passing `strict?: true`, only specified attributes will be loaded when passing
   a list of fields to fetch on a relationship, which allows for more optimized data-fetching.
 
-  The select statement of any queries inside the load statement will not be affected.
+      # Only load specific fields on relationships
+      iex> Ash.Query.load(MyApp.Category, [:name, posts: [:title, :published_at]], strict?: true)
+      %Ash.Query{load: [posts: [:title, :published_at]], ...}
 
-  Example:
-  ```elixir
-  Ash.load(category, [:name, posts: [:title, :published_at]], strict?: true)
-  ```
+  When using `strict?: true` and loading nested relationships, you must specify all the
+  attributes you want to load alongside the nested relationships:
 
-  Here, the only fields that will be loaded on the `posts` relationship are `title` and
-  `published_at`, in addition to any other fields that are required to be loaded, like the
-  primary and relevant foreign keys.
-  This entails that when using `strict?: true` and loading nested relationships, you will also
-  always have to specify all the attributes you want to load alongside the nested relationships.
+      # Must include needed attributes when loading nested relationships strictly
+      iex> Ash.Query.load(MyApp.Post, [:title, :published_at, category: [:name]], strict?: true)
+      %Ash.Query{...}
 
-  Example:
-  ```elixir
-  Ash.load(post, [:title, :published_at, :other_needed_attribute, category: [:name]], strict?: true)
-  ```
+  ## See also
 
-  If no fields are specified on a relationship when using `strict?: true`, all attributes will be
-  loaded by default.
-
-  Example:
-  ```elixir
-  Ash.load(category, [:name, :posts], strict?: true)
-  ```
+  - `select/3` for controlling which attributes are returned
+  - `ensure_selected/2` for ensuring specific fields are selected
+  - `Ash.read/2` for executing queries with loaded data
   """
   @spec load(
           t() | Ash.Resource.t(),
@@ -2127,9 +2430,33 @@ defmodule Ash.Query do
   defp calc_arg_default(value), do: value
 
   @doc """
-  Sets a specific context key to a specific value
+  Sets a specific context key to a specific value.
 
-  See `set_context/2` for more information.
+  Context is used to pass additional information through the query pipeline
+  that can be accessed by preparations, calculations, and other query logic.
+  This function adds or updates a single key in the query's context map.
+
+  ## Examples
+
+      # Add actor information to context
+      iex> query = MyApp.Post |> Ash.Query.put_context(:actor, current_user)
+      %Ash.Query{context: %{actor: %User{...}}, ...}
+
+      # Add custom metadata for preparations
+      iex> query = MyApp.Post |> Ash.Query.put_context(:source, "api")
+      %Ash.Query{context: %{source: "api"}, ...}
+
+      # Chain multiple context additions
+      iex> MyApp.Post
+      ...> |> Ash.Query.put_context(:tenant, "org_123")
+      ...> |> Ash.Query.put_context(:locale, "en_US")
+      %Ash.Query{context: %{tenant: "org_123", locale: "en_US"}, ...}
+
+  ## See also
+
+  - `set_context/2` for setting the entire context map
+  - `for_read/4` for passing context when creating queries
+  - Preparations and calculations can access context for custom logic
   """
   @spec put_context(t() | Ash.Resource.t(), atom, term) :: t()
   def put_context(query, key, value) do
@@ -2174,13 +2501,71 @@ defmodule Ash.Query do
     }
   end
 
-  @doc "Gets the value of an argument provided to the query"
+  @doc """
+  Gets the value of an argument provided to the query.
+
+  Returns the argument value if found, or `nil` if not found. Arguments can be
+  provided when creating queries with `for_read/4` and are used by action logic
+  such as preparations and filters.
+
+  ## Examples
+
+      # Get an argument that exists
+      iex> query = Ash.Query.for_read(MyApp.Post, :published, %{since: ~D[2023-01-01]})
+      iex> Ash.Query.get_argument(query, :since)
+      ~D[2023-01-01]
+
+      # Get an argument that doesn't exist
+      iex> query = Ash.Query.for_read(MyApp.Post, :published, %{})
+      iex> Ash.Query.get_argument(query, :since)
+      nil
+
+      # Arguments can be accessed by string or atom key
+      iex> query = Ash.Query.for_read(MyApp.Post, :search, %{"query" => "elixir"})
+      iex> Ash.Query.get_argument(query, :query)
+      "elixir"
+
+  ## See also
+
+  - `fetch_argument/2` for safer argument access with explicit error handling
+  - `set_argument/3` for adding arguments to queries
+  - `for_read/4` for creating queries with arguments
+  """
   @spec get_argument(t, atom) :: term
   def get_argument(query, argument) when is_atom(argument) do
     Map.get(query.arguments, argument) || Map.get(query.arguments, to_string(argument))
   end
 
-  @doc "fetches the value of an argument provided to the query or `:error`"
+  @doc """
+  Fetches the value of an argument provided to the query.
+
+  Returns `{:ok, value}` if the argument exists, or `:error` if not found.
+  This is the safer alternative to `get_argument/2` when you need to distinguish
+  between a `nil` value and a missing argument.
+
+  ## Examples
+
+      # Fetch an argument that exists
+      iex> query = Ash.Query.for_read(MyApp.Post, :published, %{since: ~D[2023-01-01]})
+      iex> Ash.Query.fetch_argument(query, :since)
+      {:ok, ~D[2023-01-01]}
+
+      # Fetch an argument that doesn't exist
+      iex> query = Ash.Query.for_read(MyApp.Post, :published, %{})
+      iex> Ash.Query.fetch_argument(query, :since)
+      :error
+
+      # Distinguish between nil and missing arguments
+      iex> query = Ash.Query.for_read(MyApp.Post, :search, %{query: nil})
+      iex> Ash.Query.fetch_argument(query, :query)
+      {:ok, nil}
+
+  ## See also
+
+  - `get_argument/2` for simpler argument access
+  - `set_argument/3` for adding arguments to queries
+  - `for_read/4` for creating queries with arguments
+  """
   @spec fetch_argument(t, atom) :: {:ok, term} | :error
   def fetch_argument(query, argument) when is_atom(argument) do
     case Map.fetch(query.arguments, argument) do
@@ -2196,7 +2581,37 @@ defmodule Ash.Query do
   end
 
   @doc """
-  Add an argument to the query, which can be used in filter templates on actions
+  Adds an argument to the query.
+
+  Arguments are used by action logic such as preparations, filters, and other
+  query modifications. They become available in filter templates and can be
+  referenced in action configurations. Setting an argument after a query has
+  been validated for an action will result in an error.
+
+  ## Examples
+
+      # Set an argument for use in action filters
+      iex> query = Ash.Query.new(MyApp.Post)
+      iex> Ash.Query.set_argument(query, :author_id, 123)
+      %Ash.Query{arguments: %{author_id: 123}, ...}
+
+      # Set multiple arguments by chaining
+      iex> MyApp.Post
+      ...> |> Ash.Query.set_argument(:category, "tech")
+      ...> |> Ash.Query.set_argument(:published, true)
+      %Ash.Query{arguments: %{category: "tech", published: true}, ...}
+
+      # Arguments are used in action preparations and filters
+      iex> query = MyApp.Post
+      ...> |> Ash.Query.for_read(:by_author, %{author_id: 123})
+      ...> |> Ash.Query.set_argument(:include_drafts, false)
+      %Ash.Query{arguments: %{author_id: 123, include_drafts: false}, ...}
+
+  ## See also
+
+  - `get_argument/2` for retrieving argument values
+  - `fetch_argument/2` for safe argument retrieval
+  - `for_read/4` for creating queries with initial arguments
   """
   def set_argument(query, argument, value) do
     maybe_already_validated_error!(query)
@@ -2300,9 +2715,36 @@ defmodule Ash.Query do
   defp argument_default(value) when is_function(value, 0), do: value.()
   defp argument_default(value), do: value
 
-  def struct?(%_{}), do: true
-  def struct?(_), do: false
+  @doc """
+  Sets the tenant for the query.
 
+  In multitenant applications, this function configures which tenant's data
+  the query should operate on. The tenant value is used to filter data
+  and ensure proper data isolation between tenants.
+
+  ## Examples
+
+      # Set tenant using a string identifier
+      iex> MyApp.Post |> Ash.Query.set_tenant("org_123")
+      %Ash.Query{tenant: "org_123", ...}
+
+      # Set tenant using a struct that implements Ash.ToTenant
+      iex> org = %MyApp.Organization{id: 456}
+      iex> MyApp.Post |> Ash.Query.set_tenant(org)
+      %Ash.Query{tenant: %MyApp.Organization{id: 456}, ...}
+
+      # Use with other query functions
+      iex> MyApp.Post
+      ...> |> Ash.Query.set_tenant("org_123")
+      ...> |> Ash.Query.filter(published: true)
+      %Ash.Query{tenant: "org_123", ...}
+
+  ## See also
+
+  - `for_read/4` for setting tenant when creating queries
+  - `Ash.ToTenant` protocol for custom tenant conversion
+  - `put_context/3` for adding tenant to query context
+  """
   @spec set_tenant(t() | Ash.Resource.t(), Ash.ToTenant.t()) :: t()
   def set_tenant(query, tenant) do
     query = new(query)
@@ -2312,13 +2754,44 @@ defmodule Ash.Query do
   @doc """
   Sets the pagination options of the query.
 
-  Pass `nil` to disable pagination.
+  This function configures how results should be paginated when the query is executed.
+  Ash supports both offset-based pagination (limit/offset) and keyset-based pagination
+  (cursor-based), with keyset being more efficient for large datasets.
+
+  ## Examples
+
+      # Offset-based pagination (page 2, 10 items per page)
+      iex> MyApp.Post
+      ...> |> Ash.Query.page(limit: 10, offset: 10)
+      %Ash.Query{page: [limit: 10, offset: 10], ...}
+
+      # Keyset pagination with before/after cursors
+      iex> MyApp.Post
+      ...> |> Ash.Query.sort(:created_at)
+      ...> |> Ash.Query.page(limit: 20, after: "cursor_string")
+      %Ash.Query{page: [limit: 20, after: "cursor_string"], ...}
+
+      # Disable pagination (return all results)
+      iex> MyApp.Post |> Ash.Query.page(nil)
+      %Ash.Query{page: nil, ...}
+
+      # Pagination with counting
+      iex> MyApp.Post |> Ash.Query.page(limit: 10, count: true)
+      %Ash.Query{page: [limit: 10, count: true], ...}
+
+  ## Pagination Types
 
   ### Limit/offset pagination
   #{Spark.Options.docs(Ash.Page.Offset.page_opts())}
 
   ### Keyset pagination
   #{Spark.Options.docs(Ash.Page.Keyset.page_opts())}
+
+  ## See also
+
+  - `limit/2` and `offset/2` for simple pagination without page metadata
+  - `sort/3` for ordering results (required for keyset pagination)
+  - `Ash.read/2` for executing paginated queries
   """
   @spec page(t() | Ash.Resource.t(), Keyword.t() | nil | false) :: t()
   def page(query, page_opts) do
@@ -2598,27 +3071,56 @@ defmodule Ash.Query do
   @doc """
   Adds an aggregation to the query.
 
-  Aggregations are made available on the `aggregates` field of the records returned
+  Aggregations are made available on the `aggregates` field of the records returned.
+  They allow you to compute values from related data without loading entire relationships,
+  making them very efficient for statistical operations.
 
-  The filter option accepts either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
-  See the DSL docs for each aggregate type in the [Resource DSL docs](dsl-ash-resource.html#aggregates) for more information.
+  ## Examples
 
-  ### Options
+      # Count related records
+      iex> Ash.Query.aggregate(MyApp.Author, :post_count, :count, :posts)
+      %Ash.Query{aggregates: %{post_count: %Ash.Query.Aggregate{...}}, ...}
 
-    * query: The query over the destination resource to use as a base for aggregation
-    * field: - The field to use for the aggregate. Not necessary for all aggregate types
-    * default: The default value to use if the aggregate returns nil
-    * filterable?: Whether or not this aggregate may be referenced in filters
-    * type: The type of the aggregate
-    * constraints: Type constraints for the aggregate's type
-    * implementation: An implementation used when the aggregate kind is custom
-    * read_action: The read action to use on the destination resource
-    * authorize?: Whether or not to authorize access to this aggregate
-    * join_filters: A map of relationship paths to filter expressions. See the aggregates guide for more
+      # Sum values from related records
+      iex> Ash.Query.aggregate(MyApp.Author, :total_likes, :sum, :posts, field: :like_count)
+      %Ash.Query{aggregates: %{total_likes: %Ash.Query.Aggregate{...}}, ...}
+
+      # Average with filtered aggregation
+      iex> published_query = Ash.Query.filter(MyApp.Post, published: true)
+      iex> Ash.Query.aggregate(MyApp.Author, :avg_published_likes, :avg, :posts,
+      ...>   field: :like_count, query: published_query)
+      %Ash.Query{aggregates: %{avg_published_likes: %Ash.Query.Aggregate{...}}, ...}
+
+      # Count with default value
+      iex> Ash.Query.aggregate(MyApp.Author, :post_count, :count, :posts, default: 0)
+      %Ash.Query{aggregates: %{post_count: %Ash.Query.Aggregate{...}}, ...}
+
+  ## Options
+
+    * `query` - The query over the destination resource to use as a base for aggregation
+    * `field` - The field to use for the aggregate. Not necessary for all aggregate types
+    * `default` - The default value to use if the aggregate returns nil
+    * `filterable?` - Whether or not this aggregate may be referenced in filters
+    * `type` - The type of the aggregate
+    * `constraints` - Type constraints for the aggregate's type
+    * `implementation` - An implementation used when the aggregate kind is custom
+    * `read_action` - The read action to use on the destination resource
+    * `authorize?` - Whether or not to authorize access to this aggregate
+    * `join_filters` - A map of relationship paths to filter expressions
+
+  ## See also
+
+  - [Resource DSL aggregates documentation](dsl-ash-resource.html#aggregates) for more information
+  - `load/3` for loading relationships instead of aggregating
+  - `calculate/8` for custom calculations
+  - `Ash.read/2` for executing queries with aggregates
   """
+  @spec aggregate(t() | Ash.Resource.t(), atom(), atom(), atom()) :: t()
   def aggregate(query, name, kind, relationship) do
     aggregate(query, name, kind, relationship, [])
   end
+
+  @spec aggregate(t() | Ash.Resource.t(), atom(), atom(), atom(), Keyword.t()) :: t()
 
   def aggregate(query, name, kind, relationship, opts) when is_list(opts) do
     agg_query = opts[:query]
@@ -2709,11 +3211,48 @@ defmodule Ash.Query do
   @doc """
   Adds a calculation to the query.
 
-  Calculations are made available on the `calculations` field of the records returned
+  Calculations are made available on the `calculations` field of the records returned.
+  They allow you to compute dynamic values based on record data, other fields, or
+  external information at query time.
 
   The `module_and_opts` argument accepts either a `module` or a `{module, opts}`. For more information
   on what that module should look like, see `Ash.Resource.Calculation`.
+
+  ## Examples
+
+      # Add a simple calculation
+      iex> Ash.Query.calculate(MyApp.User, :display_name, :string,
+      ...>   {MyApp.Calculations.DisplayName, []})
+      %Ash.Query{calculations: %{display_name: %{...}}, ...}
+
+      # Add calculation with arguments
+      iex> Ash.Query.calculate(MyApp.Post, :word_count, :integer,
+      ...>   {MyApp.Calculations.WordCount, []}, %{field: :content})
+      %Ash.Query{calculations: %{word_count: %{...}}, ...}
+
+      # Add calculation with constraints and context
+      iex> Ash.Query.calculate(MyApp.Product, :discounted_price, :decimal,
+      ...>   {MyApp.Calculations.Discount, []}, %{rate: 0.1},
+      ...>   [precision: 2, scale: 2], %{currency: "USD"})
+      %Ash.Query{calculations: %{discounted_price: %{...}}, ...}
+
+  ## See also
+
+  - `Ash.Resource.Calculation` for implementing custom calculations
+  - `aggregate/5` for computing values from related records
+  - `load/3` for loading predefined calculations from the resource
+  - `select/3` for controlling which fields are returned alongside calculations
   """
+  @spec calculate(
+          t() | Ash.Resource.t(),
+          atom(),
+          Ash.Type.t(),
+          module() | {module(), Keyword.t()},
+          map(),
+          Keyword.t(),
+          map(),
+          Keyword.t()
+        ) :: t()
   def calculate(
         query,
         name,
@@ -2837,7 +3376,36 @@ defmodule Ash.Query do
     end
   end
 
-  @doc "Limit the results returned from the query"
+  @doc """
+  Limits the number of results returned from the query.
+
+  This function sets the maximum number of records that will be returned
+  when the query is executed. Useful for pagination and preventing
+  large result sets from consuming too much memory.
+
+  ## Examples
+
+      # Limit to 10 results
+      iex> MyApp.Post |> Ash.Query.limit(10)
+      %Ash.Query{limit: 10, ...}
+
+      # Remove existing limit
+      iex> query |> Ash.Query.limit(nil)
+      %Ash.Query{limit: nil, ...}
+
+      # Use with other query functions
+      iex> MyApp.Post
+      ...> |> Ash.Query.filter(published: true)
+      ...> |> Ash.Query.sort(:created_at)
+      ...> |> Ash.Query.limit(5)
+      %Ash.Query{limit: 5, ...}
+
+  ## See also
+
+  - `offset/2` for skipping records (pagination)
+  - `page/2` for keyset pagination
+  - `sort/3` for ordering results before limiting
+  """
   @spec limit(t() | Ash.Resource.t(), nil | integer()) :: t()
   def limit(query, nil), do: new(query)
 
@@ -2856,7 +3424,36 @@ defmodule Ash.Query do
     add_error(query, :offset, InvalidLimit.exception(limit: limit))
   end
 
-  @doc "Skip the first n records"
+  @doc """
+  Skips the first n records in the query results.
+
+  This function is often used for offset-based pagination, allowing you
+  to skip a specified number of records from the beginning of the result set.
+  Often used together with `limit/2` to implement pagination.
+
+  ## Examples
+
+      # Skip the first 20 records
+      iex> MyApp.Post |> Ash.Query.offset(20)
+      %Ash.Query{offset: 20, ...}
+
+      # Remove existing offset
+      iex> query |> Ash.Query.offset(nil)
+      %Ash.Query{offset: 0, ...}
+
+      # Pagination example: page 3 with 10 items per page
+      iex> MyApp.Post
+      ...> |> Ash.Query.sort(:created_at)
+      ...> |> Ash.Query.offset(20)  # Skip first 20 (pages 1-2)
+      ...> |> Ash.Query.limit(10)   # Take next 10 (page 3)
+      %Ash.Query{offset: 20, limit: 10, ...}
+
+  ## See also
+
+  - `limit/2` for limiting the number of results
+  - `page/2` for keyset pagination (more efficient for large datasets)
+  - `sort/3` for ordering results before offsetting
+  """
   @spec offset(t() | Ash.Resource.t(), nil | integer()) :: t()
   def offset(query, nil), do: new(query)
 
@@ -3346,6 +3943,47 @@ defmodule Ash.Query do
     end
   end
 
+  @doc """
+  Applies a query to a list of records in memory.
+
+  This function takes a query and applies its filters, sorting, pagination,
+  and loading operations to an existing list of records in memory rather than
+  querying the data layer. Useful for post-processing records or applying
+  query logic to data from multiple sources.
+
+  ## Examples
+
+      # Apply filtering to records in memory
+      iex> records = [%MyApp.Post{title: "A", published: true}, %MyApp.Post{title: "B", published: false}]
+      iex> query = MyApp.Post |> Ash.Query.filter(published: true)
+      iex> Ash.Query.apply_to(query, records)
+      {:ok, [%MyApp.Post{title: "A", published: true}]}
+
+      # Apply sorting and limiting
+      iex> records = [%MyApp.Post{title: "C", likes: 5}, %MyApp.Post{title: "A", likes: 10}]
+      iex> query = MyApp.Post |> Ash.Query.sort(likes: :desc) |> Ash.Query.limit(1)
+      iex> Ash.Query.apply_to(query, records)
+      {:ok, [%MyApp.Post{title: "A", likes: 10}]}
+
+      # Apply with loading relationships
+      iex> records = [%MyApp.Post{id: 1}, %MyApp.Post{id: 2}]
+      iex> query = MyApp.Post |> Ash.Query.load(:author)
+      iex> Ash.Query.apply_to(query, records, domain: MyApp.Blog)
+      {:ok, [%MyApp.Post{id: 1, author: %MyApp.User{...}}, ...]}
+
+  ## Options
+
+    * `domain` - The domain to use for loading relationships
+    * `actor` - The actor for authorization during loading
+    * `tenant` - The tenant for multitenant operations
+    * `parent` - Parent context for nested operations
+
+  ## See also
+
+  - `Ash.read/2` for querying the data layer directly
+  - `load/3` for configuring relationship loading
+  - `filter/2` for adding filter conditions
+  """
   @spec apply_to(t(), records :: list(Ash.Resource.record()), opts :: Keyword.t()) ::
           {:ok, list(Ash.Resource.record())}
   def apply_to(query, records, opts \\ []) do
@@ -3377,6 +4015,43 @@ defmodule Ash.Query do
   defp do_limit(records, nil), do: records
   defp do_limit(records, limit), do: Enum.take(records, limit)
 
+  @doc """
+  Removes specified keys from the query, resetting them to their default values.
+
+  This function allows you to "unset" or reset parts of a query back to their
+  initial state. Useful when you want to remove filters, sorts, loads, or other
+  query modifications while keeping the rest of the query intact.
+
+  ## Examples
+
+      # Remove multiple query aspects at once
+      iex> query = MyApp.Post
+      ...> |> Ash.Query.filter(published: true)
+      ...> |> Ash.Query.sort(:created_at)
+      ...> |> Ash.Query.limit(10)
+      iex> Ash.Query.unset(query, [:filter, :sort, :limit])
+      %Ash.Query{filter: nil, sort: [], limit: nil, ...}
+
+      # Remove just the sort from a query
+      iex> query = MyApp.Post |> Ash.Query.sort([:title, :created_at])
+      iex> Ash.Query.unset(query, :sort)
+      %Ash.Query{sort: [], ...}
+
+      # Remove load statements
+      iex> query = MyApp.Post |> Ash.Query.load([:author, :comments])
+      iex> Ash.Query.unset(query, :load)
+      %Ash.Query{load: [], ...}
+
+      # Reset pagination settings
+      iex> query = MyApp.Post |> Ash.Query.limit(20) |> Ash.Query.offset(10)
+      iex> Ash.Query.unset(query, [:limit, :offset])
+      %Ash.Query{limit: nil, offset: 0, ...}
+
+  ## See also
+
+  - `new/2` for creating fresh queries
+  - `select/3`, `filter/2`, `sort/3` for building queries
+  """
   @spec unset(Ash.Resource.t() | t(), atom | [atom]) :: t()
   def unset(query, keys) when is_list(keys) do
     query = new(query)

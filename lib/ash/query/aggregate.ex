@@ -36,16 +36,6 @@ defmodule Ash.Query.Aggregate do
   @doc false
   def kinds, do: @kinds
 
-  def new!(resource, name, kind, opts \\ []) do
-    case new(resource, name, kind, opts) do
-      {:ok, aggregate} ->
-        aggregate
-
-      {:error, error} ->
-        raise Ash.Error.to_error_class(error)
-    end
-  end
-
   @doc false
   def subpaths([]), do: []
 
@@ -171,6 +161,25 @@ defmodule Ash.Query.Aggregate do
   defmodule Opts do
     @moduledoc false
     use Spark.Options.Validator, schema: schema
+  end
+
+  @doc """
+  Create a new aggregate, used with `Query.aggregate` or `Ash.aggregate`, raising on errors.
+
+  See `new/4` for more information.
+
+  ### Options
+
+  #{Spark.Options.docs(@schema)}
+  """
+  def new!(resource, name, kind, opts \\ []) do
+    case new(resource, name, kind, opts) do
+      {:ok, aggregate} ->
+        aggregate
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
+    end
   end
 
   @doc """
