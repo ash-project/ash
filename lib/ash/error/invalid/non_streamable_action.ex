@@ -1,6 +1,5 @@
 defmodule Ash.Error.Invalid.NonStreamableAction do
   @moduledoc "Used when Ash.stream is used with an action that does not support keyset pagination"
-  use Ash.Error.Exception
 
   use Splode.Error,
     fields: [:resource, :action, :for_bulk_update, :for_bulk_destroy, types: [:keyset]],

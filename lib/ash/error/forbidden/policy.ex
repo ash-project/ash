@@ -2,7 +2,6 @@ defmodule Ash.Error.Forbidden.Policy do
   @moduledoc "Raised when policy authorization for an action fails"
 
   require Logger
-  use Ash.Error.Exception
 
   alias Ash.Policy.Policy
 

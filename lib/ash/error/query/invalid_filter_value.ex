@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.InvalidFilterValue do
   @moduledoc "Used when an invalid value is provided for a filter"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:message, :value, :context], class: :invalid
 

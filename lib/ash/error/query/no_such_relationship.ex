@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.NoSuchRelationship do
   @moduledoc "Used when an relationship that doesn't exist is used in a query"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :relationship], class: :invalid
 

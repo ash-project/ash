@@ -1,6 +1,5 @@
 defmodule Ash.Error.Invalid.NoMatchingBulkStrategy do
   @moduledoc "Used when an identity name is used that does not reference identity on the resource"
-  use Ash.Error.Exception
 
   use Splode.Error,
     fields: [

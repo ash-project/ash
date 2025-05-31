@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.ReadActionRequired do
   @moduledoc "Used when a relationship is filtered and the destination does not have a default read action"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource], class: :invalid
 

@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.LockNotSupported do
   @moduledoc "Used when the data_layer does not support a given lock type"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :lock_type], class: :invalid
 

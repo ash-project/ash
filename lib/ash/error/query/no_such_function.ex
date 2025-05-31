@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.NoSuchFunction do
   @moduledoc "Used when an function that doesn't exist is used in a query"
-  use Ash.Error.Exception
 
   use Splode.Error,
     fields: [:function, :arity, :resource, :could_be_calculation?],

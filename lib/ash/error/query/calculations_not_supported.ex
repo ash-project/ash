@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.CalculationsNotSupported do
   @moduledoc "Used when the data_layer does not support calculations, or filtering/sorting them"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :feature], class: :invalid
 

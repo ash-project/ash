@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.CalculationRequiresPrimaryKey do
   @moduledoc "Used when a calculation requires a primary key but was not supplied with one"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :calculation], class: :invalid
 

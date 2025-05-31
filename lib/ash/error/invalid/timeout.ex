@@ -1,6 +1,5 @@
 defmodule Ash.Error.Invalid.Timeout do
   @moduledoc "Used when a request to a domain times out."
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:name, :timeout], class: :invalid
 

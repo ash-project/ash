@@ -1,6 +1,5 @@
 defmodule Ash.Error.Invalid.NoSuchAction do
   @moduledoc "Used when an action name is provided that doesn't exist"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :action, :type], class: :invalid
 

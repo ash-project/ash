@@ -5,7 +5,6 @@ defmodule Ash.Error.Invalid.Unavailable do
   This might happen due to locking at the data layer, or something
   you implement yourself.
   """
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :source, :reason], class: :invalid
 

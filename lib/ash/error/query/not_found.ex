@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.NotFound do
   @moduledoc "Used when an entity that not exist is referenced"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:primary_key, :resource], class: :invalid
 

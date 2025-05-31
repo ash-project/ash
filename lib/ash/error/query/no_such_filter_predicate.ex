@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.NoSuchFilterPredicate do
   @moduledoc "Used when a filter predicate that does not exist is referenced"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:message, :value, :key, :resource], class: :invalid
 

@@ -1,6 +1,5 @@
 defmodule Ash.Error.Invalid.TimeoutNotSupported do
   @moduledoc "Used when timeouts are not supported by the data layer, but one is set"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource], class: :invalid
 

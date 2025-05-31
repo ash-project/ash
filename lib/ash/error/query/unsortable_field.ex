@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.UnsortableField do
   @moduledoc "Used when attempting to sort on a field that cannot be used for sorting"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :field, :reason], class: :invalid
 

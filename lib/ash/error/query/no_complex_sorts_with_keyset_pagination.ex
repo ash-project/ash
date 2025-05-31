@@ -9,7 +9,6 @@ defmodule Ash.Error.Query.NoComplexSortsWithKeysetPagination do
 
   Let me know if you're reading this and want to help implement it.
   """
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :sort], class: :framework
 

@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.InvalidFilterReference do
   @moduledoc "Used when an invalid reference is used in a filter"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:field, :simple_equality?], class: :invalid
 

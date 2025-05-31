@@ -1,6 +1,5 @@
 defmodule Ash.Error.Invalid.TenantRequired do
   @moduledoc "Used when a tenant is not specified"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource], class: :invalid
 

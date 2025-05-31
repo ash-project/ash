@@ -1,6 +1,5 @@
 defmodule Ash.Error.Invalid.ActionRequiresPagination do
   @moduledoc "Used when page option is passed but pagination is not enabled."
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :action], class: :invalid
 

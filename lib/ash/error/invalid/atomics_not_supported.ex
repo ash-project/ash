@@ -1,6 +1,5 @@
 defmodule Ash.Error.Invalid.AtomicsNotSupported do
   @moduledoc "Used when atomics for the given action type are not not supported by the data layer, but one is used."
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :action_type], class: :invalid
 

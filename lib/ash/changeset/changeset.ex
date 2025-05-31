@@ -2999,10 +2999,11 @@ defmodule Ash.Changeset do
            } = error},
           changeset ->
             Enum.reduce_while(arguments, {:ok, []}, fn argument, {:ok, args} ->
+              IO.inspect(argument)
               case Ash.Expr.eval(argument,
                      resource: changeset.resource,
                      unknown_on_unknown_refs?: true
-                   ) do
+                   ) |> IO.inspect() do
                 {:ok, value} ->
                   {:cont, {:ok, [value | args]}}
 

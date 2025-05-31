@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.InvalidCalculationArgument do
   @moduledoc "Used when an invalid value is provided for a calculation argument"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:calculation, :field, :message, :value], class: :invalid
 

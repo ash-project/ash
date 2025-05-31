@@ -96,6 +96,8 @@ defmodule Ash.Resource.Validation.Compare do
   @impl true
   def atomic(changeset, opts, context) do
     if Enum.any?(changeset.action.arguments, &(&1.name == opts[:attribute])) do
+      # (!Keyword.has_key?(changeset.atomics, opts[:attribute]) &&
+      #    Map.has_key?(changeset.attributes, opts[:attribute])) do
       validate(changeset, opts, context)
     else
       opts

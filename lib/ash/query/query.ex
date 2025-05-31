@@ -266,7 +266,6 @@ defmodule Ash.Query do
   alias Ash.Query.{Aggregate, Calculation}
 
   require Ash.Tracer
-  import Ash.Expr, only: [expr: 1, expr?: 1]
 
   defimpl Inspect do
     import Inspect.Algebra
@@ -645,11 +644,10 @@ defmodule Ash.Query do
         Ash.Query.do_filter(unquote(query), unquote(expression))
       end
     else
-      require Ash.Expr
-      expr = Ash.Expr.do_expr(expression)
-
       quote location: :keep do
-        Ash.Query.do_filter(unquote(query), List.wrap(unquote(expr)))
+        require Ash.Expr
+        expr = Ash.Expr.expr(unquote(expression))
+        Ash.Query.do_filter(unquote(query), expr)
       end
     end
   end
@@ -1927,7 +1925,7 @@ defmodule Ash.Query do
 
     args = Map.delete(args, :as)
 
-    has_one_expr? = Enum.any?(args, fn {_, value} -> expr?(value) end)
+    has_one_expr? = Enum.any?(args, fn {_, value} -> Ash.Expr.expr?(value) end)
 
     args
     |> Enum.reduce_while({:ok, %{}}, fn {key, value}, {:ok, arg_values} ->
@@ -1962,16 +1960,18 @@ defmodule Ash.Query do
               inputs: Enum.map(calculation.arguments, & &1.name)
             )}}
 
-        expr?(value) && argument.allow_expr? && allow_expr? ->
+        Ash.Expr.expr?(value) && argument.allow_expr? && allow_expr? ->
           {:cont,
            {:ok,
             Map.put(
               arg_values,
               argument.name,
-              expr(type(^value, ^argument.type, ^argument.constraints))
+              %Ash.Query.Function.Type{
+                arguments: [value, argument.type, argument.constraints]
+              }
             )}}
 
-        expr?(value) ->
+        Ash.Expr.expr?(value) ->
           {:halt,
            {:error,
             InvalidCalculationArgument.exception(
@@ -2002,7 +2002,9 @@ defmodule Ash.Query do
               Map.put(
                 arg_values,
                 argument.name,
-                expr(type(^value, ^argument.type, ^argument.constraints))
+                %Ash.Query.Function.Type{
+                  arguments: [value, argument.type, argument.constraints]
+                }
               )}}
           else
             {:cont,
@@ -2024,7 +2026,9 @@ defmodule Ash.Query do
                 Map.put(
                   arg_values,
                   argument.name,
-                  expr(type(^casted, ^argument.type, ^argument.constraints))
+                  %Ash.Query.Function.Type{
+                    arguments: [value, argument.type, argument.constraints]
+                  }
                 )}}
             else
               cond do

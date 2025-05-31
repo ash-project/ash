@@ -1,6 +1,5 @@
 defmodule Ash.Error.Framework.PendingCodegen do
   @moduledoc "Used when an extension has pending code generation and the --check flag is provided"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:diff, explain: false], class: :framework
 

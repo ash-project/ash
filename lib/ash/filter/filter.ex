@@ -2,7 +2,6 @@ defmodule Ash.Filter do
   # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
   @dialyzer {:nowarn_function, do_map: 2, map: 2}
   require Logger
-  require Ash.Expr
 
   alias Ash.Error.Query.{
     InvalidFilterValue,

@@ -1,6 +1,5 @@
 defmodule Ash.Error.Unknown.UnknownError do
   @moduledoc "Used when an unknown error occurs"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:error, :field, :value], class: :unknown
 

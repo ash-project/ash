@@ -1,6 +1,5 @@
 defmodule Ash.Error.Invalid.MultipleResults do
   @moduledoc "Used when multiple results are returned in a case where only one result was expected"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:count, :at_least?, :query], class: :invalid
 

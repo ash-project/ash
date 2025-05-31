@@ -1,6 +1,5 @@
 defmodule Ash.Error.SimpleDataLayer.NoDataProvided do
   @moduledoc "Used when no data was provided to the simple data layer"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :message], class: :framework
 

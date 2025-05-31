@@ -1,6 +1,5 @@
 defmodule Ash.Error.Query.NoReadAction do
   @moduledoc "Used when a resource would be read but has no read action"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :when], class: :invalid
 

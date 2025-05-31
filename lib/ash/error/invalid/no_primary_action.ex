@@ -1,6 +1,5 @@
 defmodule Ash.Error.Invalid.NoPrimaryAction do
   @moduledoc "Used when an action name is provided that doesn't exist"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:resource, :type], class: :invalid
 
