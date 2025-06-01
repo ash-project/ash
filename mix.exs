@@ -58,7 +58,7 @@ defmodule Ash.MixProject do
         "documentation/tutorials/get-started.md",
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
-        "documentation/topics/about_ash/contributing-to-ash.md",
+        {".github/CONTRIBUTING.md", title: "Contributing to Ash"},
         "documentation/topics/about_ash/alternatives.md",
         "documentation/topics/development/project-structure.md",
         "documentation/topics/development/working-with-llms.md",
@@ -119,6 +119,7 @@ defmodule Ash.MixProject do
         Tutorials: ~r"documentation/tutorials",
         "About Ash": [
           ~r"documentation/topics/about_ash",
+          ".github/CONTRIBUTING.md",
           "CHANGELOG.md"
         ],
         Development: ~r"documentation/topics/development",
@@ -179,6 +180,7 @@ defmodule Ash.MixProject do
           """
         end
       end,
+      redirects: %{"contributing-to-ash" => "contributing"},
       groups_for_modules: [
         "Core API": [
           Ash,
@@ -342,7 +344,7 @@ defmodule Ash.MixProject do
       licenses: ["MIT"],
       maintainers: ["Zach Daniel"],
       files: ~w(lib .formatter.exs mix.exs README* LICENSE*
-      CHANGELOG* documentation usage-rules.md),
+      CHANGELOG* usage-rules.md),
       links: %{
         GitHub: "https://github.com/ash-project/ash",
         Discord: "https://discord.gg/HTHRaaVPUc",

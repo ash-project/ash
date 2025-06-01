@@ -41,7 +41,7 @@ bar to find relevant reference information. Place the text `dsl` before your sea
 
 - [What is Ash?](documentation/topics/about_ash/what-is-ash.md)
 - [Our Design Principles](documentation/topics/about_ash/design-principles.md)
-- [Contributing to Ash](documentation/topics/about_ash/contributing-to-ash.md)
+- [Contributing to Ash](.github/CONTRIBUTING.md)
 - [Alternatives](documentation/topics/about_ash/alternatives.md)
 
 ### Development
