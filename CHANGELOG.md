@@ -2,6 +2,19 @@
 
 <!-- changelog -->
 
+## [v3.5.14](https://github.com/ash-project/ash/compare/v3.5.13...v3.5.14) (2025-06-01)
+
+
+
+
+### Bug Fixes:
+
+* ensure the proper dependency on igniter
+
+* ensure map module loaded when calling it
+
+* raise if integer primary key is not supplied in ETS (#2079)
+
 ## [v3.5.13](https://github.com/ash-project/ash/compare/v3.5.12...v3.5.13) (2025-05-30)
 
 
