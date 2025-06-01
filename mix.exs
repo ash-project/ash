@@ -417,6 +417,10 @@ defmodule Ash.MixProject do
       docs: [
         "ash.install --scribe documentation/topics/advanced/manual-installation.md",
         "spark.cheat_sheets",
+        fn _argv ->
+          File.mkdir_p!("doc/documentation/assets/images")
+          File.cp_r!("documentation/assets/images", "doc/documentation/assets/images")
+        end,
         "docs",
         "spark.replace_doc_links"
       ],

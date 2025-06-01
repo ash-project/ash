@@ -14,7 +14,7 @@ The best way to contribute to documentation is often through GitHub's web interf
 - While viewing any guide on the documentation website, look for the `</>` button in the top right of the page
 - Clicking this button will take you directly to GitHub's editing interface for that file
 
-![Guide Edit Button](../documentation/assets/guides-link.png)
+![Guide Edit Button](documentation/assets/images/guides-link.png)
 
 **For Module Documentation:**
 - When viewing module documentation, the `</>` button will also be in the top right of the page
@@ -22,7 +22,7 @@ The best way to contribute to documentation is often through GitHub's web interf
 **For Function Documentation:**
 - When viewing individual functions, you'll find the `</>` button next to the function header
 
-![Function Edit Button](../documentation/assets/functions-link.png)
+![Function Edit Button](documentation/assets/images/functions-link.png)
 
 Once you click the `</>` button, GitHub will:
 1. Fork the repository for you (if you haven't already)
@@ -37,9 +37,9 @@ This workflow makes it incredibly easy to fix typos, clarify explanations, add e
 * We have a zero tolerance policy for failure to abide by our code of conduct. It is very standard, but please make sure
   you have read it.
 * Issues may be opened to propose new ideas, to ask questions, or to file bugs.
-* Before working on a feature, please talk to the core team/the rest of the community via a proposal. We are 
-  building something that needs to be cohesive and well thought out across all use cases. Our top priority is 
-  supporting real life use cases like yours, but we have to make sure that we do that in a sustainable way. The 
+* Before working on a feature, please talk to the core team/the rest of the community via a proposal. We are
+  building something that needs to be cohesive and well thought out across all use cases. Our top priority is
+  supporting real life use cases like yours, but we have to make sure that we do that in a sustainable way. The
   best compromise there is to make sure that discussions are centered around the *use case* for a feature, rather
   than the proposed feature itself.
 * Before starting work, please comment on the issue and/or ask in the discord if anyone is handling an issue. Be aware that if you've commented on an issue that you'd like to tackle it, but no one can reach you and/or demand/need arises sooner, it may still need to be done before you have a chance to finish. However, we will make all efforts to allow you to finish anything you claim.
