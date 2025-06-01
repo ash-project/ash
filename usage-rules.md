@@ -2,7 +2,25 @@
 
 ## Understanding Ash
 
-Ash is an opinionated, composable framework for building applications in Elixir. It provides a declarative approach to modeling your domain with resources at the center. Read documentation  *before* attempting to use it's features. Do not assume that you have prior knowledge of the framework or its conventions.
+Ash is an opinionated, composable framework for building applications in Elixir. It provides a declarative approach to modeling your domain with resources at the center.
+
+Always use Ash concepts, almost never ecto concepts directly. Think hard about the "Ash way" to do things. If you don't know, often look for information in the rules & docs of Ash & associated packages.
+
+## Development Tools & Workflow
+
+### MCP Tools
+
+- Use Tidewave MCP tools when available, as they let you interrogate the running application in various useful ways.
+- The Tidewave and Ash MCP tools require the Phoenix server to be running in the background via `mix phx.server` which never terminates.
+
+### Research and Documentation
+
+Always use package_docs_search to find relevant documentation before beginning work. ALWAYS research, NEVER assume.
+
+### Evaluation and Debugging
+
+- Use the project_eval tool to execute code in the running instance of the application. Eval `h Module.fun` to get documentation for a module or function.
+- Use `Ash.Info.mermaid_overview(:otp_app)` to generate a mermaid diagram of the application's Ash Resource & Domain Model.
 
 ## Code Structure & Organization
 
@@ -11,6 +29,10 @@ Ash is an opinionated, composable framework for building applications in Elixir.
 - Create domain-specific actions rather than generic CRUD operations
 - Put business logic inside actions rather than in external modules
 - Use resources to model your domain entities
+- One folder in lib per domain, resources get broken out into folders if they have anything other than just the resource file
+- Everything is an action on a resource even cross resource flows. You can have a resource that just contains actions, just name it something after what the actions do. I.e `MyApp.Billing.MoneyFlows`
+- Put generic actions on that resource that do cross cutting things
+- Put important constants that are likely to be environment specific in config.exs
 
 ## Code Interfaces
 
@@ -636,7 +658,7 @@ MyDomain.update_post!(post, %{
 
 ## Generating Code
 
-Use `mix ash.gen.*` tasks as a basis for code generation when possible. Check the task docs with `mix help <task>`.
+Use `mix ash.gen.*` tasks as a basis for code generation when possible. Check the task docs with `mix help <task>`. Use `list_generators` to list available generators.
 Be sure to use `--yes` to bypass confirmation prompts. Use `--yes --dry-run` to preview the changes.
 
 ## Data Layers
@@ -1128,3 +1150,17 @@ When testing resources:
 - Use `authorize?: false` in tests where authorization is not the focus
 - Write generators using `Ash.Generator`
 - Prefer to use raising versions of functions whenever possible, as opposed to pattern matching
+
+## Debugging
+
+Use `dbg` instead of `IO.puts` or `Logger.*` for debugging purposes
+
+## Ash.CiString
+
+Ash Resource attribute values with the type `:ci_string` use the `Ash.CiString` struct. Follow these instructions for working with `Ash.CiString`:
+
+- Compare two `CiString` structs using the `==`, `!=` operators and `CiString.compare/2`
+- Compare a regular string and a `Ash.CiString` with `Ash.Comp.equal?/2`
+- Use `Ash.CiString.to_comparable_string/1` instead of `Ash.CiString.value/1` and `String.downcase/1`
+- Use `CiString.value/1` to return the CiString's potentially mixed-case string value. Use it to retrieve the CiString's display value and for other purposes
+- For non-comparison operations involving CiStrings and strings, either use `CiString.to_comparable_string/1` and `String.downcase/1` or call `CiString.to_comparable_string/1` twice, the second time with the regular string

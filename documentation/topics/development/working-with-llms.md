@@ -46,3 +46,25 @@ mix usage_rules.sync .rules \
 You can replace the `.rules` file with your own current rules file, and it will be appended to the contents. Repeated calls will only replace the package rules contents of the file, not the whole file contents.
 
 Only dependencies of your current project will be added, and any dependencies that don't have rules are skipped.
+
+### Automaticaly syncing usage rules after installing dependencies
+
+Add something like the following to `config.exs`:
+
+```elixir
+  defp aliases do
+    [
+      ...
+      "deps.get": [&deps_get_with_usage_rules_sync/1]
+    ]
+  end
+
+  defp deps_get_with_usage_rules_sync(_args) do
+    Mix.Task.run("deps.get")
+    Mix.Task.run("usage_rules.sync", [".rules", "--all"])
+  end
+```
+
+## IDEs and Tools
+
+- [CursorAI](../ai/cursor-ai.md)
