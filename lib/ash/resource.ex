@@ -214,8 +214,10 @@ defmodule Ash.Resource do
                        |> Enum.map(& &1.name)
                        |> Enum.concat([:__meta__, :calculations, :aggregates])
 
-          def inspect(record, opts) do
-            if function_exported?(Inspect.Map, :inspect, 4) do
+          Code.ensure_loaded!(Inspect.Map)
+
+          if function_exported?(Inspect.Map, :inspect, 4) do
+            def inspect(record, opts) do
               record = %{
                 record
                 | calculations:
@@ -229,8 +231,10 @@ defmodule Ash.Resource do
                     not (field == :calculations && record.calculations == %{}),
                     do: info
 
-              apply(Inspect.Map, :inspect, [record, inspect(record.__struct__), infos, opts])
-            else
+              Inspect.Map.inspect(record, inspect(record.__struct__), infos, opts)
+            end
+          else
+            def inspect(record, opts) do
               record = %{
                 record
                 | calculations:
@@ -244,12 +248,7 @@ defmodule Ash.Resource do
                     not (field == :calculations && record.calculations == %{}),
                     do: info
 
-              apply(Inspect.Map, :inspect_as_struct, [
-                record,
-                inspect(record.__struct__),
-                infos,
-                opts
-              ])
+              Inspect.Map.inspect_as_struct(record, inspect(record.__struct__), infos, opts)
             end
           end
         end
