@@ -31,7 +31,7 @@ defmodule Ash.Test.AshTest do
 
     actions do
       default_accept [:name, :state]
-      defaults [:create, :update]
+      defaults [:read, :create, :update]
 
       create :create_awake do
         accept [:name]
@@ -49,6 +49,10 @@ defmodule Ash.Test.AshTest do
 
         change set_attribute(:state, arg(:state))
       end
+    end
+
+    calculations do
+      calculate :awaken?, :boolean, expr(state == :awake), public?: true
     end
   end
 
@@ -371,6 +375,16 @@ defmodule Ash.Test.AshTest do
 
       assert %User{name: "Alice", state: :awake} =
                Ash.update!(user, %{state: :awake}, action: :update_state)
+    end
+  end
+
+  describe "calculate/2" do
+    test "with opts" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      opts = %Ash.Resource.Calculation.Context{} |> Ash.Scope.to_opts()
+
+      assert {:ok, false} = Ash.calculate(user, :awaken?, opts)
     end
   end
 

@@ -753,8 +753,14 @@ defmodule Ash do
       The tenant, supplied to calculation context.
       """
     ],
+    context: [
+      type: :map,
+      doc: """
+      Context to set on the calculation input.
+      """
+    ],
     authorize?: [
-      type: :boolean,
+      type: {:in, [true, false, nil]},
       default: true,
       doc: """
       Whether or not the request is being authorized, provided to calculation context.
