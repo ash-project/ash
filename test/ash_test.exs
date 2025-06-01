@@ -52,7 +52,7 @@ defmodule Ash.Test.AshTest do
     end
 
     calculations do
-      calculate :awaken?, :boolean, expr(state == :awake), public?: true
+      calculate :awaken?, :boolean, expr(^context(:awake?)), public?: true
     end
   end
 
@@ -382,9 +382,11 @@ defmodule Ash.Test.AshTest do
     test "with opts" do
       user = Ash.create!(User, %{name: "Alice"})
 
-      opts = %Ash.Resource.Calculation.Context{} |> Ash.Scope.to_opts()
+      opts =
+        %Ash.Resource.Calculation.Context{source_context: %{shared: %{awake?: true}}}
+        |> Ash.Scope.to_opts()
 
-      assert {:ok, false} = Ash.calculate(user, :awaken?, opts)
+      assert {:ok, true} = Ash.calculate(user, :awaken?, opts)
     end
   end
 
