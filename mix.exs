@@ -156,6 +156,7 @@ defmodule Ash.MixProject do
       before_closing_head_tag: fn type ->
         if type == :html do
           """
+          <meta name="exdoc:autocomplete-limit" content="25">
           <style>
             .livebook-badge-container + pre {
               display: none;
@@ -392,7 +393,7 @@ defmodule Ash.MixProject do
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
-      {:ex_doc, "~> 0.37-rc", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.37", only: [:dev, :test], runtime: false},
       {:makeup_diff, "~> 0.1.0", only: [:dev, :test], runtime: false},
       {:ex_check, "~> 0.12", only: [:dev, :test]},
       {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false},
