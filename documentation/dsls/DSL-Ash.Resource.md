@@ -35,7 +35,7 @@ attributes do
     allow_nil? false
 
     constraints [
-      match: fn "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$"
+      match: "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$"
     ]
   end
 
