@@ -338,6 +338,6 @@ defmodule Ash.Type.String do
 
   def match(value) do
     {:error,
-     "Must provide a zero argument function for the match constraint, got: #{inspect(value)}"}
+     "Must provide a string or a tuple of regex and flags (see warning), got: #{inspect(value)}"}
   end
 end
