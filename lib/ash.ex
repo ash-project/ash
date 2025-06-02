@@ -819,7 +819,7 @@ defmodule Ash do
       """
     ],
     authorize?: [
-      type: :boolean,
+      type: {:in, [true, false, nil]},
       doc: """
       Whether or not the request should be authorized.
       """

@@ -49,6 +49,12 @@ defmodule Ash.Test.AshTest do
 
         change set_attribute(:state, arg(:state))
       end
+
+      action :action do
+        run fn _input, _context ->
+          :ok
+        end
+      end
     end
 
     calculations do
@@ -387,6 +393,16 @@ defmodule Ash.Test.AshTest do
         |> Ash.Scope.to_opts()
 
       assert {:ok, true} = Ash.calculate(user, :awaken?, opts)
+    end
+  end
+
+  describe "run_action/2" do
+    test "with opts" do
+      input = Ash.ActionInput.for_action(User, :action, %{})
+
+      opts = %Ash.Resource.Change.Context{} |> Ash.Scope.to_opts()
+
+      assert :ok = Ash.run_action(input, opts)
     end
   end
 
