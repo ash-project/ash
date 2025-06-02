@@ -109,7 +109,7 @@ defmodule Ash.Scope do
       authorize?: Ash.Scope.ToOpts.get_authorize?(scope)
     ]
     |> Enum.flat_map(fn
-      {key, {:ok, value}} ->
+      {key, {:ok, value}} when not is_nil(value) ->
         [{key, value}]
 
       _ ->
