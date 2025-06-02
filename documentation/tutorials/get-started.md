@@ -57,7 +57,7 @@ See the options below for more.
 First, to use `mix igniter.new`, the archive must be installed.
 
 ```bash
-# install igniter.enw
+# install igniter.new
 mix archive.install hex igniter_new
 
 # create a new application with Ash in it
@@ -68,7 +68,7 @@ mix igniter.new helpdesk --install ash && cd helpdesk
 
 If you already know that you want to use Phoenix and Ash together, you can use
 
-```elixir
+```bash
 # install the archive
 mix archive.install hex phx_new
 mix archive.install hex igniter_new
@@ -81,7 +81,7 @@ mix igniter.new helpdesk --install ash,ash_phoenix --with phx.new && cd helpdesk
 
 You can use igniter to add Ash to your existing project as well.
 
-```elixir
+```bash
 mix archive.install hex igniter_new
 mix igniter.install ash
 ```
