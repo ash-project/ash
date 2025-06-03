@@ -105,6 +105,71 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           task: deps.audit
+  community-files-check:
+    name: Community Files Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Check community files placement and content
+        run: |
+          EXIT_CODE=0
+          # Check if files exist in root and fail if they do
+          for file in CODE_OF_CONDUCT.md CONTRIBUTING.md FUNDING.yml; do
+            if [ -f "$file" ]; then
+              echo "❌ $file found in root directory. Please move it to .github/ directory."
+              EXIT_CODE=1
+            fi
+          done
+          # Check FUNDING.md in both locations (should not exist)
+          for location in "" ".github/"; do
+            if [ -f "${location}FUNDING.md" ]; then
+              echo "❌ FUNDING.md found in ${location:-root}. This file should not exist (use FUNDING.yml instead)."
+              EXIT_CODE=1
+            fi
+          done
+          # Function to fetch expected content from ash-project/.github
+          fetch_expected_content() {
+            local file="$1"
+            local url="https://raw.githubusercontent.com/ash-project/.github/main/$file"
+            curl -s -f "$url" || {
+              echo "❌ Failed to fetch expected content for $file from ash-project/.github"
+              return 1
+            }
+          }
+          # Check files in .github directory
+          for file in CODE_OF_CONDUCT.md CONTRIBUTING.md FUNDING.yml; do
+            filepath=".github/$file"
+            if [ -f "$filepath" ]; then
+              echo "✅ Found $file in .github directory"
+              expected_content=$(fetch_expected_content "$file")
+              if [ $? -ne 0 ]; then
+                EXIT_CODE=1
+                continue
+              fi
+              actual_content=$(cat "$filepath")
+              if [ "$actual_content" != "$expected_content" ]; then
+                echo "❌ Content of $filepath does not match expected content from ash-project/.github"
+                echo "   Please update the file content or delete it to use the standard version."
+                echo "   Expected content URL: https://github.com/ash-project/.github/blob/main/$file"
+                EXIT_CODE=1
+              else
+                echo "✅ Content of $filepath matches expected content"
+              fi
+            else
+              echo "ℹ️  $file not found in .github directory (this is optional)"
+            fi
+          done
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ All community files are properly configured"
+          else
+            echo ""
+            echo "Community files check failed. Please:"
+            echo "1. Move any files from root to .github/ directory"
+            echo "2. Update file contents to match ash-project/.github or delete them"
+            echo "3. Remove any FUNDING.md files (use FUNDING.yml instead)"
+            echo "4. Reference: https://github.com/ash-project/.github"
+          fi
+          exit $EXIT_CODE
   build-test:
     name: MIX_ENV=test mix.compile
     runs-on: ubuntu-latest
