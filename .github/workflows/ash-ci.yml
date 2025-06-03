@@ -134,12 +134,15 @@ jobs:
             filepath=".github/$file"
             if [ -f "$filepath" ]; then
               echo "✅ Found $file in .github directory"
+              
               expected_content=$(fetch_expected_content "$file")
               if [ $? -ne 0 ]; then
                 EXIT_CODE=1
                 continue
               fi
+              
               actual_content=$(cat "$filepath")
+              
               if [ "$actual_content" != "$expected_content" ]; then
                 echo "❌ Content of $filepath does not match expected content from ash-project/.github"
                 echo "   Please update the file content or delete it to use the standard version."
@@ -150,6 +153,41 @@ jobs:
               fi
             else
               echo "ℹ️  $file not found in .github directory (this is optional)"
+            fi
+          done
+          
+          # Check template files
+          template_files=(
+            ".github/PULL_REQUEST_TEMPLATE.md:PULL_REQUEST_TEMPLATE.md"
+            ".github/ISSUE_TEMPLATE/bug_report.md:.github/ISSUE_TEMPLATE/bug_report.md"
+            ".github/ISSUE_TEMPLATE/proposal.md:.github/ISSUE_TEMPLATE/proposal.md"
+          )
+          
+          for template_mapping in "${template_files[@]}"; do
+            local_path="${template_mapping%:*}"
+            remote_path="${template_mapping#*:}"
+            
+            if [ -f "$local_path" ]; then
+              echo "✅ Found template $local_path"
+              
+              expected_content=$(fetch_expected_content "$remote_path")
+              if [ $? -ne 0 ]; then
+                EXIT_CODE=1
+                continue
+              fi
+              
+              actual_content=$(cat "$local_path")
+              
+              if [ "$actual_content" != "$expected_content" ]; then
+                echo "❌ Content of $local_path does not match expected content from ash-project/.github"
+                echo "   Please update the file content or delete it to use the standard version."
+                echo "   Expected content URL: https://github.com/ash-project/.github/blob/main/$remote_path"
+                EXIT_CODE=1
+              else
+                echo "✅ Content of $local_path matches expected content"
+              fi
+            else
+              echo "ℹ️  Template $local_path not found (this is optional)"
             fi
           done
           if [ $EXIT_CODE -eq 0 ]; then
