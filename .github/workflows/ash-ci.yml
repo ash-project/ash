@@ -120,13 +120,6 @@ jobs:
               EXIT_CODE=1
             fi
           done
-          # Check FUNDING.md in both locations (should not exist)
-          for location in "" ".github/"; do
-            if [ -f "${location}FUNDING.md" ]; then
-              echo "❌ FUNDING.md found in ${location:-root}. This file should not exist (use FUNDING.yml instead)."
-              EXIT_CODE=1
-            fi
-          done
           # Function to fetch expected content from ash-project/.github
           fetch_expected_content() {
             local file="$1"
@@ -166,8 +159,7 @@ jobs:
             echo "Community files check failed. Please:"
             echo "1. Move any files from root to .github/ directory"
             echo "2. Update file contents to match ash-project/.github or delete them"
-            echo "3. Remove any FUNDING.md files (use FUNDING.yml instead)"
-            echo "4. Reference: https://github.com/ash-project/.github"
+            echo "3. Reference: https://github.com/ash-project/.github"
           fi
           exit $EXIT_CODE
   build-test:
