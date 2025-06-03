@@ -152,7 +152,8 @@ defmodule Ash.MixProject do
         Ash.Query.Operator,
         Ash.Resource.Validation,
         Ash.Resource.Change,
-        Ash.Policy.Check
+        Ash.Policy.Check,
+        Ash.Type
       ],
       before_closing_head_tag: fn type ->
         if type == :html do

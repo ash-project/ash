@@ -1,4 +1,9 @@
 defmodule Ash.Type.Union do
+  @include_source_by_default Application.compile_env(
+                               :ash,
+                               :include_embedded_source_by_default?,
+                               true
+                             )
   @constraints [
     storage: [
       type: {:one_of, [:type_and_value, :map_with_tag]},
@@ -9,6 +14,12 @@ defmodule Ash.Type.Union do
       `:type_and_value` will store the type and value in a map like so `{type: :type_name, value: the_value}`
       `:map_with_tag` will store the value directly. This only works if all types have a `tag` and `tag_value` configured.
       """
+    ],
+    include_source?: [
+      type: :boolean,
+      default: @include_source_by_default,
+      doc:
+        "Whether to include the source changeset in the context. Defaults to the value of `config :ash, :include_embedded_source_by_default`, or `true`. In 4.x, the default will be `false`."
     ],
     types: [
       type: {:custom, __MODULE__, :union_types, []},
@@ -146,6 +157,258 @@ defmodule Ash.Type.Union do
 
   @moduledoc """
   A union between multiple types, distinguished with a tag or by attempting to validate.
+
+  Union types allow you to define attributes that can hold values of different types. There are two
+  main strategies for distinguishing between types:
+
+  1. **Tagged unions** - Uses a specific field (tag) and value (tag_value) to identify the type
+  2. **Untagged unions** - Attempts to cast the value against each type in order until one succeeds
+
+  ## Basic Usage
+
+  Define a union type in an attribute:
+
+      attribute :content, :union,
+        constraints: [
+          types: [
+            text: [type: :string],
+            number: [type: :integer],
+            flag: [type: :boolean]
+          ]
+        ]
+
+  Values are wrapped in an `%Ash.Union{}` struct with `:type` and `:value` fields:
+
+      # Reading union values
+      %Ash.Union{type: :text, value: "Hello"}
+      %Ash.Union{type: :number, value: 42}
+
+  ## Tagged Unions
+
+  Tagged unions use a discriminator field to identify the type. This is more reliable but requires
+  the data to include the tag field:
+
+      attribute :data, :union,
+        constraints: [
+          types: [
+            user: [
+              type: :map,
+              tag: :type,
+              tag_value: "user"
+            ],
+            admin: [
+              type: :map,
+              tag: :type,
+              tag_value: "admin"
+            ]
+          ]
+        ]
+
+  Input data must include the tag field:
+
+      # Valid inputs
+      %{type: "user", name: "John", email: "john@example.com"}
+      %{type: "admin", name: "Jane", permissions: ["read", "write"]}
+
+  ### Tag Options
+
+  - `tag` - The field name to check (e.g., `:type`, `:kind`, `:__type__`)
+  - `tag_value` - The expected value for this type (string, atom, or nil)
+  - `cast_tag?` - Whether to include the tag in the final value (default: `true`)
+
+  When `cast_tag?: false`, the tag field is removed from the final value.
+
+  ## Untagged Unions
+
+  Without tags, union types attempt to cast values against each type in order:
+
+      attribute :flexible, :union,
+        constraints: [
+          types: [
+            integer: [type: :integer],
+            string: [type: :string]
+          ]
+        ]
+
+  **Order matters!** The first successful cast wins:
+
+      # "42" would be cast as :integer (42), not :string ("42")
+      # if integer comes first in the types list
+
+  ## Mixed Tagged and Untagged Types
+
+  You can mix tagged and untagged types within a single union. Tagged types are checked first
+  by their tag values, and if no tagged type matches, untagged types are tried in order:
+
+      attribute :flexible_data, :union,
+        constraints: [
+          types: [
+            # Tagged types - checked first by tag
+            user: [
+              type: :map,
+              tag: :type,
+              tag_value: "user"
+            ],
+            admin: [
+              type: :map,
+              tag: :type,
+              tag_value: "admin"
+            ],
+            # Untagged types - tried in order if no tag matches
+            number: [type: :integer],
+            text: [type: :string]
+          ]
+        ]
+
+  This allows for both explicit type identification (via tags) and fallback casting:
+
+      # Tagged - uses :type field to determine it's a user
+      %{type: "user", name: "John"}
+
+      # Untagged - tries :integer first, then :string
+      42        # -> %Ash.Union{type: :number, value: 42}
+      "hello"   # -> %Ash.Union{type: :text, value: "hello"}
+
+  ## Storage Modes
+
+  Union values can be stored in different formats:
+
+  ### `:type_and_value` (default)
+
+  Stores as a map with explicit type and value fields:
+
+      # Stored as: %{"type" => "text", "value" => "Hello"}
+
+  ### `:map_with_tag`
+
+  Stores the value directly (requires all types to have tags):
+
+      # Stored as: %{"type" => "user", "name" => "John", "email" => "john@example.com"}
+
+      constraints: [
+        storage: :map_with_tag,
+        types: [
+          user: [type: :map, tag: :type, tag_value: "user"],
+          admin: [type: :map, tag: :type, tag_value: "admin"]
+        ]
+      ]
+
+  ## Embedded Resources
+
+  Union types work seamlessly with embedded resources:
+
+      attribute :contact_info, :union,
+        constraints: [
+          types: [
+            email: [
+              type: EmailContact,
+              tag: :type,
+              tag_value: "email"
+            ],
+            phone: [
+              type: PhoneContact,
+              tag: :type,
+              tag_value: "phone"
+            ]
+          ]
+        ]
+
+  ## Arrays of Unions
+
+  Union types support arrays using the standard `{:array, :union}` syntax:
+
+      attribute :mixed_data, {:array, :union},
+        constraints: [
+          items: [
+            types: [
+              text: [type: :string],
+              number: [type: :integer]
+            ]
+          ]
+        ]
+
+  ## Advanced Input Formats
+
+  Union types support multiple input formats for flexibility:
+
+  ### Direct Union Struct
+
+      %Ash.Union{type: :text, value: "Hello"}
+
+  ### Tagged Map (when tags are configured)
+
+      %{type: "text", content: "Hello"}
+
+  ### Explicit Union Format
+
+      %{
+        "_union_type" => "text",
+        "_union_value" => "Hello"
+      }
+
+      # Or with the value merged in
+      %{
+        "_union_type" => "text",
+        "content" => "Hello"
+      }
+
+  ## Nested Unions
+
+  Unions can contain other union types. All type names must be unique across the entire
+  nested structure:
+
+      types: [
+        simple: [type: :string],
+        complex: [
+          type: :union,
+          constraints: [
+            types: [
+              # Names must be unique - can't reuse 'simple'
+              nested_text: [type: :string],
+              nested_num: [type: :integer]
+            ]
+          ]
+        ]
+      ]
+
+  ## Loading and Calculations
+
+  Union types support loading related data when member types are loadable (like embedded resources):
+
+      # Load through all union types
+      query |> Ash.Query.load(union_field: :*)
+
+      # Load through specific type
+      query |> Ash.Query.load(union_field: [user: [:profile, :preferences]])
+
+  ## Error Handling
+
+  Union casting provides detailed error information:
+
+  - **Tagged unions**: Clear errors when tags don't match expected values
+  - **Untagged unions**: Aggregated errors from all attempted type casts
+  - **Array unions**: Errors include index and path information for debugging
+
+  ## NewType Integration
+
+  Create reusable union types with `Ash.Type.NewType`:
+
+      defmodule MyApp.Types.ContactMethod do
+        use Ash.Type.NewType,
+          subtype_of: :union,
+          constraints: [
+            types: [
+              email: [type: :string, constraints: [match: ~r/@/]],
+              phone: [type: :string, constraints: [match: ~r/^\d+$/]]
+            ]
+          ]
+      end
+
+  ## Performance Considerations
+
+  - **Tagged unions** are more efficient as they avoid trial-and-error casting
+  - **Type order matters** in untagged unions - put more specific types first
+  - **Use constraints** on member types to fail fast on invalid data
 
   ## Constraints
 
@@ -919,7 +1182,11 @@ defmodule Ash.Type.Union do
 
   @impl true
   def include_source(constraints, changeset) do
-    Keyword.put(constraints || [], :__source__, changeset)
+    if Keyword.get(constraints, :include_source?, @include_source_by_default) do
+      Keyword.put(constraints, :__source__, changeset)
+    else
+      constraints
+    end
   end
 
   @impl true
