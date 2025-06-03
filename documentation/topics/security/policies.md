@@ -227,8 +227,7 @@ to determine if a forbidden error should be raised.
 There are three access types, and they determine the _latest point in the process_ that any check contained by a policy can be applied.
 
 - `strict` - All checks must be applied statically. These result in a forbidden error if they are not met.
-- `filter` - All checks must be applied either statically or as a filter. These result in a filtered read if they are not met, and a
-  forbidden error for other action types.
+- `filter` - All checks must be applied either statically or as a filter. These result in a filtered read if they are not met, and a forbidden error for other action types.
 - `runtime` - This allows checks to be run _after_ the data has been read. It is exceedingly rare that you would need to use this access type.
 
 For example, given this policy:

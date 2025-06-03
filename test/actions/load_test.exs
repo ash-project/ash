@@ -520,6 +520,36 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
+  defmodule EventLog do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      defaults([:read, create: [:name, :author_id]])
+    end
+
+    attributes do
+      attribute(:name, :string, public?: true)
+      timestamps()
+    end
+
+    relationships do
+      belongs_to :author, Author do
+        public?(true)
+      end
+    end
+
+    resource do
+      require_primary_key? false
+    end
+  end
+
   describe "loads" do
     setup do
       start_supervised(
@@ -1262,6 +1292,31 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.read!()
 
       assert author.latest_post.id == post2.id
+    end
+
+    test "loading belongs_to on resource without primary key returns correct result" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "test author"})
+        |> Ash.create!()
+
+      author2 =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "test author2"})
+        |> Ash.create!()
+
+      event_log =
+        EventLog
+        |> Ash.Changeset.for_create(:create, %{name: "test_event", author_id: author.id})
+        |> Ash.create!()
+
+      event_log2 =
+        EventLog
+        |> Ash.Changeset.for_create(:create, %{name: "test_event2", author_id: author2.id})
+        |> Ash.create!()
+
+      assert Ash.load!(event_log, :author).author.id == author.id
+      assert Ash.load!(event_log2, :author).author.id == author2.id
     end
   end
 

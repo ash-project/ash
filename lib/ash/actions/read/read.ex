@@ -218,11 +218,13 @@ defmodule Ash.Actions.Read do
 
     pkey = Ash.Resource.Info.primary_key(query.resource)
 
+    # we should probably lazily check this
     missing_pkeys? =
-      opts[:initial_data] &&
-        Enum.any?(opts[:initial_data], fn record ->
-          Enum.any?(Map.take(record, pkey), fn {_, v} -> is_nil(v) end)
-        end)
+      Enum.empty?(pkey) ||
+        (opts[:initial_data] &&
+           Enum.any?(opts[:initial_data], fn record ->
+             Enum.any?(Map.take(record, pkey), fn {_, v} -> is_nil(v) end)
+           end))
 
     reuse_values? = Keyword.get(opts, :reuse_values?, false)
 
@@ -1422,7 +1424,7 @@ defmodule Ash.Actions.Read do
       |> Kernel.--(Ash.Resource.Info.primary_key(query.resource))
 
     must_be_reselected =
-      if opts[:reuse_values?] do
+      if opts[:reuse_values?] && !missing_pkeys? do
         must_be_reselected
         |> Enum.reject(&Ash.Resource.selected?(first, &1, forbidden_means_selected?: true))
       else
@@ -1462,110 +1464,125 @@ defmodule Ash.Actions.Read do
        ) do
     primary_key = Ash.Resource.Info.primary_key(query.resource)
 
-    filter =
-      initial_data
-      |> List.wrap()
-      |> Enum.map(&Map.take(&1, primary_key))
-      |> case do
-        [] ->
-          false
+    if Enum.empty?(primary_key) do
+      {:error,
+       """
+       Cannot reselect fields or perform query/runtime calculations for resources that do not have a primary key using `Ash.load`.
+       You must ensure that all necessary fields are present, and use the `reuse_values?` option, and compute calculations when
+       the query is run.
 
-        [single] ->
-          [single]
+       Attempted to reselect #{inspect(must_be_reselected)}.
 
-        multiple ->
-          [or: multiple]
-      end
+       Attempted to perform query calculations #{inspect(calculations_in_query)}.
 
-    with %{valid?: true} = query <-
-           query
-           |> Ash.Query.unset([
-             :filter,
-             :sort,
-             :limit,
-             :offset,
-             :distinct,
-             :select,
-             :calculations
-           ])
-           |> Ash.Query.select([])
-           |> Ash.Query.load(calculations_in_query)
-           |> Ash.Query.select(must_be_reselected)
-           |> Ash.DataLayer.Simple.set_data(initial_data)
-           |> Ash.Query.do_filter(filter),
-         {:ok, %{valid?: true} = query} <- handle_multitenancy(query),
-         {:ok, data_layer_calculations} <-
-           hydrate_calculations(
-             query,
-             calculations_in_query
-           ),
-         {:ok, query} <- hydrate_aggregates(query),
-         {:ok, relationship_path_filters} <-
-           Ash.Filter.relationship_filters(
-             query.domain,
-             %{query | filter: nil},
-             opts[:actor],
-             query.tenant,
-             agg_refs(query, data_layer_calculations),
-             opts[:authorize?]
-           ),
-         data_layer_calculations <-
-           authorize_calculation_expressions(
-             data_layer_calculations,
-             query.resource,
-             opts[:authorize?],
-             relationship_path_filters,
-             opts[:actor],
-             query.tenant,
-             opts[:tracer],
-             query.domain,
-             parent_stack_from_context(query.context),
-             query.context
-           ),
-         query <-
-           authorize_loaded_aggregates(
-             query,
-             relationship_path_filters,
-             opts[:actor],
-             opts[:authorize?],
-             query.tenant,
-             opts[:tracer]
-           ),
-         {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
-         {:ok, data_layer_query} <-
-           Ash.DataLayer.add_aggregates(
-             data_layer_query,
-             Map.values(query.aggregates),
-             query.resource
-           ),
-         {:ok, data_layer_query} <-
-           Ash.DataLayer.add_calculations(
-             data_layer_query,
-             data_layer_calculations,
-             query.resource
-           ),
-         {{:ok, results}, query} <-
-           run_query(
-             query,
-             data_layer_query,
-             %{
-               actor: opts[:actor],
-               tenant: query.tenant,
-               authorize?: opts[:authorize?],
-               domain: query.domain
-             },
-             true
-           ) do
-      results
-      |> attach_fields(initial_data, query, query, false, true)
-      |> cleanup_field_auth(query)
-      |> compute_expression_at_runtime_for_missing_records(query, data_layer_calculations)
-      |> case do
-        {:ok, result} ->
-          {:ok, result, 0, calculations_at_runtime, calculations_in_query, query}
+       Attempted to perform runtime calculations #{inspect(calculations_at_runtime)}.
+       """}
+    else
+      filter =
+        initial_data
+        |> List.wrap()
+        |> Enum.map(&Map.take(&1, primary_key))
+        |> case do
+          [] ->
+            false
 
-        {:error, error} ->
-          {:error, error}
+          [single] ->
+            [single]
+
+          multiple ->
+            [or: multiple]
+        end
+
+      with %{valid?: true} = query <-
+             query
+             |> Ash.Query.unset([
+               :filter,
+               :sort,
+               :limit,
+               :offset,
+               :distinct,
+               :select,
+               :calculations
+             ])
+             |> Ash.Query.select([])
+             |> Ash.Query.load(calculations_in_query)
+             |> Ash.Query.select(must_be_reselected)
+             |> Ash.DataLayer.Simple.set_data(initial_data)
+             |> Ash.Query.do_filter(filter),
+           {:ok, %{valid?: true} = query} <- handle_multitenancy(query),
+           {:ok, data_layer_calculations} <-
+             hydrate_calculations(
+               query,
+               calculations_in_query
+             ),
+           {:ok, query} <- hydrate_aggregates(query),
+           {:ok, relationship_path_filters} <-
+             Ash.Filter.relationship_filters(
+               query.domain,
+               %{query | filter: nil},
+               opts[:actor],
+               query.tenant,
+               agg_refs(query, data_layer_calculations),
+               opts[:authorize?]
+             ),
+           data_layer_calculations <-
+             authorize_calculation_expressions(
+               data_layer_calculations,
+               query.resource,
+               opts[:authorize?],
+               relationship_path_filters,
+               opts[:actor],
+               query.tenant,
+               opts[:tracer],
+               query.domain,
+               parent_stack_from_context(query.context),
+               query.context
+             ),
+           query <-
+             authorize_loaded_aggregates(
+               query,
+               relationship_path_filters,
+               opts[:actor],
+               opts[:authorize?],
+               query.tenant,
+               opts[:tracer]
+             ),
+           {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
+           {:ok, data_layer_query} <-
+             Ash.DataLayer.add_aggregates(
+               data_layer_query,
+               Map.values(query.aggregates),
+               query.resource
+             ),
+           {:ok, data_layer_query} <-
+             Ash.DataLayer.add_calculations(
+               data_layer_query,
+               data_layer_calculations,
+               query.resource
+             ),
+           {{:ok, results}, query} <-
+             run_query(
+               query,
+               data_layer_query,
+               %{
+                 actor: opts[:actor],
+                 tenant: query.tenant,
+                 authorize?: opts[:authorize?],
+                 domain: query.domain
+               },
+               true
+             ) do
+        results
+        |> attach_fields(initial_data, query, query, false, true)
+        |> cleanup_field_auth(query)
+        |> compute_expression_at_runtime_for_missing_records(query, data_layer_calculations)
+        |> case do
+          {:ok, result} ->
+            {:ok, result, 0, calculations_at_runtime, calculations_in_query, query}
+
+          {:error, error} ->
+            {:error, error}
+        end
       end
     end
   end
