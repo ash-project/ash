@@ -63,7 +63,28 @@ end
 MyApp.Domain.get_dashboard_group_by_id!(id, load: [rel: [:nested]])
 ```
 
-Code interfaces automatically support options like `load:` and `query:` options for dynamic loading and filtering.
+**Code interface options** - Prefer passing options directly to code interface functions rather than building queries manually:
+
+```elixir
+# PREFERRED - Concise and idiomatic
+posts = MyApp.Blog.list_posts!(
+  filter: [status: :published], 
+  load: [author: :profile, comments: [:author]], 
+  sort: [published_at: :desc],
+  limit: 10
+)
+
+# Complex scenarios use the query option
+users = MyApp.Accounts.list_users!(
+  query: [filter: [active: true], load: [:profile], sort: [created_at: :desc]]
+)
+
+# AVOID - Verbose manual query building
+query = MyApp.Post |> Ash.Query.filter(...) |> Ash.Query.load(...) 
+posts = MyApp.Blog.read!(query)
+```
+
+Supported options: `load:`, `filter:`, `sort:`, `limit:`, `offset:`, `query:`, `page:`, `stream?:`
 
 **Using Scopes in LiveViews** - When using `Ash.Scope`, the scope will typically be assigned to `scope` in LiveViews and used like so:
 
@@ -166,47 +187,32 @@ These error classes help you catch and handle errors at an appropriate level of 
 
 Validations ensure that data meets your business requirements before it gets processed by an action. Unlike changes, validations cannot modify the changeset - they can only validate it or add errors.
 
-- Use **built-in validations** (defined in `Ash.Resource.Validation.Builtins`) for common validation patterns:
-  ```elixir
-  validate match(:email, "@")
-  validate compare(:age, greater_than_or_equal_to: 18)
-  validate present(:first_name)
-  validate one_of(:status, [:active, :inactive, :pending])
-  ```
+Common validation patterns:
 
-- Add **custom error messages** to make validation errors user-friendly:
-  ```elixir
-  validate compare(:age, greater_than_or_equal_to: 18) do
-    message "You must be at least 18 years old to sign up"
-  end
-  ```
+```elixir
+# Built-in validations with custom messages
+validate compare(:age, greater_than_or_equal_to: 18) do
+  message "You must be at least 18 years old"
+end
+validate match(:email, "@")
+validate one_of(:status, [:active, :inactive, :pending])
 
-- Apply validations **conditionally** using `where`:
-  ```elixir
-  validate present(:phone_number) do
-    where present(:contact_method)
-    where eq(:contact_method, "phone")
-    message "Phone number is required when phone is selected as contact method"
-  end
-  ```
+# Conditional validations  
+validate present(:phone_number) do
+  where present(:contact_method) and eq(:contact_method, "phone")
+end
 
-- Create **action-specific validations** inside your action definitions:
-  ```elixir
-  actions do
-    create :sign_up do
-      validate present([:email, :password])
-      validate match(:email, "@")
-    end
+# Action-specific vs global validations
+actions do
+  create :sign_up do
+    validate present([:email, :password])  # Only for this action
   end
-  ```
+end
 
-- Add **global validations** that apply to multiple action types:
-  ```elixir
-  validations do
-    validate present([:title, :body]), on: [:create, :update]
-    validate absent(:admin_note), on: :create, where: not_actor_attribute(:is_admin, true)
-  end
-  ```
+validations do
+  validate present([:title, :body]), on: [:create, :update]  # Multiple actions
+end
+```
 
 - Create **custom validation modules** for complex validation logic:
   ```elixir
@@ -309,43 +315,26 @@ end
 
 Changes allow you to modify the changeset before it gets processed by an action. Unlike validations, changes can manipulate attribute values, add attributes, or perform other data transformations.
 
-- Use **built-in changes** (defined in `Ash.Resource.Change.Builtins`) for common transformation patterns:
+Common change patterns:
+
 ```elixir
+# Built-in changes with conditions
 change set_attribute(:status, "pending")
-change relate_actor(:user)
-change atomic_update(:counter, expr(^counter + 1))
-```
-
-- Apply changes **conditionally** using `where`:
-```elixir
-change set_attribute(:paid, true) do
-  where attribute_equals(:payment_method, "free")
-end
-
 change relate_actor(:creator) do
   where present(:actor)
 end
-```
+change atomic_update(:counter, expr(^counter + 1))
 
-- Create **action-specific changes** inside your action definitions:
-```elixir
+# Action-specific vs global changes
 actions do
   create :sign_up do
-    change set_attribute(:joined_at, expr(now()))
-    change increment(:visit_count)
-    change optimistic_lock(:version)
-    change debug_log("Processing signup")
+    change set_attribute(:joined_at, expr(now()))  # Only for this action
   end
 end
-```
 
-- Add **global changes** that apply to multiple action types:
-```elixir
 changes do
-  change set_attribute(:updated_at, expr(now())), on: :update
-  change set_attribute(:inserted_at, expr(now())), on: :create
-  change prevent_change(:secret_field), on: [:update, :destroy]
-  change manage_relationship(:related_items, :items), on: [:create, :update]
+  change set_attribute(:updated_at, expr(now())), on: :update  # Multiple actions
+  change manage_relationship(:items, type: :append), on: [:create, :update]
 end
 ```
 
@@ -457,69 +446,26 @@ Relationships describe connections between resources and are a core component of
 
 ### Types of Relationships
 
-#### belongs_to
-
-Use when a resource "belongs to" another resource. This adds a foreign key to the source resource.
+#### Relationship Types
 
 ```elixir
 relationships do
+  # belongs_to - adds foreign key to source resource
   belongs_to :owner, MyApp.User do
-    # Customize the foreign key attribute (defaults to :owner_id)
-    source_attribute :custom_name
-
-    # Customize the type (defaults to :uuid)
-    attribute_type :integer
-
-    # Control whether the attribute is public
-    attribute_public? true
-
-    # Set constraints on the relationship
     allow_nil? false
-    primary_key? false
+    attribute_type :integer  # defaults to :uuid
   end
-end
-```
 
-#### has_one
+  # has_one - foreign key on destination resource  
+  has_one :profile, MyApp.Profile
 
-Use when a resource "has one" of another resource. The foreign key is on the destination resource.
-
-```elixir
-relationships do
-  has_one :profile, MyApp.Profile do
-    # These are typically used with defaults
-    source_attribute :id  # Default
-    destination_attribute :user_id  # Default is <resource_name>_id
-  end
-end
-```
-
-#### has_many
-
-Use when a resource "has many" of another resource. The foreign key is on the destination resource.
-
-```elixir
-relationships do
+  # has_many - foreign key on destination resource, returns list
   has_many :posts, MyApp.Post do
-    # Similar to has_one but returns a list of related records
-    source_attribute :id  # Default
-    destination_attribute :user_id  # Default is <resource_name>_id
-
-    # Filter the related records
     filter expr(published == true)
-
-    # Sort the related records
     sort published_at: :desc
   end
-end
-```
 
-#### many_to_many
-
-Use when many resources can be related to many other resources. Requires a join resource.
-
-```elixir
-relationships do
+  # many_to_many - requires join resource
   many_to_many :tags, MyApp.Tag do
     through MyApp.PostTag
     source_attribute_on_join_resource :post_id
@@ -556,49 +502,22 @@ end
 
 ### Loading Relationships
 
-Load relationships using code interface options (preferred) or manually in queries:
-
 ```elixir
-# PREFERRED - Using code interface options
-# Simple loading
-post = MyDomain.get_post!(id, load: :author)
+# Using code interface options (preferred)
+post = MyDomain.get_post!(id, load: [:author, comments: [:author]])
 
-# Loading nested relationships
-posts = MyDomain.list_posts!(load: [author: :profile, comments: [:author]])
-
-# Complex loading with filters (using query option)
+# Complex loading with filters
 posts = MyDomain.list_posts!(
-  query: [
-    load: [
-      comments: [
-        filter: [is_approved: true],
-        sort: [created_at: :desc],
-        limit: 5
-      ]
-    ]
-  ]
+  query: [load: [comments: [filter: [is_approved: true], limit: 5]]]
 )
 
-# ALTERNATIVE - Manual query building (use when necessary)
-# In a query
+# Manual query building (for complex cases)
 MyApp.Post
-|> Ash.Query.load(:author)
-|> Ash.Query.load(comments: [:author])
+|> Ash.Query.load(comments: MyApp.Comment |> Ash.Query.filter(is_approved == true))
 |> Ash.read!()
 
-# On records
-post = MyDomain.get_post!(id)
-post_with_author = Ash.load!(post, :author)
-
-# Complex loading with customized queries
-MyApp.Post
-|> Ash.Query.load(comments:
-  MyApp.Comment
-  |> Ash.Query.filter(is_approved == true)
-  |> Ash.Query.sort(created_at: :desc)
-  |> Ash.Query.limit(5)
-)
-|> Ash.read!()
+# Loading on existing records
+Ash.load!(post, :author)
 ```
 
 Prefer to use the `strict?` option when loading to only load necessary fields on related data.
@@ -860,59 +779,33 @@ authorize_if expr(public == true)
 authorize_if MyApp.Checks.ActorHasPermission
 ```
 
-#### Custom Simple Check Example
+#### Custom Policy Checks
 
-Create a custom simple check by implementing `Ash.Policy.SimpleCheck`:
+Create custom checks by implementing `Ash.Policy.SimpleCheck` or `Ash.Policy.FilterCheck`:
 
 ```elixir
-defmodule MyApp.Checks.ActorHasRequiredRole do
+# Simple check - returns true/false
+defmodule MyApp.Checks.ActorHasRole do
   use Ash.Policy.SimpleCheck
-
-  # Provide a description for logging and debugging
-  def describe(opts) do
-    "actor has required role: #{opts[:role] || "admin"}"
+  
+  def match?(%{role: actor_role}, _context, opts) do
+    actor_role == (opts[:role] || :admin)
   end
-
-  # Implement the check logic - must return true or false
-  def match?(%{role: actor_role} = _actor, _context, opts) do
-    required_role = opts[:role] || :admin
-    actor_role == required_role
-  end
-
-  # Handle case when actor doesn't have role attribute
   def match?(_, _, _), do: false
 end
 
-# Usage in policies
-policy action_type(:read) do
-  # Pass options to the check
-  authorize_if {MyApp.Checks.ActorHasRequiredRole, role: :manager}
-end
-```
-
-#### Custom Filter Check Example
-
-Create a custom filter check by implementing `Ash.Policy.FilterCheck`:
-
-```elixir
+# Filter check - returns query filter
 defmodule MyApp.Checks.VisibleToUserLevel do
   use Ash.Policy.FilterCheck
-
-  # Provide a description (optional as it can be derived from the filter)
-  def describe(opts) do
-    "records with visibility level at or below actor's level"
-  end
-
-  # Return an expression that filters the records
+  
   def filter(actor, _authorizer, _opts) do
-    # This filter will only show records with visibility_level
-    # less than or equal to the actor's user_level
     expr(visibility_level <= ^actor.user_level)
   end
 end
 
-# Usage in policies
+# Usage
 policy action_type(:read) do
+  authorize_if {MyApp.Checks.ActorHasRole, role: :manager}
   authorize_if MyApp.Checks.VisibleToUserLevel
 end
 ```
@@ -1014,17 +907,11 @@ end
 
 ### Using Calculations
 
-Load calculations using code interface options (preferred) or manually in queries:
-
 ```elixir
-# PREFERRED - Using code interface options
-# Simple loading
-users = MyDomain.list_users!(load: :full_name)
-
-# With arguments
+# Using code interface options (preferred)
 users = MyDomain.list_users!(load: [full_name: [separator: ", "]])
 
-# Filter and sort using query option
+# Filtering and sorting
 users = MyDomain.list_users!(
   query: [
     filter: [full_name: [separator: " ", value: "John Doe"]],
@@ -1032,26 +919,11 @@ users = MyDomain.list_users!(
   ]
 )
 
-# ALTERNATIVE - Manual query building (use when necessary)
-# In a query
-User
-|> Ash.Query.load(:full_name)
-|> Ash.read!()
+# Manual query building (for complex cases)
+User |> Ash.Query.load(full_name: [separator: ", "]) |> Ash.read!()
 
-# With arguments
-User
-|> Ash.Query.load(full_name: [separator: ", "])
-|> Ash.read!()
-
-# On existing records
-users = MyDomain.list_users!()
-users_with_calcs = Ash.load!(users, :full_name)
-
-# Filter and sort by calculations
-User
-|> Ash.Query.filter(full_name(separator: " ") == "John Doe")
-|> Ash.Query.sort(full_name: {%{separator: " "}, :asc})
-|> Ash.read!()
+# Loading on existing records
+Ash.load!(users, :full_name)
 ```
 
 ### Code Interface for Calculations
@@ -1102,43 +974,21 @@ end
 
 ### Using Aggregates
 
-Load aggregates using code interface options (preferred) or manually in queries:
-
 ```elixir
-# PREFERRED - Using code interface options
-# Simple loading
-users = MyDomain.list_users!(load: :published_post_count)
-
-# Load multiple aggregates
-users = MyDomain.list_users!(load: [:published_post_count, :total_sales, :is_admin])
-
-# Filter and sort using query option
+# Using code interface options (preferred)
 users = MyDomain.list_users!(
+  load: [:published_post_count, :total_sales],
   query: [
     filter: [published_post_count: [greater_than: 5]],
     sort: [published_post_count: :desc]
   ]
 )
 
-# ALTERNATIVE - Manual query building (use when necessary)
-# In a query
-User
-|> Ash.Query.load(:published_post_count)
-|> Ash.read!()
+# Manual query building (for complex cases)
+User |> Ash.Query.filter(published_post_count > 5) |> Ash.read!()
 
-# On existing records
-users = MyDomain.list_users!()
-users_with_counts = Ash.load!(users, :published_post_count)
-
-# Filter users with more than 5 published posts
-User
-|> Ash.Query.filter(published_post_count > 5)
-|> Ash.read!()
-
-# Sort users by their post count
-User
-|> Ash.Query.sort(published_post_count: :desc)
-|> Ash.read!()
+# Loading on existing records
+Ash.load!(users, :published_post_count)
 ```
 
 ### Join Filters
