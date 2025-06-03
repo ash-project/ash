@@ -112,3 +112,72 @@ query
 |> Ash.Query.filter(full_name(separator: " ") == "Zach Daniel")
 |> Ash.Query.sort(full_name: {%{separator: " "}, :asc})
 ```
+
+## Loading Calculations
+
+When loading calculations, you specify them in the load statement just like relationships and aggregates.
+
+```elixir
+# load
+Ash.load!(user, [full_name: %{separator: ","}])
+# => %User{full_name: "Zach,Daniel"}
+```
+
+### Loading with a custom name
+
+Every record in Ash also has a `calculations` field, where arbitrarily named calculations can live.
+See `Ash.Query.calculate/4` for more. To do this with `load` statements, you use the reserved
+`as` key in the calculation arguments.
+
+```elixir
+# load
+Ash.load!(user, [
+  full_name: %{separator: " ", as: :full_name_with_spaces},
+  full_name: %{separator: ",", as: :full_name_with_commas}
+])
+# => %User{calculations: %{full_name_with_spaces: "Zach Daniel", full_name_with_commas: "Zach,Daniel"}}
+```
+
+### Loading "through" calculations
+
+If you have calculations that produce records, or loadable types like `Ash.Type.Map` and `Ash.Type.Struct`
+you can load further things on those records by providing a tuple of calculation input and further load statements.
+
+
+```elixir
+# here is a map type that contains a user and a status
+defmodule MyApp.Types.UserAndStatus do
+  use Ash.Type.NewType, subtype_of: :map, constraints: [
+    fields: [
+      user: [
+        type: :struct,
+        instance_of: MyApp.User
+      ],
+      status: [
+        type: :atom,
+        constraints: [one_of: [:active, :inactive]]
+      ]
+    ]
+  ]
+end
+
+# on our organization resource, we might have a calculation that returns a user and their status
+calculate :user_statuses, {:array, MyApp.Types.UserAndStatus}, GetUsersAndTheirStatuses
+```
+
+You could then load this calculation like so:
+
+```elixir
+Ash.load!(organization, :user_statuses)
+# => [%{user: %User{}, status: :active}, %{user: %User{}, status: :inactive}]
+```
+
+But what if you wanted additional fields from the calculated user? To do this, we provide
+a tuple of additional loads alongside their arguments. Maps support loading "through"
+fields by using the configured fields in the map and providing further loads.
+
+```elixir
+# {arguments, additional_load_statement}
+Ash.load!(organization, user_statuses: {%{}, [user: [full_name: %{separator: " "}]]}),
+# => [%{user: %User{full_name: "Zach Daniel"}, status: :active}, %{user: %User{full_name: "Tobey Maguire"}, status: :inactive}]
+```
