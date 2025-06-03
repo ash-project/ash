@@ -21,6 +21,7 @@ jobs:
       contents: write
       pages: write
       id-token: write
+      security-events: write
     with:
       sat-solver: ${{ matrix.sat_solver }}
       igniter-upgrade: ${{matrix.sat_solver == 'Picosat'}}
