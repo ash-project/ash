@@ -1077,13 +1077,7 @@ defmodule Ash.CodeInterface do
                               bulk_opts
                             end
                           end)
-                          |> then(fn opts ->
-                            if method == :id do
-                              Keyword.put_new(opts, :strategy, [:atomic, :stream, :atomic_batches])
-                            else
-                              opts
-                            end
-                          end)
+                          |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
 
                         bulk_opts =
                           if method in [:stream, :query] do
@@ -1171,13 +1165,7 @@ defmodule Ash.CodeInterface do
                               bulk_opts
                             end
                           end)
-                          |> then(fn opts ->
-                            if method == :id do
-                              Keyword.put_new(opts, :strategy, [:atomic, :stream, :atomic_batches])
-                            else
-                              opts
-                            end
-                          end)
+                          |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
 
                         bulk_opts =
                           if method in [:stream] do
@@ -1358,13 +1346,7 @@ defmodule Ash.CodeInterface do
                               Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
                             end
                           end)
-                          |> then(fn opts ->
-                            if method == :id do
-                              Keyword.put_new(opts, :strategy, [:atomic, :stream, :atomic_batches])
-                            else
-                              opts
-                            end
-                          end)
+                          |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
 
                         bulk_opts =
                           if method in [:stream, :query] do
@@ -1480,13 +1462,7 @@ defmodule Ash.CodeInterface do
                               Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
                             end
                           end)
-                          |> then(fn opts ->
-                            if method == :id do
-                              Keyword.put_new(opts, :strategy, [:atomic, :stream, :atomic_batches])
-                            else
-                              opts
-                            end
-                          end)
+                          |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
 
                         bulk_opts =
                           if method in [:stream, :query] do
