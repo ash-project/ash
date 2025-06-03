@@ -234,14 +234,13 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: team-alembic/staple-actions/actions/mix-credo@59199173e18eee6748b65d01626ef82d51c6e963 # main
-        if: ${{inputs.spark-formatter}}
         with:
           mix-env: test
       - name: Run Credo SAST
-        if: ${{inputs.spark-formatter}}
-        run: mix credo --format sarif > results.sarif
+        uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        with:
+          task: credo --format sarif > results.sarif
       - name: Upload SARIF file
-        if: ${{inputs.spark-formatter}}
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
