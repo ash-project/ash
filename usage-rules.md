@@ -59,7 +59,8 @@ resource DashboardGroup do
   define :get_by_id, action: :read, get_by: [:id]
 end
 
-# Then call: MyApp.Domain.get_dashboard_group_by_id!(id, load: [rel: [:nested]])
+# Then call: 
+MyApp.Domain.get_dashboard_group_by_id!(id, load: [rel: [:nested]])
 ```
 
 Code interfaces automatically support options like `load:` and `query:` options for dynamic loading and filtering.
@@ -114,7 +115,7 @@ These functions are particularly useful for conditional rendering of UI elements
 - Use hooks like `Ash.Changeset.after_action/2`, `Ash.Changeset.before_action/2` to add additional logic
   inside the same transaction.
 - Use hooks like `Ash.Changeset.after_transaction/2`, `Ash.Changeset.before_transaction/2` to add additional logic
-  inside the same transaction.
+  outside the transaction.
 - Use action arguments for inputs that need validation
 - Use preparations to modify queries before execution
 - Use changes to modify changesets before execution
@@ -555,9 +556,30 @@ end
 
 ### Loading Relationships
 
-Load relationships either in a query or directly on records:
+Load relationships using code interface options (preferred) or manually in queries:
 
 ```elixir
+# PREFERRED - Using code interface options
+# Simple loading
+post = MyDomain.get_post!(id, load: :author)
+
+# Loading nested relationships
+posts = MyDomain.list_posts!(load: [author: :profile, comments: [:author]])
+
+# Complex loading with filters (using query option)
+posts = MyDomain.list_posts!(
+  query: [
+    load: [
+      comments: [
+        filter: [is_approved: true],
+        sort: [created_at: :desc],
+        limit: 5
+      ]
+    ]
+  ]
+)
+
+# ALTERNATIVE - Manual query building (use when necessary)
 # In a query
 MyApp.Post
 |> Ash.Query.load(:author)
@@ -992,9 +1014,25 @@ end
 
 ### Using Calculations
 
-Load calculations in queries or on records:
+Load calculations using code interface options (preferred) or manually in queries:
 
 ```elixir
+# PREFERRED - Using code interface options
+# Simple loading
+users = MyDomain.list_users!(load: :full_name)
+
+# With arguments
+users = MyDomain.list_users!(load: [full_name: [separator: ", "]])
+
+# Filter and sort using query option
+users = MyDomain.list_users!(
+  query: [
+    filter: [full_name: [separator: " ", value: "John Doe"]],
+    sort: [full_name: {[separator: " "], :asc}]
+  ]
+)
+
+# ALTERNATIVE - Manual query building (use when necessary)
 # In a query
 User
 |> Ash.Query.load(:full_name)
@@ -1064,9 +1102,25 @@ end
 
 ### Using Aggregates
 
-Load aggregates in queries or on records:
+Load aggregates using code interface options (preferred) or manually in queries:
 
 ```elixir
+# PREFERRED - Using code interface options
+# Simple loading
+users = MyDomain.list_users!(load: :published_post_count)
+
+# Load multiple aggregates
+users = MyDomain.list_users!(load: [:published_post_count, :total_sales, :is_admin])
+
+# Filter and sort using query option
+users = MyDomain.list_users!(
+  query: [
+    filter: [published_post_count: [greater_than: 5]],
+    sort: [published_post_count: :desc]
+  ]
+)
+
+# ALTERNATIVE - Manual query building (use when necessary)
 # In a query
 User
 |> Ash.Query.load(:published_post_count)
@@ -1075,11 +1129,7 @@ User
 # On existing records
 users = MyDomain.list_users!()
 users_with_counts = Ash.load!(users, :published_post_count)
-```
 
-Filter and sort by aggregates:
-
-```elixir
 # Filter users with more than 5 published posts
 User
 |> Ash.Query.filter(published_post_count > 5)
