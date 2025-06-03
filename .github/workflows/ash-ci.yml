@@ -190,6 +190,29 @@ jobs:
               echo "ℹ️  Template $local_path not found (this is optional)"
             fi
           done
+          
+          # Check LICENSE file
+          if [ -f "LICENSE" ]; then
+            echo "✅ Found LICENSE file"
+            
+            expected_content=$(fetch_expected_content "LICENSE")
+            if [ $? -ne 0 ]; then
+              EXIT_CODE=1
+            else
+              actual_content=$(cat "LICENSE")
+              
+              if [ "$actual_content" != "$expected_content" ]; then
+                echo "❌ Content of LICENSE does not match expected content from ash-project/.github"
+                echo "   Please update the file content or delete it to use the standard version."
+                echo "   Expected content URL: https://github.com/ash-project/.github/blob/main/LICENSE"
+                EXIT_CODE=1
+              else
+                echo "✅ Content of LICENSE matches expected content"
+              fi
+            fi
+          else
+            echo "ℹ️  LICENSE file not found (this is optional)"
+          fi
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ All community files are properly configured"
           else
