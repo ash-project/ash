@@ -444,8 +444,6 @@ Relationships describe connections between resources and are a core component of
 - Configure foreign key constraints in your data layer if they have them (see `references` in AshPostgres)
 - Always choose the appropriate relationship type based on your domain model
 
-### Types of Relationships
-
 #### Relationship Types
 
 ```elixir
