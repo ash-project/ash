@@ -562,7 +562,7 @@ Load relationships either in a query or directly on records:
 MyApp.Post
 |> Ash.Query.load(:author)
 |> Ash.Query.load(comments: [:author])
-|> MyDomain.read!()
+|> Ash.read!()
 
 # On records
 post = MyDomain.get_post!(id)
@@ -576,7 +576,7 @@ MyApp.Post
   |> Ash.Query.sort(created_at: :desc)
   |> Ash.Query.limit(5)
 )
-|> MyDomain.read!()
+|> Ash.read!()
 ```
 
 Prefer to use the `strict?` option when loading to only load necessary fields on related data.
@@ -998,12 +998,12 @@ Load calculations in queries or on records:
 # In a query
 User
 |> Ash.Query.load(:full_name)
-|> MyDomain.read!()
+|> Ash.read!()
 
 # With arguments
 User
 |> Ash.Query.load(full_name: [separator: ", "])
-|> MyDomain.read!()
+|> Ash.read!()
 
 # On existing records
 users = MyDomain.list_users!()
@@ -1013,7 +1013,7 @@ users_with_calcs = Ash.load!(users, :full_name)
 User
 |> Ash.Query.filter(full_name(separator: " ") == "John Doe")
 |> Ash.Query.sort(full_name: {%{separator: " "}, :asc})
-|> MyDomain.read!()
+|> Ash.read!()
 ```
 
 ### Code Interface for Calculations
@@ -1070,7 +1070,7 @@ Load aggregates in queries or on records:
 # In a query
 User
 |> Ash.Query.load(:published_post_count)
-|> MyDomain.read!()
+|> Ash.read!()
 
 # On existing records
 users = MyDomain.list_users!()
@@ -1083,12 +1083,12 @@ Filter and sort by aggregates:
 # Filter users with more than 5 published posts
 User
 |> Ash.Query.filter(published_post_count > 5)
-|> MyDomain.read!()
+|> Ash.read!()
 
 # Sort users by their post count
 User
 |> Ash.Query.sort(published_post_count: :desc)
-|> MyDomain.read!()
+|> Ash.read!()
 ```
 
 ### Join Filters
