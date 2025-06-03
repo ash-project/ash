@@ -2,6 +2,7 @@
 ![Logo](https://github.com/ash-project/ash/blob/main/logos/cropped-for-header-white-text.png?raw=true#gh-dark-mode-only)
 
 ![Elixir CI](https://github.com/ash-project/ash/workflows/Ash%20CI/badge.svg)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ash-project/ash/badge)](https://scorecard.dev/viewer/?uri=github.com/ash-project/ash)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10686/badge)](https://www.bestpractices.dev/projects/10686)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Hex version badge](https://img.shields.io/hexpm/v/ash.svg)](https://hex.pm/packages/ash)
