@@ -549,12 +549,8 @@ defmodule Ash.Policy.Authorizer do
             else
               case :os.type() do
                 {_, :nt} ->
-                  {Owl.IO.select(
-                     [
-                       {:picosat_elixir, "~> 0.2"},
-                       {:simple_sat, "~> 0.1"}
-                     ],
-                     label: """
+                  {Igniter.Util.IO.select(
+                     """
                      Ash.Policy.Authorizer requires a SAT solver (Boolean Satisfiability Solver). This solver is used to
                      check policy requirements to answer questions like "Is this user allowed to do this action?" and
                      "What filter must be applied to this query to show only the allowed records a user can see?".
@@ -564,7 +560,11 @@ defmodule Ash.Policy.Authorizer do
                      1. `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
                      2. `:simple_sat` (only if necessary) - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
                      """,
-                     render_as: &to_string(elem(&1, 0))
+                     [
+                       {:picosat_elixir, "~> 0.2"},
+                       {:simple_sat, "~> 0.1"}
+                     ],
+                     display: &to_string(elem(&1, 0))
                    ), nil}
 
                 _ ->

@@ -392,9 +392,6 @@ defmodule Ash.MixProject do
       # Code Generators
       {:igniter, "~> 0.6 and >= 0.6.4", optional: true},
 
-      # IO Utilities
-      {:owl, "~> 0.11"},
-
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
       {:ex_doc, "~> 0.37", only: [:dev, :test], runtime: false},
