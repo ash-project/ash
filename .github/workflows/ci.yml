@@ -7,15 +7,20 @@ on:
   pull_request:
     branches: [main, "3.0"]
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
   ash-ci:
     strategy:
       matrix:
         sat_solver: ["SimpleSat", "Picosat"]
-    uses: ash-project/ash/.github/workflows/ash-ci.yml@main
+    uses: ./.github/workflows/ash-ci.yml
     secrets:
       HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
     with:
       sat-solver: ${{ matrix.sat_solver }}
       igniter-upgrade: ${{matrix.sat_solver == 'Picosat'}}

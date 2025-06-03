@@ -12,3 +12,13 @@ updates:
         dependency-type: production
       dev-dependencies:
         dependency-type: development
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      # Group all GitHub Actions updates together to have less PRs
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
