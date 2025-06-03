@@ -68,12 +68,12 @@ jobs:
           egress-policy: audit
 
       - run: sudo apt-get install --yes erlang-dev
-      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: ${{matrix.project.org}}/${{matrix.project.name}}
           path: ${{matrix.project.name}}
           ref: ${{matrix.project.ref}}
-      - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: ash-project/ash
           path: ash
