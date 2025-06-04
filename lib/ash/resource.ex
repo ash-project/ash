@@ -214,42 +214,32 @@ defmodule Ash.Resource do
                        |> Enum.map(& &1.name)
                        |> Enum.concat([:__meta__, :calculations, :aggregates])
 
-          Code.ensure_loaded!(Inspect.Map)
+          def inspect(record, opts) do
+            record = %{
+              record
+              | calculations:
+                  Ash.Actions.Read.Calculations.map_without_calc_deps(record.calculations)
+            }
 
-          if function_exported?(Inspect.Map, :inspect, 4) do
-            def inspect(record, opts) do
-              record = %{
-                record
-                | calculations:
-                    Ash.Actions.Read.Calculations.map_without_calc_deps(record.calculations)
-              }
+            subtract_fields =
+              Enum.filter([:calculations, :aggregates], &(Map.get(record, &1) == %{}))
 
-              infos =
-                for %{field: field} = info <- record.__struct__.__info__(:struct),
-                    field in @show_fields,
-                    not (field == :aggregates && record.aggregates == %{}),
-                    not (field == :calculations && record.calculations == %{}),
-                    do: info
+            fields = @show_fields -- subtract_fields
 
-              Inspect.Map.inspect(record, inspect(record.__struct__), infos, opts)
+            fun = fn field, opts ->
+              Inspect.List.keyword({field, Map.get(record, field)}, opts)
             end
-          else
-            def inspect(record, opts) do
-              record = %{
-                record
-                | calculations:
-                    Ash.Actions.Read.Calculations.map_without_calc_deps(record.calculations)
-              }
 
-              infos =
-                for %{field: field} = info <- record.__struct__.__info__(:struct),
-                    field in @show_fields,
-                    not (field == :aggregates && record.aggregates == %{}),
-                    not (field == :calculations && record.calculations == %{}),
-                    do: info
+            open =
+              Inspect.Algebra.color_doc("%" <> inspect(record.__struct__) <> "{", :map, opts)
 
-              Inspect.Map.inspect_as_struct(record, inspect(record.__struct__), infos, opts)
-            end
+            sep = Inspect.Algebra.color_doc(",", :map, opts)
+            close = Inspect.Algebra.color_doc("}", :map, opts)
+
+            Inspect.Algebra.container_doc(open, fields, close, opts, fun,
+              separator: sep,
+              break: :strict
+            )
           end
         end
       end
