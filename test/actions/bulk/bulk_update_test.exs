@@ -348,7 +348,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
 
     code_interface do
-      define :update_with_policy_without_requiring_actor
+      define :update_with_policy_without_requiring_actor, args: [:authorize?]
     end
 
     policies do
