@@ -17,7 +17,7 @@ defmodule Mix.Tasks.Ash.Gen.ValidationTest do
       end
 
       @impl true
-      def validation(_changeset, _opts, _context) do
+      def validate(_changeset, _opts, _context) do
         :ok
       end
     end
