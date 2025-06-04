@@ -1621,8 +1621,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.VerifyNotifiers,
     Ash.Resource.Verifiers.VerifyPrimaryKeyPresent,
     Ash.Resource.Verifiers.VerifyGenericActionReactorInputs,
-    Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface,
-    Ash.Resource.Verifiers.VerifyCodeInterfaceArgumentCompleteness
+    Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface
   ]
 
   @moduledoc false

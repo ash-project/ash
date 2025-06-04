@@ -117,7 +117,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
 
     code_interface do
-      define :destroy_with_policy, args: [:authorize?]
+      define :destroy_with_policy
     end
 
     validations do

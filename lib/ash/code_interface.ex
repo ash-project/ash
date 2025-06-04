@@ -659,36 +659,24 @@ defmodule Ash.CodeInterface do
 
             params =
               if is_list(params) do
-                Enum.map(params, &Map.merge(&1, arg_params))
+                Enum.map(params, fn item ->
+                  if is_map(item) do
+                    Map.merge(item, arg_params)
+                  else
+                    raise ArgumentError, """
+                    Expected `params` to be a map or a list of maps.
+                    Got:  #{inspect(params)}
+                    """
+                  end
+                end)
               else
-                try do
+                if is_map(params) do
                   Map.merge(params, arg_params)
-                rescue
-                  Protocol.UndefinedError ->
-                    action = unquote(Macro.escape(action))
-                    interface = unquote(Macro.escape(interface))
-
-                    reraise Ash.Error.Framework.AssumptionFailed.exception(
-                              message: """
-                              Possible code interface argument mismatch for #{interface.name}.
-
-                              You called the function with what appears to be a positional argument,
-                              but the interface expects a params map/keyword list.
-
-                              Action `#{action.name}` has arguments: #{inspect(Enum.map(action.arguments, & &1.name))}
-                              Interface `#{interface.name}` declares args: #{inspect(interface.args || [])}
-
-                              Suggestion: Update your code interface to include missing arguments:
-
-                              code_interface do
-                                define :#{interface.name}, args: #{inspect(Enum.map(action.arguments, & &1.name))}
-                              end
-
-                              If the arguments should be optional, add default values or set `allow_nil? true` 
-                              in the action arguments.
-                              """
-                            ),
-                            __STACKTRACE__
+                else
+                  raise ArgumentError, """
+                  Expected `params` to be a map or a list of maps.
+                  Got:  #{inspect(params)}
+                  """
                 end
               end
 
