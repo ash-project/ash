@@ -658,9 +658,27 @@ defmodule Ash.CodeInterface do
             arg_params = unquote(arg_params)
 
             params =
-              if is_list(params),
-                do: Enum.map(params, &Map.merge(&1, arg_params)),
-                else: Map.merge(params, arg_params)
+              if is_list(params) do
+                Enum.map(params, fn item ->
+                  if is_map(item) do
+                    Map.merge(item, arg_params)
+                  else
+                    raise ArgumentError, """
+                    Expected `params` to be a map or a list of maps.
+                    Got:  #{inspect(params)}
+                    """
+                  end
+                end)
+              else
+                if is_map(params) do
+                  Map.merge(params, arg_params)
+                else
+                  raise ArgumentError, """
+                  Expected `params` to be a map or a list of maps.
+                  Got:  #{inspect(params)}
+                  """
+                end
+              end
 
             case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
                    if is_list(params) do
