@@ -2,6 +2,31 @@
 
 <!-- changelog -->
 
+## [v3.5.15](https://github.com/ash-project/ash/compare/v3.5.14...v3.5.15) (2025-06-04)
+
+
+
+
+### Bug Fixes:
+
+* only override bulk options if method is `:id` in code interfaces
+
+* handle missing primary keys more explicitly, and gracefully
+
+* Omit nil values in Ash.Scope.to_opts/2 (#2088)
+
+* Correct error message, example and doc for match constraint. (#2086)
+
+* handle context opt in Ash.calculate/2 (#2083)
+
+### Improvements:
+
+* put __meta__ and relationships at the end when inspecting (#2096)
+
+* usage-rules: Add more guidance around codegen. (#2100)
+
+* update usage rules (#2095)
+
 ## [v3.5.14](https://github.com/ash-project/ash/compare/v3.5.13...v3.5.14) (2025-06-01)
 
 
