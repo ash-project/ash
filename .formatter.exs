@@ -25,6 +25,7 @@ spark_locals_without_parens = [
   ash_step: 1,
   ash_step: 2,
   ash_step: 3,
+  assert_stripped: 1,
   assume_casted?: 1,
   async?: 1,
   atomic_update: 1,

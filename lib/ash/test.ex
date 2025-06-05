@@ -208,4 +208,82 @@ defmodule Ash.Test do
   end
 
   def strip_metadata(other), do: other
+
+  @doc """
+  A helper macro that wraps equality and membership assertions with strip_metadata.
+  This is useful for comparing Ash resources where metadata might differ, for example
+  when comparing seeded data with data processed through resource actions.
+
+  ## Examples
+
+      # Compare single resources
+      assert_stripped user1 == user2
+      assert_stripped user1 === user2
+      assert_stripped user1 != user2
+      assert_stripped user1 !== user2
+
+      # Compare lists of resources
+      assert_stripped [user1, user2] === [user3, user4]
+
+      # Check if resource is in a list
+      assert_stripped user1 in [user2, user3, user4]
+      assert_stripped user1 not in [user2, user3, user4]
+  """
+  defmacro assert_stripped({:==, _meta, [left, right]}) do
+    quote do
+      assert strip_metadata(unquote(left)) == strip_metadata(unquote(right))
+    end
+  end
+
+  defmacro assert_stripped({:===, _meta, [left, right]}) do
+    quote do
+      assert strip_metadata(unquote(left)) === strip_metadata(unquote(right))
+    end
+  end
+
+  defmacro assert_stripped({:!=, _meta, [left, right]}) do
+    quote do
+      assert strip_metadata(unquote(left)) != strip_metadata(unquote(right))
+    end
+  end
+
+  defmacro assert_stripped({:!==, _meta, [left, right]}) do
+    quote do
+      assert strip_metadata(unquote(left)) !== strip_metadata(unquote(right))
+    end
+  end
+
+  defmacro assert_stripped({:in, _meta, [left, right]}) do
+    quote do
+      assert strip_metadata(unquote(left)) in strip_metadata(unquote(right))
+    end
+  end
+
+  defmacro assert_stripped({:not, _meta, [{:in, _meta2, [left, right]}]}) do
+    quote do
+      assert strip_metadata(unquote(left)) not in strip_metadata(unquote(right))
+    end
+  end
+
+  defmacro assert_stripped(expr) do
+    quote do
+      raise Ash.Error.Framework.Unsupported,
+        message: """
+        assert_stripped received an unsupported operator or function.
+
+        Expected one of the following:
+
+        * assert_stripped left == right
+        * assert_stripped left === right
+        * assert_stripped left != right
+        * assert_stripped left !== right
+        * assert_stripped left in right
+        * assert_stripped left not in right
+
+        Got:
+
+        assert_stripped #{Macro.to_string(unquote(Macro.escape(expr)))}
+        """
+    end
+  end
 end
