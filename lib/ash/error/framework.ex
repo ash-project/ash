@@ -62,7 +62,7 @@ defmodule Ash.Error.Framework do
         end)
 
       container_doc(
-        "%Ash.Error.framework{",
+        "%Ash.Error.Framework{",
         items,
         "}",
         opts,
