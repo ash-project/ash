@@ -25,7 +25,6 @@ spark_locals_without_parens = [
   ash_step: 1,
   ash_step: 2,
   ash_step: 3,
-  assert_stripped: 1,
   assume_casted?: 1,
   async?: 1,
   atomic_update: 1,
@@ -330,6 +329,11 @@ spark_locals_without_parens = [
   writable?: 1
 ]
 
+locals_without_parens = [
+  {:assert_stripped, 1}
+  | spark_locals_without_parens
+]
+
 [
   import_deps: [:spark, :reactor],
   inputs: [
@@ -337,8 +341,8 @@ spark_locals_without_parens = [
     "{config,lib,test,benchmarks,flames}/**/*.{ex,exs}"
   ],
   plugins: [Spark.Formatter],
-  locals_without_parens: spark_locals_without_parens,
+  locals_without_parens: locals_without_parens,
   export: [
-    locals_without_parens: spark_locals_without_parens
+    locals_without_parens: locals_without_parens
   ]
 ]
