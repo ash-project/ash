@@ -208,4 +208,100 @@ defmodule Ash.Test do
   end
 
   def strip_metadata(other), do: other
+
+  @doc """
+  A macro for comparing Ash resources while ignoring metadata differences.
+
+  ## Overview
+
+  Ash resources contain metadata fields (`__metadata__` and `__meta__`) that track internal state like
+  loaded relationships and action history. These fields can cause equality comparisons to fail even
+  when the actual data is identical. This macro uses `strip_metadata/1` to remove these fields before
+  comparison.
+
+  ## Usage
+
+  Use when comparing resources that have gone through different processing paths, such as comparing
+  seeded data with data that has been processed through resource actions.
+
+  ## Supported Operators
+
+  * `==` and `===` - Equality comparison
+  * `!=` and `!==` - Inequality comparison
+  * `in` and `not in` - Membership testing
+
+  ## Examples
+
+      # Compare resources
+      assert_stripped user1 == user2
+      assert_stripped [user1, user2] === [user3, user4]
+      assert_stripped user1 in [user2, user3, user4]
+      assert_stripped user1 not in [user2, user3, user4]
+  """
+  defmacro assert_stripped({:==, _meta, [left, right]}) do
+    quote do
+      require ExUnit.Assertions
+      ExUnit.Assertions.assert(strip_metadata(unquote(left)) == strip_metadata(unquote(right)))
+    end
+  end
+
+  defmacro assert_stripped({:===, _meta, [left, right]}) do
+    quote do
+      require ExUnit.Assertions
+      ExUnit.Assertions.assert(strip_metadata(unquote(left)) === strip_metadata(unquote(right)))
+    end
+  end
+
+  defmacro assert_stripped({:!=, _meta, [left, right]}) do
+    quote do
+      require ExUnit.Assertions
+      ExUnit.Assertions.assert(strip_metadata(unquote(left)) != strip_metadata(unquote(right)))
+    end
+  end
+
+  defmacro assert_stripped({:!==, _meta, [left, right]}) do
+    quote do
+      require ExUnit.Assertions
+      ExUnit.Assertions.assert(strip_metadata(unquote(left)) !== strip_metadata(unquote(right)))
+    end
+  end
+
+  defmacro assert_stripped({:in, _meta, [left, right]}) do
+    quote do
+      require ExUnit.Assertions
+      ExUnit.Assertions.assert(strip_metadata(unquote(left)) in strip_metadata(unquote(right)))
+    end
+  end
+
+  defmacro assert_stripped({:not, _meta, [{:in, _meta2, [left, right]}]}) do
+    quote do
+      require ExUnit.Assertions
+
+      ExUnit.Assertions.assert(
+        strip_metadata(unquote(left)) not in strip_metadata(unquote(right))
+      )
+    end
+  end
+
+  defmacro assert_stripped(expression) do
+    quote do
+      raise ArgumentError,
+        message: """
+        assert_stripped received an unsupported operator or function.
+
+        Expected one of the following:
+
+        * assert_stripped left == right
+        * assert_stripped left === right
+        * assert_stripped left != right
+        * assert_stripped left !== right
+        * assert_stripped left in right
+        * assert_stripped left not in right
+
+        Got:
+
+        assert_stripped #{Macro.to_string(unquote(Macro.escape(expression)))}
+        """
+    end
+  end
 end
