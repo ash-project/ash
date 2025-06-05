@@ -231,37 +231,39 @@ defmodule Ash.Test do
   """
   defmacro assert_stripped({:==, _meta, [left, right]}) do
     quote do
-      assert strip_metadata(unquote(left)) == strip_metadata(unquote(right))
+      ExUnit.Assertions.assert(strip_metadata(unquote(left)) == strip_metadata(unquote(right)))
     end
   end
 
   defmacro assert_stripped({:===, _meta, [left, right]}) do
     quote do
-      assert strip_metadata(unquote(left)) === strip_metadata(unquote(right))
+      ExUnit.Assertions.assert(strip_metadata(unquote(left)) === strip_metadata(unquote(right)))
     end
   end
 
   defmacro assert_stripped({:!=, _meta, [left, right]}) do
     quote do
-      assert strip_metadata(unquote(left)) != strip_metadata(unquote(right))
+      ExUnit.Assertions.assert(strip_metadata(unquote(left)) != strip_metadata(unquote(right)))
     end
   end
 
   defmacro assert_stripped({:!==, _meta, [left, right]}) do
     quote do
-      assert strip_metadata(unquote(left)) !== strip_metadata(unquote(right))
+      ExUnit.Assertions.assert(strip_metadata(unquote(left)) !== strip_metadata(unquote(right)))
     end
   end
 
   defmacro assert_stripped({:in, _meta, [left, right]}) do
     quote do
-      assert strip_metadata(unquote(left)) in strip_metadata(unquote(right))
+      ExUnit.Assertions.assert(strip_metadata(unquote(left)) in strip_metadata(unquote(right)))
     end
   end
 
   defmacro assert_stripped({:not, _meta, [{:in, _meta2, [left, right]}]}) do
     quote do
-      assert strip_metadata(unquote(left)) not in strip_metadata(unquote(right))
+      ExUnit.Assertions.assert(
+        strip_metadata(unquote(left)) not in strip_metadata(unquote(right))
+      )
     end
   end
 
