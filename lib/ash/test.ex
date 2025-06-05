@@ -4,6 +4,7 @@ defmodule Ash.Test do
   """
 
   require ExUnit.Assertions
+  import ExUnit.Assertions
 
   @doc """
   Assert that the given changeset, query, or action input has a matching error.
@@ -26,7 +27,7 @@ defmodule Ash.Test do
     error = splode.to_class(error)
 
     if error_class do
-      ExUnit.Assertions.assert(error.__struct__ == error_class,
+      assert(error.__struct__ == error_class,
         message:
           "Expected the value to have errors of class #{inspect(error_class)}, got: #{inspect(error.__struct__)}"
       )
@@ -34,7 +35,7 @@ defmodule Ash.Test do
 
     match = Enum.find(error.errors, callback)
 
-    ExUnit.Assertions.assert(match,
+    assert(match,
       message:
         opts[:message] ||
           """
@@ -63,7 +64,7 @@ defmodule Ash.Test do
     error = Ash.Error.to_error_class(changeset_query_or_input)
 
     if error_class do
-      ExUnit.Assertions.assert(error.__struct__ == error_class,
+      assert(error.__struct__ == error_class,
         message:
           "Expected the #{type} to have errors of class #{inspect(error_class)}, got: #{inspect(error.__struct__)}"
       )
@@ -71,7 +72,7 @@ defmodule Ash.Test do
 
     match = Enum.find(error.errors, callback)
 
-    ExUnit.Assertions.assert(match,
+    assert(match,
       message:
         opts[:message] ||
           """
@@ -94,7 +95,7 @@ defmodule Ash.Test do
         "Expected the value to have errors matching the provided callback, but it had no errors"
       end
 
-    ExUnit.Assertions.flunk(message)
+    flunk(message)
   end
 
   @doc """
@@ -126,7 +127,7 @@ defmodule Ash.Test do
     error = Ash.Error.to_error_class(error)
     match = Enum.find(error.errors, callback)
 
-    ExUnit.Assertions.assert(!match,
+    assert(!match,
       message:
         opts[:message] ||
           """
@@ -149,7 +150,7 @@ defmodule Ash.Test do
     error = Ash.Error.to_error_class(changeset_query_or_input)
     match = Enum.find(error.errors, callback)
 
-    ExUnit.Assertions.refute(match,
+    refute(match,
       message:
         opts[:message] ||
           """
