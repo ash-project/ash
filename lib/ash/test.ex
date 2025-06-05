@@ -267,7 +267,7 @@ defmodule Ash.Test do
 
   defmacro assert_stripped(expr) do
     quote do
-      raise Ash.Error.Framework.Unsupported,
+      raise ArgumentError,
         message: """
         assert_stripped received an unsupported operator or function.
 

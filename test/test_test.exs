@@ -179,7 +179,7 @@ defmodule Ash.TestTest do
 
     test "raises error for unsupported operators" do
       exception =
-        assert_raise Ash.Error.Framework.Unsupported,
+        assert_raise ArgumentError,
                      fn -> assert_stripped 1 + 1 end
 
       assert exception.message == ~s"""
