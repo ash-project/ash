@@ -210,22 +210,31 @@ defmodule Ash.Test do
   def strip_metadata(other), do: other
 
   @doc """
-  A helper macro that wraps equality and membership assertions with strip_metadata.
-  This is useful for comparing Ash resources where metadata might differ, for example
-  when comparing seeded data with data processed through resource actions.
+  A macro for comparing Ash resources while ignoring metadata differences.
+
+  ## Overview
+
+  Ash resources contain metadata fields (`__metadata__` and `__meta__`) that track internal state like
+  loaded relationships and action history. These fields can cause equality comparisons to fail even
+  when the actual data is identical. This macro uses `strip_metadata/1` to remove these fields before
+  comparison.
+
+  ## Usage
+
+  Use when comparing resources that have gone through different processing paths, such as comparing
+  seeded data with data that has been processed through resource actions.
+
+  ## Supported Operators
+
+  * `==` and `===` - Equality comparison
+  * `!=` and `!==` - Inequality comparison
+  * `in` and `not in` - Membership testing
 
   ## Examples
 
-      # Compare single resources
+      # Compare resources
       assert_stripped user1 == user2
-      assert_stripped user1 === user2
-      assert_stripped user1 != user2
-      assert_stripped user1 !== user2
-
-      # Compare lists of resources
       assert_stripped [user1, user2] === [user3, user4]
-
-      # Check if resource is in a list
       assert_stripped user1 in [user2, user3, user4]
       assert_stripped user1 not in [user2, user3, user4]
   """
@@ -274,7 +283,7 @@ defmodule Ash.Test do
     end
   end
 
-  defmacro assert_stripped(expr) do
+  defmacro assert_stripped(expression) do
     quote do
       raise ArgumentError,
         message: """
@@ -291,7 +300,7 @@ defmodule Ash.Test do
 
         Got:
 
-        assert_stripped #{Macro.to_string(unquote(Macro.escape(expr)))}
+        assert_stripped #{Macro.to_string(unquote(Macro.escape(expression)))}
         """
     end
   end
