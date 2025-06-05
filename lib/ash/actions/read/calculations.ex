@@ -1224,7 +1224,8 @@ defmodule Ash.Actions.Read.Calculations do
           checked_calculations,
           initial_data,
           reuse_values?,
-          authorize?
+          authorize?,
+          calculation.authorize_references?
         )
       end
     end
@@ -1243,7 +1244,8 @@ defmodule Ash.Actions.Read.Calculations do
          checked_calculations,
          initial_data,
          reuse_values?,
-         authorize?
+         authorize?,
+         authorize_references?
        ) do
     requirements
     |> Enum.map(fn
@@ -1268,7 +1270,8 @@ defmodule Ash.Actions.Read.Calculations do
         checked_calculations,
         initial_data,
         reuse_values?,
-        authorize?
+        authorize?,
+        authorize_references?
       )
     )
   end
@@ -1286,7 +1289,8 @@ defmodule Ash.Actions.Read.Calculations do
          checked_calculations,
          initial_data,
          reuse_values?,
-         authorize?
+         authorize?,
+         authorize_references?
        ) do
     cond do
       match?(%Ash.Query.Calculation{}, load) ->
@@ -1304,7 +1308,8 @@ defmodule Ash.Actions.Read.Calculations do
           initial_data,
           strict_loads?,
           reuse_values?,
-          authorize?
+          authorize?,
+          authorize_references?
         )
 
       match?(%Ash.Query.Aggregate{}, load) ->
@@ -1313,7 +1318,7 @@ defmodule Ash.Actions.Read.Calculations do
         else
           aggregate = load
 
-          case find_equivalent_aggregate(query, aggregate, authorize?) do
+          case find_equivalent_aggregate(query, aggregate, authorize?, authorize_references?) do
             {:ok, equivalent_aggregate} ->
               if equivalent_aggregate.load == aggregate.load and
                    equivalent_aggregate.name == aggregate.name do
@@ -1403,7 +1408,8 @@ defmodule Ash.Actions.Read.Calculations do
                     initial_data,
                     strict_loads?,
                     reuse_values?,
-                    authorize?
+                    authorize?,
+                    authorize_references?
                   )
                 )
               end)
@@ -1483,7 +1489,8 @@ defmodule Ash.Actions.Read.Calculations do
               checked_calculations,
               initial_data,
               reuse_values?,
-              authorize?
+              authorize?,
+              authorize_references?
             )
 
           {:error, error} ->
@@ -1536,7 +1543,7 @@ defmodule Ash.Actions.Read.Calculations do
         else
           current_load = query.load[relationship.name]
 
-          if current_load && !authorize? do
+          if current_load do
             if compatible_relationships?(current_load, further) do
               %{
                 query
@@ -1570,11 +1577,15 @@ defmodule Ash.Actions.Read.Calculations do
                 relationship_path,
                 initial_data,
                 reuse_values?,
+                authorize?,
+                authorize_references?,
                 further
               )
             end
           else
-            if authorize? do
+            if authorize_references? == authorize? do
+              Ash.Query.load(query, [{relationship.name, further}])
+            else
               add_new_relationship_calc(
                 relationship,
                 query,
@@ -1586,10 +1597,10 @@ defmodule Ash.Actions.Read.Calculations do
                 relationship_path,
                 initial_data,
                 reuse_values?,
+                authorize?,
+                authorize_references?,
                 further
               )
-            else
-              Ash.Query.load(query, [{relationship.name, further}])
             end
           end
         end
@@ -1610,6 +1621,8 @@ defmodule Ash.Actions.Read.Calculations do
          relationship_path,
          initial_data,
          reuse_values?,
+         authorize?,
+         authorize_references?,
          further
        ) do
     {type, constraints} =
@@ -1618,14 +1631,15 @@ defmodule Ash.Actions.Read.Calculations do
         :one -> {:struct, instance_of: relationship.destination}
       end
 
-    case Enum.find(query.calculations, fn {_name, existing_calculation} ->
-           existing_calculation.module == Ash.Resource.Calculation.LoadRelationship &&
-             existing_calculation.opts[:relationship] == relationship.name &&
-             existing_calculation.opts[:opts][:authorize?] == false &&
-             compatible_relationships?(existing_calculation.opts[:query], further) &&
-             match?(%{name: {:__calc_dep__, _}}, existing_calculation)
-         end) do
-      nil ->
+    case authorize? == authorize_references? &&
+           Enum.find(query.calculations, fn {_name, existing_calculation} ->
+             existing_calculation.module == Ash.Resource.Calculation.LoadRelationship &&
+               existing_calculation.opts[:relationship] == relationship.name &&
+               existing_calculation.opts[:opts][:authorize?] == authorize? &&
+               compatible_relationships?(existing_calculation.opts[:query], further) &&
+               match?(%{name: {:__calc_dep__, _}}, existing_calculation)
+           end) do
+      v when v in [nil, false] ->
         new_calc_name =
           {:__calc_dep__,
            [
@@ -1640,7 +1654,7 @@ defmodule Ash.Actions.Read.Calculations do
             Ash.Resource.Calculation.LoadRelationship,
             relationship: relationship.name,
             query: further,
-            opts: [authorize?: false],
+            opts: [authorize?: authorize? && authorize_references?],
             domain: relationship.domain || domain
           },
           %{},
@@ -1736,7 +1750,8 @@ defmodule Ash.Actions.Read.Calculations do
          initial_data,
          strict_loads?,
          reuse_values?,
-         authorize?
+         authorize?,
+         authorize_references?
        ) do
     if loaded_and_reusable?(initial_data, relationship_path, calculation, reuse_values?) do
       do_merge_load_through(
@@ -1754,10 +1769,11 @@ defmodule Ash.Actions.Read.Calculations do
         initial_data,
         strict_loads?,
         reuse_values?,
-        authorize?
+        authorize?,
+        authorize_references?
       )
     else
-      case find_equivalent_calculation(query, calculation, authorize?) do
+      case find_equivalent_calculation(query, calculation, authorize?, authorize_references?) do
         {:ok, equivalent_calculation} ->
           if equivalent_calculation.load == calculation.load and
                equivalent_calculation.name == calculation.name do
@@ -1777,7 +1793,8 @@ defmodule Ash.Actions.Read.Calculations do
                 initial_data,
                 strict_loads?,
                 reuse_values?,
-                authorize?
+                authorize?,
+                authorize_references?
               )
 
             add_calculation_dependency(query, calc_name, equivalent_calculation.name)
@@ -1798,7 +1815,8 @@ defmodule Ash.Actions.Read.Calculations do
                 initial_data,
                 strict_loads?,
                 reuse_values?,
-                authorize?
+                authorize?,
+                authorize_references?
               )
 
             new_calc_name =
@@ -1881,7 +1899,8 @@ defmodule Ash.Actions.Read.Calculations do
          initial_data,
          strict_loads?,
          reuse_values?,
-         authorize?
+         authorize?,
+         authorize_references?
        ) do
     case Map.fetch(
            query.load_through[load_type] || %{},
@@ -1921,7 +1940,8 @@ defmodule Ash.Actions.Read.Calculations do
                 initial_data,
                 strict_loads?,
                 reuse_values?,
-                authorize?
+                authorize?,
+                authorize_references?
               )
             )
           end)
@@ -1953,18 +1973,8 @@ defmodule Ash.Actions.Read.Calculations do
     }
   end
 
-  defp find_equivalent_calculation(query, calculation, authorize?) do
-    reusable? =
-      if authorize? && calculation.module.has_expression?() do
-        calculation.module.expression(calculation.opts, calculation.context)
-        |> Ash.Filter.list_refs(false, false, true, true)
-        |> Enum.any?(&(&1.relationship_path != []))
-        |> Kernel.not()
-      else
-        true
-      end
-
-    if reusable? do
+  defp find_equivalent_calculation(query, calculation, authorize?, authorize_references?) do
+    if !authorize? do
       Enum.find_value(query.calculations, :error, fn {_, other_calc} ->
         if other_calc.module == calculation.module and other_calc.opts == calculation.opts and
              other_calc.context.arguments == calculation.context.arguments do
@@ -1972,20 +1982,22 @@ defmodule Ash.Actions.Read.Calculations do
         end
       end)
     else
-      :error
+      Enum.find_value(query.calculations, :error, fn {_, other_calc} ->
+        if (other_calc.module == calculation.module and other_calc.opts == calculation.opts and
+              other_calc.context.arguments == calculation.context.arguments) &&
+             other_calc.authorize_references? == authorize_references? do
+          {:ok, other_calc}
+        end
+      end)
     end
   end
 
-  defp find_equivalent_aggregate(query, agg, authorize?) do
-    if !authorize? || match?({:__calc_dep__, _}, agg.name) do
-      Enum.find_value(query.aggregates, :error, fn {_, other_agg} ->
-        if other_agg == agg do
-          {:ok, other_agg}
-        end
-      end)
-    else
-      :error
-    end
+  defp find_equivalent_aggregate(query, agg, _authorize?, _authorize_references?) do
+    Enum.find_value(query.aggregates, :error, fn {_, other_agg} ->
+      if other_agg == agg do
+        {:ok, other_agg}
+      end
+    end)
   end
 
   defp compatible_relationships?(left, right) do
@@ -2009,7 +2021,8 @@ defmodule Ash.Actions.Read.Calculations do
          initial_data,
          strict_loads?,
          reuse_values?,
-         authorize?
+         authorize?,
+         authorize_references?
        ) do
     case Ash.Type.merge_load(type, old, new, constraints, %{
            domain: domain,
@@ -2020,6 +2033,7 @@ defmodule Ash.Actions.Read.Calculations do
            initial_data: initial_data,
            reuse_values?: reuse_values?,
            authorize?: authorize?,
+           authorize_references?: authorize_references?,
            strict_loads?: strict_loads?
          }) do
       {:ok, result} ->
@@ -2050,7 +2064,8 @@ defmodule Ash.Actions.Read.Calculations do
         initial_data \\ :error,
         strict_loads? \\ false,
         reuse_values? \\ false,
-        authorize? \\ true
+        authorize? \\ true,
+        authorize_references? \\ true
       ) do
     can_expression_calculation? =
       Ash.DataLayer.data_layer_can?(left.resource, :expression_calculation)
@@ -2070,7 +2085,8 @@ defmodule Ash.Actions.Read.Calculations do
       [],
       initial_data,
       reuse_values?,
-      authorize?
+      authorize?,
+      authorize_references?
     )
   end
 

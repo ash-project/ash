@@ -1856,7 +1856,8 @@ defmodule Ash.Query do
         :error,
         context[:strict_loads?],
         context[:reuse_values?],
-        context[:authorize?]
+        context[:authorize?],
+        context[:authorize_references?]
       )
     else
       load(left, right)

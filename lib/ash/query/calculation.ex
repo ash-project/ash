@@ -12,6 +12,7 @@ defmodule Ash.Query.Calculation do
     context: %{},
     required_loads: [],
     select: [],
+    authorize_references?: false,
     filterable?: true,
     async?: false,
     sortable?: true,
@@ -75,6 +76,13 @@ defmodule Ash.Query.Calculation do
       type: :map,
       doc: "Context from the source query or changeset.",
       default: %{}
+    ],
+    authorize_references?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not to authorize referenced data when calculating.
+      """
     ]
   ]
 
@@ -131,6 +139,7 @@ defmodule Ash.Query.Calculation do
          module: module,
          type: type,
          opts: calc_opts,
+         authorize_references?: opts.authorize_references?,
          calc_name: calc_name,
          constraints: constraints,
          context: context,
@@ -221,6 +230,7 @@ defmodule Ash.Query.Calculation do
         resource_calculation.constraints,
         arguments: args,
         async?: resource_calculation.async?,
+        authorize_references?: resource_calculation.authorize_references?,
         filterable?: resource_calculation.filterable?,
         sortable?: resource_calculation.sortable?,
         sensitive?: resource_calculation.sensitive?,

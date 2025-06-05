@@ -577,22 +577,9 @@ defmodule Ash.Actions.Read do
                  query.tenant,
                  opts[:tracer]
                ),
-             {:ok, filter} <-
-               filter_with_related(
-                 query,
-                 opts[:authorize?],
-                 relationship_path_filters
-               ),
-             {:ok, filter} <-
-               Filter.run_other_data_layer_filters(
-                 query.domain,
-                 query.resource,
-                 filter,
-                 query.tenant
-               ),
              filter <-
                add_calc_context_to_filter(
-                 filter,
+                 query.filter,
                  opts[:actor],
                  opts[:authorize?],
                  query.tenant,
@@ -602,6 +589,20 @@ defmodule Ash.Actions.Read do
                  expand?: true,
                  parent_stack: parent_stack_from_context(query.context),
                  source_context: query.context
+               ),
+             {:ok, filter} <-
+               filter_with_related(
+                 filter,
+                 query.resource,
+                 opts[:authorize?],
+                 relationship_path_filters
+               ),
+             {:ok, filter} <-
+               Filter.run_other_data_layer_filters(
+                 query.domain,
+                 query.resource,
+                 filter,
+                 query.tenant
                ),
              filter <-
                update_aggregate_filters(
@@ -798,22 +799,9 @@ defmodule Ash.Actions.Read do
              query.tenant,
              opts[:tracer]
            ),
-         {:ok, filter} <-
-           filter_with_related(
-             query,
-             opts[:authorize?],
-             relationship_path_filters
-           ),
-         {:ok, filter} <-
-           Filter.run_other_data_layer_filters(
-             query.domain,
-             query.resource,
-             filter,
-             query.tenant
-           ),
          filter <-
            add_calc_context_to_filter(
-             filter,
+             query.filter,
              opts[:actor],
              opts[:authorize?],
              query.tenant,
@@ -823,6 +811,20 @@ defmodule Ash.Actions.Read do
              expand?: true,
              parent_stack: parent_stack_from_context(query.context),
              source_context: query.context
+           ),
+         {:ok, filter} <-
+           filter_with_related(
+             filter,
+             query.resource,
+             opts[:authorize?],
+             relationship_path_filters
+           ),
+         {:ok, filter} <-
+           Filter.run_other_data_layer_filters(
+             query.domain,
+             query.resource,
+             filter,
+             query.tenant
            ),
          filter <-
            update_aggregate_filters(
@@ -2285,6 +2287,7 @@ defmodule Ash.Actions.Read do
               %{
                 resource: ref.resource,
                 parent_stack: opts[:parent_stack] || [],
+                input?: calc.authorize_references?,
                 public?: false
               }
             )
@@ -2398,7 +2401,8 @@ defmodule Ash.Actions.Read do
       calc.module.has_expression?()
   end
 
-  defp expand_expression(calc, resource, parent_stack, first_combination) do
+  @doc false
+  def expand_expression(calc, resource, parent_stack, first_combination) do
     calc.module.expression(calc.opts, calc.context)
     |> case do
       %Ash.Query.Function.Type{} = expr ->
@@ -2420,6 +2424,7 @@ defmodule Ash.Actions.Read do
     |> Ash.Filter.hydrate_refs(%{
       resource: resource,
       public?: false,
+      input?: calc.authorize_references?,
       parent_stack: parent_stack,
       first_combination: first_combination
     })
@@ -3269,7 +3274,8 @@ defmodule Ash.Actions.Read do
       needs_count? ->
         with {:ok, filter} <-
                filter_with_related(
-                 query,
+                 query.filter,
+                 query.resource,
                  opts[:authorize?],
                  relationship_path_filters
                ),
@@ -4131,7 +4137,12 @@ defmodule Ash.Actions.Read do
       end
 
     with {:ok, filter} <-
-           filter_with_related(aggregate.query, authorize?, path_filters),
+           filter_with_related(
+             aggregate.query.filter,
+             aggregate.query.resource,
+             authorize?,
+             path_filters
+           ),
          filter =
            update_aggregate_filters(
              filter,
@@ -4430,14 +4441,15 @@ defmodule Ash.Actions.Read do
   end
 
   defp filter_with_related(
-         query,
+         filter,
+         resource,
          authorize?,
          path_filters
        ) do
     if authorize? do
-      do_filter_with_related(query.resource, query.filter, path_filters, [])
+      do_filter_with_related(resource, filter, path_filters, [])
     else
-      {:ok, query.filter}
+      {:ok, filter}
     end
   end
 

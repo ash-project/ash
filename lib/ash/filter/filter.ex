@@ -957,9 +957,9 @@ defmodule Ash.Filter do
       paths_with_refs =
         query.filter
         |> relationship_paths(true, true, true)
-        |> Enum.map(fn {path, refs} ->
-          refs = Enum.filter(refs, & &1.input?)
-          {path, refs}
+        |> Enum.flat_map(fn {path, refs} ->
+          input_refs = Enum.filter(refs, & &1.input?)
+          [{path, input_refs}] ++ expand_authorize_references_calculations(path, refs)
         end)
         |> Enum.reject(fn {path, refs} -> path == [] || refs == [] end)
 
@@ -994,6 +994,37 @@ defmodule Ash.Filter do
     else
       {:ok, filters}
     end
+  end
+
+  defp expand_authorize_references_calculations(outer_path, refs) do
+    Enum.map(refs, fn ref ->
+      if ref.attribute.__struct__ == Ash.Query.Calculation &&
+           ref.attribute.authorize_references? &&
+           ref.attribute.module.has_expression?() do
+        case Ash.Actions.Read.expand_expression(
+               ref.attribute,
+               Ash.Resource.Info.related(ref.resource, ref.relationship_path),
+               [],
+               nil
+             ) do
+          {:ok, expanded} ->
+            expanded
+            |> relationship_paths(true, true, true)
+            |> Enum.flat_map(fn {path, refs} ->
+              [{path, refs}] ++ expand_authorize_references_calculations(path, refs)
+            end)
+            |> Enum.map(fn {path, refs} ->
+              {outer_path ++ path, refs}
+            end)
+
+          _ ->
+            []
+        end
+      else
+        []
+      end
+    end)
+    |> Enum.concat()
   end
 
   defp add_authorization_path_filter(

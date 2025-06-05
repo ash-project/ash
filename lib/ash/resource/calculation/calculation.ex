@@ -17,7 +17,8 @@ defmodule Ash.Resource.Calculation do
             public?: false,
             async?: false,
             sensitive?: false,
-            type: nil
+            type: nil,
+            authorize_references?: false
 
   @schema [
     name: [
@@ -85,6 +86,13 @@ defmodule Ash.Resource.Calculation do
       doc: """
       Whether or not the calculation can be referenced in sorts.
       """
+    ],
+    authorize_references?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not to authorize referenced data when calculating.
+      """
     ]
   ]
 
@@ -132,7 +140,8 @@ defmodule Ash.Resource.Calculation do
           sortable?: boolean,
           name: atom(),
           public?: boolean,
-          type: nil | Ash.Type.t()
+          type: nil | Ash.Type.t(),
+          authorize_references?: boolean
         }
 
   @type ref :: {module(), Keyword.t()} | module()
