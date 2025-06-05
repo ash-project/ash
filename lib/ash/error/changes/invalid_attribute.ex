@@ -1,13 +1,19 @@
 defmodule Ash.Error.Changes.InvalidAttribute do
   @moduledoc "Used when an invalid value is provided for an attribute change"
 
-  use Splode.Error, fields: [:field, :message, :private_vars, :value], class: :invalid
+  use Splode.Error,
+    fields: [:field, :message, :private_vars, :value, has_value?: false],
+    class: :invalid
+
+  def exception(opts) do
+    super(Keyword.put(opts, :has_value?, Keyword.has_key?(opts, :value)))
+  end
 
   def message(error) do
-    """
-    Invalid value provided#{for_field(error)}#{do_message(error)}
+    value = if error.has_value?, do: "\n\nValue: " <> inspect(error.value), else: ""
 
-    #{inspect(error.value)}
+    """
+    Invalid value provided#{for_field(error)}#{do_message(error)}#{value}
     """
   end
 
