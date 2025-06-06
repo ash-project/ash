@@ -1356,7 +1356,7 @@ defmodule Ash.Actions.Read.Calculations do
                   aggregate
                 end
 
-              Ash.Query.load(query, new_agg)
+              Ash.Query.load(query, new_agg, strict?: strict_loads?)
           end
         end
 
@@ -1419,7 +1419,7 @@ defmodule Ash.Actions.Read.Calculations do
         if loaded_and_reusable?(initial_data, relationship_path, load, reuse_values?) do
           query
         else
-          Ash.Query.load(query, agg.name)
+          Ash.Query.load(query, agg.name, strict?: strict_loads?)
         end
 
       resource_calculation = Ash.Resource.Info.calculation(query.resource, load) ->
@@ -1514,7 +1514,7 @@ defmodule Ash.Actions.Read.Calculations do
                   reuse_values?
                 )
 
-              Ash.Query.load(query, [{relationship.name, related_query}])
+              Ash.Query.load(query, [{relationship.name, related_query}], strict?: strict_loads?)
 
             related_query ->
               related_query =
@@ -1531,7 +1531,7 @@ defmodule Ash.Actions.Read.Calculations do
                   reuse_values?
                 )
 
-              Ash.Query.load(query, [{relationship.name, related_query}])
+              Ash.Query.load(query, [{relationship.name, related_query}], strict?: strict_loads?)
           end
         else
           current_load = query.load[relationship.name]
@@ -1589,7 +1589,7 @@ defmodule Ash.Actions.Read.Calculations do
                 further
               )
             else
-              Ash.Query.load(query, [{relationship.name, further}])
+              Ash.Query.load(query, [{relationship.name, further}], strict?: strict_loads?)
             end
           end
         end
@@ -1840,7 +1840,7 @@ defmodule Ash.Actions.Read.Calculations do
             end
 
           query =
-            Ash.Query.load(query, new_calculation)
+            Ash.Query.load(query, new_calculation, strict?: strict_loads?)
 
           new_calculation =
             if should_be_in_expression?(new_calculation, query) do
@@ -2094,7 +2094,7 @@ defmodule Ash.Actions.Read.Calculations do
     if strict_loads? do
       resource
       |> Ash.Query.select([])
-      |> Ash.Query.load(apply_strict(resource, loads, strict_loads?))
+      |> Ash.Query.load(apply_strict(resource, loads, strict_loads?), strict?: strict_loads?)
     else
       resource
       |> Ash.Query.load(loads)

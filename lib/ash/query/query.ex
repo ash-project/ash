@@ -1925,8 +1925,8 @@ defmodule Ash.Query do
 
   def load(query, load_statement, opts \\ [])
 
-  def load(query, %Ash.Query{} = new, _opts) do
-    query |> new() |> merge_load(new)
+  def load(query, %Ash.Query{} = new, opts) do
+    query |> new() |> merge_load(new, opts)
   end
 
   def load(query, fields, opts) when not is_list(fields) do
@@ -1934,26 +1934,25 @@ defmodule Ash.Query do
   end
 
   def load(query, fields, opts) do
-    strict? = Keyword.get(opts, :strict?, false)
-
-    query =
-      if strict? do
-        query
-        |> new()
-        |> select([])
-      else
-        new(query)
-      end
+    query = new(query)
 
     Enum.reduce(fields, query, fn
       %Ash.Query{} = new, query ->
-        merge_load(query, new)
+        merge_load(new, query, opts)
 
       [], query ->
         query
 
       {field, %__MODULE__{} = nested}, query ->
-        load_relationship(query, [{field, nested}])
+        if rel = Ash.Resource.Info.relationship(query.resource, field) do
+          load_relationship(query, rel, nested, opts)
+        else
+          add_error(
+            query,
+            :load,
+            Ash.Error.Query.InvalidLoad.exception(load: [{field, nested}])
+          )
+        end
 
       {field, {args, load_through}}, query ->
         if resource_calculation = Ash.Resource.Info.calculation(query.resource, field) do
@@ -1969,9 +1968,7 @@ defmodule Ash.Query do
       {field, rest}, query ->
         cond do
           rel = Ash.Resource.Info.relationship(query.resource, field) ->
-            nested_query = load(rel.destination, rest, opts)
-
-            load_relationship(query, [{field, nested_query}])
+            load_relationship(query, rel, rest, opts)
 
           resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
             load_resource_calculation(query, resource_calculation, rest)
@@ -1994,7 +1991,7 @@ defmodule Ash.Query do
         end
 
       field, query ->
-        do_load(query, field)
+        do_load(query, field, opts)
     end)
   end
 
@@ -2124,11 +2121,11 @@ defmodule Ash.Query do
     end
   end
 
-  defp do_load(query, field) when is_list(field) do
-    Enum.reduce(field, query, &do_load(&2, &1))
+  defp do_load(query, field, opts) when is_list(field) do
+    Enum.reduce(field, query, &do_load(&2, &1, opts))
   end
 
-  defp do_load(query, field) do
+  defp do_load(query, field, opts) do
     cond do
       match?(%Ash.Query.Calculation{}, field) ->
         Map.update!(
@@ -2165,8 +2162,8 @@ defmodule Ash.Query do
       Ash.Resource.Info.attribute(query.resource, field) ->
         ensure_selected(query, field)
 
-      Ash.Resource.Info.relationship(query.resource, field) ->
-        load_relationship(query, field)
+      rel = Ash.Resource.Info.relationship(query.resource, field) ->
+        load_relationship(query, rel, [], opts)
 
       aggregate = Ash.Resource.Info.aggregate(query.resource, field) ->
         with {:can?, true} <-
@@ -3481,16 +3478,50 @@ defmodule Ash.Query do
     |> add_error(:offset, InvalidOffset.exception(offset: offset))
   end
 
-  defp load_relationship(query, statement) do
-    query = new(query)
+  defp load_relationship(query, rel, statement, opts) do
+    loaded =
+      Map.update!(query, :load, fn load ->
+        if Keyword.has_key?(load, rel.name) do
+          Keyword.update!(load, rel.name, &load(&1, statement, opts))
+        else
+          query =
+            case statement do
+              %Ash.Query{} = statement ->
+                statement
 
-    with sanitized_statement <- List.wrap(sanitize_loads(statement)),
-         :ok <- validate_load(query, sanitized_statement),
-         new_loads <- merge_load(query.load, sanitized_statement) do
-      %{query | load: new_loads}
-    else
-      {:error, errors} ->
-        Enum.reduce(errors, query, &add_error(&2, &1))
+              statement ->
+                query =
+                  if opts[:strict?] && statement not in [nil, []] do
+                    select(new(rel.destination), [])
+                  else
+                    new(rel.destination)
+                  end
+
+                load(query, statement, opts)
+            end
+
+          Keyword.put(load, rel.name, query)
+        end
+      end)
+
+    case loaded.load[rel.name] do
+      %{errors: errors} when errors != [] ->
+        add_error(loaded, :load, Enum.map(errors, &Ash.Error.set_path(&1, [rel.name])))
+
+      related_query ->
+        if Map.get(rel, :manual) &&
+             (related_query.limit ||
+                (related_query.offset && related_query.offset != 0)) do
+          add_error(loaded, :error, [
+            Ash.Error.Load.InvalidQuery.exception(
+              resource: rel.source,
+              relationship: rel.name,
+              query: related_query
+            )
+          ])
+        else
+          loaded
+        end
     end
   end
 
@@ -4310,7 +4341,7 @@ defmodule Ash.Query do
 
       add_error(query, error)
     else
-      Enum.reduce(errors, query, &add_error(&2, &1, path))
+      Enum.reduce(errors, query, &add_error(&2, path, &1))
     end
   end
 
@@ -4418,15 +4449,11 @@ defmodule Ash.Query do
     end)
   end
 
-  defp merge_load([], %Ash.Query{} = right), do: right
-  defp merge_load(%Ash.Query{} = left, []), do: left
-  defp merge_load([], right), do: sanitize_loads(right)
-  defp merge_load(left, []), do: sanitize_loads(left)
-
   defp merge_load(
          %__MODULE__{
            resource: resource,
            load: left_loads,
+           timeout: left_timeout,
            calculations: left_calculations,
            aggregates: left_aggregates,
            tenant: left_tenant,
@@ -4434,11 +4461,13 @@ defmodule Ash.Query do
          },
          %__MODULE__{
            load: right_loads,
+           timeout: right_timeout,
            aggregates: right_aggregates,
            calculations: right_calculations,
            select: right_select
          } =
-           query
+           query,
+         opts
        ) do
     select =
       if is_nil(left_select) or is_nil(right_select) do
@@ -4449,52 +4478,17 @@ defmodule Ash.Query do
 
     %{
       query
-      | load: merge_load(left_loads, right_loads),
+      | load: left_loads,
         calculations: Map.merge(left_calculations, right_calculations),
         aggregates: Map.merge(left_aggregates, right_aggregates),
+        timeout: left_timeout || right_timeout,
         select: select
     }
+    |> merge_load(right_loads, opts)
     |> set_tenant(query.tenant || left_tenant)
   end
 
-  defp merge_load(%__MODULE__{} = query, right) when is_list(right) do
-    load_relationship(query, right)
-  end
-
-  defp merge_load(left, %__MODULE__{} = query) when is_list(left) do
-    load_relationship(query, left)
-  end
-
-  defp merge_load(left, right) when is_atom(left), do: merge_load([{left, []}], right)
-  defp merge_load(left, right) when is_atom(right), do: merge_load(left, [{right, []}])
-
-  defp merge_load(left, right) when is_list(left) and is_list(right) do
-    right
-    |> sanitize_loads()
-    |> Enum.reduce(sanitize_loads(left), fn {rel, rest}, acc ->
-      Keyword.update(acc, rel, rest, &merge_load(&1, rest))
-    end)
-  end
-
-  defp sanitize_loads(load) when is_atom(load), do: {load, []}
-
-  defp sanitize_loads(%Ash.Query{} = query) do
-    Map.update!(query, :load, &sanitize_loads/1)
-  end
-
-  defp sanitize_loads(loads) do
-    loads
-    |> List.wrap()
-    |> Enum.map(fn
-      {key, value} ->
-        {key, sanitize_loads(value)}
-
-      load_part ->
-        cond do
-          is_atom(load_part) -> {load_part, []}
-          is_list(load_part) -> sanitize_loads(load_part)
-          true -> load_part
-        end
-    end)
+  defp merge_load(%__MODULE__{} = query, right, opts) do
+    load(query, right, opts)
   end
 end
