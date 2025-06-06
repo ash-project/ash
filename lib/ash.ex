@@ -420,7 +420,7 @@ defmodule Ash do
       type: :boolean,
       default: Application.compile_env(:ash, :bulk_actions_default_to_errors?, false),
       doc:
-        "Whether or not to return all of the errors that occur. Defaults to false to account for large inserts."
+        "Whether to return all errors that occur during the operation. Defaults to the value of `:bulk_actions_default_to_errors?` in your config, or `false` if not set. Returning all errors may be expensive for large inserts."
     ],
     batch_size: [
       type: :pos_integer,
