@@ -2,7 +2,7 @@
 
 `Ash.Reactor` is an extension for [`Reactor`](https://github.com/ash-project/reactor) which adds explicit support for interacting with resources via their defined actions.
 
-See [Getting started with Reactor](https://hexdocs.pm/reactor/getting-started-with-reactor.html) to understand the core Reactor concepts first. Then return to this guide to see how `Ash.Reactor` adds conveniences for using Reactor from Ash.
+See [Getting started with Reactor](https://hexdocs.pm/reactor/01-getting-started.html) to understand the core Reactor concepts first. Then return to this guide to see how `Ash.Reactor` adds conveniences for using Reactor from Ash.
 
 ## Usage
 
