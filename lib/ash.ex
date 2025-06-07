@@ -2002,7 +2002,7 @@ defmodule Ash do
   - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
   """
   @spec get!(Ash.Resource.t(), term(), Keyword.t()) ::
-          Ash.Resource.record() | no_return
+          Ash.Resource.record() | nil | no_return
   @doc spark_opts: [{2, @get_opts_schema}]
   def get!(resource, id, opts \\ []) do
     Ash.Helpers.expect_resource!(resource)
@@ -2363,7 +2363,8 @@ defmodule Ash do
             | :error
             | {:error, term}
             | :ok
-            | Ash.Page.page(),
+            | Ash.Page.page()
+            | nil,
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
