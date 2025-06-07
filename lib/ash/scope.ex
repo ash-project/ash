@@ -144,6 +144,19 @@ defmodule Ash.Scope do
     def get_authorize?(scope)
   end
 
+  defimpl Ash.Scope.ToOpts, for: Ash.Policy.Authorizer do
+    def get_actor(%{actor: actor}), do: {:ok, actor}
+
+    def get_tenant(%{subject: %{tenant: tenant}}), do: {:ok, tenant}
+    def get_tenant(_), do: :error
+
+    def get_context(%{context: context}),
+      do: {:ok, Map.take(context || %{}, [:shared])}
+
+    def get_tracer(%{subject: %{context: %{private: %{tracer: tracer}}}}), do: {:ok, tracer}
+    def get_authorize?(_), do: :error
+  end
+
   defimpl Ash.Scope.ToOpts,
     for: [
       Ash.Resource.Actions.Implementation.Context,
