@@ -281,8 +281,8 @@ defmodule Ash.Type.String do
   end
 
   @impl true
-  def coerce(value, constraints) do
-    case cast_input(value, constraints) do
+  def coerce(value, _constraints) do
+    case cast_input(value, allow_empty?: true, trim?: false) do
       {:ok, value} ->
         {:ok, value}
 
