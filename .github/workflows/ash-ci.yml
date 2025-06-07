@@ -35,6 +35,8 @@ on:
       postgres-version:
         type: string
         default: "14"
+      postgres-image:
+        type: string
       sqlite:
         type: boolean
         default: false
@@ -399,7 +401,7 @@ jobs:
       - build-test
     services:
       postgres:
-        image: postgres:${{inputs.postgres-version}}
+        image: ${{ inputs.postgres-image || format('postgres:{0}', inputs.postgres-version) }}
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
           TZ: "UTC"
