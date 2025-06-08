@@ -42,6 +42,16 @@ defmodule Ash.Test.Type.CiString do
       attribute :string_f, :ci_string,
         constraints: [min_length: 3, max_length: 6, trim?: false],
         public?: true
+
+      attribute :string_g, :ci_string,
+        allow_nil?: true,
+        constraints: [match: ~r/^string_[a-z]+$/i],
+        public?: true
+
+      attribute :string_h, :ci_string,
+        allow_nil?: true,
+        constraints: [match: {~S"^string_[a-z]+$", "i"}],
+        public?: true
     end
   end
 
@@ -129,5 +139,49 @@ defmodule Ash.Test.Type.CiString do
              Post
              |> Ash.Query.filter(string_f == "FoObAr")
              |> Ash.read!()
+  end
+
+  test "match for :string_g succeeds on good regexes" do
+    Post
+    |> Ash.Changeset.for_create(:create, %{string_g: "string_a"})
+    |> Ash.create!()
+
+    Post
+    |> Ash.Changeset.for_create(:create, %{string_g: "string_b"})
+    |> Ash.create!()
+  end
+
+  test "match for :string_g rejects bad regexes" do
+    assert {:error, %Ash.Error.Invalid{}} =
+             Post
+             |> Ash.Changeset.for_create(:create, %{string_g: "string_1"})
+             |> Ash.create()
+
+    assert {:error, %Ash.Error.Invalid{}} =
+             Post
+             |> Ash.Changeset.for_create(:create, %{string_g: "string"})
+             |> Ash.create()
+  end
+
+  test "match for :string_h succeeds on good regexes" do
+    Post
+    |> Ash.Changeset.for_create(:create, %{string_h: "string_a"})
+    |> Ash.create!()
+
+    Post
+    |> Ash.Changeset.for_create(:create, %{string_h: "string_b"})
+    |> Ash.create!()
+  end
+
+  test "match for :string_h rejects bad regexes" do
+    assert {:error, %Ash.Error.Invalid{}} =
+             Post
+             |> Ash.Changeset.for_create(:create, %{string_h: "string_1"})
+             |> Ash.create()
+
+    assert {:error, %Ash.Error.Invalid{}} =
+             Post
+             |> Ash.Changeset.for_create(:create, %{string_h: "string"})
+             |> Ash.create()
   end
 end
