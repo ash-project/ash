@@ -151,20 +151,20 @@ defmodule Ash.Test.Type.DecimalTest do
     constraints = [precision: 3]
 
     # Valid cases
-    assert {:ok, _} = Ash.Type.Decimal.cast_input("123", constraints)
-    assert {:ok, _} = Ash.Type.Decimal.cast_input("12.3", constraints)
-    assert {:ok, _} = Ash.Type.Decimal.cast_input("1.23", constraints)
+    assert {:ok, _} = cast_input("123", constraints)
+    assert {:ok, _} = cast_input("12.3", constraints)
+    assert {:ok, _} = cast_input("1.23", constraints)
 
     # Invalid cases (more than 3 significant digits)
-    assert {:error, _} = Ash.Type.Decimal.cast_input("1234", constraints)
-    assert {:error, _} = Ash.Type.Decimal.cast_input("12.34", constraints)
+    assert {:error, _} = cast_input("1234", constraints)
+    assert {:error, _} = cast_input("12.34", constraints)
   end
 
   test "precision constraint defaults to :arbitrary" do
     # Test that default precision allows any number of digits
     constraints = []
 
-    assert {:ok, _} = Ash.Type.Decimal.cast_input("123456789012345678901234567890", constraints)
+    assert {:ok, _} = cast_input("123456789012345678901234567890", constraints)
   end
 
   test "pass with valid scale constraint" do
@@ -222,13 +222,13 @@ defmodule Ash.Test.Type.DecimalTest do
     constraints = [scale: 2]
 
     # Valid cases
-    assert {:ok, _} = Ash.Type.Decimal.cast_input("123", constraints)
-    assert {:ok, _} = Ash.Type.Decimal.cast_input("12.3", constraints)
-    assert {:ok, _} = Ash.Type.Decimal.cast_input("1.23", constraints)
+    assert {:ok, _} = cast_input("123", constraints)
+    assert {:ok, _} = cast_input("12.3", constraints)
+    assert {:ok, _} = cast_input("1.23", constraints)
 
     # Invalid cases (more than 2 decimal places)
-    assert {:error, _} = Ash.Type.Decimal.cast_input("1.234", constraints)
-    assert {:error, _} = Ash.Type.Decimal.cast_input("12.345", constraints)
+    assert {:error, _} = cast_input("1.234", constraints)
+    assert {:error, _} = cast_input("12.345", constraints)
   end
 
   test "scale constraint defaults to :arbitrary" do
@@ -236,7 +236,7 @@ defmodule Ash.Test.Type.DecimalTest do
     constraints = []
 
     assert {:ok, _} =
-             Ash.Type.Decimal.cast_input("123.123456789012345678901234567890", constraints)
+             cast_input("123.123456789012345678901234567890", constraints)
   end
 
   test "combining precision and scale constraints" do
@@ -244,14 +244,14 @@ defmodule Ash.Test.Type.DecimalTest do
     constraints = [precision: 5, scale: 2]
 
     # Valid: 123.45 has 5 significant digits and 2 decimal places
-    assert {:ok, _} = Ash.Type.Decimal.cast_input("123.45", constraints)
+    assert {:ok, _} = cast_input("123.45", constraints)
 
     # Invalid: too many significant digits
-    assert {:error, errors} = Ash.Type.Decimal.cast_input("123456.78", constraints)
+    assert {:error, errors} = cast_input("123456.78", constraints)
     assert Enum.any?(errors, fn error -> error[:message] =~ "significant digits" end)
 
     # Invalid: too many decimal places
-    assert {:error, errors} = Ash.Type.Decimal.cast_input("123.456", constraints)
+    assert {:error, errors} = cast_input("123.456", constraints)
     assert Enum.any?(errors, fn error -> error[:message] =~ "decimal places" end)
   end
 
@@ -259,13 +259,13 @@ defmodule Ash.Test.Type.DecimalTest do
     constraints = [scale: 3]
 
     # Zero decimal places should pass
-    assert {:ok, _} = Ash.Type.Decimal.cast_input("123", constraints)
+    assert {:ok, _} = cast_input("123", constraints)
 
     # Exactly at the limit should pass
-    assert {:ok, _} = Ash.Type.Decimal.cast_input("123.456", constraints)
+    assert {:ok, _} = cast_input("123.456", constraints)
 
     # Over the limit should fail
-    assert {:error, _} = Ash.Type.Decimal.cast_input("123.4567", constraints)
+    assert {:error, _} = cast_input("123.4567", constraints)
   end
 
   test "precision constraint prevents atomic usage" do
@@ -301,5 +301,11 @@ defmodule Ash.Test.Type.DecimalTest do
     expr = Ash.Expr.expr(1 + 1)
 
     assert {:atomic, _} = Ash.Type.Decimal.cast_atomic(expr, constraints)
+  end
+
+  defp cast_input(value, constraints) do
+    with {:ok, value} <- Ash.Type.Decimal.cast_input(value, constraints) do
+      Ash.Type.Decimal.apply_constraints(value, constraints)
+    end
   end
 end
