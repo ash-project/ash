@@ -2411,11 +2411,11 @@ defmodule Ash do
   #{Spark.Options.docs(@load_opts_schema)}
   """
   @spec load(
-          record_or_records :: Ash.Resource.record() | [Ash.Resource.record()],
+          record_or_records :: Ash.Resource.record() | [Ash.Resource.record()] | nil,
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
-          {:ok, Ash.Resource.record() | [Ash.Resource.record()]} | {:error, term}
+          {:ok, Ash.Resource.record() | [Ash.Resource.record()] | nil} | {:error, term}
 
   @doc spark_opts: [{2, @load_opts_schema}]
   def load(data, query, opts \\ [])
