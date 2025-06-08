@@ -255,10 +255,15 @@ defmodule Ash.Type.Decimal do
   end
 
   @impl true
+  def coerce(value, _) do
+    cast_input(value, [])
+  end
+
+  @impl true
   def cast_input(value, constraints) when is_binary(value) do
     case Decimal.parse(value) do
       {decimal, ""} ->
-        apply_constraints(decimal, constraints)
+        {:ok, decimal}
 
       _ ->
         :error
@@ -269,7 +274,7 @@ defmodule Ash.Type.Decimal do
   def cast_input(value, constraints) do
     case Ecto.Type.cast(:decimal, value) do
       {:ok, decimal} ->
-        apply_constraints(decimal, constraints)
+        {:ok, decimal}
 
       error ->
         error

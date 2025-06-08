@@ -198,6 +198,13 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
+      def coerce(value, constraints) do
+        constraints = get_constraints(constraints)
+
+        unquote(subtype_of).coerce(value, constraints)
+      end
+
+      @impl Ash.Type
       def cast_input_array(value, constraints) do
         constraints = get_constraints(constraints)
 
