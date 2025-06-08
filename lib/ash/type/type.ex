@@ -1759,7 +1759,10 @@ defmodule Ash.Type do
 
         @impl true
         def cast(term, params) do
-          @parent.cast_input(term, params)
+          # we coerce because ecto casting happens
+          # only in filters/changesets for us after
+          # we've validated everything
+          @parent.coerce(term, params)
         end
 
         @impl true

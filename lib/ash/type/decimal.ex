@@ -260,7 +260,7 @@ defmodule Ash.Type.Decimal do
   end
 
   @impl true
-  def cast_input(value, constraints) when is_binary(value) do
+  def cast_input(value, _constraints) when is_binary(value) do
     case Decimal.parse(value) do
       {decimal, ""} ->
         {:ok, decimal}
@@ -271,7 +271,7 @@ defmodule Ash.Type.Decimal do
   end
 
   @impl true
-  def cast_input(value, constraints) do
+  def cast_input(value, _constraints) do
     case Ecto.Type.cast(:decimal, value) do
       {:ok, decimal} ->
         {:ok, decimal}
