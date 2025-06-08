@@ -2367,7 +2367,7 @@ defmodule Ash do
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
-          Ash.Resource.record() | [Ash.Resource.record()] | no_return
+          Ash.Resource.record() | [Ash.Resource.record()] | nil | no_return
   @doc spark_opts: [{2, @load_opts_schema}]
   def load!(data, query, opts \\ []) do
     data
