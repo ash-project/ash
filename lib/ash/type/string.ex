@@ -336,6 +336,10 @@ defmodule Ash.Type.String do
     {:ok, regex}
   end
 
+  def match({regex, flags}) when is_binary(regex) and is_binary(flags) do
+    {:ok, Regex.compile!(regex, flags)}
+  end
+
   def match(value) do
     {:error,
      "Must provide a string or a tuple of regex and flags (see warning), got: #{inspect(value)}"}
