@@ -1771,7 +1771,7 @@ defmodule Ash.Changeset do
         other ->
           raise ArgumentError,
             message: """
-            Initial must be a changeset with the action type of `:create`, or a resource.
+            The first argument of `Ash.Changeset.for_create/2-4` must be a resource module.
 
             Got: #{inspect(other)}
             """
@@ -1886,7 +1886,10 @@ defmodule Ash.Changeset do
         other ->
           raise ArgumentError,
             message: """
-            Initial must be a changeset with the action type of `:update` or `:destroy`, or a record.
+            The first argument of `Ash.Changeset.for_update/2-4` must be one of:
+
+            - a record
+            - a changeset with an action_type `:destroy`.
 
             Got: #{inspect(other)}
             """
@@ -1966,7 +1969,10 @@ defmodule Ash.Changeset do
         other ->
           raise ArgumentError,
             message: """
-            Initial must be a changeset with the action type of `:destroy`, or a record.
+            The first argument of `Ash.Changeset.for_destroy/2-4` must be one of:
+
+            - a record
+            - a changeset with an action_type `:destroy`.
 
             Got: #{inspect(other)}
             """
@@ -2412,6 +2418,16 @@ defmodule Ash.Changeset do
         )
 
       if action do
+        # Validate that the action type matches what's expected for this changeset function
+        if action.type != changeset.action_type do
+          raise ArgumentError,
+            message: """
+            Action #{inspect(action.name)} is a #{inspect(action.type)} action, but we were expecting an #{inspect(changeset.action_type)} action.
+
+            Perhaps `#{inspect(changeset.resource)}.#{action.name}` is not an #{inspect(changeset.action_type)} action?
+            """
+        end
+
         name =
           fn ->
             "changeset:" <> Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
