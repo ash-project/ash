@@ -2368,7 +2368,7 @@ defmodule Ash do
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
-          Ash.Resource.record() | [Ash.Resource.record()] | no_return
+          Ash.Resource.record() | [Ash.Resource.record()] | nil | no_return
   @doc spark_opts: [{2, @load_opts_schema}]
   def load!(data, query, opts \\ []) do
     data
@@ -2412,11 +2412,11 @@ defmodule Ash do
   #{Spark.Options.docs(@load_opts_schema)}
   """
   @spec load(
-          record_or_records :: Ash.Resource.record() | [Ash.Resource.record()],
+          record_or_records :: Ash.Resource.record() | [Ash.Resource.record()] | nil,
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
-          {:ok, Ash.Resource.record() | [Ash.Resource.record()]} | {:error, term}
+          {:ok, Ash.Resource.record() | [Ash.Resource.record()] | nil} | {:error, term}
 
   @doc spark_opts: [{2, @load_opts_schema}]
   def load(data, query, opts \\ [])
