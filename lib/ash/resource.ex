@@ -183,7 +183,7 @@ defmodule Ash.Resource do
         module = __MODULE__
 
         defimpl Inspect do
-          import Inspect.Algebra
+          import Inspect.Algebra, except: [color_doc: 3]
 
           inspect_private_fields? = Ash.Resource.Info.inspect_private_fields?(module)
           hide_inspect_fields = Ash.Resource.Info.hide_inspect_fields(module)
@@ -231,15 +231,31 @@ defmodule Ash.Resource do
             end
 
             open =
-              Inspect.Algebra.color_doc("%" <> inspect(record.__struct__) <> "{", :map, opts)
+              color_doc("%" <> inspect(record.__struct__) <> "{", :map, opts)
 
-            sep = Inspect.Algebra.color_doc(",", :map, opts)
-            close = Inspect.Algebra.color_doc("}", :map, opts)
+            sep = color_doc(",", :map, opts)
+            close = color_doc("}", :map, opts)
 
             Inspect.Algebra.container_doc(open, fields, close, opts, fun,
               separator: sep,
               break: :strict
             )
+          end
+
+          # this was added in Elixir 1.18, so we vendored it here to be compatible w/ older elixir versions
+          def color_doc(doc, color_key, %Inspect.Opts{syntax_colors: syntax_colors}) when is_doc(doc) do
+            if precolor = Keyword.get(syntax_colors, color_key) do
+              postcolor = Keyword.get(syntax_colors, :reset, :reset)
+              concat({:doc_color, doc, ansi(precolor)}, {:doc_color, empty(), ansi(postcolor)})
+            else
+              doc
+            end
+          end
+
+          defp ansi(color) do
+            color
+            |> IO.ANSI.format_fragment(true)
+            |> IO.iodata_to_binary()
           end
         end
       end
