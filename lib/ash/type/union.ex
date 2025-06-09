@@ -95,7 +95,7 @@ defmodule Ash.Type.Union do
       end)
       |> case do
         {:ok, types} ->
-          {:ok, Keyword.put(constraints, :types, Enum.reverse(types))}
+          {:ok, Keyword.put(constraints, :types, types)}
 
         {:error, error} ->
           {:error, error}

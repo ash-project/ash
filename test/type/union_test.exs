@@ -139,6 +139,18 @@ defmodule Ash.Test.Filter.UnionTest do
     end
   end
 
+  test "it handles UUIDs and strings" do
+    constraints = [types: [id: [type: :uuid], slug: [type: :string]]]
+
+    {:ok, %{constraints: constraints}} =
+      Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+    uuid = Ash.UUID.generate()
+
+    assert {:ok, %Ash.Union{value: ^uuid, type: :id}} =
+             Ash.Type.cast_input(:union, uuid, constraints)
+  end
+
   test "it handles simple types" do
     constraints = [
       types: [
