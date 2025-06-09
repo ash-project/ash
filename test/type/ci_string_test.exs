@@ -45,7 +45,7 @@ defmodule Ash.Test.Type.CiString do
 
       attribute :string_g, :ci_string,
         allow_nil?: true,
-        constraints: [match: ~r/^string_[a-z]+$/i],
+        constraints: [match: {~S"^string_[a-z]+$", "i"}],
         public?: true
 
       attribute :string_h, :ci_string,

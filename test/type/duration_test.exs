@@ -217,11 +217,11 @@ defmodule Ash.Test.Type.DurationTest do
         :utc_datetime_usec_minus_duration_c
       ])
 
-    assert post.duration_a_plus_b == %{__struct__: Duration, hour: 1, minute: 30}
-    assert post.duration_b_minus_a == %{__struct__: Duration, hour: -1, minute: 30}
-    assert post.duration_b_times_three == %{__struct__: Duration, minute: 90}
-    assert post.duration_two_times_b == %{__struct__: Duration, minute: 60}
-    assert post.duration_a_negated == %{__struct__: Duration, hour: -1}
+    assert post.duration_a_plus_b == %Duration{hour: 1, minute: 30}
+    assert post.duration_b_minus_a == %Duration{hour: -1, minute: 30}
+    assert post.duration_b_times_three == %Duration{minute: 90}
+    assert post.duration_two_times_b == %Duration{minute: 60}
+    assert post.duration_a_negated == %Duration{hour: -1}
     assert post.date_plus_duration_d == Date.shift(@today, @year1)
     assert post.date_minus_duration_d == Date.shift(@today, Duration.negate(@year1))
 
