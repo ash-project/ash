@@ -114,10 +114,10 @@ defmodule Ash.Actions.Update.Bulk do
             read_opts =
               opts
               |> then(fn read_opts ->
-                if opts[:batch_size] do
+                if opts[:stream_batch_size] do
                   Keyword.put(read_opts, :batch_size, opts[:stream_batch_size])
                 else
-                  read_opts
+                  Keyword.delete(read_opts, :batch_size)
                 end
               end)
               |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
