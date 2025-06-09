@@ -27,22 +27,8 @@ defmodule MyApp.Tweet do
 end
 ```
 
-## Managing related data
 
-See [Managing Relationships](/documentation/topics/resources/relationships.md#managing-relationships) for more information.
 
-Your data layer may enforce foreign key constraints, see the following guides for more information:
-
-- [AshPostgres references](https://hexdocs.pm/ash_postgres/references.html)
-
-> #### Order of operations {: .warning}
->
-> In destroy actions, relationships are managed **after** the main action is performed. This means if you're using `manage_relationship` to remove related records in a destroy action, and your database has foreign key constraints with "no action" or "restrict" settings, you may encounter constraint violations because Ash tries to destroy the primary resource first.
->
-> To work around this, you can:
-> - Use the `cascade_destroy` builtin change instead of `manage_relationship`
-> - Configure your database constraints to be deferred
-> - Use different constraint settings that allow the operation order
 
 ## Kinds of relationships
 
@@ -423,7 +409,37 @@ end
 
 ## Managing Relationships
 
-In Ash, managing related data is done via `Ash.Changeset.manage_relationship/4`. There are various ways to leverage the functionality expressed there. If you are working with changesets directly, you can call that function. However, if you want that logic to be portable (e.g available in `ash_graphql` mutations and `ash_json_api` actions), then you want to use the following `argument` + `change` pattern:
+Ash provides two primary approaches for managing related data, each suited to different scenarios:
+
+1. **Using `change manage_relationship/3` in actions** - When input comes from action arguments
+2. **Using `Ash.Changeset.manage_relationship/4` directly** - When building values programmatically in custom changes
+
+### When to Use Which Approach
+
+**Use `change manage_relationship/3` when:**
+- Input comes from action arguments (API endpoints, form submissions)
+- You want portable logic across different interfaces (GraphQL, JSON API)
+- You need standard CRUD operations on relationships
+- The relationship management logic is straightforward
+
+**Use `Ash.Changeset.manage_relationship/4` when:**
+- Building relationship data programmatically in custom changes
+- You need complex logic or data transformation before managing relationships
+- Conditional relationship management based on changeset state
+- Integration with external APIs or complex business rules
+
+> #### Order of operations {: .warning}
+>
+> In destroy actions, relationships are managed **after** the main action is performed. This means if you're using `manage_relationship` to remove related records in a destroy action, and your database has foreign key constraints with "no action" or "restrict" settings, you may encounter constraint violations because Ash tries to destroy the primary resource first.
+>
+> To work around this, you can:
+> - Use the `cascade_destroy` builtin change instead of `manage_relationship`
+> - Configure your database constraints to be deferred
+> - Use different constraint settings that allow the operation order
+
+### Using `change manage_relationship/3` in Actions
+
+This is the most common approach for managing relationships through action arguments:
 
 ```elixir
 actions do
@@ -438,44 +454,388 @@ actions do
 
     # First argument is the name of the action argument to use
     # Second argument is the relationship to be managed
-    # Third argument is options. For more, see `Ash.Changeset.manage_relationship/4`. This accepts the same options.
+    # Third argument is options. For more, see `Ash.Changeset.manage_relationship/4`.
     change manage_relationship(:add_comment, :comments, type: :create)
 
-    # Second argument can be omitted, as the argument name is the same as the relationship
+    # Second argument can be omitted when argument name matches relationship name
     change manage_relationship(:tags, type: :append_and_remove)
   end
 end
 ```
 
-With this, those arguments can be used in action input:
+With this setup, you can use the arguments in action input:
 
 ```elixir
 post
-|> Ash.Changeset.for_update(:update, %{tags: [tag1.id, tag2.id], add_comment: %{text: "comment text"}})
+|> Ash.Changeset.for_update(:update, %{
+  tags: [tag1.id, tag2.id],
+  add_comment: %{text: "comment text"}
+})
 |> Ash.update!()
 ```
 
-### Argument Types
+#### Common Patterns with Actions
 
-Notice how we provided a map as input to `add_comment`, and a list of UUIDs as an input to `manage_relationship`. When providing maps or lists of maps, you are generally just providing input that will eventually be passed into actions on the destination resource. However, you can also provide individual values or lists of values. By default, we assume that value maps to the primary key of the destination resource, but you can use the `value_is_key` option to modify that behavior. For example, if you wanted adding a comment to take a list of strings, you could say:
-
-```elixir
-argument :add_comment, :string
-
-...
-change manage_relationship(:add_comment, :comments, type: :create, value_is_key: :text)
-```
-
-And then you could use it like so:
+**Creating with related data:**
 
 ```elixir
-post
-|> Ash.Changeset.for_update(:update, %{tags: [tag1.id, tag2.id], add_comment: "comment text"})
-|> Ash.update!()
+create :create_with_author do
+  argument :author, :map, allow_nil?: false
+  change manage_relationship(:author, type: :create)
+end
+
+# Usage
+Post
+|> Ash.Changeset.for_create(:create_with_author, %{
+  title: "My Post",
+  author: %{name: "John Doe", email: "john@example.com"}
+})
+|> Ash.create!()
 ```
 
-### Derived behavior
+**Managing many-to-many relationships:**
 
-Determining what will happen when managing related data can be complicated, as the nature of the problem itself is quite complicated. In some simple cases, like `type: :create`, there may be only one action that will be called. But in order to support all of the various ways that related resources may need to be managed, Ash provides a rich set of options to determine what happens with the provided input. Tools like `AshPhoenix.Form` can look at your arguments that have a corresponding `manage_relationship` change, and derive the structure of those nested forms. Tools like `AshGraphql` can derive complex input objects to allow manipulating those relationships over a graphql Api. This all works because the options are, ultimately, quite explicit. It can be determined exactly what actions might be called, and therefore what input could be needed.
+```elixir
+update :manage_categories do
+  argument :category_names, {:array, :string}
 
-To see all of the options available, see `Ash.Changeset.manage_relationship/4`
+  change manage_relationship(:category_names, :categories,
+    type: :append_and_remove,
+    value_is_key: :name,
+    on_lookup: :relate,
+    on_no_match: :create
+  )
+end
+```
+
+**Different argument and relationship names:**
+
+```elixir
+update :assign_reviewer do
+  argument :reviewer_id, :uuid
+  change manage_relationship(:reviewer_id, :reviewer, type: :append_and_remove)
+end
+```
+
+### Using `Ash.Changeset.manage_relationship/4` in Custom Changes
+
+For more complex scenarios, you can use `Ash.Changeset.manage_relationship/4` directly in custom changes:
+
+```elixir
+defmodule MyApp.Changes.AssignProjectMembers do
+  use Ash.Resource.Change
+
+  def change(changeset, _opts, context) do
+    # Get the current user from context
+    current_user = context.actor
+
+    # Build relationship data based on business logic
+    members = determine_project_members(changeset, current_user)
+
+    # Manage the relationship directly
+    Ash.Changeset.manage_relationship(
+      changeset,
+      :members,
+      members,
+      type: :append_and_remove,
+      authorize?: true
+    )
+  end
+
+  defp determine_project_members(changeset, current_user) do
+    # Complex logic to determine who should be project members
+    # based on changeset data and business rules
+    # ...
+  end
+end
+```
+
+**Conditional relationship management:**
+
+```elixir
+defmodule MyApp.Changes.ConditionalTagging do
+  use Ash.Resource.Change
+
+  def change(changeset, _opts, _context) do
+    # Only manage tags if certain conditions are met
+    if should_auto_tag?(changeset) do
+      tags = generate_auto_tags(changeset)
+
+      Ash.Changeset.manage_relationship(
+        changeset,
+        :tags,
+        tags,
+        type: :append,
+        on_no_match: :create
+      )
+    else
+      changeset
+    end
+  end
+end
+```
+
+**Data transformation before relationship management:**
+
+```elixir
+defmodule MyApp.Changes.ProcessOrderItems do
+  use Ash.Resource.Change
+
+  def change(changeset, _opts, _context) do
+    case Ash.Changeset.fetch_argument(changeset, :raw_items) do
+      {:ok, raw_items} ->
+        # Transform and validate the raw item data
+        processed_items =
+          raw_items
+          |> validate_items()
+          |> calculate_pricing()
+          |> apply_discounts()
+
+        Ash.Changeset.manage_relationship(
+          changeset,
+          :items,
+          processed_items,
+          type: :direct_control
+        )
+
+      :error ->
+        changeset
+    end
+  end
+end
+```
+
+### Management Types and Options
+
+Ash provides several built-in management types that configure common relationship management patterns:
+
+#### Management Types
+
+**`:append`** - Add new related records, ignore existing ones
+```elixir
+change manage_relationship(:tags, type: :append)
+# Equivalent to:
+# on_lookup: :relate, on_no_match: :error, on_match: :ignore, on_missing: :ignore
+```
+
+**`:append_and_remove`** - Add new related records, remove missing ones
+```elixir
+change manage_relationship(:tags, type: :append_and_remove)
+# Equivalent to:
+# on_lookup: :relate, on_no_match: :error, on_match: :ignore, on_missing: :unrelate
+```
+
+**`:remove`** - Remove specified related records
+```elixir
+change manage_relationship(:tags, type: :remove)
+# Equivalent to:
+# on_no_match: :error, on_match: :unrelate, on_missing: :ignore
+```
+
+**`:direct_control`** - Full CRUD control over the related records
+```elixir
+change manage_relationship(:comments, type: :direct_control)
+# Equivalent to:
+# on_lookup: :ignore, on_no_match: :create, on_match: :update, on_missing: :destroy
+```
+
+**`:create`** - Only create new related records
+```elixir
+change manage_relationship(:items, type: :create)
+# Equivalent to:
+# on_no_match: :create, on_match: :ignore
+```
+
+#### Key Options
+
+**`on_lookup`** - How to handle records that might exist elsewhere:
+- `:ignore` - Don't look up existing records
+- `:relate` - Look up and relate existing records
+- `{:relate, :action_name}` - Use specific action for relating
+
+**`on_no_match`** - What to do when no matching record exists:
+- `:ignore` - Skip these inputs
+- `:create` - Create new records
+- `{:create, :action_name}` - Use specific create action
+- `:error` - Raise an error
+
+**`on_match`** - What to do when a matching record is found:
+- `:ignore` - Leave the record as-is
+- `:update` - Update the existing record
+- `{:update, :action_name}` - Use specific update action
+- `:unrelate` - Remove the relationship
+- `:error` - Raise an error
+
+**`on_missing`** - What to do with related records not in the input:
+- `:ignore` - Leave them as-is
+- `:unrelate` - Remove the relationship
+- `:destroy` - Delete the records
+- `{:destroy, :action_name}` - Use specific destroy action
+
+#### Advanced Options
+
+**`value_is_key`** - Use a specific field as the key when providing simple values:
+```elixir
+# Allow using category names instead of IDs
+change manage_relationship(:category_names, :categories,
+  value_is_key: :name,
+  type: :append_and_remove
+)
+```
+
+**`use_identities`** - Specify which identities to use for lookups:
+```elixir
+change manage_relationship(:tags,
+  type: :append_and_remove,
+  use_identities: [:name, :_primary_key]
+)
+```
+
+**`join_keys`** - For many-to-many relationships, specify join table parameters:
+```elixir
+change manage_relationship(:categories,
+  type: :append_and_remove,
+  join_keys: [:priority, :added_by]
+)
+```
+
+### Relationship Type Considerations
+
+#### belongs_to Relationships
+
+When managing `belongs_to` relationships, you're typically setting a parent:
+
+```elixir
+create :create_with_parent do
+  argument :parent, :map
+  change manage_relationship(:parent, type: :create)
+end
+
+# Or relating to existing parent
+update :assign_parent do
+  argument :parent_id, :uuid
+  change manage_relationship(:parent_id, :parent, type: :append_and_remove)
+end
+```
+
+#### has_one Relationships
+
+For `has_one` relationships, you manage a single related record:
+
+```elixir
+update :update_profile do
+  argument :profile, :map
+  change manage_relationship(:profile, type: :direct_control)
+end
+```
+
+#### has_many Relationships
+
+With `has_many`, you typically manage collections:
+
+```elixir
+update :manage_comments do
+  argument :comments, {:array, :map}
+  change manage_relationship(:comments, type: :direct_control)
+end
+```
+
+#### many_to_many Relationships
+
+Many-to-many relationships often involve join table management:
+
+```elixir
+update :update_post_tags do
+  argument :tags, {:array, :map}
+
+  change manage_relationship(:tags,
+    type: :append_and_remove,
+    join_keys: [:tagged_at, :tagged_by]
+  )
+end
+```
+
+### Advanced Patterns
+
+#### Multiple manage_relationship Calls
+
+You can call `manage_relationship` multiple times, and they'll be processed in order:
+
+```elixir
+update :complex_update do
+  argument :add_tags, {:array, :string}
+  argument :remove_tags, {:array, :string}
+
+  change manage_relationship(:add_tags, :tags,
+    type: :append,
+    value_is_key: :name,
+    meta: [order: 1]
+  )
+
+  change manage_relationship(:remove_tags, :tags,
+    type: :remove,
+    value_is_key: :name,
+    meta: [order: 2]
+  )
+end
+```
+
+### Argument Types and Value Handling
+
+#### Map and List Inputs
+
+When providing maps or lists of maps, you're providing input for actions on the destination resource:
+
+```elixir
+# Maps become action input
+argument :comment, :map
+change manage_relationship(:comment, :comments, type: :create)
+
+# Usage:
+%{comment: %{text: "Great post!", rating: 5}}
+```
+
+#### Simple Value Inputs
+
+You can also provide simple values using `value_is_key`:
+
+```elixir
+argument :tag_names, {:array, :string}
+change manage_relationship(:tag_names, :tags,
+  type: :append_and_remove,
+  value_is_key: :name,
+  on_lookup: :relate,
+  on_no_match: :create
+)
+
+# Usage:
+%{tag_names: ["elixir", "phoenix", "ash"]}
+```
+
+#### Using Existing Records
+
+You can also pass existing record structs directly:
+
+```elixir
+# In a custom change
+existing_tags = Ash.read!(Tag, actor: actor)
+Ash.Changeset.manage_relationship(changeset, :tags, existing_tags, type: :append)
+```
+
+> #### Authorization considerations {: .warning}
+>
+> When you pass existing record structs directly to `manage_relationship`, Ash assumes that the actor is already authorized to read those records. This bypasses the normal authorization checks that would occur if you had provided IDs instead.
+>
+> If you provide ids/maps, Ash will read the records and properly check authorization. Only pass existing record structs when you're certain the actor has appropriate read permissions for those records, or authorization is not relevant.
+
+### Integration with Tools
+
+The explicit nature of relationship management options enables rich integrations:
+
+- **AshPhoenix.Form** - Automatically derives nested form structures
+- **AshGraphQL** - Generates complex input objects for mutations
+- **AshJsonApi** - Creates appropriate API endpoints for relationship management
+
+This works because Ash can determine exactly what actions might be called and what input is needed based on your `manage_relationship` configuration.
+
+For complete documentation of all available options, see `Ash.Changeset.manage_relationship/4`.

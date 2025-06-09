@@ -138,6 +138,7 @@ defmodule Ash.MixProject do
       ],
       skip_undefined_reference_warnings_on: [
         "CHANGELOG.md",
+        ".github/CONTRIBUTING.md",
         "documentation/topics/reference/glossary.md",
         "documentation/topics/development/upgrading-to-3.0.md"
       ],

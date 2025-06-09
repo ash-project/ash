@@ -59,7 +59,7 @@ resource DashboardGroup do
   define :get_by_id, action: :read, get_by: [:id]
 end
 
-# Then call: 
+# Then call:
 MyApp.Domain.get_dashboard_group_by_id!(id, load: [rel: [:nested]])
 ```
 
@@ -68,8 +68,8 @@ MyApp.Domain.get_dashboard_group_by_id!(id, load: [rel: [:nested]])
 ```elixir
 # PREFERRED - Concise and idiomatic
 posts = MyApp.Blog.list_posts!(
-  filter: [status: :published], 
-  load: [author: :profile, comments: [:author]], 
+  filter: [status: :published],
+  load: [author: :profile, comments: [:author]],
   sort: [published_at: :desc],
   limit: 10
 )
@@ -80,7 +80,7 @@ users = MyApp.Accounts.list_users!(
 )
 
 # AVOID - Verbose manual query building
-query = MyApp.Post |> Ash.Query.filter(...) |> Ash.Query.load(...) 
+query = MyApp.Post |> Ash.Query.filter(...) |> Ash.Query.load(...)
 posts = MyApp.Blog.read!(query)
 ```
 
@@ -197,7 +197,7 @@ end
 validate match(:email, "@")
 validate one_of(:status, [:active, :inactive, :pending])
 
-# Conditional validations  
+# Conditional validations
 validate present(:phone_number) do
   where present(:contact_method) and eq(:contact_method, "phone")
 end
@@ -454,7 +454,7 @@ relationships do
     attribute_type :integer  # defaults to :uuid
   end
 
-  # has_one - foreign key on destination resource  
+  # has_one - foreign key on destination resource
   has_one :profile, MyApp.Profile
 
   # has_many - foreign key on destination resource, returns list
@@ -527,7 +527,10 @@ MyApp.Post
 
 ### Managing Relationships
 
-Use `manage_relationship` to handle related data in actions:
+There are two primary ways to manage relationships in Ash:
+
+#### 1. Using `change manage_relationship/2-3` in Actions
+Use this when input comes from action arguments:
 
 ```elixir
 actions do
@@ -543,21 +546,48 @@ actions do
     change manage_relationship(:comments, type: :append)
 
     # For different argument and relationship names
-    argument :new_tags, {:array, :map}
     change manage_relationship(:new_tags, :tags, type: :append)
   end
 end
 ```
 
-#### Built in relationship management types
+#### 2. Using `Ash.Changeset.manage_relationship/3-4` in Custom Changes
+Use this when building values programmatically:
 
-- `:create` - Create new related records
-- `:append` - Add existing records to the relationship
-- `:remove` - Remove specific related records from the relationship
-- `:append_and_remove` - Add related records from the relationship, removing any not provided.
-- `:direct_control` - Fully replace all related records with the provided data, creating anything new, deleting anything not provided, and updating any existing records.
+```elixir
+defmodule MyApp.Changes.AssignTeamMembers do
+  use Ash.Resource.Change
 
-#### Practical Examples
+  def change(changeset, _opts, context) do
+    members = determine_team_members(changeset, context.actor)
+
+    Ash.Changeset.manage_relationship(
+      changeset,
+      :members,
+      members,
+      type: :append_and_remove
+    )
+  end
+end
+```
+
+#### Quick Reference - Management Types
+- `:append` - Add new related records, ignore existing
+- `:append_and_remove` - Add new related records, remove missing
+- `:remove` - Remove specified related records
+- `:direct_control` - Full CRUD control (create/update/destroy)
+- `:create` - Only create new records
+
+#### Quick Reference - Common Options
+- `on_lookup: :relate` - Look up and relate existing records
+- `on_no_match: :create` - Create if no match found
+- `on_match: :update` - Update existing matches
+- `on_missing: :destroy` - Delete records not in input
+- `value_is_key: :name` - Use field as key for simple values
+
+For comprehensive documentation, see the [Managing Relationships](documentation/topics/resources/relationships.md#managing-relationships) section.
+
+#### Examples
 
 Creating a post with tags:
 ```elixir
@@ -785,7 +815,7 @@ Create custom checks by implementing `Ash.Policy.SimpleCheck` or `Ash.Policy.Fil
 # Simple check - returns true/false
 defmodule MyApp.Checks.ActorHasRole do
   use Ash.Policy.SimpleCheck
-  
+
   def match?(%{role: actor_role}, _context, opts) do
     actor_role == (opts[:role] || :admin)
   end
@@ -795,7 +825,7 @@ end
 # Filter check - returns query filter
 defmodule MyApp.Checks.VisibleToUserLevel do
   use Ash.Policy.FilterCheck
-  
+
   def filter(actor, _authorizer, _opts) do
     expr(visibility_level <= ^actor.user_level)
   end
