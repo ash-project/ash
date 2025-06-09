@@ -149,7 +149,12 @@ defmodule Ash.Actions.Update.Bulk do
                   }
               end
             else
-              read_opts = Keyword.take(read_opts, Ash.stream_opt_keys())
+              read_opts =
+                Keyword.put(
+                  Keyword.take(read_opts, Ash.stream_opt_keys()),
+                  :batch_size,
+                  opts[:batch_size] || 100
+                )
 
               # We need to figure out a way to capture errors raised by the stream when picking items off somehow
               # for now, we only go this route if there are potentially more records in the result set than
