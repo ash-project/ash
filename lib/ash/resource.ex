@@ -243,7 +243,8 @@ defmodule Ash.Resource do
           end
 
           # this was added in Elixir 1.18, so we vendored it here to be compatible w/ older elixir versions
-          def color_doc(doc, color_key, %Inspect.Opts{syntax_colors: syntax_colors}) when is_doc(doc) do
+          def color_doc(doc, color_key, %Inspect.Opts{syntax_colors: syntax_colors})
+              when is_doc(doc) do
             if precolor = Keyword.get(syntax_colors, color_key) do
               postcolor = Keyword.get(syntax_colors, :reset, :reset)
               concat({:doc_color, doc, ansi(precolor)}, {:doc_color, empty(), ansi(postcolor)})
