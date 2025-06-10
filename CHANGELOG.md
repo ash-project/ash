@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.5.17](https://github.com/ash-project/ash/compare/v3.5.16...v3.5.17) (2025-06-10)
+
+
+
+
+### Bug Fixes:
+
+* set_tenant on combination query (#2123) by [@barnabasJ](https://github.com/barnabasJ)
+
 ## [v3.5.16](https://github.com/ash-project/ash/compare/v3.5.15...v3.5.16) (2025-06-10)
 
 
