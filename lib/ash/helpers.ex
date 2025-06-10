@@ -624,6 +624,14 @@ defmodule Ash.Helpers do
   end
 
   @doc false
+  def deep_merge_maps(nil, right) do
+    right
+  end
+
+  def deep_merge_maps(left, nil) do
+    left
+  end
+
   def deep_merge_maps(left, right) when left == %{} do
     right
   end

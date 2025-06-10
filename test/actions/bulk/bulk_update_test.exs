@@ -233,6 +233,16 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
 
+      read :query_with_after_action do
+        pagination keyset?: true
+
+        prepare fn query, _ ->
+          Ash.Query.after_action(query, fn _query, records ->
+            {:ok, records}
+          end)
+        end
+      end
+
       update :update_manual do
         manual ManualUpdate
       end
@@ -310,6 +320,12 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
         change AtomicallyRequireActor
       end
 
+      update :update_with_policy_user_sets_context do
+        require_atomic? false
+
+        change AtomicallyRequireActor
+      end
+
       update :update_with_policy_without_requiring_actor do
         argument :authorize?, :boolean, allow_nil?: false
 
@@ -357,6 +373,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
 
       policy action(:update_with_policy_without_requiring_actor) do
+        authorize_if context_equals(:authorize?, true)
+      end
+
+      policy action(:update_with_policy_user_sets_context) do
         authorize_if context_equals(:authorize?, true)
       end
 
@@ -1162,6 +1182,29 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  %{title2: "updated value", authorize?: true},
                  authorize?: true,
                  actor: %{foo: :bar},
+                 resource: Post,
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "policy success results in successes with user-supplied context" do
+      Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+        return_stream?: true,
+        return_records?: true,
+        authorize?: false
+      )
+      |> Stream.run()
+
+      assert %Ash.BulkResult{records: [_, _], errors: []} =
+               Ash.bulk_update!(
+                 Post |> Ash.Query.for_read(:query_with_after_action, %{}),
+                 :update_with_policy_user_sets_context,
+                 %{title2: "updated value"},
+                 authorize?: true,
+                 strategy: :stream,
+                 actor: %{foo: :bar},
+                 context: %{authorize?: true},
                  resource: Post,
                  return_records?: true,
                  return_errors?: true

@@ -121,6 +121,11 @@ defmodule Ash.Actions.Update.Bulk do
                 end
               end)
               |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
+              |> Keyword.update(
+                :context,
+                %{query_for: :bulk_update},
+                &Map.put(&1, :query_for, :bulk_update)
+              )
               |> Keyword.put(:domain, domain)
               |> Keyword.delete(:load)
 
@@ -134,9 +139,22 @@ defmodule Ash.Actions.Update.Bulk do
                     results,
                     action,
                     input,
-                    Keyword.merge(opts,
-                      resource: query.resource,
-                      input_was_stream?: false
+                    Keyword.merge(
+                      opts,
+                      [
+                        resource: query.resource,
+                        input_was_stream?: false,
+                        context:
+                          opts[:atomic_changeset] &&
+                            Map.delete(opts[:atomic_changeset].context, :private)
+                      ],
+                      fn
+                        :context, v1, v2 ->
+                          Ash.Helpers.deep_merge_maps(v1, v2)
+
+                        _k, _v1, v2 ->
+                          v2
+                      end
                     ),
                     reason
                   )
@@ -170,9 +188,22 @@ defmodule Ash.Actions.Update.Bulk do
                 ),
                 action,
                 input,
-                Keyword.merge(opts,
-                  resource: query.resource,
-                  input_was_stream?: false
+                Keyword.merge(
+                  opts,
+                  [
+                    resource: query.resource,
+                    input_was_stream?: false,
+                    context:
+                      opts[:atomic_changeset] &&
+                        Map.delete(opts[:atomic_changeset].context, :private)
+                  ],
+                  fn
+                    :context, v1, v2 ->
+                      Ash.Helpers.deep_merge_maps(v1, v2)
+
+                    _k, _v1, v2 ->
+                      v2
+                  end
                 ),
                 reason
               )
