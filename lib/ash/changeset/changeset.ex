@@ -159,12 +159,19 @@ defmodule Ash.Changeset do
             concat("filter: ", to_doc(changeset.filter, opts))
         end
 
+      action =
+        if changeset.action do
+          concat("action: ", inspect(changeset.action && changeset.action.name))
+        else
+          empty()
+        end
+
       container_doc(
         "#Ash.Changeset<",
         [
           domain,
           concat("action_type: ", inspect(changeset.action_type)),
-          concat("action: ", inspect(changeset.action && changeset.action.name)),
+          action,
           tenant,
           concat("attributes: ", to_doc(changeset.attributes, opts)),
           atomics,
