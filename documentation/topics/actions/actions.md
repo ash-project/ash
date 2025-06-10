@@ -77,7 +77,7 @@ There are two kinds of contexts in Ash:
 
 Actions accept a free-form map of context, which can be used for whatever you like. Whenever context is set, it is *deep merged*. I.e if you do `changeset |> Ash.Changeset.set_context(%{a: %{b: 1}}) |> Ash.Changeset.set_context(%{a: %{c: 2}})`, the resulting context will be `%{a: %{b: 1, c: 2}}`. Structs are not merged.
 
-There are two special keys to note:
+There are some special keys in context to note:
 
 ### `:private`
 
@@ -93,6 +93,23 @@ This will generally happen automatically if you use one of the two abstractions 
 > ### Careful with shared {: .warning}
 >
 > Shared context is passed to all nested actions, so don't pass massive values around, and also don't set context
+
+## `:query_for`
+
+This is set on queries when they are being run for a "special" purpose. The values this can take are:
+
+- none, if a read action is being run, then no value is set for this context
+- `:bulk_update`, if the query is being built to power a bulk update action
+- `:bulk_destroy`, if the query is being built to power a bulk destroy action
+- `:load`, if the query is being built to power an `Ash.load` call
+
+You can use this to adjust the behavior of your query preparations as needed.
+
+## `:bulk_create`, `:bulk_update`, `:bulk_destroy`
+
+This is set on changesets when they are being run in bulk. The value will be a map with the following keys (more may be added in the future):
+
+`:index` -> The index of the changeset in the bulk operation.
 
 #### `Ash.Scope.ToOpts`
 
