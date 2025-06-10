@@ -1148,7 +1148,7 @@ defmodule Ash.Actions.Update.Bulk do
                   opts,
                   :context,
                   %{private: context_cs.context.private},
-                  &Map.put(&1, :private, context_cs.context.private)
+                  &Map.put(&1 || %{}, :private, context_cs.context.private)
                 )
 
               Ash.Changeset.fully_atomic_changeset(resource, action, input, opts)
