@@ -4257,6 +4257,7 @@ defmodule Ash.Query do
           end)
 
         base_query
+        |> Ash.Query.set_tenant(query.tenant)
         |> limit(combination.limit)
         |> offset(combination.offset)
         |> do_filter(combination.filter)
