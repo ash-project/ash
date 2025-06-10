@@ -2,6 +2,53 @@
 
 <!-- changelog -->
 
+## [v3.5.16](https://github.com/ash-project/ash/compare/v3.5.15...v3.5.16) (2025-06-10)
+
+
+
+
+### Bug Fixes:
+
+* ensure context is properly threaded through bulk update/atomic upgrades by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure `actor: nil` key is retained on scope to opts by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure stream_batch_size is properly set to batch_size on stream by [@zachdaniel](https://github.com/zachdaniel)
+
+* set batch size option when streaming by [@zachdaniel](https://github.com/zachdaniel)
+
+* keep union types in order by [@zachdaniel](https://github.com/zachdaniel)
+
+* resolve accidentally backwards incompatible inspect implementation by [@zachdaniel](https://github.com/zachdaniel)
+
+* better error message on mismatch action types in changesets by [@zachdaniel](https://github.com/zachdaniel)
+
+* add clause in Ash.Type.String.match/1 to handle the OTP 28 regex tuples (#2119) by Simon Bergström
+
+* underlying ecto type casting should use coercion, not cast_input by [@zachdaniel](https://github.com/zachdaniel)
+
+* make decimal type less strict by [@zachdaniel](https://github.com/zachdaniel)
+
+* Fix typespecs for Ash.get! and Ash.load! (#2117) by Moxley Stratton
+
+* implement Scope.to_opts for policy authorizer by [@zachdaniel](https://github.com/zachdaniel)
+
+* simplify relationship loading, to prevent losing set query info by [@zachdaniel](https://github.com/zachdaniel)
+
+* typo in Ash.Error.Framework module (#2108) by Samuel Wrenn
+
+* ash.gen.validation generates invalid callback (#2103) by KasparKipp
+
+### Improvements:
+
+* show action when inspecting query by [@zachdaniel](https://github.com/zachdaniel)
+
+* add assert_stripped test helper (#2107) by Samuel Wrenn
+
+* fix misleading value in invalid attribute error by [@zachdaniel](https://github.com/zachdaniel)
+
+* better error message on unexpected argument inputs to code interfaces (#2102) by Abhishek Tripathi
+
 ## [v3.5.15](https://github.com/ash-project/ash/compare/v3.5.14...v3.5.15) (2025-06-04)
 
 
