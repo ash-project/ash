@@ -602,12 +602,13 @@ defmodule Ash.Test.Actions.CreateTest do
                |> Ash.create!()
     end
 
-    test "create with set_attribute(new?: true) uses tag value from set_attribute" do
-      assert %Post{title: "some title", tag: "not_default"} =
-               Post
-               |> Ash.Changeset.for_create(:create_with_set_attribute, %{title: "some title"})
-               |> Ash.create!()
-    end
+    # 4.0 this test should pass, see the set attribute change comment
+    # test "create with set_attribute(new?: true) uses tag value from set_attribute" do
+    #   assert %Post{title: "some title", tag: "not_default"} =
+    #            Post
+    #            |> Ash.Changeset.for_create(:create_with_set_attribute, %{title: "some title"})
+    #            |> Ash.create!()
+    # end
 
     test "create with set_attribute(new?: true) uses tag override value" do
       assert %Post{title: "something", tag: "existing"} =
