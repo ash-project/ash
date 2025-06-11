@@ -313,6 +313,11 @@ defmodule Ash.Test.Actions.CreateTest do
         argument :array_of_names, {:array, {:array, :string}}
       end
 
+      create :create_with_set_attribute do
+        accept [:title, :tag]
+        change set_attribute(:tag, "not_default", new?: true)
+      end
+
       create :with_atomic_only_validations do
         validate AtomicOnlyValidation
       end
@@ -593,6 +598,23 @@ defmodule Ash.Test.Actions.CreateTest do
                  contents: "bar",
                  date: Date.utc_today(),
                  binary: <<0, 1, 2, 3, 4, 5>>
+               })
+               |> Ash.create!()
+    end
+
+    test "create with set_attribute(new?: true) uses tag value from set_attribute" do
+      assert %Post{title: "some title", tag: "not_default"} =
+               Post
+               |> Ash.Changeset.for_create(:create_with_set_attribute, %{title: "some title"})
+               |> Ash.create!()
+    end
+
+    test "create with set_attribute(new?: true) uses tag override value" do
+      assert %Post{title: "something", tag: "existing"} =
+               Post
+               |> Ash.Changeset.for_create(:create_with_set_attribute, %{
+                 title: "something",
+                 tag: "existing"
                })
                |> Ash.create!()
     end
