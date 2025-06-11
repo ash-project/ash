@@ -1247,9 +1247,6 @@ defmodule Ash.Expr do
           data
       end)
       |> case do
-        :error ->
-          nil
-
         %{basis: nil, must_adopt_basis: [], types: types} ->
           if returns not in [:same, :any, {:array, :same}, {:array, :any}] do
             {Enum.reverse(types), returns, Enum.count(types)}

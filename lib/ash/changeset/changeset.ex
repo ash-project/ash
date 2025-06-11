@@ -1136,41 +1136,47 @@ defmodule Ash.Changeset do
          context,
          where_condition \\ nil
        ) do
-    case List.wrap(
-           module.atomic(
-             changeset,
-             validation_opts,
-             struct(Ash.Resource.Validation.Context, Map.put(context, :message, message))
-           )
-         ) do
-      [{:atomic, _, _, _} | _] = atomics ->
-        Enum.reduce(atomics, changeset, fn
-          {:atomic, _fields, condition_expr, error_expr}, changeset ->
-            condition_expr =
-              if where_condition do
-                expr(^where_condition and ^condition_expr)
-              else
-                condition_expr
-              end
+    case module.init(validation_opts) do
+      {:ok, validation_opts} ->
+        case List.wrap(
+               module.atomic(
+                 changeset,
+                 validation_opts,
+                 struct(Ash.Resource.Validation.Context, Map.put(context, :message, message))
+               )
+             ) do
+          [{:atomic, _, _, _} | _] = atomics ->
+            Enum.reduce(atomics, changeset, fn
+              {:atomic, _fields, condition_expr, error_expr}, changeset ->
+                condition_expr =
+                  if where_condition do
+                    expr(^where_condition and ^condition_expr)
+                  else
+                    condition_expr
+                  end
 
-            condition_expr = rewrite_atomics(changeset, condition_expr)
+                condition_expr = rewrite_atomics(changeset, condition_expr)
 
-            validate_atomically(changeset, condition_expr, error_expr)
-        end)
+                validate_atomically(changeset, condition_expr, error_expr)
+            end)
 
-      [:ok] ->
-        changeset
+          [:ok] ->
+            changeset
 
-      [{:error, error}] ->
-        if message do
-          error = override_validation_message(error, message)
-          Ash.Changeset.add_error(changeset, error)
-        else
-          Ash.Changeset.add_error(changeset, error)
+          [{:error, error}] ->
+            if message do
+              error = override_validation_message(error, message)
+              Ash.Changeset.add_error(changeset, error)
+            else
+              Ash.Changeset.add_error(changeset, error)
+            end
+
+          [{:not_atomic, error}] ->
+            {:not_atomic, error}
         end
 
-      [{:not_atomic, error}] ->
-        {:not_atomic, error}
+      other ->
+        other
     end
   end
 
@@ -3113,6 +3119,12 @@ defmodule Ash.Changeset do
           )
         else
           case run_atomic_validation(changeset, change, context) do
+            {:error, error} ->
+              Ash.Changeset.add_error(
+                changeset,
+                error
+              )
+
             {:not_atomic, reason} ->
               Ash.Changeset.add_error(
                 changeset,

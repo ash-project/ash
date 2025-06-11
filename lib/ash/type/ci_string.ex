@@ -9,7 +9,7 @@ defmodule Ash.Type.CiString do
       doc: "Enforces a minimum length on the value"
     ],
     match: [
-      type: {:custom, Ash.Type.String, :match, []},
+      type: :regex_as_mfa,
       doc: "Enforces that the string matches a passed in regex"
     ],
     trim?: [
@@ -185,17 +185,10 @@ defmodule Ash.Type.CiString do
 
       {:match, regex}, errors ->
         # TODO: This should automatically add the "i" flag?
+        {m, f, a} = regex
+
         regex =
-          case regex do
-            %Regex{} = regex ->
-              regex
-
-            {regex, flags} ->
-              Regex.compile!(regex, flags)
-
-            string ->
-              Regex.compile!(string)
-          end
+          apply(m, f, a)
 
         if String.match?(value, regex) do
           errors

@@ -1598,75 +1598,72 @@ defmodule Ash.Actions.Read do
          opts
        ) do
     Enum.reduce_while(query.combination_of, {:ok, []}, fn combination, {:ok, acc} ->
-      case add_calc_context_to_sort(
-             combination.sort,
-             actor,
-             authorize?,
-             tenant,
-             tracer,
-             query.resource,
-             domain,
-             opts
-           ) do
+      {:ok, sort} =
+        add_calc_context_to_sort(
+          combination.sort,
+          actor,
+          authorize?,
+          tenant,
+          tracer,
+          query.resource,
+          domain,
+          opts
+        )
+
+      Enum.reduce_while(combination.calculations, {:ok, %{}}, fn {key, calc}, {:ok, acc} ->
+        case hydrate_calculations(query, [calc]) do
+          {:ok, [{calc, expression}]} ->
+            {:cont,
+             {:ok,
+              Map.put(acc, key, %{
+                calc
+                | module: Ash.Resource.Calculation.Expression,
+                  opts: [expr: expression]
+              })}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+      |> case do
         {:error, error} ->
           {:halt, {:error, error}}
 
-        {:ok, sort} ->
-          Enum.reduce_while(combination.calculations, {:ok, %{}}, fn {key, calc}, {:ok, acc} ->
-            case hydrate_calculations(query, [calc]) do
-              {:ok, [{calc, expression}]} ->
-                {:cont,
-                 {:ok,
-                  Map.put(acc, key, %{
-                    calc
-                    | module: Ash.Resource.Calculation.Expression,
-                      opts: [expr: expression]
-                  })}}
-
-              {:error, error} ->
-                {:halt, {:error, error}}
-            end
-          end)
-          |> case do
-            {:error, error} ->
-              {:halt, {:error, error}}
-
-            {:ok, calculations} ->
-              {:cont,
-               {:ok,
-                [
-                  %{
-                    combination
-                    | filter:
-                        add_calc_context_to_filter(
-                          combination.filter,
-                          actor,
-                          authorize?,
-                          tenant,
-                          tracer,
-                          domain,
-                          query.resource,
-                          opts
-                        ),
-                      calculations:
-                        Map.new(calculations, fn {key, val} ->
-                          {key,
-                           add_calc_context(
-                             val,
-                             actor,
-                             authorize?,
-                             tenant,
-                             tracer,
-                             domain,
-                             query.resource,
-                             opts
-                           )}
-                        end),
-                      sort: sort
-                  }
-                  | acc
-                ]}}
-          end
+        {:ok, calculations} ->
+          {:cont,
+           {:ok,
+            [
+              %{
+                combination
+                | filter:
+                    add_calc_context_to_filter(
+                      combination.filter,
+                      actor,
+                      authorize?,
+                      tenant,
+                      tracer,
+                      domain,
+                      query.resource,
+                      opts
+                    ),
+                  calculations:
+                    Map.new(calculations, fn {key, val} ->
+                      {key,
+                       add_calc_context(
+                         val,
+                         actor,
+                         authorize?,
+                         tenant,
+                         tracer,
+                         domain,
+                         query.resource,
+                         opts
+                       )}
+                    end),
+                  sort: sort
+              }
+              | acc
+            ]}}
       end
     end)
     |> case do
