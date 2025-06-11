@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.5.18](https://github.com/ash-project/ash/compare/v3.5.17...v3.5.18) (2025-06-11)
+
+
+
+
+### Improvements:
+
+* support regexes in match constraint/validation again by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.17](https://github.com/ash-project/ash/compare/v3.5.16...v3.5.17) (2025-06-10)
 
 
