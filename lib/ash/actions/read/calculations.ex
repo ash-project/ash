@@ -861,15 +861,16 @@ defmodule Ash.Actions.Read.Calculations do
           query
           |> get_all_rewrites(calculation, path)
           |> Enum.map(fn {{path, data, calc_name, calc_load}, source} ->
-            {{path ++ [{:rel, name}], data, calc_name, calc_load}, source}
+            {{[{:rel, name} | path], data, calc_name, calc_load}, source}
           end)
         end
 
       {name, query} ->
-        query
-        |> get_all_rewrites(calculation, path)
+        nested_rewrites = query |> get_all_rewrites(calculation, path)
+
+        nested_rewrites
         |> Enum.map(fn {{path, data, calc_name, calc_load}, source} ->
-          {{path ++ [{:rel, name}], data, calc_name, calc_load}, source}
+          {{[{:rel, name} | path], data, calc_name, calc_load}, source}
         end)
     end)
     |> Enum.concat(load_relationship_rewrites(ash_query, calculation, path))
@@ -898,7 +899,7 @@ defmodule Ash.Actions.Read.Calculations do
                     path
                   )
                   |> Enum.map(fn {{path, data, calc_name, calc_load}, source} ->
-                    {{path ++ [{:rel, name}], data, calc_name, calc_load}, source}
+                    {{[{:rel, name} | path], data, calc_name, calc_load}, source}
                   end)
               ]
 
@@ -925,7 +926,7 @@ defmodule Ash.Actions.Read.Calculations do
         path
       )
       |> Enum.map(fn {{path, data, calc_name, calc_load}, source} ->
-        {{path ++ [{:rel, calculation.opts[:relationship]}], data, calc_name, calc_load}, source}
+        {{[{:rel, calculation.opts[:relationship]} | path], data, calc_name, calc_load}, source}
       end)
     end)
   end

@@ -419,6 +419,164 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  # Test resources for no_attributes relationship calculation bug
+  defmodule Toy do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    relationships do
+      belongs_to :child, Ash.Test.CalculationTest.Child, public?: true
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
+  defmodule Child do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    relationships do
+      belongs_to :parent, Ash.Test.CalculationTest.Parent, public?: true
+      has_many :toys, Ash.Test.CalculationTest.Toy, public?: true
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    calculations do
+      calculate :calc_foo, :string, Ash.Test.CalculationTest.Child.CalcFoo
+      calculate :calc_bar, :string, Ash.Test.CalculationTest.Child.CalcBar
+      calculate :calc_baz, :string, Ash.Test.CalculationTest.Child.CalcBaz
+    end
+
+    defmodule CalcFoo do
+      use Ash.Resource.Calculation
+
+      @impl true
+      def load(_, _, _) do
+        [
+          parent: [grandparent: [:grandchild_toys]]
+        ]
+      end
+
+      @impl true
+      def calculate(records, _, _) do
+        records |> Enum.map(fn _ -> "foo" end)
+      end
+    end
+
+    defmodule CalcBar do
+      use Ash.Resource.Calculation
+
+      @impl true
+      def load(_, _, _) do
+        [
+          parent: [grandparent: [:grandchild_toys]]
+        ]
+      end
+
+      @impl true
+      def calculate(records, _, _) do
+        records |> Enum.map(fn _ -> "bar" end)
+      end
+    end
+
+    defmodule CalcBaz do
+      use Ash.Resource.Calculation
+
+      @impl true
+      def load(_, _, _) do
+        [
+          parent: [grandparent: [:grandchild_toys]]
+        ]
+      end
+
+      @impl true
+      def calculate(records, _, _) do
+        records |> Enum.map(fn _ -> "baz" end)
+      end
+    end
+  end
+
+  defmodule Parent do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    relationships do
+      has_many :children, Ash.Test.CalculationTest.Child, public?: true
+      belongs_to :grandparent, Ash.Test.CalculationTest.Grandparent, public?: true
+    end
+  end
+
+  defmodule Grandparent do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    relationships do
+      has_many :parents, Ash.Test.CalculationTest.Parent,
+        public?: true,
+        destination_attribute: :grandparent_id
+
+      # This is the problematic no_attributes? relationship
+      has_many :grandchild_toys, Ash.Test.CalculationTest.Toy do
+        no_attributes? true
+        public? true
+        filter expr(child.parent.grandparent_id == parent(id))
+      end
+    end
+  end
+
   defmodule User do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -1683,5 +1841,52 @@ defmodule Ash.Test.CalculationTest do
   } do
     assert %{yob_string: "Born in: 1990"} = Ash.load!(user1, :yob_string)
     assert %{active_string: "Is active: false"} = Ash.load!(admin_role, :active_string)
+  end
+
+  describe "no_attributes relationships" do
+    setup do
+      {:ok, grandparent} =
+        Grandparent
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create()
+
+      {:ok, parent} =
+        Parent
+        |> Ash.Changeset.for_create(:create, %{grandparent_id: grandparent.id})
+        |> Ash.create()
+
+      {:ok, child} =
+        Child
+        |> Ash.Changeset.for_create(:create, %{parent_id: parent.id})
+        |> Ash.create()
+
+      {:ok, toy} =
+        Toy
+        |> Ash.Changeset.for_create(:create, %{child_id: child.id})
+        |> Ash.create()
+
+      %{child: child, parent: parent, grandparent: grandparent, toy: toy}
+    end
+
+    test "loading multiple calculations with no_attributes relationship should not raise KeyError",
+         %{
+           child: child
+         } do
+      # This should not raise a KeyError - this was the original bug
+      result = Ash.load!(child, [:calc_foo, :calc_bar, :calc_baz])
+
+      assert result.calc_foo == "foo"
+      assert result.calc_bar == "bar"
+      assert result.calc_baz == "baz"
+    end
+
+    test "loading calculations separately works", %{child: child} do
+      # This works as expected and should continue to work
+      result = child |> Ash.load!([:calc_foo, :calc_bar]) |> Ash.load!(:calc_baz)
+
+      assert result.calc_foo == "foo"
+      assert result.calc_bar == "bar"
+      assert result.calc_baz == "baz"
+    end
   end
 end
