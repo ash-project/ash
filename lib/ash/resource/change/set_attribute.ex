@@ -56,6 +56,8 @@ defmodule Ash.Resource.Change.SetAttribute do
 
   def validate_value(value), do: {:ok, value}
 
+  # 4.0 change this behavior so that if its being set by defaults
+  # this still considers it as `new?` https://github.com/ash-project/ash/issues/2125
   @impl true
   def change(changeset, opts, _) do
     value =
