@@ -57,6 +57,13 @@ defmodule Ash.Test.QueryTest do
     end
   end
 
+  describe "inspect" do
+    test "queries can be inspected with or without an action" do
+      assert inspect(Ash.Query.new(User)) == "#Ash.Query<resource: Ash.Test.QueryTest.User>"
+      assert inspect(Ash.Query.for_read(User, :by_id, %{id: "foobar"})) =~ "action: :by_id"
+    end
+  end
+
   describe "read argument validation" do
     test "it returns an appropriate error when an argument is invalid" do
       query = Ash.Query.for_read(User, :by_id, %{id: "foobar"})

@@ -322,7 +322,10 @@ defmodule Ash.Query do
         "#Ash.Query<",
         [
           concat("resource: ", inspect(query.resource)),
-          or_empty(concat("action: ", inspect(query.action && query.action.name)), query.action),
+          or_empty(
+            concat("action: ", inspect(query.action && query.action.name)),
+            not is_nil(query.action)
+          ),
           or_empty(concat("tenant: ", to_doc(query.to_tenant, opts)), tenant?),
           arguments(query, opts),
           # TODO: inspect these specially
