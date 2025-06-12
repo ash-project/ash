@@ -1610,6 +1610,7 @@ defmodule Ash.Actions.Update.Bulk do
     |> Ash.Actions.Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
+    |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
     |> Ash.Changeset.set_arguments(arguments)
     |> then(fn changeset ->
       changeset =
@@ -1976,6 +1977,7 @@ defmodule Ash.Actions.Update.Bulk do
     |> Ash.Changeset.new()
     |> Map.put(:domain, domain)
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
+    |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
     |> Ash.Changeset.put_context(context_key, %{index: index})
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.atomic_update(opts[:atomic_update] || [])

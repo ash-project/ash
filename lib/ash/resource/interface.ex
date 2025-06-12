@@ -69,6 +69,11 @@ defmodule Ash.Resource.Interface do
             doc:
               "Options passed to `Ash.bulk_create`, if a list or stream of inputs is provided.",
             keys: Keyword.drop(Ash.bulk_create_opts(), Keyword.keys(Ash.create_opts()))
+          ],
+          private_arguments: [
+            type: :map,
+            doc: "Private argument values to set before validations and changes.",
+            default: %{}
           ]
         )
         |> Keyword.drop([:domain])
@@ -86,6 +91,11 @@ defmodule Ash.Resource.Interface do
               "Options passed to `Ash.bulk_update`, if a query, list, or stream of inputs is provided.",
             keys:
               Keyword.drop(Ash.bulk_update_opts(), Keyword.keys(Ash.update_opts()) ++ [:resource])
+          ],
+          private_arguments: [
+            type: :map,
+            doc: "Private argument values to set before validations and changes.",
+            default: %{}
           ]
         )
         |> Keyword.drop([:domain])
@@ -106,6 +116,11 @@ defmodule Ash.Resource.Interface do
                 Ash.bulk_destroy_opts(),
                 Keyword.keys(Ash.destroy_opts()) ++ [:resource]
               )
+          ],
+          private_arguments: [
+            type: :map,
+            doc: "Private argument values to set before validations and changes.",
+            default: %{}
           ]
         )
         |> Keyword.drop([:domain])
@@ -166,6 +181,13 @@ defmodule Ash.Resource.Interface do
     use Spark.Options.Validator,
       schema:
         Ash.run_action_opts()
+        |> Keyword.merge(
+          private_arguments: [
+            type: :map,
+            doc: "Private argument values to set before validations and changes.",
+            default: %{}
+          ]
+        )
         |> Keyword.drop([:domain])
   end
 

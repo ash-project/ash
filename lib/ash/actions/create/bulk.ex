@@ -393,6 +393,7 @@ defmodule Ash.Actions.Create.Bulk do
     |> Ash.Actions.Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
+    |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
     |> then(fn changeset ->
       if opts[:after_action] do
         Ash.Changeset.after_action(changeset, opts[:after_action])
@@ -706,6 +707,7 @@ defmodule Ash.Actions.Create.Bulk do
        ) do
     base
     |> Ash.Changeset.put_context(:bulk_create, %{index: index})
+    |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
     |> handle_params(
       Keyword.get(opts, :assume_casted?, false),
       action,
