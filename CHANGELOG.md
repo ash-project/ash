@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.5.19](https://github.com/ash-project/ash/compare/v3.5.18...v3.5.19) (2025-06-12)
+
+
+
+
+### Bug Fixes:
+
+* bad pattern match in query inspect logic by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.18](https://github.com/ash-project/ash/compare/v3.5.17...v3.5.18) (2025-06-11)
 
 

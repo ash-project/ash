@@ -6,7 +6,7 @@ defmodule Ash.MixProject do
   A declarative, extensible framework for building Elixir applications.
   """
 
-  @version "3.5.18"
+  @version "3.5.19"
 
   def project do
     [
