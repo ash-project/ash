@@ -2050,7 +2050,7 @@ defmodule Ash do
   """
   @doc spark_opts: [{2, @get_opts_schema}]
   @spec get(Ash.Resource.t(), term(), Keyword.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, term}
+          {:ok, Ash.Resource.record() | nil} | {:error, term}
   def get(resource, id, opts \\ []) do
     Ash.Helpers.expect_resource!(resource)
     Ash.Helpers.expect_options!(opts)
