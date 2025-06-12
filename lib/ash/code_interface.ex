@@ -926,6 +926,7 @@ defmodule Ash.CodeInterface do
                         bulk_opts =
                           opts
                           |> Keyword.delete(:bulk_options)
+                          |> Keyword.put(:notify?, true)
                           |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
                           |> Enum.concat(changeset_opts)
 
@@ -952,6 +953,7 @@ defmodule Ash.CodeInterface do
                         bulk_opts =
                           opts
                           |> Keyword.delete(:bulk_options)
+                          |> Keyword.put(:notify?, true)
                           |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
                           |> Enum.concat(changeset_opts)
 
