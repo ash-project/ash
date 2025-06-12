@@ -813,6 +813,7 @@ defmodule Ash.Changeset do
         |> Map.put(:no_atomic_constraints, opts[:no_atomic_constraints] || [])
         |> Map.put(:action_type, action.type)
         |> Map.put(:atomics, opts[:atomics] || [])
+        |> set_private_arguments_for_action(opts[:private_arguments] || %{})
         |> Ash.Changeset.set_tenant(opts[:tenant])
 
       {changeset, _opts} =
@@ -2044,13 +2045,9 @@ defmodule Ash.Changeset do
 
                 Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
 
-                changeset =
-                  Enum.reduce(opts[:private_arguments] || %{}, changeset, fn {k, v}, changeset ->
-                    set_private_argument_for_action(changeset, k, v)
-                  end)
-
                 changeset
                 |> Map.put(:action, action)
+                |> set_private_arguments_for_action(opts[:private_arguments] || %{})
                 |> handle_errors(action.error_handler)
                 |> set_actor(opts)
                 |> set_authorize(opts)
@@ -5874,6 +5871,13 @@ defmodule Ash.Changeset do
       value,
       "can't set public arguments with set_private_argument/3"
     )
+  end
+
+  @doc false
+  def set_private_arguments_for_action(changeset, arguments) do
+    Enum.reduce(arguments, changeset, fn {k, v}, changeset ->
+      set_private_argument_for_action(changeset, k, v)
+    end)
   end
 
   defp set_private_argument_for_action(changeset, argument, value) do

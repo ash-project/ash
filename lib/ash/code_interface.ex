@@ -716,7 +716,15 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {input_opts, opts} =
-                    Keyword.split(opts, [:input, :actor, :tenant, :authorize?, :tracer, :scope])
+                    Keyword.split(opts, [
+                      :input,
+                      :actor,
+                      :tenant,
+                      :authorize?,
+                      :tracer,
+                      :scope,
+                      :private_arguments
+                    ])
 
                   {input, input_opts} = Keyword.pop(input_opts, :input)
 
@@ -880,7 +888,8 @@ defmodule Ash.CodeInterface do
                       :authorize?,
                       :tracer,
                       :context,
-                      :skip_unknown_inputs
+                      :skip_unknown_inputs,
+                      :private_arguments
                     ])
 
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
@@ -993,7 +1002,8 @@ defmodule Ash.CodeInterface do
                         :authorize?,
                         :tracer,
                         :context,
-                        :skip_unknown_inputs
+                        :skip_unknown_inputs,
+                        :private_arguments
                       ])
 
                     changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
@@ -1053,7 +1063,8 @@ defmodule Ash.CodeInterface do
                         :scope,
                         :tracer,
                         :context,
-                        :skip_unknown_inputs
+                        :skip_unknown_inputs,
+                        :private_arguments
                       ])
 
                     changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
@@ -1261,7 +1272,8 @@ defmodule Ash.CodeInterface do
                         :authorize?,
                         :tracer,
                         :context,
-                        :skip_unknown_inputs
+                        :skip_unknown_inputs,
+                        :private_arguments
                       ])
 
                     changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
@@ -1321,7 +1333,8 @@ defmodule Ash.CodeInterface do
                         :authorize?,
                         :tracer,
                         :context,
-                        :skip_unknown_inputs
+                        :skip_unknown_inputs,
+                        :private_arguments
                       ])
 
                     changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))

@@ -66,6 +66,7 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :update_by_id, action: :update_by_id_without_filter, get?: true, args: [:id]
       define :destroy_by_id, action: :destroy_by_id_without_filter, get?: true, args: [:id]
       define :create, args: [{:optional, :first_name}]
+      define :insert, action: :create
       define :hello, args: [:name]
 
       define :update_by_id_map do
@@ -104,6 +105,11 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :bulk_create, action: :create
       define :update, action: :update
       define :destroy, action: :destroy
+      define :create_with_private, action: :create_with_private
+      define :update_with_private, action: :update_with_private
+      define :atomic_update_with_private, action: :atomic_update_with_private
+      define :destroy_with_private, action: :destroy_with_private
+      define :soft_destroy_with_private, action: :soft_destroy_with_private
 
       define_calculation(:full_name, args: [:first_name, :last_name])
 
@@ -176,6 +182,62 @@ defmodule Ash.Test.CodeInterfaceTest do
           {:ok, "Hello, #{context.actor.name}."}
         end)
       end
+
+      create :create_with_private do
+        argument :private_tag, :string, allow_nil?: false, public?: false
+        accept [:first_name, :last_name]
+
+        change fn changeset, _ ->
+          Ash.Changeset.change_attribute(
+            changeset,
+            :last_name,
+            "#{changeset.arguments.private_tag}_tagged"
+          )
+        end
+      end
+
+      update :update_with_private do
+        require_atomic? false
+        argument :private_flag, :string, allow_nil?: false, public?: false
+        accept [:first_name, :last_name]
+
+        change fn changeset, _ ->
+          Ash.Changeset.change_attribute(
+            changeset,
+            :last_name,
+            "#{changeset.arguments.private_flag}_flagged"
+          )
+        end
+      end
+
+      update :atomic_update_with_private do
+        require_atomic? false
+        argument :private_flag, :string, allow_nil?: false, public?: false
+        accept [:first_name, :last_name]
+
+        change atomic_update(:last_name, expr(^arg(:private_flag) <> "_flagged"))
+      end
+
+      destroy :destroy_with_private do
+        argument :private_reason, :string, allow_nil?: false, public?: false
+        accept []
+      end
+
+      destroy :soft_destroy_with_private do
+        require_atomic? false
+        soft? true
+        argument :private_reason, :string, allow_nil?: false, public?: false
+        accept []
+
+        change fn changeset, _ ->
+          changeset
+          |> Ash.Changeset.change_attribute(:deleted_at, DateTime.utc_now())
+          |> Ash.Changeset.change_attribute(
+            :last_name,
+            "soft_destroyed_by_#{changeset.arguments.private_reason}"
+          )
+        end
+      end
     end
 
     calculations do
@@ -208,6 +270,10 @@ defmodule Ash.Test.CodeInterfaceTest do
       end
 
       attribute :last_name, :string do
+        public?(true)
+      end
+
+      attribute :deleted_at, :utc_datetime do
         public?(true)
       end
     end
@@ -627,5 +693,142 @@ defmodule Ash.Test.CodeInterfaceTest do
     assert "Hello, Jimmy Bimmy." = User.hello_actor!(scope: scope, actor: %{name: "Jimmy Bimmy"})
 
     assert "Hello, William Shatner." = User.hello_actor_with_default!()
+  end
+
+  test "private arguments can be passed through code interface for create" do
+    user =
+      User.create_with_private!(%{first_name: "john"},
+        private_arguments: %{private_tag: "test"}
+      )
+
+    assert user.last_name == "test_tagged"
+  end
+
+  test "private arguments can be passed through code interface for bulk_create" do
+    %Ash.BulkResult{records: users} =
+      User.create_with_private!([%{first_name: "john"}, %{first_name: "jane"}],
+        private_arguments: %{private_tag: "bulk_test"},
+        bulk_options: [return_records?: true]
+      )
+
+    assert length(users) == 2
+
+    assert Enum.all?(users, fn user ->
+             user.last_name == "bulk_test_tagged"
+           end)
+  end
+
+  test "private arguments can be passed through code interface for update" do
+    user = User.create!("john")
+
+    updated =
+      User.update_with_private!(user, %{}, private_arguments: %{private_flag: "updated"})
+
+    assert updated.last_name == "updated_flagged"
+  end
+
+  test "private arguments can be passed through code interface for bulk_update" do
+    %Ash.BulkResult{records: users} =
+      User.insert!([%{first_name: "john"}, %{first_name: "jane"}],
+        bulk_options: [return_records?: true]
+      )
+
+    %Ash.BulkResult{records: updated_users} =
+      User.update_with_private!(users, %{},
+        private_arguments: %{private_flag: "bulk_updated"},
+        bulk_options: [return_records?: true]
+      )
+
+    assert length(updated_users) == 2
+
+    assert Enum.all?(updated_users, fn user ->
+             user.last_name == "bulk_updated_flagged"
+           end)
+  end
+
+  test "private arguments can be passed through code interface for atomic update" do
+    user = User.create!("john")
+
+    updated =
+      User.atomic_update_with_private!(user, %{}, private_arguments: %{private_flag: "updated"})
+
+    assert updated.last_name == "updated_flagged"
+  end
+
+  test "private arguments can be passed through code interface for atomic bulk_update" do
+    %Ash.BulkResult{records: users} =
+      User.insert!([%{first_name: "john"}, %{first_name: "jane"}],
+        bulk_options: [return_records?: true]
+      )
+
+    %Ash.BulkResult{records: updated_users} =
+      User.atomic_update_with_private!(users, %{},
+        private_arguments: %{private_flag: "bulk_updated"},
+        bulk_options: [return_records?: true]
+      )
+
+    assert length(updated_users) == 2
+
+    assert Enum.all?(updated_users, fn user ->
+             user.last_name == "bulk_updated_flagged"
+           end)
+  end
+
+  test "private arguments can be passed through code interface for destroy" do
+    user = User.create!("john")
+
+    :ok = User.destroy_with_private!(user, private_arguments: %{private_reason: "admin"})
+
+    assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+             User.get_user(user.id)
+  end
+
+  test "private arguments can be passed through code interface for bulk destroy" do
+    %Ash.BulkResult{records: users} =
+      User.insert!([%{first_name: "john"}, %{first_name: "jane"}],
+        bulk_options: [return_records?: true]
+      )
+
+    %Ash.BulkResult{status: :success} =
+      User.destroy_with_private!(users, %{},
+        private_arguments: %{private_reason: "cleanup"},
+        bulk_options: [return_records?: false]
+      )
+
+    Enum.each(users, fn user ->
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               User.get_user(user.id)
+    end)
+  end
+
+  test "private arguments can be passed through code interface for soft destroy" do
+    user = User.create!("john")
+
+    :ok = User.soft_destroy_with_private!(user, private_arguments: %{private_reason: "admin"})
+
+    updated_user = User.get_user!(user.id)
+
+    assert updated_user.last_name == "soft_destroyed_by_admin"
+    assert updated_user.deleted_at != nil
+  end
+
+  test "private arguments can be passed through code interface for bulk soft destroy" do
+    %Ash.BulkResult{records: users} =
+      User.insert!([%{first_name: "john"}, %{first_name: "jane"}],
+        bulk_options: [return_records?: true]
+      )
+
+    %Ash.BulkResult{status: :success} =
+      User.soft_destroy_with_private!(users, %{},
+        private_arguments: %{private_reason: "cleanup"},
+        bulk_options: [return_records?: false]
+      )
+
+    update_users = User.read_users!()
+
+    Enum.each(update_users, fn updated_user ->
+      assert updated_user.last_name == "soft_destroyed_by_cleanup"
+      assert updated_user.deleted_at != nil
+    end)
   end
 end

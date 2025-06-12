@@ -404,6 +404,12 @@ defmodule Ash do
       type: :map,
       doc: "Context to set on each changeset"
     ],
+    private_arguments: [
+      type: :map,
+      default: %{},
+      doc:
+        "Private argument values to set on each changeset before validations and changes are run."
+    ],
     sorted?: [
       type: :boolean,
       default: false,
