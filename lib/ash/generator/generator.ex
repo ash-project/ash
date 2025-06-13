@@ -853,7 +853,7 @@ defmodule Ash.Generator do
 
     resource
     |> Ash.Resource.Info.attributes()
-    |> Enum.filter(&(&1.name in action.accept))
+    |> Enum.filter(&(&1.name in Map.get(action, :accept, [])))
     |> set_allow_nil(action)
     |> Enum.concat(arguments)
     |> generate_attributes(generators, false, action.type, Enum.map(action.arguments, & &1.name))
@@ -1028,7 +1028,7 @@ defmodule Ash.Generator do
           action_type == :create ->
             attribute.default
 
-          action_type in [:update, :destroy] ->
+          action_type in [:update, :destroy] and is_struct(attribute, Ash.Resource.Attribute) ->
             attribute.update_default
 
           true ->
