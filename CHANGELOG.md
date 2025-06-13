@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.5.20](https://github.com/ash-project/ash/compare/v3.5.19...v3.5.20) (2025-06-13)
+
+
+
+
+### Bug Fixes:
+
+* support private_arguments in code interface and bulk actions (#2133) by [@barnabasJ](https://github.com/barnabasJ)
+
 ## [v3.5.19](https://github.com/ash-project/ash/compare/v3.5.18...v3.5.19) (2025-06-12)
 
 
