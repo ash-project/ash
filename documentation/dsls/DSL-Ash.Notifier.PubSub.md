@@ -121,6 +121,63 @@ Configured with `broadcast_type`.
 - `:phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}` (see above)
 - `:broadcast` sends `%{topic: (topic), event: (event), payload: (notification)}`
 
+## Dynamic Topic Generation
+
+For advanced use cases, you can use functions or modules to generate topics dynamically:
+
+### Function-based Topics
+
+```elixir
+pub_sub do
+  module MyAppWeb.Endpoint
+  prefix "posts"
+
+  publish :create, fn notification ->
+    # Return a list of topic strings
+    ["user_feed:#{notification.data.author_id}"]
+  end
+end
+```
+
+### Module-based Topics
+
+First, implement the `Ash.Notifier.PubSub.TopicGenerator` behavior:
+
+```elixir
+defmodule MyApp.FollowerTopicGenerator do
+  use Ash.Notifier.PubSub.TopicGenerator
+
+  @impl true
+  def generate_topics(notification, opts) do
+    # Custom logic to generate topics based on relationships
+    followers =
+      notification.data
+      |> Ash.load!([author: :followers])
+      |> Map.get(:author, %{})
+      |> Map.get(:followers, [])
+
+    Enum.map(followers, fn follower ->
+      "user_feed:#{follower.id}"
+    end)
+  end
+end
+```
+
+Then use it in your pub_sub configuration:
+
+```elixir
+pub_sub do
+  module MyAppWeb.Endpoint
+  prefix "posts"
+
+  # With options
+  publish_all :create, {MyApp.FollowerTopicGenerator, []}
+
+  # Without options
+  publish_all :update, MyApp.FollowerTopicGenerator
+end
+```
+
 
 ## pub_sub
 A section for configuring how resource actions are published over pubsub
