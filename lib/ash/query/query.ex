@@ -525,7 +525,7 @@ defmodule Ash.Query do
   |> Ash.read!()
   ```
   """
-  @spec combination_of(t(), Ash.Query.Combination.t()) :: t()
+  @spec combination_of(t(), Ash.Query.Combination.t() | [Ash.Query.Combination.t()]) :: t()
   def combination_of(query, combinations) do
     query = new(query)
 
