@@ -108,7 +108,7 @@ defmodule HelpDesk.Changes.AssignTicket do
   end
 
   defp notify_assignment(changeset, ticket) do
-    HelpDesk.Notifications.notify_assignment(agent, ticket)
+    HelpDesk.Notifications.notify_assignment(changeset.context[:agent], ticket)
 
     {:ok, ticket}
   end
