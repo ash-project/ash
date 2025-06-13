@@ -10,6 +10,7 @@
 ### Bug Fixes:
 
 * support private_arguments in code interface and bulk actions (#2133) by [@barnabasJ](https://github.com/barnabasJ)
+* combination_of typespec (#2135) by [@barnabasJ](https://github.com/barnabasJ)
 
 ## [v3.5.19](https://github.com/ash-project/ash/compare/v3.5.18...v3.5.19) (2025-06-12)
 
