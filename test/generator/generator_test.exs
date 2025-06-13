@@ -92,6 +92,16 @@ defmodule Ash.Test.GeneratorTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      read :read_with_args do
+        argument :title_filter, :string
+        argument :category_filter, :string
+      end
+
+      destroy :destroy_with_reason do
+        argument :reason, :string
+        argument :confirmed, :boolean, default: false
+      end
     end
 
     attributes do
@@ -454,7 +464,7 @@ defmodule Ash.Test.GeneratorTest do
   end
 
   describe "action_input" do
-    test "action input can be provided to an action" do
+    test "action input works with create actions" do
       check all(input <- Ash.Generator.action_input(Post, :create)) do
         Post
         |> Ash.Changeset.for_create(:create, input)
@@ -462,17 +472,121 @@ defmodule Ash.Test.GeneratorTest do
       end
     end
 
-    test "overrides are applied" do
+    test "overrides work with create actions" do
       check all(
               input <-
-                Ash.Generator.action_input(Post, :create, %{title: "text"})
+                Ash.Generator.action_input(Post, :create, %{title: "override_test"})
             ) do
         post =
           Post
           |> Ash.Changeset.for_create(:create, input)
           |> Ash.create!()
 
-        assert post.title == "text"
+        assert post.title == "override_test"
+      end
+    end
+
+    test "action input works with read actions" do
+      check all(input <- Ash.Generator.action_input(Post, :read)) do
+        Post
+        |> Ash.Query.for_read(:read, input)
+        |> Ash.read!()
+      end
+    end
+
+    test "action input works with read actions that have arguments" do
+      check all(input <- Ash.Generator.action_input(Post, :read_with_args)) do
+        Post
+        |> Ash.Query.for_read(:read_with_args, input)
+        |> Ash.read!()
+      end
+    end
+
+    test "overrides work with read actions" do
+      check all(
+              input <-
+                Ash.Generator.action_input(Post, :read_with_args, %{title_filter: "test_filter"})
+            ) do
+        assert input.title_filter == "test_filter"
+
+        Post
+        |> Ash.Query.for_read(:read_with_args, input)
+        |> Ash.read!()
+      end
+    end
+
+    test "action input works with update actions" do
+      import Generator
+
+      post = generate(post())
+
+      check all(input <- Ash.Generator.action_input(post, :update)) do
+        post
+        |> Ash.Changeset.for_update(:update, input)
+        |> Ash.update!()
+      end
+    end
+
+    test "overrides work with update actions" do
+      import Generator
+
+      post = generate(post())
+
+      check all(
+              input <-
+                Ash.Generator.action_input(post, :update, %{title: "updated_title"})
+            ) do
+        updated_post =
+          post
+          |> Ash.Changeset.for_update(:update, input)
+          |> Ash.update!()
+
+        assert updated_post.title == "updated_title"
+      end
+    end
+
+    test "action input works with destroy actions" do
+      import Generator
+
+      check all(input <- Ash.Generator.action_input(Post, :destroy)) do
+        post = generate(post())
+
+        post
+        |> Ash.Changeset.for_destroy(:destroy, input)
+        |> Ash.destroy!()
+      end
+    end
+
+    test "action input works with destroy actions that have arguments" do
+      import Generator
+
+      check all(input <- Ash.Generator.action_input(Post, :destroy_with_reason)) do
+        post = generate(post())
+
+        post
+        |> Ash.Changeset.for_destroy(:destroy_with_reason, input)
+        |> Ash.destroy!()
+      end
+    end
+
+    test "overrides work with destroy actions" do
+      import Generator
+
+      check all(
+              input <-
+                Ash.Generator.action_input(Post, :destroy_with_reason, %{
+                  reason: "test_deletion",
+                  confirmed: true
+                })
+            ) do
+        post = generate(post())
+
+        assert input.reason == "test_deletion"
+        assert input.confirmed == true
+
+        post
+        |> Ash.Changeset.for_destroy(:destroy_with_reason, input)
+        |> Ash.destroy!()
       end
     end
   end
@@ -631,6 +745,14 @@ defmodule Ash.Test.GeneratorTest do
           end
         end
       end
+    end
+  end
+
+  describe "query" do
+    test "a directly usable query can be created" do
+      Post
+      |> Ash.Generator.query(:read_with_args)
+      |> Ash.read!()
     end
   end
 end
