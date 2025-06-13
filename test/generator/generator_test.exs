@@ -464,8 +464,6 @@ defmodule Ash.Test.GeneratorTest do
   end
 
   describe "action_input" do
-    import Generator
-
     test "action input works with create actions" do
       check all(input <- Ash.Generator.action_input(Post, :create)) do
         Post
@@ -518,6 +516,8 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     test "action input works with update actions" do
+      import Generator
+
       post = generate(post())
 
       check all(input <- Ash.Generator.action_input(post, :update)) do
@@ -528,6 +528,8 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     test "overrides work with update actions" do
+      import Generator
+
       post = generate(post())
 
       check all(
@@ -544,6 +546,8 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     test "action input works with destroy actions" do
+      import Generator
+
       check all(input <- Ash.Generator.action_input(Post, :destroy)) do
         post = generate(post())
 
@@ -554,6 +558,8 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     test "action input works with destroy actions that have arguments" do
+      import Generator
+
       check all(input <- Ash.Generator.action_input(Post, :destroy_with_reason)) do
         post = generate(post())
 
@@ -564,6 +570,8 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     test "overrides work with destroy actions" do
+      import Generator
+
       check all(
               input <-
                 Ash.Generator.action_input(Post, :destroy_with_reason, %{
@@ -737,6 +745,14 @@ defmodule Ash.Test.GeneratorTest do
           end
         end
       end
+    end
+  end
+
+  describe "query" do
+    test "a directly usable query can be created" do
+      Post
+      |> Ash.Generator.query(:read_with_args)
+      |> Ash.read!()
     end
   end
 end
