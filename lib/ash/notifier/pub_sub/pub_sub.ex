@@ -209,6 +209,63 @@ defmodule Ash.Notifier.PubSub do
   - `:notification` just sends the notification
   - `:phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}` (see above)
   - `:broadcast` sends `%{topic: (topic), event: (event), payload: (notification)}`
+
+  ## Dynamic Topic Generation
+
+  For advanced use cases, you can use functions or modules to generate topics dynamically:
+
+  ### Function-based Topics
+
+  ```elixir
+  pub_sub do
+    module MyAppWeb.Endpoint
+    prefix "posts"
+
+    publish :create, fn notification ->
+      # Return a list of topic strings
+      ["user_feed:\#{notification.data.author_id}"]
+    end
+  end
+  ```
+
+  ### Module-based Topics
+
+  First, implement the `Ash.Notifier.PubSub.TopicGenerator` behavior:
+
+  ```elixir
+  defmodule MyApp.FollowerTopicGenerator do
+    use Ash.Notifier.PubSub.TopicGenerator
+
+    @impl true
+    def generate_topics(notification, opts) do
+      # Custom logic to generate topics based on relationships
+      followers =
+        notification.data
+        |> Ash.load!([author: :followers])
+        |> Map.get(:author, %{})
+        |> Map.get(:followers, [])
+
+      Enum.map(followers, fn follower ->
+        "user_feed:\#{follower.id}"
+      end)
+    end
+  end
+  ```
+
+  Then use it in your pub_sub configuration:
+
+  ```elixir
+  pub_sub do
+    module MyAppWeb.Endpoint
+    prefix "posts"
+
+    # With options
+    publish_all :create, {MyApp.FollowerTopicGenerator, []}
+
+    # Without options
+    publish_all :update, MyApp.FollowerTopicGenerator
+  end
+  ```
   """
 
   use Spark.Dsl.Extension,
@@ -332,6 +389,49 @@ defmodule Ash.Notifier.PubSub do
 
   defp fill_template(topic, _notification, _delimiter, _previous_values?) when is_binary(topic),
     do: [topic]
+
+  defp fill_template(topic, notification, _delimiter, _previous_values?)
+       when is_function(topic, 1) do
+    case topic.(notification) do
+      topics when is_list(topics) ->
+        Enum.filter(topics, &is_binary/1)
+
+      topic when is_binary(topic) ->
+        [topic]
+
+      other ->
+        Logger.warning(
+          "Topic function returned invalid format: #{inspect(other)}. Expected string or list of strings."
+        )
+
+        []
+    end
+  rescue
+    error ->
+      Logger.warning("Topic function failed: #{inspect(error)}")
+      []
+  end
+
+  defp fill_template({module, opts}, notification, _delimiter, _previous_values?) do
+    case module.generate_topics(notification, opts) do
+      topics when is_list(topics) ->
+        Enum.filter(topics, &is_binary/1)
+
+      topic when is_binary(topic) ->
+        [topic]
+
+      other ->
+        Logger.warning(
+          "Topic generator #{inspect(module)} returned invalid format: #{inspect(other)}. Expected list of strings."
+        )
+
+        []
+    end
+  rescue
+    error ->
+      Logger.warning("Topic generator #{inspect(module)} failed: #{inspect(error)}")
+      []
+  end
 
   defp fill_template(topic, notification, delimiter, previous_values?) do
     topic
