@@ -66,6 +66,29 @@ end
 
 In the example above, you can provide `%{name: "a name", description: "a description"}` to both the `:create` and `:update` actions, but only `%{something_else: "some_value"}` to `:special_update`.
 
+#### Using module attributes for action specific accept lists
+
+You can also use module attributes to define the accept list.  This is useful if you have a lot of attributes and different variations for different actions.
+
+```elixir
+@accepts_special_update [:name, :description, :foo, :bar, :baz]
+
+@accepts_super_special_update @accepts_special_update ++ [:something_else, :another_thing]
+
+actions do
+  default_accept [:name, :description]
+
+  create :create
+  update :update
+
+  update :special_update do
+    accept @accepts_special_update
+  end
+end
+```
+
+This is extremely simple example
+
 ## Context
 
 There are two kinds of contexts in Ash:
