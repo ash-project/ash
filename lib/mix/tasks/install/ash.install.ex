@@ -48,8 +48,8 @@ if Code.ensure_loaded?(Igniter) do
     These installation instructions apply both to new projects and existing ones.
     """
 
-    @skip_protocl_consolidation """
-    To avoid warnings about protocol consolidation when recompiling in dev, we 
+    @skip_protocol_consolidation """
+    To avoid warnings about protocol consolidation when recompiling in dev, we
     set protocolc onsolidation to happen only in non-dev environments.
     """
 
