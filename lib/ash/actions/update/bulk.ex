@@ -63,7 +63,8 @@ defmodule Ash.Actions.Update.Bulk do
         changeset = opts[:atomic_changeset] ->
           changeset
 
-        Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
+        Ash.DataLayer.data_layer_can?(query.resource, :update_query) &&
+            Ash.DataLayer.data_layer_can?(query.resource, :expr_error) ->
           private_context = Map.new(Keyword.take(opts, [:actor, :tenant, :authorize]))
 
           opts =
@@ -1096,7 +1097,8 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp set_strategy(opts, resource, inputs_is_enumerable? \\ false) do
     opts =
-      if Ash.DataLayer.data_layer_can?(resource, :update_query) do
+      if Ash.DataLayer.data_layer_can?(resource, :update_query) &&
+           Ash.DataLayer.data_layer_can?(resource, :expr_error) do
         opts
       else
         Keyword.put(opts, :strategy, [:stream])
@@ -1142,7 +1144,8 @@ defmodule Ash.Actions.Update.Bulk do
             read_action.manual ->
               {:not_atomic, "Manual read actions cannot be updated atomically"}
 
-            Ash.DataLayer.data_layer_can?(resource, :update_query) ->
+            Ash.DataLayer.data_layer_can?(resource, :update_query) &&
+                Ash.DataLayer.data_layer_can?(resource, :expr_error) ->
               opts =
                 Keyword.update(
                   opts,
@@ -3192,6 +3195,19 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp validate_batch_atomically(validation, batch, validation_context, context, actor) do
     Enum.map(batch, fn changeset ->
+      validation = %{
+        validation
+        | opts:
+            templated_opts(
+              validation.opts,
+              actor,
+              changeset.tenant,
+              changeset.arguments,
+              changeset.context,
+              changeset
+            )
+      }
+
       case Ash.Changeset.split_atomic_conditions(
              validation,
              changeset,

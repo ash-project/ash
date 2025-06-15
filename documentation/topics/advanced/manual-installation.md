@@ -47,6 +47,10 @@ Update `.formatter.exs`:
   ]
 ```
 
+## Skip protocol consolidation
+To avoid warnings about protocol consolidation when recompiling in dev, we
+set protocolc onsolidation to happen only in non-dev environments.
+
 ## Setup The Formatter
 Configure the DSL auto-formatter. This tells the formatter to remove excess parentheses
 and how to sort sections in your Ash.Resource & Ash.Domain modules for consistency.

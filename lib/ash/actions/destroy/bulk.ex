@@ -827,7 +827,8 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp set_strategy(opts, resource, inputs_is_enumerable? \\ false) do
     opts =
-      if Ash.DataLayer.data_layer_can?(resource, :update_query) do
+      if Ash.DataLayer.data_layer_can?(resource, :update_query) &&
+           Ash.DataLayer.data_layer_can?(resource, :expr_error) do
         opts
       else
         Keyword.put(opts, :strategy, [:stream])
