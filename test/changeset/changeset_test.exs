@@ -1357,4 +1357,28 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     assert :published == updated_resource.publication_status
   end
+
+  describe "force_change_attribute" do
+    test "it changes the attribute to a value" do
+      post = Ash.Changeset.for_create(Post, :create) |> Ash.create!()
+
+      changeset =
+        post
+      |> Ash.Changeset.for_update(:update, %{})
+      |> Ash.Changeset.force_change_attribute(:title, "foo")
+
+      assert changeset.attributes == %{title: "foo"}
+    end
+
+    test "it sets the attribute to `nil`" do
+      post = Ash.Changeset.for_create(Post, :create) |> Ash.create!()
+
+      changeset =
+        post
+      |> Ash.Changeset.for_update(:update, %{})
+      |> Ash.Changeset.force_change_attribute(:title, nil)
+
+      assert changeset.attributes == %{title: nil}
+    end
+  end
 end
