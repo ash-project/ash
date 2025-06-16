@@ -142,7 +142,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
 
   test "a changeset can be fully atomic" do
     changeset =
-      Ash.Changeset.fully_atomic_changeset(Author, :with_validation, %{name: "fred weasly"},
+      Ash.Changeset.fully_atomic_changeset(Author, :with_validation, %{name: "fred"},
         eager?: false
       )
 
