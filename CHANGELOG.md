@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.5.21](https://github.com/ash-project/ash/compare/v3.5.20...v3.5.21) (2025-06-16)
+
+
+
+
+### Bug Fixes:
+
+* support read actions and arguments in Ash.Generator.action_input/3 (#2137) by [@barnabasJ](https://github.com/barnabasJ)
+
+* combination_of typespec (#2135) by [@barnabasJ](https://github.com/barnabasJ)
+
+### Improvements:
+
+* allow update_query when `expr_error` is nto supported by [@zachdaniel](https://github.com/zachdaniel)
+
+* only require atomicity when update_query *and* expr_error supported by [@zachdaniel](https://github.com/zachdaniel)
+
+* make installer avoid protocol consolidation by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.20](https://github.com/ash-project/ash/compare/v3.5.19...v3.5.20) (2025-06-13)
 
 
