@@ -80,6 +80,7 @@ defmodule Ash.Changeset do
     relationships: %{},
     select: nil,
     load: [],
+    calculations: %{},
     valid?: true
   ]
 
@@ -140,6 +141,13 @@ defmodule Ash.Changeset do
           empty()
         end
 
+      calculations =
+        if changeset.calculations && changeset.calculations != %{} do
+          concat("calculations: ", to_doc(changeset.calculations, opts))
+        else
+          empty()
+        end
+
       atomics =
         if Enum.empty?(changeset.atomics) do
           empty()
@@ -183,7 +191,8 @@ defmodule Ash.Changeset do
           context,
           concat("valid?: ", to_doc(changeset.valid?, opts)),
           select,
-          load
+          load,
+          calculations
         ],
         ">",
         opts,
@@ -685,6 +694,114 @@ defmodule Ash.Changeset do
     }
 
     Enum.reduce(query.errors, changeset, &add_error(&2, &1))
+  end
+
+  @doc """
+  Adds a calculation to the changeset.
+
+  Calculations added via this function will be executed during the action.
+
+  ## Examples
+
+      iex> calculation_module = fn records, _, %{arguments: %{separator: separator}} ->
+      ...>   Enum.map(records, fn record ->
+      ...>     Enum.map_join([:first_name, :last_name], separator, fn key ->
+      ...>       to_string(Map.get(record, key))
+      ...>     end)
+      ...>   end)
+      ...> end
+      iex> changeset = Ash.Changeset.for_create(MyApp.User, :create, %{first_name: "John", last_name: "Doe"})
+      iex> changeset = Ash.Changeset.calculate(changeset, :full_name, :string, calculation_module, %{separator: " "})
+      iex> Map.has_key?(changeset.calculations, :full_name)
+      true
+
+  ## Parameters
+
+  - `changeset` - The changeset to add the calculation to
+  - `name` - The name to give the calculation
+  - `type` - The type of the calculation result
+  - `module_and_opts` - A calculation module, `{module, opts}`, or an expression
+  - `arguments` - Arguments to pass to the calculation module (defaults to `%{}`)
+  - `constraints` - Type constraints to apply to the result (defaults to `[]`)
+  - `extra_context` - Additional context like actor, tenant (defaults to `%{}`)
+  - `new_calculation_opts` - Additional options for the calculation (defaults to `[]`)
+
+  See `Ash.Query.calculate/8` for more details on the parameters.
+  """
+  @spec calculate(
+          t(),
+          atom(),
+          Ash.Type.t(),
+          module() | {module(), keyword()} | term(),
+          map(),
+          keyword(),
+          map(),
+          keyword()
+        ) :: t()
+  def calculate(
+        changeset,
+        name,
+        type,
+        module_and_opts,
+        arguments \\ %{},
+        constraints \\ [],
+        extra_context \\ %{},
+        new_calculation_opts \\ []
+      ) do
+    {module, opts} =
+      case module_and_opts do
+        {module, opts} ->
+          if Ash.Expr.expr?({module, opts}) do
+            {Ash.Resource.Calculation.Expression, expr: {module, opts}}
+          else
+            {module, opts}
+          end
+
+        module when is_atom(module) ->
+          {module, []}
+
+        value ->
+          {Ash.Resource.Calculation.Expression, expr: value}
+      end
+
+    case Ash.Query.Calculation.new(
+           name,
+           module,
+           opts,
+           type,
+           constraints,
+           Keyword.merge(
+             [arguments: arguments, source_context: changeset.context],
+             new_calculation_opts
+           )
+         ) do
+      {:ok, calculation} ->
+        context = %{
+          calculation.context
+          | actor: Map.get(extra_context, :actor),
+            tenant: Map.get(extra_context, :tenant),
+            tracer: Map.get(extra_context, :tracer),
+            authorize?: Map.get(extra_context, :authorize?)
+        }
+
+        calculation = %{calculation | context: context}
+
+        loads =
+          module.load(
+            changeset.resource |> Ash.Query.new(),
+            opts,
+            calculation.context
+          )
+          |> Ash.Actions.Helpers.validate_calculation_load!(module)
+          |> Enum.concat(List.wrap(calculation.required_loads))
+
+        calculation = %{calculation | required_loads: loads}
+
+        %{changeset | calculations: Map.put(changeset.calculations, name, calculation)}
+
+      {:error, error} ->
+        add_error(changeset, error)
+    end
   end
 
   @doc """

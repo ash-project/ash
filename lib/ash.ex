@@ -380,6 +380,10 @@ defmodule Ash do
       type: :any,
       doc: "A load statement to apply to records. Ignored if `return_records?` is not true."
     ],
+    calculate: [
+      type: :any,
+      doc: "Calculations to add to changesets. Can be a keyword list of {name, {module, opts}} or a function that receives and returns a changeset. Ignored if `return_records?` is not true."
+    ],
     select: [
       type: {:list, :atom},
       doc: "A select statement to apply to records. Ignored if `return_records?` is not true."
@@ -548,6 +552,10 @@ defmodule Ash do
                              load: [
                                type: :any,
                                doc: "A load statement to apply on the resulting records."
+                             ],
+                             calculate: [
+                               type: :any,
+                               doc: "Calculations to add to changesets. Can be a keyword list of {name, {module, opts}} or a function that receives and returns a changeset."
                              ]
                            ]
                            |> Spark.Options.merge(
