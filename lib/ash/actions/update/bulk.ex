@@ -1285,6 +1285,7 @@ defmodule Ash.Actions.Update.Bulk do
             tracer: opts[:tracer],
             atomic_changeset: atomic_changeset,
             load: opts[:load],
+            calculate: opts[:calculate],
             resource: opts[:resource],
             input_was_stream?: false,
             return_errors?: opts[:return_errors?],
@@ -1624,13 +1625,45 @@ defmodule Ash.Actions.Update.Bulk do
           changeset
         end
 
-      if load = opts[:load] do
-        Ash.Changeset.load(changeset, load)
+      changeset =
+        if load = opts[:load] do
+          Ash.Changeset.load(changeset, load)
+        else
+          changeset
+        end
+
+      if calculate = opts[:calculate] do
+        apply_calculate_option(changeset, calculate)
       else
         changeset
       end
     end)
   end
+
+  defp apply_calculate_option(changeset, calculate) when is_function(calculate, 1) do
+    calculate.(changeset)
+  end
+
+  defp apply_calculate_option(changeset, calculations) when is_list(calculations) do
+    Enum.reduce(calculations, changeset, fn
+      {name, {module, opts}}, acc ->
+        Ash.Changeset.calculate(acc, name, :any, module, opts)
+
+      {name, module}, acc when is_atom(module) ->
+        Ash.Changeset.calculate(acc, name, :any, module)
+
+      {name, {module, opts}, type}, acc ->
+        Ash.Changeset.calculate(acc, name, type, module, opts)
+
+      {name, module, type}, acc when is_atom(module) ->
+        Ash.Changeset.calculate(acc, name, type, module)
+
+      _, acc ->
+        acc
+    end)
+  end
+
+  defp apply_calculate_option(changeset, _), do: changeset
 
   defp pre_template_all_changes(action, resource, _type, base, actor, tenant) do
     action.changes
@@ -2770,6 +2803,19 @@ defmodule Ash.Actions.Update.Bulk do
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]
         )
+        |> case do
+          {:ok, records} ->
+            # Apply calculations if provided
+            if calculate = opts[:calculate] do
+              records = apply_calculations_to_records(records, calculate, domain, changeset.action, opts)
+              {:ok, records}
+            else
+              {:ok, records}
+            end
+
+          other ->
+            other
+        end
         |> Ash.Actions.Helpers.select(changeset)
 
       other ->
@@ -3436,5 +3482,23 @@ defmodule Ash.Actions.Update.Bulk do
       action ->
         Ash.Resource.Info.action(resource, action)
     end
+  end
+
+  defp apply_calculations_to_records(records, calculate, domain, _action, opts) do
+    Enum.map(records, fn record ->
+      # Create a temporary changeset for the record to apply calculations
+      changeset =
+        record
+        |> Ash.Changeset.new()
+        |> apply_calculate_option(calculate)
+
+      # Execute calculations on the record
+      case Ash.Actions.Helpers.execute_changeset_calculations(record, changeset, domain, opts) do
+        {:ok, record_with_calculations} ->
+          record_with_calculations
+        {:error, _error} ->
+          record  # Return original record if calculation fails
+      end
+    end)
   end
 end

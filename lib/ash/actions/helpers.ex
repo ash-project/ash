@@ -728,7 +728,14 @@ defmodule Ash.Actions.Helpers do
 
   def load({:ok, result, instructions}, changeset, domain, opts) do
     if changeset.load in [nil, []] do
-      {:ok, result, instructions}
+      execute_changeset_calculations(result, changeset, domain, opts)
+      |> case do
+        {:ok, result_with_calculations} ->
+          {:ok, result_with_calculations, instructions}
+
+        {:error, error} ->
+          {:error, error}
+      end
     else
       query =
         changeset.resource
@@ -738,7 +745,13 @@ defmodule Ash.Actions.Helpers do
 
       case Ash.load(result, query, Keyword.put(opts, :domain, domain)) do
         {:ok, result} ->
-          {:ok, result, instructions}
+          case execute_changeset_calculations(result, changeset, domain, opts) do
+            {:ok, result_with_calculations} ->
+              {:ok, result_with_calculations, instructions}
+
+            {:error, error} ->
+              {:error, error}
+          end
 
         {:error, error} ->
           {:error, error}
@@ -748,7 +761,14 @@ defmodule Ash.Actions.Helpers do
 
   def load({:ok, result}, changeset, domain, opts) do
     if changeset.load in [nil, []] do
-      {:ok, result, %{}}
+      execute_changeset_calculations(result, changeset, domain, opts)
+      |> case do
+        {:ok, result_with_calculations} ->
+          {:ok, result_with_calculations, %{}}
+
+        {:error, error} ->
+          {:error, error}
+      end
     else
       query =
         changeset.resource
@@ -758,7 +778,13 @@ defmodule Ash.Actions.Helpers do
 
       case Ash.load(result, query, Keyword.put(opts, :domain, domain)) do
         {:ok, result} ->
-          {:ok, result, %{}}
+          case execute_changeset_calculations(result, changeset, domain, opts) do
+            {:ok, result_with_calculations} ->
+              {:ok, result_with_calculations, %{}}
+
+            {:error, error} ->
+              {:error, error}
+          end
 
         {:error, error} ->
           {:error, error}
@@ -973,5 +999,100 @@ defmodule Ash.Actions.Helpers do
     |> Map.new(fn attribute ->
       {attribute.name, %Ash.NotLoaded{field: attribute.name, type: :attribute}}
     end)
+  end
+
+  def execute_changeset_calculations(result, changeset, domain, opts) do
+    if changeset.calculations == %{} do
+      {:ok, result}
+    else
+      calculations = Map.values(changeset.calculations)
+      records = List.wrap(result)
+
+      case run_changeset_calculations(calculations, records, changeset, domain, opts) do
+        {:ok, records_with_calculations} ->
+          case result do
+            record when not is_list(record) -> {:ok, List.first(records_with_calculations)}
+            _ -> {:ok, records_with_calculations}
+          end
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+  end
+
+  defp run_changeset_calculations(calculations, records, _changeset, domain, opts) do
+    Enum.reduce_while(calculations, {:ok, records}, fn calculation, {:ok, current_records} ->
+      case run_changeset_calculation(calculation, current_records, domain, opts) do
+        {:ok, updated_records} ->
+          {:cont, {:ok, updated_records}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  defp run_changeset_calculation(calculation, records, domain, opts) do
+    context = %{
+      calculation.context
+      | domain: domain,
+        actor: opts[:actor],
+        tenant: opts[:tenant],
+        tracer: opts[:tracer],
+        authorize?: opts[:authorize?]
+    }
+
+    opts_for_calculation =
+      Ash.Expr.fill_template(
+        calculation.opts,
+        actor: context.actor,
+        tenant: context.tenant,
+        arguments: context.arguments,
+        context: context.source_context
+      )
+
+    try do
+      case calculation.module.calculate(records, opts_for_calculation, context) do
+        results when is_list(results) ->
+          if length(results) == length(records) do
+            updated_records =
+              Enum.zip(records, results)
+              |> Enum.map(fn {record, calc_result} ->
+                Map.update!(record, :calculations, fn calcs ->
+                  Map.put(calcs || %{}, calculation.name, calc_result)
+                end)
+              end)
+
+            {:ok, updated_records}
+          else
+            {:error, "Calculation #{calculation.name} returned #{length(results)} results for #{length(records)} records"}
+          end
+
+        {:ok, results} when is_list(results) ->
+          if length(results) == length(records) do
+            updated_records =
+              Enum.zip(records, results)
+              |> Enum.map(fn {record, calc_result} ->
+                Map.update!(record, :calculations, fn calcs ->
+                  Map.put(calcs || %{}, calculation.name, calc_result)
+                end)
+              end)
+
+            {:ok, updated_records}
+          else
+            {:error, "Calculation #{calculation.name} returned #{length(results)} results for #{length(records)} records"}
+          end
+
+        {:error, error} ->
+          {:error, error}
+
+        other ->
+          {:error, "Invalid calculation result from #{calculation.name}: #{inspect(other)}"}
+      end
+    rescue
+      error ->
+        {:error, Exception.format(:error, error, __STACKTRACE__)}
+    end
   end
 end

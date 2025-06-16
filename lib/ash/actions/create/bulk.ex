@@ -1455,7 +1455,14 @@ defmodule Ash.Actions.Create.Bulk do
             )
             |> case do
               {:ok, records} ->
-                Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])
+                records = Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])
+
+                # Apply calculations if provided
+                if calculate = opts[:calculate] do
+                  apply_calculations_to_records(records, calculate, domain, action, opts)
+                else
+                  records
+                end
 
               {:error, error} ->
                 store_error(ref, error, opts)
@@ -1776,4 +1783,47 @@ defmodule Ash.Actions.Create.Bulk do
         end
     end
   end
+
+  defp apply_calculations_to_records(records, calculate, domain, _action, opts) do
+    Enum.map(records, fn record ->
+      # Create a temporary changeset for the record to apply calculations
+      changeset =
+        record
+        |> Ash.Changeset.new()
+        |> apply_calculate_option(calculate)
+
+      # Execute calculations on the record
+      case Ash.Actions.Helpers.execute_changeset_calculations(record, changeset, domain, opts) do
+        {:ok, record_with_calculations} ->
+          record_with_calculations
+        {:error, _error} ->
+          record  # Return original record if calculation fails
+      end
+    end)
+  end
+
+  defp apply_calculate_option(changeset, calculate) when is_function(calculate, 1) do
+    calculate.(changeset)
+  end
+
+  defp apply_calculate_option(changeset, calculations) when is_list(calculations) do
+    Enum.reduce(calculations, changeset, fn
+      {name, {module, opts}}, acc ->
+        Ash.Changeset.calculate(acc, name, :any, module, opts)
+
+      {name, module}, acc when is_atom(module) ->
+        Ash.Changeset.calculate(acc, name, :any, module)
+
+      {name, {module, opts}, type}, acc ->
+        Ash.Changeset.calculate(acc, name, type, module, opts)
+
+      {name, module, type}, acc when is_atom(module) ->
+        Ash.Changeset.calculate(acc, name, type, module)
+
+      _, acc ->
+        acc
+    end)
+  end
+
+  defp apply_calculate_option(changeset, _), do: changeset
 end

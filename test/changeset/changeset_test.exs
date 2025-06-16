@@ -5,6 +5,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
   alias Ash.Test.Domain, as: Domain
 
   require Ash.Query
+  import Ash.Expr
 
   defmodule Slugify do
     use Ash.Resource.Change
@@ -1530,6 +1531,285 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Ash.Changeset.force_change_attribute(:title, nil)
 
       assert changeset.attributes == %{title: nil}
+    end
+  end
+
+  describe "calculate/8" do
+    defmodule SimpleCalculation do
+      use Ash.Resource.Calculation
+
+      def load(_, _, _), do: []
+
+      def calculate(records, _, %{arguments: %{prefix: prefix}}) do
+        Enum.map(records, fn record ->
+          "#{prefix}: #{record.name}"
+        end)
+      end
+    end
+
+    test "adds calculation to changeset.calculations" do
+      changeset =
+        Tag
+        |> Ash.Changeset.for_create(:create, %{name: "test"})
+        |> Ash.Changeset.calculate(:prefixed_name, :string, SimpleCalculation, %{prefix: "Tag"})
+
+      assert Map.has_key?(changeset.calculations, :prefixed_name)
+      calculation = changeset.calculations[:prefixed_name]
+      assert calculation.name == :prefixed_name
+      assert calculation.type == :string
+      assert calculation.module == SimpleCalculation
+    end
+
+    test "handles calculation with no arguments" do
+      defmodule NoArgCalculation do
+        use Ash.Resource.Calculation
+
+        def load(_, _, _), do: []
+
+        def calculate(records, _, _) do
+          Enum.map(records, fn _record -> "constant" end)
+        end
+      end
+
+      changeset =
+        Tag
+        |> Ash.Changeset.for_create(:create, %{name: "test"})
+        |> Ash.Changeset.calculate(:constant_value, :string, NoArgCalculation)
+
+      assert Map.has_key?(changeset.calculations, :constant_value)
+    end
+
+    test "handles expression-based calculations" do
+      changeset =
+        Tag
+        |> Ash.Changeset.for_create(:create, %{name: "test"})
+        |> Ash.Changeset.calculate(:constant_calc, :string, expr("constant_value"))
+
+      assert Map.has_key?(changeset.calculations, :constant_calc)
+      calculation = changeset.calculations[:constant_calc]
+      assert calculation.module == Ash.Resource.Calculation.Expression
+    end
+
+    test "handles {module, opts} format" do
+      changeset =
+        Tag
+        |> Ash.Changeset.for_create(:create, %{name: "test"})
+        |> Ash.Changeset.calculate(:prefixed_name, :string, {SimpleCalculation, []}, %{
+          prefix: "Tag"
+        })
+
+      assert Map.has_key?(changeset.calculations, :prefixed_name)
+      calculation = changeset.calculations[:prefixed_name]
+      assert calculation.module == SimpleCalculation
+    end
+
+    test "accumulates calculation errors" do
+      defmodule BadCalculation do
+        # This will cause an error because it doesn't use Ash.Resource.Calculation
+        def init(_), do: {:error, "Bad calculation module"}
+      end
+
+      changeset =
+        Tag
+        |> Ash.Changeset.for_create(:create, %{name: "test"})
+        |> Ash.Changeset.calculate(:invalid_calc, :string, BadCalculation)
+
+      # Should have errors due to invalid calculation module
+      assert length(changeset.errors) > 0
+      assert not changeset.valid?
+    end
+
+    test "executes calculations during create action" do
+      # This test verifies that calculations actually run and produce results
+      tag =
+        Tag
+        |> Ash.Changeset.for_create(:create, %{name: "test"})
+        |> Ash.Changeset.calculate(:prefixed_name, :string, SimpleCalculation, %{prefix: "Executed"})
+        |> Ash.create!()
+
+      # Verify that the calculation was executed and the result is attached
+      assert Map.has_key?(tag.calculations, :prefixed_name)
+      assert tag.calculations[:prefixed_name] == "Executed: test"
+    end
+
+    test "executes multiple calculations during action" do
+      defmodule LengthCalculation do
+        use Ash.Resource.Calculation
+
+        def load(_, _, _), do: []
+
+        def calculate(records, _, _) do
+          Enum.map(records, fn record ->
+            String.length(record.name)
+          end)
+        end
+      end
+
+      tag =
+        Tag
+        |> Ash.Changeset.for_create(:create, %{name: "hello"})
+        |> Ash.Changeset.calculate(:prefixed_name, :string, SimpleCalculation, %{prefix: "Multi"})
+        |> Ash.Changeset.calculate(:name_length, :integer, LengthCalculation)
+        |> Ash.create!()
+
+      # Verify both calculations were executed
+      assert Map.has_key?(tag.calculations, :prefixed_name)
+      assert Map.has_key?(tag.calculations, :name_length)
+      assert tag.calculations[:prefixed_name] == "Multi: hello"
+      assert tag.calculations[:name_length] == 5
+    end
+
+    test "executes calculations only (no loads) during action" do
+      # Test that calculations work when there are no loads
+      tag =
+        Tag
+        |> Ash.Changeset.for_create(:create, %{name: "test"})
+        |> Ash.Changeset.calculate(:prefixed_name, :string, SimpleCalculation, %{prefix: "NoLoad"})
+        |> Ash.create!()
+
+      # Verify that the calculation was executed
+      assert Map.has_key?(tag.calculations, :prefixed_name)
+      assert tag.calculations[:prefixed_name] == "NoLoad: test"
+    end
+
+    test "executes calculations during update action" do
+      # Create a tag first
+      tag = Tag |> Ash.Changeset.for_create(:create, %{name: "original"}) |> Ash.create!()
+
+      # Update with calculation
+      updated_tag =
+        tag
+        |> Ash.Changeset.for_update(:update, %{name: "updated"})
+        |> Ash.Changeset.calculate(:prefixed_name, :string, SimpleCalculation, %{prefix: "Updated"})
+        |> Ash.update!()
+
+      # Verify that the calculation was executed with the new data
+      assert Map.has_key?(updated_tag.calculations, :prefixed_name)
+      assert updated_tag.calculations[:prefixed_name] == "Updated: updated"
+    end
+
+    test "executes calculations during destroy action" do
+      # Create a tag first
+      tag = Tag |> Ash.Changeset.for_create(:create, %{name: "to_delete"}) |> Ash.create!()
+
+      # Destroy with calculation - destroy returns :ok by default, not the record
+      result =
+        tag
+        |> Ash.Changeset.for_destroy(:destroy)
+        |> Ash.Changeset.calculate(:prefixed_name, :string, SimpleCalculation, %{prefix: "Destroyed"})
+        |> Ash.destroy()
+
+      # Verify that the destroy succeeded (calculations are executed internally)
+      assert :ok = result
+    end
+
+    test "executes calculations during bulk create with :calculate option" do
+      # Test bulk create with calculations using the new calculate option
+      results = Ash.bulk_create!([
+        %{name: "bulk1"},
+        %{name: "bulk2"}
+      ], Tag, :create,
+        calculate: [
+          {:prefixed_name, {SimpleCalculation, %{prefix: "Bulk"}}, :string}
+        ],
+        return_records?: true
+      )
+
+      # Verify calculations were executed for all records
+      assert length(results.records) == 2
+
+      # Verify calculations were executed and computed the exact expected values
+      for record <- results.records do
+        assert Map.has_key?(record.calculations, :prefixed_name)
+      end
+
+      expected_values = ["Bulk: bulk1", "Bulk: bulk2"]
+      actual_values = Enum.map(results.records, & &1.calculations[:prefixed_name])
+      assert Enum.sort(actual_values) == Enum.sort(expected_values)
+    end
+
+    test "executes calculations during bulk update with :calculate option" do
+      # Create tags first
+      tag1 = Tag |> Ash.Changeset.for_create(:create, %{name: "bulk_update1"}) |> Ash.create!()
+      tag2 = Tag |> Ash.Changeset.for_create(:create, %{name: "bulk_update2"}) |> Ash.create!()
+
+      # Bulk update with calculations using the new calculate option
+      results = Ash.bulk_update!([tag1, tag2], :update, %{name: "updated"},
+        calculate: [
+          {:prefixed_name, {SimpleCalculation, %{prefix: "BulkUpdate"}}, :string}
+        ],
+        return_records?: true
+      )
+
+      # Verify calculations were executed for all records
+      assert length(results.records) == 2
+
+      # Verify calculations were executed and computed the exact expected values
+      for record <- results.records do
+        assert record.name == "updated"
+        assert Map.has_key?(record.calculations, :prefixed_name)
+        assert record.calculations[:prefixed_name] == "BulkUpdate: updated"
+      end
+    end
+
+    test "executes calculations during bulk destroy with :calculate option" do
+      # Create tags first
+      tag1 = Tag |> Ash.Changeset.for_create(:create, %{name: "bulk_destroy1"}) |> Ash.create!()
+      tag2 = Tag |> Ash.Changeset.for_create(:create, %{name: "bulk_destroy2"}) |> Ash.create!()
+
+      # Bulk destroy with calculations using the new calculate option
+      results = Ash.bulk_destroy!([tag1, tag2], :destroy, %{},
+        calculate: [
+          {:prefixed_name, {SimpleCalculation, %{prefix: "BulkDestroy"}}, :string}
+        ],
+        return_records?: true
+      )
+
+      # Verify calculations were executed for all destroyed records
+      assert length(results.records) == 2
+
+      # Verify calculations were executed and computed the exact expected values
+      for record <- results.records do
+        assert Map.has_key?(record.calculations, :prefixed_name)
+      end
+
+      expected_values = ["BulkDestroy: bulk_destroy1", "BulkDestroy: bulk_destroy2"]
+      actual_values = Enum.map(results.records, & &1.calculations[:prefixed_name])
+      assert Enum.sort(actual_values) == Enum.sort(expected_values)
+    end
+
+    test "calculations work with complex data types and validation" do
+      defmodule ComplexCalculation do
+        use Ash.Resource.Calculation
+
+        def load(_, _, _), do: []
+
+        def calculate(records, _opts, %{arguments: %{multiplier: multiplier}}) do
+          Enum.map(records, fn record ->
+            %{
+              original_name: record.name,
+              length: String.length(record.name),
+              multiplied_length: String.length(record.name) * multiplier,
+              calculated_at: DateTime.utc_now()
+            }
+          end)
+        end
+      end
+
+      tag =
+        Tag
+        |> Ash.Changeset.for_create(:create, %{name: "complex"})
+        |> Ash.Changeset.calculate(:complex_data, :map, ComplexCalculation, %{multiplier: 3})
+        |> Ash.create!()
+
+      # Verify complex calculation result
+      assert Map.has_key?(tag.calculations, :complex_data)
+      complex_result = tag.calculations[:complex_data]
+
+      assert complex_result.original_name == "complex"
+      assert complex_result.length == 7
+      assert complex_result.multiplied_length == 21
+      assert %DateTime{} = complex_result.calculated_at
     end
   end
 end
