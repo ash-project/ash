@@ -63,8 +63,7 @@ defmodule Ash.Actions.Update.Bulk do
         changeset = opts[:atomic_changeset] ->
           changeset
 
-        Ash.DataLayer.data_layer_can?(query.resource, :update_query) &&
-            Ash.DataLayer.data_layer_can?(query.resource, :expr_error) ->
+        Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
           private_context = Map.new(Keyword.take(opts, [:actor, :tenant, :authorize]))
 
           opts =
@@ -1097,9 +1096,12 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp set_strategy(opts, resource, inputs_is_enumerable? \\ false) do
     opts =
-      if Ash.DataLayer.data_layer_can?(resource, :update_query) &&
-           Ash.DataLayer.data_layer_can?(resource, :expr_error) do
-        opts
+      if Ash.DataLayer.data_layer_can?(resource, :update_query) do
+        if Ash.DataLayer.data_layer_can?(resource, :expr_error) do
+          opts
+        else
+          Keyword.put_new(opts, :strategy, [:stream, :atomic_batches, :atomic])
+        end
       else
         Keyword.put(opts, :strategy, [:stream])
       end
@@ -1144,8 +1146,7 @@ defmodule Ash.Actions.Update.Bulk do
             read_action.manual ->
               {:not_atomic, "Manual read actions cannot be updated atomically"}
 
-            Ash.DataLayer.data_layer_can?(resource, :update_query) &&
-                Ash.DataLayer.data_layer_can?(resource, :expr_error) ->
+            Ash.DataLayer.data_layer_can?(resource, :update_query) ->
               opts =
                 Keyword.update(
                   opts,

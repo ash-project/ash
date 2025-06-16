@@ -1385,18 +1385,81 @@ defmodule Ash.Changeset do
   defp atomic_with_changeset(other, _), do: other
 
   defp validate_atomically(changeset, condition_expr, error_expr) do
-    if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
-      %{
-        changeset
-        | atomic_validations: [{condition_expr, error_expr} | changeset.atomic_validations]
-      }
-    else
-      {:not_atomic,
-       """
-       data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error.
+    condition_expr =
+      Ash.Expr.fill_template(
+        condition_expr,
+        source_context: changeset.context,
+        actor: changeset.context.private[:actor],
+        tenant: changeset.to_tenant,
+        args: changeset.arguments,
+        context: changeset.context,
+        changeset: changeset
+      )
 
-       Validation #{inspect(error_expr)} with condition #{inspect(condition_expr)}
-       """}
+    error_expr =
+      Ash.Expr.fill_template(
+        error_expr,
+        source_context: changeset.context,
+        actor: changeset.context.private[:actor],
+        tenant: changeset.to_tenant,
+        args: changeset.arguments,
+        context: changeset.context,
+        changeset: changeset
+      )
+
+    case Ash.Expr.eval(condition_expr,
+           resource: changeset.resource,
+           unknown_on_unknown_refs?: true
+         ) do
+      {:ok, falsey} when falsey in [false, nil] ->
+        changeset
+
+      {:ok, _} ->
+        case Ash.Expr.eval(error_expr,
+               resource: changeset.resource,
+               unknown_on_unknown_refs?: true
+             ) do
+          {:ok, _} ->
+            changeset
+
+          {:error, error} ->
+            Ash.Changeset.add_error(changeset, error)
+
+          :unknown ->
+            if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
+              %{
+                changeset
+                | atomic_validations: [
+                    {condition_expr, error_expr} | changeset.atomic_validations
+                  ]
+              }
+            else
+              {:not_atomic,
+               """
+               data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error.
+
+               Validation #{inspect(error_expr)} with condition #{inspect(condition_expr)}
+               """}
+            end
+        end
+
+      :unknown ->
+        if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
+          %{
+            changeset
+            | atomic_validations: [{condition_expr, error_expr} | changeset.atomic_validations]
+          }
+        else
+          {:not_atomic,
+           """
+           data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error.
+
+           Validation #{inspect(error_expr)} with condition #{inspect(condition_expr)}
+           """}
+        end
+
+      {:error, error} ->
+        Ash.Changeset.add_error(changeset, error)
     end
   end
 
