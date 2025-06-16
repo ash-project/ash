@@ -6364,20 +6364,26 @@ defmodule Ash.Changeset do
              {:ok, casted} <- handle_change(changeset, attribute, casted, constraints),
              {:ok, casted} <-
                Ash.Type.apply_constraints(attribute.type, casted, constraints) do
-          data_value =
-            if changeset.action_type != :create do
+          {data_value, has_data_value?} =
+            if changeset.action_type == :create do
+              {:ok, nil}
+            else
               case changeset.data do
+                %{__meta__: %{state: :built}} ->
+                  :error
+
                 %Ash.Changeset.OriginalDataNotAvailable{} ->
-                  nil
+                  :error
 
                 data ->
-                  Map.get(data, attribute.name)
+                  {:ok, Map.get(data, attribute.name)}
               end
             end
             |> case do
-              %Ash.ForbiddenField{} -> nil
-              %Ash.NotLoaded{} -> nil
-              v -> v
+              :error -> {nil, false}
+              {:ok, %Ash.ForbiddenField{}} -> {nil, false}
+              {:ok, %Ash.NotLoaded{}} -> {nil, false}
+              {:ok, v} -> {v, true}
             end
 
           cond do
@@ -6395,14 +6401,14 @@ defmodule Ash.Changeset do
                   defaults: changeset.defaults -- [attribute.name]
               }
 
-            is_nil(data_value) and is_nil(casted) ->
+            has_data_value? and is_nil(data_value) and is_nil(casted) ->
               %{
                 changeset
                 | attributes: Map.delete(changeset.attributes, attribute.name),
                   defaults: changeset.defaults -- [attribute.name]
               }
 
-            Ash.Type.equal?(attribute.type, casted, data_value) ->
+            has_data_value? and Ash.Type.equal?(attribute.type, casted, data_value) ->
               %{
                 changeset
                 | attributes: Map.delete(changeset.attributes, attribute.name),

@@ -13,6 +13,9 @@ defmodule Ash.Schema do
                       false
                   end)
 
+  # 4.0 *all attributes* need to default to `%Ash.NotLoaded{}`
+  # that way if you do `%Post{id: id}` you get `%Post{id: id, title: %Ash.NotLoaded{}, body: %Ash.NotLoaded{}}`
+  # for example
   defmacro define_schema do
     if Ash.Resource.Info.embedded?(__CALLER__.module) do
       quote unquote: false, bind_quoted: [old_ecto_attr?: @old_ecto_attr] do
