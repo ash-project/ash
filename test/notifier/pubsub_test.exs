@@ -13,6 +13,32 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
   end
 
+  defmodule SimpleTopicGenerator do
+    use Ash.Notifier.PubSub.TopicGenerator
+
+    @impl true
+    def generate_topics(notification, _opts) do
+      case notification.action.name do
+        :create -> ["generated:created:#{notification.data.id}"]
+        :update -> ["generated:updated:#{notification.data.name || "unnamed"}"]
+        _ -> ["generated:other"]
+      end
+    end
+  end
+
+  defmodule BareModuleGenerator do
+    use Ash.Notifier.PubSub.TopicGenerator
+
+    @impl true
+    def generate_topics(notification, opts) do
+      # Test that opts defaults to empty list when using bare module syntax
+      case notification.action.name do
+        :destroy -> ["bare:destroyed:#{notification.data.id}:opts_#{length(opts)}"]
+        _ -> ["bare:other"]
+      end
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -40,6 +66,20 @@ defmodule Ash.Test.Notifier.PubSubTest do
           notification.data.name == "george"
         end
       end
+
+      publish :create, fn notification ->
+        ["function:created:#{notification.data.id}"]
+      end
+
+      publish_all :create, fn notification ->
+        ["function_all:created:#{notification.data.id}"]
+      end
+
+      publish_all :update, {SimpleTopicGenerator, []},
+        event: "module_generated",
+        except: [:update_pkey]
+
+      publish_all :destroy, BareModuleGenerator, event: "bare_module"
 
       publish_all :update, ["baz", :id], event: "any_update", except: [:update_pkey]
       publish_all :update, ["fiz", :id], event: "any_update", except: [:doesnotexist]
@@ -244,5 +284,67 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
     message = "users.#{user.id}.created"
     assert_receive {:broadcast, ^message, "create", %Ash.Notifier.Notification{}}
+  end
+
+  test "publishing with a function-based topic" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{name: "test post"})
+      |> Ash.create!()
+
+    message = "post:function:created:#{post.id}"
+    assert_receive {:broadcast, ^message, "create", %Ash.Notifier.Notification{}}
+  end
+
+  test "publish_all with function-based topic" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{name: "test post"})
+      |> Ash.create!()
+
+    message = "post:function_all:created:#{post.id}"
+    assert_receive {:broadcast, ^message, "create", %Ash.Notifier.Notification{}}
+  end
+
+  test "publish_all with module-based topic generator" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{name: "test post"})
+      |> Ash.create!()
+
+    post
+    |> Ash.Changeset.for_update(:update, %{name: "updated post"})
+    |> Ash.update!()
+
+    message = "post:generated:updated:updated post"
+    assert_receive {:broadcast, ^message, "module_generated", %Ash.Notifier.Notification{}}
+  end
+
+  test "publish_all with module-based topic generator excludes specified actions" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{name: "test post"})
+      |> Ash.create!()
+
+    new_id = Ash.UUID.generate()
+
+    post
+    |> Ash.Changeset.for_update(:update_pkey, %{id: new_id})
+    |> Ash.update!()
+
+    message = "post:generated:updated:test post"
+    refute_receive {:broadcast, ^message, "module_generated", %Ash.Notifier.Notification{}}
+  end
+
+  test "publish_all with bare module syntax (no options tuple)" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{name: "test post"})
+      |> Ash.create!()
+
+    Ash.destroy!(post)
+
+    message = "post:bare:destroyed:#{post.id}:opts_0"
+    assert_receive {:broadcast, ^message, "bare_module", %Ash.Notifier.Notification{}}
   end
 end

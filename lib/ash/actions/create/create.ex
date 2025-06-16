@@ -21,6 +21,7 @@ defmodule Ash.Actions.Create do
     else
       {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
       changeset = Helpers.apply_opts_load(changeset, opts)
+      changeset = Ash.Notifier.PubSub.Helpers.add_topic_generator_loads(changeset)
 
       Ash.Tracer.span :action,
                       fn ->
