@@ -5159,7 +5159,7 @@ defmodule Ash.Changeset do
       * `:error`  - an error is returned indicating that a record would have been updated
       * `:no_match` - follows the `on_no_match` instructions with these records
       * `:missing` - follows the `on_missing` instructions with these records
-      * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
+      * `:unrelate` - the related item is not destroyed, but the data is "unrelated". The action should be:
         * `many_to_many` - the join resource row is destroyed
         * `has_many` - the `destination_attribute` (on the related record) is set to `nil`
         * `has_one` - the `destination_attribute` (on the related record) is set to `nil`
@@ -5183,7 +5183,7 @@ defmodule Ash.Changeset do
       * `{:destroy, :action_name, :join_resource_action_name}` - the record is destroyed using the specified action on the destination resource,
         but first the join resource is destroyed with its specified action
       * `:error`  - an error is returned indicating that a record would have been updated
-      * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
+      * `:unrelate` - the related item is not destroyed, but the data is "unrelated". The action should be:
         * `many_to_many` - the join resource row is destroyed
         * `has_many` - the `destination_attribute` (on the related record) is set to `nil`
         * `has_one` - the `destination_attribute` (on the related record) is set to `nil`
