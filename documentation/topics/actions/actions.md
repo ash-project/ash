@@ -273,3 +273,384 @@ end
 ```elixir
 Ash.Changeset.for_create(Resource, :create, %{}, context: %{ip_address: "<ip_address>"})
 ```
+
+## Action Lifecycle
+
+This section provides a comprehensive overview of the Ash resource action lifecycle, detailing when each phase executes in relation to database transactions.
+
+### Overview
+
+Ash resource actions follow a well-defined lifecycle that ensures proper data validation, transformation, and persistence. The lifecycle is divided into three main phases:
+
+- **Pre-Transaction Phase** - Operations before database transaction
+- **Transaction Phase** - Operations within database transaction  
+- **Post-Transaction Phase** - Operations after database transaction
+
+#### Important Notes:
+
+- **Query Actions**: Read queries do not currently have `before_transaction`, `after_transaction`, or `around_transaction` callbacks
+- **Around Action Behavior**: `around_action` hooks do not complete their "end" phase if the action fails
+- **Generic Actions**: Generic actions are left out because they currently do not support hooks of any kind, or preparations/changes/validations.
+
+### Complete Lifecycle Flow
+
+```mermaid
+graph TD
+    subgraph "Pre-Transaction Phase"
+        START["Action Invocation<br/>(Ash.create, Ash.read, etc.)"] --> PREP["Changeset/Query Creation"]
+        PREP --> AROUND_START["around_transaction (start)<br/>🚫 Not available for read/query actions"]
+        AROUND_START --> BEFORE_TRANS["before_transaction<br/>🚫 Not available for read/query actions"]
+    end
+    
+    subgraph "Transaction Phase"
+        TRANS_START["🔒 Transaction Begins"] --> ACTION_PREP["Action Preparations/Validations/Changes<br/>(In order of definition)"]
+        ACTION_PREP --> GLOBAL_PREP["Global Preparations/Validations/Changes<br/>(Resource-level, in order of definition)"]
+        GLOBAL_PREP --> AROUND_ACTION_START["around_action (start)"]
+        AROUND_ACTION_START --> BEFORE_ACTION["before_action"]
+        BEFORE_ACTION --> DATA_LAYER["💾 Data Layer Operation<br/>(Database interaction)"]
+        DATA_LAYER --> SUCCESS{"Success?"}
+        SUCCESS -->|Yes| AFTER_ACTION["after_action<br/>(Success only)"]
+        SUCCESS -->|No| ERROR_HANDLE["Error Handling"]
+        AFTER_ACTION --> AROUND_ACTION_END["around_action (end)<br/>✅ Only on success"]
+        ERROR_HANDLE --> TRANS_ROLLBACK["🔓 Transaction Rollback"]
+        AROUND_ACTION_END --> TRANS_COMMIT["🔓 Transaction Commit"]
+    end
+    
+    subgraph "Post-Transaction Phase"
+        AFTER_TRANS["after_transaction<br/>(Always runs - success/error)<br/>🚫 Not available for read/query actions"] --> AROUND_END["around_transaction (end)<br/>🚫 Not available for read/query actions"]
+        AROUND_END --> NOTIFICATIONS["Notifications<br/>(If enabled)"]
+        NOTIFICATIONS --> RESULT["Return Result"]
+    end
+    
+    %% Flow connections
+    BEFORE_TRANS --> TRANS_START
+    TRANS_COMMIT --> AFTER_TRANS
+    TRANS_ROLLBACK --> AFTER_TRANS
+```
+
+### Detailed Phase Breakdown
+
+#### Pre-Transaction Phase (Outside Database Transaction)
+
+##### 1. Action Invocation
+- **Entry point**: `Ash.create/2`, `Ash.update/2`, `Ash.read/2`, `Ash.destroy/2`
+- Initial setup and parameter validation
+
+##### 2. Changeset/Query Creation
+- Creates appropriate changeset or query structure
+- Applies initial transformations and validations
+
+##### 3. around_transaction (Start)
+- **When**: Before transaction begins
+- **Purpose**: Wrap entire transaction with setup/cleanup logic
+- **Use Cases**:
+  - External service setup
+  - Resource allocation
+  - Logging/monitoring setup
+- **Transaction Context**: Outside transaction
+- **Note**: Not available for query/read actions
+
+##### 4. before_transaction
+- **When**: Just before transaction starts
+- **Purpose**: Operations that must happen before database transaction
+- **Use Cases**:
+  - External API calls
+  - File system operations
+  - Cache warming
+  - Non-transactional preparations
+- **Transaction Context**: Outside transaction
+- **Note**: Not available for query/read actions
+
+#### Transaction Phase (Inside Database Transaction)
+
+##### 5. Transaction Begins 🔒
+- Database transaction is initiated
+- All subsequent operations until commit/rollback are atomic
+
+##### 6. Action Preparations/Validations/Changes
+- **When**: First operations inside transaction
+- **Purpose**: Execute action-specific preparations, validations, and changes
+- **Order**: Run in the order they are defined in the action (not grouped by type)
+- **Operations**:
+  - Action-level preparations (query modifications, filters, sorts)
+  - Action-level validations (business rules, constraints)
+  - Action-level changes (data transformations, attribute modifications)
+- **Transaction Context**: Inside transaction
+
+##### 7. Global Preparations/Validations/Changes
+- **When**: After action-level operations, before action hooks
+- **Purpose**: Execute resource-level preparations, validations, and changes
+- **Order**: Run in the order they are defined at the resource level (not grouped by type)
+- **Operations**:
+  - Resource-level preparations
+  - Resource-level validations
+  - Resource-level changes
+  - Global business logic
+- **Transaction Context**: Inside transaction
+
+##### 8. around_action (Start)
+- **When**: Just before data layer operation
+- **Purpose**: Wrap the actual database operation
+- **Use Cases**:
+  - Performance monitoring
+  - Debugging and development tools
+  - Advanced error handling
+  - Action timing
+- **Transaction Context**: Inside transaction
+- **Note**: Must call the callback function
+
+##### 9. before_action
+- **When**: Immediately before data layer operation
+- **Purpose**: Final modifications before database interaction
+- **Use Cases**:
+  - Last-minute data modifications
+  - Transactional side effects
+  - Audit logging
+  - Final validations
+- **Transaction Context**: Inside transaction
+
+##### 10. Data Layer Operation 💾
+- **When**: Core of the transaction
+- **Purpose**: Actual database interaction
+- **Operations**:
+  - INSERT, UPDATE, DELETE, SELECT operations
+  - Constraint enforcement
+  - Database-level validations
+  - Index updates
+- **Transaction Context**: Inside transaction
+
+##### 11. Success/Error Decision Point
+- Determines if the operation succeeded or failed
+- Affects which subsequent hooks are called
+
+##### 12. after_action (Success Path Only)
+- **When**: After successful data layer operation
+- **Purpose**: Post-success operations within transaction
+- **Use Cases**:
+  - Success-only side effects
+  - Transactional cleanup
+  - Related record updates
+  - Success logging
+- **Transaction Context**: Inside transaction
+- **Note**: Only runs on successful operations
+
+##### 13. Error Handling (Error Path)
+- **When**: After failed data layer operation
+- **Purpose**: Handle errors within transaction context
+- **Operations**:
+  - Error processing
+  - Rollback preparation
+  - Error logging
+- **Transaction Context**: Inside transaction
+
+##### 14. around_action (End)
+- **When**: After successful action completion only
+- **Purpose**: Cleanup and finalization within transaction
+- **Use Cases**:
+  - Resource cleanup
+  - Final transaction operations
+  - Monitoring completion
+- **Transaction Context**: Inside transaction
+- **Note**: This phase does NOT execute if the action fails
+
+##### 15. Transaction Commits/Rollbacks 🔓
+- **Success**: Transaction commits, changes are persisted
+- **Error**: Transaction rolls back, changes are discarded
+- End of transactional context
+
+#### Post-Transaction Phase (Outside Database Transaction)
+
+##### 16. after_transaction
+- **When**: After transaction completion (success or error)
+- **Purpose**: Operations that should happen regardless of outcome
+- **Use Cases**:
+  - External service notifications
+  - Cache invalidation
+  - Cleanup operations
+  - Logging (success and error cases)
+  - Retry mechanisms - can change error results to success
+- **Transaction Context**: Outside transaction
+- **Special Capability**: Can transform the final result (e.g., retry failed operations)
+- **Note**: Always runs, regardless of success/failure (not available for query/read actions)
+
+##### 17. around_transaction (End)
+- **When**: Final cleanup phase
+- **Purpose**: Complete the transaction wrapper
+- **Use Cases**:
+  - Resource deallocation
+  - Final cleanup
+  - Monitoring completion
+- **Transaction Context**: Outside transaction
+- **Note**: Not available for query/read actions
+
+##### 18. Notifications
+- **When**: After all hooks complete
+- **Purpose**: Broadcast events and notifications
+- **Operations**:
+  - PubSub notifications
+  - Event broadcasting
+  - External system integrations
+  - Webhook calls
+- **Transaction Context**: Outside transaction
+
+##### 19. Return Result
+- **Success**: Returns data with metadata
+- **Error**: Returns error details and context
+
+### Hook Execution Order
+
+The hooks execute in the following order (as of Ash 3.0+):
+
+#### For Create/Update/Destroy Actions:
+
+1. `around_transaction` (start)
+1. `before_transaction`
+1. Transaction begins
+1. Action preparations/validations/changes (in order of definition)
+1. Global preparations/validations/changes (in order of definition)
+1. `around_action` (start)
+1. `before_action`
+1. Data layer operation
+1. `after_action` (success only) OR Error handling
+1. `around_action` (end) - Only on success
+1. Transaction commits/rollbacks
+1. `after_transaction`
+1. `around_transaction` (end)
+
+#### For Read/Query Actions:
+
+1. Transaction begins (if applicable)
+1. Action preparations/validations/changes (in order of definition)
+1. Global preparations/validations/changes (in order of definition)
+1. `around_action` (start)
+1. `before_action`
+1. Data layer operation
+1. `after_action` (success only) OR Error handling
+1. `around_action` (end) - Only on success
+1. Transaction commits/rollbacks (if applicable)
+
+### Key Points
+
+#### Transaction Boundaries
+- **Outside Transaction**: `around_transaction`, `before_transaction`, `after_transaction` (not available for read/query actions)
+- **Inside Transaction**: Action preparations/validations/changes, Global preparations/validations/changes, `around_action`, `before_action`, `after_action`
+
+#### Error Handling
+- `after_action` only runs on successful operations
+- `around_action` (end) only runs on successful operations
+- `after_transaction` always runs (success and error) - not available for read/query actions
+- `after_transaction` can change the final result - can transform errors into successes (useful for retries)
+- Transaction rollback occurs automatically on errors
+
+#### Execution Order Details
+- **Preparations/Validations/Changes**: Run in the order they are defined, NOT grouped by type
+- Action-level preparations/validations/changes run first (in definition order)
+- Then global (resource-level) preparations/validations/changes run (in definition order)
+- **Hook Order Changes (Ash 3.0+)**: Before/after action hooks now run in the order they are added (not reverse order)
+- **Restriction**: `after_transaction` hooks cannot be added from within other lifecycle hooks
+
+#### Performance Considerations
+- Operations inside the transaction should be fast and focused
+- Long-running operations should be in `before_transaction` or `after_transaction`
+- Database connections are held during the entire transaction phase
+
+### Action Type Differences
+
+#### Create/Update/Destroy Actions
+- Have full lifecycle including all transaction hooks
+- Support `before_transaction`, `after_transaction`, `around_transaction`
+- Run in transactions by default, unless no hooks of any kind are added to the changeset.
+- Have complete error handling and rollback capabilities
+
+#### Read/Query Actions
+- Do not support `before_transaction`, `after_transaction`, or `around_transaction` hooks
+- Only support `before_action`, `after_action`, and `around_action` hooks
+- Do not run in transactions by default
+- Focus on data retrieval and filtering
+
+### Best Practices
+
+- Use `before_transaction` for external API calls (create/update/destroy only)
+- Use `before_action` for final data modifications
+- Use `after_action` for transactional side effects
+- Use `after_transaction` for external notifications (create/update/destroy only)
+- Use `after_transaction` for retry mechanisms and result transformation
+- Keep transaction phase operations fast and focused
+- Handle errors appropriately at each phase
+- Remember that `around_action` cleanup won't run on failures
+
+### Example Implementation
+
+```elixir
+defmodule MyApp.User do
+  use Ash.Resource
+
+  actions do
+    create :create do
+      accept [:name, :email]
+      argument :retries, :integer, default: 3, allow_nil?: false
+      
+      change before_transaction(fn changeset, _context ->
+        # External API call before transaction
+        case ExternalService.validate_email(changeset.attributes.email) do
+          :ok -> changeset
+          {:error, reason} -> Ash.Changeset.add_error(changeset, reason)
+        end
+      end)
+      
+      change before_action(fn changeset, _context ->
+        # Final modifications before database
+        Ash.Changeset.change_attribute(changeset, :created_at, DateTime.utc_now())
+      end)
+      
+      change after_action(fn changeset, result, _context ->
+        # Success-only operations within transaction
+        Logger.info("User created: #{result.id}")
+        {:ok, result}
+      end)
+      
+      change fn changeset, context ->
+        # Retry mechanism using after_transaction
+        if changeset.arguments[:retries] > 0 do
+          Ash.Changeset.after_transaction(changeset, fn 
+            changeset, {:ok, result} ->
+              # Success case - send notification and return result
+              NotificationService.send_welcome_email(result)
+              {:ok, result}
+            changeset, {:error, _error} ->
+              # Error case - retry with decremented counter
+              __MODULE__
+              |> Ash.Changeset.for_create(
+                changeset.action.name, 
+                Map.put(changeset.params, :retries, changeset.arguments.retries - 1), 
+                scope: context
+              )
+              |> Ash.create()
+          end)
+        else
+          # No retries left - add final after_transaction for cleanup
+          Ash.Changeset.after_transaction(changeset, fn changeset, result ->
+            case result do
+              {:ok, user} -> 
+                NotificationService.send_welcome_email(user)
+                result
+              error -> 
+                Logger.error("User creation failed after all retries")
+                error
+            end
+          end)
+        end
+      end
+    end
+  end
+end
+```
+
+#### Key Points from Example:
+- **Retry Logic**: The `after_transaction` hook can transform a failed result into a new attempt
+- **Result Transformation**: Failed operations can become successful ones through retries
+- **Context Preservation**: The retry maintains the original context and decrements the retry counter
+- **Conditional Behavior**: Different `after_transaction` hooks based on retry availability
+- **Final Cleanup**: Even after retries are exhausted, cleanup operations still occur
+
+This lifecycle ensures data consistency, proper error handling, and allows for complex business logic while maintaining transactional integrity.
