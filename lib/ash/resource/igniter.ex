@@ -183,7 +183,7 @@ if Code.ensure_loaded?(Igniter) do
                      :create_timestamp,
                      :update_timestamp
                    ],
-                   [2, 3],
+                   [1, 2, 3],
                    &Igniter.Code.Function.argument_equals?(&1, 0, name)
                  ) do
             {:ok, true}
