@@ -565,7 +565,7 @@ The hooks execute in the following order (as of Ash 3.0+):
 #### Read/Query Actions
 - Do not support `before_transaction`, `after_transaction`, or `around_transaction` hooks
 - Only support `before_action`, `after_action`, and `around_action` hooks
-- May or may not run in transactions depending on the data layer
+- Do not run in transactions by default
 - Focus on data retrieval and filtering
 
 ### Best Practices
