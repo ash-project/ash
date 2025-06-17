@@ -628,3 +628,74 @@ jobs:
         with:
           mix-env: dev
           hex-api-key: ${{secrets.HEX_API_KEY}}
+      - name: Extract release notes from CHANGELOG.md
+        id: extract-notes
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          
+          # Extract the section for this version from CHANGELOG.md
+          awk -v version="$VERSION" '
+            /^## \[v?[0-9]/ {
+              if (found) exit
+              if (index($0, "[v" version "]") || index($0, "[" version "]")) {
+                found = 1
+                next
+              }
+            }
+            found {
+              if (/^## \[v?[0-9]/) exit
+              print
+            }
+          ' CHANGELOG.md > release_notes.md
+          
+          # Check if notes were found
+          if [ -s release_notes.md ]; then
+            echo "has_notes=true" >> $GITHUB_OUTPUT
+            echo "Release notes extracted for version $VERSION"
+          else
+            echo "has_notes=false" >> $GITHUB_OUTPUT
+            echo "No release notes found for version $VERSION, will use auto-generated notes"
+          fi
+      - name: Create draft prerelease with changelog notes
+        if: ${{ (contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-pre')) && steps.extract-notes.outputs.has_notes == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gh release create \
+            --repo ${{ github.repository }} \
+            --title ${GITHUB_REF#refs/tags/} \
+            --prerelease \
+            --notes-file release_notes.md \
+            ${GITHUB_REF#refs/tags/}
+      - name: Create draft prerelease with generated notes
+        if: ${{ (contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-pre')) && steps.extract-notes.outputs.has_notes != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gh release create \
+            --repo ${{ github.repository }} \
+            --title ${GITHUB_REF#refs/tags/} \
+            --prerelease \
+            --generate-notes \
+            ${GITHUB_REF#refs/tags/}
+      - name: Create release with changelog notes
+        if: ${{ (!contains(github.ref, '-rc') && !contains(github.ref, '-beta') && !contains(github.ref, '-alpha') && !contains(github.ref, '-pre')) && steps.extract-notes.outputs.has_notes == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gh release create \
+            --repo ${{ github.repository }} \
+            --title ${GITHUB_REF#refs/tags/} \
+            --notes-file release_notes.md \
+            ${GITHUB_REF#refs/tags/}
+      - name: Create release with generated notes
+        if: ${{ (!contains(github.ref, '-rc') && !contains(github.ref, '-beta') && !contains(github.ref, '-alpha') && !contains(github.ref, '-pre')) && steps.extract-notes.outputs.has_notes != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gh release create \
+            --repo ${{ github.repository }} \
+            --title ${GITHUB_REF#refs/tags/} \
+            --generate-notes \
+            ${GITHUB_REF#refs/tags/}
