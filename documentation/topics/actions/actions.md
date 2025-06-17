@@ -559,7 +559,7 @@ The hooks execute in the following order (as of Ash 3.0+):
 #### Create/Update/Destroy Actions
 - Have full lifecycle including all transaction hooks
 - Support `before_transaction`, `after_transaction`, `around_transaction`
-- Typically run within database transactions
+- Run in transactions by default, unless no hooks of any kind are added to the changeset.
 - Have complete error handling and rollback capabilities
 
 #### Read/Query Actions
