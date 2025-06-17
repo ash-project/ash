@@ -290,6 +290,7 @@ Ash resource actions follow a well-defined lifecycle that ensures proper data va
 
 - **Query Actions**: Read queries do not currently have `before_transaction`, `after_transaction`, or `around_transaction` callbacks
 - **Around Action Behavior**: `around_action` hooks do not complete their "end" phase if the action fails
+- **Generic Actions**: Generic actions are left out because they currently do not support hooks of any kind, or preparations/changes/validations.
 
 ### Complete Lifecycle Flow
 
