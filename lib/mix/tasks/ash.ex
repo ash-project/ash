@@ -15,7 +15,6 @@ defmodule Mix.Tasks.Ash do
       $ mix ash --version
 
   """
-  alias ElixirLS.LanguageServer.Plugins.Phoenix
 
   @version Mix.Project.config()[:version]
 
@@ -32,7 +31,7 @@ defmodule Mix.Tasks.Ash do
     end
   end
 
-  defp general() do
+  defp general do
     Application.ensure_all_started(:ash)
     Mix.shell().info("Ash v#{Application.spec(:ash, :vsn)}")
     Mix.shell().info("Model your domain, derive the rest")
