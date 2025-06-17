@@ -389,7 +389,7 @@ jobs:
           task: igniter.upgrade --git-ci --yes
         if: github.event.pull_request.user.login == 'dependabot[bot]'
       - name: Commit Changes
-        uses: stefanzweifel/git-auto-commit-action@b863ae1933cb653a53c021fe36dbb774e1fb9403 # v5.2.0
+        uses: stefanzweifel/git-auto-commit-action@778341af668090896ca464160c2def5d1d1a3eb0 # v6.0.1
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         with:
           commit_message: "[dependabot skip] Apply Igniter Upgrades"
@@ -592,7 +592,7 @@ jobs:
           path: ${{ steps.build-crate.outputs.file-path }}
 
       - name: Publish archives and packages
-        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
           files: |
             ${{ steps.build-crate.outputs.file-path }}
