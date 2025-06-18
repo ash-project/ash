@@ -28,6 +28,14 @@ defmodule Ash.Error.Framework.PendingCodegen do
     ✅ Finished with your changes? Create final production-ready files:
 
            mix ash.codegen <describe_your_changes>
+
+    ‼️ Don't forget to run `mix ash.codegen` without the `--dev` flag before you
+       wrap up!
+
+       Add the following to your CI pipeline to ensure you've always generated up
+       to date files, and that no --dev files are left behind.
+
+           mix ash.codegen --check
     """
   end
 
