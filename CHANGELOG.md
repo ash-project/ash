@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.5.22](https://github.com/ash-project/ash/compare/v3.5.21...v3.5.22) (2025-06-18)
+
+
+
+
+### Bug Fixes:
+
+* template opts in conditions in atomic changes by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly detect existing timestamp attributes in igniter tasks by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* improve message for --dev migrations message by [@zachdaniel](https://github.com/zachdaniel)
+
+* add `mix ash` command by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle changes to `nil` for unknown attribute values by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.21](https://github.com/ash-project/ash/compare/v3.5.20...v3.5.21) (2025-06-16)
 
 
