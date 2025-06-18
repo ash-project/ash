@@ -624,16 +624,12 @@ jobs:
         if: ${{inputs.rustler-precompiled-module}}
         with:
           task: rustler_precompiled.download ${{inputs.rustler-precompiled-module}} --only-local --all --print
-      - uses: team-alembic/staple-actions/actions/mix-hex-publish@59199173e18eee6748b65d01626ef82d51c6e963 # main
-        with:
-          mix-env: dev
-          hex-api-key: ${{secrets.HEX_API_KEY}}
       - name: Extract release notes from CHANGELOG.md
         id: extract-notes
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           VERSION=${TAG_NAME#v}
-          
+
           # Extract the section for this version from CHANGELOG.md
           awk -v version="$VERSION" '
             /^## \[v?[0-9]/ {
@@ -648,7 +644,7 @@ jobs:
               print
             }
           ' CHANGELOG.md > release_notes.md
-          
+
           # Check if notes were found
           if [ -s release_notes.md ]; then
             echo "has_notes=true" >> $GITHUB_OUTPUT
@@ -699,3 +695,20 @@ jobs:
             --title ${GITHUB_REF#refs/tags/} \
             --generate-notes \
             ${GITHUB_REF#refs/tags/}
+      - name: Publish to Hex
+        env:
+          HEX_API_KEY: ${{secrets.HEX_API_KEY}}
+          MIX_ENV: dev
+        run: |
+          set +e  # Don't exit on error
+          output=$(mix hex.publish --yes 2>&1)
+          exit_code=$?
+          echo "$output"
+
+          # Check if the error is about modifying a release within one hour
+          if [[ $exit_code -ne 0 ]] && echo "$output" | grep -q "can only modify a release up to one hour"; then
+            echo "Ignoring error: Package was already published recently"
+            exit 0
+          else
+            exit $exit_code
+          fi
