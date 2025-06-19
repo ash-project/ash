@@ -467,12 +467,12 @@ jobs:
         with:
           mix-env: test
           task: ash_postgres.migrate
-        if: ${{inputs.postgres && inputs.ash_postgres && inputs.tenants}}
+        if: ${{inputs.postgres && inputs.ash_postgres}}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
           task: ash_postgres.migrate --tenants
-        if: ${{inputs.postgres && inputs.ash_postgres}}
+        if: ${{inputs.postgres && inputs.ash_postgres && inputs.tenants}}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
