@@ -32,6 +32,9 @@ on:
       postgres:
         type: boolean
         default: false
+      tenants:
+        type: boolean
+        default: true
       ash_postgres:
         type: boolean
         default: true
@@ -464,7 +467,7 @@ jobs:
         with:
           mix-env: test
           task: ash_postgres.migrate
-        if: ${{inputs.postgres && inputs.ash_postgres}}
+        if: ${{inputs.postgres && inputs.ash_postgres && inputs.tenants}}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
