@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.5.23](https://github.com/ash-project/ash/compare/v3.5.22...v3.5.23) (2025-06-19)
+
+
+
+
+### Bug Fixes:
+
+* set proper metadata key for bulk destroy changes by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't override tenant if manually set by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.22](https://github.com/ash-project/ash/compare/v3.5.21...v3.5.22) (2025-06-18)
 
 
