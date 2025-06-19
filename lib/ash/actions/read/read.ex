@@ -2589,7 +2589,7 @@ defmodule Ash.Actions.Read do
   defp add_tenant(data, query) do
     if Ash.Resource.Info.multitenancy_strategy(query.resource) do
       Enum.map(data, fn item ->
-        %{item | __metadata__: Map.put(item.__metadata__, :tenant, query.tenant)}
+        %{item | __metadata__: Map.put_new(item.__metadata__, :tenant, query.tenant)}
       end)
     else
       data
