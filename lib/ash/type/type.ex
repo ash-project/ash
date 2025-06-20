@@ -1286,11 +1286,22 @@ defmodule Ash.Type do
   end
 
   @doc false
+  defp remove_empty_items(term, constraints) do
+    empty_values = Keyword.get(constraints, :empty_values, [])
+
+    if Keyword.get(constraints, :remove_nil_items?, false) do
+      Enum.filter(term, &(&1 not in [nil | empty_values]))
+    else
+      Enum.filter(term, &(&1 not in empty_values))
+    end
+  end
+
+  @doc false
   def list_constraint_errors(term, constraints) do
     length =
       if Keyword.has_key?(constraints, :max_length) ||
            Keyword.has_key?(constraints, :min_length) do
-        length(term)
+        term |> remove_empty_items(constraints) |> length()
       else
         0
       end
