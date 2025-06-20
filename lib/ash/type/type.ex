@@ -1203,8 +1203,6 @@ defmodule Ash.Type do
   def apply_constraints({:array, type}, term, constraints) when is_list(term) do
     type = get_type(type)
 
-    term = remove_empty_items(term, constraints)
-
     list_constraint_errors = list_constraint_errors(term, constraints)
     item_constraints = item_constraints(constraints)
 
@@ -1306,6 +1304,8 @@ defmodule Ash.Type do
 
   @doc false
   def list_constraint_errors(term, constraints) do
+    term = remove_empty_items(term, constraints)
+
     length =
       if Keyword.has_key?(constraints, :max_length) ||
            Keyword.has_key?(constraints, :min_length) do
