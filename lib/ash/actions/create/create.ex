@@ -585,23 +585,31 @@ defmodule Ash.Actions.Create do
           changeset
       end
 
-    if changeset.tenant &&
-         Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
-      attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
-      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
-      attribute_value = apply(m, f, [changeset.to_tenant | a])
-
-      Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
-    else
-      if is_nil(Ash.Resource.Info.multitenancy_strategy(changeset.resource)) ||
-           Ash.Resource.Info.multitenancy_global?(changeset.resource) || changeset.tenant do
+    case changeset.tenant do
+      :bypass ->
         changeset
-      else
-        Ash.Changeset.add_error(
-          changeset,
-          Ash.Error.Invalid.TenantRequired.exception(resource: changeset.resource)
-        )
-      end
+
+      nil ->
+        if is_nil(Ash.Resource.Info.multitenancy_strategy(changeset.resource)) ||
+             Ash.Resource.Info.multitenancy_global?(changeset.resource) || changeset.tenant do
+          changeset
+        else
+          Ash.Changeset.add_error(
+            changeset,
+            Ash.Error.Invalid.TenantRequired.exception(resource: changeset.resource)
+          )
+        end
+
+      _ ->
+        if Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
+          attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
+          {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
+          attribute_value = apply(m, f, [changeset.to_tenant | a])
+
+          Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
+        else
+          changeset
+        end
     end
   end
 

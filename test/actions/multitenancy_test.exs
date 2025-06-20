@@ -67,7 +67,38 @@ defmodule Ash.Actions.MultitenancyTest do
         destination_attribute: :commenter_id,
         public?: true
 
+      has_many :likes, Ash.Actions.MultitenancyTest.Like, public?: true
+
       has_one :self, __MODULE__, destination_attribute: :id, source_attribute: :id
+    end
+  end
+
+  defmodule Like do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    multitenancy do
+      strategy(:attribute)
+      attribute(:org_id)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :create]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :org_id, :uuid do
+        public?(true)
+      end
+    end
+
+    relationships do
+      belongs_to :user, User do
+        public?(true)
+      end
     end
   end
 
@@ -474,6 +505,31 @@ defmodule Ash.Actions.MultitenancyTest do
       %{other_thing_name_reversed: "oof"} =
         MultitenantThing
         |> Ash.get!(thing2.id, tenant: tenant1, load: :other_thing_name_reversed)
+    end
+
+    test "support :bypass multitenancy as option" do
+      User
+      |> Ash.Changeset.for_create(:create, %{}, tenant: :bypass)
+      |> Ash.create!()
+      |> Ash.update!()
+      |> Ash.destroy!()
+
+      assert User |> Ash.read!(tenant: :bypass) == []
+    end
+
+    test "support :bypass multitenancy as option in relationships" do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create, %{}, tenant: :bypass)
+        |> Ash.create!()
+
+      like =
+        Like
+        |> Ash.Changeset.for_create(:create, %{user_id: user.id}, tenant: :bypass)
+        |> Ash.create!()
+
+      assert user = Ash.get!(User, user.id, tenant: :bypass, load: [:likes])
+      assert user.likes |> Enum.map(& &1.id) == [like.id]
     end
   end
 
