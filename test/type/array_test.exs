@@ -17,15 +17,6 @@ defmodule Ash.Test.Type.ArrayTest do
              )
   end
 
-  test "it errors when containing an empty string (which is converted to nil by the string type)" do
-    assert {:error, [[message: "no nil values", index: 1]]} =
-             Ash.Type.apply_constraints(
-               {:array, :string},
-               ["something", ""],
-               @default_constraints
-             )
-  end
-
   test "it removes nil values instead of erroring with remove_nil_items?: true" do
     assert {:ok, ["something", "something else"]} =
              Ash.Type.apply_constraints(

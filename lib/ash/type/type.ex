@@ -1203,6 +1203,8 @@ defmodule Ash.Type do
   def apply_constraints({:array, type}, term, constraints) when is_list(term) do
     type = get_type(type)
 
+    term = remove_empty_items(term, constraints)
+
     list_constraint_errors = list_constraint_errors(term, constraints)
     item_constraints = item_constraints(constraints)
 
@@ -1286,13 +1288,19 @@ defmodule Ash.Type do
   end
 
   @doc false
-  defp remove_empty_items(term, constraints) do
-    empty_values = Keyword.get(constraints, :empty_values, [])
+  defp remove_empty_items([] = term, _constraints), do: term
 
-    if Keyword.get(constraints, :remove_nil_items?, false) do
-      Enum.filter(term, &(&1 not in [nil | empty_values]))
-    else
-      Enum.filter(term, &(&1 not in empty_values))
+  defp remove_empty_items(term, constraints) do
+    case Keyword.get(constraints, :empty_values, []) do
+      [] ->
+        term
+
+      values ->
+        if Keyword.get(constraints, :remove_nil_items?, false) do
+          Enum.filter(term, &(&1 not in [nil | values]))
+        else
+          Enum.filter(term, &(&1 not in values))
+        end
     end
   end
 
@@ -1301,7 +1309,7 @@ defmodule Ash.Type do
     length =
       if Keyword.has_key?(constraints, :max_length) ||
            Keyword.has_key?(constraints, :min_length) do
-        term |> remove_empty_items(constraints) |> length()
+        length(term)
       else
         0
       end
