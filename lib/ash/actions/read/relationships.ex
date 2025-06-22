@@ -354,6 +354,7 @@ defmodule Ash.Actions.Read.Relationships do
               authorize?: source_query.context[:private][:authorize?],
               actor: source_query.context[:private][:actor],
               tenant: source_query.tenant,
+              context: source_query.context[:shared] || %{},
               tracer: source_query.context[:private][:tracer],
               domain: join_relationship.domain || related_query.domain
             )
