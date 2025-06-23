@@ -251,7 +251,8 @@ defmodule Ash.Actions.Read.Relationships do
           )
           |> Ash.Query.set_tenant(query.tenant)
           |> Ash.Query.set_context(%{
-            private: %{async_limiter: query.context[:private][:async_limiter]}
+            private: %{async_limiter: query.context[:private][:async_limiter]},
+            shared: query.context[:shared] || %{}
           })
           |> Ash.Query.set_context(Map.take(query.context, [:shared]))
           |> Ash.Query.for_read(
@@ -347,6 +348,11 @@ defmodule Ash.Actions.Read.Relationships do
 
           through_query =
             relationship.through
+            |> Ash.Query.do_filter(join_relationship.filter)
+            |> Ash.Query.set_context(%{
+              accessing_from: %{source: relationship.source, name: relationship.join_relationship},
+              shared: source_query.context[:shared] || %{}
+            })
             |> Ash.Query.for_read(
               join_relationship.read_action ||
                 Ash.Resource.Info.primary_action!(relationship.through, :read).name,
@@ -354,14 +360,9 @@ defmodule Ash.Actions.Read.Relationships do
               authorize?: source_query.context[:private][:authorize?],
               actor: source_query.context[:private][:actor],
               tenant: source_query.tenant,
-              context: source_query.context[:shared] || %{},
               tracer: source_query.context[:private][:tracer],
               domain: join_relationship.domain || related_query.domain
             )
-            |> Ash.Query.do_filter(join_relationship.filter)
-            |> Ash.Query.set_context(%{
-              accessing_from: %{source: relationship.source, name: relationship.join_relationship}
-            })
             |> Ash.Query.select([
               relationship.source_attribute_on_join_resource,
               relationship.destination_attribute_on_join_resource
@@ -622,7 +623,8 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.do_filter(join_relationship.filter)
       |> Ash.Query.set_context(%{
         accessing_from: %{source: relationship.source, name: relationship.join_relationship},
-        parent_stack: [query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)]
+        parent_stack: [query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)],
+        shared: query.context[:shared] || %{}
       })
       |> Ash.Query.select(
         [
