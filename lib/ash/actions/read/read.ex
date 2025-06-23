@@ -651,7 +651,7 @@ defmodule Ash.Actions.Read do
              results <- add_keysets(query, results, query.sort),
              {:ok, results} <- run_authorize_results(query, results),
              {:ok, results, after_notifications} <- run_after_action(query, results),
-             {:ok, count} <- maybe_await(count) do
+             {:ok, count} <- maybe_await(count, query.timeout) do
           notify_callback.(query, before_notifications ++ after_notifications)
           {:ok, results, count, calculations_at_runtime, calculations_in_query, query}
         else
@@ -3201,8 +3201,8 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  defp maybe_await(%Task{} = task) do
-    case Task.await(task) do
+  defp maybe_await(%Task{} = task, timeout) do
+    case Task.await(task, timeout) do
       {:__exception__, e, stacktrace} ->
         reraise e, stacktrace
 
@@ -3211,7 +3211,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp maybe_await(other), do: other
+  defp maybe_await(other, _timeout), do: other
 
   defp fetch_count(
          %{context: %{full_count: full_count}},
