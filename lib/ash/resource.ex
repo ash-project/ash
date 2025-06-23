@@ -126,6 +126,7 @@ defmodule Ash.Resource do
       @persist {:primary_read_warning?, Keyword.get(opts, :primary_read_warning?, true)}
 
       import Ash.Resource, only: [timestamps: 0, timestamps: 1]
+      require Ash.Query
 
       if !(embedded? || has_domain?) do
         IO.warn("""
