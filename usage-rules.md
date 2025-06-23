@@ -148,21 +148,28 @@ These functions are particularly useful for conditional rendering of UI elements
 
 Use `Ash.Query` to build queries for reading data from your resources. The query module provides a declarative way to filter, sort, and load data.
 
+## Ash.Query.filter is a macro
+
 **Important**: You must `require Ash.Query` if you want to use `Ash.Query.filter/2`, as it is a macro.
 
-```elixir
-defmodule MyApp.SomeModule do
-  require Ash.Query
+If you see errors like the following:
 
-  def get_active_posts do
-    MyApp.Post
-    |> Ash.Query.filter(status == :active)
-    |> MyApp.Blog.read!()
-  end
-end
+```
+Ash.Query.filter(MyResource, id == ^id)
+error: misplaced operator ^id
+
+The pin operator ^ is supported only inside matches or inside custom macros...
 ```
 
-Common query operations:
+```
+iex(3)> Ash.Query.filter(MyResource, something == true)
+error: undefined variable "something"
+└─ iex:3
+```
+
+You are very likely missing a `require Ash.Query`
+
+### Common Query Operations
 
 - **Filter**: `Ash.Query.filter(query, field == value)`
 - **Sort**: `Ash.Query.sort(query, field: :asc)`
