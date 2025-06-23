@@ -585,7 +585,7 @@ end
 - `on_missing: :destroy` - Delete records not in input
 - `value_is_key: :name` - Use field as key for simple values
 
-For comprehensive documentation, see the [Managing Relationships](documentation/topics/resources/relationships.md#managing-relationships) section.
+For comprehensive documentation, see the [Managing Relationships](https://hexdocs.pm/ash/relationships.html#managing-relationships) section.
 
 #### Examples
 
