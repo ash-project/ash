@@ -191,7 +191,7 @@ That code _seems_ like it ought to produce a filter over `Post` that would give 
 
 ### Many-to-many relationships
 
-When working with expressions that join many-to-many relationships, there may be cases that you wish to refer to "the join row that connects these two things". For example, to sort a many-to-many relationship by the `positioen` on the join row. For this, we have special-cased references to
+When working with expressions that join many-to-many relationships, there may be cases that you wish to refer to "the join row that connects these two things". For example, to sort a many-to-many relationship by the `position` on the join row. For this, we have special-cased references to
 `parent(join_relationship_name)` to refer to *specifically* the join row that connects the two records.
 
 This allows for things like this:
