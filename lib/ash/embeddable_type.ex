@@ -363,8 +363,15 @@ defmodule Ash.EmbeddableType do
             {context, opts} =
               case constraints[:__source__] do
                 %Ash.Changeset{context: context} = source ->
-                  {Map.put(context, :__source__, source),
-                   Ash.Context.to_opts(context[:private] || %{})}
+                  embedded_context =
+                    context
+                    |> Map.take([:shared])
+                    |> Map.put(:__source__, source)
+
+                  {embedded_context,
+                   Ash.Context.to_opts(
+                     Map.take(context[:private] || %{}, [:actor, :tenant, :tracer, :authorize?])
+                   )}
 
                 _ ->
                   {%{}, []}
@@ -1027,8 +1034,15 @@ defmodule Ash.EmbeddableType do
             {context, opts} =
               case constraints[:__source__] do
                 %Ash.Changeset{context: context} = source ->
-                  {Map.put(context, :__source__, source),
-                   Ash.Context.to_opts(context[:private] || %{})}
+                  embedded_context =
+                    context
+                    |> Map.take([:shared])
+                    |> Map.put(:__source__, source)
+
+                  {embedded_context,
+                   Ash.Context.to_opts(
+                     Map.take(context[:private] || %{}, [:actor, :tenant, :tracer, :authorize?])
+                   )}
 
                 _ ->
                   {%{}, []}
