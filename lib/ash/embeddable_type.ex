@@ -1203,7 +1203,11 @@ defmodule Ash.EmbeddableType do
       if source = opts[:__source__] do
         changeset
         |> Ash.Changeset.set_tenant(source.tenant)
-        |> Ash.Changeset.set_context(source.context)
+        |> Ash.Changeset.set_context(Map.take(source.context, [:shared]))
+        |> Ash.Changeset.set_context(%{
+          private:
+            Map.take(source.context[:private] || %{}, [:actor, :tenant, :tracer, :authorize?])
+        })
         |> Ash.Changeset.set_context(%{__source__: source})
         |> Map.put(:domain, source.domain)
       else
