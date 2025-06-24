@@ -288,7 +288,7 @@ jobs:
     needs: build-test
     if: ${{inputs.conventional-commit}}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: team-alembic/staple-actions/actions/conventional-commit@main
         with:
           mix-env: test
@@ -352,7 +352,7 @@ jobs:
     needs: build-test
     if: ${{inputs.doctor}}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: team-alembic/staple-actions/actions/mix-doctor@main
         with:
           mix-env: test
