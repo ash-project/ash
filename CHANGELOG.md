@@ -2,6 +2,29 @@
 
 <!-- changelog -->
 
+## [v3.5.24](https://github.com/ash-project/ash/compare/v3.5.23...v3.5.24) (2025-06-25)
+
+
+
+
+### Bug Fixes:
+
+* restrict subset of context -> opts in embedded changesets by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly handle nested context for embeddable type by [@zachdaniel](https://github.com/zachdaniel)
+
+* Use the same parent query timeout for the count query, for `read` actions (#2161) by sevenseacat
+
+* ensure join query has shared context passed to it by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure shared context is set on through queries when loading by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* make usage-rules more clear about require Ash.Query by [@zachdaniel](https://github.com/zachdaniel)
+
+* `require Ash.Query` in `Ash.Resource` by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.23](https://github.com/ash-project/ash/compare/v3.5.22...v3.5.23) (2025-06-19)
 
 
