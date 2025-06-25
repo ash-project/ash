@@ -31,9 +31,8 @@ Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, (doma
 - `[:ash, :before_action]` - A before_action being run on a changeset. Use `resource_short_name` to break down measurements.
 - `[:ash, :after_action]` - An after_action being run on a changeset. Use `resource_short_name` to break down measurements.
 - `[:ash, :preparation]` - A preparation being run on a changeset. Use `resource_short_name` and `preparation` metadata to break down measurements.
+- `[:ash, :notifier]` - A notifier being run with a notification. Use `resource_short_name` and `notifier` metadata to break down measurements.
 - `[:ash, :request_step]` - The resolution of an internal request. Ash breaks up its operations internally into multiple requests, this can give you a high resolution insight onto the execution of those internal requests resolution. Use `name` metadata to break down measurements.
-- `[:ash, :flow]` - The execution of an Ash flow. Use `flow_short_name` to break down measurements.
-- `[:ash, :flow, :custom_step]` - The execution of a custom flow step (only if using the built in runner, which is currently the only runner). Use `flow_short_name` and `name` metadata to break down measurements.
 
 ## Tracing
 
@@ -75,9 +74,9 @@ These are the list of trace types.
 - :after_transaction
 - :after_action
 - :request_step
-- :custom_flow_step
-- :flow
 - :query
+- :notifier
+- :preparation
 - :preparation
 
 ## After/Before Action Hooks

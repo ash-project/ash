@@ -5,6 +5,8 @@ defmodule Ash.Notifier do
   @callback notify(Ash.Notifier.Notification.t()) :: :ok
   @callback requires_original_data?(Ash.Resource.t(), Ash.Resource.Actions.action()) :: boolean
 
+  require Ash.Tracer
+
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Notifier
@@ -38,12 +40,12 @@ defmodule Ash.Notifier do
       case notification.for do
         nil ->
           for notifier <- Ash.Resource.Info.notifiers(resource) do
-            notifier.notify(%{notification | from: self()})
+            do_notify(notifier, %{notification | from: self()})
           end
 
         allowed_notifiers ->
           for notifier <- Enum.uniq(List.wrap(allowed_notifiers)) do
-            notifier.notify(%{notification | from: self()})
+            do_notify(notifier, %{notification | from: self()})
           end
       end
     end
@@ -51,5 +53,39 @@ defmodule Ash.Notifier do
     unsent
     |> Enum.map(&elem(&1, 1))
     |> List.flatten()
+  end
+
+  defp do_notify(notifier, notification) do
+    tracer = notification.changeset && notification.changeset.context[:private][:tracer]
+
+    Ash.Tracer.span :notification,
+                    fn ->
+                      Ash.Domain.Info.span_name(
+                        notification.domain,
+                        notification.resource,
+                        :notifier
+                      )
+                    end,
+                    tracer do
+      metadata = fn ->
+        %{
+          domain: notification.domain,
+          notifier: notifier,
+          resource: notification.resource,
+          resource_short_name: Ash.Resource.Info.short_name(notification.resource),
+          actor: notification.changeset && notification.changeset.context[:private][:actor],
+          tenant: notification.changeset && notification.changeset.context[:private][:tenant],
+          action: notification.action.name,
+          authorize?: notification.changeset && notification.changeset.context[:private][:authorize?]
+        }
+      end
+
+      Ash.Tracer.set_metadata(tracer, :action, metadata)
+
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(notification.domain), :create],
+                                metadata do
+        notifier.notify(notification)
+      end
+    end
   end
 end
