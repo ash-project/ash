@@ -823,6 +823,11 @@ defmodule Ash.Expr do
     soft_escape(Ash.CiString.sigil_i(str, mods), escape?)
   end
 
+  def do_expr({:fragment, opts, [{_, _, [{:<<>>, _, [query]}, []]} | rest]}, escape?)
+      when is_binary(query) do
+    do_expr({:fragment, opts, [Macro.expand(query, __ENV__) | rest]}, escape?)
+  end
+
   def do_expr({:fragment, _, [first | _] = args}, escape?)
       when is_binary(first) or is_function(first) do
     last_arg = List.last(args)
