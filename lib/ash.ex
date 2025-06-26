@@ -2418,7 +2418,18 @@ defmodule Ash do
   #{Spark.Options.docs(@load_opts_schema)}
   """
   @spec load(
-          record_or_records :: Ash.Resource.record() | [Ash.Resource.record()] | nil,
+          record_or_records ::
+            Ash.Resource.record()
+            | Ash.Page.Offset.t()
+            | Ash.Page.Keyset.t()
+            | [Ash.Resource.record()]
+            | {:ok, Ash.Resource.record()}
+            | {:ok, [Ash.Resource.record()]}
+            | {:ok, Ash.Page.Offset.t()}
+            | {:ok, Ash.Page.Keyset.t()}
+            | {:error, term}
+            | :ok
+            | nil,
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
