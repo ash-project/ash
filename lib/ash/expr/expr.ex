@@ -823,9 +823,11 @@ defmodule Ash.Expr do
     soft_escape(Ash.CiString.sigil_i(str, mods), escape?)
   end
 
-  def do_expr({:fragment, opts, [{_, _, [{:<<>>, _, [query]}, []]} | rest]}, escape?)
+  def do_expr({:fragment, _, [{_, _, [{:<<>>, _, [query]}, []]} = first | args]}, escape?)
       when is_binary(query) do
-    do_expr({:fragment, opts, [Macro.expand(query, __ENV__) | rest]}, escape?)
+    args = Enum.map(args, &do_expr(&1, false))
+
+    soft_escape(%Ash.Query.Call{name: :fragment, args: [first | args], operator?: false}, escape?)
   end
 
   def do_expr({:fragment, _, [first | _] = args}, escape?)

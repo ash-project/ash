@@ -19,6 +19,9 @@ defmodule Ash.Test.ExprTest do
     end
   end
 
+  defmacrop sigil_SQL(query, _modifiers)
+  defmacrop sigil_SQL({:<<>>, _, [binary]}, []) when is_binary(binary), do: binary
+
   describe "fragments" do
     test "allow pure binary sigils" do
       assert expr(fragment(~SQL"? > ?", 2, 1)) = expr(fragment("? > ?", 2, 1))
