@@ -2410,7 +2410,8 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def handle_multitenancy(query) do
-    action_multitenancy = get_action(query.resource, query.action).multitenancy
+    action_multitenancy =
+      get_shared_multitenancy(query) || get_action(query.resource, query.action).multitenancy
 
     case action_multitenancy do
       :enforce ->
@@ -2425,6 +2426,10 @@ defmodule Ash.Actions.Read do
 
       :bypass ->
         {:ok, %{query | tenant: nil, to_tenant: nil}}
+
+      :bypass_all ->
+        query = Ash.Query.set_context(query, %{shared: %{multitenancy: :bypass_all}})
+        {:ok, %{query | tenant: nil, to_tenant: nil}}
     end
     |> case do
       {:ok, query} -> handle_aggregate_multitenancy(query)
@@ -2433,27 +2438,18 @@ defmodule Ash.Actions.Read do
   end
 
   defp handle_attribute_multitenancy(query) do
-    case query.tenant do
-      nil ->
+    if query.tenant && Ash.Resource.Info.multitenancy_strategy(query.resource) == :attribute do
+      multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(query.resource)
+
+      if multitenancy_attribute do
+        {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(query.resource)
+        attribute_value = apply(m, f, [query.to_tenant | a])
+        Ash.Query.filter(query, ^ref(multitenancy_attribute) == ^attribute_value)
+      else
         query
-
-      :bypass ->
-        query
-
-      _ ->
-        if Ash.Resource.Info.multitenancy_strategy(query.resource) == :attribute do
-          multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(query.resource)
-
-          if multitenancy_attribute do
-            {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(query.resource)
-            attribute_value = apply(m, f, [query.to_tenant | a])
-            Ash.Query.filter(query, ^ref(multitenancy_attribute) == ^attribute_value)
-          else
-            query
-          end
-        else
-          query
-        end
+      end
+    else
+      query
     end
   end
 
@@ -4543,4 +4539,12 @@ defmodule Ash.Actions.Read do
   defp set_phase(query, phase \\ :preparing)
        when phase in ~w[preparing before_action after_action executing around_transaction]a,
        do: %{query | phase: phase}
+
+  defp get_shared_multitenancy(%{context: %{shared: %{multitenancy: multitenancy}}}) do
+    multitenancy
+  end
+
+  defp get_shared_multitenancy(_) do
+    nil
+  end
 end

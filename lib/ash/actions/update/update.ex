@@ -729,8 +729,6 @@ defmodule Ash.Actions.Update do
 
   defp manage_relationships(other, _, _, _), do: other
 
-  defp set_tenant(%{tenant: :bypass} = changeset), do: changeset
-
   defp set_tenant(changeset) do
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do

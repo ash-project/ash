@@ -718,8 +718,6 @@ defmodule Ash.Actions.Create.Bulk do
     |> set_tenant()
   end
 
-  defp set_tenant(%{tenant: :bypass} = changeset), do: changeset
-
   defp set_tenant(changeset) do
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
