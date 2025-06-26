@@ -76,7 +76,8 @@ defmodule Ash.Notifier do
           actor: notification.changeset && notification.changeset.context[:private][:actor],
           tenant: notification.changeset && notification.changeset.context[:private][:tenant],
           action: notification.action.name,
-          authorize?: notification.changeset && notification.changeset.context[:private][:authorize?]
+          authorize?:
+            notification.changeset && notification.changeset.context[:private][:authorize?]
         }
       end
 

@@ -19,6 +19,26 @@ defmodule Ash.Test.ExprTest do
     end
   end
 
+  defmacrop sigil_SQL(query, _modifiers)
+  defmacrop sigil_SQL({:<<>>, _, [binary]}, []) when is_binary(binary), do: binary
+
+  describe "fragments" do
+    test "allow pure binary sigils" do
+      assert expr(fragment(~SQL"? > ?", 2, 1)) = expr(fragment("? > ?", 2, 1))
+      assert expr(fragment(~S"? > ?", 2, 1)) = expr(fragment("? > ?", 2, 1))
+      assert expr(fragment(~s"? > ?", 2, 1)) = expr(fragment("? > ?", 2, 1))
+
+      injection_ast =
+        quote do
+          expr(fragment(~s"#{"sneaky"} ? > ?", 2, 1))
+        end
+
+      assert_raise RuntimeError, fn ->
+        Code.eval_quoted(injection_ast)
+      end
+    end
+  end
+
   describe "determine_types" do
     test "it determines the type of an if statement with complex values" do
       {:ok, %func{arguments: args}} =
