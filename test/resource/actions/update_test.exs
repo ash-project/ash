@@ -106,7 +106,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
 
       {:ok, post} = Post1.create()
 
-      assert {:ok, updated_post} = Post1.set_oban_job_id(post, 123)
+      updated_post = Post1.set_oban_job_id!(post, 123)
       assert updated_post.oban_job_id == 123
     end
 
