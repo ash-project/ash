@@ -2364,9 +2364,14 @@ defmodule Ash do
   """
   @spec load!(
           record_or_records ::
-            record_or_records
-            | {:ok, record_or_records}
-            | :error
+            Ash.Resource.record()
+            | Ash.Page.Offset.t()
+            | Ash.Page.Keyset.t()
+            | [Ash.Resource.record()]
+            | {:ok, Ash.Resource.record()}
+            | {:ok, [Ash.Resource.record()]}
+            | {:ok, Ash.Page.Offset.t()}
+            | {:ok, Ash.Page.Keyset.t()}
             | {:error, term}
             | :ok
             | Ash.Page.page()
