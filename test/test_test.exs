@@ -545,7 +545,7 @@ defmodule Ash.TestTest do
     end
 
     test "handles an empty tuple" do
-      assert [] = strip_metadata([])
+      assert {} = strip_metadata({})
     end
 
     test "handles basic types" do
