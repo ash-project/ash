@@ -3,19 +3,23 @@ defmodule Ash.TestTest do
   import Ash.Test
 
   describe "strip_metadata/1" do
-    test "strips map with both __metadata__ and __meta__" do
+    test "strips map with all metadata fields" do
       input = %{
         id: 1,
         name: "Test",
         __metadata__: %{selected: [:id, :name]},
-        __meta__: %Ecto.Schema.Metadata{state: :loaded}
+        __meta__: %Ecto.Schema.Metadata{state: :loaded},
+        __lateral_join_source__: %{id: "123"},
+        __order__: "123"
       }
 
       expected_result = %{
         id: 1,
         name: "Test",
         __metadata__: %{},
-        __meta__: %Ecto.Schema.Metadata{}
+        __meta__: %Ecto.Schema.Metadata{},
+        __lateral_join_source__: nil,
+        __order__: nil
       }
 
       result = strip_metadata(input)
@@ -56,27 +60,57 @@ defmodule Ash.TestTest do
       assert result == expected_result
     end
 
+    test "strips map with only __lateral_join_source__ field" do
+      input = %{
+        id: 1,
+        name: "Test",
+        __lateral_join_source__: %{id: "123"}
+      }
+
+      expected_result = %{
+        id: 1,
+        name: "Test",
+        __lateral_join_source__: nil
+      }
+
+      result = strip_metadata(input)
+      assert result == expected_result
+    end
+
+    test "strips map with only __order__ field" do
+      input = %{
+        id: 1,
+        name: "Test",
+        __order__: "123"
+      }
+
+      expected_result = %{
+        id: 1,
+        name: "Test",
+        __order__: nil
+      }
+
+      result = strip_metadata(input)
+      assert result == expected_result
+    end
+
     test "strips a list of maps" do
       input = [
         %{
           id: 1,
           name: "User 1",
           __metadata__: %{selected: [:id, :name]},
-          __meta__: %Ecto.Schema.Metadata{state: :loaded}
+          __meta__: %Ecto.Schema.Metadata{state: :loaded},
+          __lateral_join_source__: %{id: "123"},
+          __order__: "123"
         },
         %{
           id: 2,
           name: "User 2",
-          __metadata__: %{selected: [:id, :name]}
-        },
-        %{
-          id: 3,
-          name: "User 3",
-          __meta__: %Ecto.Schema.Metadata{state: :loaded}
-        },
-        %{
-          id: 4,
-          name: "User 4"
+          __metadata__: %{selected: [:id, :name]},
+          __meta__: %Ecto.Schema.Metadata{state: :loaded},
+          __lateral_join_source__: %{id: "123"},
+          __order__: "123"
         }
       ]
 
@@ -85,21 +119,17 @@ defmodule Ash.TestTest do
           id: 1,
           name: "User 1",
           __metadata__: %{},
-          __meta__: %Ecto.Schema.Metadata{}
+          __meta__: %Ecto.Schema.Metadata{},
+          __lateral_join_source__: nil,
+          __order__: nil
         },
         %{
           id: 2,
           name: "User 2",
-          __metadata__: %{}
-        },
-        %{
-          id: 3,
-          name: "User 3",
-          __meta__: %Ecto.Schema.Metadata{}
-        },
-        %{
-          id: 4,
-          name: "User 4"
+          __metadata__: %{},
+          __meta__: %Ecto.Schema.Metadata{},
+          __lateral_join_source__: nil,
+          __order__: nil
         }
       ]
 
@@ -113,21 +143,17 @@ defmodule Ash.TestTest do
           id: 1,
           name: "User 1",
           __metadata__: %{selected: [:id, :name]},
-          __meta__: %Ecto.Schema.Metadata{state: :loaded}
+          __meta__: %Ecto.Schema.Metadata{state: :loaded},
+          __lateral_join_source__: %{id: "123"},
+          __order__: "123"
         },
         %{
           id: 2,
           name: "User 2",
-          __metadata__: %{selected: [:id, :name]}
-        },
-        %{
-          id: 3,
-          name: "User 3",
-          __meta__: %Ecto.Schema.Metadata{state: :loaded}
-        },
-        %{
-          id: 4,
-          name: "User 4"
+          __metadata__: %{selected: [:id, :name]},
+          __meta__: %Ecto.Schema.Metadata{state: :loaded},
+          __lateral_join_source__: %{id: "123"},
+          __order__: "123"
         }
       }
 
@@ -136,21 +162,17 @@ defmodule Ash.TestTest do
           id: 1,
           name: "User 1",
           __metadata__: %{},
-          __meta__: %Ecto.Schema.Metadata{}
+          __meta__: %Ecto.Schema.Metadata{},
+          __lateral_join_source__: nil,
+          __order__: nil
         },
         %{
           id: 2,
           name: "User 2",
-          __metadata__: %{}
-        },
-        %{
-          id: 3,
-          name: "User 3",
-          __meta__: %Ecto.Schema.Metadata{}
-        },
-        %{
-          id: 4,
-          name: "User 4"
+          __metadata__: %{},
+          __meta__: %Ecto.Schema.Metadata{},
+          __lateral_join_source__: nil,
+          __order__: nil
         }
       }
 
@@ -164,21 +186,17 @@ defmodule Ash.TestTest do
           id: 1,
           name: "User 1",
           __metadata__: %{selected: [:id, :name]},
-          __meta__: %Ecto.Schema.Metadata{state: :loaded}
+          __meta__: %Ecto.Schema.Metadata{state: :loaded},
+          __lateral_join_source__: %{id: "123"},
+          __order__: "123"
         },
         user2: %{
           id: 2,
           name: "User 2",
-          __metadata__: %{selected: [:id, :name]}
-        },
-        user3: %{
-          id: 3,
-          name: "User 3",
-          __meta__: %Ecto.Schema.Metadata{state: :loaded}
-        },
-        user4: %{
-          id: 4,
-          name: "User 4"
+          __metadata__: %{selected: [:id, :name]},
+          __meta__: %Ecto.Schema.Metadata{state: :loaded},
+          __lateral_join_source__: %{id: "123"},
+          __order__: "123"
         }
       }
 
@@ -187,21 +205,17 @@ defmodule Ash.TestTest do
           id: 1,
           name: "User 1",
           __metadata__: %{},
-          __meta__: %Ecto.Schema.Metadata{}
+          __meta__: %Ecto.Schema.Metadata{},
+          __lateral_join_source__: nil,
+          __order__: nil
         },
         user2: %{
           id: 2,
           name: "User 2",
-          __metadata__: %{}
-        },
-        user3: %{
-          id: 3,
-          name: "User 3",
-          __meta__: %Ecto.Schema.Metadata{}
-        },
-        user4: %{
-          id: 4,
-          name: "User 4"
+          __metadata__: %{},
+          __meta__: %Ecto.Schema.Metadata{},
+          __lateral_join_source__: nil,
+          __order__: nil
         }
       }
 
@@ -216,21 +230,17 @@ defmodule Ash.TestTest do
             id: 1,
             name: "User 1",
             __metadata__: %{selected: [:id, :name]},
-            __meta__: %Ecto.Schema.Metadata{state: :loaded}
+            __meta__: %Ecto.Schema.Metadata{state: :loaded},
+            __lateral_join_source__: %{id: "123"},
+            __order__: "123"
           },
           %{
             id: 2,
             name: "User 2",
-            __metadata__: %{selected: [:id, :name]}
-          },
-          %{
-            id: 3,
-            name: "User 3",
-            __meta__: %Ecto.Schema.Metadata{state: :loaded}
-          },
-          %{
-            id: 4,
-            name: "User 4"
+            __metadata__: %{selected: [:id, :name]},
+            __meta__: %Ecto.Schema.Metadata{state: :loaded},
+            __lateral_join_source__: %{id: "123"},
+            __order__: "123"
           }
         ],
         limit: 10,
@@ -245,21 +255,17 @@ defmodule Ash.TestTest do
             id: 1,
             name: "User 1",
             __metadata__: %{},
-            __meta__: %Ecto.Schema.Metadata{}
+            __meta__: %Ecto.Schema.Metadata{},
+            __lateral_join_source__: nil,
+            __order__: nil
           },
           %{
             id: 2,
             name: "User 2",
-            __metadata__: %{}
-          },
-          %{
-            id: 3,
-            name: "User 3",
-            __meta__: %Ecto.Schema.Metadata{}
-          },
-          %{
-            id: 4,
-            name: "User 4"
+            __metadata__: %{},
+            __meta__: %Ecto.Schema.Metadata{},
+            __lateral_join_source__: nil,
+            __order__: nil
           }
         ],
         limit: 10,
@@ -279,21 +285,17 @@ defmodule Ash.TestTest do
             id: 1,
             name: "User 1",
             __metadata__: %{selected: [:id, :name]},
-            __meta__: %Ecto.Schema.Metadata{state: :loaded}
+            __meta__: %Ecto.Schema.Metadata{state: :loaded},
+            __lateral_join_source__: %{id: "123"},
+            __order__: "123"
           },
           %{
             id: 2,
             name: "User 2",
-            __metadata__: %{selected: [:id, :name]}
-          },
-          %{
-            id: 3,
-            name: "User 3",
-            __meta__: %Ecto.Schema.Metadata{state: :loaded}
-          },
-          %{
-            id: 4,
-            name: "User 4"
+            __metadata__: %{selected: [:id, :name]},
+            __meta__: %Ecto.Schema.Metadata{state: :loaded},
+            __lateral_join_source__: %{id: "123"},
+            __order__: "123"
           }
         ],
         limit: 5,
@@ -309,21 +311,17 @@ defmodule Ash.TestTest do
             id: 1,
             name: "User 1",
             __metadata__: %{},
-            __meta__: %Ecto.Schema.Metadata{}
+            __meta__: %Ecto.Schema.Metadata{},
+            __lateral_join_source__: nil,
+            __order__: nil
           },
           %{
             id: 2,
             name: "User 2",
-            __metadata__: %{}
-          },
-          %{
-            id: 3,
-            name: "User 3",
-            __meta__: %Ecto.Schema.Metadata{}
-          },
-          %{
-            id: 4,
-            name: "User 4"
+            __metadata__: %{},
+            __meta__: %Ecto.Schema.Metadata{},
+            __lateral_join_source__: nil,
+            __order__: nil
           }
         ],
         limit: 5,
@@ -342,14 +340,20 @@ defmodule Ash.TestTest do
         id: 1,
         __metadata__: %{selected: [:id]},
         __meta__: %Ecto.Schema.Metadata{state: :loaded},
+        __lateral_join_source__: %{id: "123"},
+        __order__: "123",
         user: %{
           name: "John",
           __metadata__: %{selected: [:name]},
           __meta__: %Ecto.Schema.Metadata{state: :loaded},
+          __lateral_join_source__: %{id: "123"},
+          __order__: "123",
           profile: %{
             bio: "Developer",
             __metadata__: %{selected: [:bio]},
-            __meta__: %Ecto.Schema.Metadata{state: :loaded}
+            __meta__: %Ecto.Schema.Metadata{state: :loaded},
+            __lateral_join_source__: %{id: "123"},
+            __order__: "123"
           }
         }
       }
@@ -358,14 +362,20 @@ defmodule Ash.TestTest do
         id: 1,
         __metadata__: %{},
         __meta__: %Ecto.Schema.Metadata{},
+        __lateral_join_source__: nil,
+        __order__: nil,
         user: %{
           name: "John",
           __metadata__: %{},
           __meta__: %Ecto.Schema.Metadata{},
+          __lateral_join_source__: nil,
+          __order__: nil,
           profile: %{
             bio: "Developer",
             __metadata__: %{},
-            __meta__: %Ecto.Schema.Metadata{}
+            __meta__: %Ecto.Schema.Metadata{},
+            __lateral_join_source__: nil,
+            __order__: nil
           }
         }
       }
@@ -380,16 +390,22 @@ defmodule Ash.TestTest do
           id: 1,
           __metadata__: %{selected: [:id]},
           __meta__: %Ecto.Schema.Metadata{state: :loaded},
+          __lateral_join_source__: %{id: "123"},
+          __order__: "123",
           users: [
             %{
               name: "John",
               __metadata__: %{selected: [:name]},
               __meta__: %Ecto.Schema.Metadata{state: :loaded},
+              __lateral_join_source__: %{id: "123"},
+              __order__: "123",
               profiles: [
                 %{
                   bio: "Developer",
                   __metadata__: %{selected: [:bio]},
-                  __meta__: %Ecto.Schema.Metadata{state: :loaded}
+                  __meta__: %Ecto.Schema.Metadata{state: :loaded},
+                  __lateral_join_source__: %{id: "123"},
+                  __order__: "123"
                 }
               ]
             }
@@ -402,16 +418,22 @@ defmodule Ash.TestTest do
           id: 1,
           __metadata__: %{},
           __meta__: %Ecto.Schema.Metadata{},
+          __lateral_join_source__: nil,
+          __order__: nil,
           users: [
             %{
               name: "John",
               __metadata__: %{},
               __meta__: %Ecto.Schema.Metadata{},
+              __lateral_join_source__: nil,
+              __order__: nil,
               profiles: [
                 %{
                   bio: "Developer",
                   __metadata__: %{},
-                  __meta__: %Ecto.Schema.Metadata{}
+                  __meta__: %Ecto.Schema.Metadata{},
+                  __lateral_join_source__: nil,
+                  __order__: nil
                 }
               ]
             }
@@ -429,16 +451,22 @@ defmodule Ash.TestTest do
           id: 1,
           __metadata__: %{selected: [:id]},
           __meta__: %Ecto.Schema.Metadata{state: :loaded},
+          __lateral_join_source__: %{id: "123"},
+          __order__: "123",
           users: {
             %{
               name: "John",
               __metadata__: %{selected: [:name]},
               __meta__: %Ecto.Schema.Metadata{state: :loaded},
+              __lateral_join_source__: %{id: "123"},
+              __order__: "123",
               profiles: {
                 %{
                   bio: "Developer",
                   __metadata__: %{selected: [:bio]},
-                  __meta__: %Ecto.Schema.Metadata{state: :loaded}
+                  __meta__: %Ecto.Schema.Metadata{state: :loaded},
+                  __lateral_join_source__: %{id: "123"},
+                  __order__: "123"
                 }
               }
             }
@@ -451,16 +479,22 @@ defmodule Ash.TestTest do
           id: 1,
           __metadata__: %{},
           __meta__: %Ecto.Schema.Metadata{},
+          __lateral_join_source__: nil,
+          __order__: nil,
           users: {
             %{
               name: "John",
               __metadata__: %{},
               __meta__: %Ecto.Schema.Metadata{},
+              __lateral_join_source__: nil,
+              __order__: nil,
               profiles: {
                 %{
                   bio: "Developer",
                   __metadata__: %{},
-                  __meta__: %Ecto.Schema.Metadata{}
+                  __meta__: %Ecto.Schema.Metadata{},
+                  __lateral_join_source__: nil,
+                  __order__: nil
                 }
               }
             }
