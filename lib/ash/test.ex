@@ -207,6 +207,16 @@ defmodule Ash.Test do
     end)
   end
 
+  def strip_metadata(%{__meta__: _} = struct) do
+    struct = %{struct | __meta__: %Ecto.Schema.Metadata{}}
+
+    struct
+    |> Map.keys()
+    |> Enum.reduce(struct, fn key, struct ->
+      Map.update!(struct, key, &strip_metadata/1)
+    end)
+  end
+
   def strip_metadata(other), do: other
 
   @doc """
