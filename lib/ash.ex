@@ -2364,17 +2364,12 @@ defmodule Ash do
   """
   @spec load!(
           record_or_records ::
-            Ash.Resource.record()
-            | Ash.Page.Offset.t()
-            | Ash.Page.Keyset.t()
-            | [Ash.Resource.record()]
-            | {:ok, Ash.Resource.record()}
-            | {:ok, [Ash.Resource.record()]}
-            | {:ok, Ash.Page.Offset.t()}
-            | {:ok, Ash.Page.Keyset.t()}
+            record_or_records
+            | Ash.Page.page()
+            | {:ok, record_or_records}
+            | {:ok, Ash.Page.page()}
             | {:error, term}
             | :ok
-            | Ash.Page.page()
             | nil,
           query :: load_statement(),
           opts :: Keyword.t()
@@ -2424,14 +2419,10 @@ defmodule Ash do
   """
   @spec load(
           record_or_records ::
-            Ash.Resource.record()
-            | Ash.Page.Offset.t()
-            | Ash.Page.Keyset.t()
-            | [Ash.Resource.record()]
-            | {:ok, Ash.Resource.record()}
-            | {:ok, [Ash.Resource.record()]}
-            | {:ok, Ash.Page.Offset.t()}
-            | {:ok, Ash.Page.Keyset.t()}
+            record_or_records
+            | Ash.Page.page()
+            | {:ok, record_or_records}
+            | {:ok, Ash.Page.page()}
             | {:error, term}
             | :ok
             | nil,
