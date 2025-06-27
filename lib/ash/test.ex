@@ -217,6 +217,14 @@ defmodule Ash.Test do
     end)
   end
 
+  def strip_metadata(map) when is_map(map) do
+    map
+    |> Map.keys()
+    |> Enum.reduce(map, fn key, map ->
+      Map.update!(map, key, &strip_metadata/1)
+    end)
+  end
+
   def strip_metadata(other), do: other
 
   @doc """
