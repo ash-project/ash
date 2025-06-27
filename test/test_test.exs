@@ -335,55 +335,6 @@ defmodule Ash.TestTest do
       assert result == expected_result
     end
 
-    test "strips nested maps" do
-      input = %{
-        id: 1,
-        __metadata__: %{selected: [:id]},
-        __meta__: %Ecto.Schema.Metadata{state: :loaded},
-        __lateral_join_source__: %{id: "123"},
-        __order__: "123",
-        user: %{
-          name: "John",
-          __metadata__: %{selected: [:name]},
-          __meta__: %Ecto.Schema.Metadata{state: :loaded},
-          __lateral_join_source__: %{id: "123"},
-          __order__: "123",
-          profile: %{
-            bio: "Developer",
-            __metadata__: %{selected: [:bio]},
-            __meta__: %Ecto.Schema.Metadata{state: :loaded},
-            __lateral_join_source__: %{id: "123"},
-            __order__: "123"
-          }
-        }
-      }
-
-      expected_result = %{
-        id: 1,
-        __metadata__: %{},
-        __meta__: %Ecto.Schema.Metadata{},
-        __lateral_join_source__: nil,
-        __order__: nil,
-        user: %{
-          name: "John",
-          __metadata__: %{},
-          __meta__: %Ecto.Schema.Metadata{},
-          __lateral_join_source__: nil,
-          __order__: nil,
-          profile: %{
-            bio: "Developer",
-            __metadata__: %{},
-            __meta__: %Ecto.Schema.Metadata{},
-            __lateral_join_source__: nil,
-            __order__: nil
-          }
-        }
-      }
-
-      result = strip_metadata(input)
-      assert result == expected_result
-    end
-
     test "strips nested lists" do
       input = [
         %{
@@ -498,6 +449,55 @@ defmodule Ash.TestTest do
                 }
               }
             }
+          }
+        }
+      }
+
+      result = strip_metadata(input)
+      assert result == expected_result
+    end
+
+    test "strips nested maps" do
+      input = %{
+        id: 1,
+        __metadata__: %{selected: [:id]},
+        __meta__: %Ecto.Schema.Metadata{state: :loaded},
+        __lateral_join_source__: %{id: "123"},
+        __order__: "123",
+        user: %{
+          name: "John",
+          __metadata__: %{selected: [:name]},
+          __meta__: %Ecto.Schema.Metadata{state: :loaded},
+          __lateral_join_source__: %{id: "123"},
+          __order__: "123",
+          profile: %{
+            bio: "Developer",
+            __metadata__: %{selected: [:bio]},
+            __meta__: %Ecto.Schema.Metadata{state: :loaded},
+            __lateral_join_source__: %{id: "123"},
+            __order__: "123"
+          }
+        }
+      }
+
+      expected_result = %{
+        id: 1,
+        __metadata__: %{},
+        __meta__: %Ecto.Schema.Metadata{},
+        __lateral_join_source__: nil,
+        __order__: nil,
+        user: %{
+          name: "John",
+          __metadata__: %{},
+          __meta__: %Ecto.Schema.Metadata{},
+          __lateral_join_source__: nil,
+          __order__: nil,
+          profile: %{
+            bio: "Developer",
+            __metadata__: %{},
+            __meta__: %Ecto.Schema.Metadata{},
+            __lateral_join_source__: nil,
+            __order__: nil
           }
         }
       }
