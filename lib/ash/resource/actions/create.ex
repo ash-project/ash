@@ -62,6 +62,13 @@ defmodule Ash.Resource.Actions.Create do
   @create_update_opts create_update_opts()
 
   @opt_schema [
+                multitenancy: [
+                  type: {:in, [:enforce, :allow_global]},
+                  default: :enforce,
+                  doc: """
+                  This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant. This is useful to change the behaviour of selected actions without the need of marking the whole resource with `global? true`.
+                  """
+                ],
                 manual: [
                   type:
                     {:spark_function_behaviour, Ash.Resource.ManualCreate,

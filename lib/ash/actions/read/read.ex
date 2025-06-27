@@ -343,6 +343,8 @@ defmodule Ash.Actions.Read do
               {data_result, query}
           end
 
+        query = Ash.Query.set_context(query, %{shared: query_ran.context[:shared]})
+
         with {:ok, data, count, calculations_at_runtime, calculations_in_query, new_query} <-
                data_result,
              data = add_tenant(data, query),
@@ -2424,7 +2426,8 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def handle_multitenancy(query) do
-    action_multitenancy = get_action(query.resource, query.action).multitenancy
+    action_multitenancy =
+      get_shared_multitenancy(query) || get_action(query.resource, query.action).multitenancy
 
     case action_multitenancy do
       :enforce ->
@@ -2438,6 +2441,11 @@ defmodule Ash.Actions.Read do
         {:ok, handle_attribute_multitenancy(query)}
 
       :bypass ->
+        {:ok, %{query | tenant: nil, to_tenant: nil}}
+
+      :bypass_all ->
+        query = Ash.Query.set_context(query, %{shared: %{multitenancy: :bypass_all}})
+
         {:ok, %{query | tenant: nil, to_tenant: nil}}
     end
     |> case do
@@ -4548,4 +4556,12 @@ defmodule Ash.Actions.Read do
   defp set_phase(query, phase \\ :preparing)
        when phase in ~w[preparing before_action after_action executing around_transaction]a,
        do: %{query | phase: phase}
+
+  defp get_shared_multitenancy(%{context: %{multitenancy: multitenancy}}) do
+    multitenancy
+  end
+
+  defp get_shared_multitenancy(_) do
+    nil
+  end
 end

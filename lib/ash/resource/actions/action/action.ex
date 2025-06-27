@@ -51,6 +51,13 @@ defmodule Ash.Resource.Actions.Action do
 
   @global_opts shared_options()
   @opt_schema [
+                multitenancy: [
+                  type: {:in, [:enforce, :allow_global]},
+                  default: :enforce,
+                  doc: """
+                  This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant. This is useful to change the behaviour of selected actions without the need of marking the whole resource with `global? true`.
+                  """
+                ],
                 returns: [
                   type: Ash.OptionsHelpers.ash_type(),
                   doc: "The return type of the action. See `Ash.Type` for more."
