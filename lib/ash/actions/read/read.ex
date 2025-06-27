@@ -341,6 +341,8 @@ defmodule Ash.Actions.Read do
               {data_result, query}
           end
 
+        query = Ash.Query.set_context(query, %{shared: query_ran.context[:shared]})
+
         with {:ok, data, count, calculations_at_runtime, calculations_in_query, new_query} <-
                data_result,
              data = add_tenant(data, query),
@@ -354,7 +356,7 @@ defmodule Ash.Actions.Read do
                  opts[:authorize?]
                ),
              {:ok, data} <-
-               load_relationships(data, query_ran, opts),
+               load_relationships(data, query, opts),
              {:ok, data} <-
                Ash.Actions.Read.Calculations.run(
                  data,
@@ -366,7 +368,7 @@ defmodule Ash.Actions.Read do
                load_through_attributes(
                  data,
                  %{
-                   query_ran
+                   query
                    | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
                      load_through: Map.delete(query.load_through || %{}, :attribute)
                  },

@@ -529,15 +529,13 @@ defmodule Ash.Actions.MultitenancyTest do
         |> Ash.Changeset.for_create(:create, %{post_id: post.id}, tenant: tenant1)
         |> Ash.create!()
 
-      user =
+      [%{posts: [%{likes: [%{id: like_id}]}]}] =
         User
         |> Ash.Query.for_read(:bypass_all, %{})
         |> Ash.Query.load(posts: :likes)
         |> Ash.read!()
 
-
-        user.posts
-      # [%{likes: [%{id: like_id}]}] = user.posts
+      assert like_id == like.id
     end
   end
 
