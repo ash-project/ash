@@ -63,10 +63,10 @@ defmodule Ash.Resource.Actions.Create do
 
   @opt_schema [
                 multitenancy: [
-                  type: {:in, [:enforce, :allow_global, :bypass, :bypass_all]},
+                  type: {:in, [:enforce, :allow_global]},
                   default: :enforce,
                   doc: """
-                  This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources. This is useful to change the behaviour of selected actions without the need of marking the whole resource with `global? true`.
+                  This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant. This is useful to change the behaviour of selected actions without the need of marking the whole resource with `global? true`.
                   """
                 ],
                 manual: [
