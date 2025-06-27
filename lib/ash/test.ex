@@ -199,6 +199,8 @@ defmodule Ash.Test do
 
   defp strip_metadata_field(:__metadata__, _value), do: %{}
   defp strip_metadata_field(:__meta__, _value), do: %Ecto.Schema.Metadata{}
+  defp strip_metadata_field(:__lateral_join_source__, _value), do: nil
+  defp strip_metadata_field(:__order__, _value), do: nil
   defp strip_metadata_field(_key, value), do: strip_metadata(value)
 
   @doc """
