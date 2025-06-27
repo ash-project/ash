@@ -187,27 +187,21 @@ defmodule Ash.Test do
     %{page | results: Enum.map(results, &strip_metadata/1)}
   end
 
-  def strip_metadata(%{__metadata__: _, __meta__: _} = struct) do
-    struct = %{struct | __metadata__: %{}, __meta__: %Ecto.Schema.Metadata{}}
-
-    struct
+  def strip_metadata(map) when is_map(map) do
+    map
     |> Map.keys()
-    |> Enum.reduce(struct, fn key, struct ->
-      Map.update!(struct, key, &strip_metadata/1)
-    end)
-  end
-
-  def strip_metadata(%{__metadata__: _} = struct) do
-    struct = %{struct | __metadata__: %{}}
-
-    struct
-    |> Map.keys()
-    |> Enum.reduce(struct, fn key, struct ->
-      Map.update!(struct, key, &strip_metadata/1)
+    |> Enum.reduce(map, fn key, map ->
+      Map.update!(map, key, &strip_metadata_field(key, &1))
     end)
   end
 
   def strip_metadata(other), do: other
+
+  defp strip_metadata_field(:__metadata__, _value), do: %{}
+  defp strip_metadata_field(:__meta__, _value), do: %Ecto.Schema.Metadata{}
+  defp strip_metadata_field(:__lateral_join_source__, _value), do: nil
+  defp strip_metadata_field(:__order__, _value), do: nil
+  defp strip_metadata_field(_key, value), do: strip_metadata(value)
 
   @doc """
   A macro for comparing Ash resources while ignoring metadata differences.
