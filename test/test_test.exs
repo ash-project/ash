@@ -39,6 +39,23 @@ defmodule Ash.TestTest do
       assert result == expected_result
     end
 
+    test "strips map with only __meta__ field" do
+      input = %{
+        id: 1,
+        name: "Test",
+        __meta__: %Ecto.Schema.Metadata{state: :loaded}
+      }
+
+      expected_result = %{
+        id: 1,
+        name: "Test",
+        __meta__: %Ecto.Schema.Metadata{}
+      }
+
+      result = strip_metadata(input)
+      assert result == expected_result
+    end
+
     test "strips a list of maps" do
       input = [
         %{
@@ -54,7 +71,12 @@ defmodule Ash.TestTest do
         },
         %{
           id: 3,
-          name: "User 3"
+          name: "User 3",
+          __meta__: %Ecto.Schema.Metadata{state: :loaded}
+        },
+        %{
+          id: 4,
+          name: "User 4"
         }
       ]
 
@@ -72,7 +94,12 @@ defmodule Ash.TestTest do
         },
         %{
           id: 3,
-          name: "User 3"
+          name: "User 3",
+          __meta__: %Ecto.Schema.Metadata{}
+        },
+        %{
+          id: 4,
+          name: "User 4"
         }
       ]
 
@@ -95,7 +122,12 @@ defmodule Ash.TestTest do
         },
         %{
           id: 3,
-          name: "User 3"
+          name: "User 3",
+          __meta__: %Ecto.Schema.Metadata{state: :loaded}
+        },
+        %{
+          id: 4,
+          name: "User 4"
         }
       }
 
@@ -113,7 +145,12 @@ defmodule Ash.TestTest do
         },
         %{
           id: 3,
-          name: "User 3"
+          name: "User 3",
+          __meta__: %Ecto.Schema.Metadata{}
+        },
+        %{
+          id: 4,
+          name: "User 4"
         }
       }
 
@@ -137,7 +174,12 @@ defmodule Ash.TestTest do
           },
           %{
             id: 3,
-            name: "User 3"
+            name: "User 3",
+            __meta__: %Ecto.Schema.Metadata{state: :loaded}
+          },
+          %{
+            id: 4,
+            name: "User 4"
           }
         ],
         limit: 10,
@@ -161,7 +203,12 @@ defmodule Ash.TestTest do
           },
           %{
             id: 3,
-            name: "User 3"
+            name: "User 3",
+            __meta__: %Ecto.Schema.Metadata{}
+          },
+          %{
+            id: 4,
+            name: "User 4"
           }
         ],
         limit: 10,
@@ -190,7 +237,12 @@ defmodule Ash.TestTest do
           },
           %{
             id: 3,
-            name: "User 3"
+            name: "User 3",
+            __meta__: %Ecto.Schema.Metadata{state: :loaded}
+          },
+          %{
+            id: 4,
+            name: "User 4"
           }
         ],
         limit: 5,
@@ -215,7 +267,12 @@ defmodule Ash.TestTest do
           },
           %{
             id: 3,
-            name: "User 3"
+            name: "User 3",
+            __meta__: %Ecto.Schema.Metadata{}
+          },
+          %{
+            id: 4,
+            name: "User 4"
           }
         ],
         limit: 5,
