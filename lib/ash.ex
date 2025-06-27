@@ -2365,11 +2365,11 @@ defmodule Ash do
   @spec load!(
           record_or_records ::
             record_or_records
+            | Ash.Page.page()
             | {:ok, record_or_records}
-            | :error
+            | {:ok, Ash.Page.page()}
             | {:error, term}
             | :ok
-            | Ash.Page.page()
             | nil,
           query :: load_statement(),
           opts :: Keyword.t()
@@ -2418,7 +2418,14 @@ defmodule Ash do
   #{Spark.Options.docs(@load_opts_schema)}
   """
   @spec load(
-          record_or_records :: Ash.Resource.record() | [Ash.Resource.record()] | nil,
+          record_or_records ::
+            record_or_records
+            | Ash.Page.page()
+            | {:ok, record_or_records}
+            | {:ok, Ash.Page.page()}
+            | {:error, term}
+            | :ok
+            | nil,
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
