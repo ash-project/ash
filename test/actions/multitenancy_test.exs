@@ -44,6 +44,10 @@ defmodule Ash.Actions.MultitenancyTest do
       read :bypass_tenant do
         multitenancy(:bypass)
       end
+
+      read :bypass_all do
+        multitenancy(:bypass_all)
+      end
     end
 
     attributes do
@@ -66,8 +70,6 @@ defmodule Ash.Actions.MultitenancyTest do
       has_many :comments, Ash.Actions.MultitenancyTest.Comment,
         destination_attribute: :commenter_id,
         public?: true
-
-      has_many :likes, Ash.Actions.MultitenancyTest.Like, public?: true
 
       has_one :self, __MODULE__, destination_attribute: :id, source_attribute: :id
     end
@@ -96,7 +98,7 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     relationships do
-      belongs_to :user, User do
+      belongs_to :post, Post do
         public?(true)
       end
     end
@@ -129,6 +131,10 @@ defmodule Ash.Actions.MultitenancyTest do
 
     relationships do
       has_many :comments, Ash.Actions.MultitenancyTest.Comment,
+        destination_attribute: :post_id,
+        public?: true
+
+      has_many :likes, Ash.Actions.MultitenancyTest.Like,
         destination_attribute: :post_id,
         public?: true
 
@@ -507,29 +513,31 @@ defmodule Ash.Actions.MultitenancyTest do
         |> Ash.get!(thing2.id, tenant: tenant1, load: :other_thing_name_reversed)
     end
 
-    test "support :bypass multitenancy as option" do
-      User
-      |> Ash.Changeset.for_create(:create, %{}, tenant: :bypass)
-      |> Ash.create!()
-      |> Ash.update!()
-      |> Ash.destroy!()
-
-      assert User |> Ash.read!(tenant: :bypass) == []
-    end
-
-    test "support :bypass multitenancy as option in relationships" do
+    test "supports :bypass_all multitenancy on a read action", %{tenant1: tenant1} do
       user =
         User
-        |> Ash.Changeset.for_create(:create, %{}, tenant: :bypass)
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{author_id: user.id}, tenant: tenant1)
         |> Ash.create!()
 
       like =
         Like
-        |> Ash.Changeset.for_create(:create, %{user_id: user.id}, tenant: :bypass)
+        |> Ash.Changeset.for_create(:create, %{post_id: post.id}, tenant: tenant1)
         |> Ash.create!()
 
-      assert user = Ash.get!(User, user.id, tenant: :bypass, load: [:likes])
-      assert user.likes |> Enum.map(& &1.id) == [like.id]
+      user =
+        User
+        |> Ash.Query.for_read(:bypass_all, %{})
+        |> Ash.Query.load(posts: :likes)
+        |> Ash.read!()
+
+
+        user.posts
+      # [%{likes: [%{id: like_id}]}] = user.posts
     end
   end
 

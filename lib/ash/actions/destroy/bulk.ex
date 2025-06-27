@@ -521,8 +521,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         actor: opts[:actor],
         tenant: opts[:tenant],
         tracer: opts[:tracer],
-        authorize?: opts[:authorize?],
-        bypass_tenancy: opts[:bypass_tenancy]
+        authorize?: opts[:authorize?]
       })
 
     {all_changes, conditional_after_batch_hooks, calculations} =

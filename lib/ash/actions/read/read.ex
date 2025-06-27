@@ -354,7 +354,7 @@ defmodule Ash.Actions.Read do
                  opts[:authorize?]
                ),
              {:ok, data} <-
-               load_relationships(data, query, opts),
+               load_relationships(data, query_ran, opts),
              {:ok, data} <-
                Ash.Actions.Read.Calculations.run(
                  data,
@@ -366,7 +366,7 @@ defmodule Ash.Actions.Read do
                load_through_attributes(
                  data,
                  %{
-                   query
+                   query_ran
                    | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
                      load_through: Map.delete(query.load_through || %{}, :attribute)
                  },
@@ -2429,6 +2429,7 @@ defmodule Ash.Actions.Read do
 
       :bypass_all ->
         query = Ash.Query.set_context(query, %{shared: %{multitenancy: :bypass_all}})
+
         {:ok, %{query | tenant: nil, to_tenant: nil}}
     end
     |> case do
@@ -4540,7 +4541,7 @@ defmodule Ash.Actions.Read do
        when phase in ~w[preparing before_action after_action executing around_transaction]a,
        do: %{query | phase: phase}
 
-  defp get_shared_multitenancy(%{context: %{shared: %{multitenancy: multitenancy}}}) do
+  defp get_shared_multitenancy(%{context: %{multitenancy: multitenancy}}) do
     multitenancy
   end
 
