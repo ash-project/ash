@@ -158,6 +158,57 @@ defmodule Ash.TestTest do
       assert result == expected_result
     end
 
+    test "strips a map of maps" do
+      input = %{
+        user1: %{
+          id: 1,
+          name: "User 1",
+          __metadata__: %{selected: [:id, :name]},
+          __meta__: %Ecto.Schema.Metadata{state: :loaded}
+        },
+        user2: %{
+          id: 2,
+          name: "User 2",
+          __metadata__: %{selected: [:id, :name]}
+        },
+        user3: %{
+          id: 3,
+          name: "User 3",
+          __meta__: %Ecto.Schema.Metadata{state: :loaded}
+        },
+        user4: %{
+          id: 4,
+          name: "User 4"
+        }
+      }
+
+      expected_result = %{
+        user1: %{
+          id: 1,
+          name: "User 1",
+          __metadata__: %{},
+          __meta__: %Ecto.Schema.Metadata{}
+        },
+        user2: %{
+          id: 2,
+          name: "User 2",
+          __metadata__: %{}
+        },
+        user3: %{
+          id: 3,
+          name: "User 3",
+          __meta__: %Ecto.Schema.Metadata{}
+        },
+        user4: %{
+          id: 4,
+          name: "User 4"
+        }
+      }
+
+      result = strip_metadata(input)
+      assert result == expected_result
+    end
+
     test "strips Ash.Page.Offset with results" do
       input = %Ash.Page.Offset{
         results: [
