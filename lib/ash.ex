@@ -2879,9 +2879,6 @@ defmodule Ash do
 
   ## Examples
 
-      iex> Ash.read_one(MyApp.User, email: "user@example.com")
-      {:ok, %MyApp.User{id: 1, email: "user@example.com"}}
-
       iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.read_one()
       {:ok, %MyApp.Post{id: 1, published: true}}
 
