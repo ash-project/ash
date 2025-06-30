@@ -374,10 +374,6 @@ defmodule Ash.Schema do
       Or as an array:
 
           attribute :foo, {:array, :struct}, constraints: [items: [instance_of: #{inspect(module)}]]
-
-      You can disable this warning by setting `config :ash, allow_resources_as_types: true` in your config.
-
-      In 3.0, the flag to disable this behaviour will not be available.
       """
     else
       module
