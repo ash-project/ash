@@ -726,14 +726,14 @@ defmodule Ash.Type do
     {:array, get_type(value)}
   end
 
-  for {short_name, values} <- IO.inspect(Enum.group_by(@short_names, &elem(&1, 0), &elem(&1, 1))) do
+  for {short_name, values} <- Enum.group_by(@short_names, &elem(&1, 0), &elem(&1, 1)) do
     default = Enum.at(values, 0)
 
     if Code.ensure_loaded?(Enum.at(values, 0)) do
       def get_type(unquote(short_name)), do: unquote(default)
     else
       # handles cases where a dependency uses a short name 
-      # defined by an application
+      # also defined by an application
       def get_type(unquote(short_name)) do
         Enum.find(unquote(values), unquote(default), &Code.ensure_loaded?/1)
       end
