@@ -726,18 +726,8 @@ defmodule Ash.Type do
     {:array, get_type(value)}
   end
 
-  for {short_name, values} <- Enum.group_by(@short_names, &elem(&1, 0), &elem(&1, 1)) do
-    default = Enum.at(values, 0)
-
-    if Code.ensure_loaded?(Enum.at(values, 0)) do
-      def get_type(unquote(short_name)), do: unquote(default)
-    else
-      # handles cases where a dependency uses a short name 
-      # also defined by an application
-      def get_type(unquote(short_name)) do
-        Enum.find(unquote(values), unquote(default), &ensure_loaded?/1)
-      end
-    end
+  for {short_name, value} <- @short_names do
+    def get_type(unquote(short_name)), do: unquote(value)
   end
 
   def get_type(value) when is_atom(value) do
@@ -746,16 +736,6 @@ defmodule Ash.Type do
 
   def get_type(value) do
     value
-  end
-
-  @builtin_types Enum.map(@builtin_short_names, &elem(&1, 1))
-
-  defp ensure_loaded?(module) when module in @builtin_types do
-    true
-  end
-
-  defp ensure_loaded?(module) do
-    Code.ensure_loaded?(module)
   end
 
   @spec get_type!(atom | module | {:array, atom | module}) ::
