@@ -735,7 +735,7 @@ defmodule Ash.Type do
       # handles cases where a dependency uses a short name 
       # also defined by an application
       def get_type(unquote(short_name)) do
-        Enum.find(unquote(values), unquote(default), &Code.ensure_loaded?/1)
+        Enum.find(unquote(values), unquote(default), &ensure_loaded?/1)
       end
     end
   end
@@ -746,6 +746,16 @@ defmodule Ash.Type do
 
   def get_type(value) do
     value
+  end
+
+  @builtin_types Enum.map(@builtin_short_names, &elem(&1, 1))
+
+  defp ensure_loaded?(module) when module in @builtin_types do
+    true
+  end
+
+  defp ensure_loaded?(module) do
+    Code.ensure_loaded?(module)
   end
 
   @spec get_type!(atom | module | {:array, atom | module}) ::
