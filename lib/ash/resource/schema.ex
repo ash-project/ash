@@ -112,11 +112,22 @@ defmodule Ash.Schema do
                 calculation.name not in Ash.Resource.reserved_names() do
               {mod, _} = calculation.calculation
 
+              constraint_opts =
+                case calculation.type do
+                  {:array, _type} ->
+                    calculation.constraints[:items] || []
+
+                  _ ->
+                    calculation.constraints
+                end
+
               field(
                 calculation.name,
                 Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
-                virtual: true,
-                redact: calculation.sensitive?
+                Keyword.merge(constraint_opts,
+                  virtual: true,
+                  redact: calculation.sensitive?
+                )
               )
 
               Module.put_attribute(
@@ -275,11 +286,22 @@ defmodule Ash.Schema do
                 calculation.name not in Ash.Resource.reserved_names() do
               {mod, _} = calculation.calculation
 
+              constraint_opts =
+                case calculation.type do
+                  {:array, _type} ->
+                    calculation.constraints[:items] || []
+
+                  _ ->
+                    calculation.constraints
+                end
+
               field(
                 calculation.name,
                 Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
-                virtual: true,
-                redact: calculation.sensitive?
+                Keyword.merge(constraint_opts,
+                  virtual: true,
+                  redact: calculation.sensitive?
+                )
               )
 
               Module.put_attribute(

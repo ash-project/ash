@@ -2252,8 +2252,39 @@ defmodule Ash.Type do
 
   defp set_update_default(thing, _type, _constraints), do: {:ok, thing}
 
+  @reserved_constraints [
+    :default,
+    :source,
+    :autogenerate,
+    :read_after_writes,
+    :virtual,
+    :primary_key,
+    :load_in_query,
+    :redact,
+    :skip_default_validation,
+    :writable
+  ]
+
   @doc false
   def validate_constraints(type, constraints) do
+    used_reserved_keys =
+      Enum.filter(
+        @reserved_constraints,
+        &Keyword.has_key?(constraints, &1)
+      )
+
+    if Enum.any?(used_reserved_keys) do
+      raise """
+      Reserved constraint key used: 
+
+      #{inspect(used_reserved_keys)}
+
+      The following keys cannot be used as constraint keys because they are `Ecto.Schema.field` options.
+
+      #{Enum.map_join(used_reserved_keys, "\n", &"  * #{&1}")}
+      """
+    end
+
     case type do
       {:array, type} ->
         array_constraints = array_constraints(type)

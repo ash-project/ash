@@ -943,7 +943,6 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`multitenancy`](#actions-action-multitenancy){: #actions-action-multitenancy } | `:enforce \| :allow_global` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant. This is useful to change the behaviour of selected actions without the need of marking the whole resource with `global? true`. |
 | [`constraints`](#actions-action-constraints){: #actions-action-constraints } | `keyword` |  | Constraints for the return type. See `Ash.Type` for more. |
 | [`allow_nil?`](#actions-action-allow_nil?){: #actions-action-allow_nil? } | `boolean` | `false` | Whether or not the action can return nil. Unlike attributes & arguments, this defaults to `false`. |
 | [`run`](#actions-action-run){: #actions-action-run } | `(any, any -> any) \| module \| module` |  | Module may be an `Ash.Resource.Actions.Implementation` or `Reactor`. |
@@ -1039,7 +1038,6 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`multitenancy`](#actions-create-multitenancy){: #actions-create-multitenancy } | `:enforce \| :allow_global` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant. This is useful to change the behaviour of selected actions without the need of marking the whole resource with `global? true`. |
 | [`manual`](#actions-create-manual){: #actions-create-manual } | `(any, any -> any) \| module` |  | Override the creation behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 | [`upsert?`](#actions-create-upsert?){: #actions-create-upsert? } | `boolean` | `false` | Forces all uses of this action to be treated as an upsert. |
 | [`upsert_identity`](#actions-create-upsert_identity){: #actions-create-upsert_identity } | `atom` |  | The identity to use for the upsert. Cannot be overridden by the caller. Ignored  if `upsert?` is not set to `true`. |
@@ -1528,7 +1526,6 @@ update :flag_for_review, primary?: true
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`multitenancy`](#actions-update-multitenancy){: #actions-update-multitenancy } | `:enforce \| :allow_global` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant. This is useful to change the behaviour of selected actions without the need of marking the whole resource with `global? true`. |
 | [`manual`](#actions-update-manual){: #actions-update-manual } | `(any, any -> any) \| module` |  | Override the update behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 | [`require_atomic?`](#actions-update-require_atomic?){: #actions-update-require_atomic? } | `boolean` | `true` | Require that the update be atomic. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more. |
 | [`atomic_upgrade?`](#actions-update-atomic_upgrade?){: #actions-update-atomic_upgrade? } | `boolean` | `false` | If set to `true`, atomic upgrades will be performed. Ignored if `required_atomic?` is `true`. See the update actions guide for more. |
@@ -1772,7 +1769,6 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`multitenancy`](#actions-destroy-multitenancy){: #actions-destroy-multitenancy } | `:enforce \| :allow_global` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant. This is useful to change the behaviour of selected actions without the need of marking the whole resource with `global? true`. |
 | [`soft?`](#actions-destroy-soft?){: #actions-destroy-soft? } | `boolean` | `false` | If specified, the destroy action behaves as an update internally |
 | [`manual`](#actions-destroy-manual){: #actions-destroy-manual } | `(any, any -> any) \| module` |  | Override the update behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 | [`require_atomic?`](#actions-destroy-require_atomic?){: #actions-destroy-require_atomic? } | `boolean` | `true` | Require that the update be atomic. Only relevant if `soft?` is set to `true`. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more. |
