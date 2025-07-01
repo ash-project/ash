@@ -453,7 +453,7 @@ end
 | [`read_action`](#relationships-has_one-read_action){: #relationships-has_one-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-has_one-domain){: #relationships-has_one-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-has_one-filterable?){: #relationships-has_one-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
-| [`sortable?`](#relationships-has_one-sortable?){: #relationships-has_one-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-has_one-sortable?){: #relationships-has_one-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
 | [`sort`](#relationships-has_one-sort){: #relationships-has_one-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`default_sort`](#relationships-has_one-default_sort){: #relationships-has_one-default_sort } | `any` |  | A default sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-has_one-could_be_related_at_creation?){: #relationships-has_one-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
@@ -554,7 +554,7 @@ end
 | [`read_action`](#relationships-has_many-read_action){: #relationships-has_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-has_many-domain){: #relationships-has_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-has_many-filterable?){: #relationships-has_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
-| [`sortable?`](#relationships-has_many-sortable?){: #relationships-has_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-has_many-sortable?){: #relationships-has_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
 | [`sort`](#relationships-has_many-sort){: #relationships-has_many-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`default_sort`](#relationships-has_many-default_sort){: #relationships-has_many-default_sort } | `any` |  | A default sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-has_many-could_be_related_at_creation?){: #relationships-has_many-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
@@ -665,7 +665,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`read_action`](#relationships-many_to_many-read_action){: #relationships-many_to_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-many_to_many-domain){: #relationships-many_to_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-many_to_many-filterable?){: #relationships-many_to_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
-| [`sortable?`](#relationships-many_to_many-sortable?){: #relationships-many_to_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-many_to_many-sortable?){: #relationships-many_to_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
 | [`sort`](#relationships-many_to_many-sort){: #relationships-many_to_many-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`default_sort`](#relationships-many_to_many-default_sort){: #relationships-many_to_many-default_sort } | `any` |  | A default sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-many_to_many-could_be_related_at_creation?){: #relationships-many_to_many-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
@@ -771,7 +771,7 @@ end
 | [`read_action`](#relationships-belongs_to-read_action){: #relationships-belongs_to-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-belongs_to-domain){: #relationships-belongs_to-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-belongs_to-filterable?){: #relationships-belongs_to-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
-| [`sortable?`](#relationships-belongs_to-sortable?){: #relationships-belongs_to-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-belongs_to-sortable?){: #relationships-belongs_to-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
 | [`sort`](#relationships-belongs_to-sort){: #relationships-belongs_to-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`default_sort`](#relationships-belongs_to-default_sort){: #relationships-belongs_to-default_sort } | `any` |  | A default sort statement to be applied when loading the relationship. |
 | [`violation_message`](#relationships-belongs_to-violation_message){: #relationships-belongs_to-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
