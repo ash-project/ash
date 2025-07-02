@@ -2,6 +2,37 @@
 
 <!-- changelog -->
 
+## [v3.5.25](https://github.com/ash-project/ash/compare/v3.5.24...v3.5.25) (2025-07-02)
+
+
+
+
+### Bug Fixes:
+
+* handle additional cases in `Ash.Filter.flat_map` by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle overlapping type short-codes in app/dependencies by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that constraints are set on calculations by [@zachdaniel](https://github.com/zachdaniel)
+
+* Upgrade strip_metadata/1 to recurse on maps and handle additional metadata fields (#2169) by Samuel Wrenn
+
+* ensure that atomic upgrades assume casted inputs by [@zachdaniel](https://github.com/zachdaniel)
+
+* move length constraint checking to the end (#2155) by kernel-io
+
+### Improvements:
+
+* validate reserved constraint key names by [@zachdaniel](https://github.com/zachdaniel)
+
+* Read Action multitenancy :bypass_all (#2154) by xantrac
+
+* add missing types to Ash.load typespec (#2167) by [@barnabasJ](https://github.com/barnabasJ)
+
+* allow pure-binary sigils in expr fragments (#2165) by Frank Dugan III
+
+* add notifier trace/telemetry span type by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.24](https://github.com/ash-project/ash/compare/v3.5.23...v3.5.24) (2025-06-25)
 
 
