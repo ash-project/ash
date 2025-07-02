@@ -380,8 +380,8 @@ defmodule Ash.Actions.Read do
                  opts[:authorize?],
                  false
                ) do
-          query =
-            query
+          new_query =
+            new_query
             # prevent leakage of stale pid as we stop it at the end of reading
             |> clear_async_limiter()
 
@@ -891,10 +891,9 @@ defmodule Ash.Actions.Read do
                     opts[:authorize?],
                     false
                   ) do
-             query =
-               query
-               # prevent leakage of stale pid as we stop it at the end of reading
-               |> clear_async_limiter()
+             # prevent leakage of stale pid as we stop it at the end of reading
+             initial_query =
+               clear_async_limiter(initial_query)
 
              data
              |> Helpers.restrict_field_access(query)
