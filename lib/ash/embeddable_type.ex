@@ -821,6 +821,14 @@ defmodule Ash.EmbeddableType do
 
       defp has_all_attrs?(_, _), do: false
 
+      @meta_keys [:__metadata__, :__meta__, :__lateral_join_source__, :__order__]
+
+      def equal?(left, right) when is_map(left) and is_map(right) do
+        Map.drop(left, @meta_keys) == Map.drop(right, @meta_keys)
+      end
+
+      def equal?(_left, _right), do: false
+
       def loaded?(record, path_to_load, _constraints, opts) do
         Ash.Resource.loaded?(record, path_to_load, opts)
       end
