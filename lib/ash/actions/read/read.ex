@@ -30,10 +30,7 @@ defmodule Ash.Actions.Read do
   end
 
   def run(query, action, opts) do
-    query =
-      query
-      |> Ash.Query.new()
-      |> clear_async_limiter()
+    query = Ash.Query.new(query)
 
     domain = query.domain || opts[:domain] || Ash.Resource.Info.domain(query.resource)
 
@@ -380,11 +377,6 @@ defmodule Ash.Actions.Read do
                  opts[:authorize?],
                  false
                ) do
-          new_query =
-            new_query
-            # prevent leakage of stale pid as we stop it at the end of reading
-            |> clear_async_limiter()
-
           data
           |> Helpers.restrict_field_access(query)
           |> add_tenant(query)
@@ -891,10 +883,6 @@ defmodule Ash.Actions.Read do
                     opts[:authorize?],
                     false
                   ) do
-             # prevent leakage of stale pid as we stop it at the end of reading
-             initial_query =
-               clear_async_limiter(initial_query)
-
              data
              |> Helpers.restrict_field_access(query)
              |> add_tenant(query)
@@ -1293,9 +1281,14 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  defp clear_async_limiter(%{context: %{private: %{async_limiter: async_limiter}} = ctx} = query)
+  defp clear_async_limiter(%{context: %{private: %{async_limiter: async_limiter}}} = query)
        when is_pid(async_limiter) do
-    Ash.Query.set_context(query, put_in(ctx[:private][:async_limiter], nil))
+    if put_in(query.context.private.async_limiter, nil) !=
+         Ash.Query.set_context(query, %{private: %{async_limiter: nil}}) do
+      raise "what the fuck"
+    end
+
+    put_in(query.context.private.async_limiter, nil)
   end
 
   defp clear_async_limiter(query), do: query
@@ -2605,6 +2598,7 @@ defmodule Ash.Actions.Read do
 
   defp add_query(result, query, opts) do
     if opts[:return_query?] do
+      query = clear_async_limiter(query)
       {:ok, result, query}
     else
       {:ok, result}
@@ -2636,6 +2630,10 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def to_page(data, action, count, sort, original_query, new_query, opts) do
+    # prevent leakage of stale pid as we stop it at the end of reading
+    original_query =
+      clear_async_limiter(original_query)
+
     count = count || new_query.context[:full_count]
     page_opts = original_query.page
 
