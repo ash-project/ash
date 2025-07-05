@@ -26,7 +26,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
     after_action?: [
       type: :boolean,
       doc:
-        "If true all the cascade destroys are done in after_action hooks. This makes it safe to use in atomic actions",
+        "If true, cascade destroys are done in after_action hooks. If false, they run as before_action hooks. Defaults to true for atomic action compatibility",
       required: false,
       default: true
     ],
@@ -46,13 +46,20 @@ defmodule Ash.Resource.Change.CascadeDestroy do
   @moduledoc """
   Cascade a resource's destroy action to a related resource's destroy action.
 
-  If after_action? is true this change adds an after-action hook that explicitly
-  calls destroy on any records related via the named relationship.  It will optimise
+  ## Timing Control
+
+  The `after_action?` option controls when the cascade destroy occurs:
+
+  - `after_action?: true` (default) - Runs as an after-action hook, making it safe for atomic actions
+  - `after_action?: false` - Runs as a before-action hook
+
+  When `after_action?: true`, the change adds an after-action hook that explicitly
+  calls destroy on any records related via the named relationship. It will optimise
   for bulk destroys where possible. This makes it safe to use in atomic actions, but
   might not be possible depending on the data layer setup (see warning below).
 
-  If after_action? is false this change will add a before-action hook for relationships
-  where the child record points to the parent (has_many, has_one, many_to_many).
+  When `after_action?: false`, the change simply runs as a before_action.
+  Requires keyset pagination on the primary read action of the targeted relation.
 
   > #### Beware database constraints {: .warning}
   >
