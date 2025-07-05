@@ -21,7 +21,7 @@ You should use hooks for most multi-step workflow scenarios as they provide simp
 
 **Use [generic actions](/documentation/topics/actions/generic-actions.md) when:**
 - You need a high-level action that works on multiple resources, and reactor or hooks are not fitting
-- There aren't side effects or external servies
+- There aren't side effects or external services
 - Short transactional operations that can be understood at a glance
 
 > ### Durable Workflows {: .info}
