@@ -4,5 +4,6 @@ defmodule Ash.Type.UtcDatetimeUsec do
 
   A builtin type that can be referenced via `:utc_datetime_usec`
   """
+  # 4.0 deprecate this type
   use Ash.Type.NewType, subtype_of: :datetime, constraints: [precision: :microsecond]
 end

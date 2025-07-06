@@ -50,6 +50,20 @@ end
 
 **Avoid direct Ash calls in web modules** - Don't use `Ash.get!/2` and `Ash.load!/2` directly in LiveViews/Controllers, similar to avoiding `Repo.get/2` outside context modules:
 
+You can also pass additional inputs in to code interfaces before the options:
+
+```elixir
+resource ResourceName do
+  define :create, action: :action_name, args: [:field1]
+end
+```
+
+```elixir
+Domain.create!(field1_value, %{field2: field2_value}, actor: current_user)
+```
+
+You should generally prefer using this map of extra inputs over defining optional arguments.
+
 ```elixir
 # BAD - in LiveView/Controller
 group = MyApp.Resource |> Ash.get!(id) |> Ash.load!(rel: [:nested])
