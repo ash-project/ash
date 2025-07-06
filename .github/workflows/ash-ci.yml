@@ -17,6 +17,12 @@ on:
       codegen:
         type: boolean
         default: false
+      doctor:
+        type: boolean
+        default: false
+      conventional-commit:
+        type: boolean
+        default: false
       spark-cheat-sheets:
         type: boolean
         default: true
@@ -26,6 +32,9 @@ on:
       postgres:
         type: boolean
         default: false
+      tenants:
+        type: boolean
+        default: true
       ash_postgres:
         type: boolean
         default: true
@@ -273,6 +282,16 @@ jobs:
       - name: Deploy to GitHub pages
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+  conventional-commit:
+    name: mix git_ops.check_message
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: ${{inputs.conventional-commit}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: team-alembic/staple-actions/actions/conventional-commit@main
+        with:
+          mix-env: test
 
   formatter:
     name: mix format --check-formatted
@@ -327,6 +346,16 @@ jobs:
         with:
           mix-env: test
           task: sobelow
+  doctor:
+    name: mix doctor --full --raise
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: ${{inputs.doctor}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: team-alembic/staple-actions/actions/mix-doctor@main
+        with:
+          mix-env: test
   credo:
     name: mix credo --strict
     runs-on: ubuntu-latest
@@ -443,7 +472,7 @@ jobs:
         with:
           mix-env: test
           task: ash_postgres.migrate --tenants
-        if: ${{inputs.postgres && inputs.ash_postgres}}
+        if: ${{inputs.postgres && inputs.ash_postgres && inputs.tenants}}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
@@ -501,6 +530,8 @@ jobs:
       - credo
       - unused-deps
       - spark-formatter
+      - doctor
+      - conventional-commit
       - spark-cheat-sheets
       - igniter-upgrade
       - sobelow
@@ -602,10 +633,14 @@ jobs:
             ${{ steps.build-crate.outputs.file-path }}
         if: startsWith(github.ref, 'refs/tags/v')
   release:
+    permissions:
+      contents: write
     needs:
       - credo
       - unused-deps
       - spark-formatter
+      - doctor
+      - conventional-commit
       - build-release
       - spark-cheat-sheets
       - igniter-upgrade
@@ -624,16 +659,12 @@ jobs:
         if: ${{inputs.rustler-precompiled-module}}
         with:
           task: rustler_precompiled.download ${{inputs.rustler-precompiled-module}} --only-local --all --print
-      - uses: team-alembic/staple-actions/actions/mix-hex-publish@59199173e18eee6748b65d01626ef82d51c6e963 # main
-        with:
-          mix-env: dev
-          hex-api-key: ${{secrets.HEX_API_KEY}}
       - name: Extract release notes from CHANGELOG.md
         id: extract-notes
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           VERSION=${TAG_NAME#v}
-          
+
           # Extract the section for this version from CHANGELOG.md
           awk -v version="$VERSION" '
             /^## \[v?[0-9]/ {
@@ -648,7 +679,7 @@ jobs:
               print
             }
           ' CHANGELOG.md > release_notes.md
-          
+
           # Check if notes were found
           if [ -s release_notes.md ]; then
             echo "has_notes=true" >> $GITHUB_OUTPUT
@@ -699,3 +730,7 @@ jobs:
             --title ${GITHUB_REF#refs/tags/} \
             --generate-notes \
             ${GITHUB_REF#refs/tags/}
+      - uses: team-alembic/staple-actions/actions/mix-hex-publish@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        with:
+          mix-env: dev
+          hex-api-key: ${{secrets.HEX_API_KEY}}

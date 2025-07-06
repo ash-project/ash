@@ -34,4 +34,16 @@ defmodule Ash.Test.Type.ArrayTest do
                Keyword.put(@default_constraints, :remove_nil_items?, true)
              )
   end
+
+  test "it errors when array length is below min_length constraint" do
+    assert {:error, [message: "must have %{min} or more items", min: 1]} =
+             Ash.Type.apply_constraints(
+               {:array, :string},
+               [""],
+               Keyword.merge(@default_constraints,
+                 min_length: 1,
+                 remove_nil_items?: true
+               )
+             )
+  end
 end

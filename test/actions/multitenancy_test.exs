@@ -44,6 +44,10 @@ defmodule Ash.Actions.MultitenancyTest do
       read :bypass_tenant do
         multitenancy(:bypass)
       end
+
+      read :bypass_all do
+        multitenancy(:bypass_all)
+      end
     end
 
     attributes do
@@ -68,6 +72,35 @@ defmodule Ash.Actions.MultitenancyTest do
         public?: true
 
       has_one :self, __MODULE__, destination_attribute: :id, source_attribute: :id
+    end
+  end
+
+  defmodule Like do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    multitenancy do
+      strategy(:attribute)
+      attribute(:org_id)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :create]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :org_id, :uuid do
+        public?(true)
+      end
+    end
+
+    relationships do
+      belongs_to :post, Post do
+        public?(true)
+      end
     end
   end
 
@@ -98,6 +131,10 @@ defmodule Ash.Actions.MultitenancyTest do
 
     relationships do
       has_many :comments, Ash.Actions.MultitenancyTest.Comment,
+        destination_attribute: :post_id,
+        public?: true
+
+      has_many :likes, Ash.Actions.MultitenancyTest.Like,
         destination_attribute: :post_id,
         public?: true
 
@@ -474,6 +511,31 @@ defmodule Ash.Actions.MultitenancyTest do
       %{other_thing_name_reversed: "oof"} =
         MultitenantThing
         |> Ash.get!(thing2.id, tenant: tenant1, load: :other_thing_name_reversed)
+    end
+
+    test "supports :bypass_all multitenancy on a read action", %{tenant1: tenant1} do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{author_id: user.id}, tenant: tenant1)
+        |> Ash.create!()
+
+      like =
+        Like
+        |> Ash.Changeset.for_create(:create, %{post_id: post.id}, tenant: tenant1)
+        |> Ash.create!()
+
+      [%{posts: [%{likes: [%{id: like_id}]}]}] =
+        User
+        |> Ash.Query.for_read(:bypass_all, %{})
+        |> Ash.Query.load(posts: :likes)
+        |> Ash.read!()
+
+      assert like_id == like.id
     end
   end
 

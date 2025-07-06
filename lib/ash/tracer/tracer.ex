@@ -7,14 +7,13 @@ defmodule Ash.Tracer do
           :action
           | :changeset
           | :query
-          | :flow
           | :calculate
           | :request_step
           | :change
           | :validation
           | :preparation
-          | :custom_flow_step
           | :custom
+          | :notifier
           | :before_transaction
           | :before_action
           | :after_transaction

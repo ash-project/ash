@@ -77,7 +77,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     sortable?: [
       type: :boolean,
       default: true,
-      doc: "If set to `false`, the relationship will not be usable in filters."
+      doc: "If set to `false`, the relationship will not be usable in sorts."
     ],
     sort: [
       type: :any,

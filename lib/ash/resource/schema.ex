@@ -112,11 +112,22 @@ defmodule Ash.Schema do
                 calculation.name not in Ash.Resource.reserved_names() do
               {mod, _} = calculation.calculation
 
+              constraint_opts =
+                case calculation.type do
+                  {:array, _type} ->
+                    calculation.constraints[:items] || []
+
+                  _ ->
+                    calculation.constraints
+                end
+
               field(
                 calculation.name,
                 Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
-                virtual: true,
-                redact: calculation.sensitive?
+                Keyword.merge(constraint_opts,
+                  virtual: true,
+                  redact: calculation.sensitive?
+                )
               )
 
               Module.put_attribute(
@@ -275,11 +286,22 @@ defmodule Ash.Schema do
                 calculation.name not in Ash.Resource.reserved_names() do
               {mod, _} = calculation.calculation
 
+              constraint_opts =
+                case calculation.type do
+                  {:array, _type} ->
+                    calculation.constraints[:items] || []
+
+                  _ ->
+                    calculation.constraints
+                end
+
               field(
                 calculation.name,
                 Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
-                virtual: true,
-                redact: calculation.sensitive?
+                Keyword.merge(constraint_opts,
+                  virtual: true,
+                  redact: calculation.sensitive?
+                )
               )
 
               Module.put_attribute(
@@ -352,10 +374,6 @@ defmodule Ash.Schema do
       Or as an array:
 
           attribute :foo, {:array, :struct}, constraints: [items: [instance_of: #{inspect(module)}]]
-
-      You can disable this warning by setting `config :ash, allow_resources_as_types: true` in your config.
-
-      In 3.0, the flag to disable this behaviour will not be available.
       """
     else
       module

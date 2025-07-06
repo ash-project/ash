@@ -89,7 +89,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
     end
   end
 
-  describe "in separate registries" do
+  describe "in separate domains" do
     test "it allows managing without raising an error" do
       Post
       |> Ash.Changeset.for_create(:create, %{

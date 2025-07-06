@@ -1325,6 +1325,20 @@ defmodule Ash.Filter do
       %{__function__?: true, arguments: arguments} = function ->
         func.(function) ++ Enum.flat_map(arguments, &flat_map(&1, func))
 
+      value when is_tuple(value) ->
+        value
+        |> Tuple.to_list()
+        |> flat_map(func)
+
+      value when is_list(value) ->
+        Enum.flat_map(value, &flat_map(&1, func))
+
+      %MapSet{} = value ->
+        Enum.flat_map(value, &flat_map(&1, func))
+
+      %Ash.Query.Call{args: args} ->
+        flat_map(args, func)
+
       other ->
         func.(other)
     end

@@ -30,10 +30,7 @@ defmodule Ash.Actions.Read do
   end
 
   def run(query, action, opts) do
-    query =
-      query
-      |> Ash.Query.new()
-      |> clear_async_limiter()
+    query = Ash.Query.new(query)
 
     domain = query.domain || opts[:domain] || Ash.Resource.Info.domain(query.resource)
 
@@ -343,6 +340,8 @@ defmodule Ash.Actions.Read do
               {data_result, query}
           end
 
+        query = Ash.Query.set_context(query, %{shared: query_ran.context[:shared]})
+
         with {:ok, data, count, calculations_at_runtime, calculations_in_query, new_query} <-
                data_result,
              data = add_tenant(data, query),
@@ -378,11 +377,6 @@ defmodule Ash.Actions.Read do
                  opts[:authorize?],
                  false
                ) do
-          query =
-            query
-            # prevent leakage of stale pid as we stop it at the end of reading
-            |> clear_async_limiter()
-
           data
           |> Helpers.restrict_field_access(query)
           |> add_tenant(query)
@@ -651,7 +645,7 @@ defmodule Ash.Actions.Read do
              results <- add_keysets(query, results, query.sort),
              {:ok, results} <- run_authorize_results(query, results),
              {:ok, results, after_notifications} <- run_after_action(query, results),
-             {:ok, count} <- maybe_await(count) do
+             {:ok, count} <- maybe_await(count, query.timeout) do
           notify_callback.(query, before_notifications ++ after_notifications)
           {:ok, results, count, calculations_at_runtime, calculations_in_query, query}
         else
@@ -889,11 +883,6 @@ defmodule Ash.Actions.Read do
                     opts[:authorize?],
                     false
                   ) do
-             query =
-               query
-               # prevent leakage of stale pid as we stop it at the end of reading
-               |> clear_async_limiter()
-
              data
              |> Helpers.restrict_field_access(query)
              |> add_tenant(query)
@@ -1292,9 +1281,14 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  defp clear_async_limiter(%{context: %{private: %{async_limiter: async_limiter}} = ctx} = query)
+  defp clear_async_limiter(%{context: %{private: %{async_limiter: async_limiter}}} = query)
        when is_pid(async_limiter) do
-    Ash.Query.set_context(query, put_in(ctx[:private][:async_limiter], nil))
+    if put_in(query.context.private.async_limiter, nil) !=
+         Ash.Query.set_context(query, %{private: %{async_limiter: nil}}) do
+      raise "what the fuck"
+    end
+
+    put_in(query.context.private.async_limiter, nil)
   end
 
   defp clear_async_limiter(query), do: query
@@ -2424,7 +2418,8 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def handle_multitenancy(query) do
-    action_multitenancy = get_action(query.resource, query.action).multitenancy
+    action_multitenancy =
+      get_shared_multitenancy(query) || get_action(query.resource, query.action).multitenancy
 
     case action_multitenancy do
       :enforce ->
@@ -2438,6 +2433,11 @@ defmodule Ash.Actions.Read do
         {:ok, handle_attribute_multitenancy(query)}
 
       :bypass ->
+        {:ok, %{query | tenant: nil, to_tenant: nil}}
+
+      :bypass_all ->
+        query = Ash.Query.set_context(query, %{shared: %{multitenancy: :bypass_all}})
+
         {:ok, %{query | tenant: nil, to_tenant: nil}}
     end
     |> case do
@@ -2589,7 +2589,7 @@ defmodule Ash.Actions.Read do
   defp add_tenant(data, query) do
     if Ash.Resource.Info.multitenancy_strategy(query.resource) do
       Enum.map(data, fn item ->
-        %{item | __metadata__: Map.put(item.__metadata__, :tenant, query.tenant)}
+        %{item | __metadata__: Map.put_new(item.__metadata__, :tenant, query.tenant)}
       end)
     else
       data
@@ -2598,6 +2598,7 @@ defmodule Ash.Actions.Read do
 
   defp add_query(result, query, opts) do
     if opts[:return_query?] do
+      query = clear_async_limiter(query)
       {:ok, result, query}
     else
       {:ok, result}
@@ -2629,6 +2630,10 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def to_page(data, action, count, sort, original_query, new_query, opts) do
+    # prevent leakage of stale pid as we stop it at the end of reading
+    original_query =
+      clear_async_limiter(original_query)
+
     count = count || new_query.context[:full_count]
     page_opts = original_query.page
 
@@ -3201,8 +3206,8 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  defp maybe_await(%Task{} = task) do
-    case Task.await(task) do
+  defp maybe_await(%Task{} = task, timeout) do
+    case Task.await(task, timeout) do
       {:__exception__, e, stacktrace} ->
         reraise e, stacktrace
 
@@ -3211,7 +3216,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp maybe_await(other), do: other
+  defp maybe_await(other, _timeout), do: other
 
   defp fetch_count(
          %{context: %{full_count: full_count}},
@@ -4548,4 +4553,12 @@ defmodule Ash.Actions.Read do
   defp set_phase(query, phase \\ :preparing)
        when phase in ~w[preparing before_action after_action executing around_transaction]a,
        do: %{query | phase: phase}
+
+  defp get_shared_multitenancy(%{context: %{multitenancy: multitenancy}}) do
+    multitenancy
+  end
+
+  defp get_shared_multitenancy(_) do
+    nil
+  end
 end

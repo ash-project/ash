@@ -586,4 +586,144 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     assert Enum.map(applied_author.union_tags_with_id, & &1.value.id) ==
              Enum.map(author.union_tags_with_id, & &1.value.id)
   end
+
+  test "embedded resource change detection works correctly when updating with identical struct" do
+    author =
+      Author
+      |> Changeset.for_create(:create, %{
+        profile: %{first_name: "John", last_name: "Doe"}
+      })
+      |> Ash.create!()
+
+    original_profile = author.profile
+    changeset = Changeset.for_update(author, :update, %{profile: original_profile})
+
+    refute Changeset.changing_attribute?(changeset, :profile)
+  end
+
+  test "embedded resource change detection works correctly when updating with semantically identical map values" do
+    author =
+      Author
+      |> Changeset.for_create(:create, %{
+        profile: %{first_name: "John", last_name: "Doe"}
+      })
+      |> Ash.create!()
+
+    changeset_with_identical_map =
+      Changeset.for_update(author, :update, %{
+        profile: %{first_name: "John", last_name: "Doe"}
+      })
+
+    refute Changeset.changing_attribute?(changeset_with_identical_map, :profile)
+    refute Map.has_key?(changeset_with_identical_map.attributes, :profile)
+  end
+
+  test "changeset changing_attributes? returns false for embedded resources with semantically identical values" do
+    author =
+      Author
+      |> Changeset.for_create(:create, %{
+        profile: %{first_name: "John", last_name: "Doe", counter: 5}
+      })
+      |> Ash.create!()
+
+    changeset_with_identical_values =
+      Changeset.for_update(author, :update, %{
+        profile: %{first_name: "John", last_name: "Doe", counter: 5}
+      })
+
+    refute Changeset.changing_attributes?(changeset_with_identical_values)
+  end
+
+  test "changeset changing_attribute? returns true for embedded resources with different values" do
+    author =
+      Author
+      |> Changeset.for_create(:create, %{
+        profile: %{first_name: "John", last_name: "Doe", counter: 5}
+      })
+      |> Ash.create!()
+
+    changeset_with_different_values =
+      Changeset.for_update(author, :update, %{
+        profile: %{first_name: "Jane", last_name: "Smith", counter: 6}
+      })
+
+    assert Changeset.changing_attribute?(changeset_with_different_values, :profile)
+  end
+
+  test "changeset changing_attributes? returns false when using string keys with semantically identical embedded resource values" do
+    author =
+      Author
+      |> Changeset.for_create(:create, %{
+        profile: %{first_name: "John", last_name: "Doe", counter: 5}
+      })
+      |> Ash.create!()
+
+    changeset_with_string_keys =
+      Changeset.for_update(author, :update, %{
+        profile: %{"first_name" => "John", "last_name" => "Doe", "counter" => 5}
+      })
+
+    refute Changeset.changing_attributes?(changeset_with_string_keys)
+  end
+
+  test "changed? context flag is false after executing update with semantically identical embedded resource values" do
+    author =
+      Author
+      |> Changeset.for_create(:create, %{
+        profile: %{first_name: "John", last_name: "Doe"}
+      })
+      |> Ash.create!()
+
+    changeset =
+      Changeset.for_update(author, :update, %{
+        profile: %{first_name: "John", last_name: "Doe"}
+      })
+
+    {_result, notifications} = Ash.update!(changeset, return_notifications?: true)
+
+    assert List.first(notifications).changeset.context[:changed?] == false
+  end
+
+  test "changed? context flag is true after executing update with different embedded resource values" do
+    author =
+      Author
+      |> Changeset.for_create(:create, %{
+        profile: %{first_name: "John", last_name: "Doe"}
+      })
+      |> Ash.create!()
+
+    changeset =
+      Changeset.for_update(author, :update, %{
+        profile: %{first_name: "Jane", last_name: "Smith"}
+      })
+
+    {_result, notifications} = Ash.update!(changeset, return_notifications?: true)
+
+    assert List.first(notifications).changeset.context[:changed?] == true
+  end
+
+  test "changed? context flag is false after executing update with string keys but identical embedded resource values" do
+    author =
+      Author
+      |> Changeset.for_create(:create, %{
+        profile: %{first_name: "John", last_name: "Doe"}
+      })
+      |> Ash.create!()
+
+    first_changeset =
+      Changeset.for_update(author, :update, %{
+        profile: %{first_name: "Jane", last_name: "Smith"}
+      })
+
+    updated_author = Ash.update!(first_changeset)
+
+    string_key_changeset =
+      Changeset.for_update(updated_author, :update, %{
+        profile: %{"first_name" => "Jane", "last_name" => "Smith"}
+      })
+
+    {_result, notifications} = Ash.update!(string_key_changeset, return_notifications?: true)
+
+    assert List.first(notifications).changeset.context[:changed?] == false
+  end
 end

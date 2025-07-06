@@ -453,7 +453,7 @@ end
 | [`read_action`](#relationships-has_one-read_action){: #relationships-has_one-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-has_one-domain){: #relationships-has_one-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-has_one-filterable?){: #relationships-has_one-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
-| [`sortable?`](#relationships-has_one-sortable?){: #relationships-has_one-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-has_one-sortable?){: #relationships-has_one-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
 | [`sort`](#relationships-has_one-sort){: #relationships-has_one-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`default_sort`](#relationships-has_one-default_sort){: #relationships-has_one-default_sort } | `any` |  | A default sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-has_one-could_be_related_at_creation?){: #relationships-has_one-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
@@ -554,7 +554,7 @@ end
 | [`read_action`](#relationships-has_many-read_action){: #relationships-has_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-has_many-domain){: #relationships-has_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-has_many-filterable?){: #relationships-has_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
-| [`sortable?`](#relationships-has_many-sortable?){: #relationships-has_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-has_many-sortable?){: #relationships-has_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
 | [`sort`](#relationships-has_many-sort){: #relationships-has_many-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`default_sort`](#relationships-has_many-default_sort){: #relationships-has_many-default_sort } | `any` |  | A default sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-has_many-could_be_related_at_creation?){: #relationships-has_many-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
@@ -665,7 +665,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`read_action`](#relationships-many_to_many-read_action){: #relationships-many_to_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-many_to_many-domain){: #relationships-many_to_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-many_to_many-filterable?){: #relationships-many_to_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
-| [`sortable?`](#relationships-many_to_many-sortable?){: #relationships-many_to_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-many_to_many-sortable?){: #relationships-many_to_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
 | [`sort`](#relationships-many_to_many-sort){: #relationships-many_to_many-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`default_sort`](#relationships-many_to_many-default_sort){: #relationships-many_to_many-default_sort } | `any` |  | A default sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-many_to_many-could_be_related_at_creation?){: #relationships-many_to_many-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
@@ -771,7 +771,7 @@ end
 | [`read_action`](#relationships-belongs_to-read_action){: #relationships-belongs_to-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-belongs_to-domain){: #relationships-belongs_to-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-belongs_to-filterable?){: #relationships-belongs_to-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
-| [`sortable?`](#relationships-belongs_to-sortable?){: #relationships-belongs_to-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-belongs_to-sortable?){: #relationships-belongs_to-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
 | [`sort`](#relationships-belongs_to-sort){: #relationships-belongs_to-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`default_sort`](#relationships-belongs_to-default_sort){: #relationships-belongs_to-default_sort } | `any` |  | A default sort statement to be applied when loading the relationship. |
 | [`violation_message`](#relationships-belongs_to-violation_message){: #relationships-belongs_to-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
@@ -1289,7 +1289,7 @@ end
 | [`modify_query`](#actions-read-modify_query){: #actions-read-modify_query } | `mfa \| (any, any -> any)` |  | Allows direct manipulation of the data layer query via an MFA. The ash query and the data layer query will be provided as additional arguments. The result must be `{:ok, new_data_layer_query} \| {:error, error}`. |
 | [`get_by`](#actions-read-get_by){: #actions-read-get_by } | `atom \| list(atom)` |  | A helper to automatically generate a "get by X" action. Sets `get?` to true, add args for each of the specified fields, and adds a filter for each of the arguments. |
 | [`timeout`](#actions-read-timeout){: #actions-read-timeout } | `pos_integer` |  | The maximum amount of time, in milliseconds, that the action is allowed to run for. Ignored if the data layer doesn't support transactions *and* async is disabled. |
-| [`multitenancy`](#actions-read-multitenancy){: #actions-read-multitenancy } | `:enforce \| :allow_global \| :bypass` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set. This is useful to change the behaviour of selected read action without the need of marking the whole resource with `global? true`. |
+| [`multitenancy`](#actions-read-multitenancy){: #actions-read-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources. This is useful to change the behaviour of selected read action without the need of marking the whole resource with `global? true`. |
 | [`primary?`](#actions-read-primary?){: #actions-read-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-read-description){: #actions-read-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-read-transaction?){: #actions-read-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
