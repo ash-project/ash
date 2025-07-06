@@ -139,89 +139,22 @@ if Code.ensure_loaded?(Igniter) do
             inspect(base)
           end
 
-        attributes = attributes(options)
-
-        relationships =
-          if !Enum.empty?(options[:relationship]) do
-            """
-            relationships do
-            #{relationships(options)}
-            end
-            """
-          end
-
         default_accept =
-          Enum.flat_map(options[:attribute], fn attribute ->
-            [name, _type | modifiers] = String.split(attribute, ":", trim: true)
+          Enum.flat_map(options[:attribute] || [], fn attribute ->
+            case String.split(attribute, ":", trim: true) do
+              [name, _type | modifiers] ->
+                if "public" in modifiers do
+                  [String.to_atom(name)]
+                else
+                  []
+                end
 
-            if "public" in modifiers do
-              [String.to_atom(name)]
-            else
-              []
+              _ ->
+                raise """
+                Invalid attribute format: #{attribute}. Please use the format `name:type` for each attribute.
+                """
             end
           end)
-
-        actions =
-          case options[:default_actions] do
-            [] ->
-              ""
-
-            defaults ->
-              default_contents =
-                Enum.map_join(defaults, ", ", fn
-                  type when type in ["read", "destroy"] ->
-                    ":#{type}"
-
-                  type when type in ["create", "update"] ->
-                    "#{type}: #{inspect(default_accept)}"
-
-                  type ->
-                    raise """
-                    Invalid default action type given to `--default-actions`: #{inspect(type)}.
-                    """
-                end)
-
-              """
-              actions do
-                defaults [#{default_contents}]
-              end
-              """
-          end
-
-        attributes =
-          if options[:uuid_primary_key] || options[:integer_primary_key] ||
-               options[:uuid_v7_primary_key] ||
-               !Enum.empty?(options[:attribute]) || options[:timestamps] do
-            uuid_primary_key =
-              if options[:uuid_primary_key] do
-                pkey_builder("uuid_primary_key", options[:uuid_primary_key])
-              end
-
-            uuid_v7_primary_key =
-              if options[:uuid_v7_primary_key] do
-                pkey_builder("uuid_v7_primary_key", options[:uuid_v7_primary_key])
-              end
-
-            integer_primary_key =
-              if options[:integer_primary_key] do
-                pkey_builder("integer_primary_key", options[:integer_primary_key])
-              end
-
-            timestamps =
-              if options[:timestamps] do
-                "timestamps()"
-              end
-
-            """
-            attributes do
-              #{uuid_primary_key}
-              #{uuid_v7_primary_key}
-              #{integer_primary_key}
-              #{attributes}
-              #{timestamps}
-            end
-            """
-          end
 
         igniter
         |> Igniter.compose_task("ash.gen.domain", [inspect(domain), "--ignore-if-exists"])
@@ -229,20 +162,10 @@ if Code.ensure_loaded?(Igniter) do
           domain,
           resource
         )
-        |> Igniter.Project.Module.create_module(
-          resource,
-          """
-          use #{base},
-            otp_app: #{inspect(app_name)},
-            domain: #{inspect(domain)}
-
-          #{actions}
-
-          #{attributes}
-
-          #{relationships}
-          """
-        )
+        |> ensure_resource_exists(resource, base, app_name, domain)
+        |> add_actions_to_resource(resource, options, default_accept)
+        |> add_attributes_to_resource(resource, options)
+        |> add_relationships_to_resource(resource, options)
         |> extend(resource, options[:extend], argv)
       end
     end
@@ -259,66 +182,8 @@ if Code.ensure_loaded?(Igniter) do
       )
     end
 
-    defp pkey_builder(builder, text) do
-      [name | modifiers] = String.split(text, ":", trim: true)
-      modifiers = modifiers -- ["primary_key"]
-
-      if !valid_attribute_name?(name) do
-        raise "Invalid attribute name provided for `#{builder}`: #{name}"
-      end
-
-      if Enum.empty?(modifiers) do
-        "#{builder} :#{name}"
-      else
-        """
-        #{builder} :#{name} do
-          #{attribute_modifier_string(modifiers)}
-        end
-        """
-      end
-    end
-
     defp valid_attribute_name?(name) do
       Regex.match?(~r/^[a-zA-Z][a-zA-Z0-9_]*[!?]?$/, name)
-    end
-
-    defp attributes(options) do
-      options[:attribute]
-      |> List.wrap()
-      |> Enum.join(",")
-      |> String.split(",", trim: true)
-      |> Enum.map(fn attribute ->
-        case String.split(attribute, ":") do
-          [name, type | modifiers] ->
-            if !valid_attribute_name?(name) do
-              raise "Invalid attribute name provided: #{name}"
-            end
-
-            {name, type, modifiers}
-
-          _name ->
-            raise """
-            Invalid attribute format: #{attribute}. Please use the format `name:type` for each attribute.
-            """
-        end
-      end)
-      |> Enum.map_join("\n", fn
-        {name, type, []} ->
-          type = resolve_type(type)
-
-          "attribute :#{name}, #{inspect(type)}"
-
-        {name, type, modifiers} ->
-          modifier_string = attribute_modifier_string(modifiers)
-
-          type = resolve_type(type)
-
-          """
-          attribute :#{name}, #{inspect(type)} do
-            #{modifier_string}
-          end
-          """
-      end)
     end
 
     defp attribute_modifier_string(modifiers) do
@@ -347,64 +212,6 @@ if Code.ensure_loaded?(Igniter) do
       end)
     end
 
-    defp relationships(options) do
-      options[:relationship]
-      |> List.wrap()
-      |> Enum.join(",")
-      |> String.split(",")
-      |> Enum.map(fn relationship ->
-        case String.split(relationship, ":") do
-          [type, name, destination | modifiers] ->
-            if !valid_attribute_name?(name) do
-              raise "Invalid relationship name provided: #{name}"
-            end
-
-            {type, name, destination, modifiers}
-
-          _name ->
-            raise """
-            Invalid relationship format: #{relationship}. Please use the format `type:name:destination` for each attribute.
-            """
-        end
-      end)
-      |> Enum.map_join("\n", fn
-        {type, name, destination, []} ->
-          "#{type} :#{name}, #{destination}"
-
-        {type, name, destination, modifiers} ->
-          modifier_string =
-            Enum.map_join(modifiers, "\n", fn
-              "primary_key" ->
-                if type == "belongs_to" do
-                  "primary_key? true"
-                else
-                  raise ArgumentError,
-                        "The @ modifier (for `primary_key?: true`) is only valid for belongs_to relationships, saw it in `#{type}:#{name}`"
-                end
-
-              "public" ->
-                "public? true"
-
-              "sensitive?" ->
-                "sensitive? true"
-
-              "required" ->
-                if type == "belongs_to" do
-                  "allow_nil? false"
-                else
-                  raise ArgumentError,
-                        "The ! modifier (for `allow_nil?: false`) is only valid for belongs_to relationships, saw it in `#{type}:#{name}`"
-                end
-            end)
-
-          """
-          #{type} :#{name}, #{destination} do
-            #{modifier_string}
-          end
-          """
-      end)
-    end
-
     defp resolve_type(value) do
       # sadly, we can't validate the type here
       # because the type may be being generated
@@ -413,6 +220,380 @@ if Code.ensure_loaded?(Igniter) do
         Module.concat([value])
       else
         String.to_atom(value)
+      end
+    end
+
+    defp ensure_resource_exists(igniter, resource, base, app_name, domain) do
+      case Igniter.Project.Module.find_module(igniter, resource) do
+        {:ok, {igniter, _source, _zipper}} ->
+          # Resource already exists, don't recreate it
+          igniter
+
+        {:error, igniter} ->
+          # Resource doesn't exist, create it with basic structure
+          Igniter.Project.Module.create_module(
+            igniter,
+            resource,
+            """
+            use #{base},
+              otp_app: #{inspect(app_name)},
+              domain: #{inspect(domain)}
+            """
+          )
+      end
+    end
+
+    defp add_attributes_to_resource(igniter, resource, options) do
+      igniter
+      |> add_primary_key_to_resource(resource, options)
+      |> add_regular_attributes_to_resource(resource, options)
+      |> add_timestamps_to_resource(resource, options)
+    end
+
+    defp add_primary_key_to_resource(igniter, resource, options) do
+      cond do
+        options[:uuid_primary_key] ->
+          add_primary_key_attribute(
+            igniter,
+            resource,
+            "uuid_primary_key",
+            options[:uuid_primary_key]
+          )
+
+        options[:uuid_v7_primary_key] ->
+          add_primary_key_attribute(
+            igniter,
+            resource,
+            "uuid_v7_primary_key",
+            options[:uuid_v7_primary_key]
+          )
+
+        options[:integer_primary_key] ->
+          add_primary_key_attribute(
+            igniter,
+            resource,
+            "integer_primary_key",
+            options[:integer_primary_key]
+          )
+
+        true ->
+          igniter
+      end
+    end
+
+    defp add_primary_key_attribute(igniter, resource, builder, text) do
+      [name | modifiers] = String.split(text, ":", trim: true)
+      modifiers = modifiers -- ["primary_key"]
+      name_atom = String.to_atom(name)
+
+      if !valid_attribute_name?(name) do
+        raise "Invalid attribute name provided for `#{builder}`: #{name}"
+      end
+
+      if Enum.empty?(modifiers) do
+        Ash.Resource.Igniter.add_new_attribute(
+          igniter,
+          resource,
+          name_atom,
+          "#{builder} :#{name}"
+        )
+      else
+        attribute_with_modifiers = """
+        #{builder} :#{name} do
+          #{attribute_modifier_string(modifiers)}
+        end
+        """
+
+        Ash.Resource.Igniter.add_new_attribute(
+          igniter,
+          resource,
+          name_atom,
+          attribute_with_modifiers
+        )
+      end
+    end
+
+    defp add_regular_attributes_to_resource(igniter, resource, options) do
+      Enum.reduce(options[:attribute] || [], igniter, fn attribute, igniter ->
+        case String.split(attribute, ":") do
+          [name, type | modifiers] ->
+            if !valid_attribute_name?(name) do
+              raise "Invalid attribute name provided: #{name}"
+            end
+
+            name_atom = String.to_atom(name)
+            type = resolve_type(type)
+
+            attribute_code =
+              if Enum.empty?(modifiers) do
+                "attribute :#{name}, #{inspect(type)}"
+              else
+                modifier_string = attribute_modifier_string(modifiers)
+
+                """
+                attribute :#{name}, #{inspect(type)} do
+                  #{modifier_string}
+                end
+                """
+              end
+
+            Ash.Resource.Igniter.add_new_attribute(igniter, resource, name_atom, attribute_code)
+
+          _name ->
+            raise """
+            Invalid attribute format: #{attribute}. Please use the format `name:type` for each attribute.
+            """
+        end
+      end)
+    end
+
+    defp add_timestamps_to_resource(igniter, resource, options) do
+      if options[:timestamps] do
+        # Check if timestamps() call already exists in attributes section
+        case find_existing_timestamps_call(igniter, resource) do
+          {:ok, igniter} ->
+            # Already exists, don't add again
+            igniter
+
+          {:error, igniter} ->
+            # Also check for manual inserted_at/updated_at definitions
+            {igniter, has_timestamps?} =
+              Ash.Resource.Igniter.defines_attribute(igniter, resource, :inserted_at)
+
+            if has_timestamps? do
+              igniter
+            else
+              Ash.Resource.Igniter.add_attribute(igniter, resource, "timestamps()")
+            end
+        end
+      else
+        igniter
+      end
+    end
+
+    defp add_relationships_to_resource(igniter, resource, options) do
+      Enum.reduce(options[:relationship] || [], igniter, fn relationship, igniter ->
+        case String.split(relationship, ":") do
+          [type, name, destination | modifiers] ->
+            if !valid_attribute_name?(name) do
+              raise "Invalid relationship name provided: #{name}"
+            end
+
+            name_atom = String.to_atom(name)
+
+            relationship_code =
+              if Enum.empty?(modifiers) do
+                "#{type} :#{name}, #{destination}"
+              else
+                modifier_string =
+                  Enum.map_join(modifiers, "\n", fn
+                    "primary_key" ->
+                      if type == "belongs_to" do
+                        "primary_key? true"
+                      else
+                        raise ArgumentError,
+                              "The primary_key modifier is only valid for belongs_to relationships, saw it in `#{type}:#{name}`"
+                      end
+
+                    "public" ->
+                      "public? true"
+
+                    "sensitive?" ->
+                      "sensitive? true"
+
+                    "required" ->
+                      if type == "belongs_to" do
+                        "allow_nil? false"
+                      else
+                        raise ArgumentError,
+                              "The ! modifier (for `allow_nil?: false`) is only valid for belongs_to relationships, saw it in `#{type}:#{name}`"
+                      end
+                  end)
+
+                """
+                #{type} :#{name}, #{destination} do
+                  #{modifier_string}
+                end
+                """
+              end
+
+            Ash.Resource.Igniter.add_new_relationship(
+              igniter,
+              resource,
+              name_atom,
+              relationship_code
+            )
+
+          _name ->
+            raise """
+            Invalid relationship format: #{relationship}. Please use the format `type:name:destination` for each attribute.
+            """
+        end
+      end)
+    end
+
+    defp add_actions_to_resource(igniter, resource, options, default_accept) do
+      case options[:default_actions] do
+        [] ->
+          igniter
+
+        defaults ->
+          # Check if defaults call already exists
+          case find_existing_defaults_call(igniter, resource) do
+            {:ok, igniter} ->
+              # Merge with existing defaults
+              merge_defaults_with_existing(igniter, resource, defaults, default_accept)
+
+            {:error, igniter} ->
+              # Add new defaults call
+              add_new_defaults_call(igniter, resource, defaults, default_accept)
+          end
+      end
+    end
+
+    defp find_existing_defaults_call(igniter, resource) do
+      Spark.Igniter.find(igniter, resource, fn _, zipper ->
+        with {:ok, zipper} <- enter_section(zipper, :actions),
+             {:ok, _zipper} <-
+               Igniter.Code.Function.move_to_function_call_in_current_scope(
+                 zipper,
+                 :defaults,
+                 1
+               ) do
+          {:ok, true}
+        else
+          _ -> :error
+        end
+      end)
+      |> case do
+        {:ok, igniter, _module, _value} ->
+          {:ok, igniter}
+
+        {:error, igniter} ->
+          {:error, igniter}
+      end
+    end
+
+    defp find_existing_timestamps_call(igniter, resource) do
+      Spark.Igniter.find(igniter, resource, fn _, zipper ->
+        with {:ok, zipper} <- enter_section(zipper, :attributes),
+             {:ok, _zipper} <-
+               Igniter.Code.Function.move_to_function_call_in_current_scope(
+                 zipper,
+                 :timestamps,
+                 [0, 1]
+               ) do
+          {:ok, true}
+        else
+          _ -> :error
+        end
+      end)
+      |> case do
+        {:ok, igniter, _module, _value} ->
+          {:ok, igniter}
+
+        {:error, igniter} ->
+          {:error, igniter}
+      end
+    end
+
+    defp merge_defaults_with_existing(igniter, resource, new_defaults, default_accept) do
+      Igniter.Project.Module.find_and_update_module!(igniter, resource, fn zipper ->
+        with {:ok, zipper} <- enter_section(zipper, :actions),
+             {:ok, zipper} <-
+               Igniter.Code.Function.move_to_function_call_in_current_scope(
+                 zipper,
+                 :defaults,
+                 1
+               ),
+             {:ok, zipper} <- Igniter.Code.Function.move_to_nth_argument(zipper, 0) do
+          # Add each new default to the list, avoiding duplicates
+          updated_zipper =
+            Enum.reduce(new_defaults, zipper, fn action_type, zipper ->
+              action_atom = String.to_atom(action_type)
+
+              case action_type do
+                type when type in ["read", "destroy"] ->
+                  # For simple actions, add atom if not already present
+                  case Igniter.Code.List.append_new_to_list(zipper, action_atom, fn zipper ->
+                         Igniter.Code.Common.nodes_equal?(zipper, action_atom)
+                       end) do
+                    {:ok, zipper} -> zipper
+                    :error -> zipper
+                  end
+
+                type when type in ["create", "update"] ->
+                  # For actions with accept lists, add or update keyword entry
+                  new_item = {action_atom, default_accept}
+
+                  # Remove existing entry if present, then add new one
+                  zipper =
+                    case Igniter.Code.List.remove_from_list(zipper, fn item_zipper ->
+                           # Check if this is a tuple with the same action type
+                           if Igniter.Code.Tuple.tuple?(item_zipper) do
+                             case Igniter.Code.Tuple.tuple_elem(item_zipper, 0) do
+                               {:ok, first_elem_zipper} ->
+                                 Igniter.Code.Common.nodes_equal?(first_elem_zipper, action_atom)
+
+                               _ ->
+                                 false
+                             end
+                           else
+                             false
+                           end
+                         end) do
+                      {:ok, zipper} -> zipper
+                      :error -> zipper
+                    end
+
+                  # Add the new item
+                  case Igniter.Code.List.append_to_list(zipper, new_item) do
+                    {:ok, zipper} -> zipper
+                    :error -> zipper
+                  end
+
+                type ->
+                  raise """
+                  Invalid default action type given to `--default-actions`: #{inspect(type)}.
+                  """
+              end
+            end)
+
+          {:ok, updated_zipper}
+        else
+          _ ->
+            {:error, "Failed to find or update defaults call"}
+        end
+      end)
+    end
+
+    defp add_new_defaults_call(igniter, resource, defaults, default_accept) do
+      default_contents =
+        Enum.map_join(defaults, ", ", fn
+          type when type in ["read", "destroy"] ->
+            ":#{type}"
+
+          type when type in ["create", "update"] ->
+            "#{type}: #{inspect(default_accept)}"
+
+          type ->
+            raise """
+            Invalid default action type given to `--default-actions`: #{inspect(type)}.
+            """
+        end)
+
+      actions_code = "defaults [#{default_contents}]"
+      Ash.Resource.Igniter.add_block(igniter, resource, :actions, actions_code)
+    end
+
+    defp enter_section(zipper, name) do
+      with {:ok, zipper} <-
+             Igniter.Code.Function.move_to_function_call_in_current_scope(
+               zipper,
+               name,
+               1
+             ) do
+        Igniter.Code.Common.move_to_do_block(zipper)
       end
     end
   end

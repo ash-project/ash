@@ -302,7 +302,10 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
           domain: MyApp.Blog
 
         actions do
-          defaults(create: [:title, :body], update: [:title, :body])
+          defaults(
+            create: [:title, :body],
+            update: [:title, :body]
+          )
         end
 
         attributes do
@@ -462,6 +465,406 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
       test_project()
       |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post", "--ignore-if-exists"])
       |> assert_creates("lib/my_app/blog/post.ex")
+    end
+  end
+
+  describe "merging with existing resources" do
+    test "merges new attributes with existing resource" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post", "--attribute", "body:text"])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute(:title, :string)
+          attribute(:body, :text)
+        end
+      end
+      """)
+    end
+
+    test "merges new relationships with existing resource" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--relationship",
+        "belongs_to:author:MyApp.Accounts.User"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--relationship",
+        "has_many:comments:MyApp.Blog.Comment"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        relationships do
+          belongs_to(:author, MyApp.Accounts.User)
+          has_many(:comments, MyApp.Blog.Comment)
+        end
+      end
+      """)
+    end
+
+    test "does not duplicate existing attributes" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string,body:text"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute(:title, :string)
+          attribute(:body, :text)
+        end
+      end
+      """)
+    end
+
+    test "does not duplicate existing relationships" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--relationship",
+        "belongs_to:author:MyApp.Accounts.User"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--relationship",
+        "belongs_to:author:MyApp.Accounts.User,has_many:comments:MyApp.Blog.Comment"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        relationships do
+          belongs_to(:author, MyApp.Accounts.User)
+          has_many(:comments, MyApp.Blog.Comment)
+        end
+      end
+      """)
+    end
+
+    test "merges default actions with existing resource" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post", "--default-actions", "read"])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string:public",
+        "--default-actions",
+        "create,update"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        actions do
+          defaults([:read, create: [:title], update: [:title]])
+        end
+
+        attributes do
+          attribute :title, :string do
+            public?(true)
+          end
+        end
+      end
+      """)
+    end
+
+    test "merges primary keys with existing resource" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post", "--uuid-primary-key", "id"])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute(:title, :string)
+          uuid_primary_key(:id)
+        end
+      end
+      """)
+    end
+
+    test "merges timestamps with existing resource" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post", "--timestamps"])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute(:title, :string)
+          timestamps()
+        end
+      end
+      """)
+    end
+
+    test "does not duplicate timestamps when already present" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post", "--timestamps"])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string",
+        "--timestamps"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          timestamps()
+          attribute(:title, :string)
+        end
+      end
+      """)
+    end
+
+    test "merges complex resource features incrementally" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post", "--uuid-primary-key", "id"])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string:required:public"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--relationship",
+        "belongs_to:author:MyApp.Accounts.User:required"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--default-actions",
+        "read,create"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post", "--timestamps"])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          uuid_primary_key(:id)
+
+          attribute :title, :string do
+            allow_nil?(false)
+            public?(true)
+          end
+
+          timestamps()
+        end
+
+        relationships do
+          belongs_to :author, MyApp.Accounts.User do
+            allow_nil?(false)
+          end
+        end
+
+        actions do
+          defaults([:read, create: []])
+        end
+      end
+      """)
+    end
+
+    test "merges attributes with different types and modifiers" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string:public"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "secret:string:sensitive,count:integer:required"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute :title, :string do
+            public?(true)
+          end
+
+          attribute :secret, :string do
+            sensitive?(true)
+          end
+
+          attribute :count, :integer do
+            allow_nil?(false)
+          end
+        end
+      end
+      """)
+    end
+
+    test "merges different primary key types but does not duplicate" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post", "--uuid-primary-key", "id"])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--uuid-primary-key",
+        "id:public"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          uuid_primary_key(:id)
+        end
+      end
+      """)
+    end
+
+    test "merges with existing hand-written resource" do
+      test_project()
+      |> Igniter.create_new_file("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          uuid_primary_key(:id)
+          
+          attribute :title, :string do
+            public? true
+          end
+        end
+        
+        actions do
+          defaults [:read]
+        end
+      end
+      """)
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "body:text:public",
+        "--relationship",
+        "belongs_to:author:MyApp.Accounts.User"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          uuid_primary_key(:id)
+
+          attribute :title, :string do
+            public?(true)
+          end
+
+          attribute :body, :text do
+            public?(true)
+          end
+        end
+
+        actions do
+          defaults([:read])
+        end
+
+        relationships do
+          belongs_to(:author, MyApp.Accounts.User)
+        end
+      end
+      """)
+    end
+
+    test "preserves existing resource configuration when merging" do
+      test_project()
+      |> Igniter.create_new_file("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        resource do
+          description "A blog post resource"
+        end
+
+        attributes do
+          uuid_primary_key(:id)
+        end
+      end
+      """)
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        resource do
+          description("A blog post resource")
+        end
+
+        attributes do
+          uuid_primary_key(:id)
+          attribute(:title, :string)
+        end
+      end
+      """)
     end
   end
 
@@ -639,7 +1042,6 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
 
         attributes do
           uuid_primary_key(:id)
-
           attribute(:title, :string)
           timestamps()
         end
