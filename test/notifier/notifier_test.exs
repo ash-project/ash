@@ -200,6 +200,7 @@ defmodule Ash.Test.NotifierTest do
            notifications: [
              %Ash.Notifier.Notification{
                resource: changeset.resource,
+               domain: Ash.Resource.Info.domain(changeset.resource),
                metadata: %{custom?: true}
              }
            ]

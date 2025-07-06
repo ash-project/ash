@@ -382,40 +382,36 @@ defmodule Ash.Policy.Policy do
   defp clean_constant_checks(other), do: other
 
   defp handle_constants({:and, l, r}, authorizer) do
-    {l, authorizer} = handle_constants(l, authorizer)
+    case handle_constants(l, authorizer) do
+      {false, authorizer} ->
+        {false, authorizer}
 
-    if l == false do
-      {false, authorizer}
-    else
-      {r, authorizer} = handle_constants(r, authorizer)
-
-      case {l, r} do
-        {_, false} -> {false, authorizer}
-        {false, _} -> {false, authorizer}
-        {true, true} -> {true, authorizer}
-        {true, r} -> {r, authorizer}
-        {l, true} -> {l, authorizer}
-        {l, r} -> {{:and, l, r}, authorizer}
-      end
+      {l, authorizer} ->
+        case {l, handle_constants(r, authorizer)} do
+          {_, {false, authorizer}} -> {false, authorizer}
+          {false, {_, authorizer}} -> {false, authorizer}
+          {true, {true, authorizer}} -> {true, authorizer}
+          {true, {r, authorizer}} -> {r, authorizer}
+          {l, {true, authorizer}} -> {l, authorizer}
+          {l, {r, authorizer}} -> {{:and, l, r}, authorizer}
+        end
     end
   end
 
   defp handle_constants({:or, l, r}, authorizer) do
-    {l, authorizer} = handle_constants(l, authorizer)
+    case handle_constants(l, authorizer) do
+      {true, authorizer} ->
+        {true, authorizer}
 
-    if l == true do
-      {true, authorizer}
-    else
-      {r, authorizer} = handle_constants(r, authorizer)
-
-      case {l, r} do
-        {_, true} -> {true, authorizer}
-        {true, _} -> {true, authorizer}
-        {false, false} -> {false, authorizer}
-        {false, r} -> {r, authorizer}
-        {l, false} -> {l, authorizer}
-        {l, r} -> {{:or, l, r}, authorizer}
-      end
+      {l, authorizer} ->
+        case {l, handle_constants(r, authorizer)} do
+          {_, {true, authorizer}} -> {true, authorizer}
+          {true, {_, authorizer}} -> {true, authorizer}
+          {false, {false, authorizer}} -> {false, authorizer}
+          {false, {r, authorizer}} -> {r, authorizer}
+          {l, {false, authorizer}} -> {l, authorizer}
+          {l, {r, authorizer}} -> {{:or, l, r}, authorizer}
+        end
     end
   end
 

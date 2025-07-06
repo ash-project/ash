@@ -623,31 +623,27 @@ defmodule Ash.Helpers do
     non_executable_tuple(tuple, n - 1)
   end
 
+  def deep_merge_maps(nil, right), do: right
+  def deep_merge_maps(left, nil), do: left
+  def deep_merge_maps(left, right), do: do_deep_merge_maps(left, right)
+
   @doc false
-  def deep_merge_maps(nil, right) do
+  def do_deep_merge_maps(left, right) when left == %{} do
     right
   end
 
-  def deep_merge_maps(left, nil) do
+  def do_deep_merge_maps(left, right) when right == %{} do
     left
   end
 
-  def deep_merge_maps(left, right) when left == %{} do
-    right
-  end
-
-  def deep_merge_maps(left, right) when right == %{} do
-    left
-  end
-
-  def deep_merge_maps(left, right)
+  def do_deep_merge_maps(left, right)
       when is_map(left) and is_map(right) and not is_struct(left) and not is_struct(right) do
     Map.merge(left, right, fn _, left, right ->
-      deep_merge_maps(left, right)
+      do_deep_merge_maps(left, right)
     end)
   end
 
-  def deep_merge_maps(_left, right), do: right
+  def do_deep_merge_maps(_left, right), do: right
 
   @doc false
   if Application.compile_env(:ash, :show_sensitive?, false) do

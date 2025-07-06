@@ -94,6 +94,7 @@ defmodule Ash.Actions.Update do
                   context: changeset.context_changes,
                   notify?: true,
                   data: changeset.data,
+                  assume_casted?: true,
                   no_atomic_constraints: changeset.no_atomic_constraints,
                   atomics:
                     Keyword.merge(

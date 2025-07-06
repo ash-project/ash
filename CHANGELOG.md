@@ -2,6 +2,90 @@
 
 <!-- changelog -->
 
+## [v3.5.25](https://github.com/ash-project/ash/compare/v3.5.24...v3.5.25) (2025-07-02)
+
+
+
+
+### Bug Fixes:
+
+* handle additional cases in `Ash.Filter.flat_map` by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle overlapping type short-codes in app/dependencies by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that constraints are set on calculations by [@zachdaniel](https://github.com/zachdaniel)
+
+* Upgrade strip_metadata/1 to recurse on maps and handle additional metadata fields (#2169) by Samuel Wrenn
+
+* ensure that atomic upgrades assume casted inputs by [@zachdaniel](https://github.com/zachdaniel)
+
+* move length constraint checking to the end (#2155) by kernel-io
+
+### Improvements:
+
+* validate reserved constraint key names by [@zachdaniel](https://github.com/zachdaniel)
+
+* Read Action multitenancy :bypass_all (#2154) by xantrac
+
+* add missing types to Ash.load typespec (#2167) by [@barnabasJ](https://github.com/barnabasJ)
+
+* allow pure-binary sigils in expr fragments (#2165) by Frank Dugan III
+
+* add notifier trace/telemetry span type by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.5.24](https://github.com/ash-project/ash/compare/v3.5.23...v3.5.24) (2025-06-25)
+
+
+
+
+### Bug Fixes:
+
+* restrict subset of context -> opts in embedded changesets by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly handle nested context for embeddable type by [@zachdaniel](https://github.com/zachdaniel)
+
+* Use the same parent query timeout for the count query, for `read` actions (#2161) by sevenseacat
+
+* ensure join query has shared context passed to it by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure shared context is set on through queries when loading by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* make usage-rules more clear about require Ash.Query by [@zachdaniel](https://github.com/zachdaniel)
+
+* `require Ash.Query` in `Ash.Resource` by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.5.23](https://github.com/ash-project/ash/compare/v3.5.22...v3.5.23) (2025-06-19)
+
+
+
+
+### Bug Fixes:
+
+* set proper metadata key for bulk destroy changes by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't override tenant if manually set by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.5.22](https://github.com/ash-project/ash/compare/v3.5.21...v3.5.22) (2025-06-18)
+
+
+
+
+### Bug Fixes:
+
+* template opts in conditions in atomic changes by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly detect existing timestamp attributes in igniter tasks by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* improve message for --dev migrations message by [@zachdaniel](https://github.com/zachdaniel)
+
+* add `mix ash` command by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle changes to `nil` for unknown attribute values by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.21](https://github.com/ash-project/ash/compare/v3.5.20...v3.5.21) (2025-06-16)
 
 

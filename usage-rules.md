@@ -50,6 +50,20 @@ end
 
 **Avoid direct Ash calls in web modules** - Don't use `Ash.get!/2` and `Ash.load!/2` directly in LiveViews/Controllers, similar to avoiding `Repo.get/2` outside context modules:
 
+You can also pass additional inputs in to code interfaces before the options:
+
+```elixir
+resource ResourceName do
+  define :create, action: :action_name, args: [:field1]
+end
+```
+
+```elixir
+Domain.create!(field1_value, %{field2: field2_value}, actor: current_user)
+```
+
+You should generally prefer using this map of extra inputs over defining optional arguments.
+
 ```elixir
 # BAD - in LiveView/Controller
 group = MyApp.Resource |> Ash.get!(id) |> Ash.load!(rel: [:nested])
@@ -148,21 +162,28 @@ These functions are particularly useful for conditional rendering of UI elements
 
 Use `Ash.Query` to build queries for reading data from your resources. The query module provides a declarative way to filter, sort, and load data.
 
+## Ash.Query.filter is a macro
+
 **Important**: You must `require Ash.Query` if you want to use `Ash.Query.filter/2`, as it is a macro.
 
-```elixir
-defmodule MyApp.SomeModule do
-  require Ash.Query
+If you see errors like the following:
 
-  def get_active_posts do
-    MyApp.Post
-    |> Ash.Query.filter(status == :active)
-    |> MyApp.Blog.read!()
-  end
-end
+```
+Ash.Query.filter(MyResource, id == ^id)
+error: misplaced operator ^id
+
+The pin operator ^ is supported only inside matches or inside custom macros...
 ```
 
-Common query operations:
+```
+iex(3)> Ash.Query.filter(MyResource, something == true)
+error: undefined variable "something"
+└─ iex:3
+```
+
+You are very likely missing a `require Ash.Query`
+
+### Common Query Operations
 
 - **Filter**: `Ash.Query.filter(query, field == value)`
 - **Sort**: `Ash.Query.sort(query, field: :asc)`
@@ -585,7 +606,7 @@ end
 - `on_missing: :destroy` - Delete records not in input
 - `value_is_key: :name` - Use field as key for simple values
 
-For comprehensive documentation, see the [Managing Relationships](documentation/topics/resources/relationships.md#managing-relationships) section.
+For comprehensive documentation, see the [Managing Relationships](https://hexdocs.pm/ash/relationships.html#managing-relationships) section.
 
 #### Examples
 

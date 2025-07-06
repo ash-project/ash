@@ -1619,7 +1619,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         all_changes,
         opts,
         ref,
-        :bulk_destroy_index
+        :bulk_destroy
       )
 
     changesets_by_index = index_changesets(batch)

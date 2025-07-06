@@ -272,7 +272,7 @@ defmodule Ash.Policy.Check.Builtins do
   changing_attributes(last_name: [from: "bob"])
 
   # if you are changing :first_name at all, last_name from "bob" and middle name from "tom" to "george"
-  changing_attributes([:first_name, last_name: [from: "bob"], middle_name: [from: "tom", to: "george]])
+  changing_attributes([:first_name, last_name: [from: "bob"], middle_name: [from: "tom", to: "george"]])
   ```
   """
   def changing_attributes(opts) do

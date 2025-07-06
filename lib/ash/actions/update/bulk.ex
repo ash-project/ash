@@ -3260,6 +3260,17 @@ defmodule Ash.Actions.Update.Bulk do
                 | where:
                     Enum.filter(where, fn {module, _opts} ->
                       module.atomic?()
+                    end)
+                    |> Enum.map(fn {module, change_opts} ->
+                      {module,
+                       templated_opts(
+                         change_opts,
+                         actor,
+                         changeset.to_tenant,
+                         changeset.arguments,
+                         changeset.context,
+                         changeset
+                       )}
                     end),
                   change:
                     {module,

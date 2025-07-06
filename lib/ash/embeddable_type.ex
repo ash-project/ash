@@ -363,8 +363,15 @@ defmodule Ash.EmbeddableType do
             {context, opts} =
               case constraints[:__source__] do
                 %Ash.Changeset{context: context} = source ->
-                  {Map.put(context, :__source__, source),
-                   Ash.Context.to_opts(context[:private] || %{})}
+                  embedded_context =
+                    context
+                    |> Map.take([:shared])
+                    |> Map.put(:__source__, source)
+
+                  {embedded_context,
+                   Ash.Context.to_opts(
+                     Map.take(context[:private] || %{}, [:actor, :tenant, :tracer, :authorize?])
+                   )}
 
                 _ ->
                   {%{}, []}
@@ -814,6 +821,14 @@ defmodule Ash.EmbeddableType do
 
       defp has_all_attrs?(_, _), do: false
 
+      @meta_keys [:__metadata__, :__meta__, :__lateral_join_source__, :__order__]
+
+      def equal?(left, right) when is_map(left) and is_map(right) do
+        Map.drop(left, @meta_keys) == Map.drop(right, @meta_keys)
+      end
+
+      def equal?(_left, _right), do: false
+
       def loaded?(record, path_to_load, _constraints, opts) do
         Ash.Resource.loaded?(record, path_to_load, opts)
       end
@@ -1027,8 +1042,15 @@ defmodule Ash.EmbeddableType do
             {context, opts} =
               case constraints[:__source__] do
                 %Ash.Changeset{context: context} = source ->
-                  {Map.put(context, :__source__, source),
-                   Ash.Context.to_opts(context[:private] || %{})}
+                  embedded_context =
+                    context
+                    |> Map.take([:shared])
+                    |> Map.put(:__source__, source)
+
+                  {embedded_context,
+                   Ash.Context.to_opts(
+                     Map.take(context[:private] || %{}, [:actor, :tenant, :tracer, :authorize?])
+                   )}
 
                 _ ->
                   {%{}, []}
@@ -1189,7 +1211,11 @@ defmodule Ash.EmbeddableType do
       if source = opts[:__source__] do
         changeset
         |> Ash.Changeset.set_tenant(source.tenant)
-        |> Ash.Changeset.set_context(source.context)
+        |> Ash.Changeset.set_context(Map.take(source.context, [:shared]))
+        |> Ash.Changeset.set_context(%{
+          private:
+            Map.take(source.context[:private] || %{}, [:actor, :tenant, :tracer, :authorize?])
+        })
         |> Ash.Changeset.set_context(%{__source__: source})
         |> Map.put(:domain, source.domain)
       else

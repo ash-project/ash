@@ -1203,54 +1203,49 @@ defmodule Ash.Type do
   def apply_constraints({:array, type}, term, constraints) when is_list(term) do
     type = get_type(type)
 
-    list_constraint_errors = list_constraint_errors(term, constraints)
     item_constraints = item_constraints(constraints)
 
-    case list_constraint_errors do
-      [] ->
-        nil_items? = Keyword.get(constraints, :nil_items?, false)
-        remove_nil_items? = Keyword.get(constraints, :remove_nil_items?, false)
+    nil_items? = Keyword.get(constraints, :nil_items?, false)
+    remove_nil_items? = Keyword.get(constraints, :remove_nil_items?, false)
 
-        term
-        |> Enum.with_index()
-        |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
-          if type.custom_apply_constraints_array?() do
-            maybe_handle_nil_item(item, index, items, errors, nil_items?, remove_nil_items?)
-          else
-            case apply_constraints(type, item, item_constraints) do
-              {:ok, value} ->
-                maybe_handle_nil_item(value, index, items, errors, nil_items?, remove_nil_items?)
+    {terms, errors} =
+      term
+      |> Enum.with_index()
+      |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
+        if type.custom_apply_constraints_array?() do
+          maybe_handle_nil_item(item, index, items, errors, nil_items?, remove_nil_items?)
+        else
+          case apply_constraints(type, item, item_constraints) do
+            {:ok, value} ->
+              maybe_handle_nil_item(value, index, items, errors, nil_items?, remove_nil_items?)
 
-              {:error, new_errors} ->
-                new_errors =
-                  new_errors
-                  |> List.wrap()
-                  |> Ash.Helpers.flatten_preserving_keywords()
-                  |> Enum.map(fn
-                    string when is_binary(string) ->
-                      [message: string, index: index]
+            {:error, new_errors} ->
+              new_errors =
+                new_errors
+                |> List.wrap()
+                |> Ash.Helpers.flatten_preserving_keywords()
+                |> Enum.map(fn
+                  string when is_binary(string) ->
+                    [message: string, index: index]
 
-                    vars ->
-                      Keyword.put(vars, :index, index)
-                  end)
+                  vars ->
+                    Keyword.put(vars, :index, index)
+                end)
 
-                {[item | items], List.wrap(new_errors) ++ errors}
-            end
+              {[item | items], List.wrap(new_errors) ++ errors}
           end
-        end)
-        |> case do
-          {terms, []} ->
-            if type.custom_apply_constraints_array?() do
-              case type.apply_constraints_array(Enum.reverse(terms), item_constraints) do
-                :ok -> {:ok, term}
-                other -> other
-              end
-            else
-              {:ok, Enum.reverse(terms)}
-            end
+        end
+      end)
 
-          {_, errors} ->
-            {:error, errors}
+    case errors ++ list_constraint_errors(terms, constraints) do
+      [] ->
+        if type.custom_apply_constraints_array?() do
+          case type.apply_constraints_array(Enum.reverse(terms), item_constraints) do
+            :ok -> {:ok, term}
+            other -> other
+          end
+        else
+          {:ok, Enum.reverse(terms)}
         end
 
       errors ->
@@ -2257,8 +2252,39 @@ defmodule Ash.Type do
 
   defp set_update_default(thing, _type, _constraints), do: {:ok, thing}
 
+  @reserved_constraints [
+    :default,
+    :source,
+    :autogenerate,
+    :read_after_writes,
+    :virtual,
+    :primary_key,
+    :load_in_query,
+    :redact,
+    :skip_default_validation,
+    :writable
+  ]
+
   @doc false
   def validate_constraints(type, constraints) do
+    used_reserved_keys =
+      Enum.filter(
+        @reserved_constraints,
+        &Keyword.has_key?(constraints, &1)
+      )
+
+    if Enum.any?(used_reserved_keys) do
+      raise """
+      Reserved constraint key used: 
+
+      #{inspect(used_reserved_keys)}
+
+      The following keys cannot be used as constraint keys because they are `Ecto.Schema.field` options.
+
+      #{Enum.map_join(used_reserved_keys, "\n", &"  * #{&1}")}
+      """
+    end
+
     case type do
       {:array, type} ->
         array_constraints = array_constraints(type)

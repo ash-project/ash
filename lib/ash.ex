@@ -2365,11 +2365,11 @@ defmodule Ash do
   @spec load!(
           record_or_records ::
             record_or_records
+            | Ash.Page.page()
             | {:ok, record_or_records}
-            | :error
+            | {:ok, Ash.Page.page()}
             | {:error, term}
             | :ok
-            | Ash.Page.page()
             | nil,
           query :: load_statement(),
           opts :: Keyword.t()
@@ -2418,7 +2418,14 @@ defmodule Ash do
   #{Spark.Options.docs(@load_opts_schema)}
   """
   @spec load(
-          record_or_records :: Ash.Resource.record() | [Ash.Resource.record()] | nil,
+          record_or_records ::
+            record_or_records
+            | Ash.Page.page()
+            | {:ok, record_or_records}
+            | {:ok, Ash.Page.page()}
+            | {:error, term}
+            | :ok
+            | nil,
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
@@ -2872,9 +2879,6 @@ defmodule Ash do
 
   ## Examples
 
-      iex> Ash.read_one(MyApp.User, email: "user@example.com")
-      {:ok, %MyApp.User{id: 1, email: "user@example.com"}}
-
       iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.read_one()
       {:ok, %MyApp.Post{id: 1, published: true}}
 
@@ -3034,7 +3038,7 @@ defmodule Ash do
   """
   @doc spark_opts: [{1, @create_opts_schema}]
   @spec create!(
-          changset_or_resource :: Ash.Changeset.t() | Ash.Resource.t(),
+          changeset_or_resource :: Ash.Changeset.t() | Ash.Resource.t(),
           params_or_opts :: map() | Keyword.t(),
           opts :: Keyword.t()
         ) ::
@@ -3083,7 +3087,7 @@ defmodule Ash do
   """
   @doc spark_opts: [{1, @create_opts_schema}]
   @spec create(
-          changset_or_resource :: Ash.Changeset.t() | Ash.Resource.t(),
+          changeset_or_resource :: Ash.Changeset.t() | Ash.Resource.t(),
           params_or_opts :: map() | Keyword.t(),
           opts :: Keyword.t()
         ) ::
