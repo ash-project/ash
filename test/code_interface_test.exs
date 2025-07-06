@@ -99,7 +99,9 @@ defmodule Ash.Test.CodeInterfaceTest do
         action: :hello_actor
 
       define :hello_actor_with_function_default,
-        default_options: fn -> [actor: %{name: "Dynamic Actor at #{DateTime.utc_now() |> DateTime.to_iso8601()}"}] end,
+        default_options: fn ->
+          [actor: %{name: "Dynamic Actor at #{DateTime.utc_now() |> DateTime.to_iso8601()}"}]
+        end,
         action: :hello_actor
 
       define :hello_actor
@@ -679,15 +681,16 @@ defmodule Ash.Test.CodeInterfaceTest do
     assert "Hello, William Shatner." = User.hello_actor_with_default!()
   end
 
-    test "default options with function" do
+  test "default options with function" do
     assert "Hello, Override Actor." =
              User.hello_actor_with_function_default!(actor: %{name: "Override Actor"})
 
-    # Test that the function returns a dynamic timestamp
     result = User.hello_actor_with_function_default!()
     assert result =~ "Hello, Dynamic Actor at "
-    assert result =~ "T"  # ISO8601 timestamp format contains 'T'
-    assert result =~ "Z"  # UTC timestamps end with 'Z'
+    # ISO8601 timestamp format contains 'T'
+    assert result =~ "T"
+    # UTC timestamps end with 'Z'
+    assert result =~ "Z"
   end
 
   test "default options with function are called each time" do

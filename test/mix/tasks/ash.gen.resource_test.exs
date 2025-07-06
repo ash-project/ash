@@ -652,4 +652,3 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
     end
   end
 end
-
