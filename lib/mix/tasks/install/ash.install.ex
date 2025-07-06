@@ -122,6 +122,27 @@ if Code.ensure_loaded?(Igniter) do
         end)
       end)
       |> Igniter.Scribe.section(
+        "Configure Dev/Test environments",
+        @setup_backwards_compatibility,
+        fn igniter ->
+          Igniter.Scribe.patch(igniter, fn igniter ->
+            igniter
+            |> Igniter.Project.Config.configure(
+              "test.exs",
+              :ash,
+              [:policies, :show_policy_breakdowns?],
+              true
+            )
+            |> Igniter.Project.Config.configure(
+              "dev.exs",
+              :ash,
+              [:policies, :show_policy_breakdowns?],
+              true
+            )
+          end)
+        end
+      )
+      |> Igniter.Scribe.section(
         "Setup Backwards Compatibility Configurations",
         @setup_backwards_compatibility,
         fn igniter ->
