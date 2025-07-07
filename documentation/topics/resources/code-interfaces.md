@@ -314,8 +314,7 @@ You can provide default options that will be merged with client-provided options
 code_interface do
   define :get_user, action: :read, get_by: [:id],
     default_options: [
-      load: [:profile, :posts],
-      authorize?: true
+      load: [:profile, :posts]
     ]
 end
 ```
