@@ -676,7 +676,7 @@ defmodule Ash.Resource.Dsl do
     name: :destroy,
     describe: """
     Declares a `destroy` action. For calling this action, see the `Ash.Domain` documentation.
-    
+
     See `Ash.Resource.Change.Builtins.cascade_destroy/2` for cascading destroy operations.
     """,
     examples: [
@@ -1623,7 +1623,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.VerifyNotifiers,
     Ash.Resource.Verifiers.VerifyPrimaryKeyPresent,
     Ash.Resource.Verifiers.VerifyGenericActionReactorInputs,
-    Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface
+    Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface,
+    Ash.Resource.Verifiers.VerifySpecCompliance
   ]
 
   @moduledoc false

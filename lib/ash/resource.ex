@@ -28,6 +28,11 @@ defmodule Ash.Resource do
         type: {:list, {:behaviour, Ash.Notifier}},
         doc: "Notifiers with no DSL."
       ],
+      specs: [
+        type: {:list, :module},
+        doc:
+          "A list of Spark DSL fragments that define interface contracts this resource must implement. Each spec fragment defines required attributes, actions, relationships, etc."
+      ],
       validate_domain_inclusion?: [
         type: :boolean,
         doc: "Whether or not to validate that this resource is included in a domain.",
@@ -144,6 +149,12 @@ defmodule Ash.Resource do
 
       if domain do
         @persist {:domain, domain}
+      end
+
+      if specs = opts[:specs] do
+        # Ensure specs is a proper list
+        specs_list = if is_list(specs), do: specs, else: []
+        @persist {:specs, specs_list}
       end
 
       if embedded? do
