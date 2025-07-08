@@ -96,6 +96,39 @@ Update `config/config.exs`:
 +
 ```
 
+## Configure Dev/Test environments
+Configure backwards compatibility settings. See the [backwards compatibility guide](https://hexdocs.pm/ash/backwards-compatibility-config.html)
+for an explanation of each of the configurations.
+
+Update `config/config.exs`:
+```diff
+...
+    ]
+  
++ import_config "#{config_env()}.exs"
++
+```
+
+Create `config/dev.exs`:
+```
+import Config
+config :ash, policies: [show_policy_breakdowns?: true]
+
+```
+
+Create `config/prod.exs`:
+```
+import Config
+
+```
+
+Create `config/test.exs`:
+```
+import Config
+config :ash, policies: [show_policy_breakdowns?: true]
+
+```
+
 ## Setup Backwards Compatibility Configurations
 Configure backwards compatibility settings. See the [backwards compatibility guide](https://hexdocs.pm/ash/backwards-compatibility-config.html)
 for an explanation of each of the configurations.
