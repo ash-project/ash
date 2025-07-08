@@ -1566,15 +1566,7 @@ defmodule Ash.Changeset do
             {:cont, %{changeset | arguments: Map.put(changeset.arguments, key, value)}}
 
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
-            case Ash.Type.dump_to_native(attribute.type, value, attribute.constraints) do
-              {:ok, value} ->
-                {:cont, atomic_update(changeset, attribute.name, {:atomic, value})}
-
-              :error ->
-                {:halt,
-                 {:error,
-                  "Failed to dump #{inspect(value)} to native as type #{attribute.type}(#{inspect(attribute.constraints)})"}}
-            end
+            {:cont, atomic_update(changeset, attribute.name, {:atomic, value})}
 
           match?("_" <> _, key) ->
             {:cont, changeset}
