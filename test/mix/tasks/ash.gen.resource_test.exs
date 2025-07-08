@@ -301,13 +301,6 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
           otp_app: :test,
           domain: MyApp.Blog
 
-        actions do
-          defaults(
-            create: [:title, :body],
-            update: [:title, :body]
-          )
-        end
-
         attributes do
           attribute :title, :string do
             public?(true)
@@ -316,6 +309,13 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
           attribute :body, :text do
             public?(true)
           end
+        end
+
+        actions do
+          defaults(
+            create: [:title, :body],
+            update: [:title, :body]
+          )
         end
       end
       """)
@@ -564,35 +564,6 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
         relationships do
           belongs_to(:author, MyApp.Accounts.User)
           has_many(:comments, MyApp.Blog.Comment)
-        end
-      end
-      """)
-    end
-
-    test "merges default actions with existing resource" do
-      test_project()
-      |> Igniter.compose_task("ash.gen.resource", ["MyApp.Blog.Post", "--default-actions", "read"])
-      |> Igniter.compose_task("ash.gen.resource", [
-        "MyApp.Blog.Post",
-        "--attribute",
-        "title:string:public",
-        "--default-actions",
-        "create,update"
-      ])
-      |> assert_creates("lib/my_app/blog/post.ex", """
-      defmodule MyApp.Blog.Post do
-        use Ash.Resource,
-          otp_app: :test,
-          domain: MyApp.Blog
-
-        actions do
-          defaults([:read, create: [:title], update: [:title]])
-        end
-
-        attributes do
-          attribute :title, :string do
-            public?(true)
-          end
         end
       end
       """)
@@ -889,10 +860,6 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
           otp_app: :test,
           domain: MyApp.Blog
 
-        actions do
-          defaults([:read, create: [:title, :body], update: [:title, :body]])
-        end
-
         attributes do
           uuid_primary_key(:id)
 
@@ -915,6 +882,10 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
           end
 
           has_many(:comments, MyApp.Blog.Comment)
+        end
+
+        actions do
+          defaults([:read, create: [:title, :body], update: [:title, :body]])
         end
       end
       """)
@@ -1051,6 +1022,318 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
         end
       end
       """)
+    end
+  end
+
+  describe "conflict resolution - ignore strategy (default)" do
+    test "ignores existing attributes" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string:public"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:text:required",
+        "--conflicts",
+        "ignore"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute :title, :string do
+            public?(true)
+          end
+        end
+      end
+      """)
+    end
+
+    test "ignores existing relationships" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--relationship",
+        "belongs_to:author:MyApp.User:required"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--relationship",
+        "belongs_to:author:MyApp.Admin:public",
+        "--conflicts",
+        "ignore"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        relationships do
+          belongs_to :author, MyApp.User do
+            allow_nil?(false)
+          end
+        end
+      end
+      """)
+    end
+
+    test "ignores existing actions" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--default-actions",
+        "read"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--default-actions",
+        "create,update",
+        "--conflicts",
+        "ignore"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        actions do
+          defaults([:read])
+        end
+      end
+      """)
+    end
+
+    test "ignores existing timestamps" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--timestamps"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--timestamps",
+        "--conflicts",
+        "ignore"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          timestamps()
+        end
+      end
+      """)
+    end
+  end
+
+  describe "conflict resolution - replace strategy" do
+    test "replaces existing attributes" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string:public"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:text:required",
+        "--conflicts",
+        "replace"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute :title, :text do
+            allow_nil?(false)
+          end
+        end
+      end
+      """)
+    end
+
+    test "replaces existing relationships" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--relationship",
+        "belongs_to:author:MyApp.User:required"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--relationship",
+        "belongs_to:author:MyApp.Admin:public",
+        "--conflicts",
+        "replace"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        relationships do
+          belongs_to :author, MyApp.Admin do
+            public?(true)
+          end
+        end
+      end
+      """)
+    end
+
+    test "replaces existing actions" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--default-actions",
+        "read"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "title:string:public",
+        "--default-actions",
+        "create,update",
+        "--conflicts",
+        "replace"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        actions do
+          defaults(
+            create: [:title],
+            update: [:title]
+          )
+        end
+
+        attributes do
+          attribute :title, :string do
+            public?(true)
+          end
+        end
+      end
+      """)
+    end
+
+    test "replaces existing timestamps" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--timestamps"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--timestamps",
+        "--conflicts",
+        "replace"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          timestamps()
+        end
+      end
+      """)
+    end
+  end
+
+  describe "conflict resolution - complex scenarios" do
+    test "handles multiple conflicts with replace strategy" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--uuid-primary-key",
+        "id",
+        "--attribute",
+        "title:string:public",
+        "--relationship",
+        "belongs_to:author:MyApp.User",
+        "--default-actions",
+        "read",
+        "--timestamps"
+      ])
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--uuid-primary-key",
+        "id:public",
+        "--attribute",
+        "title:text:required,description:text",
+        "--relationship",
+        "belongs_to:author:MyApp.Admin:public",
+        "--default-actions",
+        "create,update",
+        "--timestamps",
+        "--conflicts",
+        "replace"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          uuid_primary_key :id do
+            public?(true)
+          end
+
+          attribute :title, :text do
+            allow_nil?(false)
+          end
+
+          attribute(:description, :text)
+          timestamps()
+        end
+
+        relationships do
+          belongs_to :author, MyApp.Admin do
+            public?(true)
+          end
+        end
+
+        actions do
+          defaults(
+            create: [],
+            update: []
+          )
+        end
+      end
+      """)
+    end
+
+    test "validates invalid conflicts option" do
+      assert_raise RuntimeError, ~r/Invalid value for --conflicts/, fn ->
+        test_project()
+        |> Igniter.compose_task("ash.gen.resource", [
+          "MyApp.Blog.Post",
+          "--conflicts",
+          "invalid"
+        ])
+        |> apply_igniter!()
+      end
     end
   end
 end

@@ -33,6 +33,8 @@ if Code.ensure_loaded?(Igniter) do
     * `--base` or `-b` - The base module to use for the resource. i.e `-b Ash.Resource`. Requires that the module is in `config :your_app, :base_resources`
     * `--timestamps` or `-t` - If set adds `inserted_at` and `updated_at` timestamps to the resource.
     * `--ignore-if-exists` - Does nothing if the resource already exists
+    * `--conflicts` - How to handle conflicts when the same attribute, relationship, or action already exists. Options: `ignore` (default), `replace`
+       `ignore` will ignore your addition for that attribute, relationship, or action. `replace` will remove the existing one in favor of yours.
     """
 
     @shortdoc "Generate and configure an Ash.Resource."
@@ -67,7 +69,8 @@ if Code.ensure_loaded?(Igniter) do
           timestamps: :boolean,
           da: :string,
           u7: :string,
-          ignore_if_exists: :boolean
+          ignore_if_exists: :boolean,
+          conflicts: :string
         ],
         aliases: [
           a: :attribute,
@@ -108,6 +111,23 @@ if Code.ensure_loaded?(Igniter) do
               Igniter.Project.Module.parse(domain)
           end
 
+        # Validate conflicts option
+        conflicts_strategy =
+          case options[:conflicts] do
+            nil ->
+              "ignore"
+
+            strategy when strategy in ["ignore", "replace"] ->
+              strategy
+
+            invalid ->
+              raise """
+              Invalid value for --conflicts: #{inspect(invalid)}
+
+              Valid options are: ignore, replace
+              """
+          end
+
         options =
           options
           |> Keyword.update(
@@ -116,6 +136,7 @@ if Code.ensure_loaded?(Igniter) do
             fn defaults -> Enum.sort_by(defaults, &(&1 in ["create", "update"])) end
           )
           |> Keyword.put_new(:base, "Ash.Resource")
+          |> Keyword.put(:conflicts, conflicts_strategy)
 
         base =
           if options[:base] == "Ash.Resource" do
@@ -163,9 +184,9 @@ if Code.ensure_loaded?(Igniter) do
           resource
         )
         |> ensure_resource_exists(resource, base, app_name, domain)
-        |> add_actions_to_resource(resource, options, default_accept)
         |> add_attributes_to_resource(resource, options)
         |> add_relationships_to_resource(resource, options)
+        |> add_actions_to_resource(resource, options, default_accept)
         |> extend(resource, options[:extend], argv)
       end
     end
@@ -257,7 +278,8 @@ if Code.ensure_loaded?(Igniter) do
             igniter,
             resource,
             "uuid_primary_key",
-            options[:uuid_primary_key]
+            options[:uuid_primary_key],
+            options
           )
 
         options[:uuid_v7_primary_key] ->
@@ -265,7 +287,8 @@ if Code.ensure_loaded?(Igniter) do
             igniter,
             resource,
             "uuid_v7_primary_key",
-            options[:uuid_v7_primary_key]
+            options[:uuid_v7_primary_key],
+            options
           )
 
         options[:integer_primary_key] ->
@@ -273,7 +296,8 @@ if Code.ensure_loaded?(Igniter) do
             igniter,
             resource,
             "integer_primary_key",
-            options[:integer_primary_key]
+            options[:integer_primary_key],
+            options
           )
 
         true ->
@@ -281,7 +305,7 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp add_primary_key_attribute(igniter, resource, builder, text) do
+    defp add_primary_key_attribute(igniter, resource, builder, text, options) do
       [name | modifiers] = String.split(text, ":", trim: true)
       modifiers = modifiers -- ["primary_key"]
       name_atom = String.to_atom(name)
@@ -290,27 +314,24 @@ if Code.ensure_loaded?(Igniter) do
         raise "Invalid attribute name provided for `#{builder}`: #{name}"
       end
 
-      if Enum.empty?(modifiers) do
-        Ash.Resource.Igniter.add_new_attribute(
-          igniter,
-          resource,
-          name_atom,
+      attribute_code =
+        if Enum.empty?(modifiers) do
           "#{builder} :#{name}"
-        )
-      else
-        attribute_with_modifiers = """
-        #{builder} :#{name} do
-          #{attribute_modifier_string(modifiers)}
+        else
+          """
+          #{builder} :#{name} do
+            #{attribute_modifier_string(modifiers)}
+          end
+          """
         end
-        """
 
-        Ash.Resource.Igniter.add_new_attribute(
-          igniter,
-          resource,
-          name_atom,
-          attribute_with_modifiers
-        )
-      end
+      add_attribute_with_conflicts(
+        igniter,
+        resource,
+        name_atom,
+        attribute_code,
+        options[:conflicts]
+      )
     end
 
     defp add_regular_attributes_to_resource(igniter, resource, options) do
@@ -337,7 +358,13 @@ if Code.ensure_loaded?(Igniter) do
                 """
               end
 
-            Ash.Resource.Igniter.add_new_attribute(igniter, resource, name_atom, attribute_code)
+            add_attribute_with_conflicts(
+              igniter,
+              resource,
+              name_atom,
+              attribute_code,
+              options[:conflicts]
+            )
 
           _name ->
             raise """
@@ -349,22 +376,30 @@ if Code.ensure_loaded?(Igniter) do
 
     defp add_timestamps_to_resource(igniter, resource, options) do
       if options[:timestamps] do
-        # Check if timestamps() call already exists in attributes section
-        case find_existing_timestamps_call(igniter, resource) do
-          {:ok, igniter} ->
-            # Already exists, don't add again
-            igniter
+        case options[:conflicts] do
+          "ignore" ->
+            # Only add if no existing timestamps
+            case find_existing_timestamps_call(igniter, resource) do
+              # Already exists, ignore
+              {:ok, igniter} ->
+                igniter
 
-          {:error, igniter} ->
-            # Also check for manual inserted_at/updated_at definitions
-            {igniter, has_timestamps?} =
-              Ash.Resource.Igniter.defines_attribute(igniter, resource, :inserted_at)
+              {:error, igniter} ->
+                {igniter, has_timestamps?} =
+                  Ash.Resource.Igniter.defines_attribute(igniter, resource, :inserted_at)
 
-            if has_timestamps? do
-              igniter
-            else
-              Ash.Resource.Igniter.add_attribute(igniter, resource, "timestamps()")
+                if has_timestamps? do
+                  igniter
+                else
+                  Ash.Resource.Igniter.add_attribute(igniter, resource, "timestamps()")
+                end
             end
+
+          "replace" ->
+            # Remove existing and add new
+            igniter
+            |> remove_existing_timestamps(resource)
+            |> Ash.Resource.Igniter.add_attribute(resource, "timestamps()")
         end
       else
         igniter
@@ -417,11 +452,12 @@ if Code.ensure_loaded?(Igniter) do
                 """
               end
 
-            Ash.Resource.Igniter.add_new_relationship(
+            add_relationship_with_conflicts(
               igniter,
               resource,
               name_atom,
-              relationship_code
+              relationship_code,
+              options[:conflicts]
             )
 
           _name ->
@@ -438,15 +474,23 @@ if Code.ensure_loaded?(Igniter) do
           igniter
 
         defaults ->
-          # Check if defaults call already exists
-          case find_existing_defaults_call(igniter, resource) do
-            {:ok, igniter} ->
-              # Merge with existing defaults
-              merge_defaults_with_existing(igniter, resource, defaults, default_accept)
+          case options[:conflicts] do
+            "ignore" ->
+              # Only add if no existing defaults call
+              case find_existing_defaults_call(igniter, resource) do
+                # Ignore if exists
+                {:ok, igniter} ->
+                  igniter
 
-            {:error, igniter} ->
-              # Add new defaults call
-              add_new_defaults_call(igniter, resource, defaults, default_accept)
+                {:error, igniter} ->
+                  add_new_defaults_call(igniter, resource, defaults, default_accept)
+              end
+
+            "replace" ->
+              # Remove existing and add new
+              igniter
+              |> remove_existing_defaults(resource)
+              |> add_new_defaults_call(resource, defaults, default_accept)
           end
       end
     end
@@ -497,76 +541,6 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
-    defp merge_defaults_with_existing(igniter, resource, new_defaults, default_accept) do
-      Igniter.Project.Module.find_and_update_module!(igniter, resource, fn zipper ->
-        with {:ok, zipper} <- enter_section(zipper, :actions),
-             {:ok, zipper} <-
-               Igniter.Code.Function.move_to_function_call_in_current_scope(
-                 zipper,
-                 :defaults,
-                 1
-               ),
-             {:ok, zipper} <- Igniter.Code.Function.move_to_nth_argument(zipper, 0) do
-          # Add each new default to the list, avoiding duplicates
-          updated_zipper =
-            Enum.reduce(new_defaults, zipper, fn action_type, zipper ->
-              action_atom = String.to_atom(action_type)
-
-              case action_type do
-                type when type in ["read", "destroy"] ->
-                  # For simple actions, add atom if not already present
-                  case Igniter.Code.List.append_new_to_list(zipper, action_atom, fn zipper ->
-                         Igniter.Code.Common.nodes_equal?(zipper, action_atom)
-                       end) do
-                    {:ok, zipper} -> zipper
-                    :error -> zipper
-                  end
-
-                type when type in ["create", "update"] ->
-                  # For actions with accept lists, add or update keyword entry
-                  new_item = {action_atom, default_accept}
-
-                  # Remove existing entry if present, then add new one
-                  zipper =
-                    case Igniter.Code.List.remove_from_list(zipper, fn item_zipper ->
-                           # Check if this is a tuple with the same action type
-                           if Igniter.Code.Tuple.tuple?(item_zipper) do
-                             case Igniter.Code.Tuple.tuple_elem(item_zipper, 0) do
-                               {:ok, first_elem_zipper} ->
-                                 Igniter.Code.Common.nodes_equal?(first_elem_zipper, action_atom)
-
-                               _ ->
-                                 false
-                             end
-                           else
-                             false
-                           end
-                         end) do
-                      {:ok, zipper} -> zipper
-                      :error -> zipper
-                    end
-
-                  # Add the new item
-                  case Igniter.Code.List.append_to_list(zipper, new_item) do
-                    {:ok, zipper} -> zipper
-                    :error -> zipper
-                  end
-
-                type ->
-                  raise """
-                  Invalid default action type given to `--default-actions`: #{inspect(type)}.
-                  """
-              end
-            end)
-
-          {:ok, updated_zipper}
-        else
-          _ ->
-            {:error, "Failed to find or update defaults call"}
-        end
-      end)
-    end
-
     defp add_new_defaults_call(igniter, resource, defaults, default_accept) do
       default_contents =
         Enum.map_join(defaults, ", ", fn
@@ -584,6 +558,153 @@ if Code.ensure_loaded?(Igniter) do
 
       actions_code = "defaults [#{default_contents}]"
       Ash.Resource.Igniter.add_block(igniter, resource, :actions, actions_code)
+    end
+
+    defp remove_existing_defaults(igniter, resource) do
+      Igniter.Project.Module.find_and_update_module!(igniter, resource, fn zipper ->
+        with {:ok, zipper} <- enter_section(zipper, :actions),
+             {:ok, zipper} <-
+               Igniter.Code.Function.move_to_function_call_in_current_scope(
+                 zipper,
+                 :defaults,
+                 1
+               ) do
+          {:ok, Sourceror.Zipper.remove(zipper)}
+        else
+          _ -> {:ok, zipper}
+        end
+      end)
+    end
+
+    defp remove_existing_timestamps(igniter, resource) do
+      Igniter.Project.Module.find_and_update_module!(igniter, resource, fn zipper ->
+        with {:ok, zipper} <- enter_section(zipper, :attributes),
+             {:ok, zipper} <-
+               Igniter.Code.Function.move_to_function_call_in_current_scope(
+                 zipper,
+                 :timestamps,
+                 [0, 1]
+               ) do
+          {:ok, Sourceror.Zipper.remove(zipper)}
+        else
+          _ -> {:ok, zipper}
+        end
+      end)
+    end
+
+    # Conflict-aware attribute handling
+    defp add_attribute_with_conflicts(
+           igniter,
+           resource,
+           name_atom,
+           attribute_code,
+           conflicts_strategy
+         ) do
+      case conflicts_strategy do
+        "ignore" ->
+          Ash.Resource.Igniter.add_new_attribute(igniter, resource, name_atom, attribute_code)
+
+        "replace" ->
+          igniter
+          |> remove_existing_attribute(resource, name_atom)
+          |> Ash.Resource.Igniter.add_attribute(resource, attribute_code)
+      end
+    end
+
+    defp remove_existing_attribute(igniter, resource, name_atom) do
+      Igniter.Project.Module.find_and_update_module!(igniter, resource, fn zipper ->
+        with {:ok, zipper} <- enter_section(zipper, :attributes),
+             {:ok, zipper} <- find_and_remove_attribute(zipper, name_atom) do
+          {:ok, zipper}
+        else
+          _ -> {:ok, zipper}
+        end
+      end)
+    end
+
+    defp find_and_remove_attribute(zipper, name_atom) do
+      case Igniter.Code.Function.move_to_function_call_in_current_scope(
+             zipper,
+             :attribute,
+             [2, 3],
+             &Igniter.Code.Function.argument_equals?(&1, 0, name_atom)
+           ) do
+        {:ok, zipper} ->
+          {:ok, Sourceror.Zipper.remove(zipper)}
+
+        :error ->
+          # Try primary key functions
+          primary_key_functions = [:uuid_primary_key, :uuid_v7_primary_key, :integer_primary_key]
+
+          Enum.reduce_while(primary_key_functions, :error, fn function_name, _acc ->
+            case Igniter.Code.Function.move_to_function_call_in_current_scope(
+                   zipper,
+                   function_name,
+                   [1, 2],
+                   &Igniter.Code.Function.argument_equals?(&1, 0, name_atom)
+                 ) do
+              {:ok, zipper} ->
+                {:halt, {:ok, Sourceror.Zipper.remove(zipper)}}
+
+              :error ->
+                {:cont, :error}
+            end
+          end)
+      end
+    end
+
+    # Conflict-aware relationship handling
+    defp add_relationship_with_conflicts(
+           igniter,
+           resource,
+           name_atom,
+           relationship_code,
+           conflicts_strategy
+         ) do
+      case conflicts_strategy do
+        "ignore" ->
+          Ash.Resource.Igniter.add_new_relationship(
+            igniter,
+            resource,
+            name_atom,
+            relationship_code
+          )
+
+        "replace" ->
+          igniter
+          |> remove_existing_relationship(resource, name_atom)
+          |> Ash.Resource.Igniter.add_relationship(resource, relationship_code)
+      end
+    end
+
+    defp remove_existing_relationship(igniter, resource, name_atom) do
+      Igniter.Project.Module.find_and_update_module!(igniter, resource, fn zipper ->
+        with {:ok, zipper} <- enter_section(zipper, :relationships),
+             {:ok, zipper} <- find_and_remove_relationship(zipper, name_atom) do
+          {:ok, zipper}
+        else
+          _ -> {:ok, zipper}
+        end
+      end)
+    end
+
+    defp find_and_remove_relationship(zipper, name_atom) do
+      relationship_functions = [:has_one, :has_many, :belongs_to, :many_to_many]
+
+      Enum.reduce_while(relationship_functions, :error, fn function_name, _acc ->
+        case Igniter.Code.Function.move_to_function_call_in_current_scope(
+               zipper,
+               function_name,
+               [2, 3],
+               &Igniter.Code.Function.argument_equals?(&1, 0, name_atom)
+             ) do
+          {:ok, zipper} ->
+            {:halt, {:ok, Sourceror.Zipper.remove(zipper)}}
+
+          :error ->
+            {:cont, :error}
+        end
+      end)
     end
 
     defp enter_section(zipper, name) do
