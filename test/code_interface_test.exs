@@ -98,6 +98,12 @@ defmodule Ash.Test.CodeInterfaceTest do
         default_options: [actor: %{name: "William Shatner"}],
         action: :hello_actor
 
+      define :hello_actor_with_function_default,
+        default_options: fn ->
+          [actor: %{name: "Dynamic Actor at #{DateTime.utc_now() |> DateTime.to_iso8601()}"}]
+        end,
+        action: :hello_actor
+
       define :hello_actor
       define :create_with_map, args: [:map]
       define :update_with_map, args: [:map]
@@ -673,6 +679,33 @@ defmodule Ash.Test.CodeInterfaceTest do
              User.hello_actor_with_default!(actor: %{name: "Leonard Nimoy"})
 
     assert "Hello, William Shatner." = User.hello_actor_with_default!()
+  end
+
+  test "default options with function" do
+    assert "Hello, Override Actor." =
+             User.hello_actor_with_function_default!(actor: %{name: "Override Actor"})
+
+    result = User.hello_actor_with_function_default!()
+    assert result =~ "Hello, Dynamic Actor at "
+    # ISO8601 timestamp format contains 'T'
+    assert result =~ "T"
+    # UTC timestamps end with 'Z'
+    assert result =~ "Z"
+  end
+
+  test "default options with function are called each time" do
+    result1 = User.hello_actor_with_function_default!()
+    result2 = User.hello_actor_with_function_default!()
+
+    assert result1 =~ "Hello, Dynamic Actor at "
+    assert result2 =~ "Hello, Dynamic Actor at "
+
+    # They should have different timestamps, proving the function was called each time
+    refute result1 == result2
+
+    # Test that function-based defaults can still be overridden
+    assert "Hello, Override Actor." =
+             User.hello_actor_with_function_default!(actor: %{name: "Override Actor"})
   end
 
   defmodule Scope do

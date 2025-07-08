@@ -646,10 +646,14 @@ defmodule Ash.CodeInterface do
                 params_or_opts,
                 opts,
                 fn opts ->
+                  default_options =
+                    case unquote(Macro.escape(interface.default_options)) do
+                      fun when is_function(fun, 0) -> fun.()
+                      static_options -> static_options
+                    end
+
                   opts
-                  |> Ash.CodeInterface.merge_default_opts(
-                    unquote(Macro.escape(interface.default_options))
-                  )
+                  |> Ash.CodeInterface.merge_default_opts(default_options)
                   |> unquote(interface_options).validate!()
                   |> unquote(interface_options).to_options()
                 end
