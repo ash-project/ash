@@ -2,6 +2,31 @@
 
 <!-- changelog -->
 
+## [v3.5.26](https://github.com/ash-project/ash/compare/v3.5.25...v3.5.26) (2025-07-09)
+
+
+
+
+### Bug Fixes:
+
+* don't dump values to native when building changesets by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that async limiter is properly cleared by [@zachdaniel](https://github.com/zachdaniel)
+
+* when comparing embedded attributes, ignore metadata keys by [@zachdaniel](https://github.com/zachdaniel)
+
+* clear async limiter on pagination query by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* set `show_policy_breakdowns?` to `true` in dev/test by default by [@zachdaniel](https://github.com/zachdaniel)
+
+* make `mix ash.gen.resource` merge existing resources by [@zachdaniel](https://github.com/zachdaniel)
+
+* allow code_interface default_options to accept a function (#2183) by scottwoodall
+
+* show optional code interface inputs in usage rules by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.25](https://github.com/ash-project/ash/compare/v3.5.24...v3.5.25) (2025-07-02)
 
 
