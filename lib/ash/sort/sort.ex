@@ -99,6 +99,13 @@ defmodule Ash.Sort do
     parse_input(resource, sort, handler)
   end
 
+  def parse_input(resource, field, handler) when is_atom(field) do
+    case parse_sort(resource, field, handler) do
+      {:ok, value} -> {:ok, [value]}
+      {:error, error} -> {:error, error}
+    end
+  end
+
   def parse_input(resource, sort, handler) when is_list(sort) do
     sort
     |> Enum.reduce_while({:ok, []}, fn field, {:ok, sort} ->

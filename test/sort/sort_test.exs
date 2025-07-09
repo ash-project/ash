@@ -111,6 +111,11 @@ defmodule Ash.Test.Sort.SortTest do
                Ash.Query.sort_input(Post, "+title,-contents")
     end
 
+    test "simple atom sort parses properly" do
+      assert %{sort: [title: :asc]} =
+               Ash.Query.sort_input(Post, :title)
+    end
+
     test "a list of string sorts parse properly" do
       assert %{sort: [title: :asc, contents: :desc]} =
                Ash.Query.sort_input(Post, ["+title", "-contents"])
