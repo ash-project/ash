@@ -114,107 +114,176 @@ The following steps happen while(asynchronously) or after the main data layer qu
 - Any calculations & aggregates that were able to be run outside of the main query are run
 - Relationships, calculations, and aggregates are loaded
 
-## Sorting Results
+## Customizing Queries When Calling Actions
 
-Ash provides several ways to sort the results of read actions. Sorting can be applied at different levels: when calling actions, as default sorting in action definitions, or dynamically through queries.
+When calling read actions through code interfaces, you can customize the query using the `query` option. This allows you to filter, sort, limit, and otherwise modify the results without manually building queries.
 
-> #### Sorting User Input {: .warning}
+> #### User Input Safety {: .warning}
 >
-> When accepting sort parameters from untrusted sources (like web requests), always use `sort_input` instead of `sort`.
-> See [Sorting from User Input](#sorting-from-user-input) below for details.
+> When accepting query parameters from untrusted sources (like web requests), always use the `_input` variants (`sort_input`, `filter_input`) instead of the regular options.
+> These functions only allow access to public fields and provide safe parsing of user input.
 
-### Sorting via Code Interfaces
+### Query Options via Code Interfaces
 
-The most common way to sort results is using the `sort` option within the `query` parameter when calling actions through code interfaces:
+The `query` option accepts all the options that `Ash.Query.build/2` accepts:
 
 ```elixir
-# Simple sorting by a single field
+# Filtering results
+posts = MyApp.Blog.list_posts!(
+  query: [filter: [status: :published]]
+)
+
+# Sorting results
 posts = MyApp.Blog.list_posts!(
   query: [sort: [published_at: :desc]]
 )
 
-# Sorting by multiple fields
+# Limiting results
 posts = MyApp.Blog.list_posts!(
-  query: [sort: [status: :asc, published_at: :desc]]
+  query: [limit: 10]
 )
 
-# Combining sort with other query options
+# Combining multiple query options
 posts = MyApp.Blog.list_posts!(
   query: [
-    filter: [status: :published],
+    filter: [status: :published, author_id: author.id],
     sort: [published_at: :desc],
-    limit: 10
+    limit: 10,
+    offset: 20
+  ]
+)
+
+# Loading related data with query constraints
+posts = MyApp.Blog.list_posts!(
+  query: [
+    load: [
+      comments: [
+        filter: [approved: true],
+        sort: [created_at: :desc],
+        limit: 5
+      ]
+    ]
   ]
 )
 ```
 
-### Default Sorting in Actions
+### Handling User Input
 
-You can set default sorting for read actions using `prepare build(default_sort: ...)`:
-
-```elixir
-actions do
-  read :recent_posts do
-    # Default sort by published_at descending
-    # This sort is ignored if any sort is provided when calling the action
-    prepare build(default_sort: [published_at: :desc])
-  end
-  
-  read :top_posts do
-    # Default sort by score, then by published date
-    prepare build(default_sort: [score: :desc, published_at: :desc])
-  end
-end
-```
-
-Note: If you use `prepare build(sort: ...)` instead, any sort provided when calling the action will be **appended** to the prepared sort, not replace it. Choose `build(default_sort: ...)` when you want the sort to be overridable, and `build(sort: ...)` when you want to enforce a primary sort order.
-
-### Sorting with Query Building
-
-When building queries manually, use `Ash.Query.sort/2`:
+When accepting query parameters from user input, use the safe input variants:
 
 ```elixir
-require Ash.Query
-
-MyApp.Post
-|> Ash.Query.sort(published_at: :desc)
-|> Ash.read!()
-
-# Multiple sort fields
-MyApp.Post
-|> Ash.Query.sort([{:priority, :desc}, {:created_at, :asc}])
-|> Ash.read!()
-```
-
-### Sorting from User Input
-
-When accepting sort parameters from user input (like from a web request), use `Ash.Query.sort_input/2` or the `sort_input` option in code interfaces:
-
-```elixir
-# Using sort_input in code interfaces (preferred)
+# Safe sorting from user input
 posts = MyApp.Blog.list_posts!(
   query: [sort_input: params["sort"] || "+published_at"]
 )
 
-# Parse string-based sort input directly with Ash.Query
-MyApp.Post
-|> Ash.Query.sort_input("+published_at,-title")
-|> Ash.read!()
+# Safe filtering from user input
+posts = MyApp.Blog.list_posts!(
+  query: [filter_input: params["filter"] || %{}]
+)
+
+# Combining user input with application-defined constraints
+posts = MyApp.Blog.list_posts!(
+  query: [
+    # User-controlled sorting
+    sort_input: params["sort"],
+    # User-controlled filtering
+    filter_input: params["filter"],
+    # Application-enforced constraints
+    filter: [archived: false],
+    limit: 100  # Prevent excessive data fetching
+  ]
+)
 ```
 
-The `sort_input` function safely parses user input and only allows sorting on public fields. It supports various formats:
-- String format: `"+field1,-field2"` (+ for ascending, - for descending)
-- List format: `["field1", "-field2"]`
-- Keyword format: `[field1: :asc, field2: :desc]`
+### Default Query Behavior in Actions
 
-For more information about input parsing and validation, see the [Write Queries guide](/documentation/how-to/write-queries.livemd#sorting).
+You can configure default query behavior in your action definitions:
 
-### Tips for Using Sort
+```elixir
+actions do
+  read :recent_posts do
+    # Default sort - overridden if user provides any sort
+    prepare build(default_sort: [published_at: :desc])
+    
+    # Always applied filter - cannot be overridden
+    filter expr(status == :published)
+    
+    # Default pagination
+    pagination offset: true, default_limit: 20
+  end
+  
+  read :search do
+    argument :query, :string, allow_nil?: false
+    
+    # Prepare modifies the query before execution
+    prepare fn query, _context ->
+      Ash.Query.filter(query, contains(title, ^query.arguments.query))
+    end
+  end
+end
+```
 
-1. **Default vs prepared sorts**: Use `build(default_sort: ...)` for sorts that users can override, and `build(sort: ...)` for sorts that should always be applied (with user sorts appended).
+### Building Queries Manually
 
-2. **Sorting and pagination**: When using keyset pagination, ensure your sort includes a unique field (like the primary key) to guarantee stable pagination.
+For more complex scenarios, you can build queries manually before calling the action:
 
-3. **Performance**: Sorting by attributes is generally more efficient than sorting by calculations or aggregates. Consider adding database indexes for frequently sorted fields.
+```elixir
+require Ash.Query
 
-For detailed information about sorting capabilities including sort orders, expressions, and calculations, see the `Ash.Query.sort/2` documentation.
+# Build a complex query
+query = 
+  MyApp.Post
+  |> Ash.Query.filter(status == :published)
+  |> Ash.Query.sort(published_at: :desc)
+  |> Ash.Query.limit(10)
+
+# Execute the query
+posts = Ash.read!(query)
+
+# Or use it with a specific action
+posts = Ash.read!(query, action: :published_posts)
+```
+
+### Common Query Patterns
+
+#### Pagination
+
+```elixir
+# Offset pagination
+posts = MyApp.Blog.list_posts!(
+  query: [limit: 20, offset: 40]
+)
+
+# With page options
+posts = MyApp.Blog.list_posts!(
+  page: [limit: 20, offset: 40]
+)
+```
+
+#### Complex Filtering
+
+```elixir
+# Filtering with relationships
+posts = MyApp.Blog.list_posts!(
+  query: [
+    filter: [
+      author: [verified: true],
+      comments_count: [greater_than: 5]
+    ]
+  ]
+)
+
+# Using filter expressions (requires building query manually)
+query = 
+  MyApp.Post
+  |> Ash.Query.filter(
+    status == :published and 
+    (author.verified == true or author.admin == true)
+  )
+```
+
+For detailed information about query capabilities, see:
+- `Ash.Query` module documentation for building queries
+- `Ash.Query.build/2` for all available query options
+- [Write Queries guide](/documentation/how-to/write-queries.livemd) for practical examples
