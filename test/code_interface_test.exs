@@ -387,6 +387,17 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert %Ash.Query{action: %{name: :by_id}} = User.query_to_get_by_id("some uuid")
     end
 
+    test "results can be sorted" do
+      User.create!("bob")
+      User.create!("cob")
+
+      assert [%{first_name: "bob"}, %{first_name: "cob"}] =
+               User.read_users!(query: [sort: [first_name: :asc]], authorize?: false)
+
+      assert [%{first_name: "cob"}, %{first_name: "bob"}] =
+               User.read_users!(query: [sort: [first_name: :desc]], authorize?: false)
+    end
+
     test "have a helper to test authorization" do
       assert {:ok, true} == User.can_read_users(nil)
       assert {:ok, true} == User.can_get_by_id(nil, "some uuid")

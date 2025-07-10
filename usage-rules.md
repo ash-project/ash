@@ -80,17 +80,21 @@ MyApp.Domain.get_dashboard_group_by_id!(id, load: [rel: [:nested]])
 **Code interface options** - Prefer passing options directly to code interface functions rather than building queries manually:
 
 ```elixir
-# PREFERRED - Concise and idiomatic
+# PREFERRED - Use the query option for filter, sort, limit, etc.
+# the query option is passed to `Ash.Query.build/2`
 posts = MyApp.Blog.list_posts!(
-  filter: [status: :published],
-  load: [author: :profile, comments: [:author]],
-  sort: [published_at: :desc],
-  limit: 10
+  query: [
+    filter: [status: :published],
+    sort: [published_at: :desc],
+    limit: 10
+  ],
+  load: [author: :profile, comments: [:author]]
 )
 
-# Complex scenarios use the query option
+# All query-related options go in the query parameter
 users = MyApp.Accounts.list_users!(
-  query: [filter: [active: true], load: [:profile], sort: [created_at: :desc]]
+  query: [filter: [active: true], sort: [created_at: :desc]],
+  load: [:profile]
 )
 
 # AVOID - Verbose manual query building
@@ -98,7 +102,7 @@ query = MyApp.Post |> Ash.Query.filter(...) |> Ash.Query.load(...)
 posts = MyApp.Blog.read!(query)
 ```
 
-Supported options: `load:`, `filter:`, `sort:`, `limit:`, `offset:`, `query:`, `page:`, `stream?:`
+Supported options: `load:`, `query:` (which accepts `filter:`, `sort:`, `limit:`, `offset:`, etc.), `page:`, `stream?:`
 
 **Using Scopes in LiveViews** - When using `Ash.Scope`, the scope will typically be assigned to `scope` in LiveViews and used like so:
 

@@ -113,3 +113,108 @@ The following steps happen while(asynchronously) or after the main data layer qu
 - If paginating and count was requested, the count is determined at the same time as the query is run.
 - Any calculations & aggregates that were able to be run outside of the main query are run
 - Relationships, calculations, and aggregates are loaded
+
+## Sorting Results
+
+Ash provides several ways to sort the results of read actions. Sorting can be applied at different levels: when calling actions, as default sorting in action definitions, or dynamically through queries.
+
+> #### Sorting User Input {: .warning}
+>
+> When accepting sort parameters from untrusted sources (like web requests), always use `sort_input` instead of `sort`.
+> See [Sorting from User Input](#sorting-from-user-input) below for details.
+
+### Sorting via Code Interfaces
+
+The most common way to sort results is using the `sort` option within the `query` parameter when calling actions through code interfaces:
+
+```elixir
+# Simple sorting by a single field
+posts = MyApp.Blog.list_posts!(
+  query: [sort: [published_at: :desc]]
+)
+
+# Sorting by multiple fields
+posts = MyApp.Blog.list_posts!(
+  query: [sort: [status: :asc, published_at: :desc]]
+)
+
+# Combining sort with other query options
+posts = MyApp.Blog.list_posts!(
+  query: [
+    filter: [status: :published],
+    sort: [published_at: :desc],
+    limit: 10
+  ]
+)
+```
+
+### Default Sorting in Actions
+
+You can set default sorting for read actions using `prepare build(default_sort: ...)`:
+
+```elixir
+actions do
+  read :recent_posts do
+    # Default sort by published_at descending
+    # This sort is ignored if any sort is provided when calling the action
+    prepare build(default_sort: [published_at: :desc])
+  end
+  
+  read :top_posts do
+    # Default sort by score, then by published date
+    prepare build(default_sort: [score: :desc, published_at: :desc])
+  end
+end
+```
+
+Note: If you use `prepare build(sort: ...)` instead, any sort provided when calling the action will be **appended** to the prepared sort, not replace it. Choose `build(default_sort: ...)` when you want the sort to be overridable, and `build(sort: ...)` when you want to enforce a primary sort order.
+
+### Sorting with Query Building
+
+When building queries manually, use `Ash.Query.sort/2`:
+
+```elixir
+require Ash.Query
+
+MyApp.Post
+|> Ash.Query.sort(published_at: :desc)
+|> Ash.read!()
+
+# Multiple sort fields
+MyApp.Post
+|> Ash.Query.sort([{:priority, :desc}, {:created_at, :asc}])
+|> Ash.read!()
+```
+
+### Sorting from User Input
+
+When accepting sort parameters from user input (like from a web request), use `Ash.Query.sort_input/2` or the `sort_input` option in code interfaces:
+
+```elixir
+# Using sort_input in code interfaces (preferred)
+posts = MyApp.Blog.list_posts!(
+  query: [sort_input: params["sort"] || "+published_at"]
+)
+
+# Parse string-based sort input directly with Ash.Query
+MyApp.Post
+|> Ash.Query.sort_input("+published_at,-title")
+|> Ash.read!()
+```
+
+The `sort_input` function safely parses user input and only allows sorting on public fields. It supports various formats:
+- String format: `"+field1,-field2"` (+ for ascending, - for descending)
+- List format: `["field1", "-field2"]`
+- Keyword format: `[field1: :asc, field2: :desc]`
+
+For more information about input parsing and validation, see the [Write Queries guide](/documentation/how-to/write-queries.livemd#sorting).
+
+### Tips for Using Sort
+
+1. **Default vs prepared sorts**: Use `build(default_sort: ...)` for sorts that users can override, and `build(sort: ...)` for sorts that should always be applied (with user sorts appended).
+
+2. **Sorting and pagination**: When using keyset pagination, ensure your sort includes a unique field (like the primary key) to guarantee stable pagination.
+
+3. **Performance**: Sorting by attributes is generally more efficient than sorting by calculations or aggregates. Consider adding database indexes for frequently sorted fields.
+
+For detailed information about sorting capabilities including sort orders, expressions, and calculations, see the `Ash.Query.sort/2` documentation.
