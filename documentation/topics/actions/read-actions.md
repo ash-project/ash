@@ -250,15 +250,22 @@ posts = Ash.read!(query, action: :published_posts)
 #### Pagination
 
 ```elixir
-# Offset pagination
-posts = MyApp.Blog.list_posts!(
-  query: [limit: 20, offset: 40]
-)
-
 # With page options
 posts = MyApp.Blog.list_posts!(
   page: [limit: 20, offset: 40]
 )
+
+# with a query
+MyApp.Post
+|> Ash.Query.page(
+  limit: 20, offset: 40
+)
+
+# when calling an action
+
+MyApp.Post
+|> Ash.Query.for_read(...)
+|> Ash.read!(page: [limit: 20, offste: 40])
 ```
 
 #### Complex Filtering
