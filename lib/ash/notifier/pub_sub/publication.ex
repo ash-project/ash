@@ -80,9 +80,31 @@ defmodule Ash.Notifier.PubSub.Publication do
     end
   end
 
+  def topic(topic) when is_function(topic, 1) do
+    {:ok, topic}
+  end
+
+  def topic({module, opts}) when is_atom(module) and is_list(opts) do
+    if Code.ensure_loaded?(module) and function_exported?(module, :generate_topics, 2) do
+      {:ok, {module, opts}}
+    else
+      {:error,
+       "Module #{inspect(module)} must implement the Ash.Notifier.PubSub.TopicGenerator behavior"}
+    end
+  end
+
+  def topic(module) when is_atom(module) do
+    if Code.ensure_loaded?(module) and function_exported?(module, :generate_topics, 2) do
+      {:ok, {module, []}}
+    else
+      {:error,
+       "Module #{inspect(module)} must implement the Ash.Notifier.PubSub.TopicGenerator behavior"}
+    end
+  end
+
   def topic(other) do
     {:error,
-     "Expected topic to be a string or a list of strings or attribute names (as atoms), got: #{inspect(other)}"}
+     "Expected topic to be a string, list of strings or attribute names (as atoms), function/1, module, or {module, opts} tuple, got: #{inspect(other)}"}
   end
 
   defp nested_list_of_binaries_or_atoms?(list) when is_list(list) do
