@@ -83,12 +83,11 @@ defmodule Ash.Type.Struct do
   Example:
 
       defmodule MyStruct do
-        use Ash.TypedStruct do
-          typed_struct do
-            field :name, :string, allow_nil?: false
-            field :age, :integer, constraints: [min: 0]
-            field :email, :string, default: nil
-          end
+        use Ash.TypedStruct 
+        typed_struct do
+          field :name, :string, allow_nil?: false
+          field :age, :integer, constraints: [min: 0]
+          field :email, :string, default: nil
         end
       end
 

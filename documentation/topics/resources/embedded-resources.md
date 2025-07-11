@@ -12,13 +12,13 @@ For simple structured data with type validation but without the need for calcula
 
 ```elixir
 defmodule MyApp.Address do
-  use Ash.TypedStruct do
-    typed_struct do
-      field :street, :string, allow_nil?: false
-      field :city, :string, allow_nil?: false
-      field :state, :string, constraints: [max_length: 2]
-      field :zip, :string, constraints: [match: ~r/^\d{5}$/]
-    end
+  use Ash.TypedStruct
+
+  typed_struct do
+    field :street, :string, allow_nil?: false
+    field :city, :string, allow_nil?: false
+    field :state, :string, constraints: [max_length: 2]
+    field :zip, :string, constraints: [match: ~r/^\d{5}$/]
   end
 end
 ```

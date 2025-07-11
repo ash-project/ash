@@ -10,14 +10,14 @@ defmodule Ash.TypedStruct do
   ## Example
 
       defmodule MyApp.UserProfile do
-        use Ash.TypedStruct do
-          typed_struct do
-            field :username, :string, allow_nil?: false
-            field :email, :string, constraints: [match: ~r/@/]
-            field :age, :integer, constraints: [min: 0, max: 150]
-            field :bio, :string, default: ""
-            field :verified, :boolean, default: false
-          end
+        use Ash.TypedStruct 
+
+        typed_struct do
+          field :username, :string, allow_nil?: false
+          field :email, :string, constraints: [match: ~r/@/]
+          field :age, :integer, constraints: [min: 0, max: 150]
+          field :bio, :string, default: ""
+          field :verified, :boolean, default: false
         end
       end
 
@@ -55,11 +55,11 @@ defmodule Ash.TypedStruct do
   You can override the `new/1` function to add custom logic:
 
       defmodule MyApp.CustomStruct do
-        use Ash.TypedStruct do
-          typed_struct do
-            field :name, :string, allow_nil?: false
-            field :created_at, :utc_datetime
-          end
+        use Ash.TypedStruct
+
+        typed_struct do
+          field :name, :string, allow_nil?: false
+          field :created_at, :utc_datetime
         end
 
         def new(params) do
