@@ -61,6 +61,7 @@ defmodule Ash.Type.Struct do
       """
     ]
   ]
+
   @moduledoc """
   Represents a struct.
 
@@ -68,6 +69,31 @@ defmodule Ash.Type.Struct do
 
   This cannot be loaded from a database unless the `instance_of` constraint is provided.
   If not, it can only be used to cast input, i.e for arguments.
+
+  ## Alternative: Ash.TypedStruct
+
+  For simpler use cases where you want to define a struct with typed fields inline,
+  consider using `Ash.TypedStruct`. It provides a DSL for defining structs with:
+
+  - Field type specifications and constraints
+  - Default values
+  - Required fields (via `allow_nil?: false`)
+  - Automatic `new/1` and `new!/1` functions
+
+  Example:
+
+      defmodule MyStruct do
+        use Ash.TypedStruct do
+          typed_struct do
+            field :name, :string, allow_nil?: false
+            field :age, :integer, constraints: [min: 0]
+            field :email, :string, default: nil
+          end
+        end
+      end
+
+  `Ash.TypedStruct` automatically creates an `Ash.Type.Struct` with the appropriate
+  constraints under the hood.
 
   ## Constraints
 
@@ -337,7 +363,7 @@ defmodule Ash.Type.Struct do
                        {:ok, casted} <-
                          Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
                     if is_nil(casted) and attribute.allow_nil? == false do
-                      {:halt, {:error, "is invalid"}}
+                      {:halt, {:error, field: attribute.name, message: "is required"}}
                     else
                       {:cont, {:ok, Map.put(record, attribute.name, casted)}}
                     end
@@ -351,7 +377,7 @@ defmodule Ash.Type.Struct do
 
                 :error ->
                   if attribute.allow_nil? == false do
-                    {:halt, {:error, "is invalid"}}
+                    {:halt, {:error, field: attribute.name, message: "is required"}}
                   else
                     {:cont, {:ok, record}}
                   end
@@ -414,7 +440,11 @@ defmodule Ash.Type.Struct do
             {:ok, Map.put(result, field, field_value)}
 
           {:error, errors} ->
-            {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
+            if Keyword.keyword?(errors) do
+              {:error, Keyword.put(errors, :field, field)}
+            else
+              {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
+            end
         end
 
       {:error, error} when is_binary(error) ->

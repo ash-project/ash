@@ -1,6 +1,48 @@
 # Embedded Resources
 
-Embedded resources are stored as maps in attributes of other resources. They are great for storing structured data, and support a whole range of useful features that resources support. For example, you can have calculations, validations, policies and even relationships on embedded resources. Here is an example of a simple embedded resource:
+Embedded resources are stored as maps in attributes of other resources. They are great for storing structured data, and support a whole range of useful features that resources support. For example, you can have calculations, validations, policies and even relationships on embedded resources.
+
+## Consider Simpler Alternatives
+
+Before creating a full embedded resource, consider if one of these simpler options might meet your needs:
+
+### Ash.TypedStruct
+
+For simple structured data with type validation but without the need for calculations, validations, or policies:
+
+```elixir
+defmodule MyApp.Address do
+  use Ash.TypedStruct do
+    typed_struct do
+      field :street, :string, allow_nil?: false
+      field :city, :string, allow_nil?: false
+      field :state, :string, constraints: [max_length: 2]
+      field :zip, :string, constraints: [match: ~r/^\d{5}$/]
+    end
+  end
+end
+```
+
+### Ash.Type.Struct
+
+For when you need a generic struct type with field specifications:
+
+```elixir
+attribute :address, :struct do
+  constraints fields: [
+    street: [type: :string, allow_nil?: false],
+    city: [type: :string, allow_nil?: false],
+    state: [type: :string, constraints: [max_length: 2]],
+    zip: [type: :string, constraints: [match: ~r/^\d{5}$/]]
+  ]
+end
+```
+
+Use embedded resources when you need the full power of Ash resources, including actions, calculations, validations, and policies.
+
+## Example Embedded Resource
+
+Here is an example of a simple embedded resource:
 
 ```elixir
 defmodule MyApp.Profile do
