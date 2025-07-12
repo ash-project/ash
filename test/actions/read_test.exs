@@ -784,4 +784,86 @@ defmodule Ash.Test.Actions.ReadTest do
                |> Ash.read()
     end
   end
+
+  describe "tenant metadata in before_action hooks" do
+    defmodule TenantPost do
+      @moduledoc false
+      use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private?(true)
+      end
+
+      multitenancy do
+        strategy(:attribute)
+        attribute(:org_id)
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, create: :*, update: :*]
+
+        read :read_with_tenant_hook do
+          prepare fn query, _opts ->
+            Ash.Query.before_action(query, fn query ->
+              # Modify the tenant in the before_action hook
+              # This simulates cases where tenant might be dynamically determined
+              original_tenant = query.tenant
+              modified_tenant = "modified-#{original_tenant}"
+              Ash.Query.set_tenant(query, modified_tenant)
+            end)
+          end
+        end
+
+        read :bypass_and_set_tenant do
+          multitenancy(:bypass)
+
+          prepare fn query, _opts ->
+            Ash.Query.before_action(query, fn query ->
+              # Dynamically set tenant in before_action hook
+              Ash.Query.set_tenant(query, "dynamic-tenant")
+            end)
+          end
+        end
+      end
+
+      attributes do
+        uuid_primary_key(:id)
+        attribute(:title, :string, public?: true)
+        attribute(:contents, :string, public?: true)
+        attribute(:org_id, :uuid, public?: true)
+      end
+    end
+
+    setup do
+      %{tenant1: Ash.UUID.generate(), tenant2: Ash.UUID.generate()}
+    end
+
+    test "tenant modified in before_action hook appears in record metadata", %{tenant1: tenant1} do
+      TenantPost
+      |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"}, tenant: tenant1)
+      |> Ash.create!()
+
+      # Read with the action that modifies tenant in before_action hook
+      [result] =
+        TenantPost
+        |> Ash.Query.set_tenant(tenant1)
+        |> Ash.read!(action: :read_with_tenant_hook)
+
+      assert result.__metadata__.tenant == "modified-#{tenant1}"
+    end
+
+    test "tenant set in before_action hook with bypass works correctly", %{tenant1: tenant1} do
+      TenantPost
+      |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"}, tenant: tenant1)
+      |> Ash.create!()
+
+      # Read with the action that bypasses tenant requirements but sets tenant in before_action hook
+      [result] =
+        TenantPost
+        |> Ash.read!(action: :bypass_and_set_tenant)
+
+      assert result.__metadata__.tenant == "dynamic-tenant"
+    end
+  end
 end

@@ -344,7 +344,7 @@ defmodule Ash.Actions.Read do
 
         with {:ok, data, count, calculations_at_runtime, calculations_in_query, new_query} <-
                data_result,
-             data = add_tenant(data, query),
+             data = add_tenant(data, new_query),
              {:ok, data} <-
                load_through_attributes(
                  data,
@@ -379,7 +379,7 @@ defmodule Ash.Actions.Read do
                ) do
           data
           |> Helpers.restrict_field_access(query)
-          |> add_tenant(query)
+          |> add_tenant(new_query)
           |> attach_fields(opts[:initial_data], initial_query, query, missing_pkeys?)
           |> cleanup_field_auth(query)
           |> add_page(
