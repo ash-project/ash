@@ -191,7 +191,7 @@ defmodule Ash.TypedStruct do
              def new(%__MODULE__{} = fields) do
                fields = Map.merge(unquote(Macro.escape(defaults)), fields)
 
-               case cast_input(fields, []) do
+               case do_cast_input(fields, []) do
                  {:ok, value} -> {:ok, value}
                  {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
                end
@@ -200,7 +200,7 @@ defmodule Ash.TypedStruct do
              def new(%_{} = fields) do
                fields = Map.merge(unquote(Macro.escape(defaults)), Map.from_struct(fields))
 
-               case cast_input(fields, unquote(Macro.escape(map_constraints))) do
+               case do_cast_input(fields, unquote(Macro.escape(map_constraints))) do
                  {:ok, value} -> {:ok, value}
                  {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
                end
@@ -209,7 +209,7 @@ defmodule Ash.TypedStruct do
              def new(fields) do
                fields = Map.merge(unquote(Macro.escape(defaults)), Map.new(fields))
 
-               case cast_input(
+               case do_cast_input(
                       fields,
                       unquote(Macro.escape(map_constraints))
                     ) do
@@ -230,6 +230,32 @@ defmodule Ash.TypedStruct do
                    end
                end
              end
+
+             def cast_input(v, constraints) do
+               with {:ok, v} <- new(v) do
+                 super(v, constraints)
+               end
+             end
+
+             defp do_cast_input("", _), do: {:ok, nil}
+
+             defp do_cast_input(nil, _), do: {:ok, nil}
+
+             defp do_cast_input(value, constraints) when is_binary(value) do
+               case Ash.Helpers.json_module().decode(value) do
+                 {:ok, value} ->
+                   do_cast_input(value, constraints)
+
+                 _ ->
+                   :error
+               end
+             end
+
+             defp do_cast_input(value, constraints) when is_map(value) do
+               Ash.Type.apply_constraints(Ash.Type.Struct, value, constraints)
+             end
+
+             defp do_cast_input(_, _), do: :error
 
              defoverridable new: 1
            end
