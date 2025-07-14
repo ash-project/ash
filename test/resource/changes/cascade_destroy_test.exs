@@ -37,6 +37,13 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
         change cascade_destroy(:posts, return_notifications?: true)
       end
 
+      destroy :destroy_with_atomic_upgrade do
+        change cascade_destroy(:posts,
+                 action: :destroy_with_atomic_upgrade,
+                 return_notifications?: true
+               )
+      end
+
       destroy :no_notification_destroy do
         change cascade_destroy(:posts,
                  return_notifications?: true,
@@ -52,6 +59,7 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
     code_interface do
       define :create
       define :destroy
+      define :destroy_with_atomic_upgrade
       define :no_notification_destroy
       define :read
     end
@@ -68,8 +76,35 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
     actions do
       defaults [:read, create: :*]
 
+      read :custom_read do
+        pagination keyset?: true, required?: false
+
+        prepare fn query, _ ->
+          Agent.update(
+            Test.Agent,
+            &%{&1 | custom_read_used: true}
+          )
+
+          query
+        end
+      end
+
       destroy :destroy do
         primary? true
+        require_atomic? false
+
+        change before_action(fn changeset, _ ->
+                 Agent.update(
+                   Test.Agent,
+                   &%{&1 | destroys: MapSet.put(&1.destroys, changeset.data.id)}
+                 )
+
+                 changeset
+               end)
+      end
+
+      destroy :destroy_with_atomic_upgrade do
+        atomic_upgrade_with :custom_read
         require_atomic? false
 
         change before_action(fn changeset, _ ->
@@ -98,7 +133,10 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
 
   setup do
     {:ok, pid} =
-      start_supervised({Agent, fn -> %{destroys: MapSet.new(), notifications: MapSet.new()} end})
+      start_supervised(
+        {Agent,
+         fn -> %{destroys: MapSet.new(), notifications: MapSet.new(), custom_read_used: false} end}
+      )
 
     Process.register(pid, Test.Agent)
 
@@ -171,6 +209,25 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
   test "does not error when there is nothing to cascade destroy - ID provided" do
     author = Author.create!(%{})
     Author.destroy!(author.id)
+    assert [] = Author.read!()
+  end
+
+  test "uses atomic_upgrade_with action when specified" do
+    author = Author.create!(%{})
+
+    post_ids =
+      1..3
+      |> Enum.map(fn _ -> Post.create!(%{author_id: author.id}) end)
+      |> MapSet.new(& &1.id)
+
+    Author.destroy_with_atomic_upgrade!(author)
+
+    assert Agent.get(Test.Agent, & &1.custom_read_used) == true
+
+    deleted_ids = Agent.get(Test.Agent, & &1.destroys)
+    assert MapSet.equal?(post_ids, deleted_ids)
+
+    assert [] = Post.read!()
     assert [] = Author.read!()
   end
 end
