@@ -2790,7 +2790,7 @@ exists :has_ticket, :assigned_tickets
 | [`read_action`](#aggregates-exists-read_action){: #aggregates-exists-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-exists-filter){: #aggregates-exists-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-exists-description){: #aggregates-exists-description } | `String.t` |  | An optional description for the aggregate |
-| [`default`](#aggregates-exists-default){: #aggregates-exists-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
+| [`default`](#aggregates-exists-default){: #aggregates-exists-default } | `any` |  | A default value to use in cases where nil would be used. |
 | [`public?`](#aggregates-exists-public?){: #aggregates-exists-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-exists-filterable?){: #aggregates-exists-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-exists-sortable?){: #aggregates-exists-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
@@ -2885,7 +2885,7 @@ end
 | [`filter`](#aggregates-first-filter){: #aggregates-first-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`sort`](#aggregates-first-sort){: #aggregates-first-sort } | `any` |  | A sort to be applied to the aggregate |
 | [`description`](#aggregates-first-description){: #aggregates-first-description } | `String.t` |  | An optional description for the aggregate |
-| [`default`](#aggregates-first-default){: #aggregates-first-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
+| [`default`](#aggregates-first-default){: #aggregates-first-default } | `any` |  | A default value to use in cases where nil would be used. |
 | [`public?`](#aggregates-first-public?){: #aggregates-first-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-first-filterable?){: #aggregates-first-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-first-sortable?){: #aggregates-first-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
@@ -2976,7 +2976,7 @@ end
 | [`read_action`](#aggregates-sum-read_action){: #aggregates-sum-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-sum-filter){: #aggregates-sum-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-sum-description){: #aggregates-sum-description } | `String.t` |  | An optional description for the aggregate |
-| [`default`](#aggregates-sum-default){: #aggregates-sum-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
+| [`default`](#aggregates-sum-default){: #aggregates-sum-default } | `any` |  | A default value to use in cases where nil would be used. Sum defaults to `nil`. |
 | [`public?`](#aggregates-sum-public?){: #aggregates-sum-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-sum-filterable?){: #aggregates-sum-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-sum-sortable?){: #aggregates-sum-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
@@ -3071,7 +3071,7 @@ end
 | [`filter`](#aggregates-list-filter){: #aggregates-list-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`sort`](#aggregates-list-sort){: #aggregates-list-sort } | `any` |  | A sort to be applied to the aggregate |
 | [`description`](#aggregates-list-description){: #aggregates-list-description } | `String.t` |  | An optional description for the aggregate |
-| [`default`](#aggregates-list-default){: #aggregates-list-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
+| [`default`](#aggregates-list-default){: #aggregates-list-default } | `any` |  | A default value to use in cases where nil would be used. |
 | [`public?`](#aggregates-list-public?){: #aggregates-list-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-list-filterable?){: #aggregates-list-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-list-sortable?){: #aggregates-list-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
@@ -3162,7 +3162,7 @@ end
 | [`read_action`](#aggregates-max-read_action){: #aggregates-max-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-max-filter){: #aggregates-max-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-max-description){: #aggregates-max-description } | `String.t` |  | An optional description for the aggregate |
-| [`default`](#aggregates-max-default){: #aggregates-max-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
+| [`default`](#aggregates-max-default){: #aggregates-max-default } | `any` |  | A default value to use in cases where nil would be used. Max defaults to `nil`. |
 | [`public?`](#aggregates-max-public?){: #aggregates-max-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-max-filterable?){: #aggregates-max-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-max-sortable?){: #aggregates-max-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
@@ -3253,7 +3253,7 @@ end
 | [`read_action`](#aggregates-min-read_action){: #aggregates-min-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-min-filter){: #aggregates-min-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-min-description){: #aggregates-min-description } | `String.t` |  | An optional description for the aggregate |
-| [`default`](#aggregates-min-default){: #aggregates-min-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
+| [`default`](#aggregates-min-default){: #aggregates-min-default } | `any` |  | A default value to use in cases where nil would be used. Min defaults to `nil`. |
 | [`public?`](#aggregates-min-public?){: #aggregates-min-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-min-filterable?){: #aggregates-min-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-min-sortable?){: #aggregates-min-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
@@ -3344,7 +3344,7 @@ end
 | [`read_action`](#aggregates-avg-read_action){: #aggregates-avg-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-avg-filter){: #aggregates-avg-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-avg-description){: #aggregates-avg-description } | `String.t` |  | An optional description for the aggregate |
-| [`default`](#aggregates-avg-default){: #aggregates-avg-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
+| [`default`](#aggregates-avg-default){: #aggregates-avg-default } | `any` |  | A default value to use in cases where nil would be used. Avg defaults to `nil`. |
 | [`public?`](#aggregates-avg-public?){: #aggregates-avg-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-avg-filterable?){: #aggregates-avg-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-avg-sortable?){: #aggregates-avg-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
@@ -3440,7 +3440,7 @@ end
 | [`filter`](#aggregates-custom-filter){: #aggregates-custom-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`sort`](#aggregates-custom-sort){: #aggregates-custom-sort } | `any` |  | A sort to be applied to the aggregate |
 | [`description`](#aggregates-custom-description){: #aggregates-custom-description } | `String.t` |  | An optional description for the aggregate |
-| [`default`](#aggregates-custom-default){: #aggregates-custom-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
+| [`default`](#aggregates-custom-default){: #aggregates-custom-default } | `any` |  | A default value to use in cases where nil would be used. |
 | [`public?`](#aggregates-custom-public?){: #aggregates-custom-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-custom-filterable?){: #aggregates-custom-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-custom-sortable?){: #aggregates-custom-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
