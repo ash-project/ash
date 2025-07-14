@@ -45,6 +45,17 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
                )
       end
 
+      update :update_with_atomic_upgrade do
+        require_atomic? false
+        skip_unknown_inputs [:content]
+
+        change cascade_update(:posts,
+                 action: :update_with_atomic_upgrade,
+                 copy_inputs: [:name, :content],
+                 return_notifications?: true
+               )
+      end
+
       update :update_atomic do
         change cascade_update(:posts,
                  copy_inputs: [:name]
@@ -72,6 +83,7 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
     code_interface do
       define :create
       define :update
+      define :update_with_atomic_upgrade
       define :no_notification_update
       define :read
     end
@@ -89,6 +101,19 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
     actions do
       default_accept :*
       defaults [:read, create: :*]
+
+      read :custom_read do
+        pagination keyset?: true, required?: false
+
+        prepare fn query, _ ->
+          Agent.update(
+            Test.Agent,
+            &%{&1 | custom_read_used: true}
+          )
+
+          query
+        end
+      end
 
       update :update do
         primary? true
@@ -111,6 +136,12 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
 
                  changeset
                end)
+      end
+
+      update :update_with_atomic_upgrade do
+        atomic_upgrade_with :custom_read
+        require_atomic? false
+        skip_unknown_inputs [:content]
       end
 
       update :no_notification_update do
@@ -191,7 +222,10 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
 
   setup do
     {:ok, pid} =
-      start_supervised({Agent, fn -> %{updates: MapSet.new(), notifications: MapSet.new()} end})
+      start_supervised(
+        {Agent,
+         fn -> %{updates: MapSet.new(), notifications: MapSet.new(), custom_read_used: false} end}
+      )
 
     Process.register(pid, Test.Agent)
 
@@ -288,5 +322,26 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
 
     a2 = Ash.get!(Author, author.id)
     assert ^name = a2.name
+  end
+
+  test "uses atomic_upgrade_with action when specified" do
+    author = Author.create!(%{})
+    post1 = Post.create!(%{author_id: author.id})
+    post2 = Post.create!(%{author_id: author.id})
+
+    name = "Ash Framework"
+    content = "Is great!"
+
+    author |> Author.update_with_atomic_upgrade!(%{name: name, content: content})
+
+    assert Agent.get(Test.Agent, & &1.custom_read_used) == true
+
+    a = Ash.get!(Author, author.id)
+    p = Ash.get!(Post, post1.id)
+    p2 = Ash.get!(Post, post2.id)
+
+    assert ^name = a.name
+    assert ^name = p.name
+    assert ^name = p2.name
   end
 end

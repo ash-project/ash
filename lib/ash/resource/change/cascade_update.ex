@@ -268,14 +268,14 @@ defmodule Ash.Resource.Change.CascadeUpdate do
     do: :error
 
   defp related_query(data, opts, context_opts) do
-    read_action_name = opts.read_action || opts.relationship.read_action
+    read_action_name =
+      opts.read_action || opts.relationship.read_action || opts.action.atomic_upgrade_with
 
     read_action =
       if read_action_name do
         Ash.Resource.Info.action(opts.relationship.destination, read_action_name)
       else
-        opts.action.atomic_upgrade_with ||
-          Ash.Resource.Info.primary_action!(opts.relationship.destination, :read)
+        Ash.Resource.Info.primary_action!(opts.relationship.destination, :read)
       end
 
     related_query =
