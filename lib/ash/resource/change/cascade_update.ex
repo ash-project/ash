@@ -274,7 +274,8 @@ defmodule Ash.Resource.Change.CascadeUpdate do
       if read_action_name do
         Ash.Resource.Info.action(opts.relationship.destination, read_action_name)
       else
-        Ash.Resource.Info.primary_action!(opts.relationship.destination, :read)
+        opts.action.atomic_upgrade_with ||
+          Ash.Resource.Info.primary_action!(opts.relationship.destination, :read)
       end
 
     related_query =
