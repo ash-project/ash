@@ -77,7 +77,7 @@ jobs:
         with:
           repository: ash-project/ash
           path: ash
-      - uses: erlef/setup-beam@8e7fdef09ffa3ea54328b5000c170a3b9b20ca96 # v1.20.3
+      - uses: erlef/setup-beam@e6d7c94229049569db56a7ad5a540c051a010af9 # v1.20.4
         with:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
