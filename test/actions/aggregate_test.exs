@@ -6,6 +6,12 @@ defmodule Ash.Test.Actions.AggregateTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  defmodule Comment.ReadActionModifyQuery do
+    def modify(_ash_query, _ecto_query) do
+      raise "Should raise!"
+    end
+  end
+
   defmodule Comment do
     use Ash.Resource,
       domain: Domain,
@@ -15,6 +21,10 @@ defmodule Ash.Test.Actions.AggregateTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      read :with_modify_query do
+        modify_query {Comment.ReadActionModifyQuery, :modify, []}
+      end
     end
 
     attributes do
@@ -128,6 +138,11 @@ defmodule Ash.Test.Actions.AggregateTest do
       count :count_of_comments_unauthorized, :comments do
         public? true
         authorize? false
+      end
+
+      count :count_of_comments_modify_query, :comments do
+        public? true
+        read_action :with_modify_query
       end
 
       min :min_of_thing2, :comments, :thing2 do
@@ -468,6 +483,25 @@ defmodule Ash.Test.Actions.AggregateTest do
       assert Ash.load!(post, :min_of_thing3, authorize?: false).min_of_thing3 == 100
       assert Ash.load!(post, :max_of_thing3, authorize?: false).max_of_thing3 == 200
       assert Ash.load!(post, :average_of_thing3, authorize?: false).average_of_thing3 == 150
+    end
+
+    test "aggregations with read_action should apply modify_query" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "title",
+          public: true,
+          thing: "not the same"
+        })
+        |> Ash.create!(authorize?: false)
+
+      assert_raise Ash.Error.Unknown, ~r/Should raise!/, fn ->
+        Ash.read!(Comment, action: :with_modify_query, authorize?: false)
+      end
+
+      assert_raise RuntimeError, fn ->
+        Ash.load!(post, :count_of_comments_modify_query, authorize?: false)
+      end
     end
   end
 end
