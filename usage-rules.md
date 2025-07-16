@@ -157,6 +157,8 @@ These functions are particularly useful for conditional rendering of UI elements
   outside the transaction.
 - Use action arguments for inputs that need validation
 - Use preparations to modify queries before execution
+- Preparations support `where` clauses for conditional execution
+- Use `only_when_valid?` to skip preparations when the query is invalid
 - Use changes to modify changesets before execution
 - Use validations to validate changesets before execution
 - Prefer domain code interfaces to call actions instead of directly building queries/changesets and calling functions in the `Ash` module
@@ -212,6 +214,11 @@ These error classes help you catch and handle errors at an appropriate level of 
 
 Validations ensure that data meets your business requirements before it gets processed by an action. Unlike changes, validations cannot modify the changeset - they can only validate it or add errors.
 
+Validations work on both changesets and queries. Built-in validations that support queries include:
+- `action_is`, `argument_does_not_equal`, `argument_equals`, `argument_in`
+- `compare`, `confirm`, `match`, `negate`, `one_of`, `present`, `string_length`
+- Custom validations that implement the `supports/1` callback
+
 Common validation patterns:
 
 ```elixir
@@ -222,15 +229,25 @@ end
 validate match(:email, "@")
 validate one_of(:status, [:active, :inactive, :pending])
 
-# Conditional validations
+# Conditional validations with where clauses
 validate present(:phone_number) do
   where present(:contact_method) and eq(:contact_method, "phone")
+end
+
+# only_when_valid? - skip validation if prior validations failed
+validate expensive_validation() do
+  only_when_valid? true
 end
 
 # Action-specific vs global validations
 actions do
   create :sign_up do
     validate present([:email, :password])  # Only for this action
+  end
+  
+  read :search do
+    argument :email, :string
+    validate match(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)  # Validates query arguments
   end
 end
 
@@ -259,6 +276,39 @@ end
   ```
 
 - Make validations **atomic** when possible to ensure they work correctly with direct database operations by implementing the `atomic/3` callback in custom validation modules.
+
+### Using Preparations
+
+Preparations modify queries before they're executed. They are used to add filters, sorts, or other query modifications based on the query context.
+
+Common preparation patterns:
+
+```elixir
+# Built-in preparations
+prepare build(sort: [created_at: :desc])
+prepare build(filter: [active: true])
+
+# Conditional preparations with where clauses
+prepare build(filter: [visible: true]) do
+  where argument_equals(:include_hidden, false)
+end
+
+# only_when_valid? - skip preparation if prior validations failed
+prepare expensive_preparation() do
+  only_when_valid? true
+end
+
+# Action-specific vs global preparations
+actions do
+  read :recent do
+    prepare build(sort: [created_at: :desc], limit: 10)
+  end
+end
+
+preparations do
+  prepare build(filter: [deleted: false]), on: [:read, :update]
+end
+```
 
 ```elixir
 defmodule MyApp.Validations.IsEven do

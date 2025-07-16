@@ -127,9 +127,9 @@ defmodule Ash.Test.Actions.ReadTest do
       # Tests for only_when_valid?
       read :read_with_only_when_valid do
         argument :required_arg, :string
-        
+
         validate present([:required_arg])
-        
+
         prepare set_context(%{preparation_ran: true}) do
           only_when_valid? true
         end
@@ -137,11 +137,11 @@ defmodule Ash.Test.Actions.ReadTest do
 
       read :read_with_validation_only_when_valid do
         argument :value, :integer
-        
+
         prepare set_context(%{test_only_when_valid: true})
-        
+
         validate compare(:value, greater_than: 0)
-        
+
         validate fn query, _ ->
           # This validation should only run if the query is valid
           if query.context[:test_only_when_valid] do

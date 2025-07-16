@@ -91,6 +91,7 @@ The following steps are performed when you call `Ash.Query.for_read/4`.
 - Set default argument values - `d:Ash.Resource.Dsl.actions.read.argument|default`
 - Add errors for missing required arguments | `d:Ash.Resource.Dsl.actions.read.argument|allow_nil?`
 - Run query preparations | `d:Ash.Resource.Dsl.actions.read.prepare`
+- Run query validations | `d:Ash.Resource.Dsl.actions.read.validate`
 - Add action filter | `d:Ash.Resource.Dsl.actions.read|filter`
 
 ## What happens when you run the action
@@ -221,6 +222,23 @@ actions do
       Ash.Query.filter(query, contains(title, ^query.arguments.query))
     end
   end
+  
+  read :user_posts do
+    argument :email, :string, allow_nil?: false
+    argument :status, :string, default: "published"
+    
+    # Validate arguments before processing
+    validate match(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/) do
+      message "must be a valid email address"
+    end
+    
+    validate one_of(:status, ["published", "draft", "archived"])
+    
+    # Conditional validation - only validate if email is provided
+    validate present(:email) do
+      where present(:email)
+    end
+  end
 end
 ```
 
@@ -290,7 +308,95 @@ query =
   )
 ```
 
+## Validations on Read Actions
+
+Read actions support validations to ensure query arguments meet your requirements before processing. Most built-in validations work on both changesets and queries.
+
+### Supported Validations
+
+The following built-in validations support queries:
+- `action_is` - validates the action name
+- `argument_does_not_equal`, `argument_equals`, `argument_in` - validates argument values
+- `compare` - compares argument values 
+- `confirm` - confirms two arguments match
+- `match` - validates arguments against regex patterns
+- `negate` - negates other validations
+- `one_of` - validates arguments are in allowed values
+- `present` - validates required arguments are present
+- `string_length` - validates string argument length
+
+### Validation Examples
+
+```elixir
+actions do
+  read :user_search do
+    argument :email, :string
+    argument :role, :string
+    argument :min_age, :integer
+    argument :max_age, :integer
+    
+    # Validate email format
+    validate match(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/) do
+      message "must be a valid email address"
+    end
+    
+    # Validate role is one of allowed values
+    validate one_of(:role, ["admin", "user", "moderator"])
+    
+    # Validate age range makes sense
+    validate compare(:min_age, less_than: :max_age) do
+      message "minimum age must be less than maximum age"
+    end
+    
+    # Conditional validation - only validate email if provided
+    validate present(:email) do
+      where present(:email)
+    end
+    
+    # Skip expensive validation if query is already invalid
+    validate expensive_validation() do
+      only_when_valid? true
+    end
+  end
+end
+```
+
+### Where Clauses
+
+Use `where` clauses to conditionally apply validations:
+
+```elixir
+read :conditional_search do
+  argument :include_archived, :boolean, default: false
+  argument :archive_reason, :string
+  
+  # Only validate archive_reason if including archived items
+  validate present(:archive_reason) do
+    where argument_equals(:include_archived, true)
+  end
+end
+```
+
+### only_when_valid? Option
+
+Use `only_when_valid?` to skip validations when the query is already invalid:
+
+```elixir
+read :complex_search do
+  argument :required_field, :string
+  
+  # This validation must pass
+  validate present(:required_field)
+  
+  # This expensive validation only runs if query is valid so far
+  validate expensive_external_validation() do
+    only_when_valid? true
+  end
+end
+```
+
 For detailed information about query capabilities, see:
 - `Ash.Query` module documentation for building queries
 - `Ash.Query.build/2` for all available query options
 - [Write Queries guide](/documentation/how-to/write-queries.livemd) for practical examples
+- [Validations guide](/documentation/topics/resources/validations.md) for more validation examples

@@ -16,6 +16,16 @@ prepare build(sort: [inserted_at: :desc])
 
 # only show the top 5 results
 prepare build(sort: [total_points: :desc], limit: 5)
+
+# conditional preparation with where clause
+prepare build(filter: [active: true]) do
+  where argument_equals(:include_inactive, false)
+end
+
+# skip preparation if query is invalid
+prepare expensive_preparation() do
+  only_when_valid? true
+end
 ```
 
 ## Custom Preparations
@@ -82,3 +92,46 @@ end
 ```
 
 The preparations section allows you to add preparations across multiple actions of a resource.
+
+## Where Clauses
+
+Use `where` clauses to conditionally apply preparations based on validations:
+
+```elixir
+actions do
+  read :search do
+    argument :include_archived, :boolean, default: false
+    argument :sort_by, :string, default: "name"
+    
+    # Only apply archived filter if not including archived items
+    prepare build(filter: [archived: false]) do
+      where argument_equals(:include_archived, false)
+    end
+    
+    # Conditional sorting
+    prepare build(sort: [updated_at: :desc]) do
+      where argument_equals(:sort_by, "updated_at")
+    end
+  end
+end
+```
+
+## only_when_valid? Option
+
+Use the `only_when_valid?` option to skip preparations when the query is already invalid. This is useful for expensive preparations that should only run if validations have passed.
+
+```elixir
+actions do
+  read :complex_search do
+    argument :required_field, :string
+    
+    # This validation must pass first
+    validate present(:required_field)
+    
+    # This expensive preparation only runs if query is valid
+    prepare expensive_data_preparation() do
+      only_when_valid? true
+    end
+  end
+end
+```

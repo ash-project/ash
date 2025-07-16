@@ -1108,7 +1108,7 @@ defmodule Ash.Query do
       end)
     else
       if validation.only_when_valid? and not query.valid? do
-                 query
+        query
       else
         do_validation(query, validation, tracer, metadata, actor)
       end
@@ -1228,7 +1228,6 @@ defmodule Ash.Query do
          tracer,
          metadata
        ) do
-
     context = %{
       actor: actor,
       tenant: query.tenant,
@@ -1236,6 +1235,7 @@ defmodule Ash.Query do
       authorize?: authorize? || false,
       tracer: tracer
     }
+
     if Enum.all?(preparation.where || [], fn {module, opts} ->
          if __MODULE__ not in module.supports(opts) do
            raise Ash.Error.Framework.UnsupportedSubject, subject: __MODULE__, module: module
