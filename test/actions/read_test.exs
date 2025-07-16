@@ -104,6 +104,55 @@ defmodule Ash.Test.Actions.ReadTest do
         argument :username, :string
         validate string_length(:username, min: 3, max: 20)
       end
+
+      # Tests for where clauses
+      read :read_with_preparation_where do
+        argument :should_prepare, :boolean, default: false
+        argument :value, :string
+
+        prepare set_context(%{prepared: true}) do
+          where argument_equals(:should_prepare, true)
+        end
+      end
+
+      read :read_with_validation_where do
+        argument :validate_email, :boolean, default: false
+        argument :email, :string
+
+        validate match(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/) do
+          where argument_equals(:validate_email, true)
+        end
+      end
+
+      # Tests for only_when_valid?
+      read :read_with_only_when_valid do
+        argument :required_arg, :string
+        
+        validate present([:required_arg])
+        
+        prepare set_context(%{preparation_ran: true}) do
+          only_when_valid? true
+        end
+      end
+
+      read :read_with_validation_only_when_valid do
+        argument :value, :integer
+        
+        prepare set_context(%{test_only_when_valid: true})
+        
+        validate compare(:value, greater_than: 0)
+        
+        validate fn query, _ ->
+          # This validation should only run if the query is valid
+          if query.context[:test_only_when_valid] do
+            :ok
+          else
+            {:error, field: :value, message: "test_only_when_valid not set"}
+          end
+        end do
+          only_when_valid? true
+        end
+      end
     end
 
     attributes do
@@ -1122,6 +1171,108 @@ defmodule Ash.Test.Actions.ReadTest do
         Author
         |> Ash.Query.for_read(:read_with_string_length, %{
           username: "this_username_is_way_too_long_to_be_valid"
+        })
+        |> Ash.read!()
+      end
+    end
+  end
+
+  describe "preparations with where clauses" do
+    test "preparation runs when where clause is satisfied" do
+      query =
+        Author
+        |> Ash.Query.for_read(:read_with_preparation_where, %{
+          should_prepare: true,
+          value: "test"
+        })
+
+      assert query.context[:prepared] == true
+    end
+
+    test "preparation does not run when where clause is not satisfied" do
+      query =
+        Author
+        |> Ash.Query.for_read(:read_with_preparation_where, %{
+          should_prepare: false,
+          value: "test"
+        })
+
+      refute Map.has_key?(query.context, :prepared)
+    end
+  end
+
+  describe "validations with where clauses" do
+    test "validation runs when where clause is satisfied" do
+      # Valid email should pass
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_validation_where, %{
+                 validate_email: true,
+                 email: "test@example.com"
+               })
+               |> Ash.read!()
+
+      # Invalid email should fail
+      assert_raise Ash.Error.Invalid, ~r/must match/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_validation_where, %{
+          validate_email: true,
+          email: "not-an-email"
+        })
+        |> Ash.read!()
+      end
+    end
+
+    test "validation does not run when where clause is not satisfied" do
+      # Invalid email should still pass because validation doesn't run
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_validation_where, %{
+                 validate_email: false,
+                 email: "not-an-email"
+               })
+               |> Ash.read!()
+    end
+  end
+
+  describe "only_when_valid? option" do
+    test "preparation with only_when_valid? runs when query is valid" do
+      query =
+        Author
+        |> Ash.Query.for_read(:read_with_only_when_valid, %{
+          required_arg: "provided"
+        })
+
+      assert query.context[:preparation_ran] == true
+    end
+
+    test "preparation with only_when_valid? does not run when query is invalid" do
+      # This will fail validation, so the preparation should not run
+      assert_raise Ash.Error.Invalid, ~r/must be present/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_only_when_valid, %{})
+        |> Ash.read!()
+      end
+    end
+
+    test "validation with only_when_valid? runs when earlier validations pass" do
+      # Valid value (> 0) should pass all validations
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_validation_only_when_valid, %{
+                 value: 5
+               })
+               |> Ash.read!()
+    end
+
+    test "validation with only_when_valid? does not run when earlier validations fail" do
+      # Value <= 0 should fail the first validation
+      # The second validation with only_when_valid? should not run
+      # So we should get the "greater than" error, not the "test_only_when_valid not set" error
+      assert_raise Ash.Error.Invalid, ~r/must be greater than/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_validation_only_when_valid, %{
+          value: 0
         })
         |> Ash.read!()
       end
