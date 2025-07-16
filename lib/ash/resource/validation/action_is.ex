@@ -29,8 +29,11 @@ defmodule Ash.Resource.Validation.ActionIs do
   end
 
   @impl true
-  def validate(changeset, opts, _context) do
-    if changeset.action.name in List.wrap(opts[:action]) do
+  def supports(_opts), do: [Ash.Changeset, Ash.Query]
+
+  @impl true
+  def validate(subject, opts, _context) do
+    if subject.action.name in List.wrap(opts[:action]) do
       :ok
     else
       # We use "unknown" here because it doesn't make sense to surface
@@ -46,8 +49,8 @@ defmodule Ash.Resource.Validation.ActionIs do
   end
 
   @impl true
-  def atomic(changeset, opts, context) do
-    validate(changeset, opts, context)
+  def atomic(subject, opts, context) do
+    validate(subject, opts, context)
   end
 
   @impl true

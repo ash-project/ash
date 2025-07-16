@@ -48,10 +48,16 @@ defmodule Ash.Resource.Validation.Negate do
   end
 
   @impl true
-  def validate(changeset, opts, context) do
+  def supports(opts) do
+    {validation, validation_opts} = opts[:validation]
+    validation.supports(validation_opts)
+  end
+
+  @impl true
+  def validate(subject, opts, context) do
     {validation, validation_opts} = opts[:validation]
 
-    case validation.validate(changeset, validation_opts, context) do
+    case validation.validate(subject, validation_opts, context) do
       {:error, _} ->
         :ok
 

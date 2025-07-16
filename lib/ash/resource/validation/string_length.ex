@@ -46,8 +46,11 @@ defmodule Ash.Resource.Validation.StringLength do
   end
 
   @impl true
-  def validate(changeset, opts, _context) do
-    case Ash.Changeset.get_argument_or_attribute(changeset, opts[:attribute]) do
+  def supports(_opts), do: [Ash.Changeset, Ash.Query]
+
+  @impl true
+  def validate(subject, opts, _context) do
+    case get_argument_or_attribute(subject, opts[:attribute]) do
       nil ->
         :ok
 
@@ -187,4 +190,12 @@ defmodule Ash.Resource.Validation.StringLength do
     do: [message: "must have length of no more than %{max}", vars: [max: max]]
 
   def describe(_opts), do: [message: inspect(__MODULE__), vars: []]
+
+  defp get_argument_or_attribute(%Ash.Changeset{} = changeset, attribute) do
+    Ash.Changeset.get_argument_or_attribute(changeset, attribute)
+  end
+
+  defp get_argument_or_attribute(%Ash.Query{} = query, attribute) do
+    Ash.Query.get_argument(query, attribute)
+  end
 end

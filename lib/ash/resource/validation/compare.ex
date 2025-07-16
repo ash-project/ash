@@ -69,12 +69,18 @@ defmodule Ash.Resource.Validation.Compare do
   end
 
   @impl true
-  def validate(changeset, opts, _context) do
+  def supports(_), do: [Ash.Changeset, Ash.Query]
+
+  @impl true
+  def validate(subject, opts, _context) do
     value =
-      if Enum.any?(changeset.action.arguments, &(&1.name == opts[:attribute])) do
-        Ash.Changeset.fetch_argument(changeset, opts[:attribute])
+      if Enum.any?(subject.action.arguments, &(&1.name == opts[:attribute])) do
+        fetch_argument(subject, opts[:attribute])
       else
-        {:ok, Ash.Changeset.get_attribute(changeset, opts[:attribute])}
+        case subject do
+          %Ash.Query{} -> :error
+          %Ash.Changeset{} -> {:ok, Ash.Changeset.get_attribute(subject, opts[:attribute])}
+        end
       end
 
     case value do
@@ -86,7 +92,7 @@ defmodule Ash.Resource.Validation.Compare do
         end
 
       {:ok, value} ->
-        validate_value(changeset, opts, value)
+        validate_value(subject, opts, value)
 
       _ ->
         :ok
@@ -254,7 +260,7 @@ defmodule Ash.Resource.Validation.Compare do
     end
   end
 
-  defp validate_comparisons(changeset, opts, value) do
+  defp validate_comparisons(subject, opts, value) do
     opts
     |> Keyword.take([
       :greater_than,
@@ -266,27 +272,27 @@ defmodule Ash.Resource.Validation.Compare do
     ])
     |> Enum.find_value(fn
       {:greater_than, attribute} ->
-        attribute_val = normalize_value(attribute_value(changeset, attribute))
+        attribute_val = normalize_value(attribute_value(subject, attribute))
         compare_values(value, attribute_val, &Comp.greater_than?/2, opts)
 
       {:greater_than_or_equal_to, attribute} ->
-        attribute_val = normalize_value(attribute_value(changeset, attribute))
+        attribute_val = normalize_value(attribute_value(subject, attribute))
         compare_values(value, attribute_val, &Comp.greater_or_equal?/2, opts)
 
       {:less_than, attribute} ->
-        attribute_val = normalize_value(attribute_value(changeset, attribute))
+        attribute_val = normalize_value(attribute_value(subject, attribute))
         compare_values(value, attribute_val, &Comp.less_than?/2, opts)
 
       {:less_than_or_equal_to, attribute} ->
-        attribute_val = normalize_value(attribute_value(changeset, attribute))
+        attribute_val = normalize_value(attribute_value(subject, attribute))
         compare_values(value, attribute_val, &Comp.less_or_equal?/2, opts)
 
       {:is_equal, attribute} ->
-        attribute_val = normalize_value(attribute_value(changeset, attribute))
+        attribute_val = normalize_value(attribute_value(subject, attribute))
         compare_values(value, attribute_val, &Comp.equal?/2, opts)
 
       {:is_not_equal, attribute} ->
-        attribute_val = normalize_value(attribute_value(changeset, attribute))
+        attribute_val = normalize_value(attribute_value(subject, attribute))
         compare_values(value, attribute_val, &Comp.not_equal?/2, opts)
     end) || :ok
   end
@@ -335,8 +341,11 @@ defmodule Ash.Resource.Validation.Compare do
     attribute.()
   end
 
-  defp attribute_value(changeset, attribute) when is_atom(attribute),
+  defp attribute_value(%Ash.Changeset{} = changeset, attribute) when is_atom(attribute),
     do: Ash.Changeset.get_argument_or_attribute(changeset, attribute)
+
+  defp attribute_value(%Ash.Query{} = query, argument) when is_atom(argument),
+    do: Ash.Query.get_argument(query, argument)
 
   defp attribute_value(_, attribute), do: attribute
 
@@ -405,5 +414,13 @@ defmodule Ash.Resource.Validation.Compare do
           "must not be nil"
       end
     end)
+  end
+
+  defp fetch_argument(%Ash.Changeset{} = changeset, argument) do
+    Ash.Changeset.fetch_argument(changeset, argument)
+  end
+
+  defp fetch_argument(%Ash.Query{} = query, argument) do
+    Ash.Query.fetch_argument(query, argument)
   end
 end

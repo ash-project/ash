@@ -44,12 +44,18 @@ defmodule Ash.Resource.Validation.Match do
   end
 
   @impl true
-  def validate(changeset, opts, _context) do
+  def supports(_opts), do: [Ash.Changeset, Ash.Query]
+
+  @impl true
+  def validate(subject, opts, _context) do
     value =
-      if argument?(changeset.action, opts[:attribute]) do
-        Ash.Changeset.fetch_argument(changeset, opts[:attribute])
+      if argument?(subject.action, opts[:attribute]) do
+        fetch_argument(subject, opts[:attribute])
       else
-        {:ok, Ash.Changeset.get_attribute(changeset, opts[:attribute])}
+        case subject do
+          %Ash.Query{} -> :error
+          %Ash.Changeset{} -> {:ok, Ash.Changeset.get_attribute(subject, opts[:attribute])}
+        end
       end
 
     case value do
@@ -141,5 +147,13 @@ defmodule Ash.Resource.Validation.Match do
     [value: string_value, field: opts[:attribute]]
     |> with_description(opts)
     |> InvalidAttribute.exception()
+  end
+
+  defp fetch_argument(%Ash.Changeset{} = changeset, attribute) do
+    Ash.Changeset.fetch_argument(changeset, attribute)
+  end
+
+  defp fetch_argument(%Ash.Query{} = query, attribute) do
+    Ash.Query.fetch_argument(query, attribute)
   end
 end

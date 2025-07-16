@@ -29,14 +29,15 @@ defmodule Ash.Resource.Validation.Confirm do
   end
 
   @impl true
-  def validate(changeset, opts, _context) do
+  def supports(_opts), do: [Ash.Changeset, Ash.Query]
+
+  @impl true
+  def validate(subject, opts, _context) do
     confirmation_value =
-      Changeset.get_argument(changeset, opts[:confirmation]) ||
-        Changeset.get_attribute(changeset, opts[:confirmation])
+      get_argument_or_attribute(subject, opts[:confirmation])
 
     value =
-      Changeset.get_argument(changeset, opts[:field]) ||
-        Changeset.get_attribute(changeset, opts[:field])
+      get_argument_or_attribute(subject, opts[:field])
 
     if Comp.equal?(confirmation_value, value) do
       :ok
@@ -84,5 +85,13 @@ defmodule Ash.Resource.Validation.Confirm do
       message: "confirmation did not match value",
       vars: []
     ]
+  end
+
+  defp get_argument_or_attribute(%Ash.Changeset{} = changeset, field) do
+    Changeset.get_argument_or_attribute(changeset, field)
+  end
+
+  defp get_argument_or_attribute(%Ash.Query{} = query, field) do
+    Ash.Query.get_argument(query, field)
   end
 end

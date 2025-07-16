@@ -47,6 +47,63 @@ defmodule Ash.Test.Actions.ReadTest do
           end
         end
       end
+
+      read :read_with_action_is do
+        argument :unused, :string
+        validate action_is([:read_with_action_is])
+      end
+
+      read :read_with_argument_does_not_equal do
+        argument :status, :string
+        validate argument_does_not_equal(:status, "forbidden")
+      end
+
+      read :read_with_argument_equals do
+        argument :mode, :string
+        validate argument_equals(:mode, "active")
+      end
+
+      read :read_with_argument_in do
+        argument :category, :string
+        validate argument_in(:category, ["news", "sports", "tech"])
+      end
+
+      read :read_with_compare do
+        argument :min_value, :integer
+        argument :max_value, :integer
+        validate compare(:min_value, less_than: :max_value)
+      end
+
+      read :read_with_confirm do
+        argument :password, :string
+        argument :password_confirmation, :string
+        validate confirm(:password, :password_confirmation)
+      end
+
+      read :read_with_match do
+        argument :email, :string
+        validate match(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)
+      end
+
+      read :read_with_negate do
+        argument :name, :string
+        validate negate(argument_equals(:name, "banned"))
+      end
+
+      read :read_with_one_of do
+        argument :priority, :string
+        validate one_of(:priority, ["low", "medium", "high"])
+      end
+
+      read :read_with_present do
+        argument :required_field, :string
+        validate present([:required_field])
+      end
+
+      read :read_with_string_length do
+        argument :username, :string
+        validate string_length(:username, min: 3, max: 20)
+      end
     end
 
     attributes do
@@ -893,6 +950,173 @@ defmodule Ash.Test.Actions.ReadTest do
         |> Ash.read!(action: :bypass_and_set_tenant)
 
       assert result.__metadata__.tenant == "dynamic-tenant"
+    end
+  end
+
+  describe "query validations" do
+    test "action_is validation passes when action matches" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_action_is, %{unused: "test"})
+               |> Ash.read!()
+    end
+
+    test "argument_does_not_equal validation passes when argument is different" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_argument_does_not_equal, %{status: "active"})
+               |> Ash.read!()
+    end
+
+    test "argument_does_not_equal validation fails when argument equals forbidden value" do
+      assert_raise Ash.Error.Invalid, ~r/must not equal/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_argument_does_not_equal, %{status: "forbidden"})
+        |> Ash.read!()
+      end
+    end
+
+    test "argument_equals validation passes when argument matches" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_argument_equals, %{mode: "active"})
+               |> Ash.read!()
+    end
+
+    test "argument_equals validation fails when argument doesn't match" do
+      assert_raise Ash.Error.Invalid, ~r/must equal/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_argument_equals, %{mode: "inactive"})
+        |> Ash.read!()
+      end
+    end
+
+    test "argument_in validation passes when argument is in list" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_argument_in, %{category: "news"})
+               |> Ash.read!()
+    end
+
+    test "argument_in validation fails when argument is not in list" do
+      assert_raise Ash.Error.Invalid, ~r/must equal/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_argument_in, %{category: "invalid"})
+        |> Ash.read!()
+      end
+    end
+
+    test "compare validation passes when comparison is satisfied" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_compare, %{min_value: 5, max_value: 10})
+               |> Ash.read!()
+    end
+
+    test "compare validation fails when comparison is not satisfied" do
+      assert_raise Ash.Error.Invalid, ~r/must be less than/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_compare, %{min_value: 15, max_value: 10})
+        |> Ash.read!()
+      end
+    end
+
+    test "confirm validation passes when fields match" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_confirm, %{password: "secret", password_confirmation: "secret"})
+               |> Ash.read!()
+    end
+
+    test "confirm validation fails when fields don't match" do
+      assert_raise Ash.Error.Invalid, ~r/confirmation did not match/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_confirm, %{password: "secret", password_confirmation: "different"})
+        |> Ash.read!()
+      end
+    end
+
+    test "match validation passes when argument matches regex" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_match, %{email: "test@example.com"})
+               |> Ash.read!()
+    end
+
+    test "match validation fails when argument doesn't match regex" do
+      assert_raise Ash.Error.Invalid, ~r/must match/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_match, %{email: "invalid-email"})
+        |> Ash.read!()
+      end
+    end
+
+    test "negate validation passes when negated validation fails" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_negate, %{name: "allowed"})
+               |> Ash.read!()
+    end
+
+    test "negate validation fails when negated validation passes" do
+      assert_raise Ash.Error.Invalid, ~r/must not pass validation/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_negate, %{name: "banned"})
+        |> Ash.read!()
+      end
+    end
+
+    test "one_of validation passes when argument is in allowed values" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_one_of, %{priority: "high"})
+               |> Ash.read!()
+    end
+
+    test "one_of validation fails when argument is not in allowed values" do
+      assert_raise Ash.Error.Invalid, ~r/expected one of/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_one_of, %{priority: "urgent"})
+        |> Ash.read!()
+      end
+    end
+
+    test "present validation passes when required field is present" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_present, %{required_field: "value"})
+               |> Ash.read!()
+    end
+
+    test "present validation fails when required field is missing" do
+      assert_raise Ash.Error.Invalid, ~r/must be present/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_present, %{})
+        |> Ash.read!()
+      end
+    end
+
+    test "string_length validation passes when string is within bounds" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_string_length, %{username: "john"})
+               |> Ash.read!()
+    end
+
+    test "string_length validation fails when string is too short" do
+      assert_raise Ash.Error.Invalid, ~r/must have length of between/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_string_length, %{username: "ab"})
+        |> Ash.read!()
+      end
+    end
+
+    test "string_length validation fails when string is too long" do
+      assert_raise Ash.Error.Invalid, ~r/must have length of between/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_string_length, %{username: "this_username_is_way_too_long_to_be_valid"})
+        |> Ash.read!()
+      end
     end
   end
 end
