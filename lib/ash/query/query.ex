@@ -1081,53 +1081,174 @@ defmodule Ash.Query do
     query.resource
     |> Ash.Resource.Info.preparations()
     |> Enum.concat(action.preparations || [])
-    |> Enum.reduce_while(query, fn %{preparation: {module, opts}}, query ->
-      Ash.Tracer.span :preparation, fn -> "prepare: #{inspect(module)}" end, tracer do
-        Ash.Tracer.telemetry_span [:ash, :preparation], fn ->
+    |> Enum.reduce(query, fn
+      %{only_when_valid?: true}, %{valid?: false} = query ->
+        query
+
+      %{validation: {module, opts}} = validation, query ->
+        if __MODULE__ not in module.supports(opts) do
+          raise Ash.Error.Framework.UnsupportedSubject, subject: __MODULE__, module: module
+        end
+
+        validate(query, validation, tracer, metadata, actor)
+
+      %{preparation: {module, opts}}, query ->
+        run_preparation(module, opts, query, actor, authorize?, tracer, metadata, opts)
+    end)
+  end
+
+  defp validate(query, validation, tracer, metadata, actor) do
+    if validation.before_action? do
+      before_action(query, fn query ->
+        if validation.only_when_valid? and not query.valid? do
+          query
+        else
+          do_validation(query, validation, tracer, metadata, actor)
+        end
+      end)
+    else
+      if validation.only_when_valid? and not query.valid? do
+        query
+      else
+        do_validation(query, validation, tracer, metadata, actor)
+      end
+    end
+  end
+
+  defp do_validation(query, validation, tracer, metadata, actor) do
+    context = %{
+      actor: query.context[:private][:actor],
+      tenant: query.tenant,
+      source_context: query.context,
+      authorize?: query.context[:private][:authorize?] || false,
+      tracer: query.context[:private][:tracer]
+    }
+
+    if Enum.all?(validation.where || [], fn {module, opts} ->
+         opts =
+           Ash.Expr.fill_template(
+             opts,
+             actor: actor,
+             tenant: query.to_tenant,
+             args: query.arguments,
+             context: query.context
+           )
+
+         case module.init(opts) do
+           {:ok, opts} ->
+             module.validate(query, opts, struct(Ash.Resource.Validation.Context, context)) ==
+               :ok
+
+           _ ->
+             false
+         end
+       end) do
+      Ash.Tracer.span :validation, fn -> "validate: #{inspect(validation.module)}" end, tracer do
+        Ash.Tracer.telemetry_span [:ash, :validation], fn ->
           %{
             resource_short_name: Ash.Resource.Info.short_name(query.resource),
-            preparation: inspect(module)
+            validation: inspect(validation.module)
           }
         end do
-          Ash.Tracer.set_metadata(opts[:tracer], :preparation, metadata)
+          Ash.Tracer.set_metadata(tracer, :validation, metadata)
 
-          case module.init(opts) do
-            {:ok, opts} ->
-              opts =
-                Ash.Expr.fill_template(
-                  opts,
-                  actor: actor,
-                  tenant: query.to_tenant,
-                  args: query.arguments,
-                  context: query.context
-                )
+          opts =
+            Ash.Expr.fill_template(
+              validation.opts,
+              actor: actor,
+              tenant: query.to_tenant,
+              args: query.arguments,
+              context: query.context
+            )
 
-              case module.prepare(query, opts, %Ash.Resource.Preparation.Context{
-                     tenant: query.tenant,
-                     actor: actor,
-                     source_context: query.context,
-                     authorize?: authorize?,
-                     tracer: tracer
-                   }) do
-                %__MODULE__{} = prepared ->
-                  {:cont, prepared}
+          with {:ok, opts} <- validation.module.init(opts),
+               :ok <-
+                 validation.module.validate(
+                   query,
+                   opts,
+                   struct(
+                     Ash.Resource.Validation.Context,
+                     Map.put(context, :message, validation.message)
+                   )
+                 ) do
+            query
+          else
+            :ok ->
+              query
 
-                other ->
-                  raise """
-                  Invalid value returned from #{inspect(module)}.prepare/3
+            {:error, error} when is_binary(error) ->
+              add_error(query, validation.message || error)
 
-                  A query must be returned, but the following was received instead:
+            {:error, error} when is_exception(error) ->
+              if validation.message do
+                error = Ash.Error.override_validation_message(error, validation.message)
+                add_error(query, error)
+              else
+                add_error(query, error)
+              end
 
-                  #{inspect(other)}
-                  """
+            {:error, errors} when is_list(errors) ->
+              if validation.message do
+                errors =
+                  Enum.map(errors, fn error ->
+                    Ash.Error.override_validation_message(error, validation.message)
+                  end)
+
+                add_error(query, errors)
+              else
+                add_error(query, errors)
               end
 
             {:error, error} ->
-              {:halt, Ash.Query.add_error(query, error)}
+              error =
+                if Keyword.keyword?(error) do
+                  Keyword.put(error, :message, validation.message || error[:message])
+                else
+                  validation.message || error
+                end
+
+              add_error(query, error)
           end
         end
       end
-    end)
+    else
+      query
+    end
+  end
+
+  defp run_preparation(module, opts, query, actor, authorize?, tracer, metadata, opts) do
+    Ash.Tracer.span :preparation, fn -> "prepare: #{inspect(module)}" end, tracer do
+      Ash.Tracer.telemetry_span [:ash, :preparation], fn ->
+        %{
+          resource_short_name: Ash.Resource.Info.short_name(query.resource),
+          preparation: inspect(module)
+        }
+      end do
+        Ash.Tracer.set_metadata(opts[:tracer], :preparation, metadata)
+
+        {:ok, opts} = module.init(opts)
+
+        opts =
+          Ash.Expr.fill_template(
+            opts,
+            actor: actor,
+            tenant: query.to_tenant,
+            args: query.arguments,
+            context: query.context
+          )
+
+        preparation_context =
+          %Ash.Resource.Preparation.Context{
+            tenant: query.tenant,
+            actor: actor,
+            source_context: query.context,
+            authorize?: authorize?,
+            tracer: tracer
+          }
+
+        Ash.Resource.Preparation.prepare(module, query, opts, preparation_context)
+      end
+    end
   end
 
   @doc """

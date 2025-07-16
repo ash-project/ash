@@ -1161,10 +1161,10 @@ defmodule Ash.Changeset do
 
           [{:error, error}] ->
             if message do
-              error = override_validation_message(error, message)
-              Ash.Changeset.add_error(changeset, error)
+              error = Ash.Error.override_validation_message(error, message)
+              add_error(changeset, error)
             else
-              Ash.Changeset.add_error(changeset, error)
+              add_error(changeset, error)
             end
 
           [{:not_atomic, error}] ->
@@ -3858,22 +3858,22 @@ defmodule Ash.Changeset do
 
             {:error, error} when is_exception(error) ->
               if validation.message do
-                error = override_validation_message(error, validation.message)
-                Ash.Changeset.add_error(changeset, error)
+                error = Ash.Error.override_validation_message(error, validation.message)
+                add_error(changeset, error)
               else
-                Ash.Changeset.add_error(changeset, error)
+                add_error(changeset, error)
               end
 
             {:error, errors} when is_list(errors) ->
               if validation.message do
                 errors =
                   Enum.map(errors, fn error ->
-                    override_validation_message(error, validation.message)
+                    Ash.Error.override_validation_message(error, validation.message)
                   end)
 
-                Ash.Changeset.add_error(changeset, errors)
+                add_error(changeset, errors)
               else
-                Ash.Changeset.add_error(changeset, errors)
+                add_error(changeset, errors)
               end
 
             {:error, error} ->
@@ -3890,30 +3890,6 @@ defmodule Ash.Changeset do
       end
     else
       changeset
-    end
-  end
-
-  @doc false
-  def override_validation_message(error, message) do
-    case error do
-      %{field: field} = error when not is_nil(field) ->
-        error
-        |> Map.take([:field, :vars])
-        |> Map.to_list()
-        |> Keyword.put(:message, message)
-        |> Keyword.put(:value, Map.get(error, :value))
-        |> InvalidAttribute.exception()
-
-      %{fields: fields} when fields not in [nil, []] ->
-        error
-        |> Map.take([:fields, :vars])
-        |> Map.to_list()
-        |> Keyword.put(:message, message)
-        |> Keyword.put(:value, Map.get(error, :value))
-        |> InvalidChanges.exception()
-
-      _ ->
-        message
     end
   end
 

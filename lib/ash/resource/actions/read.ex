@@ -28,6 +28,7 @@ defmodule Ash.Resource.Actions.Read do
           get_by: nil | atom | [atom],
           get?: nil | boolean,
           filters: [any],
+          preparations: [Ash.Resource.Preparation.ref() | Ash.Resource.Validation.ref()],
           manual: atom | {atom, Keyword.t()} | nil,
           metadata: [Ash.Resource.Actions.Metadata.t()],
           skip_unknown_inputs: list(atom | String.t()),

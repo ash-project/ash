@@ -59,6 +59,7 @@ defmodule Ash.Resource.Validation do
   end
 
   @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
+  @callback supports(opts :: Keyword.t()) :: [Ash.Changeset | Ash.Query]
   @callback validate(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: Context.t()) ::
               :ok | {:error, term}
   @callback describe(opts :: Keyword.t()) ::
@@ -108,7 +109,7 @@ defmodule Ash.Resource.Validation do
       type: :boolean,
       default: false,
       doc:
-        "If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data."
+        "If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data."
     ],
     message: [
       type: :string,
@@ -144,6 +145,9 @@ defmodule Ash.Resource.Validation do
       @impl true
       def init(opts), do: {:ok, opts}
 
+      @impl true
+      def supports(_opts), do: [Ash.Changeset]
+
       defp with_description(keyword, opts) do
         if Kernel.function_exported?(__MODULE__, :describe, 1) do
           keyword ++ apply(__MODULE__, :describe, [opts])
@@ -152,7 +156,7 @@ defmodule Ash.Resource.Validation do
         end
       end
 
-      defoverridable init: 1
+      defoverridable init: 1, supports: 1
     end
   end
 

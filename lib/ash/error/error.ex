@@ -216,4 +216,28 @@ defmodule Ash.Error do
   def set_path(error, path) do
     super(error, path)
   end
+
+  @doc false
+  def override_validation_message(error, message) do
+    case error do
+      %{field: field} = error when not is_nil(field) ->
+        error
+        |> Map.take([:field, :vars])
+        |> Map.to_list()
+        |> Keyword.put(:message, message)
+        |> Keyword.put(:value, Map.get(error, :value))
+        |> Ash.Error.Changes.InvalidAttribute.exception()
+
+      %{fields: fields} when fields not in [nil, []] ->
+        error
+        |> Map.take([:fields, :vars])
+        |> Map.to_list()
+        |> Keyword.put(:message, message)
+        |> Keyword.put(:value, Map.get(error, :value))
+        |> Ash.Error.Changes.InvalidChanges.exception()
+
+      _ ->
+        message
+    end
+  end
 end

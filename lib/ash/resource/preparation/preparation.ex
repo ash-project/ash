@@ -14,6 +14,8 @@ defmodule Ash.Resource.Preparation do
   """
   defstruct [:preparation]
 
+  require Ash.BehaviourHelpers
+
   @type t :: %__MODULE__{}
   @type ref :: {module(), Keyword.t()} | module()
 
@@ -28,6 +30,11 @@ defmodule Ash.Resource.Preparation do
         The module and options for a preparation. Also accepts functions take the query and the context.
         """,
         required: true
+      ],
+      only_when_valid?: [
+        type: :boolean,
+        default: false,
+        doc: "If the preparation should only run on valid queries."
       ]
     ]
   end
@@ -45,6 +52,12 @@ defmodule Ash.Resource.Preparation do
 
   def preparation(other) do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
+  end
+
+  def prepare(module, query, opts, context) do
+    Ash.BehaviourHelpers.check_type!(module, module.prepare(query, opts, context), [
+      %Ash.Query{}
+    ])
   end
 
   defmodule Context do

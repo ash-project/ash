@@ -611,6 +611,7 @@ defmodule Ash.Resource.Dsl do
     ],
     imports: [
       Ash.Resource.Preparation.Builtins,
+      Ash.Resource.Validation.Builtins,
       Ash.Expr
     ],
     target: Ash.Resource.Actions.Read,
@@ -622,7 +623,8 @@ defmodule Ash.Resource.Dsl do
         @action_argument
       ],
       preparations: [
-        @prepare
+        @prepare,
+        %{@validate | schema: Keyword.delete(@validate.schema, :always_atomic?)}
       ],
       pagination: [
         @pagination

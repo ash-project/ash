@@ -35,6 +35,18 @@ defmodule Ash.Test.Actions.ReadTest do
       read :in_transaction do
         transaction? true
       end
+
+      read :read_with_validation do
+        argument :must_be_true, :boolean
+
+        validate fn query, _ ->
+          if query.arguments[:must_be_true] == true do
+            :ok
+          else
+            {:error, field: :must_be_true, message: "must be true"}
+          end
+        end
+      end
     end
 
     attributes do
@@ -583,6 +595,23 @@ defmodule Ash.Test.Actions.ReadTest do
 
       assert [%{name: "bruh", id: id}] = Ash.read!(Ash.Query.select(Author, :name))
       assert id
+    end
+  end
+
+  describe "validations" do
+    test "passing validations produce no errors" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_validation, %{must_be_true: true})
+               |> Ash.read!()
+    end
+
+    test "failing validations produce errors" do
+      assert_raise Ash.Error.Invalid, ~r/must be true/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_validation, %{must_be_true: false})
+        |> Ash.read!()
+      end
     end
   end
 

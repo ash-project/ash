@@ -14,6 +14,9 @@ defmodule Ash.Resource.Validation.Function do
   end
 
   @impl true
+  def supports(_opts), do: [Ash.Changeset, Ash.Query]
+
+  @impl true
   def describe(opts) do
     [
       message: "must pass function %{function}",
