@@ -1024,14 +1024,20 @@ defmodule Ash.Test.Actions.ReadTest do
     test "confirm validation passes when fields match" do
       assert [] =
                Author
-               |> Ash.Query.for_read(:read_with_confirm, %{password: "secret", password_confirmation: "secret"})
+               |> Ash.Query.for_read(:read_with_confirm, %{
+                 password: "secret",
+                 password_confirmation: "secret"
+               })
                |> Ash.read!()
     end
 
     test "confirm validation fails when fields don't match" do
       assert_raise Ash.Error.Invalid, ~r/confirmation did not match/, fn ->
         Author
-        |> Ash.Query.for_read(:read_with_confirm, %{password: "secret", password_confirmation: "different"})
+        |> Ash.Query.for_read(:read_with_confirm, %{
+          password: "secret",
+          password_confirmation: "different"
+        })
         |> Ash.read!()
       end
     end
@@ -1114,7 +1120,9 @@ defmodule Ash.Test.Actions.ReadTest do
     test "string_length validation fails when string is too long" do
       assert_raise Ash.Error.Invalid, ~r/must have length of between/, fn ->
         Author
-        |> Ash.Query.for_read(:read_with_string_length, %{username: "this_username_is_way_too_long_to_be_valid"})
+        |> Ash.Query.for_read(:read_with_string_length, %{
+          username: "this_username_is_way_too_long_to_be_valid"
+        })
         |> Ash.read!()
       end
     end

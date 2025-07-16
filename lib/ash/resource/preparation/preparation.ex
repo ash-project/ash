@@ -12,12 +12,17 @@ defmodule Ash.Resource.Preparation do
   To access any query arguments from within a preparation, make sure you are using `Ash.Query.get_argument/2`
   as the argument keys may be strings or atoms.
   """
-  defstruct [:preparation]
+  defstruct [:preparation, only_when_valid?: false, where: []]
 
   require Ash.BehaviourHelpers
 
-  @type t :: %__MODULE__{}
   @type ref :: {module(), Keyword.t()} | module()
+
+  @type t :: %__MODULE__{
+          preparation: __MODULE__.ref(),
+          only_when_valid?: boolean(),
+          where: [Ash.Resource.Validation.ref()]
+        }
 
   @doc false
   def schema do
@@ -30,6 +35,17 @@ defmodule Ash.Resource.Preparation do
         The module and options for a preparation. Also accepts functions take the query and the context.
         """,
         required: true
+      ],
+      where: [
+        type:
+          {:wrap_list,
+           {:spark_function_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins,
+            {Ash.Resource.Validation.Function, 2}}},
+        required: false,
+        default: [],
+        doc: """
+        Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored.
+        """
       ],
       only_when_valid?: [
         type: :boolean,
