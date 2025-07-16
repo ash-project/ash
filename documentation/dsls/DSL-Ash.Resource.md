@@ -845,6 +845,7 @@ multiple actions of each type in a large application.
  * [read](#actions-read)
    * argument
    * prepare
+   * validate
    * pagination
    * metadata
    * filter
@@ -1136,7 +1137,7 @@ validate changing(:email)
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`where`](#actions-create-validate-where){: #actions-create-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
-| [`only_when_valid?`](#actions-create-validate-only_when_valid?){: #actions-create-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
+| [`only_when_valid?`](#actions-create-validate-only_when_valid?){: #actions-create-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-create-validate-message){: #actions-create-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-create-validate-description){: #actions-create-validate-description } | `String.t` |  | An optional description for the validation |
 | [`before_action?`](#actions-create-validate-before_action?){: #actions-create-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
@@ -1260,6 +1261,7 @@ Declares a `read` action. For calling this action, see the `Ash.Domain` document
 ### Nested DSLs
  * [argument](#actions-read-argument)
  * [prepare](#actions-read-prepare)
+ * [validate](#actions-read-validate)
  * [pagination](#actions-read-pagination)
  * [metadata](#actions-read-metadata)
  * [filter](#actions-read-filter)
@@ -1364,7 +1366,12 @@ prepare build(sort: [:foo, :bar])
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`preparation`](#actions-read-prepare-preparation){: #actions-read-prepare-preparation .spark-required} | `(any, any -> any) \| module` |  | The module and options for a preparation. Also accepts functions take the query and the context. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#actions-read-prepare-where){: #actions-read-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
+| [`only_when_valid?`](#actions-read-prepare-only_when_valid?){: #actions-read-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
 
 
@@ -1373,6 +1380,54 @@ prepare build(sort: [:foo, :bar])
 ### Introspection
 
 Target: `Ash.Resource.Preparation`
+
+### actions.read.validate
+```elixir
+validate validation
+```
+
+
+Declares a validation for creates and updates.
+
+See `Ash.Resource.Validation.Builtins` or `Ash.Resource.Validation` for more.
+
+
+
+
+### Examples
+```
+validate {Mod, [foo: :bar]}
+```
+
+```
+validate at_least_one_of_present([:first_name, :last_name])
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`validation`](#actions-read-validate-validation){: #actions-read-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#actions-read-validate-where){: #actions-read-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| [`on`](#actions-read-validate-on){: #actions-read-validate-on } | `:create \| :update \| :destroy \| list(:create \| :update \| :destroy)` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included. |
+| [`only_when_valid?`](#actions-read-validate-only_when_valid?){: #actions-read-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
+| [`message`](#actions-read-validate-message){: #actions-read-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
+| [`description`](#actions-read-validate-description){: #actions-read-validate-description } | `String.t` |  | An optional description for the validation |
+| [`before_action?`](#actions-read-validate-before_action?){: #actions-read-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Validation`
 
 ### actions.read.pagination
 
@@ -1622,7 +1677,7 @@ validate changing(:email)
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`where`](#actions-update-validate-where){: #actions-update-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
-| [`only_when_valid?`](#actions-update-validate-only_when_valid?){: #actions-update-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
+| [`only_when_valid?`](#actions-update-validate-only_when_valid?){: #actions-update-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-update-validate-message){: #actions-update-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-update-validate-description){: #actions-update-validate-description } | `String.t` |  | An optional description for the validation |
 | [`before_action?`](#actions-update-validate-before_action?){: #actions-update-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
@@ -1868,7 +1923,7 @@ validate changing(:email)
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`where`](#actions-destroy-validate-where){: #actions-destroy-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
-| [`only_when_valid?`](#actions-destroy-validate-only_when_valid?){: #actions-destroy-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
+| [`only_when_valid?`](#actions-destroy-validate-only_when_valid?){: #actions-destroy-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-destroy-validate-message){: #actions-destroy-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-destroy-validate-description){: #actions-destroy-validate-description } | `String.t` |  | An optional description for the validation |
 | [`before_action?`](#actions-destroy-validate-before_action?){: #actions-destroy-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
@@ -2532,7 +2587,12 @@ prepare build(sort: [:foo, :bar])
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`preparation`](#preparations-prepare-preparation){: #preparations-prepare-preparation .spark-required} | `(any, any -> any) \| module` |  | The module and options for a preparation. Also accepts functions take the query and the context. |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#preparations-prepare-where){: #preparations-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
+| [`only_when_valid?`](#preparations-prepare-only_when_valid?){: #preparations-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
 
 
@@ -2600,7 +2660,7 @@ validate at_least_one_of_present([:first_name, :last_name])
 |------|------|---------|------|
 | [`where`](#validations-validate-where){: #validations-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`on`](#validations-validate-on){: #validations-validate-on } | `:create \| :update \| :destroy \| list(:create \| :update \| :destroy)` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included. |
-| [`only_when_valid?`](#validations-validate-only_when_valid?){: #validations-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
+| [`only_when_valid?`](#validations-validate-only_when_valid?){: #validations-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#validations-validate-message){: #validations-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#validations-validate-description){: #validations-validate-description } | `String.t` |  | An optional description for the validation |
 | [`before_action?`](#validations-validate-before_action?){: #validations-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
