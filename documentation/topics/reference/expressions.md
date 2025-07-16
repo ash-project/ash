@@ -80,6 +80,98 @@ The following functions are built in:
 - `round/2` | Round a float, decimal or int to the provided precision or less, i.e `round(1.1234, 3) == 1.1234` and `round(1.12, 3) == 1.12`
 - String interpolation | `"#{first_name} #{last_name}"`, is remapped to the equivalent usage of `<>`
 - `fragment/*` | Creates a fragment of a data layer expression. See the section on fragments below.
+- `error/2` | Raises an error with a given exception module and parameters. See the section on error expressions below.
+
+## Error Expressions
+
+The `error/2` function is used within atomic validations, changes, and calculations to conditionally raise errors. It takes two arguments:
+1. An exception module (typically an Ash error module)
+2. A map of parameters for the exception
+
+### Basic Usage
+
+```elixir
+error(Ash.Error.Changes.InvalidAttribute, %{
+  field: :price,
+  value: ^atomic_ref(:price),
+  message: "must be greater than 0"
+})
+```
+
+### Common Pattern in Validations
+
+The `error/2` function is commonly used in atomic validations to produce errors when conditions are not met:
+
+```elixir
+# In an atomic validation
+{:atomic, [:price], expr(^atomic_ref(:price) <= 0),
+ expr(
+   error(^InvalidAttribute, %{
+     field: :price,
+     value: ^atomic_ref(:price),
+     message: "must be greater than 0"
+   })
+ )}
+```
+
+### Usage in Calculations for Unreachable Branches
+
+The `error/2` function is useful in calculations to handle cases that should never occur, making unreachable code paths explicit:
+
+```elixir
+calculate :status_label, :string, expr(
+  cond do
+    status == :active -> "Active"
+    status == :inactive -> "Inactive"
+    status == :pending -> "Pending"
+    true -> error(Ash.Error.Framework.AssumptionFailed, %{
+      message: "Unexpected status value: %{status}",
+      vars: %{status: status}
+    })
+  end
+)
+```
+
+### Example with Variables
+
+You can include variables for message interpolation:
+
+```elixir
+error(Ash.Error.Changes.InvalidChanges, %{
+  message: "must be less than or equal to %{max}",
+  vars: %{max: ^max}
+})
+```
+
+### Common Error Modules
+
+- `Ash.Error.Changes.InvalidAttribute` - Used for attribute validation errors
+- `Ash.Error.Changes.InvalidChanges` - Used for general change validation errors
+- `Ash.Error.Changes.StaleRecord` - Used for optimistic locking violations
+- `Ash.Error.Framework.AssumptionFailed` - Used for unreachable code or violated assumptions
+
+### Usage in Atomic Operations
+
+The `error/2` function is essential for atomic operations, allowing you to specify exactly what error should be raised when validation conditions fail:
+
+```elixir
+# In a compare validation
+atomic_update(:status, 
+  expr(
+    if ^atomic_ref(:score) > 100 do
+      error(^InvalidAttribute, %{
+        field: :score,
+        value: ^atomic_ref(:score),
+        message: "score cannot exceed 100"
+      })
+    else
+      :valid
+    end
+  )
+)
+```
+
+For more information about error handling in Ash, see the [Error Handling guide](../topics/error-handling.md).
 
 ## Fragments
 
