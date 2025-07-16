@@ -2984,9 +2984,19 @@ defmodule Ash.Actions.Read do
 
         agg.query
         |> Ash.Query.set_context(%{private: %{require_actor?: false}})
-        |> Ash.Query.for_read(read_action, %{}, domain: domain, actor: actor, tenant: tenant)
+        |> Ash.Query.for_read(read_action, %{},
+          domain: domain,
+          actor: actor,
+          tenant: tenant,
+          authorize?: agg.authorize? && authorize?
+        )
       else
-        agg.query
+        Ash.Query.set_context(agg.query, %{
+          private: %{
+            authorize?: agg.authorize? && authorize?,
+            actor: actor
+          }
+        })
       end
 
     authorize? =

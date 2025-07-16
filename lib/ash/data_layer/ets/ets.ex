@@ -781,6 +781,14 @@ defmodule Ash.DataLayer.Ets do
                    Ash.load(
                      record,
                      record.__struct__
+                     |> Ash.Query.load(
+                       relationship_path_to_load(
+                         relationship_path,
+                         Ash.Query.set_context(Ash.Query.unset(query, :load), %{
+                           private: %{authorize?: false}
+                         })
+                       )
+                     )
                      |> Ash.Query.load(relationship_path_to_load(relationship_path, field))
                      |> Ash.Query.set_context(%{private: %{internal?: true}}),
                      domain: domain,

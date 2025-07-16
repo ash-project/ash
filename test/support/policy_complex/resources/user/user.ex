@@ -19,6 +19,11 @@ defmodule Ash.Test.Support.PolicyComplex.User do
       forbid_if always()
     end
 
+    policy action(:always_forbid_filter) do
+      access_type :strict
+      forbid_if always()
+    end
+
     policy action_type(:create) do
       authorize_if always()
     end
@@ -52,6 +57,7 @@ defmodule Ash.Test.Support.PolicyComplex.User do
     defaults [:read, :destroy, update: :*]
 
     read :always_forbid
+    read :always_forbid_filter
 
     create :create do
       primary? true

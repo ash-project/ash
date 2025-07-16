@@ -499,7 +499,7 @@ defmodule Ash.Test.Actions.AggregateTest do
         Ash.read!(Comment, action: :with_modify_query, authorize?: false)
       end
 
-      assert_raise RuntimeError, fn ->
+      assert_raise Ash.Error.Unknown, ~r/Should raise!/, fn ->
         Ash.load!(post, :count_of_comments_modify_query, authorize?: false)
       end
     end
