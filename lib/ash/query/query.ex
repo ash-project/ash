@@ -1125,6 +1125,10 @@ defmodule Ash.Query do
     }
 
     if Enum.all?(validation.where || [], fn {module, opts} ->
+         if __MODULE__ not in module.supports(opts) do
+           raise Ash.Error.Framework.UnsupportedSubject, subject: __MODULE__, module: module
+         end
+
          opts =
            Ash.Expr.fill_template(
              opts,
