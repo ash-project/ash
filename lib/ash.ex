@@ -2437,6 +2437,8 @@ defmodule Ash do
   def load(nil, _, _), do: {:ok, nil}
   def load(:ok, _, _), do: {:ok, :ok}
   def load({:error, error}, _, _), do: {:error, error}
+  def load({:ok, data}, load, _) when load in [nil, []], do: {:ok, data}
+  def load(data, load, _) when load in [nil, []], do: {:ok, data}
 
   def load({:ok, values}, query, opts) do
     Ash.Helpers.expect_options!(opts)
