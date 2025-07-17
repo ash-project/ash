@@ -25,7 +25,7 @@ If you want to follow along yourself, you will need the following things:
 
 ## Steps
 
-For this tutorial, we'll use examples based around creating a help desk.
+For this tutorial, we'll use examples based around creating a Help Desk system.
 
 We will make the following resources:
 
@@ -46,7 +46,7 @@ See the options below for more.
 
 
 > ### What is igniter? {: .tip}
-> 
+>
 > Igniter is a code generation and project setup tool that automates the installation and configuration of Elixir packages. Instead of manually adding dependencies and writing boilerplate code, Igniter handles this for you. When you run `mix igniter.install ash`, it automatically adds Ash to your project and sets up the necessary configuration files.
 
 
@@ -99,13 +99,13 @@ Finally, if you want to install Ash manually, step by step, follow the [manual i
 
 ### Building your first Ash Domain
 
-The basic building blocks of an Ash application are Ash resources. They are tied together by a domain module, which will allow you to interact with those resources.
+The basic building blocks of an Ash application are Ash [resources](documentation/dsls/DSL-Ash.Resource.md). They are tied together by a [domain](documentation/dsls/DSL-Ash.Domain.md) module, which will allow you to interact with those resources.
 
 ### Creating our first resource
 
 > ### Generators {: .info}
 >
-> We have CLI commands that will do this for you, for example `mix ash.gen.resource`
+> We have CLI commands that will do this for you, for example `mix ash.gen.resource`.
 > In this getting started guide, we will create the resources by hand. This is primarily
 > because there are not actually very many steps, and we want you to be familiar with
 > each moving piece. For more on the generators, run `mix help ash.gen.resource`.
@@ -133,7 +133,7 @@ lib/
 │  ├─ support.ex
 ```
 
-Add the following to the files we created
+Add the following contents to the files we created:
 
 ```elixir
 # lib/helpdesk/support.ex
@@ -175,14 +175,14 @@ end
 
 Next, add your domain to your `config.exs`, and configure some backwards compatibility configuration.
 
-Run the following to create your `config.exs` if it doesn't already exist
+Run the following commands to create your `config.exs` if it doesn't already exist:
 
 ```elixir
 mkdir -p config
 touch config/config.exs
 ```
 
-and add the following contents to it.
+And add the following contents to it.
 
 ```elixir
 # in config/config.exs
@@ -215,6 +215,8 @@ This returns what we call a `record` which is an instance of a resource.
   ...
 >
 ```
+
+Notice we are not persisting the record. The resource is simple returning the record back to us.
 
 ### Customizing our Actions
 
