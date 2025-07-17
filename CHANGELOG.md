@@ -2,6 +2,41 @@
 
 <!-- changelog -->
 
+## [v3.5.27](https://github.com/ash-project/ash/compare/v3.5.26...v3.5.27) (2025-07-17)
+
+
+
+
+### Bug Fixes:
+
+* properly merge contexts from scope and opts by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that `modify_query` is honored on aggregates by [@zachdaniel](https://github.com/zachdaniel)
+
+* read action: Tenant from before_action will survive in metadata (#2189) by [@serpent213](https://github.com/serpent213)
+
+* set action on aggregate queries by [@zachdaniel](https://github.com/zachdaniel)
+
+* cascade change action selection (#2193) by [@barnabasJ](https://github.com/barnabasJ)
+
+* try atomic_upgrade_with before falling back to primary action in cascade changes (#2191) by [@barnabasJ](https://github.com/barnabasJ)
+
+* ensure `cast_input` uses `new` callback on typed structs by [@zachdaniel](https://github.com/zachdaniel)
+
+* use correct options in code interfaces in usage-rules.md by [@zachdaniel](https://github.com/zachdaniel)
+
+* support single atoms in `sort_input` by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* support where clauses on preparations by [@zachdaniel](https://github.com/zachdaniel)
+
+* support `Ash.Query` for most builtin validations by [@zachdaniel](https://github.com/zachdaniel)
+
+* support validations on read actions by [@zachdaniel](https://github.com/zachdaniel)
+
+* introduce `Ash.TypedStruct` as a simpler struct type by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.26](https://github.com/ash-project/ash/compare/v3.5.25...v3.5.26) (2025-07-09)
 
 
