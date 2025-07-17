@@ -477,7 +477,7 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       "validate {Mod, [foo: :bar]}",
-      "validate at_least_one_of_present([:first_name, :last_name])"
+      "validate present([:first_name, :last_name], at_least: 1)"
     ],
     target: Ash.Resource.Validation,
     schema: Ash.Resource.Validation.opt_schema(),
@@ -1043,7 +1043,7 @@ defmodule Ash.Resource.Dsl do
       """
       validations do
         validate {Mod, [foo: :bar]}
-        validate at_least_one_of_present([:first_name, :last_name])
+        validate present([:first_name, :last_name], at_least: 1)
       end
       """
     ],
