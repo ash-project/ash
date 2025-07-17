@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.5.28](https://github.com/ash-project/ash/compare/v3.5.27...v3.5.28) (2025-07-17)
+
+
+
+
+### Bug Fixes:
+
+* accept composite types in typed struct types by [@zachdaniel](https://github.com/zachdaniel)
+
+* keep descriptions from typed struct DSL by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.27](https://github.com/ash-project/ash/compare/v3.5.26...v3.5.27) (2025-07-17)
 
 
