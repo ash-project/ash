@@ -99,7 +99,7 @@ Finally, if you want to install Ash manually, step by step, follow the [manual i
 
 ### Building your first Ash Domain
 
-The basic building blocks of an Ash application are Ash [resources](documentation/dsls/DSL-Ash.Resource.md). They are tied together by a [domain](documentation/dsls/DSL-Ash.Domain.md) module, which will allow you to interact with those resources.
+The basic building blocks of an Ash application are Ash resources. They are tied together by a domain module, which will allow you to interact with those resources.
 
 ### Creating our first resource
 
