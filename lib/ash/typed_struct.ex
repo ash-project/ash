@@ -71,7 +71,7 @@ defmodule Ash.TypedStruct do
 
   defmodule Field do
     @moduledoc false
-    defstruct [:name, :type, :constraints, :default, :allow_nil?]
+    defstruct [:name, :type, :constraints, :default, :allow_nil?, :description]
   end
 
   defmodule Dsl do
@@ -89,7 +89,7 @@ defmodule Ash.TypedStruct do
           doc: "The name of the struct field"
         ],
         type: [
-          type: :atom,
+          type: Ash.OptionsHelpers.ash_type(),
           required: true,
           doc: "The type of the struct field"
         ],
