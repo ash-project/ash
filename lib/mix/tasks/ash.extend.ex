@@ -117,7 +117,7 @@ if Code.ensure_loaded?(Igniter) do
           |> Enum.find_value(fn {type, using} ->
             case Igniter.Code.Module.move_to_use(zipper, using) do
               {:ok, _} -> {:ok, type, using}
-              _ -> nil
+              _ -> :error
             end
           end)
 
