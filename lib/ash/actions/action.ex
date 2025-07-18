@@ -10,6 +10,14 @@ defmodule Ash.Actions.Action do
   def run(domain, input, opts) do
     {input, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, input, opts)
 
+    if input.valid? do
+      run_with_lifecycle(domain, input, opts)
+    else
+      {:error, Ash.Error.to_error_class(input.errors)}
+    end
+  end
+
+  defp run_with_lifecycle(domain, input, opts) do
     context =
       %Ash.Resource.Actions.Implementation.Context{
         actor: opts[:actor],
@@ -62,7 +70,7 @@ defmodule Ash.Actions.Action do
               fn ->
                 case authorize(domain, opts[:actor], input) do
                   :ok ->
-                    case call_run_function(module, input, run_opts, context, true) do
+                    case run_with_hooks(module, input, run_opts, context, true) do
                       :ok when is_nil(input.action.returns) ->
                         {:ok, nil, []}
 
@@ -134,7 +142,7 @@ defmodule Ash.Actions.Action do
         else
           case authorize(domain, opts[:actor], input) do
             :ok ->
-              case call_run_function(module, input, run_opts, context, false) do
+              case run_with_hooks(module, input, run_opts, context, false) do
                 :ok when is_nil(input.action.returns) ->
                   :ok
 
@@ -203,7 +211,7 @@ defmodule Ash.Actions.Action do
         run_opts
       )
     else
-      module.run(input, run_opts, context)
+      Ash.Resource.Actions.Implementation.run(module, input, run_opts, context)
     end
   end
 
@@ -288,5 +296,81 @@ defmodule Ash.Actions.Action do
         end
       end
     )
+  end
+
+  defp run_with_hooks(module, input, run_opts, context, in_transaction?) do
+    # Run before_action hooks
+    case Ash.ActionInput.run_before_actions(input) do
+      {:error, error} ->
+        if in_transaction? do
+          Ash.DataLayer.rollback([input.resource], error)
+        else
+          {:error, error}
+        end
+
+      {input, %{notifications: before_action_notifications}} ->
+        # Run the actual action
+        case call_run_function(module, input, run_opts, context, in_transaction?) do
+          :ok when is_nil(input.action.returns) ->
+            # Run after_action hooks
+            case Ash.ActionInput.run_after_actions(nil, input, before_action_notifications) do
+              {:ok, result, _input, %{notifications: all_notifications}} ->
+                {:ok, result, all_notifications}
+
+              {:error, error} ->
+                if in_transaction? do
+                  Ash.DataLayer.rollback([input.resource], error)
+                else
+                  {:error, error}
+                end
+            end
+
+          {:ok, result} ->
+            if input.action.returns do
+              # Run after_action hooks
+              case Ash.ActionInput.run_after_actions(result, input, before_action_notifications) do
+                {:ok, result, _input, %{notifications: all_notifications}} ->
+                  {:ok, result, all_notifications}
+
+                {:error, error} ->
+                  if in_transaction? do
+                    Ash.DataLayer.rollback([input.resource], error)
+                  else
+                    {:error, error}
+                  end
+              end
+            else
+              raise_invalid_generic_action_return!(input, result)
+            end
+
+          {:ok, result, notifications} ->
+            # Run after_action hooks
+            case Ash.ActionInput.run_after_actions(
+                   result,
+                   input,
+                   before_action_notifications ++ notifications
+                 ) do
+              {:ok, result, _input, %{notifications: all_notifications}} ->
+                {:ok, result, all_notifications}
+
+              {:error, error} ->
+                if in_transaction? do
+                  Ash.DataLayer.rollback([input.resource], error)
+                else
+                  {:error, error}
+                end
+            end
+
+          {:error, error} ->
+            if in_transaction? do
+              Ash.DataLayer.rollback([input.resource], error)
+            else
+              {:error, error}
+            end
+
+          other ->
+            raise_invalid_generic_action_return!(input, other)
+        end
+    end
   end
 end

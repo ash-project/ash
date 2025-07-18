@@ -12,7 +12,7 @@ defmodule Ash.Resource.Preparation do
   To access any query arguments from within a preparation, make sure you are using `Ash.Query.get_argument/2`
   as the argument keys may be strings or atoms.
   """
-  defstruct [:preparation, only_when_valid?: false, where: []]
+  defstruct [:preparation, only_when_valid?: false, where: [], on: [:read]]
 
   require Ash.BehaviourHelpers
 
@@ -21,7 +21,8 @@ defmodule Ash.Resource.Preparation do
   @type t :: %__MODULE__{
           preparation: __MODULE__.ref(),
           only_when_valid?: boolean(),
-          where: [Ash.Resource.Validation.ref()]
+          where: [Ash.Resource.Validation.ref()],
+          on: [atom()]
         }
 
   @doc false
@@ -35,6 +36,13 @@ defmodule Ash.Resource.Preparation do
         The module and options for a preparation. Also accepts functions take the query and the context.
         """,
         required: true
+      ],
+      on: [
+        type: {:wrap_list, {:in, [:read, :action]}},
+        default: [:read],
+        doc: """
+        The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions.
+        """
       ],
       where: [
         type:
@@ -70,9 +78,10 @@ defmodule Ash.Resource.Preparation do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
   end
 
-  def prepare(module, query, opts, context) do
-    Ash.BehaviourHelpers.check_type!(module, module.prepare(query, opts, context), [
-      %Ash.Query{}
+  def prepare(module, query_or_input, opts, context) do
+    Ash.BehaviourHelpers.check_type!(module, module.prepare(query_or_input, opts, context), [
+      %Ash.Query{},
+      %Ash.ActionInput{}
     ])
   end
 
@@ -92,8 +101,13 @@ defmodule Ash.Resource.Preparation do
   end
 
   @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
-  @callback prepare(query :: Ash.Query.t(), opts :: Keyword.t(), context :: Context.t()) ::
-              Ash.Query.t()
+  @callback prepare(
+              query_or_input :: Ash.Query.t() | Ash.ActionInput.t(),
+              opts :: Keyword.t(),
+              context :: Context.t()
+            ) ::
+              Ash.Query.t() | Ash.ActionInput.t()
+  @callback supports(opts :: Keyword.t()) :: [module()]
 
   defmacro __using__(_) do
     quote do
@@ -103,8 +117,9 @@ defmodule Ash.Resource.Preparation do
       require Ash.Query
 
       def init(opts), do: {:ok, opts}
+      def supports(_opts), do: [Ash.Query]
 
-      defoverridable init: 1
+      defoverridable init: 1, supports: 1
     end
   end
 end

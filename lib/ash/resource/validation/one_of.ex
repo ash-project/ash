@@ -37,7 +37,7 @@ defmodule Ash.Resource.Validation.OneOf do
   end
 
   @impl true
-  def supports(_opts), do: [Ash.Changeset, Ash.Query]
+  def supports(_opts), do: [Ash.Changeset, Ash.Query, Ash.ActionInput]
 
   @impl true
   def validate(subject, opts, _context) do
@@ -47,6 +47,7 @@ defmodule Ash.Resource.Validation.OneOf do
       else
         case subject do
           %Ash.Query{} -> :error
+          %Ash.ActionInput{} -> :error
           %Ash.Changeset{} -> {:ok, Ash.Changeset.get_attribute(subject, opts[:attribute])}
         end
       end
@@ -106,5 +107,9 @@ defmodule Ash.Resource.Validation.OneOf do
 
   defp fetch_argument(%Ash.Query{} = query, attribute) do
     Ash.Query.fetch_argument(query, attribute)
+  end
+
+  defp fetch_argument(%Ash.ActionInput{} = input, attribute) do
+    Ash.ActionInput.fetch_argument(input, attribute)
   end
 end

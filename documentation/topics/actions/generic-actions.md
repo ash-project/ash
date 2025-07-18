@@ -151,3 +151,245 @@ define :say_hello, args: [:name]
 {:ok, greeting} = Resource.say_hello("Alice")
 greeting = Resource.say_hello!("Alice")
 ```
+
+## Validations and Preparations
+
+Generic actions support validations and preparations, allowing you to add business logic and input validation to your actions.
+
+### Validations
+
+Validations in generic actions work similarly to those in other action types. They validate the action input before the action logic runs.
+
+```elixir
+action :create_user, :struct do
+  constraints instance_of: __MODULE__
+  
+  argument :name, :string, allow_nil?: false
+  argument :email, :string, allow_nil?: false
+  argument :age, :integer
+
+  validate present([:name, :email])
+  validate match(:email, ~r/@/)
+  validate compare(:age, greater_than: 13) do
+    message "Must be at least 13 years old"
+  end
+
+  run fn input, _ ->
+    # Create user logic here
+    {:ok, %__MODULE__{
+      name: input.arguments.name,
+      email: input.arguments.email,
+      age: input.arguments.age
+    }}
+  end
+end
+```
+
+You can also use custom validation modules:
+
+```elixir
+action :transfer_funds, :boolean do
+  argument :from_account, :string, allow_nil?: false
+  argument :to_account, :string, allow_nil?: false
+  argument :amount, :decimal, allow_nil?: false
+
+  validate {MyApp.Validations.SufficientFunds, field: :amount}
+
+  run fn input, _ ->
+    # Transfer logic here
+    {:ok, true}
+  end
+end
+```
+
+### Preparations
+
+Preparations allow you to modify the action input before the action runs. This is useful for setting computed values or applying business logic.
+
+```elixir
+action :audit_log, :string do
+  argument :action, :string, allow_nil?: false
+  argument :details, :map, default: %{}
+
+  prepare fn input, _context ->
+    # Add timestamp and actor information
+    updated_details = Map.merge(input.arguments.details, %{
+      timestamp: DateTime.utc_now(),
+      actor_id: input.context[:actor]&.id
+    })
+    
+    Ash.ActionInput.set_argument(input, :details, updated_details)
+  end
+
+  run fn input, _ ->
+    # Log the action
+    log_entry = "#{input.arguments.action}: #{inspect(input.arguments.details)}"
+    {:ok, log_entry}
+  end
+end
+```
+
+You can also use the built-in `build` preparation:
+
+```elixir
+action :search_with_defaults do
+  argument :query, :string
+  argument :filters, :map, default: %{}
+
+  prepare build(
+    arguments: %{
+      filters: expr(Map.merge(^arg(:filters), %{active: true}))
+    }
+  )
+
+  run fn input, _ ->
+    # Search logic with default filters applied
+    {:ok, perform_search(input.arguments.query, input.arguments.filters)}
+  end
+end
+```
+
+## Action Hooks
+
+Generic actions support action-level hooks that run before and after the action execution.
+
+### Before Action Hooks
+
+Before action hooks run immediately before the action logic executes:
+
+```elixir
+action :process_payment, :boolean do
+  argument :amount, :decimal, allow_nil?: false
+  argument :payment_method, :string, allow_nil?: false
+
+  validate present([:amount, :payment_method])
+
+  # Using a function
+  change before_action(fn input, _context ->
+    # Log the payment attempt
+    Logger.info("Processing payment of #{input.arguments.amount}")
+    
+    # Validate payment method
+    if input.arguments.payment_method not in ["credit_card", "bank_transfer"] do
+      Ash.ActionInput.add_error(input, "Invalid payment method")
+    else
+      input
+    end
+  end)
+
+  run fn input, _ ->
+    # Process payment logic
+    {:ok, true}
+  end
+end
+```
+
+### After Action Hooks
+
+After action hooks run after successful action execution:
+
+```elixir
+action :send_notification, :boolean do
+  argument :message, :string, allow_nil?: false
+  argument :recipient, :string, allow_nil?: false
+
+  change after_action(fn input, result, _context ->
+    # Log successful notification
+    Logger.info("Notification sent to #{input.arguments.recipient}")
+    
+    # Could perform additional side effects here
+    {:ok, result}
+  end)
+
+  run fn input, _ ->
+    # Send notification logic
+    send_notification(input.arguments.recipient, input.arguments.message)
+    {:ok, true}
+  end
+end
+```
+
+### Using Custom Change Modules
+
+You can also create reusable change modules for generic actions:
+
+```elixir
+defmodule MyApp.Changes.AuditAction do
+  use Ash.Resource.Change
+
+  def change(input, _opts, context) do
+    Ash.ActionInput.before_action(input, fn input ->
+      # Log the action attempt
+      MyApp.AuditLog.log_action(input.action.name, input.arguments, context.actor)
+      input
+    end)
+    |> Ash.ActionInput.after_action(fn input, result ->
+      # Log successful completion
+      MyApp.AuditLog.log_success(input.action.name, result, context.actor)
+      {:ok, result}
+    end)
+  end
+end
+```
+
+Then use it in your action:
+
+```elixir
+action :sensitive_operation, :boolean do
+  argument :data, :map, allow_nil?: false
+
+  change MyApp.Changes.AuditAction
+
+  run fn input, _ ->
+    # Sensitive operation logic
+    {:ok, true}
+  end
+end
+```
+
+## Global Validations and Preparations
+
+Generic actions also support global validations and preparations defined at the resource level:
+
+```elixir
+defmodule MyApp.MyResource do
+  use Ash.Resource
+
+  # Global preparations that apply to all actions
+  preparations do
+    prepare fn input, _context ->
+      # Add tenant information to all actions
+      Ash.ActionInput.set_context(input, %{tenant: "default"})
+    end do
+      # Only apply to generic actions
+      on: [:action]
+    end
+  end
+
+  # Global validations that apply to all actions
+  validations do
+    validate present(:actor) do
+      message "Authentication required"
+      on: [:action]  # Only apply to generic actions
+    end
+  end
+
+  actions do
+    action :my_action do
+      # Action-specific logic
+    end
+  end
+end
+```
+
+## Execution Order
+
+For generic actions, the execution order is:
+
+1. Global preparations/validations (in order of definition)
+2. Action preparations/validations (in order of definition)
+3. `before_action` hooks
+4. Action logic execution
+5. `after_action` hooks (success only)
+
+This order ensures that global business logic runs first, followed by action-specific logic, and finally the action hooks.

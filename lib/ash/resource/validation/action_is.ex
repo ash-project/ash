@@ -29,7 +29,7 @@ defmodule Ash.Resource.Validation.ActionIs do
   end
 
   @impl true
-  def supports(_opts), do: [Ash.Changeset, Ash.Query]
+  def supports(_opts), do: [Ash.Changeset, Ash.Query, Ash.ActionInput]
 
   @impl true
   def validate(subject, opts, _context) do

@@ -503,36 +503,6 @@ defmodule Ash.Resource.Dsl do
     args: [:validation]
   }
 
-  @action %Spark.Dsl.Entity{
-    name: :action,
-    describe: """
-    Declares a generic action. A combination of arguments, a return type and a run function.
-
-    For calling this action, see the `Ash.Domain` documentation.
-    """,
-    examples: [
-      """
-      action :top_user_emails, {:array, :string} do
-        argument :limit, :integer, default: 10, allow_nil?: false
-        run fn input, context ->
-          with {:ok, top_users} <- top_users(input.arguments.limit) do
-            {:ok, Enum.map(top_users, &(&1.email))}
-          end
-        end
-      end
-      """
-    ],
-    target: Ash.Resource.Actions.Action,
-    schema: Ash.Resource.Actions.Action.opt_schema(),
-    transform: {Ash.Resource.Actions.Action, :transform, []},
-    entities: [
-      arguments: [
-        @action_argument
-      ]
-    ],
-    args: [:name, {:optional, :returns}]
-  }
-
   @create %Spark.Dsl.Entity{
     name: :create,
     describe: """
@@ -585,6 +555,51 @@ defmodule Ash.Resource.Dsl do
     schema: Ash.Resource.Preparation.schema(),
     no_depend_modules: [:preparation],
     args: [:preparation]
+  }
+
+  @action %Spark.Dsl.Entity{
+    name: :action,
+    describe: """
+    Declares a generic action. A combination of arguments, a return type and a run function.
+
+    For calling this action, see the `Ash.Domain` documentation.
+    """,
+    examples: [
+      """
+      action :top_user_emails, {:array, :string} do
+        argument :limit, :integer, default: 10, allow_nil?: false
+        run fn input, context ->
+          with {:ok, top_users} <- top_users(input.arguments.limit) do
+            {:ok, Enum.map(top_users, &(&1.email))}
+          end
+        end
+      end
+      """
+    ],
+    imports: [
+      Ash.Resource.Preparation.Builtins,
+      Ash.Resource.Validation.Builtins,
+      Ash.Expr
+    ],
+    target: Ash.Resource.Actions.Action,
+    schema: Ash.Resource.Actions.Action.opt_schema(),
+    transform: {Ash.Resource.Actions.Action, :transform, []},
+    entities: [
+      arguments: [
+        @action_argument
+      ],
+      preparations: [
+        @prepare,
+        %{
+          @validate
+          | schema:
+              @validate.schema
+              |> Keyword.delete(:always_atomic?)
+              |> Keyword.delete(:on)
+        }
+      ]
+    ],
+    args: [:name, {:optional, :returns}]
   }
 
   @pagination %Spark.Dsl.Entity{

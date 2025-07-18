@@ -2,7 +2,7 @@
 
 Validations are similar to [changes](/documentation/topics/resources/changes.md), except they cannot modify the changeset. They can only continue, or add an error.
 
-Validations work on both changesets (create, update, destroy actions) and queries (read actions). When used on queries, they validate the query's arguments to ensure they meet your requirements before processing.
+Validations work on all action types. When used on queries and generic actions, they validate the arguments to ensure they meet your requirements before processing.
 
 ## Builtin Validations
 
@@ -44,6 +44,15 @@ actions do
     
     validate match(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)
     validate one_of(:role, ["admin", "user", "moderator"])
+  end
+  
+  # Example for generic actions
+  action :send_notification, :boolean do
+    argument :recipient_email, :string
+    argument :priority, :atom
+    
+    validate match(:recipient_email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)
+    validate one_of(:priority, [:low, :medium, :high])
   end
 end
 ```

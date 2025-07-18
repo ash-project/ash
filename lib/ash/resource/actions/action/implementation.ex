@@ -15,6 +15,17 @@ defmodule Ash.Resource.Actions.Implementation do
   ```
   """
 
+  require Ash.BehaviourHelpers
+
+  def run(module, action_input, opts, context) do
+    Ash.BehaviourHelpers.check_type!(module, module.run(action_input, opts, context), [
+      :ok,
+      {:ok, _},
+      {:ok, _, list} when is_list(list),
+      {:error, _}
+    ])
+  end
+
   defmodule Context do
     @moduledoc "The context passed into generic action functions"
 
@@ -31,7 +42,10 @@ defmodule Ash.Resource.Actions.Implementation do
   end
 
   @callback run(Ash.ActionInput.t(), opts :: Keyword.t(), Context.t()) ::
-              :ok | {:ok, term()} | {:ok, [Ash.Notifier.Notification.t()]} | {:error, term()}
+              :ok
+              | {:ok, term()}
+              | {:ok, term(), [Ash.Notifier.Notification.t()]}
+              | {:error, term()}
 
   defmacro __using__(_) do
     quote do

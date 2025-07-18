@@ -36,7 +36,7 @@ defmodule Ash.Resource.Validation.ArgumentIn do
   end
 
   @impl true
-  def supports(_opts), do: [Ash.Changeset, Ash.Query]
+  def supports(_opts), do: [Ash.Changeset, Ash.Query, Ash.ActionInput]
 
   @impl true
   def validate(subject, opts, _context) do
@@ -63,6 +63,10 @@ defmodule Ash.Resource.Validation.ArgumentIn do
 
   defp get_argument(%Ash.Query{} = query, argument) do
     Ash.Query.get_argument(query, argument)
+  end
+
+  defp get_argument(%Ash.ActionInput{} = input, argument) do
+    Ash.ActionInput.get_argument(input, argument)
   end
 
   @impl true

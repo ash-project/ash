@@ -46,7 +46,7 @@ defmodule Ash.Resource.Validation.Present do
   end
 
   @impl true
-  def supports(_opts), do: [Ash.Changeset, Ash.Query]
+  def supports(_opts), do: [Ash.Changeset, Ash.Query, Ash.ActionInput]
 
   @impl true
   def validate(subject, opts, _context) do
@@ -245,11 +245,22 @@ defmodule Ash.Resource.Validation.Present do
     end
   end
 
+  defp present?(%Ash.ActionInput{} = input, attribute) do
+    case Ash.ActionInput.get_argument(input, attribute) do
+      nil -> false
+      _value -> true
+    end
+  end
+
   defp get_attribute(%Ash.Changeset{} = changeset, attribute) do
     Ash.Changeset.get_attribute(changeset, attribute)
   end
 
   defp get_attribute(%Ash.Query{} = query, attribute) do
     Ash.Query.get_argument(query, attribute)
+  end
+
+  defp get_attribute(%Ash.ActionInput{} = input, attribute) do
+    Ash.ActionInput.get_argument(input, attribute)
   end
 end

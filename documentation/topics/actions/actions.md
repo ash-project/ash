@@ -290,34 +290,51 @@ Ash resource actions follow a well-defined lifecycle that ensures proper data va
 
 - **Query Actions**: Read queries do not currently have `before_transaction`, `after_transaction`, or `around_transaction` callbacks
 - **Around Action Behavior**: `around_action` hooks do not complete their "end" phase if the action fails
-- **Generic Actions**: Generic actions are left out because they currently do not support hooks of any kind, or preparations/changes/validations.
+- **Generic Actions**: Generic actions support validations, preparations, and hooks (before_action/after_action) but do not support transaction-level hooks like before_transaction/after_transaction.
 
 ### Complete Lifecycle Flow
 
 ```mermaid
 graph TD
     subgraph "Pre-Transaction Phase"
-        START["Action Invocation<br/>(Ash.create, Ash.read, etc.)"] --> PREP["Changeset/Query Creation"]
-        PREP --> AROUND_START["around_transaction (start)<br/>🚫 Not available for read/query actions"]
-        AROUND_START --> BEFORE_TRANS["before_transaction<br/>🚫 Not available for read/query actions"]
+        START["Action Invocation<br/>(Ash.create, Ash.read, Ash.run_action, etc.)"] --> PREP["Changeset/Query/ActionInput Creation"]
+        PREP --> AROUND_START["around_transaction (start)<br/>🚫 Not available for generic actions"]
+        AROUND_START --> BEFORE_TRANS["before_transaction<br/>🚫 Not available for read/query/generic actions"]
     end
     
     subgraph "Transaction Phase"
-        TRANS_START["🔒 Transaction Begins"] --> ACTION_PREP["Action Preparations/Validations/Changes<br/>(In order of definition)"]
-        ACTION_PREP --> GLOBAL_PREP["Global Preparations/Validations/Changes<br/>(Resource-level, in order of definition)"]
-        GLOBAL_PREP --> AROUND_ACTION_START["around_action (start)"]
-        AROUND_ACTION_START --> BEFORE_ACTION["before_action"]
-        BEFORE_ACTION --> DATA_LAYER["💾 Data Layer Operation<br/>(Database interaction)"]
-        DATA_LAYER --> SUCCESS{"Success?"}
-        SUCCESS -->|Yes| AFTER_ACTION["after_action<br/>(Success only)"]
-        SUCCESS -->|No| ERROR_HANDLE["Error Handling"]
-        AFTER_ACTION --> AROUND_ACTION_END["around_action (end)<br/>✅ Only on success"]
-        ERROR_HANDLE --> TRANS_ROLLBACK["🔓 Transaction Rollback"]
-        AROUND_ACTION_END --> TRANS_COMMIT["🔓 Transaction Commit"]
+        TRANS_START["🔒 Transaction Begins"] --> ACTION_TYPE{"Action Type?"}
+        
+        %% Create/Update/Destroy path
+        ACTION_TYPE -->|"Create/Update/Destroy"| CUD_ACTION_PREP["Action Preparations/Validations/Changes<br/>(In order of definition)"]
+        CUD_ACTION_PREP --> CUD_GLOBAL_PREP["Global Preparations/Validations/Changes<br/>(Resource-level, in order of definition)"]
+        CUD_GLOBAL_PREP --> CUD_AROUND_ACTION_START["around_action (start)"]
+        CUD_AROUND_ACTION_START --> CUD_BEFORE_ACTION["before_action"]
+        CUD_BEFORE_ACTION --> DATA_LAYER["💾 Data Layer Operation<br/>(Database interaction)"]
+        DATA_LAYER --> CUD_SUCCESS{"Success?"}
+        CUD_SUCCESS -->|Yes| CUD_AFTER_ACTION["after_action<br/>(Success only)"]
+        CUD_SUCCESS -->|No| CUD_ERROR_HANDLE["Error Handling"]
+        CUD_AFTER_ACTION --> CUD_AROUND_ACTION_END["around_action (end)<br/>✅ Only on success"]
+        CUD_ERROR_HANDLE --> TRANS_ROLLBACK["🔓 Transaction Rollback"]
+        CUD_AROUND_ACTION_END --> TRANS_COMMIT["🔓 Transaction Commit"]
+        
+        %% Read/Generic path
+        ACTION_TYPE -->|"Read/Generic"| RG_GLOBAL_PREP["Global Preparations/Validations<br/>(Resource-level, in order of definition)"]
+        RG_GLOBAL_PREP --> RG_ACTION_PREP["Action Preparations/Validations<br/>(In order of definition)"]
+        RG_ACTION_PREP --> RG_BEFORE_ACTION[before_action]
+        RG_BEFORE_ACTION --> RG_OPERATION{"Operation Type?"}
+        RG_OPERATION -->|"Read"| READ_DATA_LAYER["💾 Data Layer Operation<br/>(Database query)"]
+        RG_OPERATION -->|"Generic"| GENERIC_LOGIC["🔧 Custom Action Logic<br/>(User-defined function)"]
+        READ_DATA_LAYER --> RG_SUCCESS{"Success?"}
+        GENERIC_LOGIC --> RG_SUCCESS
+        RG_SUCCESS -->|Yes| RG_AFTER_ACTION["after_action<br/>(Success only)"]
+        RG_AFTER_ACTION -->|Yes| TRANS_COMMIT
+        RG_SUCCESS -->|No| RG_ERROR_HANDLE["Error Handling"]
+        RG_ERROR_HANDLE --> TRANS_ROLLBACK
     end
     
     subgraph "Post-Transaction Phase"
-        AFTER_TRANS["after_transaction<br/>(Always runs - success/error)<br/>🚫 Not available for read/query actions"] --> AROUND_END["around_transaction (end)<br/>🚫 Not available for read/query actions"]
+        AFTER_TRANS["after_transaction<br/>(Always runs - success/error)<br/>🚫 Not available for read/query/generic actions"] --> AROUND_END["around_transaction (end)<br/>🚫 Not available for generic actions"]
         AROUND_END --> NOTIFICATIONS["Notifications<br/>(If enabled)"]
         NOTIFICATIONS --> RESULT["Return Result"]
     end
@@ -367,18 +384,8 @@ graph TD
 - Database transaction is initiated
 - All subsequent operations until commit/rollback are atomic
 
-##### 6. Action Preparations/Validations/Changes
-- **When**: First operations inside transaction
-- **Purpose**: Execute action-specific preparations, validations, and changes
-- **Order**: Run in the order they are defined in the action (not grouped by type)
-- **Operations**:
-  - Action-level preparations (query modifications, filters, sorts)
-  - Action-level validations (business rules, constraints)
-  - Action-level changes (data transformations, attribute modifications)
-- **Transaction Context**: Inside transaction
-
-##### 7. Global Preparations/Validations/Changes
-- **When**: After action-level operations, before action hooks
+##### 6. Global Preparations/Validations/Changes (Queries & Generic Actions)
+- **When**: First operations inside transaction (for queries and generic actions)
 - **Purpose**: Execute resource-level preparations, validations, and changes
 - **Order**: Run in the order they are defined at the resource level (not grouped by type)
 - **Operations**:
@@ -386,6 +393,17 @@ graph TD
   - Resource-level validations
   - Resource-level changes
   - Global business logic
+- **Transaction Context**: Inside transaction
+- **Note**: For create/update/destroy actions, these run after action-level operations. In Ash 4.0, global preparations will run after action preparations for all action types.
+
+##### 7. Action Preparations/Validations/Changes
+- **When**: After global operations (for queries and generic actions) or first operations (for create/update/destroy)
+- **Purpose**: Execute action-specific preparations, validations, and changes
+- **Order**: Run in the order they are defined in the action (not grouped by type)
+- **Operations**:
+  - Action-level preparations (query modifications, filters, sorts)
+  - Action-level validations (business rules, constraints)
+  - Action-level changes (data transformations, attribute modifications)
 - **Transaction Context**: Inside transaction
 
 ##### 8. around_action (Start)
@@ -520,11 +538,23 @@ The hooks execute in the following order (as of Ash 3.0+):
 #### For Read/Query Actions:
 
 1. Transaction begins (if applicable)
-1. Action preparations/validations/changes (in order of definition)
 1. Global preparations/validations/changes (in order of definition)
+1. Action preparations/validations/changes (in order of definition)
 1. `around_action` (start)
 1. `before_action`
 1. Data layer operation
+1. `after_action` (success only) OR Error handling
+1. `around_action` (end) - Only on success
+1. Transaction commits/rollbacks (if applicable)
+
+#### For Generic Actions:
+
+1. Transaction begins (if applicable)
+1. Global preparations/validations (in order of definition)
+1. Action preparations/validations (in order of definition)
+1. `around_action` (start)
+1. `before_action`
+1. Custom action logic execution
 1. `after_action` (success only) OR Error handling
 1. `around_action` (end) - Only on success
 1. Transaction commits/rollbacks (if applicable)
@@ -544,8 +574,9 @@ The hooks execute in the following order (as of Ash 3.0+):
 
 #### Execution Order Details
 - **Preparations/Validations/Changes**: Run in the order they are defined, NOT grouped by type
-- Action-level preparations/validations/changes run first (in definition order)
-- Then global (resource-level) preparations/validations/changes run (in definition order)
+- **Create/Update/Destroy**: Action-level preparations/validations/changes run first, then global (resource-level) preparations/validations/changes
+- **Read/Query/Generic**: Global (resource-level) preparations/validations/changes run first, then action-level preparations/validations/changes
+- **Ash 4.0 Change**: In Ash 4.0, global preparations will run after action preparations for all action types
 - **Hook Order Changes (Ash 3.0+)**: Before/after action hooks now run in the order they are added (not reverse order)
 - **Restriction**: `after_transaction` hooks cannot be added from within other lifecycle hooks
 
@@ -567,6 +598,12 @@ The hooks execute in the following order (as of Ash 3.0+):
 - Only support `before_action`, `after_action`, and `around_action` hooks
 - Do not run in transactions by default
 - Focus on data retrieval and filtering
+
+#### Generic Actions
+- Support validations, preparations, and action hooks (`before_action`, `after_action`, `around_action`)
+- Do not support transaction-level hooks (`before_transaction`, `after_transaction`, `around_transaction`)
+- Can run in transactions by setting `transaction? true` in the action definition
+- Focus on custom business logic and operations
 
 ### Best Practices
 

@@ -289,9 +289,11 @@ defmodule Ash.Resource.Info do
     Extension.get_entities(resource, [:changes])
   end
 
-  @spec preparations(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Preparation.t())
-  def preparations(resource) do
+  @spec preparations(Spark.Dsl.t() | Ash.Resource.t(), action_type :: :read | :action) ::
+          list(Ash.Resource.Preparation.t())
+  def preparations(resource, type \\ :read) do
     Extension.get_entities(resource, [:preparations])
+    |> Enum.filter(&(type in &1.on))
   end
 
   @doc "Whether or not a given module is a resource module"

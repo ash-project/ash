@@ -10,6 +10,7 @@ defmodule Ash.ActionInput do
   alias Ash.Error.Action.InvalidArgument
 
   require Ash.Flags
+  require Ash.Tracer
 
   defstruct [
     :action,
@@ -22,14 +23,35 @@ defmodule Ash.ActionInput do
     params: %{},
     context: %{},
     valid?: true,
-    errors: []
+    errors: [],
+    before_action: [],
+    after_action: []
   ]
+
+  @typedoc """
+  Function type for before action hooks.
+
+  Receives an action input and returns a modified action input, optionally with notifications.
+  """
+  @type before_action_fun :: (t -> t | {t, %{notifications: [Ash.Notifier.Notification.t()]}})
+
+  @typedoc """
+  Function type for after action hooks.
+
+  Receives the action input and the result of the action, and can return
+  the result optionally with notifications, or an error.
+  """
+  @type after_action_fun ::
+          (t, term ->
+             {:ok, term}
+             | {:ok, term, [Ash.Notifier.Notification.t()]}
+             | {:error, any})
 
   @typedoc """
   An action input struct for generic (non-CRUD) actions.
 
   Contains all the information needed to execute a generic action including
-  arguments, context, tenant information, and validation state. Built using
+  arguments, context, tenant information, validation state, and lifecycle hooks. Built using
   `for_action/4` and modified with functions like `set_argument/3` and `set_context/2`.
   """
   @type t :: %__MODULE__{
@@ -41,7 +63,10 @@ defmodule Ash.ActionInput do
           invalid_keys: MapSet.t(),
           context: map(),
           domain: Ash.Domain.t(),
-          valid?: boolean()
+          valid?: boolean(),
+          errors: [Ash.Error.t()],
+          before_action: [before_action_fun],
+          after_action: [after_action_fun]
         }
 
   @doc """
@@ -186,6 +211,7 @@ defmodule Ash.ActionInput do
       |> cast_params(params, opts)
       |> set_defaults()
       |> require_arguments()
+      |> run_preparations_and_validations(opts)
     else
       {:error, reason} -> raise Ash.Error.to_error_class(reason)
     end
@@ -818,5 +844,512 @@ defmodule Ash.ActionInput do
     else
       errors
     end
+  end
+
+  @doc """
+  Adds a before_action hook to the action input.
+
+  Before action hooks are called with the action input and can modify it before
+  the action executes. They can also add errors to halt processing or return
+  notifications to be processed later.
+
+  ## Examples
+
+      # Validate arguments before action
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:send_notification, %{message: "Hello"})
+      ...> |> Ash.ActionInput.before_action(fn input ->
+      ...>   if String.length(input.arguments.message) > 100 do
+      ...>     Ash.ActionInput.add_error(input, "Message too long")
+      ...>   else
+      ...>     input
+      ...>   end
+      ...> end)
+
+      # Set computed arguments
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:process_data, %{data: "test"})
+      ...> |> Ash.ActionInput.before_action(fn input ->
+      ...>   Ash.ActionInput.set_argument(input, :processed_at, DateTime.utc_now())
+      ...> end)
+
+      # Return notifications
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:audit_action, %{})
+      ...> |> Ash.ActionInput.before_action(fn input ->
+      ...>   notification = %Ash.Notifier.Notification{
+      ...>     resource: input.resource,
+      ...>     action: input.action,
+      ...>     data: %{audit: "before_action"}
+      ...>   }
+      ...>   {input, %{notifications: [notification]}}
+      ...> end)
+
+  ## Options
+
+  - `prepend?` - If `true`, adds the hook to the beginning of the list instead of the end
+
+  ## See also
+
+  - `after_action/2` for hooks that run after the action completes
+  - `for_action/4` for creating action inputs
+  - `add_error/2` for adding validation errors in hooks
+  """
+  @spec before_action(
+          input :: t(),
+          fun :: before_action_fun(),
+          opts :: Keyword.t()
+        ) ::
+          t()
+  def before_action(input, func, opts \\ []) do
+    if opts[:prepend?] do
+      %{input | before_action: [func | input.before_action]}
+    else
+      %{input | before_action: input.before_action ++ [func]}
+    end
+  end
+
+  @doc """
+  Adds an after_action hook to the action input.
+
+  After action hooks are called with the action input and the result returned
+  from the action. They can modify the result, perform side effects, or return
+  errors to halt processing. The hook can return notifications alongside the result.
+
+  ## Examples
+
+      # Transform the result after action
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:calculate_stats, %{data: [1, 2, 3]})
+      ...> |> Ash.ActionInput.after_action(fn input, result ->
+      ...>   enhanced_result = Map.put(result, :calculated_at, DateTime.utc_now())
+      ...>   {:ok, enhanced_result}
+      ...> end)
+
+      # Log successful actions
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:important_action, %{})
+      ...> |> Ash.ActionInput.after_action(fn inp, result ->
+      ...>   Logger.info("Action completed successfully")
+      ...>   {:ok, result}
+      ...> end)
+
+      # Return notifications
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:notify_users, %{message: "Hello"})
+      ...> |> Ash.ActionInput.after_action(fn input, result ->
+      ...>   notification = %Ash.Notifier.Notification{
+      ...>     resource: input.resource,
+      ...>     action: input.action,
+      ...>     data: result
+      ...>   }
+      ...>   {:ok, result, [notification]}
+      ...> end)
+
+      # Handle errors
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:risky_action, %{})
+      ...> |> Ash.ActionInput.after_action(fn input, result ->
+      ...>   if is_error_result?(result) do
+      ...>     {:error, "Action failed with custom error"}
+      ...>   else
+      ...>     {:ok, result}
+      ...>   end
+      ...> end)
+
+  ## See also
+
+  - `before_action/3` for hooks that run before the action executes
+  - `for_action/4` for creating action inputs
+  - `Ash.run_action/2` for executing the action with the input
+  """
+  @spec after_action(
+          input :: t(),
+          fun :: after_action_fun()
+        ) :: t()
+  def after_action(input, func) do
+    %{input | after_action: input.after_action ++ [func]}
+  end
+
+  @doc false
+  defp run_preparations_and_validations(input, opts) do
+    actor = opts[:actor]
+    authorize? = opts[:authorize?]
+    tracer = opts[:tracer]
+
+    metadata = fn ->
+      %{
+        domain: input.domain,
+        resource: input.resource,
+        resource_short_name: Ash.Resource.Info.short_name(input.resource),
+        actor: actor,
+        tenant: input.tenant,
+        action: input.action && input.action.name,
+        authorize?: authorize?
+      }
+    end
+
+    # Get global validations unless skipped
+    global_validations =
+      if input.action.skip_global_validations? do
+        []
+      else
+        input.resource
+        |> Ash.Resource.Info.validations()
+        |> Enum.filter(&(:action in &1.on))
+      end
+
+    # Run preparations and validations
+    input.resource
+    # 4.0 run global preparations after
+    # action preparations
+    |> Ash.Resource.Info.preparations(:action)
+    |> Enum.concat(input.action.preparations || [])
+    |> Enum.concat(global_validations)
+    |> Enum.reduce(input, fn
+      %{only_when_valid?: true}, %{valid?: false} = input ->
+        input
+
+      %{validation: {module, opts}} = validation, input ->
+        if __MODULE__ not in module.supports(opts) do
+          raise Ash.Error.Framework.UnsupportedSubject, subject: __MODULE__, module: module
+        end
+
+        validate(input, validation, tracer, metadata, actor)
+
+      %{preparation: {module, opts}} = preparation, input ->
+        if __MODULE__ not in module.supports(opts) do
+          raise Ash.Error.Framework.UnsupportedSubject, subject: __MODULE__, module: module
+        end
+
+        run_preparation(preparation, input, actor, authorize?, tracer, metadata)
+    end)
+  end
+
+  defp validate(input, validation, tracer, metadata, actor) do
+    if validation.before_action? do
+      before_action(input, fn input ->
+        if validation.only_when_valid? and not input.valid? do
+          input
+        else
+          do_validation(input, validation, tracer, metadata, actor)
+        end
+      end)
+    else
+      if validation.only_when_valid? and not input.valid? do
+        input
+      else
+        do_validation(input, validation, tracer, metadata, actor)
+      end
+    end
+  end
+
+  defp do_validation(input, validation, tracer, metadata, actor) do
+    context = %{
+      actor: input.context[:private][:actor],
+      tenant: input.tenant,
+      source_context: input.context,
+      authorize?: input.context[:private][:authorize?] || false,
+      tracer: input.context[:private][:tracer]
+    }
+
+    if Enum.all?(validation.where || [], fn {module, opts} ->
+         if __MODULE__ not in module.supports(opts) do
+           raise Ash.Error.Framework.UnsupportedSubject, subject: __MODULE__, module: module
+         end
+
+         opts =
+           Ash.Expr.fill_template(
+             opts,
+             actor: actor,
+             tenant: input.to_tenant,
+             args: input.arguments,
+             context: input.context
+           )
+
+         case module.init(opts) do
+           {:ok, opts} ->
+             module.validate(input, opts, struct(Ash.Resource.Validation.Context, context)) ==
+               :ok
+
+           _ ->
+             false
+         end
+       end) do
+      Ash.Tracer.span :validation, fn -> "validate: #{inspect(validation.module)}" end, tracer do
+        Ash.Tracer.telemetry_span [:ash, :validation], fn ->
+          %{
+            resource_short_name: Ash.Resource.Info.short_name(input.resource),
+            validation: inspect(validation.module)
+          }
+        end do
+          Ash.Tracer.set_metadata(tracer, :validation, metadata)
+
+          opts =
+            Ash.Expr.fill_template(
+              validation.opts,
+              actor: actor,
+              tenant: input.to_tenant,
+              args: input.arguments,
+              context: input.context
+            )
+
+          with {:ok, opts} <- validation.module.init(opts),
+               :ok <-
+                 validation.module.validate(
+                   input,
+                   opts,
+                   struct(Ash.Resource.Validation.Context, context)
+                 ) do
+            input
+          else
+            {:error, error} ->
+              add_error(input, error)
+
+            :error ->
+              add_error(input, validation.module.describe(validation.opts))
+          end
+        end
+      end
+    else
+      input
+    end
+  end
+
+  defp run_preparation(
+         %{preparation: {module, opts}} = preparation,
+         input,
+         actor,
+         authorize?,
+         tracer,
+         metadata
+       ) do
+    context = %{
+      actor: actor,
+      tenant: input.tenant,
+      source_context: input.context,
+      authorize?: authorize? || false,
+      tracer: tracer
+    }
+
+    if Enum.all?(preparation.where || [], fn {module, opts} ->
+         if __MODULE__ not in module.supports(opts) do
+           raise Ash.Error.Framework.UnsupportedSubject, subject: __MODULE__, module: module
+         end
+
+         opts =
+           Ash.Expr.fill_template(
+             opts,
+             actor: actor,
+             tenant: input.to_tenant,
+             args: input.arguments,
+             context: input.context
+           )
+
+         case module.init(opts) do
+           {:ok, opts} ->
+             module.validate(input, opts, struct(Ash.Resource.Validation.Context, context)) ==
+               :ok
+
+           _ ->
+             false
+         end
+       end) do
+      Ash.Tracer.span :preparation, fn -> "prepare: #{inspect(module)}" end, tracer do
+        Ash.Tracer.telemetry_span [:ash, :preparation], fn ->
+          %{
+            resource_short_name: Ash.Resource.Info.short_name(input.resource),
+            preparation: inspect(module)
+          }
+        end do
+          Ash.Tracer.set_metadata(tracer, :preparation, metadata)
+
+          {:ok, opts} = module.init(opts)
+
+          opts =
+            Ash.Expr.fill_template(
+              opts,
+              actor: actor,
+              tenant: input.to_tenant,
+              args: input.arguments,
+              context: input.context
+            )
+
+          preparation_context = struct(Ash.Resource.Preparation.Context, context)
+          Ash.Resource.Preparation.prepare(module, input, opts, preparation_context)
+        end
+      end
+    else
+      input
+    end
+  end
+
+  @doc false
+  def run_before_actions(%{before_action: []} = input), do: {input, %{notifications: []}}
+
+  def run_before_actions(%{valid?: false} = input), do: {input, %{notifications: []}}
+
+  def run_before_actions(input) do
+    Enum.reduce_while(
+      input.before_action,
+      {input, %{notifications: []}},
+      fn before_action, {input, instructions} ->
+        metadata = fn ->
+          %{
+            domain: input.domain,
+            resource: input.resource,
+            resource_short_name: Ash.Resource.Info.short_name(input.resource),
+            actor: input.context[:private][:actor],
+            tenant: input.context[:private][:tenant],
+            action: input.action && input.action.name,
+            authorize?: input.context[:private][:authorize?]
+          }
+        end
+
+        tracer = input.context[:private][:tracer]
+
+        result =
+          Ash.Tracer.span :before_action,
+                          "before_action",
+                          tracer do
+            Ash.Tracer.set_metadata(tracer, :before_action, metadata)
+
+            Ash.Tracer.telemetry_span [:ash, :before_action], metadata do
+              before_action.(input)
+            end
+          end
+
+        case result do
+          {:error, error} ->
+            {:halt, {:error, error}}
+
+          {input, %{notifications: notifications}} ->
+            cont =
+              if input.valid? do
+                :cont
+              else
+                :halt
+              end
+
+            {cont,
+             {input,
+              %{
+                instructions
+                | notifications: List.wrap(instructions.notifications) ++ List.wrap(notifications)
+              }}}
+
+          %Ash.ActionInput{} = input ->
+            cont =
+              if input.valid? do
+                :cont
+              else
+                :halt
+              end
+
+            {cont, {input, instructions}}
+
+          other ->
+            raise """
+            Invalid return value from before_action hook. Expected one of:
+
+            * %Ash.ActionInput{}
+            * {%Ash.ActionInput{}, %{notifications: [...]}}
+            * {:error, error}
+
+            Got:
+
+            #{inspect(other)}
+            """
+        end
+      end
+    )
+    |> case do
+      {:error, error} ->
+        {:error, error}
+
+      {%{valid?: true} = input, instructions} ->
+        {input, instructions}
+
+      {%{valid?: false} = input, _instructions} ->
+        {:error, Ash.Error.to_error_class(input.errors)}
+    end
+  end
+
+  @doc false
+  def run_after_actions(result, input, before_action_notifications) do
+    Enum.reduce_while(
+      input.after_action,
+      {:ok, result, input, %{notifications: before_action_notifications}},
+      fn after_action, {:ok, result, input, %{notifications: notifications} = acc} ->
+        tracer = input.context[:private][:tracer]
+
+        metadata = fn ->
+          %{
+            domain: input.domain,
+            resource: input.resource,
+            resource_short_name: Ash.Resource.Info.short_name(input.resource),
+            actor: input.context[:private][:actor],
+            tenant: input.context[:private][:tenant],
+            action: input.action && input.action.name,
+            authorize?: input.context[:private][:authorize?]
+          }
+        end
+
+        result =
+          Ash.Tracer.span :after_action,
+                          "after_action",
+                          tracer do
+            Ash.Tracer.set_metadata(tracer, :after_action, metadata)
+
+            Ash.Tracer.telemetry_span [:ash, :after_action], metadata do
+              after_action.(input, result)
+            end
+          end
+
+        case result do
+          {:ok, new_result, new_notifications} ->
+            all_notifications =
+              Enum.map(
+                List.wrap(notifications) ++ List.wrap(new_notifications),
+                fn notification ->
+                  %{
+                    notification
+                    | resource: notification.resource || input.resource,
+                      action:
+                        notification.action ||
+                          Ash.Resource.Info.action(
+                            input.resource,
+                            input.action.name,
+                            :action
+                          ),
+                      data: notification.data || new_result,
+                      actor: notification.actor || input.context[:private][:actor]
+                  }
+                end
+              )
+
+            {:cont, {:ok, new_result, input, %{acc | notifications: all_notifications}}}
+
+          {:ok, new_result} ->
+            {:cont, {:ok, new_result, input, acc}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+
+          other ->
+            raise """
+            Invalid return value from after_action hook. Expected one of:
+
+            * {:ok, result}
+            * {:ok, result, notifications}
+            * {:error, error}
+
+            Got:
+
+            #{inspect(other)}
+            """
+        end
+      end
+    )
   end
 end

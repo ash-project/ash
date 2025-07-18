@@ -10,9 +10,11 @@ defmodule Ash.Resource.Actions.Action do
     touches_resources: [],
     skip_unknown_inputs: [],
     arguments: [],
+    preparations: [],
     allow_nil?: false,
     transaction?: false,
     primary?: false,
+    skip_global_validations?: false,
     type: :action
   ]
 
@@ -28,7 +30,9 @@ defmodule Ash.Resource.Actions.Action do
           run: {module, Keyword.t()},
           returns: Ash.Type.t() | nil,
           primary?: boolean,
-          transaction?: boolean
+          transaction?: boolean,
+          preparations: [Ash.Resource.Preparation.t()],
+          skip_global_validations?: boolean
         }
 
   import Ash.Resource.Actions.SharedOptions

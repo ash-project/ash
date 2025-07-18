@@ -59,12 +59,20 @@ defmodule Ash.Resource.Validation do
   end
 
   @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
-  @callback supports(opts :: Keyword.t()) :: [Ash.Changeset | Ash.Query]
-  @callback validate(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: Context.t()) ::
+  @callback supports(opts :: Keyword.t()) :: [Ash.Changeset | Ash.Query | Ash.ActionInput]
+  @callback validate(
+              changeset_query_or_input :: Ash.Changeset.t() | Ash.ActionInput.t(),
+              opts :: Keyword.t(),
+              context :: Context.t()
+            ) ::
               :ok | {:error, term}
   @callback describe(opts :: Keyword.t()) ::
               String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
-  @callback atomic(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: Context.t()) ::
+  @callback atomic(
+              changeset_query_or_input :: Ash.Changeset.t() | Ash.ActionInput.t(),
+              opts :: Keyword.t(),
+              context :: Context.t()
+            ) ::
               :ok
               | {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.t(),
                  error_expr :: Ash.Expr.t()}
@@ -99,10 +107,10 @@ defmodule Ash.Resource.Validation do
       """
     ],
     on: [
-      type: {:wrap_list, {:in, [:create, :update, :destroy, :read]}},
+      type: {:wrap_list, {:in, [:create, :update, :destroy, :read, :action]}},
       default: [:create, :update],
       doc: """
-      The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included.
+      The action types the validation should run on. Many validations don't make sense in the context of destroy, read, or generic actions, so by default they are not included.
       """
     ],
     only_when_valid?: [

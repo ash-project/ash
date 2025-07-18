@@ -837,6 +837,8 @@ multiple actions of each type in a large application.
 ### Nested DSLs
  * [action](#actions-action)
    * argument
+   * prepare
+   * validate
  * [create](#actions-create)
    * change
    * validate
@@ -917,6 +919,8 @@ For calling this action, see the `Ash.Domain` documentation.
 
 ### Nested DSLs
  * [argument](#actions-action-argument)
+ * [prepare](#actions-action-prepare)
+ * [validate](#actions-action-validate)
 
 
 ### Examples
@@ -996,6 +1000,93 @@ argument :password_confirmation, :string
 ### Introspection
 
 Target: `Ash.Resource.Actions.Argument`
+
+### actions.action.prepare
+```elixir
+prepare preparation
+```
+
+
+Declares a preparation, which can be used to prepare a query for a read action.
+
+
+
+
+### Examples
+```
+prepare build(sort: [:foo, :bar])
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`preparation`](#actions-action-prepare-preparation){: #actions-action-prepare-preparation .spark-required} | `(any, any -> any) \| module` |  | The module and options for a preparation. Also accepts functions take the query and the context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`on`](#actions-action-prepare-on){: #actions-action-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`where`](#actions-action-prepare-where){: #actions-action-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
+| [`only_when_valid?`](#actions-action-prepare-only_when_valid?){: #actions-action-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Preparation`
+
+### actions.action.validate
+```elixir
+validate validation
+```
+
+
+Declares a validation for creates and updates.
+
+See `Ash.Resource.Validation.Builtins` or `Ash.Resource.Validation` for more.
+
+
+
+
+### Examples
+```
+validate {Mod, [foo: :bar]}
+```
+
+```
+validate present([:first_name, :last_name], at_least: 1)
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`validation`](#actions-action-validate-validation){: #actions-action-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#actions-action-validate-where){: #actions-action-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| [`only_when_valid?`](#actions-action-validate-only_when_valid?){: #actions-action-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
+| [`message`](#actions-action-validate-message){: #actions-action-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
+| [`description`](#actions-action-validate-description){: #actions-action-validate-description } | `String.t` |  | An optional description for the validation |
+| [`before_action?`](#actions-action-validate-before_action?){: #actions-action-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Validation`
 
 
 
@@ -1371,6 +1462,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`on`](#actions-read-prepare-on){: #actions-read-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#actions-read-prepare-where){: #actions-read-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#actions-read-prepare-only_when_valid?){: #actions-read-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
@@ -2591,6 +2683,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`on`](#preparations-prepare-on){: #preparations-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#preparations-prepare-where){: #preparations-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#preparations-prepare-only_when_valid?){: #preparations-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
@@ -2659,7 +2752,7 @@ validate present([:first_name, :last_name], at_least: 1)
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`where`](#validations-validate-where){: #validations-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
-| [`on`](#validations-validate-on){: #validations-validate-on } | `:create \| :update \| :destroy \| :read \| list(:create \| :update \| :destroy \| :read)` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included. |
+| [`on`](#validations-validate-on){: #validations-validate-on } | `:create \| :update \| :destroy \| :read \| :action \| list(:create \| :update \| :destroy \| :read \| :action)` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of destroy, read, or generic actions, so by default they are not included. |
 | [`only_when_valid?`](#validations-validate-only_when_valid?){: #validations-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#validations-validate-message){: #validations-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#validations-validate-description){: #validations-validate-description } | `String.t` |  | An optional description for the validation |

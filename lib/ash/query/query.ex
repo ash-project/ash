@@ -247,12 +247,6 @@ defmodule Ash.Query do
           {:ok, list(Ash.Resource.record())}
           | {:error, Ash.Error.t()}
 
-  @typedoc "Callback function type that takes a query and returns an around_result."
-  @type around_callback :: (t() -> around_result)
-
-  @typedoc "Function type for around_action hooks that modify query execution flow."
-  @type around_action_fun :: (t, around_callback -> around_result)
-
   @typedoc "Function type for around_transaction hooks that wrap query execution in a transaction."
   @type around_transaction_fun :: (t -> {:ok, Ash.Resource.record()} | {:error, any})
 
@@ -1086,6 +1080,8 @@ defmodule Ash.Query do
       end
 
     query.resource
+    # 4.0 make global preparations happen
+    # after action level preparations
     |> Ash.Resource.Info.preparations()
     |> Enum.concat(action.preparations || [])
     |> Enum.concat(global_validations)
