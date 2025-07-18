@@ -1278,4 +1278,60 @@ defmodule Ash.Test.Actions.ReadTest do
       end
     end
   end
+
+  defmodule GlobalValidationRead do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+
+      read :skip_global do
+        skip_global_validations? true
+        argument :name, :string
+      end
+
+      read :with_global do
+        argument :name, :string
+      end
+    end
+
+    validations do
+      validate present(:name), on: [:read]
+    end
+  end
+
+  describe "global validations on read actions" do
+    test "global validations run on read actions by default" do
+      assert_raise Ash.Error.Invalid, ~r/must be present/, fn ->
+        GlobalValidationRead
+        |> Ash.Query.for_read(:with_global, %{})
+        |> Ash.read!()
+      end
+
+      # Should pass when argument is provided
+      assert [] =
+               GlobalValidationRead
+               |> Ash.Query.for_read(:with_global, %{name: "test"})
+               |> Ash.read!()
+    end
+
+    test "global validations can be skipped on read actions" do
+      # Should pass even without required argument when global validations are skipped
+      assert [] =
+               GlobalValidationRead
+               |> Ash.Query.for_read(:skip_global, %{})
+               |> Ash.read!()
+    end
+  end
 end

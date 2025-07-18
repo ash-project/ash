@@ -90,8 +90,7 @@ The following steps are performed when you call `Ash.Query.for_read/4`.
 - Cast input arguments - `d:Ash.Resource.Dsl.actions.read.argument`
 - Set default argument values - `d:Ash.Resource.Dsl.actions.read.argument|default`
 - Add errors for missing required arguments | `d:Ash.Resource.Dsl.actions.read.argument|allow_nil?`
-- Run query preparations | `d:Ash.Resource.Dsl.actions.read.prepare`
-- Run query validations | `d:Ash.Resource.Dsl.actions.read.validate`
+- Run query preparations and validations (in definition order) | `d:Ash.Resource.Dsl.actions.read.prepare` and `d:Ash.Resource.Dsl.actions.read.validate`
 - Add action filter | `d:Ash.Resource.Dsl.actions.read|filter`
 
 ## What happens when you run the action
@@ -311,6 +310,8 @@ query =
 ## Validations on Read Actions
 
 Read actions support validations to ensure query arguments meet your requirements before processing. Most built-in validations work on both changesets and queries.
+
+Validations run alongside preparations during the query building phase, in the order they are defined in the action. This means you can mix preparations and validations, and they will execute in the sequence you specify.
 
 ### Supported Validations
 

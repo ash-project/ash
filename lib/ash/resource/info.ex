@@ -253,7 +253,7 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "A list of all validations for the resource for a given action type"
-  @spec validations(Spark.Dsl.t() | Ash.Resource.t(), :create | :update | :destroy) :: [
+  @spec validations(Spark.Dsl.t() | Ash.Resource.t(), :create | :update | :destroy | :read) :: [
           Ash.Resource.Validation.t()
         ]
   def validations(resource, type) do

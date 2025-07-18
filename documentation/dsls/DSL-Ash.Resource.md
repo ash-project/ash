@@ -1292,6 +1292,7 @@ end
 | [`get_by`](#actions-read-get_by){: #actions-read-get_by } | `atom \| list(atom)` |  | A helper to automatically generate a "get by X" action. Sets `get?` to true, add args for each of the specified fields, and adds a filter for each of the arguments. |
 | [`timeout`](#actions-read-timeout){: #actions-read-timeout } | `pos_integer` |  | The maximum amount of time, in milliseconds, that the action is allowed to run for. Ignored if the data layer doesn't support transactions *and* async is disabled. |
 | [`multitenancy`](#actions-read-multitenancy){: #actions-read-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources. This is useful to change the behaviour of selected read action without the need of marking the whole resource with `global? true`. |
+| [`skip_global_validations?`](#actions-read-skip_global_validations?){: #actions-read-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
 | [`primary?`](#actions-read-primary?){: #actions-read-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-read-description){: #actions-read-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-read-transaction?){: #actions-read-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
@@ -1415,7 +1416,6 @@ validate present([:first_name, :last_name], at_least: 1)
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`where`](#actions-read-validate-where){: #actions-read-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
-| [`on`](#actions-read-validate-on){: #actions-read-validate-on } | `:create \| :update \| :destroy \| list(:create \| :update \| :destroy)` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included. |
 | [`only_when_valid?`](#actions-read-validate-only_when_valid?){: #actions-read-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-read-validate-message){: #actions-read-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-read-validate-description){: #actions-read-validate-description } | `String.t` |  | An optional description for the validation |
@@ -2659,7 +2659,7 @@ validate present([:first_name, :last_name], at_least: 1)
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`where`](#validations-validate-where){: #validations-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
-| [`on`](#validations-validate-on){: #validations-validate-on } | `:create \| :update \| :destroy \| list(:create \| :update \| :destroy)` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included. |
+| [`on`](#validations-validate-on){: #validations-validate-on } | `:create \| :update \| :destroy \| :read \| list(:create \| :update \| :destroy \| :read)` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included. |
 | [`only_when_valid?`](#validations-validate-only_when_valid?){: #validations-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#validations-validate-message){: #validations-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#validations-validate-description){: #validations-validate-description } | `String.t` |  | An optional description for the validation |

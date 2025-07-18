@@ -1078,9 +1078,17 @@ defmodule Ash.Query do
   defp has_key?(keyword, key), do: Keyword.has_key?(keyword, key)
 
   defp run_preparations(query, action, actor, authorize?, tracer, metadata) do
+    global_validations =
+      if action.skip_global_validations? do
+        []
+      else
+        Ash.Resource.Info.validations(query.resource, :read)
+      end
+
     query.resource
     |> Ash.Resource.Info.preparations()
     |> Enum.concat(action.preparations || [])
+    |> Enum.concat(global_validations)
     |> Enum.reduce(query, fn
       %{only_when_valid?: true}, %{valid?: false} = query ->
         query

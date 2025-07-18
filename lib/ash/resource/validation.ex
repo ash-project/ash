@@ -99,7 +99,7 @@ defmodule Ash.Resource.Validation do
       """
     ],
     on: [
-      type: {:wrap_list, {:in, [:create, :update, :destroy]}},
+      type: {:wrap_list, {:in, [:create, :update, :destroy, :read]}},
       default: [:create, :update],
       doc: """
       The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included.

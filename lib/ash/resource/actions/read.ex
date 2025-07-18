@@ -10,6 +10,7 @@ defmodule Ash.Resource.Actions.Read do
             manual: nil,
             metadata: [],
             skip_unknown_inputs: [],
+            skip_global_validations?: false,
             modify_query: nil,
             multitenancy: nil,
             name: nil,
@@ -32,6 +33,7 @@ defmodule Ash.Resource.Actions.Read do
           manual: atom | {atom, Keyword.t()} | nil,
           metadata: [Ash.Resource.Actions.Metadata.t()],
           skip_unknown_inputs: list(atom | String.t()),
+          skip_global_validations?: boolean,
           modify_query: nil | mfa,
           multitenancy: atom,
           name: atom,
@@ -88,6 +90,13 @@ defmodule Ash.Resource.Actions.Read do
                     default: :enforce,
                     doc: """
                     This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources. This is useful to change the behaviour of selected read action without the need of marking the whole resource with `global? true`.
+                    """
+                  ],
+                  skip_global_validations?: [
+                    type: :boolean,
+                    default: false,
+                    doc: """
+                    If true, global validations will be skipped. Useful for manual actions.
                     """
                   ]
                 ],

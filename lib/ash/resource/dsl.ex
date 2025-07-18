@@ -624,7 +624,13 @@ defmodule Ash.Resource.Dsl do
       ],
       preparations: [
         @prepare,
-        %{@validate | schema: Keyword.delete(@validate.schema, :always_atomic?)}
+        %{
+          @validate
+          | schema:
+              @validate.schema
+              |> Keyword.delete(:always_atomic?)
+              |> Keyword.delete(:on)
+        }
       ],
       pagination: [
         @pagination
