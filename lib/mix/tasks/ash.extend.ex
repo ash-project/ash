@@ -101,7 +101,7 @@ if Code.ensure_loaded?(Igniter) do
               :error ->
                 Igniter.add_issue(
                   igniter,
-                  "Could not determine whether #{subject} is an `Ash.Resource` or an `Ash.Domain`."
+                  "Could not determine whether #{inspect(subject)} is an `Ash.Resource` or an `Ash.Domain`."
                 )
             end
         end
