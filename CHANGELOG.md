@@ -2,6 +2,19 @@
 
 <!-- changelog -->
 
+## [v3.5.30](https://github.com/ash-project/ash/compare/v3.5.29...v3.5.30) (2025-07-18)
+
+
+
+
+### Bug Fixes:
+
+* handle new return value from `kind_of_thing` in gen.resource by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* support global validations being applied to reads by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.29](https://github.com/ash-project/ash/compare/v3.5.28...v3.5.29) (2025-07-18)
 
 
