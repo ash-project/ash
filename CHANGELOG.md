@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.5.29](https://github.com/ash-project/ash/compare/v3.5.28...v3.5.29) (2025-07-18)
+
+
+
+
+### Bug Fixes:
+
+* properly return `:error` when unable to determine type of module by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.28](https://github.com/ash-project/ash/compare/v3.5.27...v3.5.28) (2025-07-17)
 
 
