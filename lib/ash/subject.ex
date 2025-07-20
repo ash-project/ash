@@ -17,40 +17,20 @@ defmodule Ash.Subject do
 
     * `subject` - The subject to add errors to
     * `errors` - Error or list of errors to add
-    * `path` - Path where the error occurred (optional, defaults to [])
   """
-  @spec add_error(t(), Ash.Error.error_subject() | list(Ash.Error.error_subject())) :: t()
-  @spec add_error(
-          t(),
-          Ash.Error.error_subject() | list(Ash.Error.error_subject()),
-          Ash.Error.path_subject()
-        ) :: t()
-  def add_error(subject, errors, path \\ [])
+  @spec add_error(t(), Ash.Error.error_input() | list(Ash.Error.error_input())) :: t()
+  def add_error(subject, []), do: subject
 
-  def add_error(subject, [], _path), do: subject
-
-  def add_error(%Ash.Changeset{} = subject, errors, path) when is_list(errors) do
-    Ash.Changeset.add_error(subject, errors, path)
+  def add_error(%Ash.Changeset{} = subject, error) do
+    Ash.Changeset.add_error(subject, error, [])
   end
 
-  def add_error(%Ash.Query{} = subject, errors, path) when is_list(errors) do
-    Ash.Query.add_error(subject, path, errors)
+  def add_error(%Ash.Query{} = subject, error) do
+    Ash.Query.add_error(subject, [], error)
   end
 
-  def add_error(%Ash.ActionInput{} = subject, errors, path) when is_list(errors) do
-    Ash.ActionInput.add_error(subject, errors, path)
-  end
-
-  def add_error(%Ash.Changeset{} = subject, error, path) do
-    Ash.Changeset.add_error(subject, error, path)
-  end
-
-  def add_error(%Ash.Query{} = subject, error, path) do
-    Ash.Query.add_error(subject, path, error)
-  end
-
-  def add_error(%Ash.ActionInput{} = subject, error, path) do
-    Ash.ActionInput.add_error(subject, error, path)
+  def add_error(%Ash.ActionInput{} = subject, error) do
+    Ash.ActionInput.add_error(subject, error, [])
   end
 
   @doc """

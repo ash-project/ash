@@ -53,11 +53,11 @@ defmodule Ash.SubjectTest do
     end
   end
 
-  describe "add_error/3 - All Subject Types" do
+  describe "add_error/2 - All Subject Types" do
     test "adds string error" do
       for subject_type <- @subject_types do
         subject = new_subject(subject_type)
-        result = Ash.Subject.add_error(subject, "Test error", [:field])
+        result = Ash.Subject.add_error(subject, "Test error")
 
         assert is_struct(result, subject_type)
         assert length(result.errors) == 1
@@ -70,15 +70,13 @@ defmodule Ash.SubjectTest do
           Ash.Query -> assert error.error == "Test error"
           _ -> assert error.message == "Test error"
         end
-
-        assert error.path == [:field]
       end
     end
 
     test "adds error list" do
       for subject_type <- @subject_types do
         subject = new_subject(subject_type)
-        result = Ash.Subject.add_error(subject, @test_errors, [])
+        result = Ash.Subject.add_error(subject, @test_errors)
 
         assert is_struct(result, subject_type)
         assert length(result.errors) == 2
@@ -89,7 +87,7 @@ defmodule Ash.SubjectTest do
     test "handles empty error list" do
       for subject_type <- @subject_types do
         subject = new_subject(subject_type)
-        result = Ash.Subject.add_error(subject, [], [])
+        result = Ash.Subject.add_error(subject, [])
 
         assert is_struct(result, subject_type)
         assert result.errors == []
@@ -103,8 +101,8 @@ defmodule Ash.SubjectTest do
 
         result =
           subject
-          |> Ash.Subject.add_error("Error 1", [:field1])
-          |> Ash.Subject.add_error("Error 2", [:field2])
+          |> Ash.Subject.add_error("Error 1")
+          |> Ash.Subject.add_error("Error 2")
 
         assert is_struct(result, subject_type)
         assert length(result.errors) == 2
