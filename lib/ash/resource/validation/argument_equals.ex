@@ -40,7 +40,7 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
 
   @impl true
   def validate(subject, opts, _context) do
-    value = get_argument(subject, opts[:argument])
+    value = Ash.Subject.get_argument(subject, opts[:argument])
 
     if value != opts[:value] do
       {:error,
@@ -55,18 +55,6 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
   @impl true
   def atomic(subject, opts, context) do
     validate(subject, opts, context)
-  end
-
-  defp get_argument(%Ash.Changeset{} = changeset, argument) do
-    Ash.Changeset.get_argument(changeset, argument)
-  end
-
-  defp get_argument(%Ash.Query{} = query, argument) do
-    Ash.Query.get_argument(query, argument)
-  end
-
-  defp get_argument(%Ash.ActionInput{} = input, argument) do
-    Ash.ActionInput.get_argument(input, argument)
   end
 
   @impl true

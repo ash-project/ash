@@ -50,12 +50,11 @@ defmodule Ash.Resource.Validation.Match do
   def validate(subject, opts, _context) do
     value =
       if argument?(subject.action, opts[:attribute]) do
-        fetch_argument(subject, opts[:attribute])
+        Ash.Subject.fetch_argument(subject, opts[:attribute])
       else
         case subject do
-          %Ash.Query{} -> :error
-          %Ash.ActionInput{} -> :error
           %Ash.Changeset{} -> {:ok, Ash.Changeset.get_attribute(subject, opts[:attribute])}
+          _ -> :error
         end
       end
 
@@ -148,17 +147,5 @@ defmodule Ash.Resource.Validation.Match do
     [value: string_value, field: opts[:attribute]]
     |> with_description(opts)
     |> InvalidAttribute.exception()
-  end
-
-  defp fetch_argument(%Ash.Changeset{} = changeset, attribute) do
-    Ash.Changeset.fetch_argument(changeset, attribute)
-  end
-
-  defp fetch_argument(%Ash.Query{} = query, attribute) do
-    Ash.Query.fetch_argument(query, attribute)
-  end
-
-  defp fetch_argument(%Ash.ActionInput{} = input, attribute) do
-    Ash.ActionInput.fetch_argument(input, attribute)
   end
 end

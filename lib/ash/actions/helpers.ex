@@ -187,15 +187,6 @@ defmodule Ash.Actions.Helpers do
 
   def validate_calculation_load!(other, _), do: List.wrap(other)
 
-  defp set_context(%Ash.Changeset{} = changeset, context),
-    do: Ash.Changeset.set_context(changeset, context)
-
-  defp set_context(%Ash.Query{} = query, context),
-    do: Ash.Query.set_context(query, context)
-
-  defp set_context(%Ash.ActionInput{} = action_input, context),
-    do: Ash.ActionInput.set_context(action_input, context)
-
   defp set_skip_unknown_opts(opts, %{action: %{skip_unknown_inputs: skip_unknown_inputs}}) do
     Keyword.update(
       opts,
@@ -241,7 +232,7 @@ defmodule Ash.Actions.Helpers do
     opts = apply_scope_to_opts(opts)
 
     opts = set_skip_unknown_opts(opts, query_or_changeset)
-    query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
+    query_or_changeset = Ash.Subject.set_context(query_or_changeset, opts[:context] || %{})
 
     domain =
       Ash.Resource.Info.domain(query_or_changeset.resource) || opts[:domain] || domain ||

@@ -146,9 +146,13 @@ defmodule Ash.Subject do
     end
   end
 
-  @spec get_attribute(Ash.Changeset.t(), atom) :: term()
+  @spec get_attribute(t(), atom) :: term()
   def get_attribute(%Ash.Changeset{} = subject, attribute) do
     Ash.Changeset.get_attribute(subject, attribute)
+  end
+
+  def get_attribute(subject, attribute) do
+    get_argument(subject, attribute)
   end
 
   @doc """

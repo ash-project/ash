@@ -43,12 +43,11 @@ defmodule Ash.Resource.Validation.OneOf do
   def validate(subject, opts, _context) do
     value =
       if Enum.any?(subject.action.arguments, &(&1.name == opts[:attribute])) do
-        fetch_argument(subject, opts[:attribute])
+        Ash.Subject.fetch_argument(subject, opts[:attribute])
       else
         case subject do
-          %Ash.Query{} -> :error
-          %Ash.ActionInput{} -> :error
           %Ash.Changeset{} -> {:ok, Ash.Changeset.get_attribute(subject, opts[:attribute])}
+          _ -> :error
         end
       end
 
@@ -99,17 +98,5 @@ defmodule Ash.Resource.Validation.OneOf do
       message: "expected one of %{values}",
       vars: [values: Enum.map_join(opts[:values], ", ", &to_string/1)]
     ]
-  end
-
-  defp fetch_argument(%Ash.Changeset{} = changeset, attribute) do
-    Ash.Changeset.fetch_argument(changeset, attribute)
-  end
-
-  defp fetch_argument(%Ash.Query{} = query, attribute) do
-    Ash.Query.fetch_argument(query, attribute)
-  end
-
-  defp fetch_argument(%Ash.ActionInput{} = input, attribute) do
-    Ash.ActionInput.fetch_argument(input, attribute)
   end
 end
