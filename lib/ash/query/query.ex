@@ -1664,7 +1664,7 @@ defmodule Ash.Query do
   end
 
   @doc """
-  Determines if the provided expression would return data that is a suprset of the data returned by the filter on the query.
+  Determines if the provided expression would return data that is a subset of the data returned by the filter on the query.
 
   This uses the satisfiability solver that is used when solving for policy authorizations. In complex scenarios, or when using
   custom database expressions, (like fragments in ash_postgres), this function may return `:maybe`. Use `subset_of?` to always return
