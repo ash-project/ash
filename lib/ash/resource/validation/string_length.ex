@@ -50,7 +50,7 @@ defmodule Ash.Resource.Validation.StringLength do
 
   @impl true
   def validate(subject, opts, _context) do
-    case get_argument_or_attribute(subject, opts[:attribute]) do
+    case Ash.Subject.get_argument_or_attribute(subject, opts[:attribute]) do
       nil ->
         :ok
 
@@ -190,16 +190,4 @@ defmodule Ash.Resource.Validation.StringLength do
     do: [message: "must have length of no more than %{max}", vars: [max: max]]
 
   def describe(_opts), do: [message: inspect(__MODULE__), vars: []]
-
-  defp get_argument_or_attribute(%Ash.Changeset{} = changeset, attribute) do
-    Ash.Changeset.get_argument_or_attribute(changeset, attribute)
-  end
-
-  defp get_argument_or_attribute(%Ash.Query{} = query, attribute) do
-    Ash.Query.get_argument(query, attribute)
-  end
-
-  defp get_argument_or_attribute(%Ash.ActionInput{} = input, attribute) do
-    Ash.ActionInput.get_argument(input, attribute)
-  end
 end

@@ -75,12 +75,11 @@ defmodule Ash.Resource.Validation.Compare do
   def validate(subject, opts, _context) do
     value =
       if Enum.any?(subject.action.arguments, &(&1.name == opts[:attribute])) do
-        fetch_argument(subject, opts[:attribute])
+        Ash.Subject.fetch_argument(subject, opts[:attribute])
       else
         case subject do
-          %Ash.Query{} -> :error
-          %Ash.ActionInput{} -> :error
           %Ash.Changeset{} -> {:ok, Ash.Changeset.get_attribute(subject, opts[:attribute])}
+          _ -> :error
         end
       end
 
@@ -342,13 +341,11 @@ defmodule Ash.Resource.Validation.Compare do
     attribute.()
   end
 
-  defp attribute_value(%Ash.Changeset{} = changeset, attribute) when is_atom(attribute),
-    do: Ash.Changeset.get_argument_or_attribute(changeset, attribute)
+  defp attribute_value(subject, attribute) when is_atom(attribute) do
+    Ash.Subject.get_argument_or_attribute(subject, attribute)
+  end
 
-  defp attribute_value(%Ash.Query{} = query, argument) when is_atom(argument),
-    do: Ash.Query.get_argument(query, argument)
-
-  defp attribute_value(_, attribute), do: attribute
+  defp attribute_value(_subject, attribute), do: attribute
 
   defp atomic_value(attribute) when is_function(attribute, 0) do
     attribute.()
@@ -415,17 +412,5 @@ defmodule Ash.Resource.Validation.Compare do
           "must not be nil"
       end
     end)
-  end
-
-  defp fetch_argument(%Ash.Changeset{} = changeset, argument) do
-    Ash.Changeset.fetch_argument(changeset, argument)
-  end
-
-  defp fetch_argument(%Ash.Query{} = query, argument) do
-    Ash.Query.fetch_argument(query, argument)
-  end
-
-  defp fetch_argument(%Ash.ActionInput{} = input, argument) do
-    Ash.ActionInput.fetch_argument(input, argument)
   end
 end

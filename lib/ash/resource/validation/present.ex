@@ -227,7 +227,7 @@ defmodule Ash.Resource.Validation.Present do
      |> Enum.map(fn attribute ->
        [
          field: attribute,
-         value: get_attribute(subject, attribute)
+         value: Ash.Subject.get_attribute(subject, attribute)
        ]
        |> with_description(opts)
        |> InvalidAttribute.exception()
@@ -238,29 +238,10 @@ defmodule Ash.Resource.Validation.Present do
     Ash.Changeset.present?(changeset, attribute)
   end
 
-  defp present?(%Ash.Query{} = query, attribute) do
-    case Ash.Query.get_argument(query, attribute) do
+  defp present?(subject, attribute) do
+    case Ash.Subject.get_argument(subject, attribute) do
       nil -> false
       _value -> true
     end
-  end
-
-  defp present?(%Ash.ActionInput{} = input, attribute) do
-    case Ash.ActionInput.get_argument(input, attribute) do
-      nil -> false
-      _value -> true
-    end
-  end
-
-  defp get_attribute(%Ash.Changeset{} = changeset, attribute) do
-    Ash.Changeset.get_attribute(changeset, attribute)
-  end
-
-  defp get_attribute(%Ash.Query{} = query, attribute) do
-    Ash.Query.get_argument(query, attribute)
-  end
-
-  defp get_attribute(%Ash.ActionInput{} = input, attribute) do
-    Ash.ActionInput.get_argument(input, attribute)
   end
 end

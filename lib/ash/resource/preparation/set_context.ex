@@ -5,11 +5,11 @@ defmodule Ash.Resource.Preparation.SetContext do
 
   def supports(_opts), do: [Ash.Query, Ash.ActionInput]
 
-  def prepare(query_or_input, opts, _context) do
+  def prepare(subject, opts, _context) do
     context =
       case opts[:context] do
         {m, f, a} when is_atom(m) and is_atom(f) and is_list(a) ->
-          apply(m, f, [query_or_input | a])
+          apply(m, f, [subject | a])
 
         other ->
           {:ok, other}
@@ -17,29 +17,13 @@ defmodule Ash.Resource.Preparation.SetContext do
 
     case context do
       {:ok, context} ->
-        set_context_on_input(query_or_input, context)
+        Ash.Subject.set_context(subject, context)
 
       {:error, error} ->
-        add_error_to_input(query_or_input, error)
+        Ash.Subject.add_error(subject, error)
 
       context ->
-        set_context_on_input(query_or_input, context)
+        Ash.Subject.set_context(subject, context)
     end
-  end
-
-  defp set_context_on_input(%Ash.Query{} = query, context) do
-    Ash.Query.set_context(query, context)
-  end
-
-  defp set_context_on_input(%Ash.ActionInput{} = input, context) do
-    Ash.ActionInput.set_context(input, context)
-  end
-
-  defp add_error_to_input(%Ash.Query{} = query, error) do
-    Ash.Query.add_error(query, error)
-  end
-
-  defp add_error_to_input(%Ash.ActionInput{} = input, error) do
-    Ash.ActionInput.add_error(input, error)
   end
 end

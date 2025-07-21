@@ -146,9 +146,13 @@ defmodule Ash.Subject do
     end
   end
 
-  @spec get_attribute(Ash.Changeset.t(), atom) :: term()
+  @spec get_attribute(t(), atom) :: term()
   def get_attribute(%Ash.Changeset{} = subject, attribute) do
     Ash.Changeset.get_attribute(subject, attribute)
+  end
+
+  def get_attribute(subject, attribute) do
+    get_argument(subject, attribute)
   end
 
   @doc """
@@ -351,45 +355,5 @@ defmodule Ash.Subject do
     else
       %{subject | after_action: subject.after_action ++ [callback]}
     end
-  end
-
-  @doc """
-  Executes all before_action callbacks on the subject.
-
-  Only supported by Changeset and ActionInput.
-
-  ## Parameters
-
-    * `subject` - The subject to run callbacks on
-  """
-  @spec run_before_actions(Ash.Changeset.t() | Ash.ActionInput.t()) ::
-          {Ash.Changeset.t() | Ash.ActionInput.t(), map()}
-  def run_before_actions(%Ash.Changeset{} = subject) do
-    Ash.Changeset.run_before_actions(subject)
-  end
-
-  def run_before_actions(%Ash.ActionInput{} = subject) do
-    Ash.ActionInput.run_before_actions(subject)
-  end
-
-  @doc """
-  Executes all after_action callbacks on the subject.
-
-  Only supported by Changeset and ActionInput.
-
-  ## Parameters
-
-    * `result` - The result data from the action
-    * `subject` - The subject that was executed
-    * `notifications` - Notifications from before_action hooks
-  """
-  @spec run_after_actions(term(), Ash.Changeset.t() | Ash.ActionInput.t(), term()) ::
-          {term(), list()}
-  def run_after_actions(result, %Ash.Changeset{} = subject, before_action_notifications) do
-    Ash.Changeset.run_after_actions(result, subject, before_action_notifications)
-  end
-
-  def run_after_actions(result, %Ash.ActionInput{} = subject, before_action_notifications) do
-    Ash.ActionInput.run_after_actions(result, subject, before_action_notifications)
   end
 end
