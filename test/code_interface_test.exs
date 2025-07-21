@@ -104,6 +104,11 @@ defmodule Ash.Test.CodeInterfaceTest do
         end,
         action: :hello_actor
 
+      define :get_user_with_invalid_load,
+        default_options: [load: [[invalid: :load]]],
+        action: :read,
+        get_by: :id
+
       define :hello_actor
       define :create_with_map, args: [:map]
       define :update_with_map, args: [:map]
@@ -702,6 +707,15 @@ defmodule Ash.Test.CodeInterfaceTest do
     assert result =~ "T"
     # UTC timestamps end with 'Z'
     assert result =~ "Z"
+  end
+
+  test "default options with invalid load returns error" do
+    user = User.create!("john")
+
+    assert {:error, %Ash.Error.Invalid{errors: [error]}} =
+             User.get_user_with_invalid_load(user.id)
+
+    assert %Ash.Error.Query.InvalidLoad{load: {:invalid, :load}} = error
   end
 
   test "default options with function are called each time" do

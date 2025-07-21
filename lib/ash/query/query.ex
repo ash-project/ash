@@ -2325,7 +2325,7 @@ defmodule Ash.Query do
           )
         end
 
-      Ash.Resource.Info.attribute(query.resource, field) ->
+      is_atom(field) && Ash.Resource.Info.attribute(query.resource, field) ->
         ensure_selected(query, field)
 
       rel = Ash.Resource.Info.relationship(query.resource, field) ->
