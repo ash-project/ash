@@ -55,104 +55,112 @@ defmodule Ash.Actions.Action do
 
       Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :action],
                                 metadata do
-        if input.action.transaction? do
-          notify? = !Process.put(:ash_started_transaction?, true)
+        # Run around_transaction hooks if any exist, or proceed directly
+        Ash.ActionInput.run_around_transaction_hooks(input, fn input ->
+          if input.action.transaction? do
+            run_with_transaction(domain, input, module, run_opts, context, opts)
+          else
+            run_without_transaction(domain, input, module, run_opts, context, opts)
+          end
+        end)
+      end
+    end
+  end
 
-          try do
-            resources =
-              input.action.touches_resources
-              |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
-              |> Enum.concat([input.resource])
-              |> Enum.uniq()
+  defp run_with_transaction(domain, input, module, run_opts, context, opts) do
+    # Run before_transaction hooks first
+    case Ash.ActionInput.run_before_transaction_hooks(input) do
+      {:ok, input} ->
+        notify? = !Process.put(:ash_started_transaction?, true)
 
-            resources
-            |> Ash.DataLayer.transaction(
-              fn ->
-                case authorize(domain, opts[:actor], input) do
-                  :ok ->
-                    case run_with_hooks(module, input, run_opts, context, true) do
-                      :ok when is_nil(input.action.returns) ->
-                        {:ok, nil, []}
+        try do
+          resources =
+            input.action.touches_resources
+            |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
+            |> Enum.concat([input.resource])
+            |> Enum.uniq()
 
-                      {:ok, result} ->
-                        if input.action.returns do
-                          {:ok, result, []}
-                        else
-                          raise_invalid_generic_action_return!(input, result)
-                        end
+          resources
+          |> Ash.DataLayer.transaction(
+            fn ->
+              case authorize(domain, opts[:actor], input) do
+                :ok ->
+                  case run_with_hooks(module, input, run_opts, context, true) do
+                    {:ok, result, notifications} ->
+                      {:ok, result, notifications}
 
-                      {:ok, result, notifications} ->
-                        {:ok, result, notifications}
-
-                      {:error, error} ->
-                        Ash.DataLayer.rollback(resources, error)
-
-                      other ->
-                        raise_invalid_generic_action_return!(input, other)
-                    end
-
-                  {:error, error} ->
-                    Ash.DataLayer.rollback(resources, error)
-                end
-              end,
-              nil,
-              %{
-                type: :generic,
-                metadata: %{
-                  resource: input.resource,
-                  action: input.action.name,
-                  input: input,
-                  actor: opts[:actor]
-                },
-                data_layer_context: input.context[:data_layer] || %{}
-              }
-            )
-            |> case do
-              {:ok, {:ok, result, notifications}} ->
-                notifications =
-                  if notify? && !opts[:return_notifications?] do
-                    Enum.concat(
-                      notifications || [],
-                      Process.delete(:ash_notifications) || []
-                    )
-                  else
-                    notifications || []
+                    {:error, error} ->
+                      Ash.DataLayer.rollback(resources, error)
                   end
 
-                remaining = Ash.Notifier.notify(notifications)
+                {:error, error} ->
+                  Ash.DataLayer.rollback(resources, error)
+              end
+            end,
+            nil,
+            %{
+              type: :generic,
+              metadata: %{
+                resource: input.resource,
+                action: input.action.name,
+                input: input,
+                actor: opts[:actor]
+              },
+              data_layer_context: input.context[:data_layer] || %{}
+            }
+          )
+          |> case do
+            {:ok, {:ok, result, notifications}} ->
+              notifications =
+                if notify? && !opts[:return_notifications?] do
+                  Enum.concat(
+                    notifications || [],
+                    Process.delete(:ash_notifications) || []
+                  )
+                else
+                  notifications || []
+                end
 
-                Ash.Actions.Helpers.warn_missed!(input.resource, input.action, %{
-                  resource_notifications: remaining
-                })
+              remaining = Ash.Notifier.notify(notifications)
 
+              Ash.Actions.Helpers.warn_missed!(input.resource, input.action, %{
+                resource_notifications: remaining
+              })
+
+              final_result =
                 if input.action.returns do
                   {:ok, result}
                 else
                   :ok
                 end
 
-              {:error, error} ->
-                {:error, Ash.Error.to_ash_error(error)}
-            end
-          after
-            if notify? do
-              Process.delete(:ash_started_transaction?)
-            end
+              # Run after_transaction hooks
+              Ash.ActionInput.run_after_transaction_hooks(final_result, input)
+
+            {:error, error} ->
+              error_result = {:error, Ash.Error.to_ash_error(error)}
+              # Run after_transaction hooks even on error
+              Ash.ActionInput.run_after_transaction_hooks(error_result, input)
           end
-        else
+        after
+          if notify? do
+            Process.delete(:ash_started_transaction?)
+          end
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp run_without_transaction(domain, input, module, run_opts, context, opts) do
+    # Run before_transaction hooks even for non-transactional actions
+    case Ash.ActionInput.run_before_transaction_hooks(input) do
+      {:ok, input} ->
+        result =
           case authorize(domain, opts[:actor], input) do
             :ok ->
               case run_with_hooks(module, input, run_opts, context, false) do
-                :ok when is_nil(input.action.returns) ->
-                  :ok
-
-                {:ok, result} ->
-                  if input.action.returns do
-                    {:ok, result}
-                  else
-                    raise_invalid_generic_action_return!(input, result)
-                  end
-
                 {:ok, result, notifications} ->
                   remaining = Ash.Notifier.notify(notifications)
 
@@ -168,16 +176,17 @@ defmodule Ash.Actions.Action do
 
                 {:error, error} ->
                   {:error, error}
-
-                other ->
-                  raise_invalid_generic_action_return!(input, other)
               end
 
             {:error, error} ->
               {:error, error}
           end
-        end
-      end
+
+        # Run after_transaction hooks
+        Ash.ActionInput.run_after_transaction_hooks(result, input)
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

@@ -95,6 +95,24 @@ defmodule Ash.Test.Actions.GenericActionsTest do
         end
       end
 
+      action :with_transaction, :string do
+        argument :message, :string, allow_nil?: false
+        transaction? true
+
+        run fn input, _ ->
+          {:ok, "Transaction: #{input.arguments.message}"}
+        end
+      end
+
+      action :without_transaction, :string do
+        argument :message, :string, allow_nil?: false
+        transaction? false
+
+        run fn input, _ ->
+          {:ok, "No transaction: #{input.arguments.message}"}
+        end
+      end
+
       action :with_before_action_validation, :string do
         argument :name, :string, allow_nil?: false
 
@@ -274,6 +292,14 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
 
       policy action(:with_mixed_preparations_validations) do
+        authorize_if always()
+      end
+
+      policy action(:with_transaction) do
+        authorize_if always()
+      end
+
+      policy action(:without_transaction) do
         authorize_if always()
       end
     end
@@ -779,6 +805,233 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
     test "it does not require setting optional inputs" do
       assert {:ok, "Marty"} = EchoResource.echo2("Marty")
+    end
+  end
+
+  describe "transaction hooks in generic actions" do
+    test "before_transaction hook modifies input" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:with_transaction, %{message: "test"})
+        |> Ash.ActionInput.before_transaction(fn input ->
+          Ash.ActionInput.set_argument(input, :message, "modified_" <> input.arguments.message)
+        end)
+        |> Ash.run_action!()
+
+      assert result == "Transaction: modified_test"
+    end
+
+    test "after_transaction hook can modify result" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:with_transaction, %{message: "test"})
+        |> Ash.ActionInput.after_transaction(fn _input, {:ok, result} ->
+          {:ok, result <> "_after"}
+        end)
+        |> Ash.run_action!()
+
+      assert result == "Transaction: test_after"
+    end
+
+    test "around_transaction hook wraps execution" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:with_transaction, %{message: "test"})
+        |> Ash.ActionInput.around_transaction(fn input, callback ->
+          case callback.(input) do
+            {:ok, result} -> {:ok, "wrapped_" <> result}
+            error -> error
+          end
+        end)
+        |> Ash.run_action!()
+
+      assert result == "wrapped_Transaction: test"
+    end
+
+    test "multiple transaction hooks execute in order" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:with_transaction, %{message: "test"})
+        |> Ash.ActionInput.before_transaction(fn input ->
+          Ash.ActionInput.set_argument(input, :message, "first_" <> input.arguments.message)
+        end)
+        |> Ash.ActionInput.before_transaction(fn input ->
+          Ash.ActionInput.set_argument(input, :message, "second_" <> input.arguments.message)
+        end)
+        |> Ash.ActionInput.after_transaction(fn _input, {:ok, result} ->
+          {:ok, result <> "_after1"}
+        end)
+        |> Ash.ActionInput.after_transaction(fn _input, {:ok, result} ->
+          {:ok, result <> "_after2"}
+        end)
+        |> Ash.run_action!()
+
+      assert result == "Transaction: second_first_test_after1_after2"
+    end
+
+    test "transaction hooks work with non-transactional actions" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:without_transaction, %{message: "test"})
+        |> Ash.ActionInput.before_transaction(fn input ->
+          Ash.ActionInput.set_argument(input, :message, "modified_" <> input.arguments.message)
+        end)
+        |> Ash.ActionInput.after_transaction(fn _input, {:ok, result} ->
+          {:ok, result <> "_after"}
+        end)
+        |> Ash.run_action!()
+
+      assert result == "No transaction: modified_test_after"
+    end
+
+    test "before_transaction error halts execution" do
+      assert {:error, _} =
+               Post
+               |> Ash.ActionInput.for_action(:with_transaction, %{message: "test"})
+               |> Ash.ActionInput.before_transaction(fn _input ->
+                 {:error, "Before transaction error"}
+               end)
+               |> Ash.run_action()
+    end
+
+    test "after_transaction hooks run on error results" do
+      # We need to create an action that can fail to test this
+      defmodule FailingPost do
+        use Ash.Resource,
+          domain: Domain,
+          data_layer: Ash.DataLayer.Ets,
+          authorizers: [Ash.Policy.Authorizer]
+
+        ets do
+          private?(true)
+        end
+
+        actions do
+          action :fail_in_action, :string do
+            argument :message, :string, allow_nil?: false
+            transaction? false
+
+            run fn _input, _ ->
+              {:error, "Action failed"}
+            end
+          end
+        end
+
+        policies do
+          policy action(:fail_in_action) do
+            authorize_if always()
+          end
+        end
+      end
+
+      # Use a process to track if after_transaction ran
+      test_pid = self()
+
+      result =
+        FailingPost
+        |> Ash.ActionInput.for_action(:fail_in_action, %{message: "test"})
+        |> Ash.ActionInput.after_transaction(fn _input, result ->
+          send(test_pid, {:after_transaction_ran, result})
+          result
+        end)
+        |> Ash.run_action()
+
+      # Verify the action failed
+      assert {:error, _} = result
+
+      # Verify after_transaction hook ran with the error
+      assert_receive {:after_transaction_ran, {:error, _}}
+    end
+
+    test "around_transaction can handle errors" do
+      defmodule FailingWithRetryPost do
+        use Ash.Resource,
+          domain: Domain,
+          data_layer: Ash.DataLayer.Ets,
+          authorizers: [Ash.Policy.Authorizer]
+
+        ets do
+          private?(true)
+        end
+
+        actions do
+          action :fail_once, :string do
+            argument :message, :string, allow_nil?: false
+            transaction? false
+
+            run fn input, _ ->
+              # Fail if message doesn't contain "retry"
+              if String.contains?(input.arguments.message, "retry") do
+                {:ok, "Success after retry"}
+              else
+                {:error, "First attempt failed"}
+              end
+            end
+          end
+        end
+
+        policies do
+          policy action(:fail_once) do
+            authorize_if always()
+          end
+        end
+      end
+
+      result =
+        FailingWithRetryPost
+        |> Ash.ActionInput.for_action(:fail_once, %{message: "test"})
+        |> Ash.ActionInput.around_transaction(fn input, callback ->
+          case callback.(input) do
+            {:ok, result} ->
+              {:ok, result}
+
+            {:error, _} ->
+              # Retry with modified input
+              modified_input =
+                Ash.ActionInput.set_argument(input, :message, input.arguments.message <> "_retry")
+
+              callback.(modified_input)
+          end
+        end)
+        |> Ash.run_action!()
+
+      assert result == "Success after retry"
+    end
+
+    test "transaction hooks work with action hooks" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:with_transaction, %{message: "test"})
+        |> Ash.ActionInput.before_transaction(fn input ->
+          Ash.ActionInput.set_argument(input, :message, "before_tx_" <> input.arguments.message)
+        end)
+        |> Ash.ActionInput.before_action(fn input ->
+          Ash.ActionInput.set_argument(
+            input,
+            :message,
+            "before_action_" <> input.arguments.message
+          )
+        end)
+        |> Ash.ActionInput.after_action(fn _input, result ->
+          {:ok, result <> "_after_action"}
+        end)
+        |> Ash.ActionInput.after_transaction(fn _input, {:ok, result} ->
+          {:ok, result <> "_after_tx"}
+        end)
+        |> Ash.run_action!()
+
+      assert result == "Transaction: before_action_before_tx_test_after_action_after_tx"
+    end
+
+    test "invalid before_transaction hook return raises error" do
+      assert_raise RuntimeError, ~r/Invalid return value from before_transaction hook/, fn ->
+        Post
+        |> Ash.ActionInput.for_action(:with_transaction, %{message: "test"})
+        |> Ash.ActionInput.before_transaction(fn _input ->
+          "invalid return"
+        end)
+        |> Ash.run_action!()
+      end
     end
   end
 end

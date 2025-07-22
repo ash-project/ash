@@ -25,7 +25,10 @@ defmodule Ash.ActionInput do
     valid?: true,
     errors: [],
     before_action: [],
-    after_action: []
+    after_action: [],
+    before_transaction: [],
+    after_transaction: [],
+    around_transaction: []
   ]
 
   @typedoc """
@@ -48,6 +51,33 @@ defmodule Ash.ActionInput do
              | {:error, any})
 
   @typedoc """
+  Function type for before transaction hooks.
+
+  Receives an action input and returns a modified action input or an error.
+  """
+  @type before_transaction_fun :: (t -> t | {:error, any})
+
+  @typedoc """
+  Function type for after transaction hooks.
+
+  Receives the action input and the result of the transaction, and returns
+  the result (potentially modified) or an error.
+  """
+  @type after_transaction_fun ::
+          (t, {:ok, term} | {:error, any} ->
+             {:ok, term} | {:error, any})
+
+  @typedoc """
+  Function type for around transaction hooks.
+
+  Receives an action input and a callback function that executes the transaction,
+  and returns the result of calling the callback or an error.
+  """
+  @type around_transaction_fun ::
+          (t, (t -> {:ok, term} | {:error, any}) ->
+             {:ok, term} | {:error, any})
+
+  @typedoc """
   An action input struct for generic (non-CRUD) actions.
 
   Contains all the information needed to execute a generic action including
@@ -66,7 +96,10 @@ defmodule Ash.ActionInput do
           valid?: boolean(),
           errors: [Ash.Error.t()],
           before_action: [before_action_fun],
-          after_action: [after_action_fun]
+          after_action: [after_action_fun],
+          before_transaction: [before_transaction_fun],
+          after_transaction: [after_transaction_fun],
+          around_transaction: [around_transaction_fun]
         }
 
   @doc """
@@ -971,6 +1004,88 @@ defmodule Ash.ActionInput do
     %{input | after_action: input.after_action ++ [func]}
   end
 
+  @doc """
+  Adds a before transaction hook to the action input.
+
+  Before transaction hooks are executed before the transaction begins (if the action is transactional).
+  They can modify the action input or halt execution by returning an error.
+
+  ## Examples
+
+      # Add logging before transaction
+      iex> input
+      ...> |> Ash.ActionInput.before_transaction(fn input ->
+      ...>   IO.puts("Starting transaction for action")
+      ...>   input
+      ...> end)
+
+  ## See also
+
+  - `after_transaction/2` for hooks that run after the transaction
+  - `around_transaction/2` for hooks that wrap the entire transaction
+  - `before_action/3` for hooks that run before the action (inside transaction)
+  """
+  @spec before_transaction(t, before_transaction_fun) :: t
+  def before_transaction(input, func) do
+    %{input | before_transaction: input.before_transaction ++ [func]}
+  end
+
+  @doc """
+  Adds an after transaction hook to the action input.
+
+  After transaction hooks are executed after the transaction completes, regardless of success or failure.
+  They receive both the input and the transaction result, and can modify the result.
+
+  ## Examples
+
+      # Add cleanup after transaction
+      iex> input
+      ...> |> Ash.ActionInput.after_transaction(fn input, result ->
+      ...>   cleanup_resources()
+      ...>   result
+      ...> end)
+
+  ## See also
+
+  - `before_transaction/2` for hooks that run before the transaction
+  - `around_transaction/2` for hooks that wrap the entire transaction
+  - `after_action/2` for hooks that run after the action (inside transaction)
+  """
+  @spec after_transaction(t, after_transaction_fun) :: t
+  def after_transaction(input, func) do
+    %{input | after_transaction: input.after_transaction ++ [func]}
+  end
+
+  @doc """
+  Adds an around transaction hook to the action input.
+
+  Around transaction hooks wrap the entire transaction execution. They receive a callback
+  function that they must call to execute the transaction, allowing them to add logic
+  both before and after the transaction.
+
+  ## Examples
+
+      # Add retry logic around transaction
+      iex> input
+      ...> |> Ash.ActionInput.around_transaction(fn input, callback ->
+      ...>   case callback.(input) do
+      ...>     {:ok, result} -> {:ok, result}
+      ...>     {:error, %{retryable?: true}} -> callback.(input) # Retry once
+      ...>     error -> error
+      ...>   end
+      ...> end)
+
+  ## See also
+
+  - `before_transaction/2` for hooks that run before the transaction
+  - `after_transaction/2` for hooks that run after the transaction
+  - `before_action/3` and `after_action/2` for hooks that run inside the transaction
+  """
+  @spec around_transaction(t, around_transaction_fun) :: t
+  def around_transaction(input, func) do
+    %{input | around_transaction: input.around_transaction ++ [func]}
+  end
+
   @doc false
   defp run_preparations_and_validations(input, opts) do
     actor = opts[:actor]
@@ -1351,5 +1466,125 @@ defmodule Ash.ActionInput do
         end
       end
     )
+  end
+
+  @doc false
+  def run_before_transaction_hooks(%{before_transaction: []} = input) do
+    {:ok, input}
+  end
+
+  def run_before_transaction_hooks(input) do
+    Enum.reduce_while(
+      input.before_transaction,
+      {:ok, input},
+      fn before_transaction, {:ok, input} ->
+        tracer = input.context[:private][:tracer]
+
+        metadata = fn ->
+          %{
+            domain: input.domain,
+            resource: input.resource,
+            resource_short_name: Ash.Resource.Info.short_name(input.resource),
+            actor: input.context[:private][:actor],
+            tenant: input.context[:private][:tenant],
+            action: input.action && input.action.name,
+            authorize?: input.context[:private][:authorize?]
+          }
+        end
+
+        result =
+          Ash.Tracer.span :before_transaction,
+                          "before_transaction",
+                          tracer do
+            Ash.Tracer.set_metadata(tracer, :before_transaction, metadata)
+
+            Ash.Tracer.telemetry_span [:ash, :before_transaction], metadata do
+              before_transaction.(input)
+            end
+          end
+
+        case result do
+          {:error, error} ->
+            {:halt, {:error, error}}
+
+          %Ash.ActionInput{} = input ->
+            cont =
+              if input.valid? do
+                :cont
+              else
+                :halt
+              end
+
+            {cont, {:ok, input}}
+
+          other ->
+            raise """
+            Invalid return value from before_transaction hook. Expected one of:
+
+            * %Ash.ActionInput{}
+            * {:error, error}
+
+            Got:
+
+            #{inspect(other)}
+            """
+        end
+      end
+    )
+  end
+
+  @doc false
+  def run_after_transaction_hooks(result, %{after_transaction: []} = _input) do
+    result
+  end
+
+  def run_after_transaction_hooks(result, input) do
+    input.after_transaction
+    |> Enum.reduce(
+      result,
+      fn after_transaction, result ->
+        tracer = input.context[:private][:tracer]
+
+        metadata = fn ->
+          %{
+            domain: input.domain,
+            resource: input.resource,
+            resource_short_name: Ash.Resource.Info.short_name(input.resource),
+            actor: input.context[:private][:actor],
+            tenant: input.context[:private][:tenant],
+            action: input.action && input.action.name,
+            authorize?: input.context[:private][:authorize?]
+          }
+        end
+
+        Ash.Tracer.span :after_transaction,
+                        "after_transaction",
+                        tracer do
+          Ash.Tracer.set_metadata(tracer, :after_transaction, metadata)
+
+          Ash.Tracer.telemetry_span [:ash, :after_transaction], metadata do
+            after_transaction.(input, result)
+          end
+        end
+      end
+    )
+    |> case do
+      {:ok, new_result} ->
+        {:ok, new_result}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc false
+  def run_around_transaction_hooks(%{around_transaction: []} = input, func) do
+    func.(input)
+  end
+
+  def run_around_transaction_hooks(%{around_transaction: [around | rest]} = input, func) do
+    around.(input, fn input ->
+      run_around_transaction_hooks(%{input | around_transaction: rest}, func)
+    end)
   end
 end
