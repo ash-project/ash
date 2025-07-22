@@ -1,24 +1,22 @@
-version: 2
+---
 updates:
-  - package-ecosystem: mix
-    versioning-strategy: lockfile-only
-    directory: "/"
-    schedule:
-      interval: daily
-      # interval: weekly
-      # day: thursday
+  - directory: /
     groups:
-      production-dependencies:
-        dependency-type: production
       dev-dependencies:
         dependency-type: development
-  - package-ecosystem: "github-actions"
-    directory: "/"
+      production-dependencies:
+        dependency-type: production
+    package-ecosystem: mix
     schedule:
-      interval: "weekly"
+      interval: monthly
+    versioning-strategy: lockfile-only
+  - directory: /
     groups:
-      # Group all GitHub Actions updates together to have less PRs
       github-actions:
         applies-to: version-updates
         patterns:
-          - "*"
+          - '*'
+    package-ecosystem: github-actions
+    schedule:
+      interval: monthly
+version: 2
