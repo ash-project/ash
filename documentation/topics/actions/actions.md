@@ -290,7 +290,7 @@ Ash resource actions follow a well-defined lifecycle that ensures proper data va
 
 - **Query Actions**: Read queries do not currently have `before_transaction`, `after_transaction`, or `around_transaction` callbacks
 - **Around Action Behavior**: `around_action` hooks do not complete their "end" phase if the action fails
-- **Generic Actions**: Generic actions support validations, preparations, and hooks (before_action/after_action) but do not support transaction-level hooks like before_transaction/after_transaction.
+- **Generic Actions**: Generic actions support validations, preparations, and all hook types including transaction-level hooks (before_transaction/after_transaction/around_transaction).
 
 ### Complete Lifecycle Flow
 
@@ -298,8 +298,8 @@ Ash resource actions follow a well-defined lifecycle that ensures proper data va
 graph TD
     subgraph "Pre-Transaction Phase"
         START["Action Invocation<br/>(Ash.create, Ash.read, Ash.run_action, etc.)"] --> PREP["Changeset/Query/ActionInput Creation"]
-        PREP --> AROUND_START["around_transaction (start)<br/>🚫 Not available for generic actions"]
-        AROUND_START --> BEFORE_TRANS["before_transaction<br/>🚫 Not available for read/query/generic actions"]
+        PREP --> AROUND_START["around_transaction (start)<br/>🚫 Not available for read/query actions"]
+        AROUND_START --> BEFORE_TRANS["before_transaction<br/>🚫 Not available for read/query actions"]
     end
     
     subgraph "Transaction Phase"
@@ -334,7 +334,7 @@ graph TD
     end
     
     subgraph "Post-Transaction Phase"
-        AFTER_TRANS["after_transaction<br/>(Always runs - success/error)<br/>🚫 Not available for read/query/generic actions"] --> AROUND_END["around_transaction (end)<br/>🚫 Not available for generic actions"]
+        AFTER_TRANS["after_transaction<br/>(Always runs - success/error)<br/>🚫 Not available for read/query actions"] --> AROUND_END["around_transaction (end)<br/>🚫 Not available for read/query actions"]
         AROUND_END --> NOTIFICATIONS["Notifications<br/>(If enabled)"]
         NOTIFICATIONS --> RESULT["Return Result"]
     end
@@ -549,7 +549,9 @@ The hooks execute in the following order (as of Ash 3.0+):
 
 #### For Generic Actions:
 
-1. Transaction begins (if applicable)
+1. `around_transaction` (start)
+1. `before_transaction`
+1. Transaction begins (if `transaction? true`)
 1. Global preparations/validations (in order of definition)
 1. Action preparations/validations (in order of definition)
 1. `around_action` (start)
@@ -558,17 +560,19 @@ The hooks execute in the following order (as of Ash 3.0+):
 1. `after_action` (success only) OR Error handling
 1. `around_action` (end) - Only on success
 1. Transaction commits/rollbacks (if applicable)
+1. `after_transaction` (always runs)
+1. `around_transaction` (end)
 
 ### Key Points
 
 #### Transaction Boundaries
-- **Outside Transaction**: `around_transaction`, `before_transaction`, `after_transaction` (not available for read/query actions)
+- **Outside Transaction**: `around_transaction`, `before_transaction`, `after_transaction` (available for create/update/destroy/generic actions)
 - **Inside Transaction**: Action preparations/validations/changes, Global preparations/validations/changes, `around_action`, `before_action`, `after_action`
 
 #### Error Handling
 - `after_action` only runs on successful operations
 - `around_action` (end) only runs on successful operations
-- `after_transaction` always runs (success and error) - not available for read/query actions
+- `after_transaction` always runs (success and error) - available for create/update/destroy/generic actions
 - `after_transaction` can change the final result - can transform errors into successes (useful for retries)
 - Transaction rollback occurs automatically on errors
 
@@ -600,17 +604,17 @@ The hooks execute in the following order (as of Ash 3.0+):
 - Focus on data retrieval and filtering
 
 #### Generic Actions
-- Support validations, preparations, and action hooks (`before_action`, `after_action`, `around_action`)
-- Do not support transaction-level hooks (`before_transaction`, `after_transaction`, `around_transaction`)
+- Support validations, preparations, and all hook types (`before_action`, `after_action`, `around_action`, `before_transaction`, `after_transaction`, `around_transaction`)
 - Can run in transactions by setting `transaction? true` in the action definition
+- Transaction hooks work for both transactional and non-transactional generic actions
 - Focus on custom business logic and operations
 
 ### Best Practices
 
-- Use `before_transaction` for external API calls (create/update/destroy only)
+- Use `before_transaction` for external API calls (create/update/destroy/generic actions only)
 - Use `before_action` for final data modifications
 - Use `after_action` for transactional side effects
-- Use `after_transaction` for external notifications (create/update/destroy only)
+- Use `after_transaction` for external notifications (create/update/destroy/generic actions only)
 - Use `after_transaction` for retry mechanisms and result transformation
 - Keep transaction phase operations fast and focused
 - Handle errors appropriately at each phase
