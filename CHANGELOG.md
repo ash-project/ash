@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.5.31](https://github.com/ash-project/ash/compare/v3.5.30...v3.5.31) (2025-07-22)
+
+
+
+
+### Bug Fixes:
+
+* Catch invalid load (#2213) by Kenneth Kostrešević
+
+### Improvements:
+
+* Add Ash.Subject to abstract Changeset, Query, ActionInput common functions (#2212) by [@chazwatkins](https://github.com/chazwatkins)
+
+* support validations, preparations on generic actions by [@zachdaniel](https://github.com/zachdaniel)
+
+* add before/after action hooks to generic actions by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.30](https://github.com/ash-project/ash/compare/v3.5.29...v3.5.30) (2025-07-18)
 
 
