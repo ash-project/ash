@@ -165,6 +165,8 @@ defmodule Ash.Query do
     :lock,
     :to_tenant,
     sort_input_indices: [],
+    before_transaction: [],
+    after_transaction: [],
     around_transaction: [],
     invalid_keys: MapSet.new(),
     load_through: %{},
@@ -222,6 +224,9 @@ defmodule Ash.Query do
           aggregates: %{optional(atom) => Ash.Filter.t()},
           arguments: %{optional(atom) => any},
           before_action: [(t -> t)],
+          before_transaction: [before_transaction_fun],
+          after_transaction: [after_transaction_fun],
+          around_transaction: [around_transaction_fun],
           calculations: %{optional(atom) => :wat},
           context: map,
           errors: [Ash.Error.t()],
@@ -246,6 +251,14 @@ defmodule Ash.Query do
   @type around_result ::
           {:ok, list(Ash.Resource.record())}
           | {:error, Ash.Error.t()}
+
+  @typedoc "Function type for before_transaction hooks that run before query execution."
+  @type before_transaction_fun :: (t -> t | {:error, any})
+
+  @typedoc "Function type for after_transaction hooks that run after query execution."
+  @type after_transaction_fun ::
+          (t, {:ok, list(Ash.Resource.record())} | {:error, any} ->
+             {:ok, list(Ash.Resource.record())} | {:error, any})
 
   @typedoc "Function type for around_transaction hooks that wrap query execution in a transaction."
   @type around_transaction_fun :: (t -> {:ok, Ash.Resource.record()} | {:error, any})
@@ -1293,6 +1306,59 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Adds a before_transaction hook to the query.
+
+  The before_transaction hook runs before the database transaction begins.
+  It receives the query and must return either a modified query or an error.
+
+  ## Examples
+
+      # Add logging before transaction
+      iex> query = MyApp.Post |> Ash.Query.before_transaction(fn query ->
+      ...>   IO.puts("Starting transaction for \#{inspect(query.resource)}")
+      ...>   query
+      ...> end)
+
+  ## See also
+
+  - `after_transaction/2` for hooks that run after the transaction
+  - `around_transaction/2` for hooks that wrap the entire transaction
+  - `before_action/3` for hooks that run before the action (inside transaction)
+  """
+  @spec before_transaction(t(), before_transaction_fun()) :: t()
+  def before_transaction(query, func) do
+    query = new(query)
+    %{query | before_transaction: query.before_transaction ++ [func]}
+  end
+
+  @doc """
+  Adds an after_transaction hook to the query.
+
+  The after_transaction hook runs after the database transaction completes,
+  regardless of success or failure. It receives the query and the result,
+  and can modify the result or perform cleanup operations.
+
+  ## Examples
+
+      # Add cleanup after transaction
+      iex> query = MyApp.Post |> Ash.Query.after_transaction(fn query, result ->
+      ...>   cleanup_resources()
+      ...>   result
+      ...> end)
+
+  ## See also
+
+  - `before_transaction/2` for hooks that run before the transaction
+  - `around_transaction/2` for hooks that wrap the entire transaction
+  - `after_action/2` for hooks that run after the action (inside transaction)
+  """
+  @spec after_transaction(t(), after_transaction_fun()) :: t()
+  def after_transaction(query, func) do
+    query = new(query)
+    %{query | after_transaction: query.after_transaction ++ [func]}
+  end
+
+  @doc """
   Adds an around_transaction hook to the query.
 
   Your function will get the query, and a callback that must be called with a query (that may be modified).
@@ -1330,6 +1396,8 @@ defmodule Ash.Query do
 
   ## See also
 
+  - `before_transaction/2` for hooks that run before the transaction
+  - `after_transaction/2` for hooks that run after the transaction
   - `before_action/3` for hooks that run before the action executes
   - `after_action/2` for hooks that run after the action completes
   - `Ash.read/2` for executing queries with hooks

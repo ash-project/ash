@@ -1334,4 +1334,200 @@ defmodule Ash.Test.Actions.ReadTest do
                |> Ash.read!()
     end
   end
+
+  describe "transaction hooks" do
+    test "before_transaction hook can modify query" do
+      author1 = Author |> Ash.Changeset.for_create(:create, %{name: "Test"}) |> Ash.create!()
+      _author2 = Author |> Ash.Changeset.for_create(:create, %{name: "Other"}) |> Ash.create!()
+
+      query =
+        Author
+        |> Ash.Query.before_transaction(fn query ->
+          Ash.Query.filter(query, name == "Test")
+        end)
+
+      results = Ash.read!(query, action: :in_transaction)
+
+      assert length(results) == 1
+      assert List.first(results).id == author1.id
+    end
+
+    test "before_transaction hook can return an error" do
+      query =
+        Author
+        |> Ash.Query.before_transaction(fn _query ->
+          {:error, "Before transaction error"}
+        end)
+
+      assert_raise Ash.Error.Unknown, ~r/Before transaction error/, fn ->
+        Ash.read!(query, action: :in_transaction)
+      end
+    end
+
+    test "multiple before_transaction hooks run in order" do
+      agent = start_supervised!({Agent, fn -> [] end})
+
+      query =
+        Author
+        |> Ash.Query.before_transaction(fn query ->
+          Agent.update(agent, &["first" | &1])
+          query
+        end)
+        |> Ash.Query.before_transaction(fn query ->
+          Agent.update(agent, &["second" | &1])
+          query
+        end)
+
+      Ash.read!(query, action: :in_transaction)
+
+      assert Agent.get(agent, & &1) == ["second", "first"]
+    end
+
+    test "after_transaction hook receives query and result" do
+      author =
+        Author |> Ash.Changeset.for_create(:create, %{name: "Test"}) |> Ash.create!()
+
+      agent = start_supervised!({Agent, fn -> nil end})
+
+      query =
+        Author
+        |> Ash.Query.filter(name == "Test")
+        |> Ash.Query.after_transaction(fn query, result ->
+          Agent.update(agent, fn _ -> {query.resource, result} end)
+          result
+        end)
+
+      results = Ash.read!(query, action: :in_transaction)
+
+      {resource, result_tuple} = Agent.get(agent, & &1)
+      assert resource == Author
+      assert {:ok, _, _, _, _, _} = result_tuple
+      assert length(results) == 1
+      assert List.first(results).id == author.id
+    end
+
+    test "after_transaction hook can modify the result" do
+      Author |> Ash.Changeset.for_create(:create, %{name: "Test"}) |> Ash.create!()
+
+      query =
+        Author
+        |> Ash.Query.filter(name == "Test")
+        |> Ash.Query.after_transaction(fn _query,
+                                          {:ok, results, count, calc_runtime, calc_query, query} ->
+          modified_results = Enum.map(results, &Map.put(&1, :__metadata__, :modified))
+          {:ok, modified_results, count, calc_runtime, calc_query, query}
+        end)
+
+      results = Ash.read!(query, action: :in_transaction)
+      assert List.first(results).__metadata__ == :modified
+    end
+
+    test "after_transaction hook runs on error" do
+      agent = start_supervised!({Agent, fn -> nil end})
+
+      query =
+        Author
+        |> Ash.Query.before_transaction(fn _query ->
+          {:error, "Intentional error"}
+        end)
+        |> Ash.Query.after_transaction(fn _query, result ->
+          Agent.update(agent, fn _ -> result end)
+          result
+        end)
+
+      assert_raise Ash.Error.Unknown, fn ->
+        Ash.read!(query, action: :in_transaction)
+      end
+
+      result = Agent.get(agent, & &1)
+      assert {:error, _} = result
+    end
+
+    test "multiple after_transaction hooks run in order" do
+      Author |> Ash.Changeset.for_create(:create, %{name: "Test"}) |> Ash.create!()
+      agent = start_supervised!({Agent, fn -> [] end})
+
+      query =
+        Author
+        |> Ash.Query.filter(name == "Test")
+        |> Ash.Query.after_transaction(fn _query, result ->
+          Agent.update(agent, &["first" | &1])
+          result
+        end)
+        |> Ash.Query.after_transaction(fn _query, result ->
+          Agent.update(agent, &["second" | &1])
+          result
+        end)
+
+      Ash.read!(query, action: :in_transaction)
+
+      assert Agent.get(agent, & &1) == ["second", "first"]
+    end
+
+    test "hooks run in correct order: around(start) -> before -> action -> after -> around(end)" do
+      Author |> Ash.Changeset.for_create(:create, %{name: "Test"}) |> Ash.create!()
+      agent = start_supervised!({Agent, fn -> [] end})
+
+      query =
+        Author
+        |> Ash.Query.filter(name == "Test")
+        |> Ash.Query.around_transaction(fn query, callback ->
+          Agent.update(agent, &["around_start" | &1])
+          result = callback.(query)
+          Agent.update(agent, &["around_end" | &1])
+          result
+        end)
+        |> Ash.Query.before_transaction(fn query ->
+          Agent.update(agent, &["before" | &1])
+          query
+        end)
+        |> Ash.Query.after_transaction(fn _query, result ->
+          Agent.update(agent, &["after" | &1])
+          result
+        end)
+
+      Ash.read!(query, action: :in_transaction)
+
+      assert Agent.get(agent, & &1) == ["around_end", "after", "before", "around_start"]
+    end
+
+    test "error in before_transaction still runs after_transaction and around_transaction end" do
+      agent = start_supervised!({Agent, fn -> [] end})
+
+      query =
+        Author
+        |> Ash.Query.around_transaction(fn query, callback ->
+          Agent.update(agent, &["around_start" | &1])
+          result = callback.(query)
+          Agent.update(agent, &["around_end" | &1])
+          result
+        end)
+        |> Ash.Query.before_transaction(fn _query ->
+          Agent.update(agent, &["before_error" | &1])
+          {:error, "Before transaction error"}
+        end)
+        |> Ash.Query.after_transaction(fn _query, result ->
+          Agent.update(agent, &["after" | &1])
+          result
+        end)
+
+      assert_raise Ash.Error.Unknown, fn ->
+        Ash.read!(query, action: :in_transaction)
+      end
+
+      assert Agent.get(agent, & &1) == ["around_end", "after", "before_error", "around_start"]
+    end
+
+    test "before_transaction hook must return valid value" do
+      query =
+        Author
+        |> Ash.Query.before_transaction(fn _query ->
+          "invalid return value"
+        end)
+
+      assert_raise Ash.Error.Unknown, ~r/Invalid return value from before_transaction hook/, fn ->
+        Ash.read!(query, action: :in_transaction)
+      end
+    end
+  end
 end

@@ -286,11 +286,9 @@ Ash resource actions follow a well-defined lifecycle that ensures proper data va
 - **Transaction Phase** - Operations within database transaction  
 - **Post-Transaction Phase** - Operations after database transaction
 
-#### Important Notes:
+#### Important Note:
 
-- **Query Actions**: Read queries do not currently have `before_transaction`, `after_transaction`, or `around_transaction` callbacks
 - **Around Action Behavior**: `around_action` hooks do not complete their "end" phase if the action fails
-- **Generic Actions**: Generic actions support validations, preparations, and all hook types including transaction-level hooks (before_transaction/after_transaction/around_transaction).
 
 ### Complete Lifecycle Flow
 
@@ -298,8 +296,8 @@ Ash resource actions follow a well-defined lifecycle that ensures proper data va
 graph TD
     subgraph "Pre-Transaction Phase"
         START["Action Invocation<br/>(Ash.create, Ash.read, Ash.run_action, etc.)"] --> PREP["Changeset/Query/ActionInput Creation"]
-        PREP --> AROUND_START["around_transaction (start)<br/>🚫 Not available for read/query actions"]
-        AROUND_START --> BEFORE_TRANS["before_transaction<br/>🚫 Not available for read/query actions"]
+        PREP --> AROUND_START["around_transaction (start)"]
+        AROUND_START --> BEFORE_TRANS["before_transaction"]
     end
     
     subgraph "Transaction Phase"
@@ -334,7 +332,7 @@ graph TD
     end
     
     subgraph "Post-Transaction Phase"
-        AFTER_TRANS["after_transaction<br/>(Always runs - success/error)<br/>🚫 Not available for read/query actions"] --> AROUND_END["around_transaction (end)<br/>🚫 Not available for read/query actions"]
+        AFTER_TRANS["after_transaction<br/>(Always runs - success/error)"] --> AROUND_END["around_transaction (end)"]
         AROUND_END --> NOTIFICATIONS["Notifications<br/>(If enabled)"]
         NOTIFICATIONS --> RESULT["Return Result"]
     end
@@ -365,7 +363,6 @@ graph TD
   - Resource allocation
   - Logging/monitoring setup
 - **Transaction Context**: Outside transaction
-- **Note**: Not available for query/read actions
 
 ##### 4. before_transaction
 - **When**: Just before transaction starts
@@ -376,7 +373,6 @@ graph TD
   - Cache warming
   - Non-transactional preparations
 - **Transaction Context**: Outside transaction
-- **Note**: Not available for query/read actions
 
 #### Transaction Phase (Inside Database Transaction)
 
@@ -489,7 +485,7 @@ graph TD
   - Retry mechanisms - can change error results to success
 - **Transaction Context**: Outside transaction
 - **Special Capability**: Can transform the final result (e.g., retry failed operations)
-- **Note**: Always runs, regardless of success/failure (not available for query/read actions)
+- **Note**: Always runs, regardless of success/failure
 
 ##### 17. around_transaction (End)
 - **When**: Final cleanup phase
@@ -499,7 +495,6 @@ graph TD
   - Final cleanup
   - Monitoring completion
 - **Transaction Context**: Outside transaction
-- **Note**: Not available for query/read actions
 
 ##### 18. Notifications
 - **When**: After all hooks complete
@@ -537,6 +532,8 @@ The hooks execute in the following order (as of Ash 3.0+):
 
 #### For Read/Query Actions:
 
+1. `around_transaction` (start)
+1. `before_transaction`
 1. Transaction begins (if applicable)
 1. Global preparations/validations/changes (in order of definition)
 1. Action preparations/validations/changes (in order of definition)
@@ -546,6 +543,8 @@ The hooks execute in the following order (as of Ash 3.0+):
 1. `after_action` (success only) OR Error handling
 1. `around_action` (end) - Only on success
 1. Transaction commits/rollbacks (if applicable)
+1. `after_transaction` (always runs - success/error)
+1. `around_transaction` (end)
 
 #### For Generic Actions:
 
@@ -566,13 +565,13 @@ The hooks execute in the following order (as of Ash 3.0+):
 ### Key Points
 
 #### Transaction Boundaries
-- **Outside Transaction**: `around_transaction`, `before_transaction`, `after_transaction` (available for create/update/destroy/generic actions)
+- **Outside Transaction**: `around_transaction`, `before_transaction`, `after_transaction`
 - **Inside Transaction**: Action preparations/validations/changes, Global preparations/validations/changes, `around_action`, `before_action`, `after_action`
 
 #### Error Handling
 - `after_action` only runs on successful operations
 - `around_action` (end) only runs on successful operations
-- `after_transaction` always runs (success and error) - available for create/update/destroy/generic actions
+- `after_transaction` always runs (success and error)
 - `after_transaction` can change the final result - can transform errors into successes (useful for retries)
 - Transaction rollback occurs automatically on errors
 
@@ -592,29 +591,24 @@ The hooks execute in the following order (as of Ash 3.0+):
 ### Action Type Differences
 
 #### Create/Update/Destroy Actions
-- Have full lifecycle including all transaction hooks
-- Support `before_transaction`, `after_transaction`, `around_transaction`
 - Run in transactions by default, unless no hooks of any kind are added to the changeset.
 - Have complete error handling and rollback capabilities
 
 #### Read/Query Actions
-- Do not support `before_transaction`, `after_transaction`, or `around_transaction` hooks
-- Only support `before_action`, `after_action`, and `around_action` hooks
 - Do not run in transactions by default
 - Focus on data retrieval and filtering
 
 #### Generic Actions
-- Support validations, preparations, and all hook types (`before_action`, `after_action`, `around_action`, `before_transaction`, `after_transaction`, `around_transaction`)
+- Support validations, preparations, and all hook types
 - Can run in transactions by setting `transaction? true` in the action definition
-- Transaction hooks work for both transactional and non-transactional generic actions
 - Focus on custom business logic and operations
 
 ### Best Practices
 
-- Use `before_transaction` for external API calls (create/update/destroy/generic actions only)
+- Use `before_transaction` for external API calls
 - Use `before_action` for final data modifications
 - Use `after_action` for transactional side effects
-- Use `after_transaction` for external notifications (create/update/destroy/generic actions only)
+- Use `after_transaction` for external notifications
 - Use `after_transaction` for retry mechanisms and result transformation
 - Keep transaction phase operations fast and focused
 - Handle errors appropriately at each phase
