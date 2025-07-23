@@ -2055,8 +2055,9 @@ defmodule Ash.Filter do
     |> do_relationship_paths(include_exists?, false, expand_aggregates?)
     |> List.flatten()
     |> Enum.flat_map(fn {rel_path} ->
-      [{at_path}, {at_path ++ path ++ rel_path}]
+      [{at_path ++ path ++ rel_path}]
     end)
+    |> then(&[{at_path} | &1])
     |> Kernel.++(
       parent_relationship_paths(expression, at_path, include_exists?, false, expand_aggregates?)
     )
