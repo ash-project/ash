@@ -2,6 +2,19 @@
 
 <!-- changelog -->
 
+## [v3.5.32](https://github.com/ash-project/ash/compare/v3.5.31...v3.5.32) (2025-07-23)
+
+
+
+
+### Bug Fixes:
+
+* ensure that exists "at_path" is returned as a relationship path by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* add before/after/around transaction hooks to generic actions (#2218) by ChristianAlexander
+
 ## [v3.5.31](https://github.com/ash-project/ash/compare/v3.5.30...v3.5.31) (2025-07-22)
 
 
