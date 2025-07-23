@@ -138,7 +138,7 @@ end
 return :create_post
 ```
 
-## Handling failure.
+## Handling failure
 
 Reactor is a saga executor, which means that when failure occurs it tries to
 clean up any intermediate state left behind. By default the `create`, `update`
@@ -148,7 +148,7 @@ failure downstream in the reactor. This can be changed by providing both an
 `:outside_transaction` or `:always` depending on your resource and datalayer
 semantics.
 
-### The `undo` option.
+### The `undo` option
 
 - `:never` - this is the default, and means that the reactor will never try and
   undo the action's work. This is the most performant option, as it means that
@@ -159,7 +159,7 @@ semantics.
   will rollback.
 - `:always` - this forces the step to always undo it's work on failure.
 
-### The `undo_action` option.
+### The `undo_action` option
 
 The behaviour of the `undo_action` is action specific:
 
