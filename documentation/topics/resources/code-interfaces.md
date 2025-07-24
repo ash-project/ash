@@ -383,3 +383,19 @@ end
 ```
 
 These functions are particularly useful for conditional rendering of UI elements based on user permissions.
+
+#### Authorization Function Options
+
+The authorization functions accept the same options as `Ash.can/3` and `Ash.can?/3`, including:
+
+- `log?` - Whether to log the authorization result at `:info` level for debugging purposes
+
+```elixir
+# Enable logging for this specific authorization check
+if MyApp.Blog.can_update_post?(current_user, post, log?: true) do
+  # Show edit button
+end
+
+# This will log authorization details to help with debugging
+MyApp.Blog.can_create_post(current_user, %{title: "New Post"}, log?: true)
+```
