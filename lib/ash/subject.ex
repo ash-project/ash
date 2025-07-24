@@ -121,39 +121,41 @@ defmodule Ash.Subject do
     Ash.Query.set_context(subject, map)
   end
 
-  def set_context(subject, nil), do: subject
-
-  def set_context(subject, map) do
-    %{
-      subject
-      | context:
-          subject.context
-          |> Ash.Helpers.deep_merge_maps(map)
-          |> then(&Ash.Helpers.deep_merge_maps(&1, map[:shared] || %{}))
-    }
+  def set_context(%Ash.ActionInput{} = subject, map) do
+    Ash.ActionInput.set_context(subject, map)
   end
 
   @doc """
-  Gets an argument or attribute value from a Changeset, or just an argument from other subjects.
+  Gets an argument or attribute value from a subject
 
-  For Changesets, this can retrieve both arguments and attributes.
+  For Changesets, this will return the argument if it exists, otherwise the attribute.
   For Query and ActionInput, this only retrieves arguments.
 
   ## Parameters
 
     * `subject` - The subject to get value from
     * `name` - The argument or attribute name (atom or string)
+    * `default` - The default value to return if the argument or attribute is not found
   """
   @spec get_argument_or_attribute(
           subject :: t(),
-          argument_or_attribute :: atom() | binary()
-        ) :: term()
+          argument_or_attribute :: atom() | String.t(),
+          default :: term()
+        ) :: term() | nil
   def get_argument_or_attribute(subject, argument_or_attribute, default \\ nil)
 
+  def get_argument_or_attribute(%Ash.Changeset{} = subject, argument_or_attribute, nil) do
+    Ash.Changeset.get_argument_or_attribute(subject, argument_or_attribute)
+  end
+
+  def get_argument_or_attribute(subject, argument_or_attribute, nil) do
+    get_argument(subject, argument_or_attribute)
+  end
+
   def get_argument_or_attribute(%Ash.Changeset{} = subject, argument_or_attribute, default) do
-    case Ash.Changeset.get_argument_or_attribute(subject, argument_or_attribute) do
-      nil -> default
-      value -> value
+    case Ash.Changeset.fetch_argument_or_attribute(subject, argument_or_attribute) do
+      {:ok, value} -> value
+      :error -> default
     end
   end
 
@@ -171,35 +173,35 @@ defmodule Ash.Subject do
     * `subject` - The subject to get argument from
     * `argument` - The argument name (atom or string)
   """
-  @spec get_argument(subject :: t(), argument :: atom() | binary(), default :: term()) :: term()
-  def get_argument(subject, argument, default \\ nil)
-
-  def get_argument(subject, argument, default) when is_atom(argument) do
-    value =
-      if Map.has_key?(subject.arguments, argument) do
-        Map.get(subject.arguments, argument)
-      else
-        Map.get(subject.arguments, to_string(argument))
-      end
-
-    if is_nil(value) do
-      default
-    else
-      value
-    end
+  @spec get_argument(subject :: t(), argument :: atom() | String.t()) :: term()
+  def get_argument(%Ash.Changeset{} = subject, argument) do
+    Ash.Changeset.get_argument(subject, argument)
   end
 
-  def get_argument(subject, argument, default) when is_binary(argument) do
-    subject.arguments
-    |> Enum.find(fn {key, _} ->
-      to_string(key) == argument
-    end)
-    |> case do
-      {_key, value} ->
-        value
+  def get_argument(%Ash.Query{} = subject, argument) do
+    Ash.Query.get_argument(subject, argument)
+  end
 
-      _ ->
-        default
+  def get_argument(%Ash.ActionInput{} = subject, argument) do
+    Ash.ActionInput.get_argument(subject, argument)
+  end
+
+  @doc """
+  Gets an argument value from the subject
+
+  Supports both atom and string argument names.
+
+  ## Parameters
+
+    * `subject` - The subject to get argument from
+    * `argument` - The argument name (atom or string)
+    * `default` - The default value to return if the argument is not found
+  """
+  @spec get_argument(subject :: t(), argument :: atom() | String.t(), default :: term()) :: term()
+  def get_argument(subject, argument, default \\ nil) do
+    case fetch_argument(subject, argument) do
+      {:ok, value} -> value
+      :error -> default
     end
   end
 
@@ -223,32 +225,17 @@ defmodule Ash.Subject do
     * `subject` - The subject to fetch argument from
     * `argument` - The argument name (atom or string)
   """
-  @spec fetch_argument(subject :: t(), argument :: atom() | binary()) :: {:ok, term()} | :error
-  def fetch_argument(subject, argument) when is_atom(argument) do
-    case Map.fetch(subject.arguments, argument) do
-      {:ok, value} ->
-        {:ok, value}
-
-      :error ->
-        case Map.fetch(subject.arguments, to_string(argument)) do
-          {:ok, value} -> {:ok, value}
-          :error -> :error
-        end
-    end
+  @spec fetch_argument(subject :: t(), argument :: atom() | String.t()) :: {:ok, term()} | :error
+  def fetch_argument(%Ash.Changeset{} = subject, argument) do
+    Ash.Changeset.fetch_argument(subject, argument)
   end
 
-  def fetch_argument(subject, argument) when is_binary(argument) do
-    subject.arguments
-    |> Enum.find(fn {key, _} ->
-      to_string(key) == argument
-    end)
-    |> case do
-      {_key, value} ->
-        {:ok, value}
+  def fetch_argument(%Ash.Query{} = subject, argument) do
+    Ash.Query.fetch_argument(subject, argument)
+  end
 
-      _ ->
-        :error
-    end
+  def fetch_argument(%Ash.ActionInput{} = subject, argument) do
+    Ash.ActionInput.fetch_argument(subject, argument)
   end
 
   @doc """
@@ -277,7 +264,7 @@ defmodule Ash.Subject do
     * `argument` - The argument name (atom or string)
     * `value` - The value to set
   """
-  @spec set_argument(subject :: t(), argument :: atom() | binary(), value :: term()) :: t()
+  @spec set_argument(subject :: t(), argument :: atom() | String.t(), value :: term()) :: t()
   def set_argument(%Ash.Changeset{} = subject, argument, value) do
     Ash.Changeset.set_argument(subject, argument, value)
   end
@@ -300,7 +287,7 @@ defmodule Ash.Subject do
   """
   @spec delete_argument(
           subject :: t(),
-          argument_or_arguments :: atom() | binary() | list(atom() | binary())
+          argument_or_arguments :: atom() | String.t() | list(atom() | String.t())
         ) :: t()
   def delete_argument(%Ash.Changeset{} = subject, argument_or_arguments) do
     Ash.Changeset.delete_argument(subject, argument_or_arguments)
@@ -310,32 +297,51 @@ defmodule Ash.Subject do
     Ash.Query.delete_argument(subject, argument_or_arguments)
   end
 
-  def delete_argument(subject, argument_or_arguments) do
-    argument_or_arguments
-    |> List.wrap()
-    |> Enum.reduce(subject, fn argument, subject ->
-      %{subject | arguments: Map.delete(subject.arguments, argument)}
-    end)
+  def delete_argument(%Ash.ActionInput{} = subject, argument_or_arguments) do
+    Ash.ActionInput.delete_argument(subject, argument_or_arguments)
   end
 
   @doc """
-  Sets a private argument on the subject.
+  Sets a private argument value on the action input.
 
-  Private arguments are not exposed in the public API.
-  Only supported by Changeset and ActionInput.
+  _Only supports `Ash.Changeset` and `Ash.ActionInput` subjects._
 
-  ## Parameters
+  Private arguments are not exposed in the public API and can only be set
+  internally. This function will only work for arguments marked as `public?: false`
+  in the action definition.
 
-    * `subject` - The subject to set private argument on (Changeset or ActionInput)
-    * `argument` - The argument name (atom or string)
-    * `value` - The value to set
+  ## Examples
+
+      # Set a private argument (assuming :internal_flag is private)
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:example, %{})
+      ...> |> Ash.Subject.set_private_argument(:internal_flag, true)
+      ...> |> Ash.Subject.get_argument(:internal_flag)
+      true
+
+      # Attempting to set a public argument as private will error
+      iex> input = MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:example, %{})
+      ...> |> Ash.Subject.set_private_argument(:public_arg, "value")
+      iex> input.valid?
+      false
+
+      # Use in action implementations for internal state
+      iex> MyApp.Post
+      ...> |> Ash.ActionInput.for_action(:complex_workflow, %{data: "user_data"})
+      ...> |> Ash.Subject.set_private_argument(:workflow_step, 1)
+
+  ## See also
+
+  - `set_argument/3` for setting public arguments
+  - `get_argument/2-3` for retrieving argument values
+  - Action argument definitions with `public?: false`
   """
   @spec set_private_argument(
           subject :: Ash.Changeset.t() | Ash.ActionInput.t(),
-          argument :: atom() | binary(),
+          argument :: atom() | String.t(),
           value :: term()
-        ) ::
-          Ash.Changeset.t() | Ash.ActionInput.t()
+        ) :: t()
   def set_private_argument(%Ash.Changeset{} = subject, argument, value) do
     Ash.Changeset.set_private_argument(subject, argument, value)
   end
@@ -347,8 +353,9 @@ defmodule Ash.Subject do
   @doc """
   Sets multiple private arguments on the subject.
 
+  _Only supports `Ash.Changeset` and `Ash.ActionInput` subjects._
+
   Takes a map of argument names to values and sets them all as private arguments.
-  Only supported by Changeset and ActionInput.
 
   ## Parameters
 
@@ -358,8 +365,7 @@ defmodule Ash.Subject do
   @spec set_private_arguments(
           subject :: Ash.Changeset.t() | Ash.ActionInput.t(),
           arguments :: map()
-        ) ::
-          Ash.Changeset.t() | Ash.ActionInput.t()
+        ) :: t()
   def set_private_arguments(subject, map) do
     Enum.reduce(map, subject, fn {key, value}, subject ->
       set_private_argument(subject, key, value)
@@ -390,12 +396,8 @@ defmodule Ash.Subject do
     Ash.Query.before_action(subject, callback, opts)
   end
 
-  def before_action(subject, callback, opts) do
-    if opts[:prepend?] do
-      %{subject | before_action: [callback | subject.before_action]}
-    else
-      %{subject | before_action: subject.before_action ++ [callback]}
-    end
+  def before_action(%Ash.ActionInput{} = subject, callback, opts) do
+    Ash.ActionInput.before_action(subject, callback, opts)
   end
 
   @doc """
@@ -424,12 +426,8 @@ defmodule Ash.Subject do
     Ash.Query.after_action(subject, callback)
   end
 
-  def after_action(subject, callback, opts) do
-    if opts[:prepend?] do
-      %{subject | after_action: [callback | subject.after_action]}
-    else
-      %{subject | after_action: subject.after_action ++ [callback]}
-    end
+  def after_action(%Ash.ActionInput{} = subject, callback, opts) do
+    Ash.ActionInput.after_action(subject, callback, opts)
   end
 
   @doc """
@@ -490,12 +488,8 @@ defmodule Ash.Subject do
     Ash.Query.before_transaction(subject, callback, opts)
   end
 
-  def before_transaction(subject, callback, opts) do
-    if opts[:prepend?] do
-      %{subject | before_transaction: [callback | subject.before_transaction]}
-    else
-      %{subject | before_transaction: subject.before_transaction ++ [callback]}
-    end
+  def before_transaction(%Ash.ActionInput{} = subject, callback, opts) do
+    Ash.ActionInput.before_transaction(subject, callback, opts)
   end
 
   @doc """
@@ -566,12 +560,8 @@ defmodule Ash.Subject do
     Ash.Query.after_transaction(subject, callback, opts)
   end
 
-  def after_transaction(subject, callback, opts) do
-    if opts[:prepend?] do
-      %{subject | after_transaction: [callback | subject.after_transaction]}
-    else
-      %{subject | after_transaction: subject.after_transaction ++ [callback]}
-    end
+  def after_transaction(%Ash.ActionInput{} = subject, callback, opts) do
+    Ash.ActionInput.after_transaction(subject, callback, opts)
   end
 
   @doc """
@@ -652,11 +642,7 @@ defmodule Ash.Subject do
     Ash.Query.around_transaction(subject, callback, opts)
   end
 
-  def around_transaction(subject, callback, opts) do
-    if opts[:prepend?] do
-      %{subject | around_transaction: [callback | subject.around_transaction]}
-    else
-      %{subject | around_transaction: subject.around_transaction ++ [callback]}
-    end
+  def around_transaction(%Ash.ActionInput{} = subject, callback, opts) do
+    Ash.ActionInput.around_transaction(subject, callback, opts)
   end
 end

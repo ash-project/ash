@@ -507,7 +507,7 @@ defmodule Ash.ActionInput do
   - `set_private_argument/3` for setting private arguments
   - `for_action/4` for providing initial arguments
   """
-  @spec set_argument(input :: t(), name :: atom, value :: term()) :: t()
+  @spec set_argument(input :: t(), name :: atom | String.t(), value :: term()) :: t()
   def set_argument(input, argument, value) do
     if input.action do
       argument =
@@ -551,6 +551,26 @@ defmodule Ash.ActionInput do
     else
       input
     end
+  end
+
+  @doc """
+  Deletes one or more arguments from the subject.
+
+  ## Parameters
+
+    * `subject` - The subject to delete arguments from
+    * `arguments` - Single argument name or list of argument names to delete
+  """
+  @spec delete_argument(
+          input :: t(),
+          argument_or_arguments :: atom | String.t() | list(atom | String.t())
+        ) :: t()
+  def delete_argument(input, argument_or_arguments) do
+    argument_or_arguments
+    |> List.wrap()
+    |> Enum.reduce(input, fn argument, input ->
+      %{input | arguments: Map.delete(input.arguments, argument)}
+    end)
   end
 
   @doc """

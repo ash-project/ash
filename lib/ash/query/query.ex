@@ -2796,9 +2796,12 @@ defmodule Ash.Query do
   - `set_argument/3` for adding arguments to queries
   - `for_read/4` for creating queries with arguments
   """
-  @spec get_argument(t, atom) :: term
-  def get_argument(query, argument) when is_atom(argument) do
-    Map.get(query.arguments, argument) || Map.get(query.arguments, to_string(argument))
+  @spec get_argument(t, atom | String.t()) :: term
+  def get_argument(query, argument) when is_atom(argument) or is_binary(argument) do
+    case fetch_argument(query, argument) do
+      {:ok, value} -> value
+      :error -> nil
+    end
   end
 
   @doc """
@@ -2831,8 +2834,10 @@ defmodule Ash.Query do
   - `set_argument/3` for adding arguments to queries
   - `for_read/4` for creating queries with arguments
   """
-  @spec fetch_argument(t, atom) :: {:ok, term} | :error
-  def fetch_argument(query, argument) when is_atom(argument) do
+  @spec fetch_argument(t, atom | String.t()) :: {:ok, term} | :error
+  def fetch_argument(query, argument) when is_atom(argument) or is_binary(argument) do
+    query = new(query)
+
     case Map.fetch(query.arguments, argument) do
       {:ok, value} ->
         {:ok, value}
