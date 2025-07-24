@@ -4,9 +4,11 @@ defmodule Ash.Test.Actions.StreamTest do
 
   alias Ash.Test.Domain, as: Domain
 
-  defmodule Post do
+  defmodule Author do
     @moduledoc false
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -14,7 +16,28 @@ defmodule Ash.Test.Actions.StreamTest do
 
     actions do
       default_accept :*
-      defaults [:destroy, create: :*, update: :*]
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+  end
+
+  defmodule Post do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:destroy, update: :*]
 
       read :read do
         primary? true
@@ -22,6 +45,12 @@ defmodule Ash.Test.Actions.StreamTest do
       end
 
       read :read_with_no_pagination
+
+      create :create do
+        primary? true
+
+        change relate_actor(:author, allow_nil?: true)
+      end
     end
 
     attributes do
@@ -29,6 +58,24 @@ defmodule Ash.Test.Actions.StreamTest do
       attribute :title, :string, allow_nil?: false, public?: true
 
       timestamps()
+    end
+
+    relationships do
+      belongs_to :author, Author, public?: true
+    end
+
+    policies do
+      policy action_type(:read) do
+        authorize_if always()
+      end
+
+      policy action_type(:create) do
+        authorize_if always()
+      end
+
+      policy action_type(:update) do
+        authorize_if relates_to_actor_via(:author)
+      end
     end
   end
 
@@ -121,5 +168,38 @@ defmodule Ash.Test.Actions.StreamTest do
       |> Enum.count()
 
     assert count == 7
+  end
+
+  test "runs successfully when actor is provided without authorize? - Issue #2224" do
+    actor =
+      Author
+      |> Ash.Changeset.for_create(:create)
+      |> Ash.create!()
+
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "updated"},
+               %{title: "updated"}
+             ]
+           } =
+             Ash.bulk_create!(
+               [%{title: "foo"}, %{title: "bar"}],
+               Post,
+               :create,
+               return_stream?: true,
+               return_records?: true,
+               actor: actor
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update!(
+               :update,
+               %{title: "updated"},
+               resource: Post,
+               strategy: :stream,
+               return_records?: true,
+               actor: actor
+             )
   end
 end
