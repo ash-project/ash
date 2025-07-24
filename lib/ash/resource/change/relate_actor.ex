@@ -66,7 +66,8 @@ defmodule Ash.Resource.Change.RelateActor do
           changeset,
           relationship.name,
           actor,
-          type: :append_and_remove
+          type: :append_and_remove,
+          authorize?: false
         )
     end
   end
