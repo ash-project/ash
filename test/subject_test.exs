@@ -652,4 +652,155 @@ defmodule Ash.SubjectTest do
       end
     end
   end
+
+  describe "before_transaction/2-3 - All Subject Types" do
+    test "registers before_transaction callback" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback = fn subj -> subj end
+
+        result = Ash.Subject.before_transaction(subject, callback)
+
+        assert is_struct(result, subject_type)
+        assert length(result.before_transaction) == 1
+        assert [^callback] = result.before_transaction
+      end
+    end
+
+    test "handles prepend option" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn subj -> subj end
+        callback2 = fn subj -> subj end
+
+        result =
+          subject
+          |> Ash.Subject.before_transaction(callback1)
+          |> Ash.Subject.before_transaction(callback2, prepend?: true)
+
+        assert is_struct(result, subject_type)
+        assert length(result.before_transaction) == 2
+        assert [^callback2, ^callback1] = result.before_transaction
+      end
+    end
+
+    test "appends callbacks by default" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn subj -> subj end
+        callback2 = fn subj -> subj end
+        callback3 = fn subj -> subj end
+
+        result =
+          subject
+          |> Ash.Subject.before_transaction(callback1)
+          |> Ash.Subject.before_transaction(callback2)
+          |> Ash.Subject.before_transaction(callback3)
+
+        assert is_struct(result, subject_type)
+        assert length(result.before_transaction) == 3
+        assert [^callback1, ^callback2, ^callback3] = result.before_transaction
+      end
+    end
+  end
+
+  describe "after_transaction/2-3 - All Subject Types" do
+    test "registers after_transaction callback" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback = fn _subj, result -> result end
+
+        result = Ash.Subject.after_transaction(subject, callback)
+
+        assert is_struct(result, subject_type)
+        assert length(result.after_transaction) == 1
+        assert [^callback] = result.after_transaction
+      end
+    end
+
+    test "handles prepend option" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn _subj, result -> result end
+        callback2 = fn _subj, result -> result end
+
+        result =
+          subject
+          |> Ash.Subject.after_transaction(callback1)
+          |> Ash.Subject.after_transaction(callback2, prepend?: true)
+
+        assert is_struct(result, subject_type)
+        assert length(result.after_transaction) == 2
+        assert [^callback2, ^callback1] = result.after_transaction
+      end
+    end
+
+    test "appends callbacks by default" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn _subj, result -> result end
+        callback2 = fn _subj, result -> result end
+        callback3 = fn _subj, result -> result end
+
+        result =
+          subject
+          |> Ash.Subject.after_transaction(callback1)
+          |> Ash.Subject.after_transaction(callback2)
+          |> Ash.Subject.after_transaction(callback3)
+
+        assert length(result.after_transaction) == 3
+        assert [^callback1, ^callback2, ^callback3] = result.after_transaction
+      end
+    end
+  end
+
+  describe "around_transaction/2-3 - All Subject Types" do
+    test "registers around_transaction callback" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback = fn subj, func -> func.(subj) end
+
+        result = Ash.Subject.around_transaction(subject, callback)
+
+        assert is_struct(result, subject_type)
+        assert length(result.around_transaction) == 1
+        assert [^callback] = result.around_transaction
+      end
+    end
+
+    test "handles prepend option" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn subj, func -> func.(subj) end
+        callback2 = fn subj, func -> func.(subj) end
+
+        result =
+          subject
+          |> Ash.Subject.around_transaction(callback1)
+          |> Ash.Subject.around_transaction(callback2, prepend?: true)
+
+        assert is_struct(result, subject_type)
+        assert length(result.around_transaction) == 2
+        assert [^callback2, ^callback1] = result.around_transaction
+      end
+    end
+
+    test "appends callbacks by default" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn subj, func -> func.(subj) end
+        callback2 = fn subj, func -> func.(subj) end
+        callback3 = fn subj, func -> func.(subj) end
+
+        result =
+          subject
+          |> Ash.Subject.around_transaction(callback1)
+          |> Ash.Subject.around_transaction(callback2)
+          |> Ash.Subject.around_transaction(callback3)
+
+        assert length(result.around_transaction) == 3
+        assert [^callback1, ^callback2, ^callback3] = result.around_transaction
+      end
+    end
+  end
 end
