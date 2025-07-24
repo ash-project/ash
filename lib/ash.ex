@@ -928,6 +928,11 @@ defmodule Ash do
       type: :boolean,
       default: false,
       doc: "Whether or not to return a forbidden error in cases of not being authorized."
+    ],
+    log?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not to log the authorization result."
     ]
   ]
 

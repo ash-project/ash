@@ -4,6 +4,7 @@ defmodule Ash.Can do
   """
 
   require Ash.Query
+  require Logger
 
   @type subject ::
           Ash.Query.t()
@@ -191,6 +192,9 @@ defmodule Ash.Can do
               private: %{pre_flight_authorization?: pre_flight?}
             })
         end
+        |> Ash.Subject.set_context(%{
+          private: %{authorizer_log?: opts[:log?] || false}
+        })
 
       case Ash.Domain.Info.resource(domain, resource) do
         {:ok, _} ->
@@ -529,20 +533,6 @@ defmodule Ash.Can do
       )
     else
       expr
-      # if context.subject do
-      #   Ash.Expr.fill_template(
-      #     expr,
-      #     actor: context.actor,
-      #     tenant: context.subject.tenant,
-      #     args: context.subject.arguments,
-      #     context: context.subject.context
-      #   )
-      # else
-      #   Ash.Expr.fill_template(
-      #     expr,
-      #     actor: context.actor
-      #   )
-      # end
     end
   end
 
@@ -590,6 +580,10 @@ defmodule Ash.Can do
 
     case authorizers do
       [] ->
+        if opts[:log?] do
+          Logger.info("No authorizers present on #{inspect(subject.resource)}")
+        end
+
         {:ok, true}
 
       authorizers ->

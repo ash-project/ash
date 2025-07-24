@@ -36,12 +36,13 @@ defmodule Ash.Error.Forbidden.Policy do
         Ash.Policy.Info.log_policy_breakdowns()
       end
 
-    case log_level do
-      nil ->
-        :ok
+    log_level =
+      log_level || (opts[:subject] && opts[:subject].context[:private][:authorizer_log?] && :info)
 
-      level ->
-        Logger.log(level, report(exception, help_text?: false))
+    if log_level do
+      Logger.log(log_level, report(exception, help_text?: false))
+    else
+      :ok
     end
 
     exception

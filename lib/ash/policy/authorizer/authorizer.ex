@@ -1565,7 +1565,11 @@ defmodule Ash.Policy.Authorizer do
   defp log_successful_policy_breakdown(authorizer, filter \\ nil) do
     case Ash.Policy.Info.log_successful_policy_breakdowns() do
       nil ->
-        :ok
+        if authorizer.subject.context[:private][:authorizer_log?] do
+          do_log_successful_policy_breakdown(authorizer, filter, :info)
+        else
+          :ok
+        end
 
       level ->
         do_log_successful_policy_breakdown(authorizer, filter, level)
