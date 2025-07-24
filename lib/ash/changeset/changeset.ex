@@ -6546,9 +6546,9 @@ defmodule Ash.Changeset do
   - `around_transaction/2` for hooks that wrap the entire transaction
   """
   @spec before_transaction(
-          t(),
-          before_transaction_fun(),
-          Keyword.t()
+          changeset :: t(),
+          fun :: before_transaction_fun(),
+          opts :: Keyword.t()
         ) :: t()
   def before_transaction(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :before_transaction)
@@ -6622,9 +6622,9 @@ defmodule Ash.Changeset do
   - `around_action/2` for hooks that wrap the data layer action
   """
   @spec after_action(
-          t(),
-          after_action_fun(),
-          Keyword.t()
+          changeset :: t(),
+          fun :: after_action_fun(),
+          opts :: Keyword.t()
         ) :: t()
   def after_action(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :after_action)
@@ -6724,9 +6724,9 @@ defmodule Ash.Changeset do
   - `around_transaction/2` for hooks that wrap the entire transaction
   """
   @spec after_transaction(
-          t(),
-          after_transaction_fun(),
-          Keyword.t()
+          changeset :: t(),
+          fun :: after_transaction_fun(),
+          opts :: Keyword.t()
         ) :: t()
   def after_transaction(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :after_transaction)
@@ -6784,10 +6784,19 @@ defmodule Ash.Changeset do
   - Multi-step actions guide for complex workflow patterns
   """
 
-  @spec around_action(t(), around_action_fun()) :: t()
-  def around_action(changeset, func) do
+  @spec around_action(
+          changeset :: t(),
+          fun :: around_action_fun(),
+          opts :: Keyword.t()
+        ) :: t()
+  def around_action(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :around_action)
-    %{changeset | around_action: changeset.around_action ++ [func]}
+
+    if opts[:prepend?] do
+      %{changeset | around_action: [func | changeset.around_action]}
+    else
+      %{changeset | around_action: changeset.around_action ++ [func]}
+    end
   end
 
   @doc """
@@ -6829,10 +6838,19 @@ defmodule Ash.Changeset do
   - Multi-step actions guide for complex workflow patterns
   """
 
-  @spec around_transaction(t(), around_transaction_fun()) :: t()
-  def around_transaction(changeset, func) do
+  @spec around_transaction(
+          changeset :: t(),
+          fun :: around_transaction_fun(),
+          opts :: Keyword.t()
+        ) :: t()
+  def around_transaction(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :around_transaction)
-    %{changeset | around_transaction: changeset.around_transaction ++ [func]}
+
+    if opts[:prepend?] do
+      %{changeset | around_transaction: [func | changeset.around_transaction]}
+    else
+      %{changeset | around_transaction: changeset.around_transaction ++ [func]}
+    end
   end
 
   defp maybe_dirty_hook(changeset, type) do

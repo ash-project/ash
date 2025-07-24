@@ -998,10 +998,15 @@ defmodule Ash.ActionInput do
   """
   @spec after_action(
           input :: t(),
-          fun :: after_action_fun()
+          fun :: after_action_fun(),
+          opts :: Keyword.t()
         ) :: t()
-  def after_action(input, func) do
-    %{input | after_action: input.after_action ++ [func]}
+  def after_action(input, func, opts \\ []) do
+    if opts[:prepend?] do
+      %{input | after_action: [func | input.after_action]}
+    else
+      %{input | after_action: input.after_action ++ [func]}
+    end
   end
 
   @doc """
@@ -1025,9 +1030,17 @@ defmodule Ash.ActionInput do
   - `around_transaction/2` for hooks that wrap the entire transaction
   - `before_action/3` for hooks that run before the action (inside transaction)
   """
-  @spec before_transaction(t, before_transaction_fun) :: t
-  def before_transaction(input, func) do
-    %{input | before_transaction: input.before_transaction ++ [func]}
+  @spec before_transaction(
+          input :: t(),
+          fun :: before_transaction_fun(),
+          opts :: Keyword.t()
+        ) :: t()
+  def before_transaction(input, func, opts \\ []) do
+    if opts[:prepend?] do
+      %{input | before_transaction: [func | input.before_transaction]}
+    else
+      %{input | before_transaction: input.before_transaction ++ [func]}
+    end
   end
 
   @doc """
@@ -1051,9 +1064,17 @@ defmodule Ash.ActionInput do
   - `around_transaction/2` for hooks that wrap the entire transaction
   - `after_action/2` for hooks that run after the action (inside transaction)
   """
-  @spec after_transaction(t, after_transaction_fun) :: t
-  def after_transaction(input, func) do
-    %{input | after_transaction: input.after_transaction ++ [func]}
+  @spec after_transaction(
+          input :: t(),
+          fun :: after_transaction_fun(),
+          opts :: Keyword.t()
+        ) :: t()
+  def after_transaction(input, func, opts \\ []) do
+    if opts[:prepend?] do
+      %{input | after_transaction: [func | input.after_transaction]}
+    else
+      %{input | after_transaction: input.after_transaction ++ [func]}
+    end
   end
 
   @doc """
@@ -1081,9 +1102,17 @@ defmodule Ash.ActionInput do
   - `after_transaction/2` for hooks that run after the transaction
   - `before_action/3` and `after_action/2` for hooks that run inside the transaction
   """
-  @spec around_transaction(t, around_transaction_fun) :: t
-  def around_transaction(input, func) do
-    %{input | around_transaction: input.around_transaction ++ [func]}
+  @spec around_transaction(
+          input :: t(),
+          fun :: around_transaction_fun(),
+          opts :: Keyword.t()
+        ) :: t()
+  def around_transaction(input, func, opts \\ []) do
+    if opts[:prepend?] do
+      %{input | around_transaction: [func | input.around_transaction]}
+    else
+      %{input | around_transaction: input.around_transaction ++ [func]}
+    end
   end
 
   @doc false
