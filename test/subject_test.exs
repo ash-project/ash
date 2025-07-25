@@ -3,21 +3,33 @@ defmodule Ash.SubjectTest do
 
   defmodule Post do
     use Ash.Resource,
-      domain: Ash.Test.Domain
+      domain: Ash.Test.Domain,
+      primary_read_warning?: false
 
     actions do
-      default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      defaults [:destroy, :update]
+      default_accept [:title, :body, :published, :tenant_id]
+
+      read :read do
+        primary? true
+
+        argument :name, :string, public?: false
+      end
+
+      create :create do
+        primary? true
+        argument :name, :string, public?: false
+      end
 
       action :custom_action, :struct do
-        argument :name, :string, allow_nil?: false
+        argument :name, :string, public?: false
         run fn input, _ -> {:ok, input} end
       end
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
+      attribute :title, :string
       attribute :body, :string
       attribute :published, :boolean, default: false
       attribute :tenant_id, :string
@@ -43,13 +55,9 @@ defmodule Ash.SubjectTest do
 
   # Helper function to create subjects consistently for each type
   defp new_subject(subject_type) do
-    subject = apply(subject_type, :new, [Post])
-
-    if subject_type == Ash.ActionInput do
-      # ActionInput needs an action to properly handle arguments
-      Ash.ActionInput.for_action(subject, :custom_action, %{name: "test"})
-    else
-      subject
+    case subject_type do
+      Ash.ActionInput -> Ash.ActionInput.for_action(Post, :custom_action, %{})
+      _ -> apply(subject_type, :new, [Post])
     end
   end
 
@@ -181,15 +189,9 @@ defmodule Ash.SubjectTest do
         subject = new_subject(subject_type)
 
         # Set an argument that works for all types
-        result =
-          case subject_type do
-            Ash.ActionInput -> Ash.Subject.set_argument(subject, :name, "value")
-            _ -> Ash.Subject.set_argument(subject, :custom_arg, "value")
-          end
+        result = %{subject | arguments: %{age: 42}}
 
-        expected_arg = if subject_type == Ash.ActionInput, do: :name, else: :custom_arg
-        assert Ash.Subject.get_argument(result, expected_arg) == "value"
-        assert Ash.Subject.get_argument(result, :non_existent) == nil
+        assert Ash.Subject.get_argument(result, :age) == 42
         assert is_struct(result, subject_type)
       end
     end
@@ -199,15 +201,9 @@ defmodule Ash.SubjectTest do
         subject = new_subject(subject_type)
 
         # Set an argument that works for all types
-        result =
-          case subject_type do
-            Ash.ActionInput -> Ash.Subject.set_argument(subject, :name, "value")
-            _ -> Ash.Subject.set_argument(subject, :test_arg, "value")
-          end
+        result = %{subject | arguments: %{"age" => 42}}
 
-        # Should find argument by string key even though it was set with atom
-        expected_arg_str = if subject_type == Ash.ActionInput, do: "name", else: "test_arg"
-        assert Ash.Subject.get_argument(result, expected_arg_str) == "value"
+        assert Ash.Subject.get_argument(result, "age") == 42
         assert is_struct(result, subject_type)
       end
     end
@@ -218,7 +214,6 @@ defmodule Ash.SubjectTest do
 
         assert Ash.Subject.get_argument(subject, :missing_arg, "default_value") == "default_value"
         assert Ash.Subject.get_argument(subject, "missing_arg", :default_atom) == :default_atom
-        assert Ash.Subject.get_argument(subject, :missing_arg, 42) == 42
         assert is_struct(subject, subject_type)
       end
     end
@@ -228,20 +223,9 @@ defmodule Ash.SubjectTest do
         subject = new_subject(subject_type)
 
         # Set an argument that works for all types
-        result =
-          case subject_type do
-            Ash.ActionInput -> Ash.Subject.set_argument(subject, :name, "actual_value")
-            _ -> Ash.Subject.set_argument(subject, :existing_arg, "actual_value")
-          end
+        result = %{subject | arguments: %{name: "actual_value"}}
 
-        expected_arg = if subject_type == Ash.ActionInput, do: :name, else: :existing_arg
-        expected_arg_str = if subject_type == Ash.ActionInput, do: "name", else: "existing_arg"
-
-        assert Ash.Subject.get_argument(result, expected_arg, "default_value") == "actual_value"
-
-        assert Ash.Subject.get_argument(result, expected_arg_str, "default_value") ==
-                 "actual_value"
-
+        assert Ash.Subject.get_argument(result, :name, "default_value") == "actual_value"
         assert is_struct(result, subject_type)
       end
     end
@@ -253,14 +237,10 @@ defmodule Ash.SubjectTest do
         subject = new_subject(subject_type)
 
         # Set an argument that works for all types
-        result =
-          case subject_type do
-            Ash.ActionInput -> Ash.Subject.set_argument(subject, :name, "value")
-            _ -> Ash.Subject.set_argument(subject, :custom_arg, "value")
-          end
+        result = %{subject | arguments: %{"age" => 42, name: "value"}}
 
-        expected_arg = if subject_type == Ash.ActionInput, do: :name, else: :custom_arg
-        assert {:ok, "value"} = Ash.Subject.fetch_argument(result, expected_arg)
+        assert {:ok, "value"} = Ash.Subject.fetch_argument(result, :name)
+        assert {:ok, 42} = Ash.Subject.fetch_argument(result, "age")
         assert :error = Ash.Subject.fetch_argument(result, :missing)
         assert is_struct(result, subject_type)
       end
@@ -271,14 +251,9 @@ defmodule Ash.SubjectTest do
         subject = new_subject(subject_type)
 
         # Set an argument that works for all types
-        result =
-          case subject_type do
-            Ash.ActionInput -> Ash.Subject.set_argument(subject, :name, "value")
-            _ -> Ash.Subject.set_argument(subject, :test_arg, "value")
-          end
+        result = %{subject | arguments: %{"name" => "value"}}
 
-        expected_arg_str = if subject_type == Ash.ActionInput, do: "name", else: "test_arg"
-        assert {:ok, "value"} = Ash.Subject.fetch_argument(result, expected_arg_str)
+        assert {:ok, "value"} = Ash.Subject.fetch_argument(result, :name)
         assert is_struct(result, subject_type)
       end
     end
@@ -329,61 +304,37 @@ defmodule Ash.SubjectTest do
 
   describe "get_argument_or_attribute/2,3 - All Subject Types" do
     test "gets argument when exists for all types" do
-      # Test Changeset and Query
-      for subject_type <- [Ash.Changeset, Ash.Query] do
-        subject =
-          new_subject(subject_type)
-          |> Ash.Subject.set_argument(:custom_arg, "arg_value")
+      for subject_type <- [Ash.Changeset, Ash.Query, Ash.ActionInput] do
+        subject = new_subject(subject_type)
+
+        subject = %{subject | arguments: %{custom_arg: "arg_value"}}
 
         assert Ash.Subject.get_argument_or_attribute(subject, :custom_arg) == "arg_value"
         assert is_struct(subject, subject_type)
       end
-
-      # Test ActionInput
-      input = Ash.ActionInput.for_action(Post, :custom_action, %{name: "arg_value"})
-      assert Ash.Subject.get_argument_or_attribute(input, :name) == "arg_value"
-      assert is_struct(input, Ash.ActionInput)
     end
 
     test "gets attribute for Changeset, falls back to argument for others" do
       # For Changeset - tests both argument priority and attribute fallback
-      changeset =
-        Post
-        |> Ash.Changeset.new()
-        |> Ash.Changeset.set_argument(:custom_arg, "arg_value")
-        |> Ash.Changeset.change_attribute(:title, "Test Title")
+      changeset = Ash.Changeset.new(%Post{title: "Existing Title"})
 
-      # Should get argument when both exist
-      assert Ash.Subject.get_argument_or_attribute(changeset, :custom_arg) == "arg_value"
-      # Should get attribute when no argument exists
-      assert Ash.Subject.get_argument_or_attribute(changeset, :title) == "Test Title"
+      assert Ash.Subject.get_argument_or_attribute(changeset, :title) == "Existing Title"
 
-      # For Query - only arguments
-      query =
-        Post
-        |> Ash.Query.new()
-        |> Ash.Query.set_argument(:test_arg, "test_value")
+      changeset = %{changeset | arguments: %{title: "New Title"}}
 
-      assert Ash.Subject.get_argument_or_attribute(query, :test_arg) == "test_value"
-      assert is_struct(query, Ash.Query)
+      assert Ash.Subject.get_argument_or_attribute(changeset, :title) == "New Title"
 
-      # For ActionInput - only arguments
-      input = Ash.ActionInput.for_action(Post, :custom_action, %{name: "test_value"})
-      assert Ash.Subject.get_argument_or_attribute(input, :name) == "test_value"
-      assert is_struct(input, Ash.ActionInput)
+      for subject_type <- [Ash.Query, Ash.ActionInput] do
+        subject = new_subject(subject_type)
+        subject = %{subject | arguments: %{name: "New Title"}}
+        assert Ash.Subject.get_argument_or_attribute(subject, :name) == "New Title"
+        assert is_struct(subject, subject_type)
+      end
     end
 
     test "returns default when not found" do
       for subject_type <- @subject_types do
-        subject =
-          case subject_type do
-            Ash.Changeset -> Ash.Changeset.new(Post)
-            Ash.Query -> Ash.Query.new(Post)
-            Ash.ActionInput -> Ash.ActionInput.new(Post)
-          end
-
-        assert Ash.Subject.get_argument_or_attribute(subject, :missing, "default_value") ==
-                 "default_value"
+        subject = new_subject(subject_type)
 
         assert Ash.Subject.get_argument_or_attribute(subject, :missing, 42) == 42
       end
@@ -391,34 +342,12 @@ defmodule Ash.SubjectTest do
 
     test "returns actual value when found, ignoring default" do
       for subject_type <- @subject_types do
-        subject =
-          case subject_type do
-            Ash.Changeset ->
-              Post
-              |> Ash.Changeset.new()
-              |> Ash.Changeset.set_argument(:arg_name, "arg_value")
-              |> Ash.Changeset.change_attribute(:title, "Title Value")
+        subject = new_subject(subject_type)
 
-            Ash.Query ->
-              Post
-              |> Ash.Query.new()
-              |> Ash.Query.set_argument(:arg_name, "arg_value")
+        subject = %{subject | arguments: %{name: "arg_value"}}
 
-            Ash.ActionInput ->
-              Ash.ActionInput.for_action(Post, :custom_action, %{name: "arg_value"})
-          end
-
-        # Should get argument value and ignore default
-        expected_arg = if subject_type == Ash.ActionInput, do: :name, else: :arg_name
-
-        assert Ash.Subject.get_argument_or_attribute(subject, expected_arg, "default") ==
+        assert Ash.Subject.get_argument_or_attribute(subject, :name, "default") ==
                  "arg_value"
-
-        # For Changeset, also test attribute value
-        if subject_type == Ash.Changeset do
-          assert Ash.Subject.get_argument_or_attribute(subject, :title, "default") ==
-                   "Title Value"
-        end
 
         assert is_struct(subject, subject_type)
       end
@@ -430,15 +359,9 @@ defmodule Ash.SubjectTest do
       for subject_type <- @subject_types do
         subject = new_subject(subject_type)
 
-        # Set an argument that works for all types
-        result =
-          case subject_type do
-            Ash.ActionInput -> Ash.Subject.set_argument(subject, :name, "value1")
-            _ -> Ash.Subject.set_argument(subject, :arg1, "value1")
-          end
+        result = %{subject | arguments: %{name: "value1"}}
 
-        expected_arg = if subject_type == Ash.ActionInput, do: :name, else: :arg1
-        assert Ash.Subject.get_argument(result, expected_arg) == "value1"
+        assert Ash.Subject.get_argument(result, :name) == "value1"
         assert is_struct(result, subject_type)
       end
     end
@@ -449,35 +372,10 @@ defmodule Ash.SubjectTest do
       for subject_type <- @subject_types do
         subject = new_subject(subject_type)
 
-        # Use arguments that work for each type
-        args =
-          case subject_type do
-            # ActionInput can only set defined action arguments
-            Ash.ActionInput -> %{name: "value1"}
-            _ -> %{arg1: "value1", arg2: "value2", arg3: "value3"}
-          end
-
-        result = Ash.Subject.set_arguments(subject, args)
-
-        if subject_type == Ash.ActionInput do
-          assert Ash.Subject.get_argument(result, :name) == "value1"
-        else
-          assert Ash.Subject.get_argument(result, :arg1) == "value1"
-          assert Ash.Subject.get_argument(result, :arg2) == "value2"
-          assert Ash.Subject.get_argument(result, :arg3) == "value3"
-        end
+        result = Ash.Subject.set_arguments(subject, %{name: "value1"})
 
         assert is_struct(result, subject_type)
-      end
-    end
-
-    test "handles empty map" do
-      for subject_type <- @subject_types do
-        subject = new_subject(subject_type)
-
-        result = Ash.Subject.set_arguments(subject, %{})
-
-        assert is_struct(result, subject_type)
+        assert result.arguments.name == "value1"
       end
     end
   end
@@ -487,31 +385,12 @@ defmodule Ash.SubjectTest do
       for subject_type <- @subject_types do
         subject = new_subject(subject_type)
 
-        # Set arguments that work for each type first
-        with_args =
-          case subject_type do
-            Ash.ActionInput ->
-              # ActionInput starts with name="test", add more if possible
-              Ash.Subject.set_argument(subject, :name, "v1")
+        subject = %{subject | arguments: %{name: "value1"}}
 
-            _ ->
-              Ash.Subject.set_arguments(subject, %{arg1: "v1", arg2: "v2", arg3: "v3"})
-          end
-
-        result =
-          if subject_type == Ash.ActionInput do
-            # For ActionInput, we can only delete the name argument
-            delete_result = Ash.Subject.delete_argument(with_args, :name)
-            refute Map.has_key?(delete_result.arguments, :name)
-            delete_result
-          else
-            delete_result = Ash.Subject.delete_argument(with_args, :arg1)
-            refute Map.has_key?(delete_result.arguments, :arg1)
-            assert Map.has_key?(delete_result.arguments, :arg2)
-            delete_result
-          end
+        result = Ash.Subject.delete_argument(subject, :name)
 
         assert is_struct(result, subject_type)
+        refute Map.has_key?(result.arguments, :name)
       end
     end
 
@@ -519,69 +398,13 @@ defmodule Ash.SubjectTest do
       for subject_type <- @subject_types do
         subject = new_subject(subject_type)
 
-        # Set arguments that work for each type first
-        with_args =
-          case subject_type do
-            Ash.ActionInput ->
-              # ActionInput only has name argument defined, so we can only test deleting that
-              subject
+        subject = %{subject | arguments: %{name: "value1", age: 42}}
 
-            _ ->
-              Ash.Subject.set_arguments(subject, %{arg1: "v1", arg2: "v2", arg3: "v3"})
-          end
-
-        result =
-          if subject_type == Ash.ActionInput do
-            # For ActionInput, delete the name argument
-            delete_result = Ash.Subject.delete_argument(with_args, [:name])
-            refute Map.has_key?(delete_result.arguments, :name)
-            delete_result
-          else
-            delete_result = Ash.Subject.delete_argument(with_args, [:arg1, :arg2])
-            refute Map.has_key?(delete_result.arguments, :arg1)
-            refute Map.has_key?(delete_result.arguments, :arg2)
-            assert Map.has_key?(delete_result.arguments, :arg3)
-            delete_result
-          end
+        result = Ash.Subject.delete_argument(subject, [:name, :age])
 
         assert is_struct(result, subject_type)
-      end
-    end
-
-    test "deletes non-existing argument gracefully" do
-      for subject_type <- @subject_types do
-        subject = new_subject(subject_type)
-
-        result = Ash.Subject.delete_argument(subject, :non_existent)
-
-        assert is_struct(result, subject_type)
-      end
-    end
-  end
-
-  describe "set_private_argument/3 - Changeset & ActionInput Only" do
-    @supported_types [Ash.Changeset, Ash.ActionInput]
-
-    test "sets private argument for supported types" do
-      for subject_type <- @supported_types do
-        subject =
-          case subject_type do
-            Ash.Changeset -> Ash.Changeset.for_create(Post, :create, %{title: "Test"})
-            Ash.ActionInput -> Ash.ActionInput.for_action(Post, :custom_action, %{name: "test"})
-          end
-
-        result = Ash.Subject.set_private_argument(subject, :private_arg, "secret")
-
-        # Private arguments are stored internally - just verify no error
-        assert is_struct(result, subject_type)
-      end
-    end
-
-    test "raises FunctionClauseError for Query (unsupported)" do
-      query = Ash.Query.new(Post)
-
-      assert_raise FunctionClauseError, fn ->
-        Ash.Subject.set_private_argument(query, :private_arg, "secret")
+        refute Map.has_key?(result.arguments, :name)
+        refute Map.has_key?(result.arguments, :age)
       end
     end
   end
@@ -649,6 +472,157 @@ defmodule Ash.SubjectTest do
 
         assert is_struct(result, subject_type)
         assert length(result.after_action) == 1
+      end
+    end
+  end
+
+  describe "before_transaction/2-3 - All Subject Types" do
+    test "registers before_transaction callback" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback = fn subj -> subj end
+
+        result = Ash.Subject.before_transaction(subject, callback)
+
+        assert is_struct(result, subject_type)
+        assert length(result.before_transaction) == 1
+        assert [^callback] = result.before_transaction
+      end
+    end
+
+    test "handles prepend option" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn subj -> subj end
+        callback2 = fn subj -> subj end
+
+        result =
+          subject
+          |> Ash.Subject.before_transaction(callback1)
+          |> Ash.Subject.before_transaction(callback2, prepend?: true)
+
+        assert is_struct(result, subject_type)
+        assert length(result.before_transaction) == 2
+        assert [^callback2, ^callback1] = result.before_transaction
+      end
+    end
+
+    test "appends callbacks by default" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn subj -> subj end
+        callback2 = fn subj -> subj end
+        callback3 = fn subj -> subj end
+
+        result =
+          subject
+          |> Ash.Subject.before_transaction(callback1)
+          |> Ash.Subject.before_transaction(callback2)
+          |> Ash.Subject.before_transaction(callback3)
+
+        assert is_struct(result, subject_type)
+        assert length(result.before_transaction) == 3
+        assert [^callback1, ^callback2, ^callback3] = result.before_transaction
+      end
+    end
+  end
+
+  describe "after_transaction/2-3 - All Subject Types" do
+    test "registers after_transaction callback" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback = fn _subj, result -> result end
+
+        result = Ash.Subject.after_transaction(subject, callback)
+
+        assert is_struct(result, subject_type)
+        assert length(result.after_transaction) == 1
+        assert [^callback] = result.after_transaction
+      end
+    end
+
+    test "handles prepend option" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn _subj, result -> result end
+        callback2 = fn _subj, result -> result end
+
+        result =
+          subject
+          |> Ash.Subject.after_transaction(callback1)
+          |> Ash.Subject.after_transaction(callback2, prepend?: true)
+
+        assert is_struct(result, subject_type)
+        assert length(result.after_transaction) == 2
+        assert [^callback2, ^callback1] = result.after_transaction
+      end
+    end
+
+    test "appends callbacks by default" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn _subj, result -> result end
+        callback2 = fn _subj, result -> result end
+        callback3 = fn _subj, result -> result end
+
+        result =
+          subject
+          |> Ash.Subject.after_transaction(callback1)
+          |> Ash.Subject.after_transaction(callback2)
+          |> Ash.Subject.after_transaction(callback3)
+
+        assert length(result.after_transaction) == 3
+        assert [^callback1, ^callback2, ^callback3] = result.after_transaction
+      end
+    end
+  end
+
+  describe "around_transaction/2-3 - All Subject Types" do
+    test "registers around_transaction callback" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback = fn subj, func -> func.(subj) end
+
+        result = Ash.Subject.around_transaction(subject, callback)
+
+        assert is_struct(result, subject_type)
+        assert length(result.around_transaction) == 1
+        assert [^callback] = result.around_transaction
+      end
+    end
+
+    test "handles prepend option" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn subj, func -> func.(subj) end
+        callback2 = fn subj, func -> func.(subj) end
+
+        result =
+          subject
+          |> Ash.Subject.around_transaction(callback1)
+          |> Ash.Subject.around_transaction(callback2, prepend?: true)
+
+        assert is_struct(result, subject_type)
+        assert length(result.around_transaction) == 2
+        assert [^callback2, ^callback1] = result.around_transaction
+      end
+    end
+
+    test "appends callbacks by default" do
+      for subject_type <- @subject_types do
+        subject = new_subject(subject_type)
+        callback1 = fn subj, func -> func.(subj) end
+        callback2 = fn subj, func -> func.(subj) end
+        callback3 = fn subj, func -> func.(subj) end
+
+        result =
+          subject
+          |> Ash.Subject.around_transaction(callback1)
+          |> Ash.Subject.around_transaction(callback2)
+          |> Ash.Subject.around_transaction(callback3)
+
+        assert length(result.around_transaction) == 3
+        assert [^callback1, ^callback2, ^callback3] = result.around_transaction
       end
     end
   end

@@ -1325,10 +1325,19 @@ defmodule Ash.Query do
   - `around_transaction/2` for hooks that wrap the entire transaction
   - `before_action/3` for hooks that run before the action (inside transaction)
   """
-  @spec before_transaction(t(), before_transaction_fun()) :: t()
-  def before_transaction(query, func) do
+  @spec before_transaction(
+          query :: t(),
+          fun :: before_transaction_fun(),
+          opts :: Keyword.t()
+        ) :: t()
+  def before_transaction(query, func, opts \\ []) do
     query = new(query)
-    %{query | before_transaction: query.before_transaction ++ [func]}
+
+    if opts[:prepend?] do
+      %{query | before_transaction: [func | query.before_transaction]}
+    else
+      %{query | before_transaction: query.before_transaction ++ [func]}
+    end
   end
 
   @doc """
@@ -1352,10 +1361,19 @@ defmodule Ash.Query do
   - `around_transaction/2` for hooks that wrap the entire transaction
   - `after_action/2` for hooks that run after the action (inside transaction)
   """
-  @spec after_transaction(t(), after_transaction_fun()) :: t()
-  def after_transaction(query, func) do
+  @spec after_transaction(
+          query :: t(),
+          fun :: after_transaction_fun(),
+          opts :: Keyword.t()
+        ) :: t()
+  def after_transaction(query, func, opts \\ []) do
     query = new(query)
-    %{query | after_transaction: query.after_transaction ++ [func]}
+
+    if opts[:prepend?] do
+      %{query | after_transaction: [func | query.after_transaction]}
+    else
+      %{query | after_transaction: query.after_transaction ++ [func]}
+    end
   end
 
   @doc """
@@ -1403,10 +1421,19 @@ defmodule Ash.Query do
   - `Ash.read/2` for executing queries with hooks
   """
 
-  @spec around_transaction(t(), around_transaction_fun()) :: t()
-  def around_transaction(query, func) do
+  @spec around_transaction(
+          query :: t(),
+          fun :: around_transaction_fun(),
+          opts :: Keyword.t()
+        ) :: t()
+  def around_transaction(query, func, opts \\ []) do
     query = new(query)
-    %{query | around_transaction: query.around_transaction ++ [func]}
+
+    if opts[:prepend?] do
+      %{query | around_transaction: [func | query.around_transaction]}
+    else
+      %{query | around_transaction: query.around_transaction ++ [func]}
+    end
   end
 
   @doc """
@@ -1529,11 +1556,11 @@ defmodule Ash.Query do
   - `Ash.read/2` for executing queries with hooks
   """
   @spec after_action(
-          t(),
-          (t(), [Ash.Resource.record()] ->
-             {:ok, [Ash.Resource.record()]}
-             | {:ok, [Ash.Resource.record()], list(Ash.Notifier.Notification.t())}
-             | {:error, term})
+          query :: t(),
+          fun :: (t(), [Ash.Resource.record()] ->
+                    {:ok, [Ash.Resource.record()]}
+                    | {:ok, [Ash.Resource.record()], list(Ash.Notifier.Notification.t())}
+                    | {:error, term})
         ) :: t()
   # in 4.0, add an option to prepend hooks
   def after_action(query, func) do
@@ -2769,9 +2796,12 @@ defmodule Ash.Query do
   - `set_argument/3` for adding arguments to queries
   - `for_read/4` for creating queries with arguments
   """
-  @spec get_argument(t, atom) :: term
-  def get_argument(query, argument) when is_atom(argument) do
-    Map.get(query.arguments, argument) || Map.get(query.arguments, to_string(argument))
+  @spec get_argument(t, atom | String.t()) :: term
+  def get_argument(query, argument) when is_atom(argument) or is_binary(argument) do
+    case fetch_argument(query, argument) do
+      {:ok, value} -> value
+      :error -> nil
+    end
   end
 
   @doc """
@@ -2804,8 +2834,10 @@ defmodule Ash.Query do
   - `set_argument/3` for adding arguments to queries
   - `for_read/4` for creating queries with arguments
   """
-  @spec fetch_argument(t, atom) :: {:ok, term} | :error
-  def fetch_argument(query, argument) when is_atom(argument) do
+  @spec fetch_argument(t, atom | String.t()) :: {:ok, term} | :error
+  def fetch_argument(query, argument) when is_atom(argument) or is_binary(argument) do
+    query = new(query)
+
     case Map.fetch(query.arguments, argument) do
       {:ok, value} ->
         {:ok, value}

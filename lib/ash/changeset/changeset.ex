@@ -4828,12 +4828,53 @@ defmodule Ash.Changeset do
     end
   end
 
+  @doc """
+  Fetches the changing value or the original value of an attribute.
+
+  ## Example
+
+      iex> changeset = Ash.Changeset.for_update(post, :update, %{title: "New Title"})
+      iex> Ash.Changeset.fetch_attribute(changeset, :title)
+      {:ok, "New Title"}
+      iex> Ash.Changeset.fetch_attribute(changeset, :content)
+      :error
+  """
+  @spec fetch_attribute(t, atom) :: {:ok, term} | :error
+  def fetch_attribute(changeset, attribute) do
+    case fetch_change(changeset, attribute) do
+      {:ok, value} ->
+        {:ok, value}
+
+      :error ->
+        fetch_data(changeset, attribute)
+    end
+  end
+
   @doc "Gets the value of an argument provided to the changeset, falling back to `Ash.Changeset.get_attribute/2` if nothing was provided."
   @spec get_argument_or_attribute(t, atom) :: term
   def get_argument_or_attribute(changeset, attribute) do
     case fetch_argument(changeset, attribute) do
       {:ok, value} -> value
       :error -> get_attribute(changeset, attribute)
+    end
+  end
+
+  @doc """
+  Fetches the value of an argument provided to the changeset, falling back to `Ash.Changeset.fetch_attribute/2` if nothing was provided.
+
+  ## Example
+
+      iex> changeset = Ash.Changeset.for_update(post, :update, %{title: "New Title"})
+      iex> Ash.Changeset.fetch_argument_or_attribute(changeset, :title)
+      {:ok, "New Title"}
+      iex> Ash.Changeset.fetch_argument_or_attribute(changeset, :content)
+      :error
+  """
+  @spec fetch_argument_or_attribute(t, atom) :: {:ok, term} | :error
+  def fetch_argument_or_attribute(changeset, argument_or_attribute) do
+    case fetch_argument(changeset, argument_or_attribute) do
+      {:ok, value} -> {:ok, value}
+      :error -> fetch_attribute(changeset, argument_or_attribute)
     end
   end
 
@@ -4856,6 +4897,22 @@ defmodule Ash.Changeset do
   @spec get_data(t, atom) :: term
   def get_data(changeset, attribute) do
     Map.get(changeset.data, attribute)
+  end
+
+  @doc """
+  Gets the original value for an attribute, or `:error` if it is not available.
+
+  ## Example
+
+      iex> changeset = Ash.Changeset.for_update(post, :update, %{title: "New Title"})
+      iex> Ash.Changeset.fetch_data(changeset, :title)
+      {:ok, "Original Title"}
+      iex> Ash.Changeset.fetch_data(changeset, :content)
+      :error
+  """
+  @spec fetch_data(t, atom) :: {:ok, term} | :error
+  def fetch_data(changeset, attribute) do
+    Map.fetch(changeset.data, attribute)
   end
 
   @doc """
@@ -6546,9 +6603,9 @@ defmodule Ash.Changeset do
   - `around_transaction/2` for hooks that wrap the entire transaction
   """
   @spec before_transaction(
-          t(),
-          before_transaction_fun(),
-          Keyword.t()
+          changeset :: t(),
+          fun :: before_transaction_fun(),
+          opts :: Keyword.t()
         ) :: t()
   def before_transaction(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :before_transaction)
@@ -6622,9 +6679,9 @@ defmodule Ash.Changeset do
   - `around_action/2` for hooks that wrap the data layer action
   """
   @spec after_action(
-          t(),
-          after_action_fun(),
-          Keyword.t()
+          changeset :: t(),
+          fun :: after_action_fun(),
+          opts :: Keyword.t()
         ) :: t()
   def after_action(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :after_action)
@@ -6724,9 +6781,9 @@ defmodule Ash.Changeset do
   - `around_transaction/2` for hooks that wrap the entire transaction
   """
   @spec after_transaction(
-          t(),
-          after_transaction_fun(),
-          Keyword.t()
+          changeset :: t(),
+          fun :: after_transaction_fun(),
+          opts :: Keyword.t()
         ) :: t()
   def after_transaction(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :after_transaction)
@@ -6784,10 +6841,19 @@ defmodule Ash.Changeset do
   - Multi-step actions guide for complex workflow patterns
   """
 
-  @spec around_action(t(), around_action_fun()) :: t()
-  def around_action(changeset, func) do
+  @spec around_action(
+          changeset :: t(),
+          fun :: around_action_fun(),
+          opts :: Keyword.t()
+        ) :: t()
+  def around_action(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :around_action)
-    %{changeset | around_action: changeset.around_action ++ [func]}
+
+    if opts[:prepend?] do
+      %{changeset | around_action: [func | changeset.around_action]}
+    else
+      %{changeset | around_action: changeset.around_action ++ [func]}
+    end
   end
 
   @doc """
@@ -6829,10 +6895,19 @@ defmodule Ash.Changeset do
   - Multi-step actions guide for complex workflow patterns
   """
 
-  @spec around_transaction(t(), around_transaction_fun()) :: t()
-  def around_transaction(changeset, func) do
+  @spec around_transaction(
+          changeset :: t(),
+          fun :: around_transaction_fun(),
+          opts :: Keyword.t()
+        ) :: t()
+  def around_transaction(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :around_transaction)
-    %{changeset | around_transaction: changeset.around_transaction ++ [func]}
+
+    if opts[:prepend?] do
+      %{changeset | around_transaction: [func | changeset.around_transaction]}
+    else
+      %{changeset | around_transaction: changeset.around_transaction ++ [func]}
+    end
   end
 
   defp maybe_dirty_hook(changeset, type) do
