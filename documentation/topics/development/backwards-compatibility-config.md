@@ -66,14 +66,24 @@ config :ash, default_page_type: :keyset
 
 ### Old Behavior
 
-When an action supports `offset` and `keyset` pagination, and a page is requested
-with only `limit` set, i.e `page: [limit: 10]`, you would get back an `%Ash.Page.Offset{}`.
+When an action supports both `offset` and `keyset` pagination, and a page is requested
+with only `limit` set (i.e., `page: [limit: 10]`), Ash defaulted to offset pagination 
+and returned an `%Ash.Page.Offset{}`.
 
 ### New Behavior
 
-Now we will return a `%Ash.Page.Keyset{}` choosing it whenever it is ambiguous.
-You can always force returning an `%Ash.Page.Offset{}` by providing the offset option,
-i.e `page: [offset: 0]`
+With this configuration, Ash will now return an `%Ash.Page.Keyset{}` when the pagination
+type is ambiguous (only `limit` is provided).
+
+You can always force a specific pagination type by providing type-specific parameters:
+- Force offset: `page: [limit: 10, offset: 0]` 
+- Force keyset: `page: [limit: 10, after: cursor]`
+
+> **Note**: This configuration is automatically set to `:keyset` when using `mix igniter.install ash`
+> or the homepage installer for new projects. Existing projects without this configuration 
+> will continue to default to `:offset` for backwards compatibility.
+
+For detailed pagination behavior documentation, see the [pagination guide](/documentation/topics/advanced/pagination.livemd#default-pagination-behavior-when-both-types-are-supported).
 
 ## policies.no_filter_static_forbidden_reads?
 
