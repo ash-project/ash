@@ -919,11 +919,6 @@ config :ash, :default_page_type, :keyset  # or :offset
 - If `config :ash, :default_page_type, :offset` → returns `Ash.Page.Offset`
 - If no configuration is set → defaults to `Ash.Page.Offset`
 
-> #### ⚠️ Configuration Warning
->
-> Never set `config :ash, :default_page_type, nil` as this will cause a runtime crash.
-> Use `:offset` or `:keyset` only.
-
 #### Practical Examples
 
 Regardless of configuration, the records will have keyset metadata, so you can always transition between pagination types:

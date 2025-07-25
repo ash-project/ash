@@ -33,7 +33,7 @@ config :ash, include_embedded_source_by_default?: false
 ### Old Behavior
 
 When working with embedded types, the `__source__` constraint is populated with
-the original changeset. This can be very costly in terms of memory when working with 
+the original changeset. This can be very costly in terms of memory when working with
 large sets of embedded resources.
 
 ### New Behavior
@@ -67,21 +67,13 @@ config :ash, default_page_type: :keyset
 ### Old Behavior
 
 When an action supports both `offset` and `keyset` pagination, and a page is requested
-with only `limit` set (i.e., `page: [limit: 10]`), Ash defaulted to offset pagination 
+with only `limit` set (i.e., `page: [limit: 10]`), Ash defaulted to offset pagination
 and returned an `%Ash.Page.Offset{}`.
 
 ### New Behavior
 
-With this configuration, Ash will now return an `%Ash.Page.Keyset{}` when the pagination
+With the current default configuration, Ash will now return an `%Ash.Page.Keyset{}` when the pagination
 type is ambiguous (only `limit` is provided).
-
-You can always force a specific pagination type by providing type-specific parameters:
-- Force offset: `page: [limit: 10, offset: 0]` 
-- Force keyset: `page: [limit: 10, after: cursor]`
-
-> **Note**: This configuration is automatically set to `:keyset` when using `mix igniter.install ash`
-> or the homepage installer for new projects. Existing projects without this configuration 
-> will continue to default to `:offset` for backwards compatibility.
 
 For detailed pagination behavior documentation, see the [pagination guide](/documentation/topics/advanced/pagination.livemd#default-pagination-behavior-when-both-types-are-supported).
 
@@ -182,15 +174,15 @@ reverse order. This was missed for `Ash.Query`. Meaning if you had something lik
 
 ```elixir
 read :read do
-  prepare fn query, _ -> 
-    Ash.Query.after_action(query, fn query, results -> 
+  prepare fn query, _ ->
+    Ash.Query.after_action(query, fn query, results ->
       IO.puts("hook 1")
       {:ok, results}
     end)
   end
 
-  prepare fn query, _ -> 
-    Ash.Query.after_action(query, fn query, results -> 
+  prepare fn query, _ ->
+    Ash.Query.after_action(query, fn query, results ->
       IO.puts("hook 2")
       {:ok, results}
     end)
