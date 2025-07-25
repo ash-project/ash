@@ -182,8 +182,7 @@ defmodule Ash.Actions.Update.Bulk do
               # once we figure this out, we may be able to remove the branch above
               run(
                 domain,
-                Ash.Actions.Read.Stream.run!(
-                  domain,
+                Ash.stream!(
                   query,
                   read_opts
                 ),
