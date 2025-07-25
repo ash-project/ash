@@ -70,9 +70,9 @@ defmodule Ash.Type.Enum do
     use Ash.Type.Enum,
       values: [
         open: "An open ticket", # <- description only,
-        escalated: [description: gettext("An escalated ticket")],
-        follow_up: [label: gettext("Follow up")],
-        closed: [description: gettext("A closed ticket"), label: gettext("Closed")]
+        escalated: [description: "An escalated ticket"],
+        follow_up: [label: "Follow up"],
+        closed: [description: "A closed ticket", label: "Closed"]
       ]
   end
   ```
