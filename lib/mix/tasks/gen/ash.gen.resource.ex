@@ -5,6 +5,7 @@ if Code.ensure_loaded?(Igniter) do
       --default-actions read \\
       --uuid-primary-key id \\
       --attribute subject:string:required:public \\
+      --attribute tags:array{string}:public \\
       --relationship belongs_to:representative:Helpdesk.Support.Representative \\
       --timestamps \\
       --extend postgres,graphql
@@ -22,7 +23,7 @@ if Code.ensure_loaded?(Igniter) do
 
     ## Options
 
-    * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `public`, `sensitive`, and `required`. i.e `-a name:string:required`
+    * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `public`, `sensitive`, and `required`. i.e `-a name:string:required` or `-a tags:array{string}:public`
     * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public`. `belongs_to` only modifiers: `primary_key`, `sensitive`, and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`
     * `--default-actions` - A csv list of default action types to add. The `create` and `update` actions accept the public attributes being added.
     * `--uuid-primary-key` or `-u` - Adds a UUIDv4 primary key with that name. i.e `-u id`
@@ -34,7 +35,7 @@ if Code.ensure_loaded?(Igniter) do
     * `--timestamps` or `-t` - If set adds `inserted_at` and `updated_at` timestamps to the resource.
     * `--ignore-if-exists` - Does nothing if the resource already exists
     * `--conflicts` - How to handle conflicts when the same attribute, relationship, or action already exists. Options: `ignore` (default), `replace`
-       `ignore` will ignore your addition for that attribute, relationship, or action. `replace` will remove the existing one in favor of yours.
+      `ignore` will ignore your addition for that attribute, relationship, or action. `replace` will remove the existing one in favor of yours.
     """
 
     @shortdoc "Generate and configure an Ash.Resource."
@@ -231,6 +232,18 @@ if Code.ensure_loaded?(Igniter) do
                 Known modifiers are: primary_key, public, required, sensitive.
                 """
       end)
+    end
+
+    defp resolve_type("array{}"), do: :array
+
+    defp resolve_type("array{" <> rest) do
+      case String.split(rest, "}", trim: true) do
+        [subtype] ->
+          {:array, resolve_type(subtype)}
+
+        _ ->
+          :array
+      end
     end
 
     defp resolve_type(value) do

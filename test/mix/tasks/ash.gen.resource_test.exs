@@ -52,6 +52,54 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
       """)
     end
 
+    test "generates typed array attributes" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "tags:array{string}:public,categories:array{atom}"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute :tags, {:array, :string} do
+            public?(true)
+          end
+
+          attribute(:categories, {:array, :atom})
+        end
+      end
+      """)
+    end
+
+    test "generates array when no subtype is specified" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "tags:array{:public,categories:array{}"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute :tags, :array do
+            public?(true)
+          end
+
+          attribute(:categories, :array)
+        end
+      end
+      """)
+    end
+
     test "generates attributes with modifiers" do
       test_project()
       |> Igniter.compose_task("ash.gen.resource", [
@@ -95,6 +143,72 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
         attributes do
           attribute(:metadata, :map)
           attribute(:tags, MyApp.Types.TagList)
+        end
+      end
+      """)
+    end
+
+    test "generates typed array with module types" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "authors:array{MyApp.User}:public"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute :authors, {:array, MyApp.User} do
+            public?(true)
+          end
+        end
+      end
+      """)
+    end
+
+    test "generates typed array with module types without closing brace" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "authors:array{MyApp.User:public"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute :authors, {:array, MyApp.User} do
+            public?(true)
+          end
+        end
+      end
+      """)
+    end
+
+    test "generates nested typed arrays" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "matrix:array{array{integer:required"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute :matrix, {:array, {:array, :integer}} do
+            allow_nil?(false)
+          end
         end
       end
       """)
@@ -751,12 +865,12 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
 
         attributes do
           uuid_primary_key(:id)
-          
+
           attribute :title, :string do
             public? true
           end
         end
-        
+
         actions do
           defaults [:read]
         end
