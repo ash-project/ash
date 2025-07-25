@@ -58,7 +58,7 @@ defmodule Ash do
       doc: "The action to use, either an Action struct or the name of the action"
     ],
     authorize?: [
-      type: :boolean,
+      type: {:or, [:boolean, {:literal, nil}]},
       doc:
         "If an actor option is provided (even if it is `nil`), authorization happens automatically. If not, this flag can be used to authorize with no user."
     ],
