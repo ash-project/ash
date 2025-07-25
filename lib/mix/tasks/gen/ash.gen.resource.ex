@@ -22,7 +22,7 @@ if Code.ensure_loaded?(Igniter) do
 
     ## Options
 
-    * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `public`, `sensitive`, and `required`. i.e `-a name:string:required`
+    * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `array`, `public`, `sensitive`, and `required`. i.e `-a name:string:required`
     * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public`. `belongs_to` only modifiers: `primary_key`, `sensitive`, and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`
     * `--default-actions` - A csv list of default action types to add. The `create` and `update` actions accept the public attributes being added.
     * `--uuid-primary-key` or `-u` - Adds a UUIDv4 primary key with that name. i.e `-u id`
@@ -223,6 +223,9 @@ if Code.ensure_loaded?(Igniter) do
         "sensitive" ->
           "sensitive? true"
 
+        "array" ->
+          "array"
+
         unknown ->
           raise ArgumentError,
                 """
@@ -343,7 +346,11 @@ if Code.ensure_loaded?(Igniter) do
             end
 
             name_atom = String.to_atom(name)
-            type = resolve_type(type)
+
+            {type, modifiers} =
+              if Enum.any?(modifiers, &(&1 == "array")),
+                do: {{:array, resolve_type(type)}, modifiers -- ["array"]},
+                else: {resolve_type(type), modifiers}
 
             attribute_code =
               if Enum.empty?(modifiers) do

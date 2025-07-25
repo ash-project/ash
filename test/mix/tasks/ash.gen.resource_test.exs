@@ -79,6 +79,32 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
       """)
     end
 
+    test "generates array attributes with modifiers" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--attribute",
+        "list_atom:atom:array:public,list_string:string:array:required"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        attributes do
+          attribute :list_atom, {:array, :atom} do
+            public?(true)
+          end
+
+          attribute :list_string, {:array, :string} do
+            allow_nil?(false)
+          end
+        end
+      end
+      """)
+    end
+
     test "generates attributes with custom types" do
       test_project()
       |> Igniter.compose_task("ash.gen.resource", [
@@ -751,12 +777,12 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
 
         attributes do
           uuid_primary_key(:id)
-          
+
           attribute :title, :string do
             public? true
           end
         end
-        
+
         actions do
           defaults [:read]
         end
