@@ -81,7 +81,7 @@ This is similar to using `Repo.get/2` and `Repo.preload/2` directly outside of c
 ```elixir
 # In your domain
 resource DashboardGroup do
-  define :get_by_id, action: :read, get_by: [:id]
+  define :get_dashboard_group_by_id, action: :read, get_by: [:id]
 end
 
 # In your LiveView or Controller
