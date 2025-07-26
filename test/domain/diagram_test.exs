@@ -5,18 +5,18 @@ defmodule Ash.Test.Domain.Info.DiagramTest do
   test "generate a mermaid entity relationship diagram from a domain" do
     assert Ash.Domain.Info.Diagram.mermaid_er_diagram(Ash.Test.Flow.Domain) == """
            erDiagram
-               User {
+               "User" {
                    UUID id
                    String first_name
                    String last_name
                    String email
                }
-               Org {
+               "Org" {
                    UUID id
                    String name
                }
 
-               Org ||--|| User : ""
+               "Org" ||--|| "User" : ""
            """
   end
 
@@ -57,7 +57,7 @@ defmodule Ash.Test.Domain.Info.DiagramTest do
     assert Ash.Domain.Info.Diagram.mermaid_er_diagram(Ash.Test.Flow.Domain, show_private?: true) ==
              """
              erDiagram
-                 User {
+                 "User" {
                      UUID id
                      String first_name
                      String last_name
@@ -65,12 +65,31 @@ defmodule Ash.Test.Domain.Info.DiagramTest do
                      Boolean approved
                      UUID org_id
                  }
-                 Org {
+                 "Org" {
                      UUID id
                      String name
                  }
 
-                 Org ||--|| User : ""
+                 "Org" ||--|| "User" : ""
+             """
+  end
+
+  test "include long names in mermaid entity relationship diagram if specified" do
+    assert Ash.Domain.Info.Diagram.mermaid_er_diagram([Ash.Test.Flow.Domain], name: :full) ==
+             """
+             erDiagram
+                 "Ash.Test.Flow.User" {
+                     UUID id
+                     String first_name
+                     String last_name
+                     String email
+                 }
+                 "Ash.Test.Flow.Org" {
+                     UUID id
+                     String name
+                 }
+
+                 "Ash.Test.Flow.Org" ||--|| "Ash.Test.Flow.User" : ""
              """
   end
 
