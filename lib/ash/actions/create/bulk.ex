@@ -405,6 +405,7 @@ defmodule Ash.Actions.Create.Bulk do
       changeset when upsert_condition != nil -> Ash.Changeset.filter(changeset, upsert_condition)
       changeset -> changeset
     end)
+    |> Ash.Notifier.PubSub.Helpers.add_topic_generator_loads()
   end
 
   defp lazy_matching_default_values(resource) do
