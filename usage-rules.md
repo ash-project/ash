@@ -70,7 +70,7 @@ group = MyApp.Resource |> Ash.get!(id) |> Ash.load!(rel: [:nested])
 
 # GOOD - use code interface with get_by
 resource DashboardGroup do
-  define :get_by_id, action: :read, get_by: [:id]
+  define :get_dashboard_group_by_id, action: :read, get_by: [:id]
 end
 
 # Then call:
