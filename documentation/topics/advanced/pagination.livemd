@@ -13,6 +13,10 @@ Ash has built-in support for two kinds of pagination: `offset` and `keyset`. You
 
 Pagination support is configured on a per-action basis. A single action can support both kinds of pagination if desired, but typically you would use one or the other. Read actions generated with `defaults [:read]` support both offset and keyset pagination, for other `read` actions you have to configure the [`pagination` section](https://hexdocs.pm/ash/dsl-ash-resource.html#actions-read-pagination).
 
+> ### Default Pagination Type
+>
+> When an action supports both pagination types, the behavior depends on your application configuration. See the ["Default Pagination Behavior"](#default-pagination-behavior-when-both-types-are-supported) section below for details on how Ash determines which type to use.
+
 > ### Check the updated query return type!
 >
 > Pagination will modify the return type of calling the query action.
@@ -895,9 +899,31 @@ last_page.more?
 false
 ```
 
-### Actions supporting both offset and keyset pagination
+### Default Pagination Behavior When Both Types Are Supported
 
-If an action supports both offset and keyset pagination (e.g. default read actions), offset pagination is used by default when page options only contain `limit`. However, the records will have the keyset in the metadata, so keyset pagination can be performed on next pages.
+When an action supports both `offset` and `keyset` pagination (such as default read actions), Ash uses the following logic to determine which pagination type to use:
+
+**1. Explicit pagination parameters take precedence:**
+- If `after` or `before` is provided → keyset pagination
+- If `offset` is provided → offset pagination
+
+**2. Configuration-based default for ambiguous cases:**
+Ash is configured to use keyset-pagination by default when installed with `mix igniter.install ash`, or the homepage installer.
+
+#### Practical Examples
+
+Regardless of configuration, the records will have keyset metadata, so you can always transition between pagination types:
+
+```elixir
+# By default, this uses keyset pagination
+%{results: [_, last]} = Ash.read!(Post, page: [limit: 2])
+
+# Explicitly use keyset pagination for the next page
+Ash.read!(Post, page: [limit: 2, after: last.__metadata__.keyset])
+
+# Explicitly use offset pagination
+Ash.read!(Post, page: [limit: 2, offset: 2])
+```
 
 ```elixir
 %Ash.Page.Offset{results: [_, last]} = Domain.list_posts!(page: [limit: 2])
