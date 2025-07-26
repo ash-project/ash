@@ -44,18 +44,18 @@ defmodule Ash.Test.Domain.Info.LivebookTest do
 
              ```mermaid
              erDiagram
-                 User {
+                 "User" {
                      UUID id
                      String first_name
                      String last_name
                      String email
                  }
-                 Org {
+                 "Org" {
                      UUID id
                      String name
                  }
 
-                 Org ||--|| User : ""
+                 "Org" ||--|| "User" : ""
              ```
 
              ### Resources
