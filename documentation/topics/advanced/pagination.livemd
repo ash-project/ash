@@ -908,23 +908,14 @@ When an action supports both `offset` and `keyset` pagination (such as default r
 - If `offset` is provided → offset pagination
 
 **2. Configuration-based default for ambiguous cases:**
-When only `limit` is provided, Ash checks your application configuration:
-
-```elixir
-# Check your config/config.exs
-config :ash, :default_page_type, :keyset  # or :offset
-```
-
-- If `config :ash, :default_page_type, :keyset` → returns `Ash.Page.Keyset`
-- If `config :ash, :default_page_type, :offset` → returns `Ash.Page.Offset`
-- If no configuration is set → defaults to `Ash.Page.Offset`
+Ash is configured to use keyset-pagination by default when installed with `mix igniter.install ash`, or the homepage installer.
 
 #### Practical Examples
 
 Regardless of configuration, the records will have keyset metadata, so you can always transition between pagination types:
 
 ```elixir
-# Start with your configured default (could be offset or keyset)
+# By default, this uses keyset pagination
 %{results: [_, last]} = Ash.read!(Post, page: [limit: 2])
 
 # Explicitly use keyset pagination for the next page
