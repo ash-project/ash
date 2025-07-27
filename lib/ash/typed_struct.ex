@@ -162,7 +162,8 @@ defmodule Ash.TypedStruct do
                      :constraints,
                      :allow_nil?
                    ])
-                 )}
+                 )
+                 |> Enum.reject(&is_nil(elem(&1, 1)))}
               end),
             instance_of: module
           ]
