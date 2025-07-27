@@ -13,7 +13,11 @@ defmodule Ash.TypedStructTest do
     use Ash.TypedStruct
 
     typed_struct do
-      field(:id, Ash.Type.UUID, allow_nil?: false, description: "The unique identifier for the user")
+      field(:id, Ash.Type.UUID,
+        allow_nil?: false,
+        description: "The unique identifier for the user"
+      )
+
       field(:name, :string, allow_nil?: false, description: "The name of the user")
       field(:email, :string, constraints: [match: ~r/@/])
       field(:age, :integer, constraints: [min: 0, max: 150])
