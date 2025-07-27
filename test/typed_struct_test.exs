@@ -21,6 +21,15 @@ defmodule Ash.TypedStructTest do
     end
   end
 
+  defmodule ExampleResource do
+    use Ash.Resource, domain: nil
+
+    attributes do
+      uuid_primary_key :id
+      attribute :user, UserStruct
+    end
+  end
+
   describe "DSL" do
     test "struct DSL creates a proper struct type" do
       assert {:ok, struct} =
