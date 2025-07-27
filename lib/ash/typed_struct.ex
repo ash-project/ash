@@ -10,7 +10,7 @@ defmodule Ash.TypedStruct do
   ## Example
 
       defmodule MyApp.UserProfile do
-        use Ash.TypedStruct 
+        use Ash.TypedStruct
 
         typed_struct do
           field :username, :string, allow_nil?: false
@@ -23,14 +23,14 @@ defmodule Ash.TypedStruct do
 
       # Creating instances
       {:ok, profile} = MyApp.UserProfile.new(username: "john", email: "john@example.com")
-      
+
       # Using new! for raising on errors
       profile = MyApp.UserProfile.new!(username: "jane", email: "jane@example.com", age: 25)
 
       # Can be used as an Ash type
       defmodule MyApp.User do
         use Ash.Resource
-        
+
         attributes do
           attribute :profile, MyApp.UserProfile
         end
@@ -98,7 +98,8 @@ defmodule Ash.TypedStruct do
           doc: "the default value for the field"
         ],
         description: [
-          type: :any,
+          type: {:or, [:string, nil]},
+          default: nil,
           doc: "a description for the field"
         ],
         constraints: [
@@ -112,7 +113,7 @@ defmodule Ash.TypedStruct do
           type: :boolean,
           default: true,
           doc: """
-          Whether or not the field can be set to nil. 
+          Whether or not the field can be set to nil.
           """
         ]
       ]

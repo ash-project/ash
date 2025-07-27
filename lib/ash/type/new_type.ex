@@ -459,7 +459,7 @@ defmodule Ash.Type.NewType do
                   {key, field}, :ok ->
                     field_keys = field |> List.wrap() |> Keyword.keys()
 
-                    case field_keys -- [:type, :constraints, :allow_nil?] do
+                    case field_keys -- [:type, :constraints, :allow_nil?, :description] do
                       [] ->
                         {:cont, validate_constraints(field[:type], field[:constraints])}
 

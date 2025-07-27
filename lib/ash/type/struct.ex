@@ -25,7 +25,7 @@ defmodule Ash.Type.Struct do
               default: true
             ],
             description: [
-              type: :string
+              type: {:or, [:string, nil]}
             ],
             constraints: [
               type: :keyword_list,
@@ -83,7 +83,7 @@ defmodule Ash.Type.Struct do
   Example:
 
       defmodule MyStruct do
-        use Ash.TypedStruct 
+        use Ash.TypedStruct
         typed_struct do
           field :name, :string, allow_nil?: false
           field :age, :integer, constraints: [min: 0]
