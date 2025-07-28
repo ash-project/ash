@@ -106,70 +106,14 @@ defmodule Ash.Domain.Info.Diagram do
   relationships is far too noisy.
   """
 
-  def mermaid_er_diagram(domain, opts \\ @default_opts)
-
-  def mermaid_er_diagram(domains, opts) when is_list(domains) do
-    indent = opts[:indent] || @indent
-    show_private? = Access.get(opts, :show_private?, @show_private?)
-
-    resources =
-      for domain <- domains do
-        for resource <- Ash.Domain.Info.resources(domain) do
-          {attrs, calcs, aggs} =
-            if show_private? do
-              {
-                Ash.Resource.Info.attributes(resource),
-                Ash.Resource.Info.calculations(resource),
-                Ash.Resource.Info.aggregates(resource)
-              }
-            else
-              {
-                Ash.Resource.Info.public_attributes(resource),
-                Ash.Resource.Info.public_calculations(resource),
-                Ash.Resource.Info.public_aggregates(resource)
-              }
-            end
-
-          contents =
-            [
-              join_template(attrs, indent, &"#{short_type(&1.type, opts)} #{&1.name}"),
-              join_template(calcs, indent, &"#{short_type(&1.type, opts)} #{&1.name}"),
-              join_template(aggs, indent, &"#{aggregate_type(resource, &1, opts)} #{&1.name}")
-            ]
-            |> Enum.reject(&(&1 == ""))
-            |> Enum.join("\n")
-
-          """
-          #{indent}#{resource_name(resource, opts)} {
-          #{indent}#{indent}Domain: #{domain_name(domain, opts)}#{source_link(resource, indent, opts)}
-          #{contents}
-          #{indent}}
-          """
-        end
-        |> Enum.join()
-      end
-
-    relationships =
-      for domain <- domains,
-          {src, dest} <- normalise_relationships(domain) do
-        ~s(#{indent}#{resource_name(src, opts)} #{rel_type()} #{resource_name(dest, opts)} : "")
-      end
-      |> Enum.join("\n")
-
-    domains =
-      Enum.map_join(domains, "\n", fn domain ->
-        ~s(#{indent}#{domain_name(domain, opts)})
-      end)
-
+  def mermaid_er_diagram(domains, opts \\ @default_opts) do
     """
     erDiagram
-    #{domains}
-    #{resources}
-    #{relationships}
+    #{domains |> List.wrap() |> Enum.map(&mermaid_er_domain_section(&1, opts))}\
     """
   end
 
-  def mermaid_er_diagram(domain, opts) do
+  defp mermaid_er_domain_section(domain, opts) do
     indent = opts[:indent] || @indent
     show_private? = Access.get(opts, :show_private?, @show_private?)
 
@@ -192,15 +136,15 @@ defmodule Ash.Domain.Info.Diagram do
 
         contents =
           [
-            join_template(attrs, indent, &"#{short_type(&1.type, opts)} #{&1.name}"),
-            join_template(calcs, indent, &"#{short_type(&1.type, opts)} #{&1.name}"),
-            join_template(aggs, indent, &"#{aggregate_type(resource, &1, opts)} #{&1.name}")
+            join_template(attrs, indent, &"#{short_type(&1.type, [])} #{&1.name}"),
+            join_template(calcs, indent, &"#{short_type(&1.type, [])} #{&1.name}"),
+            join_template(aggs, indent, &"#{aggregate_type(resource, &1, [])} #{&1.name}")
           ]
           |> Enum.reject(&(&1 == ""))
           |> Enum.join("\n")
 
         """
-        #{indent}#{resource_name(resource, opts)} {
+        #{indent}#{inspect(resource_name(resource, opts))} {
         #{contents}
         #{indent}}
         """
@@ -209,12 +153,11 @@ defmodule Ash.Domain.Info.Diagram do
 
     relationships =
       for {src, dest} <- normalise_relationships(domain) do
-        ~s(#{indent}#{resource_name(src, opts)} #{rel_type()} #{resource_name(dest, opts)} : "")
+        ~s(#{indent}#{inspect(resource_name(src, opts))} #{rel_type()} #{inspect(resource_name(dest, opts))} : "")
       end
       |> Enum.join("\n")
 
     """
-    erDiagram
     #{resources}
     #{relationships}
     """
