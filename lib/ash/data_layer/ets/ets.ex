@@ -1495,7 +1495,7 @@ defmodule Ash.DataLayer.Ets do
     log_bulk_create(resource, stream, options)
 
     if options[:upsert?] do
-      # This is not optimized, but thats okay for now
+      # This is not optimized, but that's okay for now
       stream
       |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
         changeset =

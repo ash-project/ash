@@ -4,7 +4,7 @@ defmodule Resource.RequireValidArgumentsInCodeInterfaceTest do
 
   import Ash.Test.Helpers
 
-  test "fails if one of the code_inteface arguments is not a valid attribute or argument" do
+  test "fails if one of the code_interface arguments is not a valid attribute or argument" do
     assert_raise(
       Spark.Error.DslError,
       ~r/Cannot accept the args `\[:oops\]` because they are not arguments or attributes supported by the `:read` action/,

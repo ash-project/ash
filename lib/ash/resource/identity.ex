@@ -43,7 +43,7 @@ defmodule Ash.Resource.Identity do
     nils_distinct?: [
       type: :boolean,
       doc:
-        "Whether or not `nil` values are considered always distinct from eachother. `nil` values won't conflict with eachother unless you set this option to `false`.",
+        "Whether or not `nil` values are considered always distinct from each other. `nil` values won't conflict with each other unless you set this option to `false`.",
       default: true
     ],
     eager_check?: [

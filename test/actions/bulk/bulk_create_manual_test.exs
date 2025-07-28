@@ -185,7 +185,7 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
           {:ok, _record} ->
             [:ok | results]
 
-          {:ok, _record, _notificiations} ->
+          {:ok, _record, _notifications} ->
             [:ok | results]
 
           {:error, error} ->

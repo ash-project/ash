@@ -422,7 +422,7 @@ defmodule Ash.Test.AshTest do
         notifiers: [Notifier]
 
       mnesia do
-        table :ash_transations
+        table :ash_transactions
       end
 
       attributes do

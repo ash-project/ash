@@ -812,7 +812,7 @@ policy action_type(:update) do
 end
 ```
 
-To require BOTH conditions in that exmaple, you would use `forbid_unless` for the first condition:
+To require BOTH conditions in that example, you would use `forbid_unless` for the first condition:
 
 ```elixir
 # CORRECT - This requires BOTH conditions

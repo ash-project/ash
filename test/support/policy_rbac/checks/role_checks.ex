@@ -40,8 +40,8 @@ defmodule Ash.Test.Support.PolicyRbac.Checks.RoleChecks do
     [:query, :action]
   end
 
-  # This would be a spot for us to pre-empt doing any filtering/request work
-  # We could use this to say "we already kow the answer" For example,
+  # This would be a spot for us to preempt doing any filtering/request work
+  # We could use this to say "we already know the answer" For example,
   # if the actor had a `super_admin` flag enabled on then, we could return
   # {:ok, true} to say "whatever role you're asking about, they have it"
   # (don't implement that this way, use a bypass check, its just an example)

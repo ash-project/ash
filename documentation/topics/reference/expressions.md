@@ -39,7 +39,7 @@ The following operators are available and they behave the same as they do in Eli
 - `<>`
 - `and` - Boolean and operator
 - `or` - Boolean or operator
-- `||` - Elixir-ish or operator, if left is not `nil` or `false`, then left. Othewise right.
+- `||` - Elixir-ish or operator, if left is not `nil` or `false`, then left. Otherwise right.
 - `&&` - Elixir-ish and operator, if left is not `nil` or `false`, then right. Otherwise left.
 - `is_nil` | Only works as an operator in maps/keyword list syntax. i.e `[x: [is_nil: true]]`
 

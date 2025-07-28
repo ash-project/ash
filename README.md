@@ -143,7 +143,7 @@ The Ash ecosystem consists of numerous packages, all of which have their own doc
 
 ### AI
 
-- [AshAI](https://hexdocs.pm/ash_ai) | Structured Outpus, MCP, Vectorization and more
+- [AshAI](https://hexdocs.pm/ash_ai) | Structured Outputs, MCP, Vectorization and more
 
 ### Web
 
