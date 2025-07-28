@@ -85,7 +85,11 @@ defmodule Ash.Resource.Validation.Changing do
     else
       case atomic_field(changeset, Keyword.fetch!(opts, :field)) do
         {:changing, field} ->
-          {:atomic, [field], expr(^atomic_ref(field) == ^ref(field)),
+          {:atomic, [field],
+           expr(
+             (is_nil(^atomic_ref(field)) and is_nil(^ref(field))) or
+               (not is_nil(^ref(field)) and ^atomic_ref(field) == ^ref(field))
+           ),
            expr(
              error(^InvalidAttribute, %{
                field: ^field,

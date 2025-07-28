@@ -161,5 +161,56 @@ defmodule Ash.Test.Resource.Validation.ChangingTest do
         |> Ash.bulk_update!(:ensure_comments_changing, %{}, return_errors?: true)
       end
     end
+
+    test "succeeds when changing from nil to a value" do
+      # Create post with order = nil
+      post = Ash.create!(Post, %{title: "foo"})
+      assert is_nil(post.order)
+
+      # Should succeed when changing from nil to a value
+      post
+      |> assert_valid_updates(:ensure_order_changing, %{order: 42})
+    end
+
+    test "absent validation with changing condition fails when setting nil field" do
+      # This reproduces the exact Eden issue: absent(:outcome) with where: [changing(:outcome)]
+      # should prevent setting a value on a field that was nil
+
+      defmodule TestPost do
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        actions do
+          default_accept :*
+          defaults [:read, create: :*, update: :*]
+
+          update :close_task do
+            # This should fail when trying to set outcome on a task that had no outcome
+            validate absent(:outcome) do
+              where [changing(:outcome)]
+              message "Task already closed"
+            end
+          end
+        end
+
+        attributes do
+          uuid_primary_key :id
+          attribute :title, :string, public?: true
+          attribute :outcome, :string, public?: true
+        end
+      end
+
+      # Create a post with outcome = nil
+      post = Ash.create!(TestPost, %{title: "test"})
+      assert is_nil(post.outcome)
+
+      # Try to update outcome from nil to "closed" - this should fail
+      # because absent(:outcome) with where: [changing(:outcome)] should prevent
+      # setting a value when the field was previously absent (nil)
+      assert_raise Ash.Error.Invalid, ~r/Task already closed/, fn ->
+        TestPost
+        |> Ash.Query.filter(id == ^post.id)
+        |> Ash.bulk_update!(:close_task, %{outcome: "closed"})
+      end
+    end
   end
 end
