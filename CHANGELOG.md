@@ -2,6 +2,41 @@
 
 <!-- changelog -->
 
+## [v3.5.33](https://github.com/ash-project/ash/compare/v3.5.32...v3.5.33) (2025-07-29)
+
+
+
+
+### Bug Fixes:
+
+* handle `nil` values properly in atomic changing validations by [@zachdaniel](https://github.com/zachdaniel)
+
+* Application ER Mermaid Diagram (#2231) by [@maennchen](https://github.com/maennchen)
+
+* clear `nil` options in typed struct to constraints process by [@zachdaniel](https://github.com/zachdaniel)
+
+* allow Ash @global_opts authorize? to accept boolean or nil (#2225) by [@chazwatkins](https://github.com/chazwatkins)
+
+* Don't require permissions to read actor on non-atomic `relate_actor` (#2223) by [@chazwatkins](https://github.com/chazwatkins)
+
+* call underlying stream run instead of public interface by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* `get_by_id` typo fix in usage rules (#2230) by albinkc
+
+* Add array modifier to `ash.gen.resource` (#2228) by Kenneth Kostrešević
+
+* Add prepend? opt to hooks and Ash.Subject transaction hooks (#2221) by [@chazwatkins](https://github.com/chazwatkins)
+
+* hooks: Add transaction hooks to Ash.Subject by [@chazwatkins](https://github.com/chazwatkins)
+
+* Ash.Subject delegation and improvements by [@chazwatkins](https://github.com/chazwatkins)
+
+* add `log?` option to `can` functions by [@zachdaniel](https://github.com/zachdaniel)
+
+* add transaction hooks for read actions (#2219) by ChristianAlexander
+
 ## [v3.5.32](https://github.com/ash-project/ash/compare/v3.5.31...v3.5.32) (2025-07-23)
 
 
