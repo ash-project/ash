@@ -651,7 +651,7 @@ This prevents a common security vulnerability that would allow malicious actors 
 
 When a field is referenced in filters or sorts, the field reference is replaced with a conditional, that evaluates to the field value if the actor is authorized to view the field, or `nil` otherwise (causing all conditions to evaluate to `false`).
 
-Lets say that users have a field policy that only allows viewing the email address if the user's id matches the actor's id, similar to the abvoe example.
+Lets say that users have a field policy that only allows viewing the email address if the user's id matches the actor's id, similar to the above example.
 
 ```elixir
 field_policies do
