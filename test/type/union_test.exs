@@ -139,6 +139,32 @@ defmodule Ash.Test.Filter.UnionTest do
     end
   end
 
+  defmodule ListExample do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults create: :*, update: :*
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :thing, :union,
+        public?: true,
+        constraints: [
+          types: [
+            string: [type: :string],
+            string_array: [type: {:array, :string}],
+            integer_array: [type: {:array, :integer}]
+          ]
+        ]
+    end
+  end
+
   test "it handles UUIDs and strings" do
     constraints = [types: [id: [type: :uuid], slug: [type: :string]]]
 
@@ -457,6 +483,43 @@ defmodule Ash.Test.Filter.UnionTest do
              |> Ash.create!()
              |> Ash.Changeset.for_update(:add_things, %{
                things: [%Ash.Union{type: :foo, value: %{type: :foo, foo: "foo"}}]
+             })
+             |> Ash.update()
+  end
+
+  test "it handles updates to and from array in union types" do
+    single_value = "Hello"
+    array_values = ["Hello", "World", "!"]
+    array_values_2 = [123, 456]
+
+    element =
+      ListExample
+      |> Ash.Changeset.for_create(:create, %{
+        thing: %Ash.Union{type: :string, value: single_value}
+      })
+      |> Ash.create!()
+
+    # Update from single value to array
+    assert {:ok, %{thing: %{value: ^array_values}} = element} =
+             element
+             |> Ash.Changeset.for_update(:update, %{
+               thing: %Ash.Union{type: :string_array, value: array_values}
+             })
+             |> Ash.update()
+
+    # Update from array to array of another type
+    assert {:ok, %{thing: %{value: ^array_values_2}} = element} =
+             element
+             |> Ash.Changeset.for_update(:update, %{
+               thing: %Ash.Union{type: :integer_array, value: array_values_2}
+             })
+             |> Ash.update()
+
+    # Update from array to single value
+    assert {:ok, %{thing: %{value: ^single_value}}} =
+             element
+             |> Ash.Changeset.for_update(:update, %{
+               thing: %Ash.Union{type: :string, value: single_value}
              })
              |> Ash.update()
   end

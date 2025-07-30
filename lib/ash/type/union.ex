@@ -1299,7 +1299,7 @@ defmodule Ash.Type.Union do
          {:ok, type} <- Keyword.fetch(type_config, :type),
          type_constraints <- Keyword.get(type_config, :constraints, []),
          type <- Ash.Type.get_type(type),
-         {:ok, value} <- type.prepare_change(old_value, new_value, type_constraints) do
+         {:ok, value} <- Ash.Type.prepare_change(type, old_value, new_value, type_constraints) do
       {:ok, %Ash.Union{type: type_name, value: value}}
     end
   end
@@ -1314,7 +1314,7 @@ defmodule Ash.Type.Union do
          {:ok, type} <- Keyword.fetch(type_config, :type),
          type_constraints <- Keyword.get(type_config, :constraints, []),
          type <- Ash.Type.get_type(type),
-         {:ok, value} <- type.prepare_change(nil, new_value, type_constraints) do
+         {:ok, value} <- Ash.Type.prepare_change(type, nil, new_value, type_constraints) do
       {:ok, %Ash.Union{type: type_name, value: value}}
     end
   end
@@ -1364,7 +1364,7 @@ defmodule Ash.Type.Union do
          type_constraints <-
            Keyword.put(type_constraints, :__union_tag__, type_config[:tag]),
          type <- Ash.Type.get_type(type),
-         {:ok, value} <- type.prepare_change(old_value, new_value, type_constraints) do
+         {:ok, value} <- Ash.Type.prepare_change(type, old_value, new_value, type_constraints) do
       {:ok, %Ash.Union{type: type_name, value: value}}
     end
   end
