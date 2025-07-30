@@ -11,7 +11,7 @@ defmodule Ash.Query.Function.GetPath do
   If a string key is provided, that is the only thing that is checked. If the value will or may be a struct, be sure to use atoms.
 
   The data layer may handle this differently, for example, AshPostgres only checks
-  strings at the data layer (because thats all it can be in the database anyway).
+  strings at the data layer (because that's all it can be in the database anyway).
 
   Available in query expressions using bracket syntax, e.g `foo[:bar][:baz]`.
   """

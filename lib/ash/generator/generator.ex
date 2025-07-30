@@ -193,7 +193,7 @@ defmodule Ash.Generator do
   * `:context` - Passed through to the changeset
   * `:after_action` - A one argument function that takes the result and returns
     a new result to run after the record is created.
-  * `:private_arguments` - A map of private arguments, whos values can also be generators. Can also
+  * `:private_arguments` - A map of private arguments, whose values can also be generators. Can also
     be a function when using the `:uses` option.
 
   ## The `uses` option

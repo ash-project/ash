@@ -1,7 +1,7 @@
 defmodule Ash.Filter.Runtime do
   @moduledoc """
   Tools to checks a record to see if it matches a filter statement, or to
-  evalute expressions against records.
+  evaluate expressions against records.
   """
 
   alias Ash.Query.{BooleanExpression, Not, Ref}

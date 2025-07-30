@@ -1726,7 +1726,7 @@ defmodule Ash.Actions.ManagedRelationships do
             do_matches?(current_value, input, field, attr.type)
           else
             # We know that it will be the same as all other records in this relationship
-            # (because thats how has_one and has_many relationships work), so we
+            # (because that's how has_one and has_many relationships work), so we
             # can assume its the same as the current value
             true
           end

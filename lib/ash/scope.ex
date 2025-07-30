@@ -92,7 +92,7 @@ defmodule Ash.Scope do
       MyApp.Domain.do_something_else(..., scope: context)
       # if not using as a scope, the alternative is this
       # in the future this will be deprecated
-      MyApp.Domain.do_somethign_else(..., Ash.Context.to_opts(context))
+      MyApp.Domain.do_something_else(..., Ash.Context.to_opts(context))
     end)
   end
   ```
