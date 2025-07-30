@@ -934,4 +934,10 @@ defmodule Ash.Resource.Info do
   @doc "The data layer of the resource, or nil if it does not have one"
   @spec data_layer(Ash.Resource.t()) :: Ash.DataLayer.t() | nil
   defdelegate data_layer(resource), to: Ash.DataLayer
+
+  @doc """
+  Returns a list of extensions in use by the resource.
+  """
+  @spec extensions(resource :: Ash.Resource.t()) :: list(module())
+  defdelegate extensions(resource), to: Spark
 end

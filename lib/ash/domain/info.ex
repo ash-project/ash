@@ -300,6 +300,27 @@ defmodule Ash.Domain.Info do
     end
   end
 
+  @doc """
+  Returns a list of extensions in use by the domain.
+
+  ## Options
+  - `:include_resource_extensions?` - If `true`, includes extensions defined on
+    resources in the domain. Defaults to `false`.
+  """
+  @spec extensions(domain :: Ash.Domain.t(), opts :: [include_resource_extensions?: boolean()]) ::
+          list(module())
+  def extensions(domain, opts \\ []) do
+    if opts[:include_resource_extensions?] do
+      domain
+      |> resources()
+      |> Enum.flat_map(&Ash.Resource.Info.extensions/1)
+      |> Kernel.++(Spark.extensions(domain))
+      |> Enum.uniq()
+    else
+      Spark.extensions(domain)
+    end
+  end
+
   @spec allowed?(mfa | nil, module()) :: boolean
   defp allowed?({m, f, a}, resource) do
     apply(m, f, List.wrap(a) ++ [resource])
