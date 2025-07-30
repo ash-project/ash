@@ -21,7 +21,8 @@ defmodule Ash.Query.Aggregate do
     uniq?: false,
     filterable?: true,
     sortable?: true,
-    sensitive?: false
+    sensitive?: false,
+    related?: true
   ]
 
   @type t :: %__MODULE__{}
@@ -146,6 +147,16 @@ defmodule Ash.Query.Aggregate do
 
       See `d:Ash.Resource.Dsl.aggregates|count` for more information.
       """
+    ],
+    resource: [
+      type: :atom,
+      doc: "For unrelated aggregates, the target resource to aggregate over"
+    ],
+    related?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "Whether this aggregate uses a relationship path (true) or a direct resource reference (false)"
     ]
   ]
 
@@ -201,12 +212,21 @@ defmodule Ash.Query.Aggregate do
 
     with {:ok, %Opts{} = opts} <- Opts.validate(opts) do
       agg_name = agg_name(opts)
-      related = Ash.Resource.Info.related(resource, opts.path)
+
+      # Determine if this is an unrelated aggregate and get the target resource
+      {target_resource, related?} =
+        if opts.resource do
+          # Unrelated aggregate - use the provided resource directly
+          {opts.resource, false}
+        else
+          # Related aggregate - follow the relationship path
+          {Ash.Resource.Info.related(resource, opts.path), true}
+        end
 
       query =
-        case opts.query || Ash.Query.new(related) do
+        case opts.query || Ash.Query.new(target_resource) do
           %Ash.Query{} = query -> query
-          build_opts -> build_query(related, resource, build_opts)
+          build_opts -> build_query(target_resource, resource, build_opts)
         end
 
       Enum.reduce_while(opts.join_filters, {:ok, %{}}, fn {path, filter}, {:ok, acc} ->
@@ -220,7 +240,7 @@ defmodule Ash.Query.Aggregate do
       end)
       |> case do
         {:ok, join_filters} ->
-          relationship = opts.path
+          relationship_path = if related?, do: opts.path, else: []
           field = opts.field
           default = opts.default
           filterable? = opts.filterable?
@@ -235,10 +255,14 @@ defmodule Ash.Query.Aggregate do
             if :read_action in opts.__set__ do
               opts.read_action
             else
-              relationship = Ash.Resource.Info.relationship(resource, relationship)
+              if related? do
+                relationship = Ash.Resource.Info.relationship(resource, List.first(opts.path))
 
-              if relationship do
-                relationship.read_action
+                if relationship do
+                  relationship.read_action
+                end
+              else
+                nil
               end
             end
 
@@ -253,7 +277,8 @@ defmodule Ash.Query.Aggregate do
             raise ArgumentError, "Must supply implementation when building a `custom` aggregate"
           end
 
-          related = Ash.Resource.Info.related(resource, relationship)
+          # Use the target resource we already determined
+          related = target_resource
 
           if opts.field && opts.expr do
             raise ArgumentError, "Cannot supply both `field` and `expr` for an aggregate"
@@ -350,7 +375,7 @@ defmodule Ash.Query.Aggregate do
             end
 
           with :ok <- validate_uniq(uniq?, kind),
-               :ok <- validate_path(resource, List.wrap(relationship)),
+               :ok <- if(related?, do: validate_path(resource, relationship_path), else: :ok),
                {:ok, type, constraints} <-
                  get_type(kind, type, attribute_type, attribute_constraints, constraints),
                %{valid?: true} = query <- build_query(related, resource, query) do
@@ -365,10 +390,10 @@ defmodule Ash.Query.Aggregate do
              %__MODULE__{
                name: name,
                agg_name: agg_name,
-               resource: resource,
+               resource: if(related?, do: resource, else: target_resource),
                constraints: constraints,
                default_value: default || default_value(kind),
-               relationship_path: List.wrap(relationship),
+               relationship_path: relationship_path,
                implementation: implementation,
                include_nil?: include_nil?,
                field: field,
@@ -381,7 +406,9 @@ defmodule Ash.Query.Aggregate do
                sensitive?: sensitive?,
                authorize?: authorize?,
                read_action: read_action,
-               join_filters: Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end)
+               join_filters:
+                 Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end),
+               related?: related?
              }}
           else
             %{valid?: false} = query ->

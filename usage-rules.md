@@ -956,6 +956,26 @@ calculations do
 end
 ```
 
+### Expressions
+
+In order to use expressions outside of resources, changes, preparations etc. you will need to use `Ash.Expr`.
+
+It provides both `expr/1` and template helpers like `actor/1` and `arg/1`.
+
+For example:
+
+```elixir
+import Ash.Expr
+
+Author
+|> Ash.Query.aggregate(:count_of_my_favorited_posts, :count, [:posts], query: [
+  filter: expr(favorited_by(user_id: ^actor(:id)))
+])
+```
+
+See the expressions guide for more information on what is available in expresisons and
+how to use them.
+
 ### Module Calculations
 
 For complex calculations, create a module that implements `Ash.Resource.Calculation`:

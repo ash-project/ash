@@ -200,6 +200,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
+  def can?(_, {:aggregate, :unrelated}), do: true
   def can?(_, :changeset_filter), do: true
   def can?(_, :update_query), do: true
   def can?(_, :destroy_query), do: true
@@ -774,59 +775,107 @@ defmodule Ash.DataLayer.Ets do
             include_nil?: include_nil?,
             context: context,
             default_value: default_value,
-            join_filters: join_filters
-          },
+            join_filters: join_filters,
+            related?: related?
+          } = _aggregate,
           {:ok, record} ->
-            with {:ok, loaded_record} <-
-                   Ash.load(
-                     record,
-                     record.__struct__
-                     |> Ash.Query.load(
-                       relationship_path_to_load(
-                         relationship_path,
-                         Ash.Query.set_context(Ash.Query.unset(query, :load), %{
-                           private: %{authorize?: false}
-                         })
+            if related? do
+              # Related aggregate - load through relationship path
+              with {:ok, loaded_record} <-
+                     Ash.load(
+                       record,
+                       record.__struct__
+                       |> Ash.Query.load(
+                         relationship_path_to_load(
+                           relationship_path,
+                           Ash.Query.set_context(Ash.Query.unset(query, :load), %{
+                             private: %{authorize?: false}
+                           })
+                         )
                        )
-                     )
-                     |> Ash.Query.load(relationship_path_to_load(relationship_path, field))
-                     |> Ash.Query.set_context(%{private: %{internal?: true}}),
+                       |> Ash.Query.load(relationship_path_to_load(relationship_path, field))
+                       |> Ash.Query.set_context(%{private: %{internal?: true}}),
+                       domain: domain,
+                       tenant: context[:tenant],
+                       actor: context[:actor],
+                       authorize?: false
+                     ),
+                   related <-
+                     Ash.Filter.Runtime.get_related(
+                       loaded_record,
+                       relationship_path,
+                       false,
+                       join_filters,
+                       [record],
+                       domain
+                     ),
+                   {:ok, filtered} <-
+                     filter_matches(
+                       related,
+                       query.filter,
+                       domain,
+                       context[:tenant],
+                       context[:actor]
+                     ),
+                   sorted <-
+                     Sort.runtime_sort(filtered, query.sort, domain: domain, rekey?: false) do
+                field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
+
+                value =
+                  aggregate_value(sorted, kind, field, uniq?, include_nil?, default_value)
+
+                if load do
+                  {:cont, {:ok, Map.put(record, load, value)}}
+                else
+                  {:cont, {:ok, Map.update!(record, :aggregates, &Map.put(&1, name, value))}}
+                end
+              else
+                other ->
+                  {:halt, other}
+              end
+            else
+              # Unrelated aggregate - replace parent references with current record values
+              updated_filter =
+                if query.filter do
+                  result =
+                    Ash.Filter.map(query.filter, fn
+                      %Ash.Query.Parent{expr: expr} ->
+                        case Ash.Expr.eval(expr, record: record) do
+                          {:ok, value} -> value
+                          value -> value
+                        end
+
+                      other ->
+                        other
+                    end)
+
+                  result
+                else
+                  nil
+                end
+
+              updated_query = %{query | filter: updated_filter, sort: query.sort || []}
+
+              case Ash.aggregate(
+                     updated_query,
+                     {name, kind, if(field, do: [field: field], else: [])},
                      domain: domain,
                      tenant: context[:tenant],
                      actor: context[:actor],
-                     authorize?: false
-                   ),
-                 related <-
-                   Ash.Filter.Runtime.get_related(
-                     loaded_record,
-                     relationship_path,
-                     false,
-                     join_filters,
-                     [record],
-                     domain
-                   ),
-                 {:ok, filtered} <-
-                   filter_matches(
-                     related,
-                     query.filter,
-                     domain,
-                     context[:tenant],
-                     context[:actor]
-                   ),
-                 sorted <- Sort.runtime_sort(filtered, query.sort, domain: domain, rekey?: false) do
-              field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
+                     authorize?: context[:authorize?] || false
+                   ) do
+                {:ok, results} ->
+                  value = Map.get(results, name) || default_value
 
-              value =
-                aggregate_value(sorted, kind, field, uniq?, include_nil?, default_value)
+                  if load do
+                    {:cont, {:ok, Map.put(record, load, value)}}
+                  else
+                    {:cont, {:ok, Map.update!(record, :aggregates, &Map.put(&1, name, value))}}
+                  end
 
-              if load do
-                {:cont, {:ok, Map.put(record, load, value)}}
-              else
-                {:cont, {:ok, Map.update!(record, :aggregates, &Map.put(&1, name, value))}}
+                {:error, error} ->
+                  {:halt, {:error, error}}
               end
-            else
-              other ->
-                {:halt, other}
             end
         end
       )

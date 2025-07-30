@@ -88,6 +88,8 @@ defmodule Ash.Actions.Aggregate do
                      limit: query.limit,
                      offset: query.offset,
                      distinct: query.distinct,
+                     distinct_sort: query.distinct_sort,
+                     sort: query.sort,
                      domain: query.domain,
                      tenant: query.tenant,
                      filter: query.filter,

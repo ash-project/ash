@@ -1089,59 +1089,85 @@ defmodule Ash.Filter do
     end)
     |> Enum.concat(aggregates)
     |> Enum.reduce_while({:ok, path_filters}, fn aggregate, {:ok, filters} ->
-      aggregate.relationship_path
-      |> :lists.droplast()
-      |> Ash.Query.Aggregate.subpaths()
-      |> Enum.reduce_while({:ok, filters}, fn subpath, {:ok, filters} ->
-        last_relationship = last_relationship(query.resource, subpath)
+      # Skip relationship path authorization for unrelated aggregates
+      if Map.get(aggregate, :related?, true) do
+        aggregate.relationship_path
+        |> :lists.droplast()
+        |> Ash.Query.Aggregate.subpaths()
+        |> Enum.reduce_while({:ok, filters}, fn subpath, {:ok, filters} ->
+          last_relationship = last_relationship(query.resource, subpath)
 
-        add_authorization_path_filter(
-          filters,
-          last_relationship,
-          domain,
-          query,
-          actor,
-          tenant,
-          refs,
-          Ash.Query.for_read(
-            last_relationship.destination,
-            Ash.Resource.Info.primary_action(last_relationship.destination, :read).name,
-            %{},
-            actor: actor,
-            tenant: tenant,
-            authorize?: authorize?
-          ),
-          true
-        )
-      end)
+          add_authorization_path_filter(
+            filters,
+            last_relationship,
+            domain,
+            query,
+            actor,
+            tenant,
+            refs,
+            Ash.Query.for_read(
+              last_relationship.destination,
+              Ash.Resource.Info.primary_action(last_relationship.destination, :read).name,
+              %{},
+              actor: actor,
+              tenant: tenant,
+              authorize?: authorize?
+            ),
+            true
+          )
+        end)
+      else
+        # For unrelated aggregates, skip relationship path authorization
+        {:ok, filters}
+      end
       |> case do
         {:ok, filters} ->
-          last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
+          # Skip last_relationship logic for unrelated aggregates
+          if Map.get(aggregate, :related?, true) do
+            last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
 
-          case relationship_filters(
-                 domain,
-                 aggregate.query,
-                 actor,
-                 tenant,
-                 [],
-                 authorize?,
-                 filters
-               ) do
-            {:ok, filters} ->
-              add_authorization_path_filter(
-                filters,
-                last_relationship,
-                domain,
-                query,
-                actor,
-                tenant,
-                refs,
-                aggregate.query,
-                true
-              )
+            case relationship_filters(
+                   domain,
+                   aggregate.query,
+                   actor,
+                   tenant,
+                   [],
+                   authorize?,
+                   filters
+                 ) do
+              {:ok, filters} ->
+                add_authorization_path_filter(
+                  filters,
+                  last_relationship,
+                  domain,
+                  query,
+                  actor,
+                  tenant,
+                  refs,
+                  aggregate.query,
+                  true
+                )
 
-            {:error, error} ->
-              {:error, error}
+              {:error, error} ->
+                {:error, error}
+            end
+          else
+            # For unrelated aggregates, just handle relationship filters without relationship path
+            case relationship_filters(
+                   domain,
+                   aggregate.query,
+                   actor,
+                   tenant,
+                   [],
+                   authorize?,
+                   filters
+                 ) do
+              {:ok, filters} ->
+                {:cont, {:ok, filters}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
           end
 
         {:error, error} ->
@@ -2880,8 +2906,26 @@ defmodule Ash.Filter do
         end
 
       aggregate = aggregate(context, field) ->
-        if Ash.DataLayer.data_layer_can?(context.resource, {:aggregate, aggregate.kind}) do
-          related = Ash.Resource.Info.related(context.resource, aggregate.relationship_path)
+        # Check data layer support - for unrelated aggregates, we need to check for :unrelated capability
+        aggregate_capability =
+          if Map.get(aggregate, :related?, true),
+            do: {:aggregate, aggregate.kind},
+            else: {:aggregate, :unrelated}
+
+        if Ash.DataLayer.data_layer_can?(context.resource, aggregate_capability) do
+          # Handle both related and unrelated aggregates
+          {related, aggregate_opts} =
+            if Map.get(aggregate, :related?, true) do
+              # Related aggregate - follow relationship path
+              related = Ash.Resource.Info.related(context.resource, aggregate.relationship_path)
+              opts = [path: aggregate.relationship_path]
+              {related, opts}
+            else
+              # Unrelated aggregate - use target resource directly
+              related = aggregate.resource
+              opts = [resource: related]
+              {related, opts}
+            end
 
           read_action =
             aggregate.read_action || Ash.Resource.Info.primary_action!(related, :read).name
@@ -2899,23 +2943,24 @@ defmodule Ash.Filter do
                    context.resource,
                    aggregate.name,
                    aggregate.kind,
-                   agg_name: aggregate.name,
-                   path: aggregate.relationship_path,
-                   query: aggregate_query,
-                   field: aggregate.field,
-                   default: aggregate.default,
-                   filterable?: aggregate.filterable?,
-                   sortable?: aggregate.sortable?,
-                   sensitive?: aggregate.sensitive?,
-                   type: aggregate.type,
-                   include_nil?: aggregate.include_nil?,
-                   constraints: aggregate.constraints,
-                   implementation: aggregate.implementation,
-                   uniq?: aggregate.uniq?,
-                   read_action: read_action,
-                   authorize?: aggregate.authorize?,
-                   join_filters:
-                     Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                   [
+                     agg_name: aggregate.name,
+                     query: aggregate_query,
+                     field: aggregate.field,
+                     default: aggregate.default,
+                     filterable?: aggregate.filterable?,
+                     sortable?: aggregate.sortable?,
+                     sensitive?: aggregate.sensitive?,
+                     type: aggregate.type,
+                     include_nil?: aggregate.include_nil?,
+                     constraints: aggregate.constraints,
+                     implementation: aggregate.implementation,
+                     uniq?: aggregate.uniq?,
+                     read_action: read_action,
+                     authorize?: aggregate.authorize?,
+                     join_filters:
+                       Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                   ] ++ aggregate_opts
                  ) do
             query_aggregate = %{query_aggregate | load: aggregate.name}
 
@@ -3260,12 +3305,41 @@ defmodule Ash.Filter do
   defp resolve_call(%Call{name: name, args: args} = call, context)
        when name in @inline_aggregates do
     resource = Ash.Resource.Info.related(context.resource, call.relationship_path)
-    path = refs_to_path(Enum.at(args, 0))
-    related = Ash.Resource.Info.related(resource, path)
+    first_arg = Enum.at(args, 0)
 
-    if !related do
-      raise "Expression `#{inspect(call)}` is invalid. `#{inspect(Enum.at(args, 0))}` is not a valid relationship path from #{inspect(resource)}."
-    end
+    # Check if this is an unrelated aggregate (resource module)
+    {related, path, unrelated?} =
+      case first_arg do
+        module when is_atom(module) ->
+          # Check if it's a module that looks like a resource (starts with uppercase)
+          module_string = to_string(module)
+
+          if String.match?(module_string, ~r/^[A-Z]/) and Code.ensure_loaded?(module) do
+            # This is an unrelated aggregate
+            {module, [], true}
+          else
+            # This is a relationship path
+            path = refs_to_path(first_arg)
+            related = Ash.Resource.Info.related(resource, path)
+
+            if !related do
+              raise "Expression `#{inspect(call)}` is invalid. `#{inspect(first_arg)}` is not a valid relationship path from #{inspect(resource)}."
+            end
+
+            {related, path, false}
+          end
+
+        _ ->
+          # This is a relationship path
+          path = refs_to_path(first_arg)
+          related = Ash.Resource.Info.related(resource, path)
+
+          if !related do
+            raise "Expression `#{inspect(call)}` is invalid. `#{inspect(first_arg)}` is not a valid relationship path from #{inspect(resource)}."
+          end
+
+          {related, path, false}
+      end
 
     opts = Enum.at(args, 1) || []
 
@@ -3276,9 +3350,22 @@ defmodule Ash.Filter do
         name
       end
 
-    if Ash.DataLayer.data_layer_can?(context.resource, {:aggregate, kind}) do
+    # Check data layer capability for unrelated aggregates
+    capability = if unrelated?, do: {:aggregate, :unrelated}, else: {:aggregate, kind}
+
+    if Ash.DataLayer.data_layer_can?(context.resource, capability) do
       if Keyword.keyword?(opts) do
-        opts = Keyword.put(opts, :path, path)
+        # Convert inline aggregate options to proper aggregate options
+        opts =
+          opts
+          |> convert_inline_aggregate_options()
+          |> then(fn opts ->
+            if unrelated? do
+              Keyword.put(opts, :resource, related)
+            else
+              Keyword.put(opts, :path, path)
+            end
+          end)
 
         with {:ok, agg} <-
                Aggregate.new(
@@ -3504,6 +3591,21 @@ defmodule Ash.Filter do
 
   defp refs_to_path(item), do: [item]
 
+  # Convert inline aggregate options to proper aggregate options
+  defp convert_inline_aggregate_options(opts) do
+    opts
+    |> Keyword.pop(:filter)
+    |> case do
+      {nil, opts} ->
+        opts
+
+      {filter, opts} ->
+        # Convert filter: expr(...) to query: [filter: expr(...)]
+        query = [filter: filter]
+        Keyword.put(opts, :query, query)
+    end
+  end
+
   defp validate_datalayer_supports_nested_expressions(args, resource) do
     if resource && Enum.any?(args, &Ash.Expr.expr?/1) &&
          !Ash.DataLayer.data_layer_can?(resource, :nested_expressions) do
@@ -3665,8 +3767,26 @@ defmodule Ash.Filter do
             end
 
           aggregate = aggregate(context, attribute) ->
-            if Ash.DataLayer.data_layer_can?(context.resource, {:aggregate, aggregate.kind}) do
-              agg_related = Ash.Resource.Info.related(related, aggregate.relationship_path)
+            # Check data layer support - for unrelated aggregates, we need to check for :unrelated capability
+            aggregate_capability =
+              if Map.get(aggregate, :related?, true),
+                do: {:aggregate, aggregate.kind},
+                else: {:aggregate, :unrelated}
+
+            if Ash.DataLayer.data_layer_can?(context.resource, aggregate_capability) do
+              # Handle both related and unrelated aggregates
+              {agg_related, aggregate_opts} =
+                if Map.get(aggregate, :related?, true) do
+                  # Related aggregate - follow relationship path
+                  agg_related = Ash.Resource.Info.related(related, aggregate.relationship_path)
+                  opts = [path: aggregate.relationship_path]
+                  {agg_related, opts}
+                else
+                  # Unrelated aggregate - use target resource directly
+                  agg_related = aggregate.resource
+                  opts = [resource: agg_related]
+                  {agg_related, opts}
+                end
 
               with %{valid?: true} = aggregate_query <-
                      Ash.Query.new(agg_related),
@@ -3682,23 +3802,24 @@ defmodule Ash.Filter do
                        related,
                        aggregate.name,
                        aggregate.kind,
-                       agg_name: aggregate.name,
-                       path: aggregate.relationship_path,
-                       query: aggregate_query,
-                       field: aggregate.field,
-                       default: aggregate.default,
-                       filterable?: aggregate.filterable?,
-                       type: aggregate.type,
-                       sortable?: aggregate.sortable?,
-                       include_nil?: aggregate.include_nil?,
-                       sensitive?: aggregate.sensitive?,
-                       constraints: aggregate.constraints,
-                       implementation: aggregate.implementation,
-                       uniq?: aggregate.uniq?,
-                       read_action: aggregate.read_action,
-                       authorize?: aggregate.authorize?,
-                       join_filters:
-                         Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                       [
+                         agg_name: aggregate.name,
+                         query: aggregate_query,
+                         field: aggregate.field,
+                         default: aggregate.default,
+                         filterable?: aggregate.filterable?,
+                         type: aggregate.type,
+                         sortable?: aggregate.sortable?,
+                         include_nil?: aggregate.include_nil?,
+                         sensitive?: aggregate.sensitive?,
+                         constraints: aggregate.constraints,
+                         implementation: aggregate.implementation,
+                         uniq?: aggregate.uniq?,
+                         read_action: aggregate.read_action,
+                         authorize?: aggregate.authorize?,
+                         join_filters:
+                           Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                       ] ++ aggregate_opts
                      ) do
                 query_aggregate = %{query_aggregate | load: aggregate.name}
 

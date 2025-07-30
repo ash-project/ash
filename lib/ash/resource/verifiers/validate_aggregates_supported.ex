@@ -13,11 +13,39 @@ defmodule Ash.Resource.Verifiers.ValidateAggregatesSupported do
 
     dsl_state
     |> Verifier.get_entities([:aggregates])
-    |> Enum.each(fn %{relationship_path: relationship_path, name: name} ->
-      check_aggregatable(resource, resource, name, relationship_path)
+    |> Enum.each(fn aggregate ->
+      if Map.get(aggregate, :related?, true) do
+        # Related aggregate - check relationship path
+        check_aggregatable(resource, resource, aggregate.name, aggregate.relationship_path)
+      else
+        # Unrelated aggregate - check if data layer supports both the aggregate kind and unrelated aggregates
+        check_unrelated_aggregate_supported(resource, aggregate.name, aggregate.kind)
+      end
     end)
 
     :ok
+  end
+
+  defp check_unrelated_aggregate_supported(resource, name, kind) do
+    can_do_aggregate_kind? = Ash.DataLayer.data_layer_can?(resource, {:aggregate, kind})
+    can_do_unrelated? = Ash.DataLayer.data_layer_can?(resource, {:aggregate, :unrelated})
+
+    cond do
+      not can_do_aggregate_kind? ->
+        raise DslError,
+          module: resource,
+          message: "data layer does not support #{kind} aggregates",
+          path: [:aggregates, name]
+
+      not can_do_unrelated? ->
+        raise DslError,
+          module: resource,
+          message: "data layer does not support unrelated aggregates",
+          path: [:aggregates, name]
+
+      true ->
+        :ok
+    end
   end
 
   defp check_aggregatable(_resource, _root_resource, _name, []), do: :ok
