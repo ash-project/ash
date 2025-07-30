@@ -366,6 +366,7 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:usage_rules, "~> 0.1", only: [:dev]},
       # DSLs
       {:spark, "~> 2.1 and >= 2.2.65"},
       # Ash resources are backed by ecto scheams
