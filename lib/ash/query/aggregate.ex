@@ -262,8 +262,16 @@ defmodule Ash.Query.Aggregate do
                   relationship.read_action
                 end
               else
-                nil
+                Ash.Resource.Info.primary_action!(opts.resource, :read).name
               end
+            end
+
+          query =
+            if read_action && !query.action do
+              action = Ash.Resource.Info.action(target_resource, read_action)
+              %{query | action: action}
+            else
+              query
             end
 
           authorize? = opts.authorize?
