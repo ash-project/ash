@@ -1132,23 +1132,23 @@ When testing resources:
 - Write generators using `Ash.Generator`
 - Prefer to use raising versions of functions whenever possible, as opposed to pattern matching
 
-### Preventing Deadlocks in Concurrent Tests with Ash.Generator
+### Preventing Deadlocks in Concurrent Tests
 
-When running tests concurrently, using fixed values for identity attributes can cause postgres deadlock errors. Multiple tests attempting to create records with the same unique values will conflict. Ash provides `Ash.Generator` with built-in utilities for generating unique test data.
+When running tests concurrently, using fixed values for identity attributes can cause deadlock errors. Multiple tests attempting to create records with the same unique values will conflict.
 
-#### Using Ash.Generator.sequence/3
+#### Use Globally Unique Values
 
-The `sequence/3` function generates unique sequential values within your test process:
+Always use globally unique values for identity attributes in tests:
 
 ```elixir
 # BAD - Can cause deadlocks in concurrent tests
 %{email: "test@example.com", username: "testuser"}
 
-# GOOD - Use Ash.Generator.sequence for unique values
+# GOOD - Use globally unique values
 %{
-  email: Ash.Generator.sequence(:email, fn i -> "user#{i}@example.com" end),
-  username: Ash.Generator.sequence(:username, fn i -> "user_#{i}" end),
-  slug: Ash.Generator.sequence(:slug, fn i -> "post-#{i}" end)
+  email: "test-#{System.unique_integer([:positive])}@example.com",
+  username: "user_#{System.unique_integer([:positive])}",
+  slug: "post-#{System.unique_integer([:positive])}"
 }
 ```
 
@@ -1165,8 +1165,8 @@ defmodule MyApp.TestGenerators do
       User,
       :create,
       defaults: [
-        email: sequence(:user_email, &"user#{&1}@example.com"),
-        username: sequence(:username, &"user_#{&1}")
+        email: "user-#{System.unique_integer([:positive])}@example.com",
+        username: "user_#{System.unique_integer([:positive])}"
       ],
       overrides: opts
     )
@@ -1180,13 +1180,4 @@ test "concurrent user creation" do
 end
 ```
 
-#### Process-Scoped vs Globally Unique
-
-- `Ash.Generator.sequence/3` provides uniqueness within the test process
-- For cross-process uniqueness, use `System.unique_integer/1`:
-
-```elixir
-email: "test-#{System.unique_integer([:positive])}@example.com"
-```
-
-This applies to ANY field used in identity constraints, not just primary keys. Using these patterns prevents frustrating intermittent test failures in CI environments.
+This applies to ANY field used in identity constraints, not just primary keys. Using globally unique values prevents frustrating intermittent test failures in CI environments.
