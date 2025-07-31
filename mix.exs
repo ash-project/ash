@@ -406,8 +406,7 @@ defmodule Ash.MixProject do
       {:mix_audit, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
       {:benchee, "~> 1.1", only: [:dev, :test]},
-      {:tz, "~> 0.28", only: [:test]},
-      {:usage_rules, "~> 0.1"}
+      {:tz, "~> 0.28", only: [:test]}
     ]
   end
 
