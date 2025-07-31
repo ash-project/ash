@@ -220,4 +220,10 @@ defmodule Ash.Test.Resource.InfoTest do
                Info.public_relationship(Post, [:comments, :post])
     end
   end
+
+  describe "extensions/1" do
+    test "returns extensions in use by the resource" do
+      assert Ash.DataLayer.Ets in Info.extensions(Post)
+    end
+  end
 end
