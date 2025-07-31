@@ -76,6 +76,7 @@ defmodule Ash.DataLayer do
           | {:atomic, :upsert}
           | {:lateral_join, list(Ash.Resource.t())}
           | {:join, Ash.Resource.t()}
+          | {:aggregate, :unrelated}
           | {:aggregate, Ash.Query.Aggregate.kind()}
           | {:aggregate_relationship, Ash.Resource.Relationships.relationship()}
           | {:query_aggregate, Ash.Query.Aggregate.kind()}
