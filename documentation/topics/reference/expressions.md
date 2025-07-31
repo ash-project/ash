@@ -121,7 +121,11 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 
 ## Inline Aggregates
 
-Aggregates can be referenced in-line, with their relationship path specified and any options provided that match the options given to `Ash.Query.Aggregate.new/4`. For example:
+Aggregates can be referenced in-line, with their relationship path specified and any options provided that match the options given to `Ash.Query.Aggregate.new/4`.
+
+### Related Inline Aggregates
+
+For aggregating over related data through relationships:
 
 ```elixir
 calculate :grade, :decimal, expr(
@@ -129,6 +133,35 @@ calculate :grade, :decimal, expr(
   count(answers, query: [filter: expr(correct == false)])
 )
 ```
+
+### Unrelated Inline Aggregates
+
+For aggregating over any resource without a relationship:
+
+```elixir
+# Count profiles matching the user's name
+calculate :matching_profiles, :integer, 
+  expr(count(Profile, filter: expr(name == parent(name))))
+
+# Get the latest report title by the user
+calculate :latest_report, :string,
+  expr(first(Report, 
+    field: :title,
+    query: [
+      filter: expr(author_name == parent(name)),
+      sort: [inserted_at: :desc]
+    ]
+  ))
+
+# Complex calculation with multiple unrelated aggregates
+calculate :stats, :map, expr(%{
+  profile_count: count(Profile, filter: expr(name == parent(name))),
+  total_score: sum(Report, field: :score, query: [filter: expr(author_name == parent(name))]),
+  has_active_profile: exists(Profile, filter: expr(active == true and name == parent(name)))
+})
+```
+
+The `parent/1` function allows referencing fields from the source resource within unrelated aggregate filters.
 
 The available aggregate kinds can also be seen in the `Ash.Query.Aggregate` module documentation.
 
