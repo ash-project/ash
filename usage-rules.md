@@ -1131,3 +1131,62 @@ When testing resources:
 - Use `authorize?: false` in tests where authorization is not the focus
 - Write generators using `Ash.Generator`
 - Prefer to use raising versions of functions whenever possible, as opposed to pattern matching
+
+### Preventing Deadlocks in Concurrent Tests with Ash.Generator
+
+When running tests concurrently, using fixed values for identity attributes can cause postgres deadlock errors. Multiple tests attempting to create records with the same unique values will conflict. Ash provides `Ash.Generator` with built-in utilities for generating unique test data.
+
+#### Using Ash.Generator.sequence/3
+
+The `sequence/3` function generates unique sequential values within your test process:
+
+```elixir
+# BAD - Can cause deadlocks in concurrent tests
+%{email: "test@example.com", username: "testuser"}
+
+# GOOD - Use Ash.Generator.sequence for unique values
+%{
+  email: Ash.Generator.sequence(:email, fn i -> "user#{i}@example.com" end),
+  username: Ash.Generator.sequence(:username, fn i -> "user_#{i}" end),
+  slug: Ash.Generator.sequence(:slug, fn i -> "post-#{i}" end)
+}
+```
+
+#### Creating Reusable Test Generators
+
+For better organization, create a generator module:
+
+```elixir
+defmodule MyApp.TestGenerators do
+  use Ash.Generator
+
+  def user(opts \\ []) do
+    changeset_generator(
+      User,
+      :create,
+      defaults: [
+        email: sequence(:user_email, &"user#{&1}@example.com"),
+        username: sequence(:username, &"user_#{&1}")
+      ],
+      overrides: opts
+    )
+  end
+end
+
+# In your tests
+test "concurrent user creation" do
+  users = MyApp.TestGenerators.generate_many(user(), 10)
+  # Each user has unique identity attributes
+end
+```
+
+#### Process-Scoped vs Globally Unique
+
+- `Ash.Generator.sequence/3` provides uniqueness within the test process
+- For cross-process uniqueness, use `System.unique_integer/1`:
+
+```elixir
+email: "test-#{System.unique_integer([:positive])}@example.com"
+```
+
+This applies to ANY field used in identity constraints, not just primary keys. Using these patterns prevents frustrating intermittent test failures in CI environments.
