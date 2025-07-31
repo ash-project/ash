@@ -1066,24 +1066,35 @@ MyDomain.full_name("John", "Doe", ", ")  # Returns "John, Doe"
 
 ## Aggregates
 
-Aggregates allow you to retrieve summary information over groups of related data, like counts, sums, or averages. Define aggregates in the `aggregates` block of a resource:
+Aggregates allow you to retrieve summary information over groups of related data, like counts, sums, or averages. Define aggregates in the `aggregates` block of a resource.
+
+Aggregates can work over relationships or directly over unrelated resources:
 
 ```elixir
 aggregates do
-  # Count the number of published posts for a user
+  # Related aggregates - use relationship path
   count :published_post_count, :posts do
     filter expr(published == true)
   end
 
-  # Sum the total amount of all orders
   sum :total_sales, :orders, :amount
 
-  # Check if a user has any admin roles
   exists :is_admin, :roles do
     filter expr(name == "admin")
   end
+
+  # Unrelated aggregates - use resource module directly
+  count :matching_profiles_count, Profile do
+    filter expr(name == parent(name))
+  end
+  
+  sum :total_report_score, Report, :score do
+    filter expr(author_name == parent(name))
+  end
 end
 ```
+
+For unrelated aggregates, use `parent/1` to reference fields from the source resource.
 
 ### Aggregate Types
 
@@ -1137,10 +1148,21 @@ end
 Use aggregates inline within expressions:
 
 ```elixir
+# Related inline aggregates
 calculate :grade_percentage, :decimal, expr(
   count(answers, query: [filter: expr(correct == true)]) * 100 /
   count(answers)
 )
+
+# Unrelated inline aggregates
+calculate :profile_count, :integer, expr(
+  count(Profile, filter: expr(name == parent(name)))
+)
+
+calculate :stats, :map, expr(%{
+  profiles: count(Profile, filter: expr(active == true)),
+  reports: count(Report, filter: expr(author_name == parent(name)))
+})
 ```
 
 ## Testing
