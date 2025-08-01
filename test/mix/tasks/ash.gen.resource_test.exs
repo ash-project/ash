@@ -273,6 +273,42 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
       """)
     end
 
+    test "generates many_to_many relationship" do
+      test_project()
+      |> Igniter.compose_task("ash.gen.resource", [
+        "MyApp.Blog.Post",
+        "--relationship",
+        "many_to_many:comments:MyApp.Blog.PostComment:MyApp.Blog.Comment:public"
+      ])
+      |> assert_creates("lib/my_app/blog/post.ex", """
+      defmodule MyApp.Blog.Post do
+        use Ash.Resource,
+          otp_app: :test,
+          domain: MyApp.Blog
+
+        relationships do
+          many_to_many :comments, MyApp.Blog.Comment do
+            through(MyApp.Blog.PostComment)
+            public?(true)
+          end
+        end
+      end
+      """)
+    end
+
+    test "many_to_many relationship raises error when invalid modifier is provided" do
+      assert_raise ArgumentError,
+                   ~r/Invalid modifier `required` for many_to_many relationship/,
+                   fn ->
+                     test_project()
+                     |> Igniter.compose_task("ash.gen.resource", [
+                       "MyApp.Blog.Post",
+                       "--relationship",
+                       "many_to_many:comments:MyApp.Blog.PostComment:MyApp.Blog.Comment:required"
+                     ])
+                   end
+    end
+
     test "generates multiple relationships" do
       test_project()
       |> Igniter.compose_task("ash.gen.resource", [
