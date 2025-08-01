@@ -521,7 +521,7 @@ Relationships describe connections between resources and are a core component of
 
 #### Relationship Types
 
-- For Polymorphic relationships, you can model them using `Ash.Type.Union`; see “Define Polymorphic Relationships” in the Ash guides: https://hexdocs.pm/ash/polymorphic-relationships.html
+- For Polymorphic relationships, you can model them using `Ash.Type.Union`; see the “Polymorphic Relationships” guide for more information.
 
 ```elixir
 relationships do
