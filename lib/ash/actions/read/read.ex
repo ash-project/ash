@@ -1354,7 +1354,8 @@ defmodule Ash.Actions.Read do
             %{
               aggregate
               | resource: query.resource,
-                relationship_path: relationship_path ++ aggregate.relationship_path
+                relationship_path: relationship_path ++ aggregate.relationship_path,
+                related?: Map.get(aggregate, :related?, true)
             }
           end)
 
@@ -3298,28 +3299,33 @@ defmodule Ash.Actions.Read do
          path_filters,
          prefix \\ []
        ) do
-    aggregate_relationship_path
-    |> :lists.droplast()
-    |> Ash.Query.Aggregate.subpaths()
-    |> Enum.reduce(current_join_filters, fn path, current_join_filters ->
-      action =
-        resource
-        |> Ash.Resource.Info.related(path)
-        |> Ash.Resource.Info.primary_action!(:read)
-        |> Map.get(:name)
+    # Skip join filters for unrelated aggregates (empty relationship path)
+    if aggregate_relationship_path == [] do
+      current_join_filters
+    else
+      aggregate_relationship_path
+      |> :lists.droplast()
+      |> Ash.Query.Aggregate.subpaths()
+      |> Enum.reduce(current_join_filters, fn path, current_join_filters ->
+        action =
+          resource
+          |> Ash.Resource.Info.related(path)
+          |> Ash.Resource.Info.primary_action!(:read)
+          |> Map.get(:name)
 
-      last_relationship = last_relationship(resource, prefix ++ path)
+        last_relationship = last_relationship(resource, prefix ++ path)
 
-      case Map.fetch(path_filters, {last_relationship.source, last_relationship.name, action}) do
-        {:ok, filter} ->
-          Map.update(current_join_filters, path, filter, fn current_filter ->
-            Ash.Query.BooleanExpression.new(:and, current_filter, filter)
-          end)
+        case Map.fetch(path_filters, {last_relationship.source, last_relationship.name, action}) do
+          {:ok, filter} ->
+            Map.update(current_join_filters, path, filter, fn current_filter ->
+              Ash.Query.BooleanExpression.new(:and, current_filter, filter)
+            end)
 
-        :error ->
-          current_join_filters
-      end
-    end)
+          :error ->
+            current_join_filters
+        end
+      end)
+    end
   end
 
   defp maybe_await(%Task{} = task, timeout) do
@@ -4167,7 +4173,22 @@ defmodule Ash.Actions.Read do
 
   defp query_aggregate_from_resource_aggregate(query, resource_aggregate) do
     resource = query.resource
-    related_resource = Ash.Resource.Info.related(resource, resource_aggregate.relationship_path)
+
+    # Handle unrelated vs related aggregates
+    {related_resource, aggregate_opts} =
+      if Map.get(resource_aggregate, :related?, true) do
+        # Related aggregate - follow relationship path
+        related_resource =
+          Ash.Resource.Info.related(resource, resource_aggregate.relationship_path)
+
+        opts = [path: resource_aggregate.relationship_path]
+        {related_resource, opts}
+      else
+        # Unrelated aggregate - use target resource directly
+        related_resource = resource_aggregate.resource
+        opts = [resource: related_resource]
+        {related_resource, opts}
+      end
 
     read_action =
       resource_aggregate.read_action ||
@@ -4185,25 +4206,31 @@ defmodule Ash.Actions.Read do
              sort: resource_aggregate.sort
            ),
          {:ok, query_aggregate} <-
-           Ash.Query.Aggregate.new(
-             resource,
-             resource_aggregate.name,
-             resource_aggregate.kind,
-             agg_name: resource_aggregate.name,
-             path: resource_aggregate.relationship_path,
-             query: aggregate_query,
-             field: resource_aggregate.field,
-             default: resource_aggregate.default,
-             filterable?: resource_aggregate.filterable?,
-             type: resource_aggregate.type,
-             constraints: resource_aggregate.constraints,
-             implementation: resource_aggregate.implementation,
-             include_nil?: resource_aggregate.include_nil?,
-             uniq?: resource_aggregate.uniq?,
-             read_action: read_action,
-             authorize?: resource_aggregate.authorize?,
-             join_filters:
-               Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
+           (
+             full_opts =
+               [
+                 agg_name: resource_aggregate.name,
+                 query: aggregate_query,
+                 field: resource_aggregate.field,
+                 default: resource_aggregate.default,
+                 filterable?: resource_aggregate.filterable?,
+                 type: resource_aggregate.type,
+                 constraints: resource_aggregate.constraints,
+                 implementation: resource_aggregate.implementation,
+                 include_nil?: resource_aggregate.include_nil?,
+                 uniq?: resource_aggregate.uniq?,
+                 read_action: read_action,
+                 authorize?: resource_aggregate.authorize?,
+                 join_filters:
+                   Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
+               ] ++ aggregate_opts
+
+             Ash.Query.Aggregate.new(
+               resource,
+               resource_aggregate.name,
+               resource_aggregate.kind,
+               full_opts
+             )
            ) do
       {:ok, Map.put(query_aggregate, :load, resource_aggregate.name)}
     else
@@ -4234,18 +4261,23 @@ defmodule Ash.Actions.Read do
         source_context: source_context
       )
 
-    last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
-
     additional_filter =
-      case Map.fetch(
-             path_filters,
-             {last_relationship.source, last_relationship.name, aggregate.query.action.name}
-           ) do
-        :error ->
-          true
+      if Map.get(aggregate, :related?, true) do
+        last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
 
-        {:ok, filter} ->
-          filter
+        case Map.fetch(
+               path_filters,
+               {last_relationship.source, last_relationship.name, aggregate.query.action.name}
+             ) do
+          :error ->
+            true
+
+          {:ok, filter} ->
+            filter
+        end
+      else
+        # For unrelated aggregates, no additional authorization filter needed
+        true
       end
 
     with {:ok, filter} <-
@@ -4509,8 +4541,21 @@ defmodule Ash.Actions.Read do
   end
 
   defp resource_aggregate_to_query_aggregate(resource, resource_aggregate, opts) do
-    agg_related_resource =
-      Ash.Resource.Info.related(resource, resource_aggregate.relationship_path)
+    # Handle both related and unrelated aggregates
+    {agg_related_resource, aggregate_opts} =
+      if Map.get(resource_aggregate, :related?, true) do
+        # Related aggregate - follow relationship path
+        agg_related_resource =
+          Ash.Resource.Info.related(resource, resource_aggregate.relationship_path)
+
+        opts_for_aggregate = [path: resource_aggregate.relationship_path]
+        {agg_related_resource, opts_for_aggregate}
+      else
+        # Unrelated aggregate - use target resource directly
+        agg_related_resource = resource_aggregate.resource
+        opts_for_aggregate = [resource: agg_related_resource]
+        {agg_related_resource, opts_for_aggregate}
+      end
 
     read_action =
       resource_aggregate.read_action ||
@@ -4529,20 +4574,22 @@ defmodule Ash.Actions.Read do
         resource,
         resource_aggregate.name,
         resource_aggregate.kind,
-        agg_name: resource_aggregate.name,
-        path: resource_aggregate.relationship_path,
-        query: aggregate_query,
-        field: resource_aggregate.field,
-        default: resource_aggregate.default,
-        filterable?: resource_aggregate.filterable?,
-        type: resource_aggregate.type,
-        constraints: resource_aggregate.constraints,
-        include_nil?: resource_aggregate.include_nil?,
-        implementation: resource_aggregate.implementation,
-        uniq?: resource_aggregate.uniq?,
-        read_action: read_action,
-        authorize?: resource_aggregate.authorize?,
-        join_filters: Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
+        [
+          agg_name: resource_aggregate.name,
+          query: aggregate_query,
+          field: resource_aggregate.field,
+          default: resource_aggregate.default,
+          filterable?: resource_aggregate.filterable?,
+          type: resource_aggregate.type,
+          constraints: resource_aggregate.constraints,
+          include_nil?: resource_aggregate.include_nil?,
+          implementation: resource_aggregate.implementation,
+          uniq?: resource_aggregate.uniq?,
+          read_action: read_action,
+          authorize?: resource_aggregate.authorize?,
+          join_filters:
+            Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
+        ] ++ aggregate_opts
       )
     end
   end

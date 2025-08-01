@@ -1148,12 +1148,19 @@ defmodule Ash.Resource.Dsl do
 
     Supports `filter`, but not `sort` (because that wouldn't affect the count)
 
+    Can aggregate over relationships using a relationship path, or directly over another resource.
+
     See the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
     """,
     examples: [
       """
       count :assigned_ticket_count, :assigned_tickets do
         filter [active: true]
+      end
+      """,
+      """
+      count :matching_profiles_count, Profile do
+        filter expr(name == parent(name))
       end
       """
     ],
@@ -1168,6 +1175,7 @@ defmodule Ash.Resource.Dsl do
         doc: "Whether or not to count unique values only",
         default: false
       ),
+    transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :count]
   }
 
@@ -1201,6 +1209,7 @@ defmodule Ash.Resource.Dsl do
         doc:
           "Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates."
       ),
+    transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :first]
   }
 
@@ -1226,6 +1235,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
     schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort),
+    transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :max]
   }
 
@@ -1251,6 +1261,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
     schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort),
+    transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :min]
   }
 
@@ -1276,6 +1287,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
     schema: Keyword.delete(Ash.Resource.Aggregate.schema(), :sort),
+    transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :sum]
   }
 
@@ -1301,6 +1313,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
     schema: Keyword.delete(Ash.Resource.Aggregate.schema(), :sort),
+    transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :avg]
   }
 
@@ -1324,6 +1337,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path],
     schema: Keyword.drop(Ash.Resource.Aggregate.schema(), [:sort, :field]),
+    transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :exists]
   }
 
@@ -1362,6 +1376,7 @@ defmodule Ash.Resource.Dsl do
         required: true,
         doc: "The module that implements the relevant data layer callbacks"
       ),
+    transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :custom]
   }
 
@@ -1400,6 +1415,7 @@ defmodule Ash.Resource.Dsl do
         doc:
           "Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates."
       ),
+    transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :list]
   }
 
