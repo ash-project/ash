@@ -416,6 +416,48 @@ if Code.ensure_loaded?(Igniter) do
     defp add_relationships_to_resource(igniter, resource, options) do
       Enum.reduce(options[:relationship] || [], igniter, fn relationship, igniter ->
         case String.split(relationship, ":") do
+          ["many_to_many", name, through, destination | modifiers] ->
+            if !valid_attribute_name?(name) do
+              raise "Invalid relationship name provided: #{name}"
+            end
+
+            name_atom = String.to_atom(name)
+
+            relationship_code =
+              if Enum.empty?(modifiers) do
+                "many_to_many :#{name}, #{destination} do
+                  through(#{through})
+                end"
+              else
+                modifier_string =
+                  Enum.map_join(modifiers, "\n", fn
+                    "public" ->
+                      "public? true"
+
+                    "sensitive?" ->
+                      "sensitive? true"
+
+                    invalid_modifier ->
+                      raise ArgumentError,
+                            "Invalid modifier `#{invalid_modifier}` for many_to_many relationship, valid modifiers are `public` and `sensitive`"
+                  end)
+
+                """
+                many_to_many :#{name}, #{destination} do
+                  through(#{through})
+                  #{modifier_string}
+                end
+                """
+              end
+
+            add_relationship_with_conflicts(
+              igniter,
+              resource,
+              name_atom,
+              relationship_code,
+              options[:conflicts]
+            )
+
           [type, name, destination | modifiers] ->
             if !valid_attribute_name?(name) do
               raise "Invalid relationship name provided: #{name}"
