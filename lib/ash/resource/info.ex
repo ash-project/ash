@@ -834,7 +834,14 @@ defmodule Ash.Resource.Info do
           | Ash.Resource.Relationships.relationship()
         ]
   def fields(resource, types \\ [:attributes, :aggregates, :calculations, :relationships]) do
-    Enum.flat_map(types, &Extension.get_entities(resource, [&1]))
+    types
+    |> Enum.flat_map(&Extension.get_entities(resource, [&1]))
+    |> Enum.filter(fn entity ->
+      case entity do
+        %Ash.Resource.Calculation{field?: false} -> false
+        _ -> true
+      end
+    end)
   end
 
   @doc "Get a field from a resource by name"

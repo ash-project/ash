@@ -605,7 +605,11 @@ defmodule Ash.Resource do
     )
   end
 
-  def loaded?(record, [%Ash.Resource.Calculation{} = resource_calculation | rest], opts) do
+  def loaded?(
+        record,
+        [%Ash.Resource.Calculation{field?: true} = resource_calculation | rest],
+        opts
+      ) do
     if opts[:strict?] && Enum.any?(resource_calculation.arguments) do
       false
     else

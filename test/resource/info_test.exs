@@ -139,6 +139,16 @@ defmodule Ash.Test.Resource.InfoTest do
       calculate :formatted_post_title, :string, expr("Post title: " <> post_title),
         public?: true,
         load: [:post_title]
+
+      calculate :field_calculation, :string, expr("Field calc"),
+        public?: true,
+        field?: true
+
+      calculate :non_field_calculation, :string, expr("Non-field calc"),
+        public?: true,
+        field?: false
+
+      calculate :default_field_calculation, :string, expr("Default field calc"), public?: true
     end
 
     relationships do
@@ -218,6 +228,35 @@ defmodule Ash.Test.Resource.InfoTest do
 
       assert %Resource.Relationships.BelongsTo{name: :post} =
                Info.public_relationship(Post, [:comments, :post])
+    end
+
+    test "fields filters calculations by field? attribute" do
+      # Get all fields from Comment resource
+      all_fields = Info.fields(Comment)
+      field_names = Enum.map(all_fields, & &1.name) |> Enum.sort()
+
+      # Should include attributes, aggregates, and relationships (which don't have field? attribute)
+      assert :id in field_names
+      assert :subjects in field_names
+      assert :post_id in field_names
+      # aggregate
+      assert :post_title in field_names
+      # aggregate
+      assert :post_authors in field_names
+      # relationship
+      assert :post in field_names
+
+      # Should include calculations with field?: true or default (true)
+      assert :formatted_post_title in field_names
+      assert :field_calculation in field_names
+      assert :default_field_calculation in field_names
+
+      # Should exclude calculations with field?: false
+      refute :non_field_calculation in field_names
+
+      # Verify that we're getting all types of entities except calculations with field?: false
+      # Total should be: 3 attributes + 2 aggregates + 1 relationship + 3 field calculations = 9
+      assert length(all_fields) == 9
     end
   end
 end

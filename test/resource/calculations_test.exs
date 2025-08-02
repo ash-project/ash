@@ -36,6 +36,65 @@ defmodule Ash.Test.Resource.CalculationsTest do
   end
 
   describe "representation" do
+    test "field? option defaults to true and can be overridden" do
+      defposts do
+        calculations do
+          calculate :default_field, :string, concat([:name, :contents])
+          calculate :explicit_true_field, :string, concat([:name, :contents]), field?: true
+          calculate :false_field, :string, concat([:name, :contents]), field?: false
+        end
+      end
+
+      calculations = Ash.Resource.Info.calculations(Post)
+
+      default_calc = Enum.find(calculations, &(&1.name == :default_field))
+      assert default_calc.field? == true
+
+      explicit_true_calc = Enum.find(calculations, &(&1.name == :explicit_true_field))
+      assert explicit_true_calc.field? == true
+
+      false_calc = Enum.find(calculations, &(&1.name == :false_field))
+      assert false_calc.field? == false
+    end
+
+    test "calculations with field?: false are excluded from struct fields but still accessible via Info" do
+      defposts do
+        calculations do
+          calculate :visible_calc, :string, concat([:name, :contents]), field?: true
+          calculate :hidden_calc, :string, concat([:name, :contents]), field?: false
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+      end
+
+      # Verify both calculations are accessible via Ash.Resource.Info.calculations/1
+      calculations = Ash.Resource.Info.calculations(Post)
+      calculation_names = Enum.map(calculations, & &1.name)
+      assert :visible_calc in calculation_names
+      assert :hidden_calc in calculation_names
+
+      # Check struct fields - field?: true calculations should be present, field?: false should not
+      struct_keys = Post.__struct__() |> Map.keys()
+
+      # The visible calculation should appear in struct fields
+      assert :visible_calc in struct_keys
+
+      # The hidden calculation should NOT appear in struct fields
+      refute :hidden_calc in struct_keys
+
+      # But both should still be accessible via Info functions
+      visible_calc = Ash.Resource.Info.calculation(Post, :visible_calc)
+      assert visible_calc.name == :visible_calc
+      assert visible_calc.field? == true
+
+      hidden_calc = Ash.Resource.Info.calculation(Post, :hidden_calc)
+      assert hidden_calc.name == :hidden_calc
+      assert hidden_calc.field? == false
+    end
+
     test "calculations are persisted on the resource properly" do
       defposts do
         calculations do
@@ -276,6 +335,31 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
       comment_with_post_name = Ash.load!(comment, :post_name, tenant: tenant_id)
       assert comment_with_post_name.post_name == post.name
+    end
+  end
+
+  describe "loading with field?: false" do
+    test "field is not added to the struct after loading" do
+      defposts do
+        calculations do
+          calculate :hidden_calc, :string, concat([:name, :contents]), field?: false
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+      end
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{name: "Test", contents: "Content"})
+        |> Ash.create!()
+
+      # Should raise an error when trying to load a calculation with field?: false
+      assert_raise Ash.Error.Invalid, ~r/cannot be loaded directly.*field\?\: false/i, fn ->
+        Ash.load!(post, :hidden_calc)
+      end
     end
   end
 end

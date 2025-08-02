@@ -10,6 +10,7 @@ defmodule Ash.Resource.Calculation do
             calculation: nil,
             constraints: [],
             description: nil,
+            field?: true,
             filterable?: true,
             sortable?: true,
             load: [],
@@ -49,6 +50,12 @@ defmodule Ash.Resource.Calculation do
     description: [
       type: :string,
       doc: "An optional description for the calculation"
+    ],
+    field?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "Whether or not the calculation should be included as a field in the resource's struct. If false, the calculation can still be used in expressions within the resource but cannot be loaded directly or used in sorts and filters."
     ],
     public?: [
       type: :boolean,
@@ -127,6 +134,7 @@ defmodule Ash.Resource.Calculation do
           constraints: keyword,
           async?: boolean,
           description: nil | String.t(),
+          field?: boolean,
           filterable?: boolean,
           load: keyword,
           sortable?: boolean,
