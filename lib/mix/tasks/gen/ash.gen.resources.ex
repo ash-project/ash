@@ -55,9 +55,9 @@ if Code.ensure_loaded?(Igniter) do
       igniter.args.positional.resources
       |> String.split(";", trim: true)
       |> Enum.map(&String.trim/1)
-      |> Enum.reduce(igniter, fn resource_entry, acc_igniter ->
-        [resource | resource_options] = String.split(resource_entry, ~r/\s+/, trim: true)
-        Igniter.compose_task(acc_igniter, "ash.gen.resource", [resource] ++ resource_options)
+      |> Enum.reduce(igniter, fn resource_entry, igniter ->
+        argv = String.split(resource_entry, ~r/\s+/, trim: true)
+        Igniter.compose_task(igniter, "ash.gen.resource", argv)
       end)
     end
   end
