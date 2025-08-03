@@ -1439,14 +1439,6 @@ defmodule Ash.Actions.Destroy.Bulk do
       else
         batch
       end
-      |> Enum.reject(fn
-        %{valid?: false} = changeset ->
-          store_error(ref, changeset, opts)
-          true
-
-        _changeset ->
-          false
-      end)
 
     {batch, must_be_simple_results} =
       Ash.Actions.Helpers.split_and_run_simple(

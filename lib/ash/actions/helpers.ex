@@ -17,7 +17,13 @@ defmodule Ash.Actions.Helpers do
       Enum.reduce(batch, {[], []}, fn changeset, {batch, must_be_simple} ->
         if changeset.around_transaction in [[], nil] and changeset.after_transaction in [[], nil] and
              changeset.around_action in [[], nil] do
-          changeset = Ash.Changeset.run_before_transaction_hooks(changeset)
+          changeset =
+            if changeset.valid? do
+              Ash.Changeset.run_before_transaction_hooks(changeset)
+            else
+              changeset
+            end
+
           {[changeset | batch], must_be_simple}
         else
           {batch, [%{changeset | __validated_for_action__: action.name} | must_be_simple]}

@@ -487,14 +487,6 @@ defmodule Ash.Actions.Create.Bulk do
       else
         batch
       end
-      |> Enum.reject(fn
-        %{valid?: false} = changeset ->
-          store_error(ref, changeset, opts)
-          true
-
-        _changeset ->
-          false
-      end)
 
     {batch, must_be_simple_results} =
       batch
