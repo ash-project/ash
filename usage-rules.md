@@ -2,7 +2,7 @@
 
 ## Understanding Ash
 
-Ash is an opinionated, composable framework for building applications in Elixir. It provides a declarative approach to modeling your domain with resources at the center. Read documentation  *before* attempting to use it's features. Do not assume that you have prior knowledge of the framework or its conventions.
+Ash is an opinionated, composable framework for building applications in Elixir. It provides a declarative approach to modeling your domain with resources at the center. Read documentation  *before* attempting to use its features. Do not assume that you have prior knowledge of the framework or its conventions.
 
 ## Code Structure & Organization
 
@@ -479,14 +479,13 @@ end
 change {MyApp.Changes.ProcessOrder, []}
 ```
 
-## Anonymous Functions
+## Custom Modules vs. Anonymous Functions
 
 Prefer to put code in its own module and refer to that in changes, preparations, validations etc.
 
 For example, prefer this:
 
 ```elixir
-# in
 defmodule MyApp.MyDomain.MyResource.Changes.SlugifyName do
   use Ash.Resource.Change
 
@@ -597,7 +596,7 @@ Ash.load!(post, :author)
 
 Prefer to use the `strict?` option when loading to only load necessary fields on related data.
 
-```Elixir
+```elixir
 MyApp.Post
 |> Ash.Query.load([comments: [:title]], strict?: true)
 ```
