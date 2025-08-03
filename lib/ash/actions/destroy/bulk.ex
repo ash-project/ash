@@ -1502,6 +1502,16 @@ defmodule Ash.Actions.Destroy.Bulk do
         end
       )
 
+    batch =
+      Enum.reject(batch, fn
+        %{valid?: false} = changeset ->
+          store_error(ref, changeset, opts)
+          true
+
+        _changeset ->
+          false
+      end)
+
     if opts[:transaction] == :batch &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
