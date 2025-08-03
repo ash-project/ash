@@ -1091,6 +1091,10 @@ aggregates do
   sum :total_report_score, Report, :score do
     filter expr(author_name == parent(name))
   end
+  
+  exists :has_reports, Report do
+    filter expr(author_name == parent(name))
+  end
 end
 ```
 
@@ -1100,7 +1104,7 @@ For unrelated aggregates, use `parent/1` to reference fields from the source res
 
 - **count**: Counts related items meeting criteria
 - **sum**: Sums a field across related items
-- **exists**: Returns boolean indicating if matching related items exist
+- **exists**: Returns boolean indicating if matching related items exist (also supports unrelated resources)
 - **first**: Gets the first related value matching criteria
 - **list**: Lists the related values for a specific field
 - **max**: Gets the maximum value of a field
@@ -1161,9 +1165,42 @@ calculate :profile_count, :integer, expr(
 
 calculate :stats, :map, expr(%{
   profiles: count(Profile, filter: expr(active == true)),
-  reports: count(Report, filter: expr(author_name == parent(name)))
+  reports: count(Report, filter: expr(author_name == parent(name))),
+  has_active_profile: exists(Profile, active == true and name == parent(name))
 })
 ```
+
+## Exists Expressions
+
+Use `exists/2` to check for the existence of records, either through relationships or unrelated resources:
+
+### Related Exists
+
+```elixir
+# Check if user has any admin roles
+Ash.Query.filter(User, exists(roles, name == "admin"))
+
+# Check if post has comments with high scores
+Ash.Query.filter(Post, exists(comments, score > 50))
+```
+
+### Unrelated Exists
+
+```elixir
+# Check if any profile exists with the same name
+Ash.Query.filter(User, exists(Profile, name == parent(name)))
+
+# Check if user has any reports
+Ash.Query.filter(User, exists(Report, author_name == parent(name)))
+
+# Complex existence checks
+Ash.Query.filter(User, 
+  active == true and 
+  exists(Profile, active == true and name == parent(name))
+)
+```
+
+Unrelated exists expressions automatically apply authorization using the target resource's primary read action. Use `parent/1` to reference fields from the source resource.
 
 ## Testing
 

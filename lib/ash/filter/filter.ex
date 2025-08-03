@@ -966,6 +966,8 @@ defmodule Ash.Filter do
       refs =
         group_refs_by_all_paths(paths_with_refs)
 
+      unrelated_exists = collect_unrelated_exists_with_input_refs(query.filter)
+
       paths_with_refs
       |> Enum.map(&elem(&1, 0))
       |> Enum.reduce_while({:ok, filters}, fn path, {:ok, filters} ->
@@ -989,6 +991,14 @@ defmodule Ash.Filter do
         actor,
         tenant,
         refs,
+        authorize?
+      )
+      |> add_unrelated_exists_authorization(
+        domain,
+        unrelated_exists,
+        query,
+        actor,
+        tenant,
         authorize?
       )
     else
@@ -1174,6 +1184,202 @@ defmodule Ash.Filter do
           {:error, error}
       end
     end)
+  end
+
+  defp add_unrelated_exists_authorization(
+         {:ok, filters},
+         domain,
+         unrelated_exists_items,
+         query,
+         actor,
+         tenant,
+         authorize?
+       ) do
+    if authorize? do
+      unrelated_exists_items
+      |> Enum.reduce_while({:ok, filters}, fn item, {:ok, filters} ->
+        case item do
+          {:unrelated_exists, exists} ->
+            # For unrelated exists, we need to authorize the target resource's primary read action
+            case add_unrelated_exists_filter(filters, exists, domain, actor, tenant) do
+              {:ok, new_filters} ->
+                {:cont, {:ok, new_filters}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+
+          {:relationship_path_in_exists, resource, path} ->
+            # For relationship paths within unrelated exists, we need to authorize the relationship
+            case add_relationship_path_in_exists_filter(
+                   filters,
+                   resource,
+                   path,
+                   domain,
+                   query,
+                   actor,
+                   tenant
+                 ) do
+              {:ok, new_filters} ->
+                {:cont, {:ok, new_filters}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+        end
+      end)
+    else
+      {:ok, filters}
+    end
+  end
+
+  defp add_unrelated_exists_authorization({:error, error}, _, _, _, _, _, _) do
+    {:error, error}
+  end
+
+  defp collect_unrelated_exists_with_input_refs(filter) do
+    filter
+    |> Ash.Filter.flat_map(&collect_unrelated_exists_from_expression/1)
+    |> Enum.uniq_by(fn
+      {:unrelated_exists, exists} -> exists
+      {:relationship_path_in_exists, resource, path} -> {resource, path}
+    end)
+  end
+
+  defp collect_unrelated_exists_from_expression(
+         %Ash.Query.Exists{unrelated?: true, resource: resource, expr: expr} = exists
+       ) do
+    exists_item = {:unrelated_exists, exists}
+    relationship_paths = collect_relationship_paths_with_input_refs(expr, resource)
+    nested_exists = collect_unrelated_exists_from_expression(expr)
+
+    [exists_item | relationship_paths ++ nested_exists]
+  end
+
+  defp collect_unrelated_exists_from_expression(%Ash.Query.Exists{unrelated?: false}) do
+    []
+  end
+
+  defp collect_unrelated_exists_from_expression(_), do: []
+
+  defp collect_relationship_paths_with_input_refs(expr, resource) do
+    paths_with_refs =
+      expr
+      |> Ash.Filter.relationship_paths(false, true, false)
+      |> Enum.filter(fn {_path, refs} ->
+        Enum.any?(refs, & &1.input?)
+      end)
+      |> Enum.map(fn {path, _refs} -> path end)
+      |> Enum.reject(&(&1 == []))
+
+    Enum.map(paths_with_refs, fn path ->
+      {:relationship_path_in_exists, resource, path}
+    end)
+  end
+
+  defp add_unrelated_exists_filter(
+         filters,
+         %Ash.Query.Exists{resource: unrelated_resource} = _exists,
+         _domain,
+         actor,
+         tenant
+       ) do
+    primary_read_action = Ash.Resource.Info.primary_action!(unrelated_resource, :read)
+
+    base_query =
+      Ash.Query.for_read(
+        unrelated_resource,
+        primary_read_action.name,
+        %{},
+        actor: actor,
+        tenant: tenant,
+        authorize?: true
+      )
+
+    case Ash.can(base_query, actor,
+           run_queries?: false,
+           pre_flight?: false,
+           alter_source?: true,
+           no_check?: true,
+           return_forbidden_error?: true,
+           maybe_is: false
+         ) do
+      {:ok, true, authorized_query} ->
+        related_filter =
+          if is_nil(authorized_query.filter) do
+            %Ash.Filter{expression: true, resource: unrelated_resource}
+          else
+            authorized_query.filter
+          end
+
+        filter_key = {:unrelated_exists, unrelated_resource, primary_read_action.name}
+        {:ok, Map.put(filters, filter_key, related_filter)}
+
+      {:ok, false, _error} ->
+        filter_key = {:unrelated_exists, unrelated_resource, primary_read_action.name}
+        false_filter = %Ash.Filter{expression: false, resource: unrelated_resource}
+        {:ok, Map.put(filters, filter_key, false_filter)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp add_relationship_path_in_exists_filter(
+         filters,
+         resource,
+         path,
+         domain,
+         _query,
+         actor,
+         tenant
+       ) do
+    last_relationship = last_relationship(resource, path)
+
+    case relationship_query(last_relationship, domain, actor, tenant, nil) do
+      %{errors: []} = related_query ->
+        if filters[{last_relationship.source, last_relationship.name, related_query.action.name}] do
+          {:ok, filters}
+        else
+          case Ash.can(related_query, actor,
+                 run_queries?: false,
+                 pre_flight?: false,
+                 alter_source?: true,
+                 no_check?: true,
+                 return_forbidden_error?: true,
+                 maybe_is: false
+               ) do
+            {:ok, true, authorized_related_query} ->
+              related_filter =
+                if is_nil(authorized_related_query.filter) do
+                  %Ash.Filter{expression: true, resource: related_query.resource}
+                else
+                  authorized_related_query.filter
+                end
+
+              {:ok,
+               Map.put(
+                 filters,
+                 {last_relationship.source, last_relationship.name, related_query.action.name},
+                 related_filter
+               )}
+
+            {:ok, false, _error} ->
+              {:ok,
+               Map.put(
+                 filters,
+                 {last_relationship.source, last_relationship.name, related_query.action.name},
+                 %Ash.Filter{expression: false, resource: related_query.resource}
+               )}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end
+
+      error_query ->
+        {:error, error_query.errors}
+    end
   end
 
   defp relationship_query(relationship, domain, actor, tenant, base) do
@@ -2059,51 +2265,73 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(
-         %Ash.Query.Exists{at_path: at_path},
+         %Ash.Query.Exists{at_path: at_path, unrelated?: unrelated?},
          false,
          with_refs?,
          _expand_aggregates?
        ) do
-    if with_refs? do
+    if unrelated? do
       []
     else
-      [{at_path}]
+      if with_refs? do
+        []
+      else
+        [{at_path}]
+      end
     end
   end
 
   defp do_relationship_paths(
-         %Ash.Query.Exists{path: path, expr: expression, at_path: at_path},
+         %Ash.Query.Exists{
+           path: path,
+           expr: expression,
+           at_path: at_path,
+           unrelated?: unrelated?
+         },
          include_exists?,
          false,
          expand_aggregates?
        ) do
-    expression
-    |> do_relationship_paths(include_exists?, false, expand_aggregates?)
-    |> List.flatten()
-    |> Enum.flat_map(fn {rel_path} ->
-      [{at_path ++ path ++ rel_path}]
-    end)
-    |> then(&[{at_path} | &1])
-    |> Kernel.++(
-      parent_relationship_paths(expression, at_path, include_exists?, false, expand_aggregates?)
-    )
+    if unrelated? do
+      []
+    else
+      expression
+      |> do_relationship_paths(include_exists?, false, expand_aggregates?)
+      |> List.flatten()
+      |> Enum.flat_map(fn {rel_path} ->
+        [{at_path ++ path ++ rel_path}]
+      end)
+      |> then(&[{at_path} | &1])
+      |> Kernel.++(
+        parent_relationship_paths(expression, at_path, include_exists?, false, expand_aggregates?)
+      )
+    end
   end
 
   defp do_relationship_paths(
-         %Ash.Query.Exists{path: path, expr: expression, at_path: at_path},
+         %Ash.Query.Exists{
+           path: path,
+           expr: expression,
+           at_path: at_path,
+           unrelated?: unrelated?
+         },
          include_exists?,
          true,
          expand_aggregates?
        ) do
-    expression
-    |> do_relationship_paths(include_exists?, true, expand_aggregates?)
-    |> List.flatten()
-    |> Enum.flat_map(fn {rel_path, ref} ->
-      [{at_path ++ path ++ rel_path, ref}]
-    end)
-    |> Kernel.++(
-      parent_relationship_paths(expression, at_path, include_exists?, true, expand_aggregates?)
-    )
+    if unrelated? do
+      []
+    else
+      expression
+      |> do_relationship_paths(include_exists?, true, expand_aggregates?)
+      |> List.flatten()
+      |> Enum.flat_map(fn {rel_path, ref} ->
+        [{at_path ++ path ++ rel_path, ref}]
+      end)
+      |> Kernel.++(
+        parent_relationship_paths(expression, at_path, include_exists?, true, expand_aggregates?)
+      )
+    end
   end
 
   defp do_relationship_paths(
@@ -2420,6 +2648,9 @@ defmodule Ash.Filter do
             do_list_refs(value, true, false, expand_calculations?, expand_get_path?)
         end)
 
+      %Ash.Query.Exists{unrelated?: true} ->
+        []
+
       %Ash.Query.Exists{at_path: at_path, path: path, expr: expr} ->
         parent_refs_inside_of_exists =
           flat_map(expr, fn
@@ -2678,12 +2909,28 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part(
-         %Ash.Query.Exists{at_path: at_path, path: path, expr: exists_expression} = exists,
+         %Ash.Query.Exists{
+           at_path: at_path,
+           path: path,
+           expr: exists_expression,
+           unrelated?: unrelated?,
+           resource: resource
+         } = exists,
          context,
          expression,
          _could_be_function?
        ) do
-    related = related(context, at_path ++ path)
+    # Check if data layer supports unrelated exists
+    if unrelated? && !Ash.DataLayer.data_layer_can?(context.resource, {:exists, :unrelated}) do
+      raise "Data layer does not support unrelated exists expressions"
+    end
+
+    related =
+      if unrelated? && resource do
+        resource
+      else
+        related(context, at_path ++ path)
+      end
 
     if !related do
       raise """
@@ -2712,7 +2959,12 @@ defmodule Ash.Filter do
            )
          ) do
       {:ok, result} ->
-        {:ok, BooleanExpression.optimized_new(:and, expression, %{exists | expr: result})}
+        {:ok,
+         BooleanExpression.optimized_new(:and, expression, %{
+           exists
+           | expr: result,
+             input?: context[:input?] || false
+         })}
 
       {:error, error} ->
         {:error, error}
@@ -3986,6 +4238,29 @@ defmodule Ash.Filter do
 
   def do_hydrate_refs(%Ash.Query.UpsertConflict{} = this, _context),
     do: {:ok, this}
+
+  def do_hydrate_refs(
+        %Ash.Query.Exists{expr: expr, unrelated?: true, resource: resource} = exists,
+        context
+      ) do
+    context = %{
+      resource: resource,
+      root_resource: resource,
+      parent_stack: [context[:root_resource] | context[:parent_stack] || []],
+      relationship_path: [],
+      public?: context[:public?],
+      input?: context[:input?],
+      data_layer: Ash.DataLayer.data_layer(resource)
+    }
+
+    case do_hydrate_refs(expr, context) do
+      {:ok, expr} ->
+        {:ok, %{exists | expr: expr}}
+
+      other ->
+        other
+    end
+  end
 
   def do_hydrate_refs(
         %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists,

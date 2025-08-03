@@ -201,6 +201,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
   def can?(_, {:aggregate, :unrelated}), do: true
+  def can?(_, {:exists, :unrelated}), do: true
   def can?(_, :changeset_filter), do: true
   def can?(_, :update_query), do: true
   def can?(_, :destroy_query), do: true

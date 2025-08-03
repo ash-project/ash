@@ -96,7 +96,7 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 
 ## Sub-expressions
 
-- `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. See the section on `exists` below.
+- `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. Can also be used with resource modules for unrelated exists: `exists(SomeResource, name == "fred")`. See the section on `exists` below.
 - `path.exists/2` | Same as `exists` but the source of the relationship is itself a nested relationship. See the section on `exists` below.
 - `parent/1` | Allows an expression scoped to a resource to refer to the "outer" context. Used in relationship filters and `exists`
 
@@ -153,11 +153,12 @@ calculate :latest_report, :string,
     ]
   ))
 
-# Complex calculation with multiple unrelated aggregates
+# Complex calculation with multiple unrelated aggregates and exists
 calculate :stats, :map, expr(%{
   profile_count: count(Profile, filter: expr(name == parent(name))),
   total_score: sum(Report, field: :score, query: [filter: expr(author_name == parent(name))]),
-  has_active_profile: exists(Profile, filter: expr(active == true and name == parent(name)))
+  has_active_profile: exists(Profile, active == true and name == parent(name)),
+  has_recent_reports: exists(Report, author_name == parent(name) and inserted_at > ago(1, :week))
 })
 ```
 
@@ -267,6 +268,28 @@ Ash.Query.filter(Post, author.exists(roles, name == :admin) and author.active)
 ```
 
 While the above is not common, it can be useful in some specific circumstances, and is used under the hood by the policy authorizer when combining the filters of various resources to create a single filter.
+
+### Unrelated Exists
+
+Sometimes you want to check for the existence of records in any resource, not just through relationships. Unrelated exists allows you to query any resource directly:
+
+```elixir
+# Check if there are any profiles with the same name as the user
+Ash.Query.filter(User, exists(Profile, name == parent(name)))
+
+# Check if user has reports (without needing a relationship)
+Ash.Query.filter(User, exists(Report, author_name == parent(name)))
+
+# Check existence with complex conditions
+Ash.Query.filter(User, exists(Profile, active == true and age > 25))
+
+# Combine with other filters
+Ash.Query.filter(User, 
+  active == true and exists(Profile, name == parent(name))
+)
+```
+
+The `parent/1` function allows you to reference fields from the source resource within the exists expression. Authorization is automatically applied to unrelated exists expressions using the target resource's primary read action.
 
 ## Portability
 
