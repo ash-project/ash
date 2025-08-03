@@ -4686,16 +4686,61 @@ defmodule Ash.Actions.Read do
         {:ok,
          filter
          |> Ash.Filter.map(fn
-           %Ash.Query.Exists{at_path: at_path, path: exists_path, expr: exists_expr} = exists ->
-             {:ok, new_expr} =
-               do_filter_with_related(
-                 resource,
-                 exists_expr,
-                 path_filters,
-                 prefix ++ at_path ++ exists_path
-               )
+           %Ash.Query.Exists{
+             at_path: at_path,
+             path: exists_path,
+             expr: exists_expr,
+             unrelated?: unrelated?,
+             resource: unrelated_resource
+           } = exists ->
+             if unrelated? do
+               primary_read_action = Ash.Resource.Info.primary_action!(unrelated_resource, :read)
+               filter_key = {:unrelated_exists, unrelated_resource, primary_read_action.name}
 
-             {:halt, %{exists | expr: new_expr}}
+               case Map.get(path_filters, filter_key) do
+                 nil ->
+                   {:ok, new_expr} =
+                     do_filter_with_related(
+                       unrelated_resource,
+                       exists_expr,
+                       path_filters,
+                       []
+                     )
+
+                   {:halt, %{exists | expr: new_expr}}
+
+                 %Ash.Filter{expression: false} ->
+                   {:halt, false}
+
+                 auth_filter ->
+                   {:ok, new_expr} =
+                     do_filter_with_related(
+                       unrelated_resource,
+                       exists_expr,
+                       path_filters,
+                       []
+                     )
+
+                   combined_expr =
+                     Ash.Query.BooleanExpression.optimized_new(
+                       :and,
+                       new_expr,
+                       auth_filter.expression
+                     )
+
+                   {:halt, %{exists | expr: combined_expr}}
+               end
+             else
+               {:ok, new_expr} =
+                 do_filter_with_related(
+                   resource,
+                   exists_expr,
+                   path_filters,
+                   prefix ++ at_path ++ exists_path
+                 )
+
+               {:halt, %{exists | expr: new_expr}}
+             end
 
            other ->
              other

@@ -92,7 +92,6 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :sort), do: true
   def can?(_, :filter), do: true
   def can?(_, {:filter_relationship, _}), do: true
-  def can?(_, {:query_aggregate, :count}), do: true
   def can?(_, :expression_calculation), do: true
   def can?(_, :expression_calculation_sort), do: true
   def can?(_, :limit), do: true
@@ -111,6 +110,8 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
+  def can?(_, {:aggregate, :unrelated}), do: true
+  def can?(_, {:exists, :unrelated}), do: true
   def can?(resource, {:query_aggregate, kind}), do: can?(resource, {:aggregate, kind})
 
   case Application.compile_env(:ash, :no_join_mnesia_ets) || false do
