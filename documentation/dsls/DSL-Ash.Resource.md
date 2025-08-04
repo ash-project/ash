@@ -3742,6 +3742,7 @@ end
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |
 | [`sortable?`](#calculations-calculate-sortable?){: #calculations-calculate-sortable? } | `boolean` | `true` | Whether or not the calculation can be referenced in sorts. |
+| [`field?`](#calculations-calculate-field?){: #calculations-calculate-field? } | `boolean` | `true` | Whether or not the calculation should be included as a field in the resource's record struct. |
 
 
 ### calculations.calculate.argument

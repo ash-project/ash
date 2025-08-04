@@ -90,7 +90,6 @@ defmodule Ash.Resource.Calculation do
     field?: [
       type: :boolean,
       default: true,
-      hide: true,
       doc: """
       Whether or not the calculation should be included as a field in the resource's record struct.
       """
