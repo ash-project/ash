@@ -17,7 +17,8 @@ defmodule Ash.Resource.Calculation do
             public?: false,
             async?: false,
             sensitive?: false,
-            type: nil
+            type: nil,
+            field?: true
 
   @schema [
     name: [
@@ -85,6 +86,14 @@ defmodule Ash.Resource.Calculation do
       doc: """
       Whether or not the calculation can be referenced in sorts.
       """
+    ],
+    field?: [
+      type: :boolean,
+      default: true,
+      hide: true,
+      doc: """
+      Whether or not the calculation should be included as a field in the resource's record struct.
+      """
     ]
   ]
 
@@ -132,7 +141,8 @@ defmodule Ash.Resource.Calculation do
           sortable?: boolean,
           name: atom(),
           public?: boolean,
-          type: nil | Ash.Type.t()
+          type: nil | Ash.Type.t(),
+          field?: boolean
         }
 
   @type ref :: {module(), Keyword.t()} | module()
