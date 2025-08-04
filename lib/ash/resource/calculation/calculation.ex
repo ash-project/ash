@@ -220,9 +220,14 @@ defmodule Ash.Resource.Calculation do
   end
 
   @doc false
+  @spec can_load?(t() | nil) :: boolean()
+  def can_load?(%__MODULE__{} = calculation), do: calculation.field?
+  def can_load?(_), do: false
+
+  @doc false
   @spec query_name_and_load(t()) :: {atom, atom | nil}
   def query_name_and_load(calculation) do
-    if calculation.field? do
+    if can_load?(calculation) do
       {calculation.name, calculation.name}
     else
       {calculation.name, nil}

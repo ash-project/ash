@@ -104,8 +104,8 @@ defmodule Ash.Test.Resource.CalculationsTest do
       refute Map.has_key?(post, :non_field_calculation)
     end
 
-    test "Calculation with field?: false cannot be loaded directly, but can be used in expressions" do
-      defmodule Post do
+    test "Calculation with field?: false can be used in expressions" do
+      defmodule PostForCalculation do
         @moduledoc false
         use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
@@ -137,19 +137,52 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
       end
 
-      Post
-      |> Ash.Changeset.for_create(:create, %{name: "name", contents: "contents"})
-      |> Ash.create!()
-
       post =
-        Post
-        |> Ash.Query.for_read(:read, %{})
-        |> Ash.read_one!()
-        |> Ash.load!([:non_field_calculation, :name_and_contents])
+        PostForCalculation
+        |> Ash.Changeset.for_create(:create, %{name: "name", contents: "contents"})
+        |> Ash.create!()
+        |> Ash.load!([:name_and_contents])
 
       assert :name_and_contents in Map.keys(post)
       assert post.name_and_contents == "namecontents"
-      refute :non_field_calculation in Map.keys(post)
+    end
+
+    test "Calculation with field?: false returns InvalidLoad error when loaded directly" do
+      defmodule PostForCalculationError do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        attributes do
+          uuid_primary_key :id
+
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+
+        calculations do
+          calculate :non_field_calculation, :string, concat([:name, :contents]) do
+            field?(false)
+          end
+        end
+      end
+
+      post =
+        PostForCalculationError
+        |> Ash.Changeset.for_create(:create, %{name: "name", contents: "contents"})
+        |> Ash.create!()
+
+      assert {:error, %{errors: [%Ash.Error.Query.InvalidLoad{load: :non_field_calculation}]}} =
+               Ash.load(post, [:non_field_calculation])
     end
 
     test "Calculation descriptions are allowed" do
