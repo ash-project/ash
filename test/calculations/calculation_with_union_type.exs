@@ -18,7 +18,7 @@ defmodule Ash.Test.Calculations.CalculationWithUnionTypeTest do
           items: [
             fields: [
               text: [type: :string, allow_nil?: false],
-              completed: [type: :boolean],
+              completed: [type: :boolean]
             ]
           ]
         ]
@@ -43,7 +43,6 @@ defmodule Ash.Test.Calculations.CalculationWithUnionTypeTest do
       end
     end
   end
-
 
   defmodule TextContent do
     use Ash.Resource,
@@ -130,7 +129,9 @@ defmodule Ash.Test.Calculations.CalculationWithUnionTypeTest do
 
   test "load statement for calculations on embedded resource in union type can be loaded when value is an embedded resource" do
     assert %Author{content: content} =
-             Changeset.for_create(Author, :create, %{content: %{text: "Text content", content_type: "text"}})
+             Changeset.for_create(Author, :create, %{
+               content: %{text: "Text content", content_type: "text"}
+             })
              |> Ash.create!()
              |> Ash.load!(content: [text: [:is_formatted], checklist: [:total_items]])
 
