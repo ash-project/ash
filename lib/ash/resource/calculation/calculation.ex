@@ -218,4 +218,14 @@ defmodule Ash.Resource.Calculation do
   def expr_calc(expr) do
     {:ok, {Ash.Resource.Calculation.Expression, expr: expr}}
   end
+
+  @doc false
+  @spec query_name_and_load(t()) :: {atom, atom | nil}
+  def query_name_and_load(calculation) do
+    if calculation.field? do
+      {calculation.name, calculation.name}
+    else
+      {calculation.name, nil}
+    end
+  end
 end

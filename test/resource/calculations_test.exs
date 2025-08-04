@@ -104,6 +104,54 @@ defmodule Ash.Test.Resource.CalculationsTest do
       refute Map.has_key?(post, :non_field_calculation)
     end
 
+    test "Calculation with field?: false cannot be loaded directly, but can be used in expressions" do
+      defmodule Post do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        attributes do
+          uuid_primary_key :id
+
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+
+        calculations do
+          calculate :name_and_contents, :string, expr(non_field_calculation) do
+            public?(true)
+          end
+
+          calculate :non_field_calculation, :string, concat([:name, :contents]) do
+            field?(false)
+          end
+        end
+      end
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{name: "name", contents: "contents"})
+      |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Query.for_read(:read, %{})
+        |> Ash.read_one!()
+        |> Ash.load!([:non_field_calculation, :name_and_contents])
+
+      assert :name_and_contents in Map.keys(post)
+      assert post.name_and_contents == "namecontents"
+      refute :non_field_calculation in Map.keys(post)
+    end
+
     test "Calculation descriptions are allowed" do
       defposts do
         calculations do

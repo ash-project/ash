@@ -2266,7 +2266,7 @@ defmodule Ash.Query do
                 {value, nil}
 
               :error ->
-                {resource_calculation.name, resource_calculation.name}
+                Ash.Resource.Calculation.query_name_and_load(resource_calculation)
             end
 
           is_map(args) ->
@@ -2275,11 +2275,11 @@ defmodule Ash.Query do
                 {value, nil}
 
               :error ->
-                {resource_calculation.name, resource_calculation.name}
+                Ash.Resource.Calculation.query_name_and_load(resource_calculation)
             end
 
           true ->
-            {resource_calculation.name, resource_calculation.name}
+            Ash.Resource.Calculation.query_name_and_load(resource_calculation)
         end
 
       case Calculation.from_resource_calculation(query.resource, resource_calculation,
