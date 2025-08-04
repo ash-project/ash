@@ -2275,7 +2275,7 @@ defmodule Ash.Type do
 
     if Enum.any?(used_reserved_keys) do
       raise """
-      Reserved constraint key used: 
+      Reserved constraint key used:
 
       #{inspect(used_reserved_keys)}
 
@@ -2413,6 +2413,16 @@ defmodule Ash.Type do
         else
           def can_load?(_), do: false
         end
+      end
+
+      if !Module.defines?(__MODULE__, {:rewrite, 3}, :def) do
+        @impl Ash.Type
+        def rewrite(value, _rewrites, _constraints), do: value
+      end
+
+      if !Module.defines?(__MODULE__, {:get_rewrites, 4}, :def) do
+        @impl Ash.Type
+        def get_rewrites(_merged_load, _calculation, _path, _constraints), do: []
       end
     end
   end
