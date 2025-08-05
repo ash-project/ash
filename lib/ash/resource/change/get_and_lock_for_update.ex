@@ -16,6 +16,7 @@ defmodule Ash.Resource.Change.GetAndLockForUpdate do
              domain: changeset.domain,
              tracer: context.tracer,
              tenant: context.tenant,
+             actor: context.actor,
              authorize?: false,
              lock: :for_update
            ) do
