@@ -372,23 +372,32 @@ defmodule Ash.Type.Struct do
   end
 
   defp check_fields(value, fields) do
-    Enum.reduce(fields, {:ok, %{}}, fn
-      {field, field_constraints}, {:ok, checked_value} ->
+    {errors, result} = 
+      Enum.reduce(fields, {[], %{}}, fn {field, field_constraints}, {errors_acc, result_acc} ->
         case fetch_field(value, field) do
           {:ok, field_value} ->
-            check_field(checked_value, field, field_value, field_constraints)
+            case check_field(result_acc, field, field_value, field_constraints) do
+              {:ok, updated_result} ->
+                {errors_acc, updated_result}
+              
+              {:error, field_errors} ->
+                {errors_acc ++ field_errors, result_acc}
+            end
 
           :error ->
             if field_constraints[:allow_nil?] == false do
-              {:error, [[message: "field must be present", field: field]]}
+              field_error = [message: "field must be present", field: field]
+              {errors_acc ++ [field_error], result_acc}
             else
-              {:ok, checked_value}
+              {errors_acc, result_acc}
             end
         end
+      end)
 
-      {_, _}, {:error, errors} ->
-        {:error, errors}
-    end)
+    case errors do
+      [] -> {:ok, result}
+      _ -> {:error, errors}
+    end
   end
 
   defp check_field(result, field, field_value, field_constraints) do
@@ -414,7 +423,37 @@ defmodule Ash.Type.Struct do
             {:ok, Map.put(result, field, field_value)}
 
           {:error, errors} ->
-            {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
+            formatted_errors = 
+              errors
+              |> List.wrap()
+              |> Enum.map(fn error ->
+                case error do
+                  [_ | _] = keyword_list when is_list(keyword_list) ->
+                    if Keyword.has_key?(keyword_list, :field) do
+                      keyword_list
+                    else
+                      Keyword.put(keyword_list, :field, field)
+                    end
+                  {key, value} when key != :message ->
+                    [{key, value}, {:field, field}]
+                  {:message, message} ->
+                    [message: message, field: field]
+                  binary when is_binary(binary) ->
+                    [message: binary, field: field]
+                  other ->
+                    [message: inspect(other), field: field]
+                end
+              end)
+              |> Enum.reject(fn error ->
+                # Filter out non-informative constraint key-value pairs that aren't proper messages
+                case error do
+                  [{key, _value}, {:field, _field}] when key in [:min, :max, :regex, :min_length, :max_length] ->
+                    true
+                  _ ->
+                    false
+                end
+              end)
+            {:error, formatted_errors}
         end
 
       {:error, error} when is_binary(error) ->
