@@ -459,12 +459,16 @@ defmodule Ash.Type.Struct do
                     else
                       Keyword.put(keyword_list, :field, field)
                     end
+
                   {key, value} when key != :message ->
                     [{key, value}, {:field, field}]
+
                   {:message, message} ->
                     [message: message, field: field]
+
                   binary when is_binary(binary) ->
                     [message: binary, field: field]
+
                   other ->
                     [message: inspect(other), field: field]
                 end
@@ -472,12 +476,15 @@ defmodule Ash.Type.Struct do
               |> Enum.reject(fn error ->
                 # Filter out non-informative constraint key-value pairs that aren't proper messages
                 case error do
-                  [{key, _value}, {:field, _field}] when key in [:min, :max, :regex, :min_length, :max_length] ->
+                  [{key, _value}, {:field, _field}]
+                  when key in [:min, :max, :regex, :min_length, :max_length] ->
                     true
+
                   _ ->
                     false
                 end
               end)
+
             {:error, formatted_errors}
         end
 

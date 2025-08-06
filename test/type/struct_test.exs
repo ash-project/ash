@@ -196,7 +196,8 @@ defmodule Type.StructTest do
       |> Ash.Changeset.for_create(:create, %{
         metadata: %{
           # foo is missing (required field)
-          bar: -1  # constraint violation (min: 0)
+          # constraint violation (min: 0)
+          bar: -1
         }
       })
 
@@ -208,12 +209,12 @@ defmodule Type.StructTest do
 
     # Check that we have both a missing field error and a constraint error
     assert Enum.any?(errors, fn error ->
-      error.field == :foo && error.message == "field must be present"
-    end)
+             error.field == :foo && error.message == "field must be present"
+           end)
 
     assert Enum.any?(errors, fn error ->
-      error.field == :bar && error.message == "must be more than or equal to %{min}"
-    end)
+             error.field == :bar && error.message == "must be more than or equal to %{min}"
+           end)
   end
 
   test "returns multiple constraint violations for different fields" do
@@ -260,9 +261,12 @@ defmodule Type.StructTest do
       ComplexPost
       |> Ash.Changeset.for_create(:create, %{
         complex_metadata: %{
-          name: "ab",      # too short (min_length: 3)
-          age: -5,         # negative (min: 0)
-          email: "invalid" # no @ symbol
+          # too short (min_length: 3)
+          name: "ab",
+          # negative (min: 0)
+          age: -5,
+          # no @ symbol
+          email: "invalid"
         }
       })
 
@@ -274,18 +278,18 @@ defmodule Type.StructTest do
 
     # Check for name length error
     assert Enum.any?(errors, fn error ->
-      error.field == :name && String.contains?(error.message, "length")
-    end)
+             error.field == :name && String.contains?(error.message, "length")
+           end)
 
     # Check for age minimum error
     assert Enum.any?(errors, fn error ->
-      error.field == :age && String.contains?(error.message, "more than")
-    end)
+             error.field == :age && String.contains?(error.message, "more than")
+           end)
 
     # Check for email format error
     assert Enum.any?(errors, fn error ->
-      error.field == :email && String.contains?(error.message, "match")
-    end)
+             error.field == :email && String.contains?(error.message, "match")
+           end)
   end
 
   test "direct type casting returns multiple errors" do
@@ -303,13 +307,13 @@ defmodule Type.StructTest do
       {:error, errors} ->
         # We expect both errors to be present
         assert length(List.wrap(errors)) >= 2
-        
+
         # Check for both error types
-        error_messages = 
+        error_messages =
           errors
           |> List.wrap()
           |> Enum.map(&(&1[:message] || to_string(&1)))
-        
+
         assert Enum.any?(error_messages, &String.contains?(&1, "must be present"))
         assert Enum.any?(error_messages, &String.contains?(&1, "more than"))
 

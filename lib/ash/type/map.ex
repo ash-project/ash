@@ -223,17 +223,18 @@ defmodule Ash.Type.Map do
   end
 
   defp check_fields(value, fields) do
-    {errors, result} = 
+    {errors, result} =
       Enum.reduce(fields, {[], %{}}, fn {field, field_constraints}, {errors_acc, result_acc} ->
         case fetch_field(value, field) do
           {:ok, field_value} ->
             case check_field(result_acc, field, field_value, field_constraints) do
               {:ok, updated_result} ->
                 {errors_acc, updated_result}
-              
+
               {:error, field_errors} ->
                 {errors_acc ++ field_errors, result_acc}
             end
+
           :error ->
             if field_constraints[:allow_nil?] == false do
               field_error = [message: "field must be present", field: field]
@@ -243,7 +244,7 @@ defmodule Ash.Type.Map do
             end
         end
       end)
-    
+
     case errors do
       [] -> {:ok, result}
       _ -> {:error, errors}

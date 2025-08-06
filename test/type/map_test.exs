@@ -252,15 +252,15 @@ defmodule Ash.Type.MapTest do
     # Now returns both errors as expected
     errors = changeset.errors
     assert length(errors) == 2
-    
+
     # Check that we have both errors
     assert Enum.any?(errors, fn error ->
-      error.field == :integer_min_0 && String.contains?(error.message, "more than")
-    end)
-    
+             error.field == :integer_min_0 && String.contains?(error.message, "more than")
+           end)
+
     assert Enum.any?(errors, fn error ->
-      error.field == :string_min_3 && String.contains?(error.message, "length")
-    end)
+             error.field == :string_min_3 && String.contains?(error.message, "length")
+           end)
   end
 
   test "returns multiple field errors simultaneously for maps" do
@@ -271,8 +271,10 @@ defmodule Ash.Type.MapTest do
       |> Ash.Changeset.for_create(:create, %{
         metadata: %{
           # foo is missing (required field)
-          integer_min_0: -1,  # constraint violation (min: 0)
-          string_min_3: "a"   # constraint violation (min_length: 3)
+          # constraint violation (min: 0)
+          integer_min_0: -1,
+          # constraint violation (min_length: 3)
+          string_min_3: "a"
         }
       })
 
@@ -284,17 +286,17 @@ defmodule Ash.Type.MapTest do
 
     # Check that we have both a missing field error and constraint errors
     assert Enum.any?(errors, fn error ->
-      error.field == :foo && error.message == "field must be present"
-    end)
+             error.field == :foo && error.message == "field must be present"
+           end)
 
     assert Enum.any?(errors, fn error ->
-      error.field == :integer_min_0 && String.contains?(error.message, "more than")
-    end)
+             error.field == :integer_min_0 && String.contains?(error.message, "more than")
+           end)
 
     # We should also get the string length error
     assert Enum.any?(errors, fn error ->
-      error.field == :string_min_3 && String.contains?(error.message, "length")
-    end)
+             error.field == :string_min_3 && String.contains?(error.message, "length")
+           end)
   end
 
   test "returns all constraint violations across multiple fields in maps" do
@@ -303,11 +305,16 @@ defmodule Ash.Type.MapTest do
       Post
       |> Ash.Changeset.for_create(:create, %{
         metadata: %{
-          foo: "bar",           # valid
-          integer_min_0: -5,    # invalid: below minimum
-          string_min_3: "ab",   # invalid: too short
-          string_max_3: "abcde",# invalid: too long
-          string_match: "xyz"   # invalid: doesn't match pattern
+          # valid
+          foo: "bar",
+          # invalid: below minimum
+          integer_min_0: -5,
+          # invalid: too short
+          string_min_3: "ab",
+          # invalid: too long
+          string_max_3: "abcde",
+          # invalid: doesn't match pattern
+          string_match: "xyz"
         }
       })
 
@@ -319,23 +326,23 @@ defmodule Ash.Type.MapTest do
 
     # Check for integer minimum error
     assert Enum.any?(errors, fn error ->
-      error.field == :integer_min_0 && String.contains?(error.message, "more than")
-    end)
+             error.field == :integer_min_0 && String.contains?(error.message, "more than")
+           end)
 
     # Check for string minimum length error
     assert Enum.any?(errors, fn error ->
-      error.field == :string_min_3 && String.contains?(error.message, "greater than")
-    end)
+             error.field == :string_min_3 && String.contains?(error.message, "greater than")
+           end)
 
     # Check for string maximum length error
     assert Enum.any?(errors, fn error ->
-      error.field == :string_max_3 && String.contains?(error.message, "less than")
-    end)
+             error.field == :string_max_3 && String.contains?(error.message, "less than")
+           end)
 
     # Check for string match error
     assert Enum.any?(errors, fn error ->
-      error.field == :string_match && String.contains?(error.message, "match")
-    end)
+             error.field == :string_match && String.contains?(error.message, "match")
+           end)
   end
 
   test "direct map type casting returns multiple errors" do
@@ -354,12 +361,12 @@ defmodule Ash.Type.MapTest do
         # We expect multiple errors to be present
         error_list = List.wrap(errors)
         assert length(error_list) >= 3
-        
+
         # Check for all error types
-        error_messages = 
+        error_messages =
           error_list
           |> Enum.map(&(&1[:message] || to_string(&1)))
-        
+
         assert Enum.any?(error_messages, &String.contains?(&1, "must be present"))
         assert Enum.any?(error_messages, &String.contains?(&1, "more than"))
         assert Enum.any?(error_messages, &String.contains?(&1, "length"))
