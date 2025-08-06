@@ -6493,14 +6493,16 @@ defmodule Ash.Changeset do
   ## Examples
 
       # Set computed fields based on other attributes
+      # Note: Use Ash.Changeset.force_change_attribute/2 instead of Ash.Changeset.change_attribute/2,
+      # as the latter will log a warning saying that validations have already been run.
       iex> changeset = Ash.Changeset.for_create(MyApp.Order, :create, %{items: [%{price: 10}, %{price: 15}]})
       iex> changeset = Ash.Changeset.before_action(changeset, fn changeset ->
       ...>   total = changeset.attributes.items |> Enum.map(& &1.price) |> Enum.sum()
       ...>   tax = total * 0.08
       ...>   changeset
-      ...>   |> Ash.Changeset.change_attribute(:subtotal, total)
-      ...>   |> Ash.Changeset.change_attribute(:tax, tax)
-      ...>   |> Ash.Changeset.change_attribute(:total, total + tax)
+      ...>   |> Ash.Changeset.force_change_attribute(:subtotal, total)
+      ...>   |> Ash.Changeset.force_change_attribute(:tax, tax)
+      ...>   |> Ash.Changeset.force_change_attribute(:total, total + tax)
       ...> end)
 
       # Assign resources based on complex business logic
@@ -6510,7 +6512,7 @@ defmodule Ash.Changeset do
       ...>     :urgent ->
       ...>       # Query for available senior agents
       ...>       agent = MyApp.Agent |> MyApp.Query.for_read(:available_senior) |> MyApp.read_one!()
-      ...>       Ash.Changeset.change_attribute(changeset, :assigned_agent_id, agent.id)
+      ...>       Ash.Changeset.force_change_attribute(changeset, :assigned_agent_id, agent.id)
       ...>     _ ->
       ...>       changeset
       ...>   end
