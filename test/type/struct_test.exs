@@ -98,6 +98,24 @@ defmodule Type.StructTest do
     assert changeset.valid?
   end
 
+  test "it handles missing maps" do
+    changeset =
+      Post
+      |> Ash.Changeset.for_create(:create, %{})
+
+    assert changeset.valid?
+  end
+
+  test "it handles nil maps" do
+    changeset =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        metadata: nil
+      })
+
+    assert changeset.valid?
+  end
+
   test "allow_nil? is true by default" do
     changeset =
       Post

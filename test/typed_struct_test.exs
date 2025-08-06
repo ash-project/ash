@@ -1,6 +1,8 @@
 defmodule Ash.TypedStructTest do
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Thing do
     use Ash.TypedStruct
 
@@ -22,11 +24,20 @@ defmodule Ash.TypedStructTest do
   end
 
   defmodule ExampleResource do
-    use Ash.Resource, domain: nil
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
 
     attributes do
       uuid_primary_key :id
-      attribute :user, UserStruct
+      attribute :user, UserStruct, public?: true
     end
   end
 
@@ -105,5 +116,36 @@ defmodule Ash.TypedStructTest do
       assert {:ok, thing} = Thing.new(%{})
       assert thing.name == "foo"
     end
+  end
+
+  test "it handles valid maps" do
+    changeset =
+      ExampleResource
+      |> Ash.Changeset.for_create(:create, %{
+        user: %{
+          id: "a7cec9ba-15de-4c56-99e4-c2abc91a2209",
+          name: "bar"
+        }
+      })
+
+    assert changeset.valid?
+  end
+
+  test "it handles missing maps" do
+    changeset =
+      ExampleResource
+      |> Ash.Changeset.for_create(:create, %{})
+
+    assert changeset.valid?
+  end
+
+  test "it handles nil maps" do
+    changeset =
+      ExampleResource
+      |> Ash.Changeset.for_create(:create, %{
+        user: nil
+      })
+
+    assert changeset.valid?
   end
 end
