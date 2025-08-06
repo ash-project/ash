@@ -16,6 +16,7 @@ defmodule Ash.Resource.Change.GetAndLock do
              domain: changeset.domain,
              tracer: context.tracer,
              tenant: context.tenant,
+             actor: nil,
              authorize?: false,
              lock: opts[:lock]
            ) do
