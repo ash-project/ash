@@ -10,7 +10,7 @@ defmodule Ash.TypedStruct do
   ## Example
 
       defmodule MyApp.UserProfile do
-        use Ash.TypedStruct 
+        use Ash.TypedStruct
 
         typed_struct do
           field :username, :string, allow_nil?: false
@@ -23,14 +23,14 @@ defmodule Ash.TypedStruct do
 
       # Creating instances
       {:ok, profile} = MyApp.UserProfile.new(username: "john", email: "john@example.com")
-      
+
       # Using new! for raising on errors
       profile = MyApp.UserProfile.new!(username: "jane", email: "jane@example.com", age: 25)
 
       # Can be used as an Ash type
       defmodule MyApp.User do
         use Ash.Resource
-        
+
         attributes do
           attribute :profile, MyApp.UserProfile
         end
@@ -112,7 +112,7 @@ defmodule Ash.TypedStruct do
           type: :boolean,
           default: true,
           doc: """
-          Whether or not the field can be set to nil. 
+          Whether or not the field can be set to nil.
           """
         ]
       ]
@@ -192,7 +192,7 @@ defmodule Ash.TypedStruct do
              def new(%__MODULE__{} = fields) do
                fields = Map.merge(unquote(Macro.escape(defaults)), fields)
 
-               case do_cast_input(fields, []) do
+               case do_constraints(fields, []) do
                  {:ok, value} -> {:ok, value}
                  {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
                end
@@ -201,7 +201,7 @@ defmodule Ash.TypedStruct do
              def new(%_{} = fields) do
                fields = Map.merge(unquote(Macro.escape(defaults)), Map.from_struct(fields))
 
-               case do_cast_input(fields, unquote(Macro.escape(map_constraints))) do
+               case do_constraints(fields, unquote(Macro.escape(map_constraints))) do
                  {:ok, value} -> {:ok, value}
                  {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
                end
@@ -210,7 +210,7 @@ defmodule Ash.TypedStruct do
              def new(fields) do
                fields = Map.merge(unquote(Macro.escape(defaults)), Map.new(fields))
 
-               case do_cast_input(
+               case do_constraints(
                       fields,
                       unquote(Macro.escape(map_constraints))
                     ) do
@@ -232,31 +232,29 @@ defmodule Ash.TypedStruct do
                end
              end
 
-             def cast_input(v, constraints) do
-               with {:ok, v} <- new(v) do
-                 super(v, constraints)
-               end
-             end
+             def cast_input("", _), do: {:ok, nil}
 
-             defp do_cast_input("", _), do: {:ok, nil}
+             def cast_input(nil, _), do: {:ok, nil}
 
-             defp do_cast_input(nil, _), do: {:ok, nil}
-
-             defp do_cast_input(value, constraints) when is_binary(value) do
+             def cast_input(value, constraints) when is_binary(value) do
                case Ash.Helpers.json_module().decode(value) do
                  {:ok, value} ->
-                   do_cast_input(value, constraints)
+                   cast_input(value, constraints)
 
                  _ ->
                    :error
                end
              end
 
-             defp do_cast_input(value, constraints) when is_map(value) do
-               Ash.Type.apply_constraints(Ash.Type.Struct, value, constraints)
+             def cast_input(v, constraints) do
+               with {:ok, v} <- new(v) do
+                 super(v, constraints)
+               end
              end
 
-             defp do_cast_input(_, _), do: :error
+             defp do_constraints(value, constraints) when is_map(value) do
+               Ash.Type.apply_constraints(Ash.Type.Struct, value, constraints)
+             end
 
              defoverridable new: 1
            end

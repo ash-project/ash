@@ -175,6 +175,8 @@ defmodule Ash.Type.Map do
   def dump_to_native(_, _), do: :error
 
   @impl true
+  def apply_constraints(nil, _constraints), do: {:ok, nil}
+
   def apply_constraints(value, constraints) do
     Enum.reduce(constraints, {:ok, value}, fn
       {:fields, fields}, {:ok, value} ->
