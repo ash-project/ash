@@ -218,37 +218,7 @@ defmodule Ash.TypedStruct do
                    {:ok, value}
 
                  {:error, error} ->
-                   cond do
-                     Keyword.keyword?(error) ->
-                       {:error,
-                        Ash.Error.Changes.InvalidAttribute.exception(
-                          field: error[:field],
-                          message: error[:message],
-                          value: error[:value],
-                          vars: error
-                        )}
-
-                     is_list(error) && Enum.all?(error, &Keyword.keyword?/1) ->
-                       # Handle list of keyword errors (from struct validation)
-                       errors =
-                         Enum.map(error, fn err ->
-                           Ash.Error.Changes.InvalidAttribute.exception(
-                             field: err[:field],
-                             message: err[:message],
-                             value: err[:value],
-                             vars: err
-                           )
-                         end)
-
-                       # Return single error for backward compatibility if only one error
-                       case errors do
-                         [single_error] -> {:error, single_error}
-                         multiple_errors -> {:error, multiple_errors}
-                       end
-
-                     true ->
-                       {:error, Ash.Error.to_ash_error(error)}
-                   end
+                   Ash.Type.CompositeTypeHelpers.convert_errors_to_invalid_attributes(error)
                end
              end
 

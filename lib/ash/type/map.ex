@@ -274,14 +274,11 @@ defmodule Ash.Type.Map do
             {:ok, Map.put(result, field, field_value)}
 
           {:error, errors} ->
-            errors =
-              if Keyword.keyword?(errors) do
-                [errors]
-              else
-                List.wrap(errors)
-              end
-
-            {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
+            {:error,
+             Ash.Type.CompositeTypeHelpers.convert_constraint_errors_to_keyword_lists(
+               errors,
+               field
+             )}
         end
 
       {:error, error} ->

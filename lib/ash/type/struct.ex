@@ -451,39 +451,10 @@ defmodule Ash.Type.Struct do
             formatted_errors =
               errors
               |> List.wrap()
-              |> Enum.map(fn error ->
-                case error do
-                  [_ | _] = keyword_list when is_list(keyword_list) ->
-                    if Keyword.has_key?(keyword_list, :field) do
-                      keyword_list
-                    else
-                      Keyword.put(keyword_list, :field, field)
-                    end
-
-                  {key, value} when key != :message ->
-                    [{key, value}, {:field, field}]
-
-                  {:message, message} ->
-                    [message: message, field: field]
-
-                  binary when is_binary(binary) ->
-                    [message: binary, field: field]
-
-                  other ->
-                    [message: inspect(other), field: field]
-                end
-              end)
-              |> Enum.reject(fn error ->
-                # Filter out non-informative constraint key-value pairs that aren't proper messages
-                case error do
-                  [{key, _value}, {:field, _field}]
-                  when key in [:min, :max, :regex, :min_length, :max_length] ->
-                    true
-
-                  _ ->
-                    false
-                end
-              end)
+              |> Enum.map(
+                &Ash.Type.CompositeTypeHelpers.format_comprehensive_error_as_keyword(&1, field)
+              )
+              |> Ash.Type.CompositeTypeHelpers.filter_non_informative_errors()
 
             {:error, formatted_errors}
         end
