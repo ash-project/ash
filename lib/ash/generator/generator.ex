@@ -186,6 +186,7 @@ defmodule Ash.Generator do
   * `:overrides` - A keyword list or map of `t:overrides()`
   * `:actor` - Passed through to the changeset
   * `:tenant` - Passed through to the changeset
+  * `:scope` - Passed through to the changeset
   * `:uses` - A map of generators that are passed into your `defaults`. `defaults` must be a
     function. This is useful when multiple things in your `defaults` need to use the same generated
     value.
@@ -263,6 +264,7 @@ defmodule Ash.Generator do
                   Keyword.take(opts, [
                     :actor,
                     :tenant,
+                    :scope,
                     :authorize?,
                     :context,
                     :upsert?,
@@ -307,6 +309,7 @@ defmodule Ash.Generator do
                 Keyword.take(opts, [
                   :actor,
                   :tenant,
+                  :scope,
                   :authorize?,
                   :context,
                   :upsert?,
@@ -388,6 +391,7 @@ defmodule Ash.Generator do
   * `:overrides` - A keyword list or map of `t:overrides()`
   * `:actor` - Passed through to the changeset
   * `:tenant` - Passed through to the changeset
+  * `:scope` - Passed through to the changeset
   * `:uses` - A map of generators that are passed into the first argument, if it is a function.
   * `:authorize?` - Passed through to the changeset
   * `:context` - Passed through to the changeset
