@@ -71,6 +71,39 @@ defmodule Ash.Test.Resource.CalculationsTest do
       assert nil == Ash.Resource.Info.calculation(Post, :totally_legit_calculation)
     end
 
+    test "Calculation with field?: false is excluded from resource record struct" do
+      defposts do
+        actions do
+          defaults [:create]
+
+          default_accept [:name, :contents]
+        end
+
+        calculations do
+          calculate :name_and_contents, :string, concat([:name, :contents]) do
+            public?(true)
+          end
+
+          calculate :explicit_field_calculation, :string, concat([:name, :contents]) do
+            field?(true)
+          end
+
+          calculate :non_field_calculation, :string, concat([:name, :contents]) do
+            field?(false)
+          end
+        end
+      end
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{name: "name", contents: "contents"})
+        |> Ash.create!()
+
+      assert Map.has_key?(post, :name_and_contents)
+      assert Map.has_key?(post, :explicit_field_calculation)
+      refute Map.has_key?(post, :non_field_calculation)
+    end
+
     test "Calculation descriptions are allowed" do
       defposts do
         calculations do
