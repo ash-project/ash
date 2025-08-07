@@ -2,6 +2,37 @@
 
 <!-- changelog -->
 
+## [v3.5.34](https://github.com/ash-project/ash/compare/v3.5.33...v3.5.34) (2025-08-07)
+
+
+
+
+### Bug Fixes:
+
+* avoid String.to_atom by pre-computing mixed argument name MapSet (#2262) by James Harton
+
+* Accept nil input for maps and TypedStructs (#2257) by [@FugiTech](https://github.com/FugiTech)
+
+* pass actor: nil to ash.get in get_and_lock_for_update (#2256) by Jesse Williams
+
+* add default impl for rewrite/3 & get_rewrites/4 for Ash.Type. (#2251) by [@Torkan](https://github.com/Torkan)
+
+* filter out invalid changeset, before running the bulk before transactions (#2249) by [@barnabasJ](https://github.com/barnabasJ)
+
+* minor tweaks to usage rules (#2246) by albinkc
+
+* handle updates on union types containing arrays  (#2237) by Rutgerdj
+
+### Improvements:
+
+* Support through for many to many relationship gen (#2233) by Kenneth Kostrešević
+
+* Update usage-rules.md to include Polymorphic Relationships (#2211) by Gonzalo Muñoz
+
+* filter expression verifier (#2243) by Kenneth Kostrešević
+
+* Introduce extension introspection functions on Ash.*.Info (#2239) by Jonatan Männchen
+
 ## [v3.5.33](https://github.com/ash-project/ash/compare/v3.5.32...v3.5.33) (2025-07-29)
 
 
