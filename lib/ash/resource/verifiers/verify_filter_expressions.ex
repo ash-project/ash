@@ -22,11 +22,16 @@ defmodule Ash.Resource.Verifiers.VerifyFilterExpressions do
   defp verify_action_filter!(module, %{filter: filter} = action) when not is_nil(filter) do
     argument_keys = action.arguments |> Enum.map(& &1.name) |> MapSet.new()
 
+    # Create a MapSet containing both atom and string versions of argument names
+    # to avoid unsafe String.to_atom conversion while maintaining O(1) lookups
+    argument_keys_mixed =
+      argument_keys
+      |> Enum.flat_map(fn name -> [name, to_string(name)] end)
+      |> MapSet.new()
+
     Ash.Expr.walk_template(filter, fn
       {:_arg, field} = expr ->
-        field = if is_binary(field), do: String.to_atom(field), else: field
-
-        if MapSet.member?(argument_keys, field) do
+        if MapSet.member?(argument_keys_mixed, field) do
           expr
         else
           raise DslError,
