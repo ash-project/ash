@@ -186,30 +186,39 @@ defmodule Ash.Type.Keyword do
   end
 
   defp check_fields(value, fields) do
-    Enum.reduce(fields, {:ok, []}, fn
-      {field, field_constraints}, {:ok, checked_value} ->
+    {errors, result} =
+      Enum.reduce(fields, {[], []}, fn {field, field_constraints}, {errors_acc, result_acc} ->
         case fetch_field(value, field) do
           {:ok, field_value} ->
-            check_field(checked_value, field, field_value, field_constraints)
+            case check_field(result_acc, field, field_value, field_constraints) do
+              {:ok, updated_result} ->
+                {errors_acc, updated_result}
+
+              {:error, field_errors} ->
+                {errors_acc ++ field_errors, result_acc}
+            end
 
           :error ->
             if field_constraints[:allow_nil?] == false do
-              {:error, [[message: "field must be present", field: field]]}
+              field_error = [message: "field must be present", field: field]
+              {errors_acc ++ [field_error], result_acc}
             else
-              {:ok, checked_value}
+              {errors_acc, result_acc}
             end
         end
+      end)
 
-      {_, _}, {:error, errors} ->
-        {:error, errors}
-    end)
+    case errors do
+      [] -> {:ok, result}
+      _ -> {:error, errors}
+    end
   end
 
   defp check_field(result, field, field_value, field_constraints) do
     case Ash.Type.cast_input(
            field_constraints[:type],
            field_value,
-           field_constraints[:type]
+           field_constraints[:constraints] || []
          ) do
       {:ok, field_value} ->
         case Ash.Type.apply_constraints(
@@ -228,7 +237,11 @@ defmodule Ash.Type.Keyword do
             {:ok, [{field, field_value} | result]}
 
           {:error, errors} ->
-            {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
+            {:error,
+             Ash.Type.CompositeTypeHelpers.convert_constraint_errors_to_keyword_lists(
+               errors,
+               field
+             )}
         end
 
       {:error, error} ->

@@ -218,17 +218,7 @@ defmodule Ash.TypedStruct do
                    {:ok, value}
 
                  {:error, error} ->
-                   if Keyword.keyword?(error) do
-                     {:error,
-                      Ash.Error.Changes.InvalidAttribute.exception(
-                        field: error[:field],
-                        message: error[:message],
-                        value: error[:value],
-                        vars: error
-                      )}
-                   else
-                     {:error, Ash.Error.to_ash_error(error)}
-                   end
+                   Ash.Type.CompositeTypeHelpers.convert_errors_to_invalid_attributes(error)
                end
              end
 
