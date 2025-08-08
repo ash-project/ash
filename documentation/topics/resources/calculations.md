@@ -181,3 +181,17 @@ fields by using the configured fields in the map and providing further loads.
 Ash.load!(organization, user_statuses: {%{}, [user: [full_name: %{separator: " "}]]}),
 # => [%{user: %User{full_name: "Zach Daniel"}, status: :active}, %{user: %User{full_name: "Tobey Maguire"}, status: :inactive}]
 ```
+
+### Non-Field Calculations
+
+By default, calculations are included as fields on the resource's struct.
+
+To exclude a calculation from the resource's struct, you can set `field?: false`.  This excludes the calculation from the resource's struct, makes it not loadable, but still allows it to be used in expressions.
+
+```elixir
+calculations do
+  calculate :full_name, :string, expr(first_name <> " " <> last_name) do
+    field? false
+  end
+end
+```

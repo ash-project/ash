@@ -71,6 +71,120 @@ defmodule Ash.Test.Resource.CalculationsTest do
       assert nil == Ash.Resource.Info.calculation(Post, :totally_legit_calculation)
     end
 
+    test "Calculation with field?: false is excluded from resource record struct" do
+      defposts do
+        actions do
+          defaults [:create]
+
+          default_accept [:name, :contents]
+        end
+
+        calculations do
+          calculate :name_and_contents, :string, concat([:name, :contents]) do
+            public?(true)
+          end
+
+          calculate :explicit_field_calculation, :string, concat([:name, :contents]) do
+            field?(true)
+          end
+
+          calculate :non_field_calculation, :string, concat([:name, :contents]) do
+            field?(false)
+          end
+        end
+      end
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{name: "name", contents: "contents"})
+        |> Ash.create!()
+
+      assert Map.has_key?(post, :name_and_contents)
+      assert Map.has_key?(post, :explicit_field_calculation)
+      refute Map.has_key?(post, :non_field_calculation)
+    end
+
+    test "Calculation with field?: false can be used in expressions" do
+      defmodule PostForCalculation do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        attributes do
+          uuid_primary_key :id
+
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+
+        calculations do
+          calculate :name_and_contents, :string, expr(non_field_calculation) do
+            public?(true)
+          end
+
+          calculate :non_field_calculation, :string, concat([:name, :contents]) do
+            field?(false)
+          end
+        end
+      end
+
+      post =
+        PostForCalculation
+        |> Ash.Changeset.for_create(:create, %{name: "name", contents: "contents"})
+        |> Ash.create!()
+        |> Ash.load!([:name_and_contents])
+
+      assert :name_and_contents in Map.keys(post)
+      assert post.name_and_contents == "namecontents"
+    end
+
+    test "Calculation with field?: false returns InvalidLoad error when loaded directly" do
+      defmodule PostForCalculationError do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        attributes do
+          uuid_primary_key :id
+
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+
+        calculations do
+          calculate :non_field_calculation, :string, concat([:name, :contents]) do
+            field?(false)
+          end
+        end
+      end
+
+      post =
+        PostForCalculationError
+        |> Ash.Changeset.for_create(:create, %{name: "name", contents: "contents"})
+        |> Ash.create!()
+
+      assert {:error, %{errors: [%Ash.Error.Query.InvalidLoad{load: :non_field_calculation}]}} =
+               Ash.load(post, [:non_field_calculation])
+    end
+
     test "Calculation descriptions are allowed" do
       defposts do
         calculations do

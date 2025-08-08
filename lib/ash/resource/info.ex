@@ -476,7 +476,7 @@ defmodule Ash.Resource.Info do
           list(Ash.Resource.Calculation.t())
   def public_calculations(resource) do
     resource
-    |> Extension.get_entities([:calculations])
+    |> fields([:calculations])
     |> Enum.filter(& &1.public?)
   end
 
@@ -485,14 +485,14 @@ defmodule Ash.Resource.Info do
           Ash.Resource.Calculation.t() | nil
   def public_calculation(resource, name) when is_binary(name) do
     resource
-    |> calculations()
-    |> Enum.find(&(to_string(&1.name) == name && &1.public?))
+    |> public_calculations()
+    |> Enum.find(&(to_string(&1.name) == name))
   end
 
   def public_calculation(resource, name) do
     resource
-    |> calculations()
-    |> Enum.find(&(&1.name == name && &1.public?))
+    |> public_calculations()
+    |> Enum.find(&(&1.name == name))
   end
 
   @doc """
@@ -834,7 +834,14 @@ defmodule Ash.Resource.Info do
           | Ash.Resource.Relationships.relationship()
         ]
   def fields(resource, types \\ [:attributes, :aggregates, :calculations, :relationships]) do
-    Enum.flat_map(types, &Extension.get_entities(resource, [&1]))
+    types
+    |> Enum.flat_map(&Extension.get_entities(resource, [&1]))
+    |> Enum.filter(fn entity ->
+      case entity do
+        %Ash.Resource.Calculation{field?: false} -> false
+        _ -> true
+      end
+    end)
   end
 
   @doc "Get a field from a resource by name"
@@ -852,15 +859,18 @@ defmodule Ash.Resource.Info do
         relationship(resource, name)
 
   @doc "Returns all public attributes, aggregates, calculations and relationships of a resource"
-  @spec public_fields(Spark.Dsl.t() | Ash.Resource.t()) :: [
+  @spec public_fields(
+          Spark.Dsl.t() | Ash.Resource.t(),
+          types :: list(:attributes | :aggregates | :calculations | :relationships)
+        ) :: [
           Ash.Resource.Attribute.t()
           | Ash.Resource.Aggregate.t()
           | Ash.Resource.Calculation.t()
           | Ash.Resource.Relationships.relationship()
         ]
-  def public_fields(resource) do
+  def public_fields(resource, types \\ [:attributes, :aggregates, :calculations, :relationships]) do
     resource
-    |> fields()
+    |> fields(types)
     |> Enum.filter(& &1.public?)
   end
 

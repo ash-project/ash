@@ -108,7 +108,7 @@ defmodule Ash.Schema do
               )
             end
 
-            for calculation <- Ash.Resource.Info.calculations(__MODULE__),
+            for calculation <- Ash.Resource.Info.fields(__MODULE__, [:calculations]),
                 calculation.name not in Ash.Resource.reserved_names() do
               {mod, _} = calculation.calculation
 
@@ -282,7 +282,7 @@ defmodule Ash.Schema do
               )
             end
 
-            for calculation <- Ash.Resource.Info.calculations(__MODULE__),
+            for calculation <- Ash.Resource.Info.fields(__MODULE__, [:calculations]),
                 calculation.name not in Ash.Resource.reserved_names() do
               {mod, _} = calculation.calculation
 
