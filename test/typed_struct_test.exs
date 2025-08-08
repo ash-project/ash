@@ -101,6 +101,16 @@ defmodule Ash.TypedStructTest do
       assert struct.active == false
     end
 
+    test "new! raises match error when required fields with no default are missing" do
+      assert_raise FunctionClauseError, fn ->
+        UserStruct.new!(%{
+          id: "123e4567-e89b-12d3-a456-426614174000",
+          email: "invalid-email",
+          age: 30
+        })
+      end
+    end
+
     test "new! raises on errors" do
       assert_raise Ash.Error.Invalid, fn ->
         UserStruct.new!(%{
