@@ -149,6 +149,12 @@ defmodule Ash.TypedStruct do
             end
           end)
 
+        map_required_fields_match =
+          enforce_keys
+          |> Enum.reject(&(&1 in Map.keys(defaults)))
+          |> Enum.map(&{&1, {:_, [], Elixir}})
+          |> then(&{:%{}, [], &1})
+
         map_constraints =
           [
             fields:
@@ -181,11 +187,15 @@ defmodule Ash.TypedStruct do
                constraints: unquote(Macro.escape(map_constraints))
 
              @doc "Create a new #{__MODULE__}, raising any error"
+             def new!(unquote(map_required_fields_match) = fields) do
+               fields
+               |> new()
+               |> Ash.Helpers.unwrap_or_raise!()
+             end
+
              def new!(fields) do
-               case new(fields) do
-                 {:ok, value} -> value
-                 {:error, error} -> raise Ash.Error.to_error_class(error)
-               end
+               {:error, error} = new(fields)
+               raise Ash.Error.to_error_class(error)
              end
 
              @doc "Create a new #{__MODULE__}, or return an error"

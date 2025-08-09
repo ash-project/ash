@@ -101,6 +101,31 @@ defmodule Ash.TypedStructTest do
       assert struct.active == false
     end
 
+    test "new! returns struct when all required fields are present" do
+      assert %Ash.TypedStructTest.UserStruct{
+               id: "123e4567-e89b-12d3-a456-426614174000",
+               name: "John Doe",
+               email: "john@example.com",
+               age: 30
+             } =
+               UserStruct.new!(%{
+                 id: "123e4567-e89b-12d3-a456-426614174000",
+                 name: "John Doe",
+                 email: "john@example.com",
+                 age: 30
+               })
+    end
+
+    test "new! raises when required fields with no default are missing" do
+      assert_raise Ash.Error.Invalid, fn ->
+        UserStruct.new!(%{
+          id: "123e4567-e89b-12d3-a456-426614174000",
+          email: "invalid-email",
+          age: 30
+        })
+      end
+    end
+
     test "new! raises on errors" do
       assert_raise Ash.Error.Invalid, fn ->
         UserStruct.new!(%{
