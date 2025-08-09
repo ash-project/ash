@@ -29,42 +29,7 @@ defmodule Ash.Type do
     ]
   ]
 
-  @builtin_short_names [
-    map: Ash.Type.Map,
-    keyword: Ash.Type.Keyword,
-    term: Ash.Type.Term,
-    atom: Ash.Type.Atom,
-    tuple: Ash.Type.Tuple,
-    string: Ash.Type.String,
-    integer: Ash.Type.Integer,
-    file: Ash.Type.File,
-    float: Ash.Type.Float,
-    duration_name: Ash.Type.DurationName,
-    function: Ash.Type.Function,
-    boolean: Ash.Type.Boolean,
-    struct: Ash.Type.Struct,
-    uuid: Ash.Type.UUID,
-    uuid_v7: Ash.Type.UUIDv7,
-    binary: Ash.Type.Binary,
-    date: Ash.Type.Date,
-    time: Ash.Type.Time,
-    time_usec: Ash.Type.TimeUsec,
-    decimal: Ash.Type.Decimal,
-    ci_string: Ash.Type.CiString,
-    naive_datetime: Ash.Type.NaiveDatetime,
-    utc_datetime: Ash.Type.UtcDatetime,
-    utc_datetime_usec: Ash.Type.UtcDatetimeUsec,
-    datetime: Ash.Type.DateTime,
-    duration: Ash.Type.Duration,
-    url_encoded_binary: Ash.Type.UrlEncodedBinary,
-    union: Ash.Type.Union,
-    module: Ash.Type.Module,
-    vector: Ash.Type.Vector
-  ]
-
-  @custom_short_names Application.compile_env(:ash, :custom_types, [])
-
-  @short_names @custom_short_names ++ @builtin_short_names
+  alias Ash.Type.Registry
 
   @doc_array_constraints Keyword.put(@array_constraints, :items,
                            type: :any,
@@ -76,7 +41,7 @@ defmodule Ash.Type do
 
   ## Built in types
 
-  #{Enum.map_join(@builtin_short_names, fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
+  #{Enum.map_join(Registry.builtin_short_names(), fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
 
   ## Lists/Arrays
 
@@ -675,15 +640,13 @@ defmodule Ash.Type do
     evaluate_operator: 1
   ]
 
-  @builtin_types Keyword.values(@builtin_short_names)
+  @builtin_types Registry.builtin_types()
 
   @doc false
-  def builtin_types do
-    @builtin_types
-  end
+  def builtin_types, do: Registry.builtin_types()
 
   @doc "Returns the list of available type short names"
-  def short_names, do: @short_names
+  def short_names, do: Registry.short_names()
 
   @doc "Returns true if the type is an ash builtin type"
   def builtin?(type) when type in @builtin_types, do: true
@@ -726,7 +689,7 @@ defmodule Ash.Type do
     {:array, get_type(value)}
   end
 
-  for {short_name, value} <- @short_names do
+  for {short_name, value} <- Registry.short_names() do
     def get_type(unquote(short_name)), do: unquote(value)
   end
 
@@ -758,7 +721,7 @@ defmodule Ash.Type do
 
       Valid types include any custom types, or the following short codes (alongside the types they map to):
 
-      #{Enum.map_join(@short_names, "\n", fn {name, type} -> "  #{inspect(name)} -> #{inspect(type)}" end)}
+      #{Enum.map_join(Registry.short_names(), "\n", fn {name, type} -> "  #{inspect(name)} -> #{inspect(type)}" end)}
 
       """
     end
@@ -937,7 +900,7 @@ defmodule Ash.Type do
   @spec ecto_type(t) :: Ecto.Type.t()
   def ecto_type({:array, type}), do: {:array, ecto_type(type)}
 
-  for {name, mod} <- @short_names do
+  for {name, mod} <- Registry.short_names() do
     def ecto_type(unquote(name)), do: ecto_type(unquote(mod))
   end
 
