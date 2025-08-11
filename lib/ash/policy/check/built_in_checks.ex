@@ -33,7 +33,7 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check is true when the action type matches the provided type
+  This check is true when the action type matches the provided type or types.
 
   This is useful for writing policies that apply to all actions of a given type.
 
@@ -44,8 +44,16 @@ defmodule Ash.Policy.Check.Builtins do
     authorize_if relates_to_actor_via(:owner)
   end
   ```
+
+  You can also speciy a list of types:
+
+  ```elixir
+  policy action_type([:read, :update]) do
+    authorize_if relates_to_actor_via(:owner)
+  end
   """
-  @spec action_type(Ash.Resource.Actions.action_type()) :: Ash.Policy.Check.ref()
+  @spec action_type(Ash.Resource.Actions.action_type() | list(Ash.Resource.Actions.action_type())) ::
+          Ash.Policy.Check.ref()
   def action_type(action_type) do
     Enum.each(List.wrap(action_type), fn type ->
       if type not in [:create, :read, :update, :destroy, :action] do
@@ -212,7 +220,7 @@ defmodule Ash.Policy.Check.Builtins do
   end
   ```
   """
-  @spec relates_to_actor_via(atom, keyword) :: Ash.Policy.Check.ref()
+  @spec relates_to_actor_via(atom | list(atom), keyword) :: Ash.Policy.Check.ref()
   def relates_to_actor_via(relationship_path, opts \\ []) do
     field = Keyword.get(opts, :field)
 
