@@ -2427,9 +2427,15 @@ defmodule Ash.Query do
         load_relationship(query, rel, [], opts)
 
       aggregate = Ash.Resource.Info.aggregate(query.resource, field) ->
-        with {:can?, true} <-
-               {:can?,
-                Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, aggregate.kind})},
+        can_do_aggregate? =
+          if Map.get(aggregate, :related?, true) do
+            Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, aggregate.kind})
+          else
+            Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, aggregate.kind}) &&
+              Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, :unrelated})
+          end
+
+        with {:can?, true} <- {:can?, can_do_aggregate?},
              {:ok, query_aggregate} <-
                Aggregate.new(
                  query.resource,
@@ -2450,7 +2456,10 @@ defmodule Ash.Query do
                  authorize?: aggregate.authorize?,
                  sortable?: aggregate.sortable?,
                  sensitive?: aggregate.sensitive?,
-                 join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                 join_filters:
+                   Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter}),
+                 resource: aggregate.resource,
+                 related?: Map.get(aggregate, :related?, true)
                ) do
           query_aggregate = %{query_aggregate | load: field}
           new_aggregates = Map.put(query.aggregates, aggregate.name, query_aggregate)
@@ -3419,9 +3428,33 @@ defmodule Ash.Query do
     query = new(query)
     relationship = List.wrap(relationship)
 
-    if Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, kind}) do
-      related = Ash.Resource.Info.related(query.resource, relationship)
+    {related, actual_relationship, opts_with_resource, is_unrelated?} =
+      case relationship do
+        [module] when is_atom(module) ->
+          if function_exported?(module, :__info__, 1) do
+            {module, [], Keyword.put(opts, :resource, module), true}
+          else
+            related = Ash.Resource.Info.related(query.resource, relationship)
+            {related, relationship, opts, false}
+          end
 
+        _ ->
+          # Regular relationship path
+          related = Ash.Resource.Info.related(query.resource, relationship)
+          {related, relationship, opts, false}
+      end
+
+    # Check data layer capabilities
+    can_do_aggregate? =
+      if is_unrelated? do
+        Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, kind}) &&
+          Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, :unrelated})
+      else
+        # For related aggregates, just check the aggregate kind
+        Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, kind})
+      end
+
+    if can_do_aggregate? do
       agg_query =
         case agg_query do
           [] ->
@@ -3445,21 +3478,26 @@ defmodule Ash.Query do
              query.resource,
              name,
              kind,
-             path: relationship,
-             query: agg_query,
-             field: field,
-             default: default,
-             filterable?: filterable?,
-             sortable?: sortable?,
-             sensitive?: sensitive?,
-             include_nil?: include_nil?,
-             type: type,
-             constraints: constraints,
-             implementation: implementation,
-             uniq?: uniq?,
-             read_action: read_action,
-             authorize?: authorize?,
-             join_filters: join_filters
+             Keyword.merge(
+               [
+                 path: actual_relationship,
+                 query: agg_query,
+                 field: field,
+                 default: default,
+                 filterable?: filterable?,
+                 sortable?: sortable?,
+                 sensitive?: sensitive?,
+                 include_nil?: include_nil?,
+                 type: type,
+                 constraints: constraints,
+                 implementation: implementation,
+                 uniq?: uniq?,
+                 read_action: read_action,
+                 authorize?: authorize?,
+                 join_filters: join_filters
+               ],
+               opts_with_resource
+             )
            ) do
         {:ok, aggregate} ->
           new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)

@@ -956,6 +956,26 @@ calculations do
 end
 ```
 
+### Expressions
+
+In order to use expressions outside of resources, changes, preparations etc. you will need to use `Ash.Expr`.
+
+It provides both `expr/1` and template helpers like `actor/1` and `arg/1`.
+
+For example:
+
+```elixir
+import Ash.Expr
+
+Author
+|> Ash.Query.aggregate(:count_of_my_favorited_posts, :count, [:posts], query: [
+  filter: expr(favorited_by(user_id: ^actor(:id)))
+])
+```
+
+See the expressions guide for more information on what is available in expresisons and
+how to use them.
+
 ### Module Calculations
 
 For complex calculations, create a module that implements `Ash.Resource.Calculation`:
@@ -1046,30 +1066,45 @@ MyDomain.full_name("John", "Doe", ", ")  # Returns "John, Doe"
 
 ## Aggregates
 
-Aggregates allow you to retrieve summary information over groups of related data, like counts, sums, or averages. Define aggregates in the `aggregates` block of a resource:
+Aggregates allow you to retrieve summary information over groups of related data, like counts, sums, or averages. Define aggregates in the `aggregates` block of a resource.
+
+Aggregates can work over relationships or directly over unrelated resources:
 
 ```elixir
 aggregates do
-  # Count the number of published posts for a user
+  # Related aggregates - use relationship path
   count :published_post_count, :posts do
     filter expr(published == true)
   end
 
-  # Sum the total amount of all orders
   sum :total_sales, :orders, :amount
 
-  # Check if a user has any admin roles
   exists :is_admin, :roles do
     filter expr(name == "admin")
   end
+
+  # Unrelated aggregates - use resource module directly
+  count :matching_profiles_count, Profile do
+    filter expr(name == parent(name))
+  end
+  
+  sum :total_report_score, Report, :score do
+    filter expr(author_name == parent(name))
+  end
+  
+  exists :has_reports, Report do
+    filter expr(author_name == parent(name))
+  end
 end
 ```
+
+For unrelated aggregates, use `parent/1` to reference fields from the source resource.
 
 ### Aggregate Types
 
 - **count**: Counts related items meeting criteria
 - **sum**: Sums a field across related items
-- **exists**: Returns boolean indicating if matching related items exist
+- **exists**: Returns boolean indicating if matching related items exist (also supports unrelated resources)
 - **first**: Gets the first related value matching criteria
 - **list**: Lists the related values for a specific field
 - **max**: Gets the maximum value of a field
@@ -1117,11 +1152,55 @@ end
 Use aggregates inline within expressions:
 
 ```elixir
+# Related inline aggregates
 calculate :grade_percentage, :decimal, expr(
   count(answers, query: [filter: expr(correct == true)]) * 100 /
   count(answers)
 )
+
+# Unrelated inline aggregates
+calculate :profile_count, :integer, expr(
+  count(Profile, filter: expr(name == parent(name)))
+)
+
+calculate :stats, :map, expr(%{
+  profiles: count(Profile, filter: expr(active == true)),
+  reports: count(Report, filter: expr(author_name == parent(name))),
+  has_active_profile: exists(Profile, active == true and name == parent(name))
+})
 ```
+
+## Exists Expressions
+
+Use `exists/2` to check for the existence of records, either through relationships or unrelated resources:
+
+### Related Exists
+
+```elixir
+# Check if user has any admin roles
+Ash.Query.filter(User, exists(roles, name == "admin"))
+
+# Check if post has comments with high scores
+Ash.Query.filter(Post, exists(comments, score > 50))
+```
+
+### Unrelated Exists
+
+```elixir
+# Check if any profile exists with the same name
+Ash.Query.filter(User, exists(Profile, name == parent(name)))
+
+# Check if user has any reports
+Ash.Query.filter(User, exists(Report, author_name == parent(name)))
+
+# Complex existence checks
+Ash.Query.filter(User, 
+  active == true and 
+  exists(Profile, active == true and name == parent(name))
+)
+```
+
+Unrelated exists expressions automatically apply authorization using the target resource's primary read action. Use `parent/1` to reference fields from the source resource.
 
 ## Testing
 

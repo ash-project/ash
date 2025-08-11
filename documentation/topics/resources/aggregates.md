@@ -2,10 +2,16 @@
 
 Aggregates in Ash allow for retrieving summary information over groups of related data. A simple example might be to show the "count of published posts for a user". Aggregates allow us quick and performant access to this data, in a way that supports being filtered/sorted on automatically. More aggregate types can be added, but you will be restricted to only the supported types. In cases where aggregates don't suffice, use [Calculations](/documentation/topics/resources/calculations.md), which are intended to be much more flexible.
 
+Aggregates can work in two ways:
+1. **Relationship-based aggregates** - aggregate over data through relationships (the traditional approach)
+2. **Resource-based aggregates** - aggregate over any resource directly without requiring a relationship
+
 ## Declaring aggregates on a resource
 
 Aggregates are defined in an `aggregates` section. For all possible types, see below.
 For a full reference, see `d:Ash.Resource.Dsl.aggregates`.
+
+### Relationship-based Aggregates
 
 ```elixir
 aggregates do
@@ -14,6 +20,31 @@ aggregates do
   end
 end
 ```
+
+### Resource-based Aggregates
+
+Resource-based aggregates allow you to aggregate over any resource without needing a relationship. Instead of providing a relationship path, you provide the target resource module directly:
+
+```elixir
+aggregates do
+  # Count profiles with matching name
+  count :matching_profiles_count, Profile do
+    filter expr(name == parent(name))
+  end
+  
+  # Sum scores from reports where author matches user's name
+  sum :total_report_score, Report, :score do
+    filter expr(author_name == parent(name))
+  end
+  
+  # Check if any active profile exists (no parent filter needed)
+  exists :has_active_profile, Profile do
+    filter expr(active == true)
+  end
+end
+```
+
+The `parent/1` function allows you to reference fields from the source resource within the aggregate's filter expression.
 
 ## Using an aggregate
 
@@ -71,7 +102,7 @@ See the docs on `d:Ash.Resource.Dsl.aggregates` for more information.
 
 Custom aggregates can be added to the query and will be placed in the `aggregates` key of the results. This is an escape hatch, and is not the primary way that you should be using aggregates. It does, however, allow for dynamism, i.e if you are accepting user input that determines what the filter and/or field should be, that kind of thing.
 
-Example:
+### Relationship-based aggregate example:
 
 ```elixir
 User
@@ -81,6 +112,20 @@ User
   :posts,
   query: [
     filter: [published: published?]
+  ]
+)
+```
+
+### Resource-based aggregate example:
+
+```elixir
+User
+|> Ash.Query.aggregate(
+  :matching_profiles,
+  :count,
+  Profile,
+  query: [
+    filter: expr(name == parent(name))
   ]
 )
 ```
@@ -112,11 +157,20 @@ Join filters allows for more complex aggregate queries, including joining with p
 
 Aggregates can be created in-line in expressions, with their relationship path specified and any options provided that match the options given to `Ash.Query.Aggregate.new/4`. For example:
 
+### Relationship-based inline aggregates
 ```elixir
 calculate :grade, :decimal, expr(
   count(answers, query: [filter: expr(correct == true)]) /
   count(answers, query: [filter: expr(correct == false)])
 )
+```
+
+### Resource-based inline aggregates
+```elixir
+calculate :profile_summary, :map, expr(%{
+  matching_profiles: count(Profile, filter: expr(name == parent(name))),
+  total_reports: count(Report, filter: expr(author_name == parent(name)))
+})
 ```
 
 See the [Expressions guide](/documentation/topics/reference/expressions.md#inline-aggregates) for more.

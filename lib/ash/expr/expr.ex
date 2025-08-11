@@ -721,7 +721,7 @@ defmodule Ash.Expr do
       when is_atom(op) and op in @operator_symbols do
     args = Enum.map(args, &do_expr(&1, false))
 
-    if op == :== do
+    if op in [:==, :!=, :>, :<, :>=, :<=] do
       soft_escape(
         quote do
           args = unquote(args)
@@ -763,6 +763,80 @@ defmodule Ash.Expr do
       end,
       escape?
     )
+  end
+
+  def do_expr({:exists, _, [{:__aliases__, _, _parts} = alias_ast, original_expr]}, escape?) do
+    processed_expr = do_expr(original_expr, false)
+
+    soft_escape(
+      quote do
+        %Ash.Query.Exists{
+          path: [],
+          resource: Macro.escape(unquote(alias_ast)),
+          expr: unquote(processed_expr),
+          at_path: [],
+          related?: false
+        }
+      end,
+      escape?
+    )
+  end
+
+  def do_expr({:exists, _, [{:__aliases__, _, _parts} = alias_ast]}, escape?) do
+    soft_escape(
+      quote do
+        %Ash.Query.Exists{
+          path: [],
+          resource: Macro.escape(unquote(alias_ast)),
+          expr: true,
+          at_path: [],
+          related?: false
+        }
+      end,
+      escape?
+    )
+  end
+
+  def do_expr({:exists, _, [module_atom, original_expr]}, escape?) when is_atom(module_atom) do
+    module_string = Atom.to_string(module_atom)
+
+    if String.match?(module_string, ~r/^[A-Z].*/) do
+      processed_expr = do_expr(original_expr, false)
+
+      soft_escape(
+        quote do
+          %Ash.Query.Exists{
+            path: [],
+            resource: unquote(module_atom),
+            expr: unquote(processed_expr),
+            at_path: [],
+            related?: false
+          }
+        end,
+        escape?
+      )
+    else
+      expr_with_at_path(module_atom, [], original_expr, Ash.Query.Exists, escape?)
+    end
+  end
+
+  def do_expr({:exists, _, [module_atom]}, escape?) when is_atom(module_atom) do
+    module_string = Atom.to_string(module_atom)
+
+    if String.match?(module_string, ~r/^[A-Z].*/) do
+      soft_escape(
+        %Ash.Query.Exists{
+          path: [],
+          resource: module_atom,
+          expr: true,
+          at_path: [],
+          related?: false
+        },
+        escape?
+      )
+    else
+      expr_with_at_path(module_atom, [], true, Ash.Query.Exists, escape?)
+    end
   end
 
   def do_expr({:exists, _, [path, original_expr]}, escape?) do
@@ -1502,6 +1576,9 @@ defmodule Ash.Expr do
           ref.relationship_path ++ [ref.attribute]
 
         {atom, _, _} when is_atom(atom) ->
+          [atom]
+
+        atom when is_atom(atom) ->
           [atom]
 
         path when is_list(path) ->
