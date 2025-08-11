@@ -4276,8 +4276,16 @@ defmodule Ash.Actions.Read do
             filter
         end
       else
-        # For unrelated aggregates, no additional authorization filter needed
-        true
+        case Map.fetch(
+               path_filters,
+               {aggregate.query.resource, aggregate.query.action.name}
+             ) do
+          :error ->
+            true
+
+          {:ok, filter} ->
+            filter
+        end
       end
 
     with {:ok, filter} <-

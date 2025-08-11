@@ -1127,8 +1127,30 @@ defmodule Ash.Filter do
           )
         end)
       else
-        # For unrelated aggregates, skip relationship path authorization
-        {:ok, filters}
+        case Ash.can(aggregate.query, actor,
+               run_queries?: false,
+               pre_flight?: false,
+               alter_source?: true,
+               no_check?: true,
+               return_forbidden_error?: true,
+               maybe_is: false
+             ) do
+          {:ok, true, authorized_query} ->
+            if is_nil(authorized_query.filter) do
+              {:ok, filters}
+            else
+              filter_key = {aggregate.resource, aggregate.query.action.name}
+              {:ok, Map.put(filters, filter_key, authorized_query.filter)}
+            end
+
+          {:ok, false, _error} ->
+            filter_key = {aggregate.resource, aggregate.query.action.name}
+            false_filter = %Ash.Filter{expression: false, resource: aggregate.resource}
+            {:ok, Map.put(filters, filter_key, false_filter)}
+
+          {:error, error} ->
+            {:error, error}
+        end
       end
       |> case do
         {:ok, filters} ->
