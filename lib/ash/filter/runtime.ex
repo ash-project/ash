@@ -542,7 +542,7 @@ defmodule Ash.Filter.Runtime do
            at_path: [],
            path: path,
            expr: expr,
-           unrelated?: unrelated?,
+           related?: related?,
            resource: unrelated_resource
          },
          record,
@@ -550,15 +550,7 @@ defmodule Ash.Filter.Runtime do
          resource,
          unknown_on_unknown_refs?
        ) do
-    if unrelated? do
-      resolve_unrelated_exists(
-        unrelated_resource,
-        expr,
-        record,
-        parent,
-        unknown_on_unknown_refs?
-      )
-    else
+    if related? do
       record
       |> flatten_relationships([path])
       |> load_unflattened(path)
@@ -589,6 +581,14 @@ defmodule Ash.Filter.Runtime do
             end
           end)
       end
+    else
+      resolve_unrelated_exists(
+        unrelated_resource,
+        expr,
+        record,
+        parent,
+        unknown_on_unknown_refs?
+      )
     end
   end
 

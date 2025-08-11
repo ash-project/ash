@@ -3,7 +3,7 @@ defmodule Ash.Query.Exists do
   Determines if a given related entity exists.
   """
 
-  defstruct [:path, :expr, :resource, at_path: [], unrelated?: false, input?: false]
+  defstruct [:path, :expr, :resource, at_path: [], related?: true, input?: false]
 
   def new(path, expr, at_path \\ [])
 
@@ -25,14 +25,14 @@ defmodule Ash.Query.Exists do
     import Inspect.Algebra
 
     def inspect(
-          %{path: path, expr: expr, at_path: at_path, unrelated?: unrelated?, resource: resource},
+          %{path: path, expr: expr, at_path: at_path, related?: related?, resource: resource},
           opts
         ) do
       path_or_resource =
-        if unrelated? && resource do
-          inspect(resource)
-        else
+        if related? do
           Enum.join(path, ".")
+        else
+          inspect(resource)
         end
 
       if at_path && at_path != [] do

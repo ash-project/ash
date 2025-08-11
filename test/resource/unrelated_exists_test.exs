@@ -554,12 +554,12 @@ defmodule Ash.Test.Resource.UnrelatedExistsTest do
         )
 
       # Should parse without errors
-      assert %Ash.Query.Exists{unrelated?: true} = expr_ast
+      assert %Ash.Query.Exists{related?: false} = expr_ast
 
       # The inner structure should contain a nested unrelated exists
       assert %Ash.Query.BooleanExpression{
                right: %Ash.Query.Exists{
-                 unrelated?: true,
+                 related?: false,
                  resource: Ash.Test.Resource.UnrelatedExistsTest.Report
                }
              } = expr_ast.expr

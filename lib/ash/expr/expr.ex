@@ -775,7 +775,7 @@ defmodule Ash.Expr do
           resource: Macro.escape(unquote(alias_ast)),
           expr: unquote(processed_expr),
           at_path: [],
-          unrelated?: true
+          related?: false
         }
       end,
       escape?
@@ -790,7 +790,7 @@ defmodule Ash.Expr do
           resource: Macro.escape(unquote(alias_ast)),
           expr: true,
           at_path: [],
-          unrelated?: true
+          related?: false
         }
       end,
       escape?
@@ -810,7 +810,7 @@ defmodule Ash.Expr do
             resource: unquote(module_atom),
             expr: unquote(processed_expr),
             at_path: [],
-            unrelated?: true
+            related?: false
           }
         end,
         escape?
@@ -830,7 +830,7 @@ defmodule Ash.Expr do
           resource: module_atom,
           expr: true,
           at_path: [],
-          unrelated?: true
+          related?: false
         },
         escape?
       )
