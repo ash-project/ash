@@ -2337,9 +2337,7 @@ defmodule Ash.Filter do
          true,
          expand_aggregates?
        ) do
-    if !related? do
-      []
-    else
+    if related? do
       expression
       |> do_relationship_paths(include_exists?, true, expand_aggregates?)
       |> List.flatten()
@@ -2349,6 +2347,8 @@ defmodule Ash.Filter do
       |> Kernel.++(
         parent_relationship_paths(expression, at_path, include_exists?, true, expand_aggregates?)
       )
+    else
+      []
     end
   end
 

@@ -1578,6 +1578,9 @@ defmodule Ash.Expr do
         {atom, _, _} when is_atom(atom) ->
           [atom]
 
+        atom when is_atom(atom) ->
+          [atom]
+
         path when is_list(path) ->
           path
 

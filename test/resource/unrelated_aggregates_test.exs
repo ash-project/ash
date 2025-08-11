@@ -32,7 +32,6 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
     end
 
     policies do
-      # Allow unrestricted access for most tests, but we'll create a SecureProfile for auth tests
       policy action_type([:create, :update, :destroy]) do
         authorize_if always()
       end
@@ -68,12 +67,10 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
     end
 
     policies do
-      # Allow creation/updates for testing setup
       policy action_type([:create, :update, :destroy]) do
         authorize_if always()
       end
 
-      # Only allow users to see their own profiles, or admins to see all
       policy action_type(:read) do
         authorize_if actor_attribute_equals(:role, :admin)
         authorize_if expr(owner_id == ^actor(:id))
@@ -127,71 +124,59 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
       attribute :role, :atom, public?: true, default: :user
     end
 
-    # Test basic unrelated aggregates
     aggregates do
-      # Count of profiles with matching name
       count :matching_name_profiles_count, Profile do
         filter expr(name == parent(name))
         public? true
       end
 
-      # Count of all active profiles (no parent filter)
       count :total_active_profiles, Profile do
         filter expr(active == true)
         public? true
       end
 
-      # First report with matching author name
       first :latest_authored_report, Report, :title do
         filter expr(author_name == parent(name))
         sort inserted_at: :desc
         public? true
       end
 
-      # Sum of report scores for matching author
       sum :total_report_score, Report, :score do
         filter expr(author_name == parent(name))
         public? true
       end
 
-      # Exists check for profiles with same name
       exists :has_matching_name_profile, Profile do
         filter expr(name == parent(name))
         public? true
       end
 
-      # List of all profile names with same name (should be just one usually)
       list :matching_profile_names, Profile, :name do
         filter expr(name == parent(name))
         public? true
       end
 
-      # Max age of profiles with same name
       max :max_age_same_name, Profile, :age do
         filter expr(name == parent(name))
         public? true
       end
 
-      # Min age of profiles with same name
       min :min_age_same_name, Profile, :age do
         filter expr(name == parent(name))
         public? true
       end
 
-      # Average age of profiles with same name
       avg :avg_age_same_name, Profile, :age do
         filter expr(name == parent(name))
         public? true
       end
 
-      # Secure aggregate - should respect authorization policies
       count :secure_profile_count, SecureProfile do
         filter expr(name == parent(name))
         public? true
       end
     end
 
-    # Test unrelated aggregates in calculations
     calculations do
       calculate :matching_profiles_summary,
                 :string,
@@ -323,45 +308,40 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
 
   describe "loading unrelated aggregates" do
     setup do
-      # Create test data
-      {:ok, user1} = Ash.create(User, %{name: "John", email: "john@example.com"})
-      {:ok, user2} = Ash.create(User, %{name: "Jane", email: "jane@example.com"})
+      user1 = Ash.create!(User, %{name: "John", email: "john@example.com"})
+      user2 = Ash.create!(User, %{name: "Jane", email: "jane@example.com"})
 
-      {:ok, _profile1} = Ash.create(Profile, %{name: "John", age: 25, active: true})
-      {:ok, _profile2} = Ash.create(Profile, %{name: "John", age: 30, active: true})
-      {:ok, _profile3} = Ash.create(Profile, %{name: "Jane", age: 28, active: true})
-      {:ok, _profile4} = Ash.create(Profile, %{name: "Bob", age: 35, active: false})
+      Ash.create!(Profile, %{name: "John", age: 25, active: true})
+      Ash.create!(Profile, %{name: "John", age: 30, active: true})
+      Ash.create!(Profile, %{name: "Jane", age: 28, active: true})
+      Ash.create!(Profile, %{name: "Bob", age: 35, active: false})
 
       base_time = ~U[2024-01-01 12:00:00Z]
 
-      {:ok, _report1} =
-        Ash.create(Report, %{
-          title: "John's First Report",
-          author_name: "John",
-          score: 85,
-          inserted_at: base_time
-        })
+      Ash.create!(Report, %{
+        title: "John's First Report",
+        author_name: "John",
+        score: 85,
+        inserted_at: base_time
+      })
 
-      {:ok, _report2} =
-        Ash.create(Report, %{
-          title: "John's Latest Report",
-          author_name: "John",
-          score: 92,
-          inserted_at: DateTime.add(base_time, 3600, :second)
-        })
+      Ash.create!(Report, %{
+        title: "John's Latest Report",
+        author_name: "John",
+        score: 92,
+        inserted_at: DateTime.add(base_time, 3600, :second)
+      })
 
-      {:ok, _report3} =
-        Ash.create(Report, %{
-          title: "Jane's Report",
-          author_name: "Jane",
-          score: 78
-        })
+      Ash.create!(Report, %{
+        title: "Jane's Report",
+        author_name: "Jane",
+        score: 78
+      })
 
       %{user1: user1, user2: user2}
     end
 
     test "can load count unrelated aggregates", %{user1: user1, user2: user2} do
-      # Load users with aggregates
       users =
         User
         |> Ash.Query.load([:matching_name_profiles_count, :total_active_profiles])
@@ -370,12 +350,9 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
       john = Enum.find(users, &(&1.id == user1.id))
       jane = Enum.find(users, &(&1.id == user2.id))
 
-      # John should have 2 matching profiles
       assert john.matching_name_profiles_count == 2
-      # Both should see 3 total active profiles (John x2, Jane x1)
       assert john.total_active_profiles == 3
 
-      # Jane should have 1 matching profile
       assert jane.matching_name_profiles_count == 1
       assert jane.total_active_profiles == 3
     end
@@ -387,7 +364,6 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
         |> Ash.Query.load(:latest_authored_report)
         |> Ash.read_one!()
 
-      # Should get the latest report title
       assert user.latest_authored_report == "John's Latest Report"
     end
 
@@ -400,9 +376,7 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
       john = Enum.find(users, &(&1.id == user1.id))
       jane = Enum.find(users, &(&1.id == user2.id))
 
-      # John's total score: 85 + 92 = 177
       assert john.total_report_score == 177
-      # Jane's total score: 78
       assert jane.total_report_score == 78
     end
 
@@ -423,7 +397,6 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
         |> Ash.Query.load(:matching_profile_names)
         |> Ash.read_one!()
 
-      # Should have two "John" entries
       assert length(user.matching_profile_names) == 2
       assert Enum.all?(user.matching_profile_names, &(&1 == "John"))
     end
@@ -435,7 +408,6 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
         |> Ash.Query.load([:min_age_same_name, :max_age_same_name, :avg_age_same_name])
         |> Ash.read_one!()
 
-      # John profiles have ages 25 and 30
       assert user.min_age_same_name == 25
       assert user.max_age_same_name == 30
       assert user.avg_age_same_name == 27.5
@@ -444,16 +416,15 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
 
   describe "unrelated aggregates in calculations" do
     setup do
-      {:ok, user} = Ash.create(User, %{name: "Alice", email: "alice@example.com"})
-      {:ok, _profile} = Ash.create(Profile, %{name: "Alice", age: 25, active: true})
+      user = Ash.create!(User, %{name: "Alice", email: "alice@example.com"})
+      Ash.create!(Profile, %{name: "Alice", age: 25, active: true})
 
-      {:ok, _report} =
-        Ash.create(Report, %{
-          title: "Alice's Research",
-          author_name: "Alice",
-          score: 95,
-          inserted_at: ~U[2024-01-01 12:00:00Z]
-        })
+      Ash.create!(Report, %{
+        title: "Alice's Research",
+        author_name: "Alice",
+        score: 95,
+        inserted_at: ~U[2024-01-01 12:00:00Z]
+      })
 
       %{user: user}
     end
@@ -501,28 +472,15 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
 
   describe "data layer capability checking" do
     test "ETS data layer should support unrelated aggregates" do
-      # This will fail until we implement the capability
       assert Ash.DataLayer.data_layer_can?(Profile, {:aggregate, :unrelated}) == true
-    end
-
-    test "error when data layer doesn't support unrelated aggregates" do
-      # Test with a mock data layer that doesn't support unrelated aggregates
-      # This will be relevant when we add the capability checking
     end
   end
 
   describe "authorization with unrelated aggregates" do
-    # These tests verify that authorization works properly for unrelated aggregates
-    # The main concern is that unrelated aggregates don't have relationship paths,
-    # so the authorization logic must handle this correctly
-
     test "unrelated aggregates work without relationship path authorization errors" do
-      # This test verifies that unrelated aggregates don't trigger the
-      # :lists.droplast([]) error that was happening before the fix
-      {:ok, user} = Ash.create(User, %{name: "AuthTest", email: "auth@example.com"})
-      {:ok, _profile} = Ash.create(Profile, %{name: "AuthTest", age: 25, active: true})
+      user = Ash.create!(User, %{name: "AuthTest", email: "auth@example.com"})
+      Ash.create!(Profile, %{name: "AuthTest", age: 25, active: true})
 
-      # This should not raise authorization errors
       user =
         User
         |> Ash.Query.filter(id == ^user.id)
@@ -533,12 +491,9 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
     end
 
     test "unrelated aggregates in calculations don't cause authorization errors" do
-      # Test that the authorization logic correctly handles unrelated aggregates
-      # when they're referenced in calculations
-      {:ok, user} = Ash.create(User, %{name: "CalcAuth", email: "calcauth@example.com"})
-      {:ok, _profile} = Ash.create(Profile, %{name: "CalcAuth", age: 30, active: true})
+      user = Ash.create!(User, %{name: "CalcAuth", email: "calcauth@example.com"})
+      Ash.create!(Profile, %{name: "CalcAuth", age: 30, active: true})
 
-      # This should not raise authorization errors
       user =
         User
         |> Ash.Query.filter(id == ^user.id)
@@ -549,19 +504,16 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
     end
 
     test "multiple unrelated aggregates can be loaded together without authorization issues" do
-      # Test loading multiple unrelated aggregates simultaneously
-      {:ok, user} = Ash.create(User, %{name: "MultiAuth", email: "multi@example.com"})
-      {:ok, _profile} = Ash.create(Profile, %{name: "MultiAuth", age: 28, active: true})
+      user = Ash.create!(User, %{name: "MultiAuth", email: "multi@example.com"})
+      Ash.create!(Profile, %{name: "MultiAuth", age: 28, active: true})
 
-      {:ok, _report} =
-        Ash.create(Report, %{
-          title: "MultiAuth Report",
-          author_name: "MultiAuth",
-          score: 88,
-          inserted_at: ~U[2024-01-01 15:00:00Z]
-        })
+      Ash.create!(Report, %{
+        title: "MultiAuth Report",
+        author_name: "MultiAuth",
+        score: 88,
+        inserted_at: ~U[2024-01-01 15:00:00Z]
+      })
 
-      # Loading multiple unrelated aggregates should work
       user =
         User
         |> Ash.Query.filter(id == ^user.id)
@@ -574,123 +526,93 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
         |> Ash.read_one!()
 
       assert user.matching_name_profiles_count == 1
-      # Could include profiles from other tests
       assert user.total_active_profiles >= 1
       assert user.latest_authored_report == "MultiAuth Report"
       assert user.total_report_score == 88
     end
 
     test "unrelated aggregates respect target resource authorization policies" do
-      # Create users with different roles
-      {:ok, admin_user} =
-        Ash.create(User, %{name: "Admin", email: "admin@test.com", role: :admin})
+      admin_user = Ash.create!(User, %{name: "Admin", email: "admin@test.com", role: :admin})
+      regular_user1 = Ash.create!(User, %{name: "User1", email: "user1@test.com", role: :user})
+      regular_user2 = Ash.create!(User, %{name: "User1", email: "user2@test.com", role: :user})
 
-      {:ok, regular_user1} =
-        Ash.create(User, %{name: "User1", email: "user1@test.com", role: :user})
+      Ash.create!(SecureProfile, %{
+        name: "User1",
+        age: 25,
+        active: true,
+        owner_id: regular_user1.id,
+        department: "Engineering"
+      })
 
-      # Same name as user1
-      {:ok, regular_user2} =
-        Ash.create(User, %{name: "User1", email: "user2@test.com", role: :user})
+      Ash.create!(SecureProfile, %{
+        name: "User1",
+        age: 30,
+        active: true,
+        owner_id: regular_user2.id,
+        department: "Marketing"
+      })
 
-      # Create secure profiles with different owners
-      {:ok, _profile1} =
-        Ash.create(SecureProfile, %{
-          name: "User1",
-          age: 25,
-          active: true,
-          owner_id: regular_user1.id,
-          department: "Engineering"
-        })
+      Ash.create!(SecureProfile, %{
+        name: "Admin",
+        age: 35,
+        active: true,
+        owner_id: admin_user.id,
+        department: "Management"
+      })
 
-      {:ok, _profile2} =
-        Ash.create(SecureProfile, %{
-          name: "User1",
-          age: 30,
-          active: true,
-          owner_id: regular_user2.id,
-          department: "Marketing"
-        })
-
-      {:ok, _profile3} =
-        Ash.create(SecureProfile, %{
-          name: "Admin",
-          age: 35,
-          active: true,
-          owner_id: admin_user.id,
-          department: "Management"
-        })
-
-      # Regular user1 should only see their own profile in the aggregate
       user1_result =
         User
         |> Ash.Query.filter(id == ^regular_user1.id)
         |> Ash.Query.load(:secure_profile_count)
         |> Ash.read_one!(actor: regular_user1, authorize?: true)
 
-      # Verify that user1 only sees their own profile in the aggregate
-      # This is the critical security test - aggregates must respect authorization
-      # Only sees their own profile
       assert user1_result.secure_profile_count == 1
 
-      # Regular user2 should only see their own profile in the aggregate
       user2_result =
         User
         |> Ash.Query.filter(id == ^regular_user2.id)
         |> Ash.Query.load(:secure_profile_count)
         |> Ash.read_one!(actor: regular_user2, authorize?: true)
 
-      # Only sees their own profile
       assert user2_result.secure_profile_count == 1
 
-      # Admin should see all profiles with matching name (both User1 profiles)
       admin_as_user1 =
         User
-        # Get User1's data but as admin
         |> Ash.Query.filter(id == ^regular_user1.id)
         |> Ash.Query.load(:secure_profile_count)
         |> Ash.read_one!(actor: admin_user, authorize?: true)
 
-      # Admin sees both User1 profiles
       assert admin_as_user1.secure_profile_count == 2
 
-      # Admin should see their own profile when looking at themselves
       admin_result =
         User
         |> Ash.Query.filter(id == ^admin_user.id)
         |> Ash.Query.load(:secure_profile_count)
         |> Ash.read_one!(actor: admin_user, authorize?: true)
 
-      # Admin sees their own profile
       assert admin_result.secure_profile_count == 1
     end
 
     test "unrelated aggregates in calculations respect authorization" do
-      # Test that authorization works when aggregates are used in calculations
-      {:ok, user} = Ash.create(User, %{name: "CalcTest", email: "calc@test.com", role: :user})
+      user = Ash.create!(User, %{name: "CalcTest", email: "calc@test.com", role: :user})
+      other_user = Ash.create!(User, %{name: "CalcTest", email: "other@test.com", role: :user})
 
-      {:ok, other_user} =
-        Ash.create(User, %{name: "CalcTest", email: "other@test.com", role: :user})
+      Ash.create!(SecureProfile, %{
+        name: "CalcTest",
+        age: 25,
+        active: true,
+        owner_id: user.id,
+        department: "Engineering"
+      })
 
-      # Create profiles owned by different users but with same name
-      {:ok, _my_profile} =
-        Ash.create(SecureProfile, %{
-          name: "CalcTest",
-          age: 25,
-          active: true,
-          owner_id: user.id,
-          department: "Engineering"
-        })
+      Ash.create!(SecureProfile, %{
+        name: "CalcTest",
+        age: 30,
+        active: true,
+        owner_id: other_user.id,
+        department: "Marketing"
+      })
 
-      {:ok, _other_profile} =
-        Ash.create(SecureProfile, %{
-          name: "CalcTest",
-          age: 30,
-          active: true,
-          owner_id: other_user.id,
-          department: "Marketing"
-        })
-
-      # Add a calculation that uses the secure aggregate
       defmodule UserWithCalc do
         use Ash.Resource,
           domain: Domain,
@@ -734,15 +656,13 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
         end
       end
 
-      # Create user in the new resource for testing
-      {:ok, test_user} =
-        Ash.create(UserWithCalc, %{
+      test_user =
+        Ash.create!(UserWithCalc, %{
           name: "CalcTest",
           email: "calc@test.com",
           role: :user
         })
 
-      # User should only count their own profile in the calculation
       result =
         UserWithCalc
         |> Ash.Query.filter(id == ^test_user.id)
@@ -750,13 +670,6 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
         |> Ash.read_one!(actor: %{id: user.id, role: :user}, authorize?: true)
 
       assert result.profile_summary == "Found 1 secure profiles"
-    end
-  end
-
-  describe "error cases" do
-    test "parent() function requires valid field reference" do
-      # Test that parent(invalid_field) raises an error during query execution
-      # This would be caught at runtime, not compile time
     end
   end
 
@@ -768,14 +681,12 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
         |> Ash.Query.load(:matching_name_profiles_count)
         |> Ash.read!()
 
-      # Should be empty, but aggregate should still work
       assert users == []
     end
 
     test "unrelated aggregates work with filters that return no results" do
-      {:ok, user} = Ash.create(User, %{name: "Unique", email: "unique@example.com"})
+      user = Ash.create!(User, %{name: "Unique", email: "unique@example.com"})
 
-      # No profiles with name "Unique" exist
       loaded_user =
         User
         |> Ash.Query.filter(id == ^user.id)
@@ -786,20 +697,12 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
     end
 
     test "unrelated aggregates work with complex filter expressions" do
-      {:ok, user} =
-        Ash.create(User, %{name: "ComplexTest", age: 25, email: "complex@example.com"})
+      user = Ash.create!(User, %{name: "ComplexTest", age: 25, email: "complex@example.com"})
 
-      # Create profiles with various attributes
-      {:ok, _profile1} =
-        Ash.create(Profile, %{name: "ComplexTest", age: 25, bio: "Bio contains ComplexTest"})
+      Ash.create!(Profile, %{name: "ComplexTest", age: 25, bio: "Bio contains ComplexTest"})
+      Ash.create!(Profile, %{name: "ComplexTest", age: 30, bio: "Different bio"})
+      Ash.create!(Profile, %{name: "Other", age: 25, bio: "ComplexTest mentioned"})
 
-      {:ok, _profile2} =
-        Ash.create(Profile, %{name: "ComplexTest", age: 30, bio: "Different bio"})
-
-      {:ok, _profile3} =
-        Ash.create(Profile, %{name: "Other", age: 25, bio: "ComplexTest mentioned"})
-
-      # Test parent() with boolean AND
       loaded_user =
         User
         |> Ash.Query.filter(id == ^user.id)
@@ -810,7 +713,6 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
 
       assert loaded_user.aggregates.same_name_and_age == 1
 
-      # Test parent() with OR conditions
       loaded_user =
         User
         |> Ash.Query.filter(id == ^user.id)
@@ -821,7 +723,6 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
 
       assert loaded_user.aggregates.name_or_bio_match == 3
 
-      # Test parent() with comparison operators
       loaded_user =
         User
         |> Ash.Query.filter(id == ^user.id)
@@ -834,13 +735,12 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
     end
 
     test "parent() works with nested conditional expressions" do
-      {:ok, user} = Ash.create(User, %{name: "NestedTest", age: 30, email: "nested@example.com"})
+      user = Ash.create!(User, %{name: "NestedTest", age: 30, email: "nested@example.com"})
 
-      {:ok, _profile1} = Ash.create(Profile, %{name: "NestedTest", age: 25, bio: "Young"})
-      {:ok, _profile2} = Ash.create(Profile, %{name: "NestedTest", age: 35, bio: "Old"})
-      {:ok, _profile3} = Ash.create(Profile, %{name: "Other", age: 30, bio: "Same age"})
+      Ash.create!(Profile, %{name: "NestedTest", age: 25, bio: "Young"})
+      Ash.create!(Profile, %{name: "NestedTest", age: 35, bio: "Old"})
+      Ash.create!(Profile, %{name: "Other", age: 30, bio: "Same age"})
 
-      # Test nested parentheses with parent()
       loaded_user =
         User
         |> Ash.Query.filter(id == ^user.id)
@@ -853,17 +753,12 @@ defmodule Ash.Test.Resource.UnrelatedAggregatesTest do
     end
 
     test "parent() works with string functions" do
-      {:ok, user} = Ash.create(User, %{name: "StringTest", email: "string@example.com"})
+      user = Ash.create!(User, %{name: "StringTest", email: "string@example.com"})
 
-      {:ok, _profile1} =
-        Ash.create(Profile, %{name: "StringTest", bio: "StringTest is mentioned here"})
+      Ash.create!(Profile, %{name: "StringTest", bio: "StringTest is mentioned here"})
+      Ash.create!(Profile, %{name: "DifferentName", bio: "StringTest appears in bio"})
+      Ash.create!(Profile, %{name: "StringTest", bio: "No mention"})
 
-      {:ok, _profile2} =
-        Ash.create(Profile, %{name: "DifferentName", bio: "StringTest appears in bio"})
-
-      {:ok, _profile3} = Ash.create(Profile, %{name: "StringTest", bio: "No mention"})
-
-      # Test parent() with string contains function
       loaded_user =
         User
         |> Ash.Query.filter(id == ^user.id)
