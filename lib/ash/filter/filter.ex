@@ -1247,7 +1247,7 @@ defmodule Ash.Filter do
   end
 
   defp collect_unrelated_exists_from_expression(
-         %Ash.Query.Exists{unrelated?: true, resource: resource, expr: expr} = exists
+         %Ash.Query.Exists{related?: false, resource: resource, expr: expr} = exists
        ) do
     exists_item = {:unrelated_exists, exists}
     relationship_paths = collect_relationship_paths_with_input_refs(expr, resource)
@@ -1256,7 +1256,7 @@ defmodule Ash.Filter do
     [exists_item | relationship_paths ++ nested_exists]
   end
 
-  defp collect_unrelated_exists_from_expression(%Ash.Query.Exists{unrelated?: false}) do
+  defp collect_unrelated_exists_from_expression(%Ash.Query.Exists{related?: true}) do
     []
   end
 
@@ -2265,19 +2265,15 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(
-         %Ash.Query.Exists{at_path: at_path, unrelated?: unrelated?},
+         %Ash.Query.Exists{at_path: at_path, related?: related?},
          false,
          with_refs?,
          _expand_aggregates?
        ) do
-    if unrelated? do
-      []
+    if related? && !with_refs? do
+      [{at_path}]
     else
-      if with_refs? do
-        []
-      else
-        [{at_path}]
-      end
+      []
     end
   end
 
@@ -2286,15 +2282,13 @@ defmodule Ash.Filter do
            path: path,
            expr: expression,
            at_path: at_path,
-           unrelated?: unrelated?
+           related?: related?
          },
          include_exists?,
          false,
          expand_aggregates?
        ) do
-    if unrelated? do
-      []
-    else
+    if related? do
       expression
       |> do_relationship_paths(include_exists?, false, expand_aggregates?)
       |> List.flatten()
@@ -2305,6 +2299,8 @@ defmodule Ash.Filter do
       |> Kernel.++(
         parent_relationship_paths(expression, at_path, include_exists?, false, expand_aggregates?)
       )
+    else
+      []
     end
   end
 
@@ -2313,13 +2309,13 @@ defmodule Ash.Filter do
            path: path,
            expr: expression,
            at_path: at_path,
-           unrelated?: unrelated?
+           related?: related?
          },
          include_exists?,
          true,
          expand_aggregates?
        ) do
-    if unrelated? do
+    if !related? do
       []
     else
       expression
@@ -2648,7 +2644,7 @@ defmodule Ash.Filter do
             do_list_refs(value, true, false, expand_calculations?, expand_get_path?)
         end)
 
-      %Ash.Query.Exists{unrelated?: true} ->
+      %Ash.Query.Exists{related?: false} ->
         []
 
       %Ash.Query.Exists{at_path: at_path, path: path, expr: expr} ->
@@ -2913,7 +2909,7 @@ defmodule Ash.Filter do
            at_path: at_path,
            path: path,
            expr: exists_expression,
-           unrelated?: unrelated?,
+           related?: related?,
            resource: resource
          } = exists,
          context,
@@ -2921,15 +2917,15 @@ defmodule Ash.Filter do
          _could_be_function?
        ) do
     # Check if data layer supports unrelated exists
-    if unrelated? && !Ash.DataLayer.data_layer_can?(context.resource, {:exists, :unrelated}) do
+    if !related? && !Ash.DataLayer.data_layer_can?(context.resource, {:exists, :unrelated}) do
       raise "Data layer does not support unrelated exists expressions"
     end
 
     related =
-      if unrelated? && resource do
-        resource
-      else
+      if related? do
         related(context, at_path ++ path)
+      else
+        resource
       end
 
     if !related do
@@ -4240,7 +4236,7 @@ defmodule Ash.Filter do
     do: {:ok, this}
 
   def do_hydrate_refs(
-        %Ash.Query.Exists{expr: expr, unrelated?: true, resource: resource} = exists,
+        %Ash.Query.Exists{expr: expr, related?: false, resource: resource} = exists,
         context
       ) do
     context = %{

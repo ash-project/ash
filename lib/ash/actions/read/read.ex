@@ -4690,10 +4690,20 @@ defmodule Ash.Actions.Read do
              at_path: at_path,
              path: exists_path,
              expr: exists_expr,
-             unrelated?: unrelated?,
+             related?: related?,
              resource: unrelated_resource
            } = exists ->
-             if unrelated? do
+             if related? do
+               {:ok, new_expr} =
+                 do_filter_with_related(
+                   resource,
+                   exists_expr,
+                   path_filters,
+                   prefix ++ at_path ++ exists_path
+                 )
+
+               {:halt, %{exists | expr: new_expr}}
+             else
                primary_read_action = Ash.Resource.Info.primary_action!(unrelated_resource, :read)
                filter_key = {:unrelated_exists, unrelated_resource, primary_read_action.name}
 
@@ -4730,16 +4740,6 @@ defmodule Ash.Actions.Read do
 
                    {:halt, %{exists | expr: combined_expr}}
                end
-             else
-               {:ok, new_expr} =
-                 do_filter_with_related(
-                   resource,
-                   exists_expr,
-                   path_filters,
-                   prefix ++ at_path ++ exists_path
-                 )
-
-               {:halt, %{exists | expr: new_expr}}
              end
 
            other ->
