@@ -3299,7 +3299,6 @@ defmodule Ash.Actions.Read do
          path_filters,
          prefix \\ []
        ) do
-    # Skip join filters for unrelated aggregates (empty relationship path)
     if aggregate_relationship_path == [] do
       current_join_filters
     else
@@ -4174,17 +4173,14 @@ defmodule Ash.Actions.Read do
   defp query_aggregate_from_resource_aggregate(query, resource_aggregate) do
     resource = query.resource
 
-    # Handle unrelated vs related aggregates
     {related_resource, aggregate_opts} =
       if Map.get(resource_aggregate, :related?, true) do
-        # Related aggregate - follow relationship path
         related_resource =
           Ash.Resource.Info.related(resource, resource_aggregate.relationship_path)
 
         opts = [path: resource_aggregate.relationship_path]
         {related_resource, opts}
       else
-        # Unrelated aggregate - use target resource directly
         related_resource = resource_aggregate.resource
         opts = [resource: related_resource]
         {related_resource, opts}
@@ -4549,17 +4545,14 @@ defmodule Ash.Actions.Read do
   end
 
   defp resource_aggregate_to_query_aggregate(resource, resource_aggregate, opts) do
-    # Handle both related and unrelated aggregates
     {agg_related_resource, aggregate_opts} =
       if Map.get(resource_aggregate, :related?, true) do
-        # Related aggregate - follow relationship path
         agg_related_resource =
           Ash.Resource.Info.related(resource, resource_aggregate.relationship_path)
 
         opts_for_aggregate = [path: resource_aggregate.relationship_path]
         {agg_related_resource, opts_for_aggregate}
       else
-        # Unrelated aggregate - use target resource directly
         agg_related_resource = resource_aggregate.resource
         opts_for_aggregate = [resource: agg_related_resource]
         {agg_related_resource, opts_for_aggregate}

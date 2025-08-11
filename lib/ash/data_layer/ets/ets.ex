@@ -781,7 +781,6 @@ defmodule Ash.DataLayer.Ets do
           } = _aggregate,
           {:ok, record} ->
             if related? do
-              # Related aggregate - load through relationship path
               with {:ok, loaded_record} <-
                      Ash.load(
                        record,
@@ -835,7 +834,6 @@ defmodule Ash.DataLayer.Ets do
                   {:halt, other}
               end
             else
-              # Unrelated aggregate - replace parent references with current record values
               updated_filter =
                 if query.filter do
                   result =

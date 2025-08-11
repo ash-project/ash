@@ -137,19 +137,15 @@ defmodule Ash.Resource.Aggregate do
     transformed =
       case aggregate.relationship_path do
         path when is_atom(path) ->
-          # Check if it's an uppercased atom (a module)
           path_string = to_string(path)
 
           if String.match?(path_string, ~r/^[A-Z]/) do
-            # This is a resource module - set up unrelated aggregate
             %{aggregate | related?: false, relationship_path: [], resource: path}
           else
-            # This is a regular relationship atom - wrap in list and set as related
             %{aggregate | related?: true, relationship_path: [path], resource: nil}
           end
 
         path when is_list(path) ->
-          # This is a relationship path list - set as related
           %{aggregate | related?: true, relationship_path: path, resource: nil}
 
         _ ->

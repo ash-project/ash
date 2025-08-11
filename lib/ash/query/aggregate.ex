@@ -213,13 +213,10 @@ defmodule Ash.Query.Aggregate do
     with {:ok, %Opts{} = opts} <- Opts.validate(opts) do
       agg_name = agg_name(opts)
 
-      # Determine if this is an unrelated aggregate and get the target resource
       {target_resource, related?} =
         if opts.resource do
-          # Unrelated aggregate - use the provided resource directly
           {opts.resource, false}
         else
-          # Related aggregate - follow the relationship path
           {Ash.Resource.Info.related(resource, opts.path), true}
         end
 
@@ -285,7 +282,6 @@ defmodule Ash.Query.Aggregate do
             raise ArgumentError, "Must supply implementation when building a `custom` aggregate"
           end
 
-          # Use the target resource we already determined
           related = target_resource
 
           if opts.field && opts.expr do

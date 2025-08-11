@@ -15,10 +15,8 @@ defmodule Ash.Resource.Verifiers.ValidateAggregatesSupported do
     |> Verifier.get_entities([:aggregates])
     |> Enum.each(fn aggregate ->
       if Map.get(aggregate, :related?, true) do
-        # Related aggregate - check relationship path
         check_aggregatable(resource, resource, aggregate.name, aggregate.relationship_path)
       else
-        # Unrelated aggregate - check if data layer supports both the aggregate kind and unrelated aggregates
         check_unrelated_aggregate_supported(resource, aggregate.name, aggregate.kind)
       end
     end)

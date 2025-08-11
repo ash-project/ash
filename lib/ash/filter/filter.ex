@@ -1099,7 +1099,6 @@ defmodule Ash.Filter do
     end)
     |> Enum.concat(aggregates)
     |> Enum.reduce_while({:ok, path_filters}, fn aggregate, {:ok, filters} ->
-      # Skip relationship path authorization for unrelated aggregates
       if Map.get(aggregate, :related?, true) do
         aggregate.relationship_path
         |> :lists.droplast()
@@ -1154,7 +1153,6 @@ defmodule Ash.Filter do
       end
       |> case do
         {:ok, filters} ->
-          # Skip last_relationship logic for unrelated aggregates
           if Map.get(aggregate, :related?, true) do
             last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
 
@@ -1184,7 +1182,6 @@ defmodule Ash.Filter do
                 {:error, error}
             end
           else
-            # For unrelated aggregates, just handle relationship filters without relationship path
             case relationship_filters(
                    domain,
                    aggregate.query,
@@ -1222,7 +1219,6 @@ defmodule Ash.Filter do
       |> Enum.reduce_while({:ok, filters}, fn item, {:ok, filters} ->
         case item do
           {:unrelated_exists, exists} ->
-            # For unrelated exists, we need to authorize the target resource's primary read action
             case add_unrelated_exists_filter(filters, exists, domain, actor, tenant) do
               {:ok, new_filters} ->
                 {:cont, {:ok, new_filters}}
@@ -1232,7 +1228,6 @@ defmodule Ash.Filter do
             end
 
           {:relationship_path_in_exists, resource, path} ->
-            # For relationship paths within unrelated exists, we need to authorize the relationship
             case add_relationship_path_in_exists_filter(
                    filters,
                    resource,

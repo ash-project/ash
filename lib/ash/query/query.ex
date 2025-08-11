@@ -2427,12 +2427,10 @@ defmodule Ash.Query do
         load_relationship(query, rel, [], opts)
 
       aggregate = Ash.Resource.Info.aggregate(query.resource, field) ->
-        # Check if we need unrelated aggregate support
         can_do_aggregate? =
           if Map.get(aggregate, :related?, true) do
             Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, aggregate.kind})
           else
-            # For unrelated aggregates, need to check both capabilities
             Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, aggregate.kind}) &&
               Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, :unrelated})
           end
@@ -2460,7 +2458,6 @@ defmodule Ash.Query do
                  sensitive?: aggregate.sensitive?,
                  join_filters:
                    Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter}),
-                 # Pass the unrelated aggregate information
                  resource: aggregate.resource,
                  related?: Map.get(aggregate, :related?, true)
                ) do
@@ -3431,16 +3428,12 @@ defmodule Ash.Query do
     query = new(query)
     relationship = List.wrap(relationship)
 
-    # Check if relationship is actually a resource module (unrelated aggregate)
     {related, actual_relationship, opts_with_resource, is_unrelated?} =
       case relationship do
         [module] when is_atom(module) ->
-          # Check if it's a module by seeing if it has __info__/1
           if function_exported?(module, :__info__, 1) do
-            # It's an unrelated aggregate - module is the resource
             {module, [], Keyword.put(opts, :resource, module), true}
           else
-            # It's a regular relationship path
             related = Ash.Resource.Info.related(query.resource, relationship)
             {related, relationship, opts, false}
           end
@@ -3454,7 +3447,6 @@ defmodule Ash.Query do
     # Check data layer capabilities
     can_do_aggregate? =
       if is_unrelated? do
-        # For unrelated aggregates, need to check both capabilities
         Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, kind}) &&
           Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, :unrelated})
       else
