@@ -2854,7 +2854,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#aggregates-count-name){: #aggregates-count-name .spark-required} | `atom` |  | The field to place the aggregate in |
-| [`relationship_path`](#aggregates-count-relationship_path){: #aggregates-count-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for unrelated aggregates |
+| [`relationship_path`](#aggregates-count-relationship_path){: #aggregates-count-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -2944,7 +2944,7 @@ exists :has_ticket, :assigned_tickets
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#aggregates-exists-name){: #aggregates-exists-name .spark-required} | `atom` |  | The field to place the aggregate in |
-| [`relationship_path`](#aggregates-exists-relationship_path){: #aggregates-exists-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for unrelated aggregates |
+| [`relationship_path`](#aggregates-exists-relationship_path){: #aggregates-exists-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -3036,7 +3036,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#aggregates-first-name){: #aggregates-first-name .spark-required} | `atom` |  | The field to place the aggregate in |
-| [`relationship_path`](#aggregates-first-relationship_path){: #aggregates-first-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for unrelated aggregates |
+| [`relationship_path`](#aggregates-first-relationship_path){: #aggregates-first-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates |
 | [`field`](#aggregates-first-field){: #aggregates-first-field } | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 
@@ -3129,7 +3129,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#aggregates-sum-name){: #aggregates-sum-name .spark-required} | `atom` |  | The field to place the aggregate in |
-| [`relationship_path`](#aggregates-sum-relationship_path){: #aggregates-sum-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for unrelated aggregates |
+| [`relationship_path`](#aggregates-sum-relationship_path){: #aggregates-sum-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates |
 | [`field`](#aggregates-sum-field){: #aggregates-sum-field } | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 
@@ -3221,7 +3221,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#aggregates-list-name){: #aggregates-list-name .spark-required} | `atom` |  | The field to place the aggregate in |
-| [`relationship_path`](#aggregates-list-relationship_path){: #aggregates-list-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for unrelated aggregates |
+| [`relationship_path`](#aggregates-list-relationship_path){: #aggregates-list-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates |
 | [`field`](#aggregates-list-field){: #aggregates-list-field } | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 
@@ -3315,7 +3315,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#aggregates-max-name){: #aggregates-max-name .spark-required} | `atom` |  | The field to place the aggregate in |
-| [`relationship_path`](#aggregates-max-relationship_path){: #aggregates-max-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for unrelated aggregates |
+| [`relationship_path`](#aggregates-max-relationship_path){: #aggregates-max-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates |
 | [`field`](#aggregates-max-field){: #aggregates-max-field } | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 
@@ -3406,7 +3406,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#aggregates-min-name){: #aggregates-min-name .spark-required} | `atom` |  | The field to place the aggregate in |
-| [`relationship_path`](#aggregates-min-relationship_path){: #aggregates-min-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for unrelated aggregates |
+| [`relationship_path`](#aggregates-min-relationship_path){: #aggregates-min-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates |
 | [`field`](#aggregates-min-field){: #aggregates-min-field } | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 
@@ -3497,7 +3497,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#aggregates-avg-name){: #aggregates-avg-name .spark-required} | `atom` |  | The field to place the aggregate in |
-| [`relationship_path`](#aggregates-avg-relationship_path){: #aggregates-avg-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for unrelated aggregates |
+| [`relationship_path`](#aggregates-avg-relationship_path){: #aggregates-avg-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates |
 | [`field`](#aggregates-avg-field){: #aggregates-avg-field } | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 
@@ -3590,7 +3590,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#aggregates-custom-name){: #aggregates-custom-name .spark-required} | `atom` |  | The field to place the aggregate in |
-| [`relationship_path`](#aggregates-custom-relationship_path){: #aggregates-custom-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for unrelated aggregates |
+| [`relationship_path`](#aggregates-custom-relationship_path){: #aggregates-custom-relationship_path .spark-required} | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates |
 | [`type`](#aggregates-custom-type){: #aggregates-custom-type .spark-required} | `module` |  | The type of the value returned by the aggregate |
 ### Options
 

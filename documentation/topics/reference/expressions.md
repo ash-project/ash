@@ -96,7 +96,7 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 
 ## Sub-expressions
 
-- `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. Can also be used with resource modules for unrelated exists: `exists(SomeResource, name == "fred")`. See the section on `exists` below.
+- `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. Can also be used with resource modules directly: `exists(SomeResource, name == "fred")`. See the section on `exists` below.
 - `path.exists/2` | Same as `exists` but the source of the relationship is itself a nested relationship. See the section on `exists` below.
 - `parent/1` | Allows an expression scoped to a resource to refer to the "outer" context. Used in relationship filters and `exists`
 
@@ -123,7 +123,7 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 
 Aggregates can be referenced in-line, with their relationship path specified and any options provided that match the options given to `Ash.Query.Aggregate.new/4`.
 
-### Related Inline Aggregates
+### Relationship-based Inline Aggregates
 
 For aggregating over related data through relationships:
 
@@ -134,7 +134,7 @@ calculate :grade, :decimal, expr(
 )
 ```
 
-### Unrelated Inline Aggregates
+### Resource-based Inline Aggregates
 
 For aggregating over any resource without a relationship:
 
@@ -153,7 +153,7 @@ calculate :latest_report, :string,
     ]
   ))
 
-# Complex calculation with multiple unrelated aggregates and exists
+# Complex calculation with multiple resource-based aggregates and exists
 calculate :stats, :map, expr(%{
   profile_count: count(Profile, filter: expr(name == parent(name))),
   total_score: sum(Report, field: :score, query: [filter: expr(author_name == parent(name))]),
@@ -162,7 +162,7 @@ calculate :stats, :map, expr(%{
 })
 ```
 
-The `parent/1` function allows referencing fields from the source resource within unrelated aggregate filters.
+The `parent/1` function allows referencing fields from the source resource within resource-based aggregate filters.
 
 The available aggregate kinds can also be seen in the `Ash.Query.Aggregate` module documentation.
 
@@ -269,9 +269,9 @@ Ash.Query.filter(Post, author.exists(roles, name == :admin) and author.active)
 
 While the above is not common, it can be useful in some specific circumstances, and is used under the hood by the policy authorizer when combining the filters of various resources to create a single filter.
 
-### Unrelated Exists
+### Resource-based Exists
 
-Sometimes you want to check for the existence of records in any resource, not just through relationships. Unrelated exists allows you to query any resource directly:
+Sometimes you want to check for the existence of records in any resource, not just through relationships. Resource-based exists allows you to query any resource directly:
 
 ```elixir
 # Check if there are any profiles with the same name as the user
@@ -289,7 +289,7 @@ Ash.Query.filter(User,
 )
 ```
 
-The `parent/1` function allows you to reference fields from the source resource within the exists expression. Authorization is automatically applied to unrelated exists expressions using the target resource's primary read action.
+The `parent/1` function allows you to reference fields from the source resource within the exists expression. Authorization is automatically applied to resource-based exists expressions using the target resource's primary read action.
 
 ## Portability
 

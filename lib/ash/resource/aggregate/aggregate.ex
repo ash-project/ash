@@ -45,7 +45,7 @@ defmodule Ash.Resource.Aggregate do
     relationship_path: [
       type: {:or, [{:list, :atom}, :atom]},
       doc:
-        "The relationship or relationship path to use for the aggregate, or a resource module for unrelated aggregates",
+        "The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates",
       required: true
     ],
     kind: [

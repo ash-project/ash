@@ -3,15 +3,15 @@
 Aggregates in Ash allow for retrieving summary information over groups of related data. A simple example might be to show the "count of published posts for a user". Aggregates allow us quick and performant access to this data, in a way that supports being filtered/sorted on automatically. More aggregate types can be added, but you will be restricted to only the supported types. In cases where aggregates don't suffice, use [Calculations](/documentation/topics/resources/calculations.md), which are intended to be much more flexible.
 
 Aggregates can work in two ways:
-1. **Related aggregates** - aggregate over data through relationships (the traditional approach)
-2. **Unrelated aggregates** - aggregate over any resource directly without requiring a relationship
+1. **Relationship-based aggregates** - aggregate over data through relationships (the traditional approach)
+2. **Resource-based aggregates** - aggregate over any resource directly without requiring a relationship
 
 ## Declaring aggregates on a resource
 
 Aggregates are defined in an `aggregates` section. For all possible types, see below.
 For a full reference, see `d:Ash.Resource.Dsl.aggregates`.
 
-### Related Aggregates (Traditional)
+### Relationship-based Aggregates
 
 ```elixir
 aggregates do
@@ -21,9 +21,9 @@ aggregates do
 end
 ```
 
-### Unrelated Aggregates
+### Resource-based Aggregates
 
-Unrelated aggregates allow you to aggregate over any resource without needing a relationship. Instead of providing a relationship path, you provide the target resource module directly:
+Resource-based aggregates allow you to aggregate over any resource without needing a relationship. Instead of providing a relationship path, you provide the target resource module directly:
 
 ```elixir
 aggregates do
@@ -102,7 +102,7 @@ See the docs on `d:Ash.Resource.Dsl.aggregates` for more information.
 
 Custom aggregates can be added to the query and will be placed in the `aggregates` key of the results. This is an escape hatch, and is not the primary way that you should be using aggregates. It does, however, allow for dynamism, i.e if you are accepting user input that determines what the filter and/or field should be, that kind of thing.
 
-### Related aggregate example:
+### Relationship-based aggregate example:
 
 ```elixir
 User
@@ -116,7 +116,7 @@ User
 )
 ```
 
-### Unrelated aggregate example:
+### Resource-based aggregate example:
 
 ```elixir
 User
@@ -157,7 +157,7 @@ Join filters allows for more complex aggregate queries, including joining with p
 
 Aggregates can be created in-line in expressions, with their relationship path specified and any options provided that match the options given to `Ash.Query.Aggregate.new/4`. For example:
 
-### Related inline aggregates
+### Relationship-based inline aggregates
 ```elixir
 calculate :grade, :decimal, expr(
   count(answers, query: [filter: expr(correct == true)]) /
@@ -165,7 +165,7 @@ calculate :grade, :decimal, expr(
 )
 ```
 
-### Unrelated inline aggregates
+### Resource-based inline aggregates
 ```elixir
 calculate :profile_summary, :map, expr(%{
   matching_profiles: count(Profile, filter: expr(name == parent(name))),
