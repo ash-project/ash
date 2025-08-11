@@ -231,6 +231,21 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  defmodule TypedEvent do
+    use Ash.TypedStruct
+
+    typed_struct do
+      field(:event_source, :atom,
+        allow_nil?: false,
+        constraints: [one_of: [:first_party, :third_pary]]
+      )
+
+      field(:external_event_id, :string, allow_nil?: false, constraints: [min_length: 3])
+      field(:metadata, :map)
+      field(:timestamp, :datetime, allow_nil?: false)
+    end
+  end
+
   defmodule Generator do
     use Ash.Generator
 
@@ -753,6 +768,20 @@ defmodule Ash.Test.GeneratorTest do
       Post
       |> Ash.Generator.query(:read_with_args)
       |> Ash.read!()
+    end
+  end
+
+  describe "typed_struct_generator" do
+    test "it correctly generates a struct" do
+      assert %TypedEvent{} =
+               Ash.Generator.typed_struct_generator(
+                 TypedEvent,
+                 defaults: [
+                   external_event_id:
+                     Ash.Generator.sequence(:external_event_id, &"ext_event_#{&1}")
+                 ]
+               )
+               |> Enum.at(0)
     end
   end
 end

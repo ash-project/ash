@@ -519,6 +519,18 @@ defmodule Ash.Generator do
     end
   end
 
+  def typed_struct_generator(module, opts \\ []) do
+    generators =
+      opts[:defaults]
+      |> Kernel.||([])
+      |> Map.new()
+      |> Map.merge(Map.new(opts[:overrides] || %{}))
+
+    Spark.Dsl.Extension.get_entities(module, [:typed_struct])
+    |> generate_attributes(generators, true, :create, [])
+    |> StreamData.map(fn data -> module.new!(data) end)
+  end
+
   @doc """
   Generate globally unique values.
 
