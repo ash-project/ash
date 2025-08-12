@@ -45,7 +45,7 @@ defmodule Ash.Policy.Check.Builtins do
   end
   ```
 
-  You can also speciy a list of types:
+  You can also specify a list of types:
 
   ```elixir
   policy action_type([:read, :update]) do
