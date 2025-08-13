@@ -1157,7 +1157,12 @@ defmodule Ash.Query do
 
          case module.init(opts) do
            {:ok, opts} ->
-             module.validate(query, opts, struct(Ash.Resource.Validation.Context, context)) ==
+             Ash.Resource.Validation.validate(
+               module,
+               query,
+               opts,
+               struct(Ash.Resource.Validation.Context, context)
+             ) ==
                :ok
 
            _ ->
@@ -1184,7 +1189,8 @@ defmodule Ash.Query do
 
           with {:ok, opts} <- validation.module.init(opts),
                :ok <-
-                 validation.module.validate(
+                 Ash.Resource.Validation.validate(
+                   validation.module,
                    query,
                    opts,
                    struct(
@@ -1269,7 +1275,12 @@ defmodule Ash.Query do
 
          case module.init(opts) do
            {:ok, opts} ->
-             module.validate(query, opts, struct(Ash.Resource.Validation.Context, context)) ==
+             Ash.Resource.Validation.validate(
+               module,
+               query,
+               opts,
+               struct(Ash.Resource.Validation.Context, context)
+             ) ==
                :ok
 
            _ ->

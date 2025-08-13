@@ -3072,13 +3072,15 @@ defmodule Ash.Actions.Update.Bulk do
 
                     if change.only_when_valid? do
                       changeset.valid? &&
-                        module.validate(
+                        Ash.Resource.Validation.validate(
+                          module,
                           changeset,
                           opts,
                           struct(Ash.Resource.Validation.Context, context)
                         ) == :ok
                     else
-                      module.validate(
+                      Ash.Resource.Validation.validate(
+                        module,
                         changeset,
                         opts,
                         struct(Ash.Resource.Validation.Context, context)
@@ -3154,7 +3156,8 @@ defmodule Ash.Actions.Update.Bulk do
 
            {:ok, opts} = module.init(opts)
 
-           module.validate(
+           Ash.Resource.Validation.validate(
+             module,
              changeset,
              opts,
              validation_context
@@ -3172,7 +3175,8 @@ defmodule Ash.Actions.Update.Bulk do
 
         {:ok, opts} = module.init(opts)
 
-        case module.validate(
+        case Ash.Resource.Validation.validate(
+               module,
                changeset,
                opts,
                validation_context
@@ -3246,7 +3250,8 @@ defmodule Ash.Actions.Update.Bulk do
             Enum.map(batch, fn changeset ->
               {:ok, change_opts} = module.init(change_opts)
 
-              module.change(
+              Ash.Resource.Change.change(
+                module,
                 changeset,
                 change_opts,
                 struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
@@ -3323,7 +3328,8 @@ defmodule Ash.Actions.Update.Bulk do
                 module.batch_change(batch, change_opts, context)
               else
                 [
-                  module.change(
+                  Ash.Resource.Change.change(
+                    module,
                     changeset,
                     change_opts,
                     struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
@@ -3346,7 +3352,8 @@ defmodule Ash.Actions.Update.Bulk do
 
               {:ok, change_opts} = module.init(change_opts)
 
-              module.change(
+              Ash.Resource.Change.change(
+                module,
                 changeset,
                 change_opts,
                 struct(struct(Ash.Resource.Change.Context, context), bulk?: true)

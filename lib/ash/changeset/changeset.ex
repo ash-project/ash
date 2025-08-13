@@ -1087,7 +1087,8 @@ defmodule Ash.Changeset do
 
       {:ok, opts} = module.init(opts)
 
-      case module.validate(
+      case Ash.Resource.Validation.validate(
+             module,
              changeset,
              opts,
              context
@@ -3216,7 +3217,8 @@ defmodule Ash.Changeset do
                        changeset: changeset
                      )
 
-                   module.validate(
+                   Ash.Resource.Validation.validate(
+                     module,
                      changeset,
                      opts,
                      struct(Ash.Resource.Validation.Context, context)
@@ -3245,7 +3247,8 @@ defmodule Ash.Changeset do
                     changeset: changeset
                   )
 
-                module.change(
+                Ash.Resource.Change.change(
+                  module,
                   changeset,
                   opts,
                   struct(Ash.Resource.Change.Context, context)
@@ -3812,7 +3815,12 @@ defmodule Ash.Changeset do
 
          case module.init(opts) do
            {:ok, opts} ->
-             module.validate(changeset, opts, struct(Ash.Resource.Validation.Context, context)) ==
+             Ash.Resource.Validation.validate(
+               module,
+               changeset,
+               opts,
+               struct(Ash.Resource.Validation.Context, context)
+             ) ==
                :ok
 
            _ ->
@@ -3840,7 +3848,8 @@ defmodule Ash.Changeset do
 
           with {:ok, opts} <- validation.module.init(opts),
                :ok <-
-                 validation.module.validate(
+                 Ash.Resource.Validation.validate(
+                   validation.module,
                    changeset,
                    opts,
                    struct(

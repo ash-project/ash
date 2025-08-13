@@ -28,6 +28,8 @@ defmodule Ash.Resource.Validation do
     on: []
   ]
 
+  require Ash.BehaviourHelpers
+
   @type t :: %__MODULE__{
           validation: {atom(), list(atom())},
           module: atom(),
@@ -217,6 +219,17 @@ defmodule Ash.Resource.Validation do
          module: module,
          opts: opts
      }}
+  end
+
+  def validate(module, changeset_query_or_input, opts, context) do
+    Ash.BehaviourHelpers.check_type!(
+      module,
+      module.validate(changeset_query_or_input, opts, context),
+      [
+        :ok,
+        {:error, _}
+      ]
+    )
   end
 
   def opt_schema, do: @schema

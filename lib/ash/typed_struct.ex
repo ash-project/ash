@@ -172,6 +172,7 @@ defmodule Ash.TypedStruct do
             instance_of: module
           ]
 
+        # sobelow_skip ["RCE.CodeModule"]
         Code.eval_quoted(
           Ash.TypedStruct.__define_typed_struct__(
             enforce_keys,

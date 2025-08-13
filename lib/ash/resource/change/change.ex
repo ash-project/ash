@@ -11,6 +11,8 @@ defmodule Ash.Resource.Change do
   """
   defstruct [:change, :on, :only_when_valid?, :description, :always_atomic?, where: []]
 
+  require Ash.BehaviourHelpers
+
   @type t :: %__MODULE__{}
   @type ref :: {module(), Keyword.t()} | module()
 
@@ -82,6 +84,12 @@ defmodule Ash.Resource.Change do
 
   def change(other) do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
+  end
+
+  def change(module, changeset, opts, context) do
+    Ash.BehaviourHelpers.check_type!(module, module.change(changeset, opts, context), [
+      %Ash.Changeset{}
+    ])
   end
 
   defmodule Context do

@@ -1563,7 +1563,8 @@ defmodule Ash.Actions.Create.Bulk do
 
                   {:ok, opts} = module.init(opts)
 
-                  module.validate(
+                  Ash.Resource.Validation.validate(
+                    module,
                     changeset,
                     opts,
                     struct(Ash.Resource.Validation.Context, context)
@@ -1581,7 +1582,8 @@ defmodule Ash.Actions.Create.Bulk do
 
                   {:ok, opts} = module.init(opts)
 
-                  case module.validate(
+                  case Ash.Resource.Validation.validate(
+                         module,
                          changeset,
                          opts,
                          struct(
@@ -1655,7 +1657,8 @@ defmodule Ash.Actions.Create.Bulk do
 
                     {:ok, opts} = module.init(opts)
 
-                    module.validate(
+                    Ash.Resource.Validation.validate(
+                      module,
                       changeset,
                       opts,
                       struct(Ash.Resource.Validation.Context, context)
@@ -1722,7 +1725,8 @@ defmodule Ash.Actions.Create.Bulk do
           Enum.map(batch, fn changeset ->
             {:ok, change_opts} = module.init(change_opts)
 
-            module.change(
+            Ash.Resource.Change.change(
+              module,
               changeset,
               change_opts,
               struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
@@ -1767,7 +1771,8 @@ defmodule Ash.Actions.Create.Bulk do
 
             {:ok, change_opts} = module.init(change_opts)
 
-            module.change(
+            Ash.Resource.Change.change(
+              module,
               changeset,
               change_opts,
               struct(struct(Ash.Resource.Change.Context, context), bulk?: true)

@@ -1233,7 +1233,12 @@ defmodule Ash.ActionInput do
 
          case module.init(opts) do
            {:ok, opts} ->
-             module.validate(input, opts, struct(Ash.Resource.Validation.Context, context)) ==
+             Ash.Resource.Validation.validate(
+               module,
+               input,
+               opts,
+               struct(Ash.Resource.Validation.Context, context)
+             ) ==
                :ok
 
            _ ->
@@ -1260,7 +1265,8 @@ defmodule Ash.ActionInput do
 
           with {:ok, opts} <- validation.module.init(opts),
                :ok <-
-                 validation.module.validate(
+                 Ash.Resource.Validation.validate(
+                   validation.module,
                    input,
                    opts,
                    struct(Ash.Resource.Validation.Context, context)
@@ -1312,7 +1318,12 @@ defmodule Ash.ActionInput do
 
          case module.init(opts) do
            {:ok, opts} ->
-             module.validate(input, opts, struct(Ash.Resource.Validation.Context, context)) ==
+             Ash.Resource.Validation.validate(
+               module,
+               input,
+               opts,
+               struct(Ash.Resource.Validation.Context, context)
+             ) ==
                :ok
 
            _ ->
