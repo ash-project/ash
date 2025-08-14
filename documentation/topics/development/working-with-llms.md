@@ -46,3 +46,44 @@ mix usage_rules.sync .rules \
 You can replace the `.rules` file with your own current rules file, and it will be appended to the contents. Repeated calls will only replace the package rules contents of the file, not the whole file contents.
 
 Only dependencies of your current project will be added, and any dependencies that don't have rules are skipped.
+
+### Guide it on tools/design
+
+It's also important to guide your AI on overall design decisions, and which tools to use. The majority of Elixir code LLMs are trained on will be using Phoenix contexts and direct Ecto calls.
+
+Here is a recommendation for the top of your rule file for an Ash-centric app:
+
+```md
+## Generating Code
+
+Use `list_generators` to list available generators when available, otherwise `mix help`. If you have to run generator tasks, pass `--yes`. Always prefer to use generators as a basis for code generation, and then modify afterwards.
+
+## Tools
+
+Use Tidewave MCP tools when available, as they let you interrogate the running application in various useful ways.
+
+## Logs & Tests
+
+When you're done executing code, try to compile the code, and check the logs or run any applicable tests to see what effect your changes have had.
+
+## Use Eval
+
+Use the `project_eval` tool to execute code in the running instance of the application. Eval `h Module.fun` to get documentation for a module or function.
+
+## Ash First
+
+Always use Ash concepts, almost never Ecto concepts directly. Think hard about the "Ash way" to do things. If you don't know, often look for information in the rules & docs of Ash & associated packages.
+
+## Code Generation
+
+Start with generators wherever possible. They provide a starting point for your code and can be modified if needed.
+
+## ALWAYS research, NEVER assume
+
+Always use `package_docs_search` to find relevant documentation before beginning work.
+
+## Don't start or stop phoenix applications
+
+Never attempt to start or stop a Phoenix application.
+Your Tidewave tools work by being connected to the running application, and starting or stopping it can cause issues.
+```
