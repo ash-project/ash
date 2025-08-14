@@ -17,7 +17,8 @@ defmodule Ash.Resource.Calculation do
             public?: false,
             async?: false,
             sensitive?: false,
-            type: nil
+            type: nil,
+            field?: true
 
   @schema [
     name: [
@@ -85,6 +86,13 @@ defmodule Ash.Resource.Calculation do
       doc: """
       Whether or not the calculation can be referenced in sorts.
       """
+    ],
+    field?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Whether or not the calculation should be included as a field in the resource's record struct.
+      """
     ]
   ]
 
@@ -132,7 +140,8 @@ defmodule Ash.Resource.Calculation do
           sortable?: boolean,
           name: atom(),
           public?: boolean,
-          type: nil | Ash.Type.t()
+          type: nil | Ash.Type.t(),
+          field?: boolean
         }
 
   @type ref :: {module(), Keyword.t()} | module()
@@ -207,5 +216,20 @@ defmodule Ash.Resource.Calculation do
 
   def expr_calc(expr) do
     {:ok, {Ash.Resource.Calculation.Expression, expr: expr}}
+  end
+
+  @doc false
+  @spec can_load?(t() | nil) :: boolean()
+  def can_load?(%__MODULE__{} = calculation), do: calculation.field?
+  def can_load?(_), do: false
+
+  @doc false
+  @spec query_name_and_load(t()) :: {atom, atom | nil}
+  def query_name_and_load(calculation) do
+    if can_load?(calculation) do
+      {calculation.name, calculation.name}
+    else
+      {calculation.name, nil}
+    end
   end
 end

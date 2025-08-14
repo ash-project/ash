@@ -139,6 +139,10 @@ defmodule Ash.Test.Resource.InfoTest do
       calculate :formatted_post_title, :string, expr("Post title: " <> post_title),
         public?: true,
         load: [:post_title]
+
+      calculate :non_field_calculation, :string, expr("Post title: " <> post_title),
+        load: [:post_title],
+        field?: false
     end
 
     relationships do
@@ -218,6 +222,12 @@ defmodule Ash.Test.Resource.InfoTest do
 
       assert %Resource.Relationships.BelongsTo{name: :post} =
                Info.public_relationship(Post, [:comments, :post])
+    end
+
+    test "fields/2 excludes calculations with field?: false" do
+      calculation_fields = Info.fields(Comment, [:calculations])
+
+      refute Enum.any?(calculation_fields, &(&1.name == :non_field_calculation))
     end
   end
 
