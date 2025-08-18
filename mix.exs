@@ -55,6 +55,8 @@ defmodule Ash.MixProject do
          search_data: Spark.Docs.search_data_for(Ash.DataLayer.Mnesia)},
         {"documentation/dsls/DSL-Ash.Reactor.md",
          search_data: Spark.Docs.search_data_for(Ash.Reactor)},
+        {"documentation/dsls/DSL-Ash.TypedStruct.md",
+         search_data: Spark.Docs.search_data_for(Ash.TypedStruct.Dsl)},
         "documentation/tutorials/get-started.md",
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
@@ -241,7 +243,8 @@ defmodule Ash.MixProject do
           Ash.Policy.Info,
           Ash.DataLayer.Ets.Info,
           Ash.DataLayer.Mnesia.Info,
-          Ash.Notifier.PubSub.Info
+          Ash.Notifier.PubSub.Info,
+          Ash.TypedStruct.Info
         ],
         Visualizations: [
           Ash.Domain.Info.Diagram,
