@@ -990,9 +990,10 @@ defmodule Ash.Actions.PaginationTest do
 
   describe "counting" do
     test "counts synchronously when async is disabled" do
+      disable_async? = Application.get_env(:ash, :disable_async?)
       Application.put_env(:ash, :disable_async?, true)
+      on_exit(fn -> Application.put_env(:ash, :disable_async?, disable_async?) end)
 
-      expect(Ash.DataLayer, :in_transaction?, fn _ -> true end)
       reject(&Ash.ProcessHelpers.async/2)
 
       assert Ash.read!(User, action: :optional_offset, page: [limit: 1, count: true]).count ==
@@ -1000,7 +1001,9 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     test "counts asynchronously when async is enabled" do
+      disable_async? = Application.get_env(:ash, :disable_async?)
       Application.put_env(:ash, :disable_async?, false)
+      on_exit(fn -> Application.put_env(:ash, :disable_async?, disable_async?) end)
 
       stub(Ash.DataLayer, :in_transaction?, fn _ -> false end)
 
@@ -1018,8 +1021,6 @@ defmodule Ash.Actions.PaginationTest do
 
       assert Ash.read!(User, action: :optional_offset, page: [limit: 1, count: true]).count ==
                0
-
-      Application.put_env(:ash, :disable_async?, true)
     end
   end
 end
