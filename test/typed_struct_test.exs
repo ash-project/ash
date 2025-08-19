@@ -186,6 +186,10 @@ defmodule Ash.TypedStructTest do
       assert Ash.TypedStruct.Info.short_name(UserStruct) == :user_struct
     end
 
+    test "trace name can be introspected" do
+      assert Ash.TypedStruct.Info.trace_name(UserStruct) == "user_struct"
+    end
+
     test "field names can be introspected in order" do
       assert Ash.TypedStruct.Info.field_names(UserStruct) == [:id, :name, :email, :age, :active]
     end
