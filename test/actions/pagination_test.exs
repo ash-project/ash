@@ -1,5 +1,6 @@
 defmodule Ash.Actions.PaginationTest do
   use ExUnit.Case, async: true
+  use Mimic
 
   require Ash.Query
 
@@ -984,6 +985,42 @@ defmodule Ash.Actions.PaginationTest do
              |> Ash.read!(page: [limit: 3])
              |> Map.fetch!(:results)
              |> Enum.count() == 3
+    end
+  end
+
+  describe "counting" do
+    test "counts synchronously when async is disabled" do
+      disable_async? = Application.get_env(:ash, :disable_async?)
+      Application.put_env(:ash, :disable_async?, true)
+      on_exit(fn -> Application.put_env(:ash, :disable_async?, disable_async?) end)
+
+      reject(&Ash.ProcessHelpers.async/2)
+
+      assert Ash.read!(User, action: :optional_offset, page: [limit: 1, count: true]).count ==
+               0
+    end
+
+    test "counts asynchronously when async is enabled" do
+      disable_async? = Application.get_env(:ash, :disable_async?)
+      Application.put_env(:ash, :disable_async?, false)
+      on_exit(fn -> Application.put_env(:ash, :disable_async?, disable_async?) end)
+
+      stub(Ash.DataLayer, :in_transaction?, fn _ -> false end)
+
+      stub(Ash.DataLayer, :can?, fn
+        :async_engine, _ -> true
+        feature, resource -> Mimic.call_original(Ash.DataLayer, :can?, [feature, resource])
+      end)
+
+      expect(
+        Ash.ProcessHelpers,
+        :async,
+        1,
+        &Mimic.call_original(Ash.ProcessHelpers, :async, [&1, &2])
+      )
+
+      assert Ash.read!(User, action: :optional_offset, page: [limit: 1, count: true]).count ==
+               0
     end
   end
 end
