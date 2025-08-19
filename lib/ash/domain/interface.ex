@@ -2,6 +2,20 @@ defmodule Ash.Domain.Interface do
   @moduledoc false
 
   defmacro __using__(_) do
+    env = __CALLER__
+
+    Module.register_attribute(env.module, :__ash_domain_uses_counter__, accumulate: true)
+    Module.put_attribute(env.module, :__ash_domain_uses_counter__, env.line)
+
+    uses = Module.get_attribute(env.module, :__ash_domain_uses_counter__) || []
+
+    if length(uses) > 1 do
+      raise CompileError,
+        file: env.file,
+        line: env.line,
+        description: "use Ash.Domain can be called only one time in module "
+    end
+
     quote bind_quoted: [], generated: true do
       @spec can?(
               query_or_changeset_or_action ::

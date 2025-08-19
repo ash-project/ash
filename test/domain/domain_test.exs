@@ -23,6 +23,35 @@ defmodule Ash.Test.Resource.DomainTest do
     end
   end
 
+  test "double macros invocation `use Ash.Domain` should raises a CompileError" do
+    code = """
+    defmodule DoubleMacrosDomain do
+      use Ash.Domain
+      use Ash.Domain, extensions: []
+    end
+    """
+
+    try do
+      Code.compile_string(code)
+      flunk("expected CompileError on the second `use Ash.Domain`")
+    rescue
+      e in CompileError ->
+        assert e.line == 1
+        assert String.contains?(e.description, "use Ash.Domain")
+        assert String.contains?(e.description, "only one")
+    end
+  end
+
+  test "single macros invocation `use Ash.Domain` should compile" do
+    code = """
+    defmodule SingleMacrosDomain do
+      use Ash.Domain
+    end
+    """
+
+    assert _compiled = Code.compile_string(code)
+  end
+
   test "cannot define a resource that points to a domain that doesn't accept it" do
     assert_raise RuntimeError, ~r/domain does not accept this resource/, fn ->
       defmodule NoResourcesDomain do
