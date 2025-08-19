@@ -3405,7 +3405,8 @@ defmodule Ash.Actions.Read do
              {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
           if return? do
             if Ash.DataLayer.in_transaction?(resource) ||
-                 !Ash.DataLayer.can?(:async_engine, resource) do
+                 !Ash.DataLayer.can?(:async_engine, resource) ||
+                 Application.get_env(:ash, :disable_async?) do
               case do_fetch_count(query, data_layer_query) do
                 {:ok, count} -> {:ok, {:ok, count}}
                 {:error, error} -> {:error, error}
