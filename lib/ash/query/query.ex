@@ -2227,7 +2227,9 @@ defmodule Ash.Query do
         end
 
       {field, {args, load_through}}, query ->
-        if resource_calculation = Ash.Resource.Info.calculation(query.resource, field) do
+        resource_calculation = Ash.Resource.Info.calculation(query.resource, field)
+
+        if Ash.Resource.Calculation.can_load?(resource_calculation) do
           load_resource_calculation(query, resource_calculation, args, load_through)
         else
           add_error(
@@ -2243,7 +2245,15 @@ defmodule Ash.Query do
             load_relationship(query, rel, rest, opts)
 
           resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
-            load_resource_calculation(query, resource_calculation, rest)
+            if Ash.Resource.Calculation.can_load?(resource_calculation) do
+              load_resource_calculation(query, resource_calculation, rest)
+            else
+              add_error(
+                query,
+                :load,
+                Ash.Error.Query.InvalidLoad.exception(load: [{field, rest}])
+              )
+            end
 
           attribute = Ash.Resource.Info.attribute(query.resource, field) ->
             if Ash.Type.can_load?(attribute.type, attribute.constraints) do
@@ -2277,7 +2287,7 @@ defmodule Ash.Query do
                 {value, nil}
 
               :error ->
-                {resource_calculation.name, resource_calculation.name}
+                Ash.Resource.Calculation.query_name_and_load(resource_calculation)
             end
 
           is_map(args) ->
@@ -2286,11 +2296,11 @@ defmodule Ash.Query do
                 {value, nil}
 
               :error ->
-                {resource_calculation.name, resource_calculation.name}
+                Ash.Resource.Calculation.query_name_and_load(resource_calculation)
             end
 
           true ->
-            {resource_calculation.name, resource_calculation.name}
+            Ash.Resource.Calculation.query_name_and_load(resource_calculation)
         end
 
       case Calculation.from_resource_calculation(query.resource, resource_calculation,
@@ -2371,11 +2381,12 @@ defmodule Ash.Query do
     end
   end
 
+  # TODO: Remove this dead function - resource_calc_to_calc/4
   @doc false
-  def resource_calc_to_calc(query, name, resource_calculation, args \\ %{}) do
+  def resource_calc_to_calc(query, _name, resource_calculation, args \\ %{}) do
     {name, load} =
       case fetch_key(args, :as) do
-        :error -> {name, name}
+        :error -> Ash.Resource.Calculation.query_name_and_load(resource_calculation)
         {:ok, key} -> {key, nil}
       end
 
@@ -2495,7 +2506,15 @@ defmodule Ash.Query do
         end
 
       resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
-        load_resource_calculation(query, resource_calculation, %{})
+        if Ash.Resource.Calculation.can_load?(resource_calculation) do
+          load_resource_calculation(query, resource_calculation, %{})
+        else
+          add_error(
+            query,
+            :load,
+            Ash.Error.Query.InvalidLoad.exception(load: field)
+          )
+        end
 
       true ->
         add_error(query, :load, Ash.Error.Query.InvalidLoad.exception(load: field))
@@ -3684,14 +3703,17 @@ defmodule Ash.Query do
 
     args = Map.put(args, :as, as_name)
 
-    if resource_calculation = Ash.Resource.Info.calculation(query.resource, calc_name) do
+    with %Ash.Resource.Calculation{} = resource_calculation <-
+           Ash.Resource.Info.calculation(query.resource, calc_name),
+         true <- Ash.Resource.Calculation.can_load?(resource_calculation) do
       if opts[:load_through] do
         load_resource_calculation(query, resource_calculation, args)
       else
         load_resource_calculation(query, resource_calculation, args, opts[:load_through])
       end
     else
-      add_error(query, "No such calculation: #{inspect(calc_name)}")
+      nil -> add_error(query, "No such calculation: #{inspect(calc_name)}")
+      false -> add_error(query, :load, Ash.Error.Query.InvalidLoad.exception(load: calc_name))
     end
   end
 
