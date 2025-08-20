@@ -26,6 +26,11 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
     policy action([:erase, :erasable]) do
       authorize_if expr(has_context)
     end
+
+    policy action(:update) do
+      forbid_if expr(exists(comments, text != "[deleted]"))
+      authorize_if always()
+    end
   end
 
   ets do
@@ -93,6 +98,7 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
 
   code_interface do
     define :create, args: [:text]
+    define :update, args: [:text]
     define :erase
     define :erasable
   end

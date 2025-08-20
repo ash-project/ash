@@ -61,6 +61,10 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
       change relate_actor(:author)
     end
 
+    update :erase do
+      change set_attribute(:text, "[deleted]")
+    end
+
     read :read_through_post
 
     read :read_with_runtime_check
@@ -68,6 +72,7 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
 
   code_interface do
     define :create, args: [:post_id, :text]
+    define :erase
   end
 
   relationships do

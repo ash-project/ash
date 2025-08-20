@@ -284,4 +284,10 @@ defmodule Ash.Test.Policy.ComplexTest do
     assert [_] = Post.erasable!(actor: me, context: %{post_id: post.id})
     assert %{text: "[deleted]"} = Post.erase!(post, actor: me, context: %{post_id: post.id})
   end
+
+  test "authorize update on post only if all comments are erased", %{post_by_me: post} do
+    assert {:error, %Ash.Error.Forbidden{}} = Post.update(post, "new text")
+    Comment.erase!(Ash.load!(post, :comments, authorize?: false).comments)
+    assert {:ok, _post} = Post.update(Ash.load!(post, :comments, authorize?: false), "new text")
+  end
 end
