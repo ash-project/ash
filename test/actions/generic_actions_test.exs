@@ -14,6 +14,17 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
   end
 
+  defmodule ValidateIsFred do
+    use Ash.Resource.Validation
+
+    def validate(input, _opts, _context) do
+      case Ash.ActionInput.get_argument(input, :name) do
+        "fred" -> :ok
+        _ -> {:error, "name is not 'fred'"}
+      end
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -84,6 +95,16 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
         run fn input, _ ->
           {:ok, "Value is #{input.arguments.value}"}
+        end
+      end
+
+      action :with_module_validation, :string do
+        argument :name, :string, allow_nil?: false
+
+        validate ValidateIsFred
+
+        run fn input, _ ->
+          {:ok, "Hello fred!"}
         end
       end
 
@@ -268,6 +289,10 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
 
       policy action(:with_validation) do
+        authorize_if always()
+      end
+
+      policy action(:with_module_validation) do
         authorize_if always()
       end
 
@@ -469,6 +494,24 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
       # Should succeed even though we're not providing a :value argument
       assert result == "Hello fred"
+    end
+
+    test "validation succeeds using module validation" do
+      # This should succeed
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:with_module_validation, %{name: "fred"})
+        |> Ash.run_action!()
+
+      assert result == "Hello fred!"
+    end
+
+    test "validations error with invalid input using module validation" do
+      assert_raise Ash.Error.Invalid, fn ->
+        Post
+        |> Ash.ActionInput.for_action(:with_module_validation, %{name: "not fred"})
+        |> Ash.run_action!()
+      end
     end
   end
 

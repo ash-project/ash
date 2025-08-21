@@ -156,7 +156,7 @@ defmodule Ash.Resource.Validation do
       def init(opts), do: {:ok, opts}
 
       @impl true
-      def supports(_opts), do: [Ash.Changeset]
+      def supports(_opts), do: [Ash.Changeset, Ash.ActionInput]
 
       defp with_description(keyword, opts) do
         if Kernel.function_exported?(__MODULE__, :describe, 1) do
