@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.5.36](https://github.com/ash-project/ash/compare/v3.5.35...v3.5.36) (2025-08-21)
+
+
+
+
+### Bug Fixes:
+
+* revert typed_struct enhancements by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.35](https://github.com/ash-project/ash/compare/v3.5.34...v3.5.35) (2025-08-21)
 
 
