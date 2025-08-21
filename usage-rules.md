@@ -99,7 +99,7 @@ users = MyApp.Accounts.list_users!(
 
 # AVOID - Verbose manual query building
 query = MyApp.Post |> Ash.Query.filter(...) |> Ash.Query.load(...)
-posts = MyApp.Blog.read!(query)
+posts = Ash.read!(query)
 ```
 
 Supported options: `load:`, `query:` (which accepts `filter:`, `sort:`, `limit:`, `offset:`, etc.), `page:`, `stream?:`
