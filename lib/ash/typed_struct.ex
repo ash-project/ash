@@ -136,6 +136,7 @@ defmodule Ash.TypedStruct do
       ]
     }
 
+    # sobelow_skip ["RCE.CodeModule"]
     def after_define do
       quote do
         fields = Spark.Dsl.Extension.get_entities(__MODULE__, [:typed_struct])
@@ -154,11 +155,11 @@ defmodule Ash.TypedStruct do
             end
           end)
 
-        map_required_fields_match =
-          enforce_keys
-          |> Enum.reject(&(&1 in Map.keys(defaults)))
-          |> Enum.map(&{&1, {:_, [], Elixir}})
-          |> then(&{:%{}, [], &1})
+        # map_required_fields_match =
+        #   enforce_keys
+        #   |> Enum.reject(&(&1 in Map.keys(defaults)))
+        #   |> Enum.map(&{&1, {:_, [], Elixir}})
+        #   |> then(&{:%{}, [], &1})
 
         map_constraints =
           [
@@ -185,8 +186,8 @@ defmodule Ash.TypedStruct do
             enforce_keys,
             fields_with_defaults,
             map_constraints,
-            defaults,
-            map_required_fields_match
+            defaults
+            # map_required_fields_match
           ),
           [],
           __ENV__
@@ -203,8 +204,8 @@ defmodule Ash.TypedStruct do
         enforce_keys,
         fields_with_defaults,
         map_constraints,
-        defaults,
-        map_required_fields_match
+        defaults
+        # map_required_fields_match
       ) do
     quote do
       @enforce_keys unquote(enforce_keys)
@@ -214,18 +215,19 @@ defmodule Ash.TypedStruct do
         subtype_of: :struct,
         constraints: unquote(Macro.escape(map_constraints))
 
-      if Enum.any?(unquote(enforce_keys), &(&1 not in Map.keys(unquote(Macro.escape(defaults))))) do
-        @doc "Create a new #{__MODULE__}, raising any error"
-        def new!(unquote(map_required_fields_match) = fields) do
-          fields
-          |> new()
-          |> Ash.Helpers.unwrap_or_raise!()
-        end
-      end
+      # if Enum.any?(unquote(enforce_keys), &(&1 not in Map.keys(unquote(Macro.escape(defaults))))) do
+      #   @doc "Create a new #{__MODULE__}, raising any error"
+      #   def new!(unquote(map_required_fields_match) = fields) do
+      #     fields
+      #     |> new()
+      #     |> Ash.Helpers.unwrap_or_raise!()
+      #   end
+      # end
 
       def new!(fields) do
-        {:error, error} = new(fields)
-        raise Ash.Error.to_error_class(error)
+        fields
+        |> new()
+        |> Ash.Helpers.unwrap_or_raise!()
       end
 
       @doc "Create a new #{__MODULE__}, or return an error"
