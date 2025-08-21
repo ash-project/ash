@@ -2,6 +2,63 @@
 
 <!-- changelog -->
 
+## [v3.5.35](https://github.com/ash-project/ash/compare/v3.5.34...v3.5.35) (2025-08-21)
+
+
+
+
+### Bug Fixes:
+
+* use `Ash.read!` in usage rules by [@zachdaniel](https://github.com/zachdaniel)
+
+* respect disable_async config during pagination count (#2280) by skanderm
+
+* properly handle overriding `new` for typed struct by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't skip authorization for unrelated aggregates by [@zachdaniel](https://github.com/zachdaniel)
+
+* multiple errors (#2260) by [@TwistingTwists](https://github.com/TwistingTwists)
+
+* avoid String.to_atom by pre-computing mixed argument name MapSet (#2262) by James Harton
+
+* Accept nil input for maps and TypedStructs (#2257) by Fugi
+
+* pass actor: nil to ash.get in get_and_lock_for_update (#2256) by Jesse Williams
+
+* add default impl for rewrite/3 & get_rewrites/4 for Ash.Type. (#2251) by Torkild Gundersen Kjevik
+
+* filter out invalid changeset, before running the bulk before transactions (#2249) by Barnabas Jovanovics
+
+* minor tweaks to usage rules (#2246) by albinkc
+
+* handle updates on union types containing arrays  (#2237) by Rutgerdj
+
+### Improvements:
+
+* introspection and docs for typed structs (#2277) by [@matt-beanland](https://github.com/matt-beanland)
+
+* check change and validate callbacks using behaviour helpers by [@zachdaniel](https://github.com/zachdaniel)
+
+* support "unrelated" aggregates (#2240) by [@zachdaniel](https://github.com/zachdaniel)
+
+* support "unrelated" aggregates by [@zachdaniel](https://github.com/zachdaniel)
+
+* add unrelated exists expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* TypedStruct required field pattern matching (#2265) by [@chazwatkins](https://github.com/chazwatkins)
+
+* compilation: Move type list module attrs from Ash.Type to Ash.Type.Registry (#2266) by [@chazwatkins](https://github.com/chazwatkins)
+
+* changeset_generator takes scope opt (#2263) by Joseph Lozano
+
+* Support through for many to many relationship gen (#2233) by Kenneth Kostrešević
+
+* Update usage-rules.md to include Polymorphic Relationships (#2211) by Gonzalo Muñoz
+
+* filter expression verifier (#2243) by Kenneth Kostrešević
+
+* Introduce extension introspection functions on Ash.*.Info (#2239) by Jonatan Männchen
+
 ## [v3.5.34](https://github.com/ash-project/ash/compare/v3.5.33...v3.5.34) (2025-08-07)
 
 
