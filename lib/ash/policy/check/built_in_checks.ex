@@ -51,6 +51,7 @@ defmodule Ash.Policy.Check.Builtins do
   policy action_type([:read, :update]) do
     authorize_if relates_to_actor_via(:owner)
   end
+  ```
   """
   @spec action_type(Ash.Resource.Actions.action_type() | list(Ash.Resource.Actions.action_type())) ::
           Ash.Policy.Check.ref()

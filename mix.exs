@@ -55,6 +55,8 @@ defmodule Ash.MixProject do
          search_data: Spark.Docs.search_data_for(Ash.DataLayer.Mnesia)},
         {"documentation/dsls/DSL-Ash.Reactor.md",
          search_data: Spark.Docs.search_data_for(Ash.Reactor)},
+        {"documentation/dsls/DSL-Ash.TypedStruct.md",
+         search_data: Spark.Docs.search_data_for(Ash.TypedStruct.Dsl)},
         "documentation/tutorials/get-started.md",
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
@@ -241,7 +243,8 @@ defmodule Ash.MixProject do
           Ash.Policy.Info,
           Ash.DataLayer.Ets.Info,
           Ash.DataLayer.Mnesia.Info,
-          Ash.Notifier.PubSub.Info
+          Ash.Notifier.PubSub.Info,
+          Ash.TypedStruct.Info
         ],
         Visualizations: [
           Ash.Domain.Info.Diagram,
@@ -427,9 +430,9 @@ defmodule Ash.MixProject do
       ],
       format: "format --migrate",
       "spark.formatter":
-        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
+        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.TypedStruct.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
       "spark.cheat_sheets":
-        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
+        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.TypedStruct.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
     ]
   end
 end

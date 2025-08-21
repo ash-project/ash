@@ -17,7 +17,12 @@ defmodule Ash.TypedStructTest do
     typed_struct do
       field(:id, Ash.Type.UUID, allow_nil?: false)
       field(:name, :string, allow_nil?: false)
-      field(:email, :string, constraints: [match: ~r/@/])
+
+      field(:email, :string,
+        constraints: [match: ~r/@/],
+        description: "the user's email address, must contain a @"
+      )
+
       field(:age, :integer, constraints: [min: 0, max: 150])
       field(:active, :boolean, default: true)
     end
@@ -41,7 +46,7 @@ defmodule Ash.TypedStructTest do
     end
   end
 
-  describe "DSL" do
+  describe "typed struct DSL" do
     test "struct DSL creates a proper struct type" do
       assert {:ok, struct} =
                UserStruct.new(%{
@@ -143,34 +148,63 @@ defmodule Ash.TypedStructTest do
     end
   end
 
-  test "it handles valid maps" do
-    changeset =
-      ExampleResource
-      |> Ash.Changeset.for_create(:create, %{
-        user: %{
-          id: "a7cec9ba-15de-4c56-99e4-c2abc91a2209",
-          name: "bar"
-        }
-      })
+  describe "typed struct as resource attribute" do
+    test "it handles valid maps" do
+      changeset =
+        ExampleResource
+        |> Ash.Changeset.for_create(:create, %{
+          user: %{
+            id: "a7cec9ba-15de-4c56-99e4-c2abc91a2209",
+            name: "bar"
+          }
+        })
 
-    assert changeset.valid?
+      assert changeset.valid?
+    end
+
+    test "it handles missing maps" do
+      changeset =
+        ExampleResource
+        |> Ash.Changeset.for_create(:create, %{})
+
+      assert changeset.valid?
+    end
+
+    test "it handles nil maps" do
+      changeset =
+        ExampleResource
+        |> Ash.Changeset.for_create(:create, %{
+          user: nil
+        })
+
+      assert changeset.valid?
+    end
   end
 
-  test "it handles missing maps" do
-    changeset =
-      ExampleResource
-      |> Ash.Changeset.for_create(:create, %{})
+  describe "typed struct introspection" do
+    test "field names can be introspected in order" do
+      assert Ash.TypedStruct.Info.field_names(UserStruct) == [:id, :name, :email, :age, :active]
+    end
 
-    assert changeset.valid?
-  end
+    test "all fields structs can be introspected" do
+      fields = Ash.TypedStruct.Info.fields(UserStruct)
+      assert length(fields) == 5
 
-  test "it handles nil maps" do
-    changeset =
-      ExampleResource
-      |> Ash.Changeset.for_create(:create, %{
-        user: nil
-      })
+      Enum.each(
+        fields,
+        fn field ->
+          assert is_struct(field, Ash.TypedStruct.Field)
+        end
+      )
+    end
 
-    assert changeset.valid?
+    test "field struct can be introspected by name" do
+      field = Ash.TypedStruct.Info.field(UserStruct, :email)
+      assert is_struct(field, Ash.TypedStruct.Field)
+    end
+
+    test "extensions can be introspected" do
+      assert Ash.TypedStruct.Info.extensions(UserStruct) == [Ash.TypedStruct.Dsl]
+    end
   end
 end

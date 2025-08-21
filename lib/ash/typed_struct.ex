@@ -70,8 +70,15 @@ defmodule Ash.TypedStruct do
   """
 
   defmodule Field do
-    @moduledoc false
+    @moduledoc "Represents a field on a typed struct"
     defstruct [:name, :type, :constraints, :default, :allow_nil?, :description]
+
+    @type t :: %__MODULE__{
+            name: atom(),
+            constraints: Keyword.t(),
+            type: Ash.Type.t(),
+            default: nil | term | (-> term)
+          }
   end
 
   defmodule Dsl do
@@ -187,7 +194,8 @@ defmodule Ash.TypedStruct do
       end
     end
 
-    use Spark.Dsl.Extension, sections: [@struct]
+    use Spark.Dsl.Extension,
+      sections: [@struct]
   end
 
   @doc false
