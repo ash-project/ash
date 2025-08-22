@@ -969,10 +969,17 @@ defmodule Ash.Changeset do
       {key, atomic}, expr ->
         atomic = strip_errors(atomic)
 
+        checker =
+          if is_nil(atomic) do
+            Ash.Expr.expr(not is_nil(^ref(key)))
+          else
+            Ash.Expr.expr(^atomic != ^ref(key))
+          end
+
         if is_nil(expr) do
-          Ash.Expr.expr(^atomic != ^ref(key))
+          checker
         else
-          Ash.Expr.expr(^expr or ^atomic != ^ref(key))
+          Ash.Expr.expr(^expr or checker)
         end
     end)
     |> then(fn expr ->
