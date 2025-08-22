@@ -7,7 +7,7 @@ defmodule Ash.TypedStruct.Info do
     Spark.Dsl.Extension.get_entities(typed_struct, [:typed_struct])
   end
 
-  @spec field_names(Spark.Dsl.t() | Ash.Type.NewType.t()) :: MapSet.t()
+  @spec field_names(Spark.Dsl.t() | Ash.Type.NewType.t()) :: list(atom)
   def field_names(typed_struct) do
     typed_struct
     |> fields()
