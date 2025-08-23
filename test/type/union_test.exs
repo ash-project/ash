@@ -38,6 +38,23 @@ defmodule Ash.Test.Filter.UnionTest do
     end
   end
 
+  defmodule Baz do
+    use Ash.Resource, data_layer: :embedded
+
+    actions do
+      defaults [:read, :create, :destroy, :update]
+
+      default_accept [:count]
+    end
+
+    attributes do
+      attribute :count, :integer do
+        allow_nil? false
+        public? true
+      end
+    end
+  end
+
   defmodule FooBarUnion do
     use Ash.Type.NewType,
       subtype_of: :union,
@@ -160,6 +177,29 @@ defmodule Ash.Test.Filter.UnionTest do
             string: [type: :string],
             string_array: [type: {:array, :string}],
             integer_array: [type: {:array, :integer}]
+          ]
+        ]
+    end
+  end
+
+  defmodule MapWithTagExample do
+    use Ash.Resource, data_layer: :embedded
+
+    actions do
+      defaults [:read, :create, :destroy, :update]
+      default_accept [:thing]
+    end
+
+    attributes do
+      attribute :thing, :union,
+        constraints: [
+          storage: :map_with_tag,
+          types: [
+            foo: [
+              type: Baz,
+              tag: :type,
+              tag_value: :baz
+            ]
           ]
         ]
     end
@@ -354,6 +394,14 @@ defmodule Ash.Test.Filter.UnionTest do
         ] do
       assert error[key] == val
     end
+  end
+
+  test "it handles embedded structs and map_with_tag" do
+    assert {:ok, union} =
+             Ash.Type.cast_input(MapWithTagExample, %{thing: %{type: :baz, count: 100}})
+
+    assert {:ok, %{thing: %{type: :baz, count: 100}}} =
+             Ash.Type.dump_to_native(MapWithTagExample, union)
   end
 
   test "it handles changing union attribute on a resource" do
