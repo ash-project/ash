@@ -1390,11 +1390,6 @@ defmodule Ash.Actions.Read do
 
   defp clear_async_limiter(%{context: %{private: %{async_limiter: async_limiter}}} = query)
        when is_pid(async_limiter) do
-    if put_in(query.context.private.async_limiter, nil) !=
-         Ash.Query.set_context(query, %{private: %{async_limiter: nil}}) do
-      raise "what the fuck"
-    end
-
     put_in(query.context.private.async_limiter, nil)
   end
 
