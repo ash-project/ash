@@ -14,7 +14,7 @@ defmodule Ash.Domain.Interface do
         description: "use Ash.Domain can be called only one time in module "
     end
 
-    Module.register_attribute(env.module, :__ash_domain_used__, accumulate: false)
+    Module.register_attribute(env.module, :__ash_domain_used__, [])
     Module.put_attribute(env.module, :__ash_domain_used__, env.line)
 
     quote bind_quoted: [], generated: true do
