@@ -979,7 +979,7 @@ defmodule Ash.Changeset do
         if is_nil(expr) do
           checker
         else
-          Ash.Expr.expr(^expr or checker)
+          Ash.Expr.expr(^expr or ^checker)
         end
     end)
     |> then(fn expr ->
