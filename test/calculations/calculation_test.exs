@@ -783,6 +783,16 @@ defmodule Ash.Test.CalculationTest do
         public?(true)
       end
 
+      calculate :email_salutation,
+                :string,
+                expr(
+                  if is_nil(^arg(:salutation)),
+                    do: "Hello,",
+                    else: full_name_with_salutation(salutation: ^arg(:salutation)) <> ","
+                ) do
+        argument(:salutation, :string)
+      end
+
       calculate :conditional_full_name,
                 :string,
                 expr(
@@ -1478,6 +1488,30 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.sort()
 
     assert ci_full_names == ["bob", "brian cranston", "zach daniel"]
+  end
+
+  test "expression with nested non-nil argument calculation works when using 'if' to check for nils" do
+    User
+    |> Ash.Changeset.for_create(:create, %{first_name: "bob"})
+    |> Ash.create!()
+
+    email_salutations =
+      User
+      |> Ash.Query.load(email_salutation: [salutation: "Hi"])
+      |> Ash.read!()
+      |> Enum.map(& &1.email_salutation)
+      |> Enum.sort()
+
+    assert email_salutations == ["Hi (none),", "Hi brian cranston,", "Hi zach daniel,"]
+
+    email_salutations =
+      User
+      |> Ash.Query.load(:email_salutation)
+      |> Ash.read!()
+      |> Enum.map(& &1.email_salutation)
+      |> Enum.sort()
+
+    assert email_salutations == ["Hello,", "Hello,", "Hello,"]
   end
 
   test "simple expression calculations will be run in memory" do
