@@ -33,8 +33,6 @@
 
 * Introduce extension introspection functions on Ash.*.Info (#2239) by Jonatan Männchen
 
-* Improve error when use Ash.Domain is called multiple times - now show a precise CompileError points to the duplicate line
-
 ## [v3.5.33](https://github.com/ash-project/ash/compare/v3.5.32...v3.5.33) (2025-07-29)
 
 
