@@ -1405,13 +1405,13 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp partial_evaluate(
-         %mod{__predicate__?: _} = pred,
+         %mod{__function__?: _} = pred,
          _record,
          _parent,
          _resource,
          _unknown_on_unknown_refs?
        ) do
-    if function_exported?(mod, :partial_evaluate, 1) do
+    if mod.has_partial_evaluate?() do
       mod.partial_evaluate(pred)
     else
       {:ok, pred}
