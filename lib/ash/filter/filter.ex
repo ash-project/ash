@@ -3654,7 +3654,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp resolve_call(%Call{name: :if, args: args} = call, context) do
+  defp resolve_call(%Call{name: :if, args: args}, context) do
     do_hydrate_refs(
       %Ash.Query.Function.If{__predicate__?: false, name: :if, arguments: args},
       context
