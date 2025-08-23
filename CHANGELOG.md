@@ -4,356 +4,422 @@
 
 ## [v3.5.34](https://github.com/ash-project/ash/compare/v3.5.33...v3.5.34) (2025-08-07)
 
+
+
+
 ### Bug Fixes:
 
-- avoid String.to_atom by pre-computing mixed argument name MapSet (#2262) by James Harton
+* avoid String.to_atom by pre-computing mixed argument name MapSet (#2262) by James Harton
 
-- Accept nil input for maps and TypedStructs (#2257) by [@FugiTech](https://github.com/FugiTech)
+* Accept nil input for maps and TypedStructs (#2257) by [@FugiTech](https://github.com/FugiTech)
 
-- pass actor: nil to ash.get in get_and_lock_for_update (#2256) by Jesse Williams
+* pass actor: nil to ash.get in get_and_lock_for_update (#2256) by Jesse Williams
 
-- add default impl for rewrite/3 & get_rewrites/4 for Ash.Type. (#2251) by [@Torkan](https://github.com/Torkan)
+* add default impl for rewrite/3 & get_rewrites/4 for Ash.Type. (#2251) by [@Torkan](https://github.com/Torkan)
 
-- filter out invalid changeset, before running the bulk before transactions (#2249) by [@barnabasJ](https://github.com/barnabasJ)
+* filter out invalid changeset, before running the bulk before transactions (#2249) by [@barnabasJ](https://github.com/barnabasJ)
 
-- minor tweaks to usage rules (#2246) by albinkc
+* minor tweaks to usage rules (#2246) by albinkc
 
-- handle updates on union types containing arrays (#2237) by Rutgerdj
+* handle updates on union types containing arrays  (#2237) by Rutgerdj
 
 ### Improvements:
 
-- Support through for many to many relationship gen (#2233) by Kenneth Kostrešević
+* Support through for many to many relationship gen (#2233) by Kenneth Kostrešević
 
-- Update usage-rules.md to include Polymorphic Relationships (#2211) by Gonzalo Muñoz
+* Update usage-rules.md to include Polymorphic Relationships (#2211) by Gonzalo Muñoz
 
-- filter expression verifier (#2243) by Kenneth Kostrešević
+* filter expression verifier (#2243) by Kenneth Kostrešević
 
-- Introduce extension introspection functions on Ash.\*.Info (#2239) by Jonatan Männchen
+* Introduce extension introspection functions on Ash.*.Info (#2239) by Jonatan Männchen
+
+* Improve error when use Ash.Domain is called multiple times - now show a precise CompileError points to the duplicate line
 
 ## [v3.5.33](https://github.com/ash-project/ash/compare/v3.5.32...v3.5.33) (2025-07-29)
 
+
+
+
 ### Bug Fixes:
 
-- handle `nil` values properly in atomic changing validations by [@zachdaniel](https://github.com/zachdaniel)
+* handle `nil` values properly in atomic changing validations by [@zachdaniel](https://github.com/zachdaniel)
 
-- Application ER Mermaid Diagram (#2231) by [@maennchen](https://github.com/maennchen)
+* Application ER Mermaid Diagram (#2231) by [@maennchen](https://github.com/maennchen)
 
-- clear `nil` options in typed struct to constraints process by [@zachdaniel](https://github.com/zachdaniel)
+* clear `nil` options in typed struct to constraints process by [@zachdaniel](https://github.com/zachdaniel)
 
-- allow Ash @global_opts authorize? to accept boolean or nil (#2225) by [@chazwatkins](https://github.com/chazwatkins)
+* allow Ash @global_opts authorize? to accept boolean or nil (#2225) by [@chazwatkins](https://github.com/chazwatkins)
 
-- Don't require permissions to read actor on non-atomic `relate_actor` (#2223) by [@chazwatkins](https://github.com/chazwatkins)
+* Don't require permissions to read actor on non-atomic `relate_actor` (#2223) by [@chazwatkins](https://github.com/chazwatkins)
 
-- call underlying stream run instead of public interface by [@zachdaniel](https://github.com/zachdaniel)
+* call underlying stream run instead of public interface by [@zachdaniel](https://github.com/zachdaniel)
 
 ### Improvements:
 
-- `get_by_id` typo fix in usage rules (#2230) by albinkc
+* `get_by_id` typo fix in usage rules (#2230) by albinkc
 
-- Add array modifier to `ash.gen.resource` (#2228) by Kenneth Kostrešević
+* Add array modifier to `ash.gen.resource` (#2228) by Kenneth Kostrešević
 
-- Add prepend? opt to hooks and Ash.Subject transaction hooks (#2221) by [@chazwatkins](https://github.com/chazwatkins)
+* Add prepend? opt to hooks and Ash.Subject transaction hooks (#2221) by [@chazwatkins](https://github.com/chazwatkins)
 
-- hooks: Add transaction hooks to Ash.Subject by [@chazwatkins](https://github.com/chazwatkins)
+* hooks: Add transaction hooks to Ash.Subject by [@chazwatkins](https://github.com/chazwatkins)
 
-- Ash.Subject delegation and improvements by [@chazwatkins](https://github.com/chazwatkins)
+* Ash.Subject delegation and improvements by [@chazwatkins](https://github.com/chazwatkins)
 
-- add `log?` option to `can` functions by [@zachdaniel](https://github.com/zachdaniel)
+* add `log?` option to `can` functions by [@zachdaniel](https://github.com/zachdaniel)
 
-- add transaction hooks for read actions (#2219) by ChristianAlexander
+* add transaction hooks for read actions (#2219) by ChristianAlexander
 
 ## [v3.5.32](https://github.com/ash-project/ash/compare/v3.5.31...v3.5.32) (2025-07-23)
 
+
+
+
 ### Bug Fixes:
 
-- ensure that exists "at_path" is returned as a relationship path by [@zachdaniel](https://github.com/zachdaniel)
+* ensure that exists "at_path" is returned as a relationship path by [@zachdaniel](https://github.com/zachdaniel)
 
 ### Improvements:
 
-- add before/after/around transaction hooks to generic actions (#2218) by ChristianAlexander
+* add before/after/around transaction hooks to generic actions (#2218) by ChristianAlexander
 
 ## [v3.5.31](https://github.com/ash-project/ash/compare/v3.5.30...v3.5.31) (2025-07-22)
 
+
+
+
 ### Bug Fixes:
 
-- Catch invalid load (#2213) by Kenneth Kostrešević
+* Catch invalid load (#2213) by Kenneth Kostrešević
 
 ### Improvements:
 
-- Add Ash.Subject to abstract Changeset, Query, ActionInput common functions (#2212) by [@chazwatkins](https://github.com/chazwatkins)
+* Add Ash.Subject to abstract Changeset, Query, ActionInput common functions (#2212) by [@chazwatkins](https://github.com/chazwatkins)
 
-- support validations, preparations on generic actions by [@zachdaniel](https://github.com/zachdaniel)
+* support validations, preparations on generic actions by [@zachdaniel](https://github.com/zachdaniel)
 
-- add before/after action hooks to generic actions by [@zachdaniel](https://github.com/zachdaniel)
+* add before/after action hooks to generic actions by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.30](https://github.com/ash-project/ash/compare/v3.5.29...v3.5.30) (2025-07-18)
 
+
+
+
 ### Bug Fixes:
 
-- handle new return value from `kind_of_thing` in gen.resource by [@zachdaniel](https://github.com/zachdaniel)
+* handle new return value from `kind_of_thing` in gen.resource by [@zachdaniel](https://github.com/zachdaniel)
 
 ### Improvements:
 
-- support global validations being applied to reads by [@zachdaniel](https://github.com/zachdaniel)
+* support global validations being applied to reads by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.29](https://github.com/ash-project/ash/compare/v3.5.28...v3.5.29) (2025-07-18)
 
+
+
+
 ### Bug Fixes:
 
-- properly return `:error` when unable to determine type of module by [@zachdaniel](https://github.com/zachdaniel)
+* properly return `:error` when unable to determine type of module by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.28](https://github.com/ash-project/ash/compare/v3.5.27...v3.5.28) (2025-07-17)
 
+
+
+
 ### Bug Fixes:
 
-- accept composite types in typed struct types by [@zachdaniel](https://github.com/zachdaniel)
+* accept composite types in typed struct types by [@zachdaniel](https://github.com/zachdaniel)
 
-- keep descriptions from typed struct DSL by [@zachdaniel](https://github.com/zachdaniel)
+* keep descriptions from typed struct DSL by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.27](https://github.com/ash-project/ash/compare/v3.5.26...v3.5.27) (2025-07-17)
 
+
+
+
 ### Bug Fixes:
 
-- properly merge contexts from scope and opts by [@zachdaniel](https://github.com/zachdaniel)
+* properly merge contexts from scope and opts by [@zachdaniel](https://github.com/zachdaniel)
 
-- ensure that `modify_query` is honored on aggregates by [@zachdaniel](https://github.com/zachdaniel)
+* ensure that `modify_query` is honored on aggregates by [@zachdaniel](https://github.com/zachdaniel)
 
-- read action: Tenant from before_action will survive in metadata (#2189) by [@serpent213](https://github.com/serpent213)
+* read action: Tenant from before_action will survive in metadata (#2189) by [@serpent213](https://github.com/serpent213)
 
-- set action on aggregate queries by [@zachdaniel](https://github.com/zachdaniel)
+* set action on aggregate queries by [@zachdaniel](https://github.com/zachdaniel)
 
-- cascade change action selection (#2193) by [@barnabasJ](https://github.com/barnabasJ)
+* cascade change action selection (#2193) by [@barnabasJ](https://github.com/barnabasJ)
 
-- try atomic_upgrade_with before falling back to primary action in cascade changes (#2191) by [@barnabasJ](https://github.com/barnabasJ)
+* try atomic_upgrade_with before falling back to primary action in cascade changes (#2191) by [@barnabasJ](https://github.com/barnabasJ)
 
-- ensure `cast_input` uses `new` callback on typed structs by [@zachdaniel](https://github.com/zachdaniel)
+* ensure `cast_input` uses `new` callback on typed structs by [@zachdaniel](https://github.com/zachdaniel)
 
-- use correct options in code interfaces in usage-rules.md by [@zachdaniel](https://github.com/zachdaniel)
+* use correct options in code interfaces in usage-rules.md by [@zachdaniel](https://github.com/zachdaniel)
 
-- support single atoms in `sort_input` by [@zachdaniel](https://github.com/zachdaniel)
+* support single atoms in `sort_input` by [@zachdaniel](https://github.com/zachdaniel)
 
 ### Improvements:
 
-- support where clauses on preparations by [@zachdaniel](https://github.com/zachdaniel)
+* support where clauses on preparations by [@zachdaniel](https://github.com/zachdaniel)
 
-- support `Ash.Query` for most builtin validations by [@zachdaniel](https://github.com/zachdaniel)
+* support `Ash.Query` for most builtin validations by [@zachdaniel](https://github.com/zachdaniel)
 
-- support validations on read actions by [@zachdaniel](https://github.com/zachdaniel)
+* support validations on read actions by [@zachdaniel](https://github.com/zachdaniel)
 
-- introduce `Ash.TypedStruct` as a simpler struct type by [@zachdaniel](https://github.com/zachdaniel)
+* introduce `Ash.TypedStruct` as a simpler struct type by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.26](https://github.com/ash-project/ash/compare/v3.5.25...v3.5.26) (2025-07-09)
 
+
+
+
 ### Bug Fixes:
 
-- don't dump values to native when building changesets by [@zachdaniel](https://github.com/zachdaniel)
+* don't dump values to native when building changesets by [@zachdaniel](https://github.com/zachdaniel)
 
-- ensure that async limiter is properly cleared by [@zachdaniel](https://github.com/zachdaniel)
+* ensure that async limiter is properly cleared by [@zachdaniel](https://github.com/zachdaniel)
 
-- when comparing embedded attributes, ignore metadata keys by [@zachdaniel](https://github.com/zachdaniel)
+* when comparing embedded attributes, ignore metadata keys by [@zachdaniel](https://github.com/zachdaniel)
 
-- clear async limiter on pagination query by [@zachdaniel](https://github.com/zachdaniel)
+* clear async limiter on pagination query by [@zachdaniel](https://github.com/zachdaniel)
 
 ### Improvements:
 
-- set `show_policy_breakdowns?` to `true` in dev/test by default by [@zachdaniel](https://github.com/zachdaniel)
+* set `show_policy_breakdowns?` to `true` in dev/test by default by [@zachdaniel](https://github.com/zachdaniel)
 
-- make `mix ash.gen.resource` merge existing resources by [@zachdaniel](https://github.com/zachdaniel)
+* make `mix ash.gen.resource` merge existing resources by [@zachdaniel](https://github.com/zachdaniel)
 
-- allow code_interface default_options to accept a function (#2183) by scottwoodall
+* allow code_interface default_options to accept a function (#2183) by scottwoodall
 
-- show optional code interface inputs in usage rules by [@zachdaniel](https://github.com/zachdaniel)
+* show optional code interface inputs in usage rules by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.25](https://github.com/ash-project/ash/compare/v3.5.24...v3.5.25) (2025-07-02)
 
+
+
+
 ### Bug Fixes:
 
-- handle additional cases in `Ash.Filter.flat_map` by [@zachdaniel](https://github.com/zachdaniel)
+* handle additional cases in `Ash.Filter.flat_map` by [@zachdaniel](https://github.com/zachdaniel)
 
-- handle overlapping type short-codes in app/dependencies by [@zachdaniel](https://github.com/zachdaniel)
+* handle overlapping type short-codes in app/dependencies by [@zachdaniel](https://github.com/zachdaniel)
 
-- ensure that constraints are set on calculations by [@zachdaniel](https://github.com/zachdaniel)
+* ensure that constraints are set on calculations by [@zachdaniel](https://github.com/zachdaniel)
 
-- Upgrade strip_metadata/1 to recurse on maps and handle additional metadata fields (#2169) by Samuel Wrenn
+* Upgrade strip_metadata/1 to recurse on maps and handle additional metadata fields (#2169) by Samuel Wrenn
 
-- ensure that atomic upgrades assume casted inputs by [@zachdaniel](https://github.com/zachdaniel)
+* ensure that atomic upgrades assume casted inputs by [@zachdaniel](https://github.com/zachdaniel)
 
-- move length constraint checking to the end (#2155) by kernel-io
+* move length constraint checking to the end (#2155) by kernel-io
 
 ### Improvements:
 
-- validate reserved constraint key names by [@zachdaniel](https://github.com/zachdaniel)
+* validate reserved constraint key names by [@zachdaniel](https://github.com/zachdaniel)
 
-- Read Action multitenancy :bypass_all (#2154) by xantrac
+* Read Action multitenancy :bypass_all (#2154) by xantrac
 
-- add missing types to Ash.load typespec (#2167) by [@barnabasJ](https://github.com/barnabasJ)
+* add missing types to Ash.load typespec (#2167) by [@barnabasJ](https://github.com/barnabasJ)
 
-- allow pure-binary sigils in expr fragments (#2165) by Frank Dugan III
+* allow pure-binary sigils in expr fragments (#2165) by Frank Dugan III
 
-- add notifier trace/telemetry span type by [@zachdaniel](https://github.com/zachdaniel)
+* add notifier trace/telemetry span type by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.24](https://github.com/ash-project/ash/compare/v3.5.23...v3.5.24) (2025-06-25)
 
+
+
+
 ### Bug Fixes:
 
-- restrict subset of context -> opts in embedded changesets by [@zachdaniel](https://github.com/zachdaniel)
+* restrict subset of context -> opts in embedded changesets by [@zachdaniel](https://github.com/zachdaniel)
 
-- properly handle nested context for embeddable type by [@zachdaniel](https://github.com/zachdaniel)
+* properly handle nested context for embeddable type by [@zachdaniel](https://github.com/zachdaniel)
 
-- Use the same parent query timeout for the count query, for `read` actions (#2161) by sevenseacat
+* Use the same parent query timeout for the count query, for `read` actions (#2161) by sevenseacat
 
-- ensure join query has shared context passed to it by [@zachdaniel](https://github.com/zachdaniel)
+* ensure join query has shared context passed to it by [@zachdaniel](https://github.com/zachdaniel)
 
-- ensure shared context is set on through queries when loading by [@zachdaniel](https://github.com/zachdaniel)
+* ensure shared context is set on through queries when loading by [@zachdaniel](https://github.com/zachdaniel)
 
 ### Improvements:
 
-- make usage-rules more clear about require Ash.Query by [@zachdaniel](https://github.com/zachdaniel)
+* make usage-rules more clear about require Ash.Query by [@zachdaniel](https://github.com/zachdaniel)
 
-- `require Ash.Query` in `Ash.Resource` by [@zachdaniel](https://github.com/zachdaniel)
+* `require Ash.Query` in `Ash.Resource` by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.23](https://github.com/ash-project/ash/compare/v3.5.22...v3.5.23) (2025-06-19)
 
+
+
+
 ### Bug Fixes:
 
-- set proper metadata key for bulk destroy changes by [@zachdaniel](https://github.com/zachdaniel)
+* set proper metadata key for bulk destroy changes by [@zachdaniel](https://github.com/zachdaniel)
 
-- don't override tenant if manually set by [@zachdaniel](https://github.com/zachdaniel)
+* don't override tenant if manually set by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.22](https://github.com/ash-project/ash/compare/v3.5.21...v3.5.22) (2025-06-18)
 
+
+
+
 ### Bug Fixes:
 
-- template opts in conditions in atomic changes by [@zachdaniel](https://github.com/zachdaniel)
+* template opts in conditions in atomic changes by [@zachdaniel](https://github.com/zachdaniel)
 
-- properly detect existing timestamp attributes in igniter tasks by [@zachdaniel](https://github.com/zachdaniel)
+* properly detect existing timestamp attributes in igniter tasks by [@zachdaniel](https://github.com/zachdaniel)
 
 ### Improvements:
 
-- improve message for --dev migrations message by [@zachdaniel](https://github.com/zachdaniel)
+* improve message for --dev migrations message by [@zachdaniel](https://github.com/zachdaniel)
 
-- add `mix ash` command by [@zachdaniel](https://github.com/zachdaniel)
+* add `mix ash` command by [@zachdaniel](https://github.com/zachdaniel)
 
-- handle changes to `nil` for unknown attribute values by [@zachdaniel](https://github.com/zachdaniel)
+* handle changes to `nil` for unknown attribute values by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.21](https://github.com/ash-project/ash/compare/v3.5.20...v3.5.21) (2025-06-16)
 
+
+
+
 ### Bug Fixes:
 
-- support read actions and arguments in Ash.Generator.action_input/3 (#2137) by [@barnabasJ](https://github.com/barnabasJ)
+* support read actions and arguments in Ash.Generator.action_input/3 (#2137) by [@barnabasJ](https://github.com/barnabasJ)
 
-- combination_of typespec (#2135) by [@barnabasJ](https://github.com/barnabasJ)
+* combination_of typespec (#2135) by [@barnabasJ](https://github.com/barnabasJ)
 
 ### Improvements:
 
-- allow update_query when `expr_error` is nto supported by [@zachdaniel](https://github.com/zachdaniel)
+* allow update_query when `expr_error` is nto supported by [@zachdaniel](https://github.com/zachdaniel)
 
-- only require atomicity when update_query _and_ expr_error supported by [@zachdaniel](https://github.com/zachdaniel)
+* only require atomicity when update_query *and* expr_error supported by [@zachdaniel](https://github.com/zachdaniel)
 
-- make installer avoid protocol consolidation by [@zachdaniel](https://github.com/zachdaniel)
+* make installer avoid protocol consolidation by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.20](https://github.com/ash-project/ash/compare/v3.5.19...v3.5.20) (2025-06-13)
 
+
+
+
 ### Bug Fixes:
 
-- support private_arguments in code interface and bulk actions (#2133) by [@barnabasJ](https://github.com/barnabasJ)
-- combination_of typespec (#2135) by [@barnabasJ](https://github.com/barnabasJ)
+* support private_arguments in code interface and bulk actions (#2133) by [@barnabasJ](https://github.com/barnabasJ)
+* combination_of typespec (#2135) by [@barnabasJ](https://github.com/barnabasJ)
 
 ## [v3.5.19](https://github.com/ash-project/ash/compare/v3.5.18...v3.5.19) (2025-06-12)
 
+
+
+
 ### Bug Fixes:
 
-- bad pattern match in query inspect logic by [@zachdaniel](https://github.com/zachdaniel)
+* bad pattern match in query inspect logic by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.18](https://github.com/ash-project/ash/compare/v3.5.17...v3.5.18) (2025-06-11)
 
+
+
+
 ### Improvements:
 
-- support regexes in match constraint/validation again by [@zachdaniel](https://github.com/zachdaniel)
+* support regexes in match constraint/validation again by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.5.17](https://github.com/ash-project/ash/compare/v3.5.16...v3.5.17) (2025-06-10)
 
+
+
+
 ### Bug Fixes:
 
-- set_tenant on combination query (#2123) by [@barnabasJ](https://github.com/barnabasJ)
+* set_tenant on combination query (#2123) by [@barnabasJ](https://github.com/barnabasJ)
 
 ## [v3.5.16](https://github.com/ash-project/ash/compare/v3.5.15...v3.5.16) (2025-06-10)
 
+
+
+
 ### Bug Fixes:
 
-- ensure context is properly threaded through bulk update/atomic upgrades by [@zachdaniel](https://github.com/zachdaniel)
+* ensure context is properly threaded through bulk update/atomic upgrades by [@zachdaniel](https://github.com/zachdaniel)
 
-- ensure `actor: nil` key is retained on scope to opts by [@zachdaniel](https://github.com/zachdaniel)
+* ensure `actor: nil` key is retained on scope to opts by [@zachdaniel](https://github.com/zachdaniel)
 
-- ensure stream_batch_size is properly set to batch_size on stream by [@zachdaniel](https://github.com/zachdaniel)
+* ensure stream_batch_size is properly set to batch_size on stream by [@zachdaniel](https://github.com/zachdaniel)
 
-- set batch size option when streaming by [@zachdaniel](https://github.com/zachdaniel)
+* set batch size option when streaming by [@zachdaniel](https://github.com/zachdaniel)
 
-- keep union types in order by [@zachdaniel](https://github.com/zachdaniel)
+* keep union types in order by [@zachdaniel](https://github.com/zachdaniel)
 
-- resolve accidentally backwards incompatible inspect implementation by [@zachdaniel](https://github.com/zachdaniel)
+* resolve accidentally backwards incompatible inspect implementation by [@zachdaniel](https://github.com/zachdaniel)
 
-- better error message on mismatch action types in changesets by [@zachdaniel](https://github.com/zachdaniel)
+* better error message on mismatch action types in changesets by [@zachdaniel](https://github.com/zachdaniel)
 
-- add clause in Ash.Type.String.match/1 to handle the OTP 28 regex tuples (#2119) by Simon Bergström
+* add clause in Ash.Type.String.match/1 to handle the OTP 28 regex tuples (#2119) by Simon Bergström
 
-- underlying ecto type casting should use coercion, not cast_input by [@zachdaniel](https://github.com/zachdaniel)
+* underlying ecto type casting should use coercion, not cast_input by [@zachdaniel](https://github.com/zachdaniel)
 
-- make decimal type less strict by [@zachdaniel](https://github.com/zachdaniel)
+* make decimal type less strict by [@zachdaniel](https://github.com/zachdaniel)
 
-- Fix typespecs for Ash.get! and Ash.load! (#2117) by Moxley Stratton
+* Fix typespecs for Ash.get! and Ash.load! (#2117) by Moxley Stratton
 
-- implement Scope.to_opts for policy authorizer by [@zachdaniel](https://github.com/zachdaniel)
+* implement Scope.to_opts for policy authorizer by [@zachdaniel](https://github.com/zachdaniel)
 
-- simplify relationship loading, to prevent losing set query info by [@zachdaniel](https://github.com/zachdaniel)
+* simplify relationship loading, to prevent losing set query info by [@zachdaniel](https://github.com/zachdaniel)
 
-- typo in Ash.Error.Framework module (#2108) by Samuel Wrenn
+* typo in Ash.Error.Framework module (#2108) by Samuel Wrenn
 
-- ash.gen.validation generates invalid callback (#2103) by KasparKipp
+* ash.gen.validation generates invalid callback (#2103) by KasparKipp
 
 ### Improvements:
 
-- show action when inspecting query by [@zachdaniel](https://github.com/zachdaniel)
+* show action when inspecting query by [@zachdaniel](https://github.com/zachdaniel)
 
-- add assert_stripped test helper (#2107) by Samuel Wrenn
+* add assert_stripped test helper (#2107) by Samuel Wrenn
 
-- fix misleading value in invalid attribute error by [@zachdaniel](https://github.com/zachdaniel)
+* fix misleading value in invalid attribute error by [@zachdaniel](https://github.com/zachdaniel)
 
-- better error message on unexpected argument inputs to code interfaces (#2102) by Abhishek Tripathi
+* better error message on unexpected argument inputs to code interfaces (#2102) by Abhishek Tripathi
 
 ## [v3.5.15](https://github.com/ash-project/ash/compare/v3.5.14...v3.5.15) (2025-06-04)
 
+
+
+
 ### Bug Fixes:
 
-- only override bulk options if method is `:id` in code interfaces
+* only override bulk options if method is `:id` in code interfaces
 
-- handle missing primary keys more explicitly, and gracefully
+* handle missing primary keys more explicitly, and gracefully
 
-- Omit nil values in Ash.Scope.to_opts/2 (#2088)
+* Omit nil values in Ash.Scope.to_opts/2 (#2088)
 
-- Correct error message, example and doc for match constraint. (#2086)
+* Correct error message, example and doc for match constraint. (#2086)
 
-- handle context opt in Ash.calculate/2 (#2083)
+* handle context opt in Ash.calculate/2 (#2083)
 
 ### Improvements:
 
-- put **meta** and relationships at the end when inspecting (#2096)
+* put __meta__ and relationships at the end when inspecting (#2096)
 
-- usage-rules: Add more guidance around codegen. (#2100)
+* usage-rules: Add more guidance around codegen. (#2100)
 
-- update usage rules (#2095)
+* update usage rules (#2095)
 
 ## [v3.5.14](https://github.com/ash-project/ash/compare/v3.5.13...v3.5.14) (2025-06-01)
 
+
+
+
 ### Bug Fixes:
 
-- ensure the proper dependency on igniter
+* ensure the proper dependency on igniter
 
-- ensure map module loaded when calling it
+* ensure map module loaded when calling it
 
-- raise if integer primary key is not supplied in ETS (#2079)
+* raise if integer primary key is not supplied in ETS (#2079)
 
 ## [v3.5.13](https://github.com/ash-project/ash/compare/v3.5.12...v3.5.13) (2025-05-30)
+
 
 ### OTP 28 Compatibility
 
@@ -362,357 +428,399 @@ of regexes. OTP 28 no longer supports building regexes at compile time. The warn
 
 ## Notable Features
 
-- `:shared` context key is now automatically passed down to child actions. See [the actions guide](/documentation/topics/actions/actions.md#context) for more information.
+* `:shared` context key is now automatically passed down to child actions. See [the actions guide](/documentation/topics/actions/actions.md#context) for more information.
 
-- add `Ash.Scope`, mirroring the Phoenix pattern, and extend that to all Ash callback contexts. See `Ash.Scope` for more. (#2050)
+* add `Ash.Scope`, mirroring the Phoenix pattern, and extend that to all Ash callback contexts. See `Ash.Scope` for more. (#2050)
 
 ### Bug Fixes:
 
-- [`Ash.Query`] Allow non-list input to skip_unknown_inputs opt of query (#2074)
+* [`Ash.Query`] Allow non-list input to skip_unknown_inputs opt of query (#2074)
 
-- [`Ash.Query`] handle single tuple & string values in sort
+* [`Ash.Query`] handle single tuple & string values in sort
 
-- [`Ash.Query`] use proper read action calls when building aggregates
+* [`Ash.Query`] use proper read action calls when building aggregates
 
-- [`Ash.Generator`] don't generate values for attributes that are `writable?: false` and `generated?: true`
+* [`Ash.Generator`] don't generate values for attributes that are `writable?: false` and `generated?: true`
 
-- [`:embedded` resources] ensure we detect all cases where embedded attributes can't be atomically updated
+* [`:embedded` resources] ensure we detect all cases where embedded attributes can't be atomically updated
 
-- [`Ash.Type.NewType`] fix issue with expanding constraints for lazy initialized new types
+* [`Ash.Type.NewType`] fix issue with expanding constraints for lazy initialized new types
 
-- [`Ash.Changeset`] properly pass tenant in bulk_update to managed_relationships (#2061)
+* [`Ash.Changeset`] properly pass tenant in bulk_update to managed_relationships (#2061)
 
 ### Improvements:
 
-- [`mix ash.codegen`] add `Ash.Error.Framework.PendingCodegen` error, used for the new `AshPhoenix.Plug.CheckCodegenStatus` plug
+* [`mix ash.codegen`] add `Ash.Error.Framework.PendingCodegen` error, used for the new `AshPhoenix.Plug.CheckCodegenStatus` plug
 
-- [`Ash.Generator`] support upsert/upsert_identity in changeset generator
+* [`Ash.Generator`] support upsert/upsert_identity in changeset generator
 
-- [`usage-rules.md`] Improve LLM rules in `usage-rules.md`. See [usage_rules](https://hexdocs.pm/usage-rules) for more.
+* [`usage-rules.md`] Improve LLM rules in `usage-rules.md`. See [usage_rules](https://hexdocs.pm/usage-rules) for more.
 
-- [`Ash.Type.Decimal`] - Add `precision` and `scale` constraints.
+* [`Ash.Type.Decimal`] - Add `precision` and `scale` constraints.
+
+
+
 
 ## [v3.5.12](https://github.com/ash-project/ash/compare/v3.5.11...v3.5.12) (2025-05-22)
 
+
+
+
 ### Features:
 
-- add duration type, functions and operator support (#2036)
+* add duration type, functions and operator support (#2036)
 
 ### Bug Fixes:
 
-- properly split lazy & non-lazy new type initialization
+* properly split lazy & non-lazy new type initialization
 
-- Ash.Reactor: Don't import `Ash.Expr` in the bulk update DSL. (#2055)
+* Ash.Reactor: Don't import `Ash.Expr` in the bulk update DSL. (#2055)
 
-- don't lift query info to aggregate info on aggregation
+* don't lift query info to aggregate info on aggregation
 
-- ensure managed relationship context is kept for belongs_to relationships
+* ensure managed relationship context is kept for belongs_to relationships
 
 ### Improvements:
 
-- Support manage relationship debug (#2021)
+* Support manage relationship debug (#2021)
 
-- add `strict_load` key to `Ash.Query.build`
+* add `strict_load` key to `Ash.Query.build`
 
-- Add an Ash.OptionsHelpers.calculation_type/0 (#2051)
+* Add an Ash.OptionsHelpers.calculation_type/0 (#2051)
 
 ## [v3.5.11](https://github.com/ash-project/ash/compare/v3.5.10...v3.5.11) (2025-05-20)
 
+
+
+
 ### Bug Fixes:
 
-- ensure we fully initialize new types
+* ensure we fully initialize new types
 
-- Tuple loader and serializer (#2049)
+* Tuple loader and serializer (#2049)
 
-- make sure after_action is called in generate_many (#2047)
+* make sure after_action is called in generate_many (#2047)
 
-- properly pass `select` into combinations
+* properly pass `select` into combinations
 
-- add_new_code_interface/5 when do block occurs after resource (#2020)
+* add_new_code_interface/5 when do block occurs after resource (#2020)
 
 ### Improvements:
 
-- add experimental new tool `Ash.data_layer_query`
+* add experimental new tool `Ash.data_layer_query`
 
 ## [v3.5.10](https://github.com/ash-project/ash/compare/v3.5.9...v3.5.10) (2025-05-15)
 
+
+
+
 ### Bug Fixes:
 
-- ensure field policies are logged on success
+* ensure field policies are logged on success
 
-- various additional fixes for bulk action input ordering
+* various additional fixes for bulk action input ordering
 
-- Fix batch order of bulk_create (#2027)
+* Fix batch order of bulk_create (#2027)
 
-- make `lazy_init?` a callback so it can be checked on new types
+* make `lazy_init?` a callback so it can be checked on new types
 
-- don't raise error when no policies apply to request
+* don't raise error when no policies apply to request
 
-- ensure tenant is set on bulk created records.
+* ensure tenant is set on bulk created records.
 
-- don't try to cast input before cast atomic
+* don't try to cast input before cast atomic
 
-- properly prevent embedded attribute updates in atomics
+* properly prevent embedded attribute updates in atomics
 
-- preserve validation messages in non-atomic-bulk-update validations
+* preserve validation messages in non-atomic-bulk-update validations
 
-- add types for times operator
+* add types for times operator
 
-- properly handle pre-expanded newtype constraints
+* properly handle pre-expanded newtype constraints
 
-- shortcircuit queries properly
+* shortcircuit queries properly
 
-- only print topic if present (#2013)
+* only print topic if present (#2013)
 
 ### Improvements:
 
-- support :time_usec (#2023)
+* support :time_usec (#2023)
 
-- support `limit` on has_many relationships (#2016)
+* support `limit` on has_many relationships (#2016)
 
 ## [v3.5.9](https://github.com/ash-project/ash/compare/v3.5.8...v3.5.9) (2025-05-06)
 
+
+
+
 ### Bug Fixes:
 
-- shortcircuit queries properly
+* shortcircuit queries properly
 
-- ensure that context is set on authorizers in nested field policies
+* ensure that context is set on authorizers in nested field policies
 
-- accept `private_arguments` option in the same way as `defaults` in generators
+* accept `private_arguments` option in the same way as `defaults` in generators
 
-- handle case where atomic change isn't cleared when converted to static
+* handle case where atomic change isn't cleared when converted to static
 
-- handle case where atomic condition isn't applied to generated validations
+* handle case where atomic condition isn't applied to generated validations
 
 ### Improvements:
 
-- normalize authorizer context in more locations
+* normalize authorizer context in more locations
 
-- aggressively prune ets logs while retaining important info
+* aggressively prune ets logs while retaining important info
 
-- combination queries (#2009)
+* combination queries (#2009)
 
 ## [v3.5.8](https://github.com/ash-project/ash/compare/v3.5.7...v3.5.8) (2025-04-30)
 
+
+
+
 ### Bug Fixes:
 
-- handle `nil` type or invalid types more gracefully in type determination
+* handle `nil` type or invalid types more gracefully in type determination
 
-- properly type expressions based on return values
+* properly type expressions based on return values
 
 ### Improvements:
 
-- add rem/2 expr (#2004)
+* add rem/2 expr (#2004)
 
-- add `Ash.Info` for general application information
+* add `Ash.Info` for general application information
 
 ## [v3.5.7](https://github.com/ash-project/ash/compare/v3.5.6...v3.5.7) (2025-04-29)
 
+
+
+
 ### Bug Fixes:
 
-- Accept field opt in query aggregate (#2001)
+* Accept field opt in query aggregate (#2001)
 
-- only return the changeset (#2003)
+* only return the changeset (#2003)
 
-- expand types when typing expressions
+* expand types when typing expressions
 
-- Allow soft-deleting of many-to-many relationships (#1999)
+* Allow soft-deleting of many-to-many relationships (#1999)
 
-- properly show timeout errors on read transactions
+* properly show timeout errors on read transactions
 
-- handle values that generate as `nil` in map generators
+* handle values that generate as `nil` in map generators
 
-- sort lazy loaded records post-linking
+* sort lazy loaded records post-linking
 
-- properly attach nested transient calculation dependencies
+* properly attach nested transient calculation dependencies
 
-- be more lax with lazy_init? newtypes
+* be more lax with lazy_init? newtypes
 
-- properly return subtype constraints on constraint call
+* properly return subtype constraints on constraint call
 
-- handle error cases in atomic changesets better
+* handle error cases in atomic changesets better
 
-- CodeInterface: logic error in `get_by` code interfaces. (#1961)
+* CodeInterface: logic error in `get_by` code interfaces. (#1961)
 
-- CodeInterface: logic error in `get_by` code interfaces.
+* CodeInterface: logic error in `get_by` code interfaces.
 
-- crash when sorting by aggregates with non-attribute field (#1986)
+* crash when sorting by aggregates with non-attribute field (#1986)
 
-- handle atomic conditions on `{:atomic, ...}` changes
+* handle atomic conditions on `{:atomic, ...}` changes
 
-- ensure data layer is loaded before using `function_exported?/3`
+* ensure data layer is loaded before using `function_exported?/3`
 
-- ensure that bulk callbacks are only called when appropriate
+* ensure that bulk callbacks are only called when appropriate
 
-- properly update belongs_to records on `relate_and_update`
+* properly update belongs_to records on `relate_and_update`
 
 ### Improvements:
 
-- Skip reading query for filter false (#2002)
+* Skip reading query for filter false (#2002)
 
-- generator for union types
+* generator for union types
 
-- Add various DSL options for inspecting resources
+* Add various DSL options for inspecting resources
 
-- hide calculations and aggregates when empty
+* hide calculations and aggregates when empty
 
-- hide calculation dep calculations while inspecting
+* hide calculation dep calculations while inspecting
 
-- Raise an `ArgumentError` when generating a changeset using a non-existent action (#1992)
+* Raise an `ArgumentError` when generating a changeset using a non-existent action (#1992)
 
-- add `:tuple` builtin type
+* add `:tuple` builtin type
 
-- set changeset.load on bulk destroy actions
+* set changeset.load on bulk destroy actions
 
-- return the error when atomically cascade destroying
+* return the error when atomically cascade destroying
 
-- add a description to map/keyword/struct types
+* add a description to map/keyword/struct types
 
-- Remove duplicate impl of default policy functions (#1985)
+* Remove duplicate impl of default policy functions (#1985)
 
-- eagerly expand aggregates in `Ash.aggregate`
+* eagerly expand aggregates in `Ash.aggregate`
 
-- accept `context` option in generic action code interfaces
+* accept `context` option in generic action code interfaces
 
 ## [v3.5.6](https://github.com/ash-project/ash/compare/v3.5.5...v3.5.6) (2025-04-15)
 
+
+
+
 ### Bug Fixes:
 
-- properly deduplicate on lazy relationship loading
+* properly deduplicate on lazy relationship loading
 
-- use correct exceptions and add missing fields to them (#1960)
+* use correct exceptions and add missing fields to them (#1960)
 
-- undo incorrect change to trimmed string casting
+* undo incorrect change to trimmed string casting
 
 ### Improvements:
 
-- add `:__skip__` value to seed
+* add `:__skip__` value to seed
 
-- Allow update action types in Ash.Generator.generate (#1967)
+* Allow update action types in Ash.Generator.generate (#1967)
 
 ## [v3.5.5](https://github.com/ash-project/ash/compare/v3.5.4...v3.5.5) (2025-04-14)
 
+
+
+
 ### Bug Fixes:
 
-- don't trim strings when `trim?: false` is set
+* don't trim strings when `trim?: false` is set
 
-- remove flawed optimization about `is_nil: false`
+* remove flawed optimization about `is_nil: false`
 
-- properly evaluate ci_string concatenation in Elixir
+* properly evaluate ci_string concatenation in Elixir
 
-- don't validate types in gen.resource task.
+* don't validate types in gen.resource task.
 
 ### Improvements:
 
-- add calculation tools to `Ash.Resource.Igniter`
+* add calculation tools to `Ash.Resource.Igniter`
 
-- support a `load` option on changeset building
+* support a `load` option on changeset building
 
 ## [v3.5.4](https://github.com/ash-project/ash/compare/v3.5.3...v3.5.4) (2025-04-10)
 
+
+
+
 ### Bug Fixes:
 
-- ensure after hooks force return_records on bulk update/destroy
+* ensure after hooks force return_records on bulk update/destroy
 
-- add action to changeset for opts fetching in bulk create
+* add action to changeset for opts fetching in bulk create
 
-- avoid coercion of datetime to date in start_of_day function (#1958)
+* avoid coercion of datetime to date in start_of_day function (#1958)
 
-- incorrect start_of_day value when timezone specified
+* incorrect start_of_day value when timezone specified
 
 ## [v3.5.3](https://github.com/ash-project/ash/compare/v3.5.2...v3.5.3) (2025-04-09)
 
+
+
+
 ### Bug Fixes:
 
-- avoid defining default actions when actions w/ that name exist
+* avoid defining default actions when actions w/ that name exist
 
-- use the notification logic from bulk update in create (#1951)
+* use the notification logic from bulk update in create (#1951)
 
-- honor stream_options in read code interfaces
+* honor stream_options in read code interfaces
 
-- Fix filtering with aggregates refers calculation error (#1954)
+* Fix filtering with aggregates refers calculation error (#1954)
 
-- properly provide the changeset to after action hooks
+* properly provide the changeset to after action hooks
 
-- set calculation context in `Ash.can`
+* set calculation context in `Ash.can`
 
-- honor `:*` in skip_unknown_inputs in generic actions
+* honor `:*` in skip_unknown_inputs in generic actions
 
-- honor action's `skip_unknown_inputs` in generic actions
+* honor action's `skip_unknown_inputs` in generic actions
 
-- set access*from in cascade*<update/destroy> (#1948)
+* set access_from in cascade_<update/destroy> (#1948)
 
-- maintain order of enum values (#1942)
+* maintain order of enum values (#1942)
 
-- carry context around to nested calculations better
+* carry context around to nested calculations better
 
-- fill templates in more necessary places
+* fill templates in more necessary places
 
-- set tenant when building query in managed_relationships
+* set tenant when building query in managed_relationships
 
 ### Improvements:
 
-- optimize args handling in code interfaces
+* optimize args handling in code interfaces
 
-- tasks for generating custom modules (#1940)
+* tasks for generating custom modules (#1940)
 
 ## [v3.5.2](https://github.com/ash-project/ash/compare/v3.5.1...v3.5.2) (2025-03-31)
 
+
+
+
 ### Bug Fixes:
 
-- match errors on cascade destroy/update
+* match errors on cascade destroy/update
 
-- handle templated opts in bulk update after batch results
+* handle templated opts in bulk update after batch results
 
-- support `refs` and `args` option for `define_calculation`
+* support `refs` and `args` option for `define_calculation`
 
-- don't cast arbitrary maps to structs in struct type
+* don't cast arbitrary maps to structs in struct type
 
 ### Improvements:
 
-- add `default_sort` on relationships and queries (#1928)
+* add `default_sort` on relationships and queries (#1928)
 
-- new type recursive validation (#1913)
+* new type recursive validation (#1913)
 
-- task for generating custom changes module (#1926)
+* task for generating custom changes module (#1926)
 
-- better error on `case` in ash expressions (#1927)
+* better error on `case` in ash expressions (#1927)
 
-- helpful error on incorrectly implemented change modules
+* helpful error on incorrectly implemented change modules
 
-- support `custom_input`s in code interfaces
+* support `custom_input`s in code interfaces
 
-- Ash.Type.Enum - Add optional description and label value â¦ (#1925)
+* Ash.Type.Enum - Add optional description and label value â¦ (#1925)
 
-- support `exclude_inputs` for `define_calculation`
+* support `exclude_inputs` for `define_calculation`
 
-- add `exclude_inputs` to code interface definitions
+* add `exclude_inputs` to code interface definitions
 
-- fix hint for read/generic actions in `NoSuchInput`
+* fix hint for read/generic actions in `NoSuchInput`
 
 ## [v3.5.1](https://github.com/ash-project/ash/compare/v3.5.0...v3.5.1) (2025-03-27)
 
+
+
+
 ### Bug Fixes:
 
-- when reading a record to simulate an update, merge with data
+* when reading a record to simulate an update, merge with data
 
-- more consistent error messaging from present validation
+* more consistent error messaging from present validation
 
-- can't atomically update a query w/ after_action hooks
+* can't atomically update a query w/ after_action hooks
 
 ### Improvements:
 
-- add `Ash.transaction(resources, func, opts)` (#1914)
+* add `Ash.transaction(resources, func, opts)` (#1914)
 
-- set `query_for` context on queries
+* set `query_for` context on queries
 
 ## [v3.5.0](https://github.com/ash-project/ash/compare/v3.4.73...v3.5.0) (2025-03-26)
 
+
+
+
 ### Bug Fixes:
 
-- don't set `accessing_from` on lookups for managed relationships
+* don't set `accessing_from` on lookups for managed relationships
 
-This _may_ be a breaking change for some cases, but ultimately we
+This *may* be a breaking change for some cases, but ultimately we
 felt it was too confusing to leave as it was. The semantics of
 `accessing_from` meant that "all actions done as part of `manage_relationship`
 were allowed to be performed. This was the intended design, but made it easy
@@ -722,553 +830,621 @@ to a resource that you did not intend them to be able to see.
 
 ### Improvements:
 
-- add `tenant()` filter template expression (#1909)
+* add `tenant()` filter template expression (#1909)
 
-- `Ash.Domain.Igniter.add_new_code_interface/5`
+* `Ash.Domain.Igniter.add_new_code_interface/5`
 
-- add `unsafe_to_atom?` constraint for `Ash.Type.Atom`
+* add `unsafe_to_atom?` constraint for `Ash.Type.Atom`
 
-- support `expr(exists(relation))` (#1912)
+* support `expr(exists(relation))` (#1912)
 
 ## [v3.4.73](https://github.com/ash-project/ash/compare/v3.4.72...v3.4.73) (2025-03-25)
 
+
+
+
 ### Bug Fixes:
 
-- use attribute names, not structs, for retaining ets update attrs
+* use attribute names, not structs, for retaining ets update attrs
 
-- supply reactor with `nil` values for non-supplied arguments
+* supply reactor with `nil` values for non-supplied arguments
 
 ## [v3.4.72](https://github.com/ash-project/ash/compare/v3.4.71...v3.4.72) (2025-03-25)
 
+
+
+
 ### Bug Fixes:
 
-- retain loaded fields on ETS data layer update
+* retain loaded fields on ETS data layer update
 
-- Fixes processing of manual bulk actions, with tests. (#1903)
+* Fixes processing of manual bulk actions, with tests. (#1903)
 
-- Ensure batch_size is correctly set, return values are nil if not requested.
+* Ensure batch_size is correctly set, return values are nil if not requested.
 
-- batch_size cond statement, fix batch -> changeset typo.
+* batch_size cond statement, fix batch -> changeset typo.
 
-- ensure consistent bulk result for `return_records?` and `return_errors?` types.
+* ensure consistent bulk result for `return_records?` and `return_errors?` types.
 
-- add action to base query if not present
+* add action to base query if not present
 
-- update spark to get missing builders in `spark.formatter`
+* update spark to get missing builders in `spark.formatter`
 
-- handle tenancy for built query in cascade destroy/update
+* handle tenancy for built query in cascade destroy/update
 
-- Improve processing of manual actions during bulk operations (#1883)
+* Improve processing of manual actions during bulk operations (#1883)
 
 ### Improvements:
 
-- attach a limit to related queries if `from_many?: true`
+* attach a limit to related queries if `from_many?: true`
 
-- support atomic actions in `can_` code interfaces
+* support atomic actions in `can_` code interfaces
 
-- import the `:reactor` dep in `.formatter.exs` on install
+* import the `:reactor` dep in `.formatter.exs` on install
 
-- maps,structs,keywords can be atomically updated
+* maps,structs,keywords can be atomically updated
 
-- support anonymous functions in `error_handler` option
+* support anonymous functions in `error_handler` option
 
 ## [v3.4.71](https://github.com/ash-project/ash/compare/v3.4.70...v3.4.71) (2025-03-21)
 
+
+
+
 ### Bug Fixes:
 
-- prefer new loads when loading relationships
+* prefer new loads when loading relationships
 
-- put notifications in process context when inside an action
+* put notifications in process context when inside an action
 
-- consider query tenant when validating aggregate multitenancy
+* consider query tenant when validating aggregate multitenancy
 
-- update Validations.ActionIs to accept atom or list(atom) (#1893)
+* update Validations.ActionIs to accept atom or list(atom) (#1893)
 
 ### Improvements:
 
-- set `bulk_actions_default_to_errors?` to `true` in installer
+* set `bulk_actions_default_to_errors?` to `true` in installer
 
 ## [v3.4.70](https://github.com/ash-project/ash/compare/v3.4.69...v3.4.70) (2025-03-20)
 
+
+
+
 ### Bug Fixes:
 
-- compose get_by and action filters properly
+* compose get_by and action filters properly
 
-- `fields` could be nil on exceptions
+* `fields` could be nil on exceptions
 
-- apply runtime supplied loads over top of action loads
+* apply runtime supplied loads over top of action loads
 
-- return records from bulk soft destroy if requested (#1884)
+* return records from bulk soft destroy if requested (#1884)
 
-- ensure error classes are used in code interfaces
+* ensure error classes are used in code interfaces
 
 ### Improvements:
 
-- validate multitenancy earlier in bulk actions
+* validate multitenancy earlier in bulk actions
 
-- initialize all types properly at compile time
+* initialize all types properly at compile time
 
 ## [v3.4.69](https://github.com/ash-project/ash/compare/v3.4.68...v3.4.69) (2025-03-18)
 
+
+
+
 ### Bug Fixes:
 
-- apply strict load in `Ash.get` properly (#1881)
+* apply strict load in `Ash.get` properly (#1881)
 
-- honor tenant in `Ash.Seed.update!`
+* honor tenant in `Ash.Seed.update!`
 
-- pattern match error in bulk result
+* pattern match error in bulk result
 
-- match on `{:not_atomic` pattern in update actions
+* match on `{:not_atomic` pattern in update actions
 
-- fix typo: `atomcis` -> `atomics`
+* fix typo: `atomcis` -> `atomics`
 
-- properly evaluate `Exists{}` expressions in runtime filter
+* properly evaluate `Exists{}` expressions in runtime filter
 
-- Fix upsert identity type error (#1872)
+* Fix upsert identity type error (#1872)
 
-- Fix bulk_create for manual create actions with bulk_create/3 (#1869)
+* Fix bulk_create for manual create actions with bulk_create/3 (#1869)
 
-- ensure loading maps & structs properly load as keyword
+* ensure loading maps & structs properly load as keyword
 
-- make the --example installer flag idempotent
+* make the --example installer flag idempotent
 
-- don't add tenant attribute for `all_tenant?` identities upsert keys
+* don't add tenant attribute for `all_tenant?` identities upsert keys
 
-- handle case clause error in `Ash.Filter`
+* handle case clause error in `Ash.Filter`
 
-- validate return type of `Ash.Resource.Calculation.init/1`
+* validate return type of `Ash.Resource.Calculation.init/1`
 
-- make `lazy_init` work on `NewTypes`
+* make `lazy_init` work on `NewTypes`
 
-- properly parse maps with tuple values in filter parser
+* properly parse maps with tuple values in filter parser
 
-- dump values to native storage type when doing atomic upgrades
+* dump values to native storage type when doing atomic upgrades
 
-- fix required error deduplication logic
+* fix required error deduplication logic
 
-- undo breaking change, use primary read action loads in `Ash.load!`
+* undo breaking change, use primary read action loads in `Ash.load!`
 
-- don't derive fields for resources in map types
+* don't derive fields for resources in map types
 
-- make sequence unshrinkable in generators
+* make sequence unshrinkable in generators
 
-- properly handle bulk soft destroy (#1854)
+* properly handle bulk soft destroy (#1854)
 
 ### Improvements:
 
-- support a resource & attrs tuple in `seed_generator`
+* support a resource & attrs tuple in `seed_generator`
 
-- allow is_equal and is_not_equal for compare validation (#1853)
+* allow is_equal and is_not_equal for compare validation (#1853)
 
-- return errors and stop on errors by default in bulk actions
+* return errors and stop on errors by default in bulk actions
 
-- add config to do read after_action hooks in order
+* add config to do read after_action hooks in order
 
-- add compile flag requiring atomic for default actions
+* add compile flag requiring atomic for default actions
 
-- types support atomic update by default for non-expr values
+* types support atomic update by default for non-expr values
 
-- add `actions.read.pagination.stable_sort` customization
+* add `actions.read.pagination.stable_sort` customization
 
-- support inferring struct types from a resource
+* support inferring struct types from a resource
 
-- show value in match validation errors
+* show value in match validation errors
 
-- disambiguation message on NoSuchFunction
+* disambiguation message on NoSuchFunction
 
 ## [v3.4.68](https://github.com/ash-project/ash/compare/v3.4.67...v3.4.68) (2025-03-11)
 
+
+
+
 ### Bug Fixes:
 
-- init nested types in map/keyword/struct types
+* init nested types in map/keyword/struct types
 
-- properly handle change with `where` validations in bulk (#1843)
+* properly handle change with `where` validations in bulk (#1843)
 
-- properly construct `parent_stack` for loaded relationships
+* properly construct `parent_stack` for loaded relationships
 
-- update context tenant from changeset for each change (#1837)
+* update context tenant from changeset for each change (#1837)
 
 ### Improvements:
 
-- allow manual reads return `full_count` for pagination
+* allow manual reads return `full_count` for pagination
 
-- validate action types in `Ash` functions
+* validate action types in `Ash` functions
 
 ## [v3.4.67](https://github.com/ash-project/ash/compare/v3.4.66...v3.4.67) (2025-03-04)
 
+
+
+
 ### Bug Fixes:
 
-- Pass tenant option when seeding resource given by the generator (#1834)
+* Pass tenant option when seeding resource given by the generator (#1834)
 
 ## [v3.4.66](https://github.com/ash-project/ash/compare/v3.4.65...v3.4.66) (2025-03-03)
 
+
+
+
 ### Bug Fixes:
 
-- handle unparseable relationship sorts & single atom sorts
+* handle unparseable relationship sorts & single atom sorts
 
-- don't allow modifying changeset with atomic conditions
+* don't allow modifying changeset with atomic conditions
 
-- don't prevent changing values to `nil` when original data is not available
+* don't prevent changing values to `nil` when original data is not available
 
-- propagate invalid reference error when adding calc context to sort (#1827)
+* propagate invalid reference error when adding calc context to sort (#1827)
 
-- ensure that we don't try to compare not loaded or forbidden values
+* ensure that we don't try to compare not loaded or forbidden values
 
-- use `filter` not `filters` in stale record error
+* use `filter` not `filters` in stale record error
 
 ### Improvements:
 
-- add `touching?` option to changing validation
+* add `touching?` option to changing validation
 
-- don't show required errors for fields with other errors
+* don't show required errors for fields with other errors
 
-- validate aggregate multitenancy
+* validate aggregate multitenancy
 
-- ignore action-defined loads when using `Ash.load`
+* ignore action-defined loads when using `Ash.load`
 
 ## [v3.4.65](https://github.com/ash-project/ash/compare/v3.4.64...v3.4.65) (2025-02-25)
 
+
+
+
 ### Bug Fixes:
 
-- properly enumerate `:_pkey` in notifier
+* properly enumerate `:_pkey` in notifier
 
-- Always rollback input.resource when running generic actions. (#1817)
+* Always rollback input.resource when running generic actions. (#1817)
 
-- fix case where batch before/after action callbacks could be skipped
+* fix case where batch before/after action callbacks could be skipped
 
-- return NotFound error in proper cases on bulk interfaces
+* return NotFound error in proper cases on bulk interfaces
 
-- don't eagerly return records on bulk update/destroys
+* don't eagerly return records on bulk update/destroys
 
-- ensure actor templates are hydrated for aggregates
+* ensure actor templates are hydrated for aggregates
 
-- properly use operator overloads for evaluating operators at runtime
+* properly use operator overloads for evaluating operators at runtime
 
-- Missing case clause for bulk update/destroy with `get?: true` in interface (#1806)
+* Missing case clause for bulk update/destroy with `get?: true` in interface (#1806)
 
-- always run update filter on skipped updates
+* always run update filter on skipped updates
 
-- don't change update defaults unless something changes
+* don't change update defaults unless something changes
 
 ### Improvements:
 
-- better parent resource tracking in expressions
+* better parent resource tracking in expressions
 
-- Generic actions to raise if they don't have return type but have an return value (#1805)
+* Generic actions to raise if they don't have return type but have an return value (#1805)
 
 ## [v3.4.64](https://github.com/ash-project/ash/compare/v3.4.63...v3.4.64) (2025-02-17)
 
+
+
+
 ### Bug Fixes:
 
-- use undo action in generic action undo
+* use undo action in generic action undo
 
-- handle generic actions with no return
+* handle generic actions with no return
 
-- ensure atomic `set_attribute` behaves the same as non-atomic
+* ensure atomic `set_attribute` behaves the same as non-atomic
 
-- Missing actor on aggregate resource call (#1796)
+* Missing actor on aggregate resource call (#1796)
 
-- Missing actor on aggregate call (#1793)
+* Missing actor on aggregate call (#1793)
 
 ### Improvements:
 
-- support receiving the inputs when undoing generic actions
+* support receiving the inputs when undoing generic actions
 
-- simplify & unify sort/sort_input logic
+* simplify & unify sort/sort_input logic
 
-- support related sorts everywhere (not just sort_input)
+* support related sorts everywhere (not just sort_input)
 
-- add field names to identities (#1786)
+* add field names to identities (#1786)
 
 ## [v3.4.63](https://github.com/ash-project/ash/compare/v3.4.62...v3.4.63) (2025-02-11)
 
+
+
+
 ### Bug Fixes:
 
-- set `read_after_writes` to true if generated
+* set `read_after_writes` to true if generated
 
-- type cast errors w/ floats & vectors
+* type cast errors w/ floats & vectors
 
-- handle case clause error in filters
+* handle case clause error in filters
 
-- don't return invalid type from vector type
+* don't return invalid type from vector type
 
-- don't double process string interpolation expressions
+* don't double process string interpolation expressions
 
-- Include warning for arguments only when 'things' are arguments (#1785)
+* Include warning for arguments only when 'things' are arguments (#1785)
 
-- empty bulk create inputs must still return a stream
+* empty bulk create inputs must still return a stream
 
-- don't use `authorize_with: :error` on data layers that can't do it
+* don't use `authorize_with: :error` on data layers that can't do it
 
-- pass tenant to load in cascade destroy (#1775)
+* pass tenant to load in cascade destroy (#1775)
 
-- add tenant to load in cascade update (#1773)
+* add tenant to load in cascade update (#1773)
 
-- raise errors on partial_success results in bulk actions
+* raise errors on partial_success results in bulk actions
 
-- add `reuse_values?` opt to `Ash.can` and disable it automatically
+* add `reuse_values?` opt to `Ash.can` and disable it automatically
 
-- compile `Ash.PlugHelpers` even without `Plug` available
+* compile `Ash.PlugHelpers` even without `Plug` available
 
-- expand `opts` when using `calculate/3`
+* expand `opts` when using `calculate/3`
 
-- handle base resources in `ash.extend`
+* handle base resources in `ash.extend`
 
-- type system warning on apps w/o solvers
+* type system warning on apps w/o solvers
 
-- Fix no read action exception for through relationship (#1750)
+* Fix no read action exception for through relationship (#1750)
 
-- always recompile domain on resource changes
+* always recompile domain on resource changes
 
-- fix handling of generic action returns with transaction enabled (#1758)
+* fix handling of generic action returns with transaction enabled (#1758)
 
-- type struct handle instance of return error tuple (#1756)
+* type struct handle instance of return error tuple (#1756)
 
-- Compilation failure when using the `ash_step` Reactor DSL. (#1753)
+* Compilation failure when using the `ash_step` Reactor DSL. (#1753)
 
-- pass `authorize?` option to `bulk_create` in `Ash.Generator.generate_many/2`
+* pass `authorize?` option to `bulk_create` in `Ash.Generator.generate_many/2`
 
 ### Improvements:
 
-- Add string_position expression (#1782)
+* Add string_position expression (#1782)
 
-- add `dimensions` to vector type
+* add `dimensions` to vector type
 
-- add filter & transform options for pubsub notifier
+* add filter & transform options for pubsub notifier
 
-- verify pub_sub actions at compile time
+* verify pub_sub actions at compile time
 
-- more clean boolean filter optimization for `or ==`
+* more clean boolean filter optimization for `or ==`
 
-- add `reuse_values?` option for calculate!
+* add `reuse_values?` option for calculate!
 
-- prefer `calculate/3` when reusing values
+* prefer `calculate/3` when reusing values
 
-- add `c:Ash.Type.coerce/2` callback
+* add `c:Ash.Type.coerce/2` callback
 
 ## [v3.4.62](https://github.com/ash-project/ash/compare/v3.4.61...v3.4.62) (2025-01-31)
 
+
+
+
 ### Bug Fixes:
 
-- [`Ash.Changeset`] always start transactions when managing relationships
+* [`Ash.Changeset`] always start transactions when managing relationships
 
-- [`Ash.Changeset`] handle parent in rel in managed belongs to (#1746)
+* [`Ash.Changeset`] handle parent in rel in managed belongs to (#1746)
 
 ## [v3.4.61](https://github.com/ash-project/ash/compare/v3.4.60...v3.4.61) (2025-01-31)
 
+
+
+
 ### Bug Fixes:
 
-- [`Ash.Generator`] don't prevent setting manage_relationship inputs in generators
+* [`Ash.Generator`] don't prevent setting manage_relationship inputs in generators
 
-- [`Ash.Reactor`] Fix referring to outer steps and inputs in `transaction` steps. (#1741)
+* [`Ash.Reactor`] Fix referring to outer steps and inputs in `transaction` steps. (#1741)
 
-- [`Ash.Expr`] always return utc timestamp as result of `start_of_day`
+* [`Ash.Expr`] always return utc timestamp as result of `start_of_day`
 
-- [`Ash.Resource.Change.CascadeDestroy`] support `after_action?` option on cascade destroys & better error when it should be used (#1734)
+* [`Ash.Resource.Change.CascadeDestroy`] support `after_action?` option on cascade destroys & better error when it should be used (#1734)
 
 ### Improvements:
 
-- [`Ash.Resource`] warning on args, preparations or filters on primary reads
+* [`Ash.Resource`] warning on args, preparations or filters on primary reads
 
-- [`Ash.Reactor`] Support guards in `Ash.Reactor` steps. (#1739)
+* [`Ash.Reactor`] Support guards in `Ash.Reactor` steps. (#1739)
 
-- [`mix ash.extend`] use `ash.extend` and use it instead of `ash.patch.extend`
+* [`mix ash.extend`] use `ash.extend` and use it instead of `ash.patch.extend`
 
 ## [v3.4.60](https://github.com/ash-project/ash/compare/v3.4.59...v3.4.60) (2025-01-27)
 
+
+
+
 ### Bug Fixes:
 
-- [`Ash.Expr`] traverse custom expressions when listing refs
+* [`Ash.Expr`] traverse custom expressions when listing refs
 
 ## [v3.4.59](https://github.com/ash-project/ash/compare/v3.4.58...v3.4.59) (2025-01-27)
 
+
+
+
 ### Bug Fixes:
 
-- [`Ash.Query`] better placed validations of aggregate support for data layers
+* [`Ash.Query`] better placed validations of aggregate support for data layers
 
 ## [v3.4.58](https://github.com/ash-project/ash/compare/v3.4.57...v3.4.58) (2025-01-26)
 
+
+
+
 ### Bug Fixes:
 
-- [`Ash.Query.Aggregate`] properly check query aggregate support
+* [`Ash.Query.Aggregate`] properly check query aggregate support
 
 ### Improvements:
 
-- [`Ash`] support `authorize_with` option in `Ash.get` (#1732)
+* [`Ash`] support `authorize_with` option in `Ash.get` (#1732)
 
 ## [v3.4.57](https://github.com/ash-project/ash/compare/v3.4.56...v3.4.57) (2025-01-23)
 
+
+
+
 ### Bug Fixes:
 
-- [`Ash.Resource.Validation.Compare`] ensure compare validation doesn't put functions in exceptions
+
+* [`Ash.Resource.Validation.Compare`] ensure compare validation doesn't put functions in exceptions
+
 
 ## [3.4.56](https://github.com/ash-project/ash/compare/v3.4.55...3.4.56) (2025-01-21)
 
+
+
+
 ### Bug Fixes:
 
-- [`Ash`] don't use `JSON` due to library compatibility issues
 
-- [`Ash.Changeset`] matching in managed_relationships handle_update (#1719)
+* [`Ash`] don't use `JSON` due to library compatibility issues
 
-- [`Ash.Query.Calculation`] properly load doubly nested calculation's explicit dependencies
+* [`Ash.Changeset`] matching in managed_relationships handle_update (#1719)
 
-- [`Ash.Query.Calculation`] handle related non-expr calculations referenced from expr calcs
+* [`Ash.Query.Calculation`] properly load doubly nested calculation's explicit dependencies
 
-- [`Ash.Query.Calculation`] simplify and fix path generation for nested relationship path deps
+* [`Ash.Query.Calculation`] handle related non-expr calculations referenced from expr calcs
 
-- [`Ash`] don't require multitenancy attribute in `get` (#1716)
+* [`Ash.Query.Calculation`] simplify and fix path generation for nested relationship path deps
+
+* [`Ash`] don't require multitenancy attribute in `get` (#1716)
 
 ### Improvements:
 
-- [`Ash.Changeset`] make atomics work even if expr err is not supported (#1718)
+* [`Ash.Changeset`] make atomics work even if expr err is not supported (#1718)
 
-- [`Ash.Query`] support error shorthand for `Ash.Query.add_error/2-3`
+* [`Ash.Query`] support error shorthand for `Ash.Query.add_error/2-3`
 
-- [`Ash.Generator`] add `uses` option for `changeset_generator`
+* [`Ash.Generator`] add `uses` option for `changeset_generator`
 
-- [`Ash.Generator`] add `uses` option for `seed_generator`
+* [`Ash.Generator`] add `uses` option for `seed_generator`
 
-- [`Ash.Changeset`] Use clearer error message for match validation atomic errors (#1721)
+* [`Ash.Changeset`] Use clearer error message for match validation atomic errors (#1721)
 
-- [`Ash.Type`] Add autogenerate_enabled? to Ash.Type for Ecto compatibility (#1715)
+* [`Ash.Type`] Add autogenerate_enabled? to Ash.Type for Ecto compatibility (#1715)
 
-- [`Ash.Policy.Authorizer`] warn when domain policies would be ignored by resources
+* [`Ash.Policy.Authorizer`] warn when domain policies would be ignored by resources
 
-- [`Ash.Domain`] allow policy authorizer to be in authorizers key in domains
+* [`Ash.Domain`] allow policy authorizer to be in authorizers key in domains
 
 ## [v3.4.55](https://github.com/ash-project/ash/compare/v3.4.54...v3.4.55) (2025-01-13)
 
+
+
+
 ### Bug Fixes:
 
-- [code interfaces] ensure can\_\* code interfaces pass arguments to actions
+* [code interfaces] ensure can_* code interfaces pass arguments to actions
 
-- [`Ash`] case clause error in `Ash.can?`
+* [`Ash`] case clause error in `Ash.can?`
 
-- [`Ash`] reset `ash_started_transaction?` on bulk create
+* [`Ash`] reset `ash_started_transaction?` on bulk create
 
-- [`Ash.Generator`] handle embedded attributes in attribute generator
+* [`Ash.Generator`] handle embedded attributes in attribute generator
 
-- [`Ash.Generator`] Fix typo in skipped import name (#1704)
+* [`Ash.Generator`] Fix typo in skipped import name (#1704)
 
-- [`Ash.Generator`] set max_concurrency to 0 for generate_many
+* [`Ash.Generator`] set max_concurrency to 0 for generate_many
 
-- [`Ash.Generator`] ensure that `once` and `sequence` behave predictably across tests
+* [`Ash.Generator`] ensure that `once` and `sequence` behave predictably across tests
 
 ### Improvements:
 
-- [`Ash.Changeset`] destroy missing records first in `manage_relationship`
+* [`Ash.Changeset`] destroy missing records first in `manage_relationship`
 
-- [`Ash.Expr`] add start_of_day function
+* [`Ash.Expr`] add start_of_day function
 
-- [`Ash.Type.DateTime`] add `cast_dates_as` constraint to `Ash.Type.DateTime`
+* [`Ash.Type.DateTime`] add `cast_dates_as` constraint to `Ash.Type.DateTime`
 
 ## [v3.4.54](https://github.com/ash-project/ash/compare/v3.4.53...v3.4.54) (2025-01-09)
 
+
+
+
 ### Bug Fixes:
 
-- [`Ash.Generator`] Fix issues in `Ash.Generator.generate_many/2` (#1703)
+* [`Ash.Generator`] Fix issues in `Ash.Generator.generate_many/2` (#1703)
 
-- [`Ash.Generator`] Don't error if no `after_action` is provided to `generate_many`
+* [`Ash.Generator`] Don't error if no `after_action` is provided to `generate_many`
 
-- [`Ash.Generator`] Reuse the changeset actor when calling `bulk_create`
+* [`Ash.Generator`] Reuse the changeset actor when calling `bulk_create`
 
 ### Improvements:
 
-- [`Ash.Generator`] run notifications for generators
+* [`Ash.Generator`] run notifications for generators
 
-- [`Ash.Changeset`] `order_is_key` option for sorted relationships
+* [`Ash.Changeset`] `order_is_key` option for sorted relationships
 
 ## [v3.4.53](https://github.com/ash-project/ash/compare/v3.4.52...v3.4.53) (2025-01-08)
 
+
 ### Bug Fixes:
 
-- [`Ash.Generator`] properly delegate and handle conflicts in `Ash.Generator`
+* [`Ash.Generator`] properly delegate and handle conflicts in `Ash.Generator`
 
-- [`Ash.Generator`] Replace calls to `create` and `create_many` with `generate` and `generate_many` (#1701)
+* [`Ash.Generator`] Replace calls to `create` and `create_many` with `generate` and `generate_many` (#1701)
 
-- [calculations] use nested calculation dependencies from expr if not in expression
+* [calculations] use nested calculation dependencies from expr if not in expression
 
-- [`Ash.Changeset`] pattern match error on expression parse failure
+* [`Ash.Changeset`] pattern match error on expression parse failure
 
-- [`Ash.Test.Resource.Validation.StringLengthTest`] handle `string_length` on arguments when atomic
+* [`Ash.Test.Resource.Validation.StringLengthTest`] handle `string_length` on arguments when atomic
 
 ## [v3.4.52](https://github.com/ash-project/ash/compare/v3.4.51...v3.4.52) (2025-01-06)
 
+
 ### Bug Fixes:
 
-- [`Ash.Type.Map`] handle keyword errors from map field type casting
+* [`Ash.Type.Map`]  handle keyword errors from map field type casting
 
-- [`mix ash.gen.resource`] ensure extensions & subjects args are unique
+* [`mix ash.gen.resource`] ensure extensions & subjects args are unique
 
 ### Improvements:
 
-- [`ash.gen.resource`] validate that names given to `ash.gen.resource`
+* [`ash.gen.resource`] validate that names given to `ash.gen.resource`
 
-- [`Ash.Generator`] add `Ash.Generator.changeset_generator/3`
+* [`Ash.Generator`] add `Ash.Generator.changeset_generator/3`
 
-- [`Ash.Generator`] add `Ash.Generator.seed_generator/2`
+* [`Ash.Generator`] add `Ash.Generator.seed_generator/2`
 
-- [`Ash.Generator`] only use known keys in generators in `Ash.Generator`
+* [`Ash.Generator`] only use known keys in generators in `Ash.Generator`
 
-- [`Ash`] support `after_action` option to `Ash.bulk_create`
+* [`Ash`] support `after_action` option to `Ash.bulk_create`
 
-- [`mix ash.install`] set `yes_to_deps` when fetching dependencies
+* [`mix ash.install`] set `yes_to_deps` when fetching dependencies
 
-- [`Ash.Query`] better error message on non-resource in `Ash.Query.new/2`
+* [`Ash.Query`] better error message on non-resource in `Ash.Query.new/2`
 
-- [`Ash.bulk_destroy`] handle limited bulk destroys from streams
+* [`Ash.bulk_destroy`] handle limited bulk destroys from streams
 
-- [Code interfaces] bulk actions use `full_read` from code interfaces given ids
+* [Code interfaces] bulk actions use `full_read` from code interfaces given ids
 
-- [Code Interfaces] set `limit` in code interface to update or destroy one thing
+* [Code Interfaces] set `limit` in code interface to update or destroy one thing
 
 ## [v3.4.51](https://github.com/ash-project/ash/compare/v3.4.50...v3.4.51) (2025-01-03)
 
+
 ### Bug Fixes:
 
-- [`Ash.Resource`] handle ambiguous case of empty params in code interfaces (#1694)
+* [`Ash.Resource`] handle ambiguous case of empty params in code interfaces (#1694)
 
-- [`Ash.Changeset`] discard manage_relationships added inside changes on atomic upgrade
+* [`Ash.Changeset`] discard manage_relationships added inside changes on atomic upgrade
 
 ## [v3.4.50](https://github.com/ash-project/ash/compare/v3.4.49...v3.4.50) (2025-01-01)
 
+
 ### Bug Fixes:
 
-- [`Ash.DataLayer.Ets`, `Ash.DataLayer.Mnesia`] properly handle aggregate defaults in ets/mnesia (#1684)
+* [`Ash.DataLayer.Ets`, `Ash.DataLayer.Mnesia`] properly handle aggregate defaults in ets/mnesia (#1684)
 
-- [`Ash.Resource.Validation.Changing`] use context message instead of default if provided in changing validation (#1677)
+* [`Ash.Resource.Validation.Changing`] use context message instead of default if provided in changing validation (#1677)
 
-- [`Ash.Changeset`] ensure that `changed?` context is set to true for atomics
+* [`Ash.Changeset`] ensure that `changed?` context is set to true for atomics
 
-- [`Ash`] properly match on `return_query?` option, avoid raised pattern match error
+* [`Ash`] properly match on `return_query?` option, avoid raised pattern match error
 
-- [`Ash.Policy.Authorizer`] ensure that old config applies all aggregate policies
+* [`Ash.Policy.Authorizer`] ensure that old config applies all aggregate policies
 
 ### Improvements:
 
-- [`Ash.Generator`] add `Ash.Generator.once/2`
+* [`Ash.Generator`] add `Ash.Generator.once/2`
 
-- [`Ash.Type.Map`, `Ash.Type.Keyword`, `Ash.Type.Struct`] define `generate/1` callback for maps, structs, keywords
+* [`Ash.Type.Map`, `Ash.Type.Keyword`, `Ash.Type.Struct`] define `generate/1` callback for maps, structs, keywords
 
-- [`Ash`] add `data_layer?` option to `Ash.calculate/3`
+* [`Ash`] add `data_layer?` option to `Ash.calculate/3`
 
-- [`Ash.Resource`] Add default code interface options (#1681)
+* [`Ash.Resource`] Add default code interface options (#1681)
 
-- [`Ash.Resource`] add `allow_forbidden_field?` option to relationships
+* [`Ash.Resource`] add `allow_forbidden_field?` option to relationships
 
-- [`Ash.Resource`] add `authorize_read_with` option to relationships
+* [`Ash.Resource`] add `authorize_read_with` option to relationships
 
-- [`Ash`] support `default` option in `Ash.first` (#1683)
+* [`Ash`] support `default` option in `Ash.first` (#1683)
 
-- [`Ash.Notifier.PubSub`] allow exclusion of certain actions from publish_all (#1680)
+* [`Ash.Notifier.PubSub`] allow exclusion of certain actions from publish_all (#1680)
 
-- [`mix igniter.install ash`] no prompt about SAT solver unless user is on windows
+* [`mix igniter.install ash`] no prompt about SAT solver unless user is on windows
 
-- [`Ash.Domain`] add otp_app option to use Ash.Domain
+* [`Ash.Domain`] add otp_app option to use Ash.Domain
 
-- - [`Ash`] add support for `strict?` in read options (#1669)
+* - [`Ash`] add support for `strict?` in read options (#1669)
 
 ## [v3.4.49](https://github.com/ash-project/ash/compare/v3.4.48...v3.4.49) (2024-12-22)
+
 
 ### Improvements:
 
@@ -1276,7 +1452,7 @@ to a resource that you did not intend them to be able to see.
 
 ### Bug Fixes:
 
-- [`Ash.Policy.Authorizer`] ensure that old config applies all aggregate policies
+* [`Ash.Policy.Authorizer`] ensure that old config applies all aggregate policies
 
 If you've upgraded to the following configuration this does not affect you:
 
