@@ -3654,6 +3654,13 @@ defmodule Ash.Filter do
     end
   end
 
+  defp resolve_call(%Call{name: :if, args: args} = call, context) do
+    do_hydrate_refs(
+      %Ash.Query.Function.If{__predicate__?: false, name: :if, arguments: args},
+      context
+    )
+  end
+
   defp resolve_call(%Call{name: name, args: args} = call, context) do
     could_be_calculation? = Enum.count_until(args, 2) == 1 && Keyword.keyword?(Enum.at(args, 0))
 
@@ -4197,6 +4204,135 @@ defmodule Ash.Filter do
     else
       other ->
         other
+    end
+  end
+
+  def do_hydrate_refs(
+        %{
+          __predicate__?: _,
+          name: :&&,
+          left: left,
+          right: right
+        } = expr,
+        context
+      ) do
+    case do_hydrate_refs(left, context) do
+      {:ok, true} ->
+        do_hydrate_refs(right, context)
+
+      {:ok, false} ->
+        {:ok, false}
+
+      {:ok, nil} ->
+        {:ok, nil}
+
+      {:ok, v} ->
+        right_hydrated = do_hydrate_refs(right, context)
+
+        if Ash.Expr.expr?(v) do
+          case right_hydrated do
+            {:ok, right} -> {:ok, %{expr | left: left, right: right}}
+            {:error, error} -> {:error, error}
+          end
+        else
+          right_hydrated
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def do_hydrate_refs(
+        %{
+          __predicate__?: _,
+          name: :||,
+          left: left,
+          right: right
+        } = expr,
+        context
+      ) do
+    case do_hydrate_refs(left, context) do
+      {:ok, true} ->
+        {:ok, true}
+
+      {:ok, false} ->
+        do_hydrate_refs(right, context)
+
+      {:ok, nil} ->
+        do_hydrate_refs(right, context)
+
+      {:ok, v} ->
+        if Ash.Expr.expr?(v) do
+          v
+        else
+          case do_hydrate_refs(right, context) do
+            {:ok, right} -> {:ok, %{expr | left: left, right: right}}
+            {:error, error} -> {:error, error}
+          end
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def do_hydrate_refs(
+        %{
+          __predicate__?: _,
+          name: :if,
+          arguments: [predicate, [{:do, consequence}, {:else, otherwise}]]
+        } = expr,
+        context
+      ) do
+    do_hydrate_refs(%{expr | arguments: [predicate, consequence, otherwise]}, context)
+  end
+
+  def do_hydrate_refs(
+        %{
+          __predicate__?: _,
+          name: :if,
+          arguments: [predicate, [{:do, consequence}]]
+        } = expr,
+        context
+      ) do
+    do_hydrate_refs(%{expr | arguments: [predicate, consequence, nil]}, context)
+  end
+
+  def do_hydrate_refs(
+        %{
+          __predicate__?: _,
+          name: :if,
+          arguments: [predicate, [consequence]]
+        } = expr,
+        context
+      ) do
+    do_hydrate_refs(%{expr | arguments: [predicate, consequence, nil]}, context)
+  end
+
+  def do_hydrate_refs(
+        %{__predicate__?: _, name: :if, arguments: [predicate, consequence, otherwise]} = expr,
+        context
+      ) do
+    case do_hydrate_refs(predicate, context) do
+      {:ok, true} ->
+        do_hydrate_refs(consequence, context)
+
+      {:ok, v} when v in [false, nil] ->
+        do_hydrate_refs(otherwise, context)
+
+      {:ok, predicate} ->
+        if Ash.Expr.expr?(predicate) do
+          with {:ok, consequence} <- do_hydrate_refs(consequence, context),
+               {:ok, otherwise} <- do_hydrate_refs(otherwise, context) do
+            {:ok, %{expr | arguments: [predicate, consequence, otherwise]}}
+          end
+        else
+          do_hydrate_refs(consequence, context)
+        end
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
