@@ -187,8 +187,19 @@ defmodule Ash.Scope do
     def get_tenant(map), do: Map.fetch(map, :tenant)
 
     def get_context(map) do
-      with {:ok, context} <- Map.fetch(map, :context) do
-        {:ok, Map.take(context, [:shared])}
+      cond do
+        Map.has_key?(map, :context) ->
+          with {:ok, context} <- Map.fetch(map, :context) do
+            {:ok, Map.take(context, [:shared])}
+          end
+
+        Map.has_key?(map, :shared) ->
+          with {:ok, shared} <- Map.fetch(map, :shared) do
+            {:ok, %{shared: shared}}
+          end
+
+        true ->
+          :error
       end
     end
 
