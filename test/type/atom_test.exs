@@ -102,13 +102,7 @@ defmodule Ash.Test.Type.AtomTest do
   end
 
   def non_existing_atom_string do
-    atom_string = "non_existing_atom_#{:rand.uniform(100_000_000)}"
-
-    try do
-      _ = String.to_existing_atom(atom_string)
-      non_existing_atom_string()
-    rescue
-      ArgumentError -> atom_string
-    end
+    uuid = Ash.UUID.generate() |> String.replace("-", "_")
+    "non_existing_atom_#{uuid}"
   end
 end
