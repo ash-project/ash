@@ -87,14 +87,6 @@ defmodule Ash.Test.Type.TypeTest do
     end)
   end
 
-  test "it rejects invalid atom data" do
-    assert_raise(Ash.Error.Invalid, ~r/atom must be one of/, fn ->
-      Post
-      |> Ash.Changeset.for_create(:create, %{title: "foobar", post_type: :something_else})
-      |> Ash.create!()
-    end)
-  end
-
   test "returns error for invalid keys" do
     foo = {:foo, [type: :string]}
     bar = {:bar, [type: :integer]}

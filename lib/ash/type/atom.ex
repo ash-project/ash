@@ -81,17 +81,7 @@ defmodule Ash.Type.Atom do
 
   def cast_input("", _), do: {:ok, nil}
 
-  # sobelow_skip ["DOS.StringToAtom"]
-  def cast_input(value, constraints) when is_binary(value) do
-    if constraints[:unsafe_to_atom?] do
-      {:ok, String.to_atom(value)}
-    else
-      {:ok, String.to_existing_atom(value)}
-    end
-  rescue
-    ArgumentError ->
-      :error
-  end
+  def cast_input(value, constraints) when is_binary(value), do: cast_value(value, constraints)
 
   def cast_input(_value, _), do: :error
 
@@ -102,14 +92,21 @@ defmodule Ash.Type.Atom do
     {:ok, value}
   end
 
-  def cast_stored(value, _) when is_binary(value) do
-    {:ok, String.to_existing_atom(value)}
+  def cast_stored(value, constraints) when is_binary(value), do: cast_value(value, constraints)
+
+  def cast_stored(_, _), do: :error
+
+  # sobelow_skip ["DOS.StringToAtom"]
+  defp cast_value(value, constraints) when is_binary(value) do
+    if constraints[:unsafe_to_atom?] do
+      {:ok, String.to_atom(value)}
+    else
+      {:ok, String.to_existing_atom(value)}
+    end
   rescue
     ArgumentError ->
       :error
   end
-
-  def cast_stored(_, _), do: :error
 
   @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
