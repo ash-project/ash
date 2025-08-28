@@ -1896,10 +1896,6 @@ defmodule Ash.Changeset do
         upsert_condition: upsert_condition
       }
     })
-    |> then(fn
-      changeset when upsert_condition != nil -> filter(changeset, upsert_condition)
-      changeset -> changeset
-    end)
     |> do_for_action(action, params, opts)
   end
 
@@ -2541,6 +2537,7 @@ defmodule Ash.Changeset do
                 changeset
                 |> prepare_changeset_for_action(action, opts)
                 |> handle_params(action, params, opts)
+                |> handle_upsert()
                 |> run_action_changes(
                   action,
                   opts[:actor],
@@ -2712,6 +2709,14 @@ defmodule Ash.Changeset do
     |> validate_attributes_accepted(action)
     |> require_values(action.type, false, action.require_attributes)
     |> set_defaults(changeset.action_type, false)
+  end
+
+  defp handle_upsert(changeset) do
+    if changeset.context.private[:upsert_condition] do
+      filter(changeset, changeset.context.private.upsert_condition)
+    else
+      changeset
+    end
   end
 
   defp get_action_entity(resource, name) when is_atom(name),
