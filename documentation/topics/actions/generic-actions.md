@@ -163,7 +163,7 @@ Validations in generic actions work similarly to those in other action types. Th
 ```elixir
 action :create_user, :struct do
   constraints instance_of: __MODULE__
-  
+
   argument :name, :string, allow_nil?: false
   argument :email, :string, allow_nil?: false
   argument :age, :integer
@@ -217,7 +217,7 @@ action :audit_log, :string do
       timestamp: DateTime.utc_now(),
       actor_id: input.context[:actor]&.id
     })
-    
+
     Ash.ActionInput.set_argument(input, :details, updated_details)
   end
 
@@ -265,10 +265,10 @@ action :process_payment, :boolean do
   validate present([:amount, :payment_method])
 
   # Using a function
-  change before_action(fn input, _context ->
+  prepare before_action(fn input, _context ->
     # Log the payment attempt
     Logger.info("Processing payment of #{input.arguments.amount}")
-    
+
     # Validate payment method
     if input.arguments.payment_method not in ["credit_card", "bank_transfer"] do
       Ash.ActionInput.add_error(input, "Invalid payment method")
@@ -293,10 +293,10 @@ action :send_notification, :boolean do
   argument :message, :string, allow_nil?: false
   argument :recipient, :string, allow_nil?: false
 
-  change after_action(fn input, result, _context ->
+  prepare after_action(fn input, result, _context ->
     # Log successful notification
     Logger.info("Notification sent to #{input.arguments.recipient}")
-    
+
     # Could perform additional side effects here
     {:ok, result}
   end)
@@ -309,15 +309,15 @@ action :send_notification, :boolean do
 end
 ```
 
-### Using Custom Change Modules
+### Using Custom Preparation Modules
 
-You can also create reusable change modules for generic actions:
+You can also create reusable preparation modules for generic actions:
 
 ```elixir
-defmodule MyApp.Changes.AuditAction do
-  use Ash.Resource.Change
+defmodule MyApp.Preparations.AuditAction do
+  use Ash.Resource.Preparation
 
-  def change(input, _opts, context) do
+  def prepare(input, _opts, context) do
     Ash.ActionInput.before_action(input, fn input ->
       # Log the action attempt
       MyApp.AuditLog.log_action(input.action.name, input.arguments, context.actor)
@@ -338,7 +338,7 @@ Then use it in your action:
 action :sensitive_operation, :boolean do
   argument :data, :map, allow_nil?: false
 
-  change MyApp.Changes.AuditAction
+  prepare MyApp.Preparations.AuditAction
 
   run fn input, _ ->
     # Sensitive operation logic
