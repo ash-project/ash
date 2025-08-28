@@ -1535,7 +1535,7 @@ defmodule Ash.Policy.Authorizer do
   defp check_result(authorizer) do
     {data, authorizer, any_forbidden?} =
       authorizer.data
-      |> Enum.reduce({[], false, authorizer}, fn record, {data, any_forbidden?, authorizer} ->
+      |> Enum.reduce({[], authorizer, false}, fn record, {data, authorizer, any_forbidden?} ->
         authorizer.scenarios
         |> Enum.reject(&scenario_impossible?(&1, authorizer, record))
         |> case do
