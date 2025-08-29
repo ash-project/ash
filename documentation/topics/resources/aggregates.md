@@ -102,6 +102,50 @@ See the docs on `d:Ash.Resource.Dsl.aggregates` for more information.
 
 Custom aggregates can be added to the query and will be placed in the `aggregates` key of the results. This is an escape hatch, and is not the primary way that you should be using aggregates. It does, however, allow for dynamism, i.e if you are accepting user input that determines what the filter and/or field should be, that kind of thing.
 
+## Custom Aggregate Example: Percentile
+
+Here's an example of creating a custom aggregate that uses PostgreSQL's `PERCENTILE_CONT` function to calculate percentiles:
+
+### Implementation
+
+defmodule PercentileAggregate do
+  @moduledoc false
+  use AshPostgres.CustomAggregate
+
+  require Ecto.Query
+
+  @impl true
+  def dynamic(opts, binding) do
+    Ecto.Query.dynamic(
+      [],
+      fragment(
+        "PERCENTILE_CONT(?) WITHIN GROUP (ORDER BY ?)",
+        ^opts[:percentile],
+        field(as(^binding), ^opts[:field])
+      )
+    )
+  end
+end
+```
+
+### Usage in Resource
+
+```elixir
+aggregates do
+  custom :median_daily_distance_walked,
+         :daily_walks,
+         :integer,
+         implementation: {
+           PercentileAggregate,
+           field: :distance_walked_meters,
+           percentile: 0.5
+         },
+         filter: expr(distance_walked_meters > 0)
+end
+```
+
+This aggregate calculates the median (50th percentile) distance walked by cats each day, filtering out any days where no walking occurred.
+
 ### Relationship-based aggregate example:
 
 ```elixir
