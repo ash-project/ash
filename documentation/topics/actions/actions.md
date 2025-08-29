@@ -313,6 +313,7 @@ graph TD
         CUD_SUCCESS -->|Yes| CUD_AFTER_ACTION["after_action<br/>(Success only)"]
         CUD_SUCCESS -->|No| CUD_ERROR_HANDLE["Error Handling"]
         CUD_AFTER_ACTION --> CUD_AROUND_ACTION_END["around_action (end)<br/>✅ Only on success"]
+        CUD_AFTER_ACTION -->|No| CUD_ERROR_HANDLE
         CUD_ERROR_HANDLE --> TRANS_ROLLBACK["🔓 Transaction Rollback"]
         CUD_AROUND_ACTION_END --> TRANS_COMMIT["🔓 Transaction Commit"]
         
@@ -327,6 +328,7 @@ graph TD
         GENERIC_LOGIC --> RG_SUCCESS
         RG_SUCCESS -->|Yes| RG_AFTER_ACTION["after_action<br/>(Success only)"]
         RG_AFTER_ACTION -->|Yes| TRANS_COMMIT
+        RG_AFTER_ACTION -->|No| RG_ERROR_HANDLE
         RG_SUCCESS -->|No| RG_ERROR_HANDLE["Error Handling"]
         RG_ERROR_HANDLE --> TRANS_ROLLBACK
     end
