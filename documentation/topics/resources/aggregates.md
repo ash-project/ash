@@ -106,8 +106,7 @@ Custom aggregates can be added to the query and will be placed in the `aggregate
 
 Here's an example of creating a custom aggregate that uses PostgreSQL's `PERCENTILE_CONT` function to calculate percentiles:
 
-### Implementation
-
+```elixir
 defmodule PercentileAggregate do
   @moduledoc false
   use AshPostgres.CustomAggregate
