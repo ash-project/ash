@@ -573,7 +573,7 @@ defmodule Ash.Resource.Builder do
     if Ash.Resource.Info.aggregate(dsl_state, name) do
       {:ok, dsl_state}
     else
-      add_calculation(dsl_state, name, kind, relationship_path, opts)
+      add_aggregate(dsl_state, name, kind, relationship_path, opts)
     end
   end
 
