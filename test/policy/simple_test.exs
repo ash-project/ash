@@ -548,6 +548,23 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert results == [car1.id]
   end
 
+  test "count is skipped when no records are returned due to policies", %{user: user} do
+    car =
+      Car
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!(authorize?: false)
+
+    results =
+      Car
+      |> Ash.Query.filter(id == ^car.id)
+      |> Ash.read!(actor: user)
+
+    assert %{count: nil, results: []} =
+             Ash.Query.for_read(Car, :with_pagination)
+             |> Ash.Query.page(limit: 5, count: true)
+             |> Ash.read!()
+  end
+
   test "calculations that reference aggregates are properly authorized", %{user: user} do
     Car
     |> Ash.Changeset.for_create(:create, %{users: [user.id], active: false}, authorize?: false)
