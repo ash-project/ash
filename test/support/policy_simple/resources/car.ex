@@ -33,6 +33,10 @@ defmodule Ash.Test.Support.PolicySimple.Car do
     end
 
     create :authorize_unless
+
+    read :with_pagination do
+      pagination offset?: true
+    end
   end
 
   attributes do

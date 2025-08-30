@@ -3376,6 +3376,15 @@ defmodule Ash.Actions.Read do
            (page[:count] != false and action.pagination.countable == :by_default))
 
     cond do
+      query.filter && query.filter.expression == false ->
+        result = if needs_count?, do: 0, else: nil
+
+        if return? do
+          {:ok, {:ok, result}}
+        else
+          {:ok, fn -> {:ok, result} end}
+        end
+
       Map.has_key?(query.context, :accessing_from) and needs_count? ->
         if return? do
           # Relationship count is fetched by the parent using aggregates, just return nil here
