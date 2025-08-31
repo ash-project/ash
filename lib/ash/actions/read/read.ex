@@ -717,55 +717,45 @@ defmodule Ash.Actions.Read do
                        relationship_path_filters,
                        opts,
                        true
-                     ),
-                   {:ok, query} <- paginate(query, action, opts[:skip_pagination?]),
-                   :ok <- validate_combinations(query, calculations_at_runtime, query.load),
-                   {:ok, data_layer_query} <-
-                     Ash.Query.data_layer_query(query,
-                       data_layer_calculations: data_layer_calculations
-                     ),
-                   {{:ok, results}, query} <-
-                     run_query(
-                       set_phase(query, :executing),
-                       data_layer_query,
-                       %{
-                         actor: opts[:actor],
-                         tenant: query.tenant,
-                         authorize?: opts[:authorize?],
-                         domain: query.domain
-                       },
-                       !Keyword.has_key?(opts, :initial_data)
-                     )
-                     |> Helpers.rollback_if_in_transaction(
-                       query.resource,
-                       query
-                     ),
-                   :ok <- validate_get(results, query.action, query),
-                   results <- add_keysets(query, results, query.sort),
-                   {:ok, results} <- run_authorize_results(query, results),
-                   {:ok, results, after_notifications} <- run_after_action(query, results),
-                   {:ok, count} <- maybe_await(count, query.timeout) do
-                notify_callback.(query, before_notifications ++ after_notifications)
-                {:ok, results, count, calculations_at_runtime, calculations_in_query, query}
+                     ) do
+                ensure_task_stopped(count, fn ->
+                  with {:ok, query} <- paginate(query, action, opts[:skip_pagination?]),
+                       :ok <- validate_combinations(query, calculations_at_runtime, query.load),
+                       {:ok, data_layer_query} <-
+                         Ash.Query.data_layer_query(query,
+                           data_layer_calculations: data_layer_calculations
+                         ),
+                       {{:ok, results}, query} <-
+                         run_query(
+                           set_phase(query, :executing),
+                           data_layer_query,
+                           %{
+                             actor: opts[:actor],
+                             tenant: query.tenant,
+                             authorize?: opts[:authorize?],
+                             domain: query.domain
+                           },
+                           !Keyword.has_key?(opts, :initial_data)
+                         )
+                         |> Helpers.rollback_if_in_transaction(
+                           query.resource,
+                           query
+                         ),
+                       :ok <- validate_get(results, query.action, query),
+                       results <- add_keysets(query, results, query.sort),
+                       {:ok, results} <- run_authorize_results(query, results),
+                       {:ok, results, after_notifications} <- run_after_action(query, results),
+                       {:ok, count} <- maybe_await(count, query.timeout) do
+                    notify_callback.(query, before_notifications ++ after_notifications)
+                    {:ok, results, count, calculations_at_runtime, calculations_in_query, query}
+                  else
+                    other ->
+                      handle_failed_query(other, notify_callback, query)
+                  end
+                end)
               else
-                {%{valid?: false} = query, before_notifications} ->
-                  notify_callback.(query, before_notifications)
-                  {{:error, query}, query}
-
-                {{:error, %Ash.Query{} = query}, _} ->
-                  {:error, query}
-
-                {{:error, error}, query} ->
-                  {:error, Ash.Query.add_error(query, error)}
-
-                {:ok, %Ash.Query{valid?: false} = query} ->
-                  {{:error, query}, query}
-
-                %Ash.Query{} = query ->
-                  {{:error, query}, query}
-
-                {:error, error} ->
-                  {{:error, error}, query}
+                other ->
+                  handle_failed_query(other, notify_callback, query)
               end
             end)
 
@@ -777,6 +767,37 @@ defmodule Ash.Actions.Read do
       end
     else
       {:ok, query} ->
+        {{:error, query}, query}
+
+      {:error, error} ->
+        {{:error, error}, query}
+    end
+  end
+
+  defp ensure_task_stopped(%Task{} = task, fun) do
+    fun.()
+  after
+    Task.shutdown(task, :brutal_kill)
+  end
+
+  defp ensure_task_stopped(_, fun), do: fun.()
+
+  defp handle_failed_query(result, notify_callback, query) do
+    case result do
+      {%{valid?: false} = query, before_notifications} ->
+        notify_callback.(query, before_notifications)
+        {{:error, query}, query}
+
+      {{:error, %Ash.Query{} = query}, _} ->
+        {:error, query}
+
+      {{:error, error}, query} ->
+        {:error, Ash.Query.add_error(query, error)}
+
+      {:ok, %Ash.Query{valid?: false} = query} ->
+        {{:error, query}, query}
+
+      %Ash.Query{} = query ->
         {{:error, query}, query}
 
       {:error, error} ->
@@ -947,131 +968,143 @@ defmodule Ash.Actions.Read do
              relationship_path_filters,
              opts,
              false
-           ),
-         {:ok, query} <- paginate(query, action, opts[:skip_pagination?]),
-         :ok <- validate_combinations(query, calculations_at_runtime, query.load),
-         {:ok, data_layer_query} <-
-           Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations) do
-      {:ok,
-       %{
-         query: data_layer_query,
-         ash_query: query,
-         load: fn query_ran, data ->
-           with {:ok, data} <-
-                  load_through_attributes(
-                    data,
-                    %{query_ran | calculations: Map.new(calculations_in_query, &{&1.name, &1})},
-                    query.domain,
-                    opts[:actor],
-                    opts[:tracer],
-                    opts[:authorize?]
-                  ),
-                {:ok, data} <-
-                  load_relationships(data, query, opts),
-                {:ok, data} <-
-                  Ash.Actions.Read.Calculations.run(
-                    data,
-                    query,
-                    calculations_at_runtime,
-                    calculations_in_query
-                  ),
-                {:ok, data} <-
-                  load_through_attributes(
-                    data,
-                    %{
-                      query
-                      | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
-                        load_through: Map.delete(query.load_through || %{}, :attribute)
-                    },
-                    query.domain,
-                    opts[:actor],
-                    opts[:tracer],
-                    opts[:authorize?],
-                    false
-                  ) do
-             data
-             |> Helpers.restrict_field_access(query)
-             |> add_tenant(query)
-             |> attach_fields(nil, initial_query, query, false)
-             |> cleanup_field_auth(query)
-             |> add_page(
-               query.action,
-               count,
-               query.sort,
-               initial_query,
-               query,
-               opts
-             )
-           else
-             {:error, %Ash.Query{errors: errors} = query} ->
-               {:error, Ash.Error.to_error_class(errors, query: query)}
-
-             {:error,
-              %Ash.Error.Forbidden.Placeholder{
-                authorizer: authorizer
-              }} ->
-               error =
-                 Ash.Authorizer.exception(
-                   authorizer,
-                   :forbidden,
-                   query_ran.context[:private][:authorizer_state][authorizer]
+           ) do
+      ensure_task_stopped(count, fn ->
+        with {:ok, query} <- paginate(query, action, opts[:skip_pagination?]),
+             :ok <- validate_combinations(query, calculations_at_runtime, query.load),
+             {:ok, data_layer_query} <-
+               Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations) do
+          {:ok,
+           %{
+             query: data_layer_query,
+             ash_query: query,
+             load: fn query_ran, data ->
+               with {:ok, data} <-
+                      load_through_attributes(
+                        data,
+                        %{
+                          query_ran
+                          | calculations: Map.new(calculations_in_query, &{&1.name, &1})
+                        },
+                        query.domain,
+                        opts[:actor],
+                        opts[:tracer],
+                        opts[:authorize?]
+                      ),
+                    {:ok, data} <-
+                      load_relationships(data, query, opts),
+                    {:ok, data} <-
+                      Ash.Actions.Read.Calculations.run(
+                        data,
+                        query,
+                        calculations_at_runtime,
+                        calculations_in_query
+                      ),
+                    {:ok, data} <-
+                      load_through_attributes(
+                        data,
+                        %{
+                          query
+                          | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
+                            load_through: Map.delete(query.load_through || %{}, :attribute)
+                        },
+                        query.domain,
+                        opts[:actor],
+                        opts[:tracer],
+                        opts[:authorize?],
+                        false
+                      ) do
+                 data
+                 |> Helpers.restrict_field_access(query)
+                 |> add_tenant(query)
+                 |> attach_fields(nil, initial_query, query, false)
+                 |> cleanup_field_auth(query)
+                 |> add_page(
+                   query.action,
+                   count,
+                   query.sort,
+                   initial_query,
+                   query,
+                   opts
                  )
+               else
+                 {:error, %Ash.Query{errors: errors} = query} ->
+                   {:error, Ash.Error.to_error_class(errors, query: query)}
 
-               {:error, Ash.Error.to_error_class(error)}
+                 {:error,
+                  %Ash.Error.Forbidden.Placeholder{
+                    authorizer: authorizer
+                  }} ->
+                   error =
+                     Ash.Authorizer.exception(
+                       authorizer,
+                       :forbidden,
+                       query_ran.context[:private][:authorizer_state][authorizer]
+                     )
 
-             {:error, error} ->
-               {:error, Ash.Error.to_error_class(error, query: query)}
-           end
-         end,
-         run: fn data_layer_query ->
-           notify? = !Process.put(:ash_started_transaction?, true)
+                   {:error, Ash.Error.to_error_class(error)}
 
-           with {{:ok, results}, query} <-
-                  run_query(
-                    set_phase(query, :executing),
-                    data_layer_query,
-                    %{
-                      actor: opts[:actor],
-                      tenant: query.tenant,
-                      authorize?: opts[:authorize?],
-                      domain: query.domain
-                    },
-                    !Keyword.has_key?(opts, :initial_data)
-                  )
-                  |> Helpers.rollback_if_in_transaction(
-                    query.resource,
-                    query
-                  ),
-                :ok <- validate_get(results, query.action, query),
-                results <- add_keysets(query, results, query.sort),
-                {:ok, results} <- run_authorize_results(query, results),
-                {:ok, results, after_notifications} <- run_after_action(query, results) do
-             notify_or_store(query, before_notifications ++ after_notifications, notify?)
+                 {:error, error} ->
+                   {:error, Ash.Error.to_error_class(error, query: query)}
+               end
+             end,
+             run: fn data_layer_query ->
+               notify? = !Process.put(:ash_started_transaction?, true)
 
-             {:ok, add_tenant(results, query)}
-           else
-             {%{valid?: false} = query, before_notifications} ->
-               notify_or_store(query, before_notifications, notify?)
-               {:error, Ash.Error.to_ash_error(query)}
+               with {{:ok, results}, query} <-
+                      run_query(
+                        set_phase(query, :executing),
+                        data_layer_query,
+                        %{
+                          actor: opts[:actor],
+                          tenant: query.tenant,
+                          authorize?: opts[:authorize?],
+                          domain: query.domain
+                        },
+                        !Keyword.has_key?(opts, :initial_data)
+                      )
+                      |> Helpers.rollback_if_in_transaction(
+                        query.resource,
+                        query
+                      ),
+                    :ok <- validate_get(results, query.action, query),
+                    results <- add_keysets(query, results, query.sort),
+                    {:ok, results} <- run_authorize_results(query, results),
+                    {:ok, results, after_notifications} <- run_after_action(query, results) do
+                 notify_or_store(query, before_notifications ++ after_notifications, notify?)
 
-             {{:error, %Ash.Query{} = query}, _} ->
-               {:error, Ash.Error.to_ash_error(query)}
+                 {:ok, add_tenant(results, query)}
+               else
+                 {%{valid?: false} = query, before_notifications} ->
+                   notify_or_store(query, before_notifications, notify?)
+                   {:error, Ash.Error.to_ash_error(query)}
 
-             {{:error, error}, query} ->
-               {:error, Ash.Error.to_ash_error(Ash.Query.add_error(query, error))}
+                 {{:error, %Ash.Query{} = query}, _} ->
+                   {:error, Ash.Error.to_ash_error(query)}
 
-             {:ok, %Ash.Query{valid?: false} = query} ->
-               {:error, Ash.Error.to_ash_error(query)}
+                 {{:error, error}, query} ->
+                   {:error, Ash.Error.to_ash_error(Ash.Query.add_error(query, error))}
 
-             %Ash.Query{} = query ->
-               {:error, Ash.Error.to_ash_error(query)}
+                 {:ok, %Ash.Query{valid?: false} = query} ->
+                   {:error, Ash.Error.to_ash_error(query)}
 
-             {:error, error} ->
-               {:error, Ash.Error.to_ash_error(error)}
-           end
-         end,
-         count: fn -> count.() end
-       }}
+                 %Ash.Query{} = query ->
+                   {:error, Ash.Error.to_ash_error(query)}
+
+                 {:error, error} ->
+                   {:error, Ash.Error.to_ash_error(error)}
+               end
+             end,
+             count: fn -> count.() end
+           }}
+        else
+          {:ok, query} ->
+            {{:error, query}, query}
+
+          {:error, error} ->
+            {{:error, error}, query}
+        end
+      end)
     else
       {:ok, query} ->
         {{:error, query}, query}
