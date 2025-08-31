@@ -209,7 +209,7 @@ defmodule Ash.TypedStruct do
       ) do
     quote do
       @enforce_keys unquote(enforce_keys)
-      defstruct unquote(fields_with_defaults)
+      defstruct unquote(Macro.escape(fields_with_defaults))
 
       use Ash.Type.NewType,
         subtype_of: :struct,
