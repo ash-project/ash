@@ -2,6 +2,41 @@
 
 <!-- changelog -->
 
+## [v3.5.37](https://github.com/ash-project/ash/compare/v3.5.36...v3.5.37) (2025-08-31)
+
+
+
+
+### Bug Fixes:
+
+* ensure that count tasks are always stopped by [@zachdaniel](https://github.com/zachdaniel)
+
+* Allow ^actor() in upsert_condition (#2297) by [@FugiTech](https://github.com/FugiTech)
+
+* properly add aggregate with `add_new_aggregate` by [@zachdaniel](https://github.com/zachdaniel)
+
+* resolve variable swapping in authorizer reducer (#2296) by Jesse Williams
+
+* handle notification without set domain in telemetry spans (#2293) by [@vonagam](https://github.com/vonagam)
+
+* Use `:unsafe_to_atom?` constraint when casting stored atom values by Rutgerdj
+
+* add CompileError on duplicate Ash.Domain use by LambdaCalc
+
+* handle indexed maps when typecasting filter values by [@zachdaniel](https://github.com/zachdaniel)
+
+* deterministic partial evaluation by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that unions stored with tags actually have their tags by [@zachdaniel](https://github.com/zachdaniel)
+
+* resolve warning about `nil` atomics by [@zachdaniel](https://github.com/zachdaniel)
+
+* typespec fix for typedstruct info module (#2286) by Matt Beanland
+
+### Improvements:
+
+* properly short-circuit if, || and && by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.36](https://github.com/ash-project/ash/compare/v3.5.35...v3.5.36) (2025-08-21)
 
 
