@@ -480,8 +480,9 @@ defmodule Ash.Actions.Update do
                     if result = changeset.context[:private][:action_result] do
                       result
                     else
-                      mod.update(
-                        changeset,
+                      changeset
+                      |> Ash.Changeset.set_defaults(:update, true)
+                      |> mod.update(
                         action_opts,
                         %Ash.Resource.ManualUpdate.Context{
                           select: changeset.select,
