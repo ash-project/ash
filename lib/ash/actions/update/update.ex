@@ -480,12 +480,8 @@ defmodule Ash.Actions.Update do
                     if result = changeset.context[:private][:action_result] do
                       result
                     else
-                      if Enum.empty?(changeset.attributes) &&
-                           Ash.DataLayer.data_layer_can?(changeset.resource, :atomic_update) do
-                        Ash.Changeset.atomic_defaults(changeset)
-                      else
-                        Ash.Changeset.set_defaults(changeset, :update, true)
-                      end
+                      changeset
+                      |> Ash.Changeset.set_defaults(:update, true)
                       |> mod.update(
                         action_opts,
                         %Ash.Resource.ManualUpdate.Context{
