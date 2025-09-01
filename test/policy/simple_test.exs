@@ -548,6 +548,22 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert results == [car1.id]
   end
 
+  test "count is skipped when no records are returned due to policies", %{user: user} do
+    car =
+      Car
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!(authorize?: false)
+
+    Mimic.reject(Ash.DataLayer, :run_query, 2)
+    Mimic.reject(Ash.DataLayer, :run_aggregate_query, 3)
+
+    assert %{count: 0, results: []} =
+             Ash.Query.for_read(Car, :with_pagination)
+             |> Ash.Query.filter(id == ^car.id)
+             |> Ash.Query.page(limit: 5, count: true)
+             |> Ash.read!()
+  end
+
   test "calculations that reference aggregates are properly authorized", %{user: user} do
     Car
     |> Ash.Changeset.for_create(:create, %{users: [user.id], active: false}, authorize?: false)
