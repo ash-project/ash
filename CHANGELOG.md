@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.5.38](https://github.com/ash-project/ash/compare/v3.5.37...v3.5.38) (2025-09-04)
+
+
+
+
+### Bug Fixes:
+
+* cache action inputs for all action types by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly pass template opts when showing policy errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* add default values to manual action changesets (#2305) by [@Torkan](https://github.com/Torkan)
+
+* properly escape collection defaults in TypedStruct macro (#2304) by [@bradleygolden](https://github.com/bradleygolden)
+
+### Improvements:
+
+* skip count of records when paginating if filter evaluates to false (#2303) by Rodolfo Torres
+
 ## [v3.5.37](https://github.com/ash-project/ash/compare/v3.5.36...v3.5.37) (2025-08-31)
 
 
