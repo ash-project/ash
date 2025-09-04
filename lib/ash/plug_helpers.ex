@@ -34,7 +34,7 @@ if Code.ensure_loaded?(Plug.Conn) do
         %Plug.Conn{private: %{ash: %{actor: %{email: "marty@1985.retro"}}}} = conn
 
     """
-    @spec set_actor(Conn.t(), Ash.Resource.record()) :: Conn.t()
+    @spec set_actor(Conn.t(), term()) :: Conn.t()
     def set_actor(conn, actor) do
       ash_private =
         conn.private
