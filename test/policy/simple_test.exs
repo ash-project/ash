@@ -548,7 +548,7 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert results == [car1.id]
   end
 
-  test "count is skipped when no records are returned due to policies", %{user: user} do
+  test "count is skipped when no records are returned due to policies" do
     car =
       Car
       |> Ash.Changeset.for_create(:create, %{})
