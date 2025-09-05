@@ -28,7 +28,9 @@ defmodule Ash.Query.Type do
     end
   end
 
-  def try_cast(%Ash.CiString{} = str, :string, _constraints), do: {:ok, str}
+  def try_cast(%Ash.CiString{} = str, type, _constraints) when type in [:string, Ash.Type.String],
+    do: {:ok, str}
+
   def try_cast(value, :number, _constraints) when is_number(value), do: {:ok, value}
   def try_cast(value, :any, _constraints), do: {:ok, value}
 
