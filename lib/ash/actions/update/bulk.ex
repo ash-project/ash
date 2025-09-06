@@ -1751,6 +1751,8 @@ defmodule Ash.Actions.Update.Bulk do
         context_key
       )
 
+    batch = authorize(batch, opts)
+
     batch =
       if re_sort? do
         Enum.sort_by(batch, & &1.context[context_key].index)
@@ -1920,9 +1922,8 @@ defmodule Ash.Actions.Update.Bulk do
         end)
 
     batch =
-      batch
-      |> authorize(opts)
-      |> run_bulk_before_batches(
+      run_bulk_before_batches(
+        batch,
         changes,
         all_changes,
         opts,

@@ -501,6 +501,7 @@ defmodule Ash.Actions.Create.Bulk do
           changeset.action.require_attributes
         )
       end)
+      |> authorize(opts)
       |> Ash.Actions.Helpers.split_and_run_simple(
         action,
         opts,
@@ -645,9 +646,8 @@ defmodule Ash.Actions.Create.Bulk do
         end)
 
     batch =
-      batch
-      |> authorize(opts)
-      |> Ash.Actions.Update.Bulk.run_bulk_before_batches(
+      Ash.Actions.Update.Bulk.run_bulk_before_batches(
+        batch,
         changes,
         all_changes,
         opts,
