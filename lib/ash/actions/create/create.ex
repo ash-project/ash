@@ -243,11 +243,14 @@ defmodule Ash.Actions.Create do
 
           keys = identity |> Map.get(:keys)
 
-          if changeset.tenant && !identity.all_tenants? &&
-               Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
-            [Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys]
-          else
+          if identity.all_tenants? do
             keys
+          else
+            if (Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute && (changeset.tenant || identity.nils_distinct?)) do
+              [Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys]
+            else
+              keys
+            end
           end
       end
 
