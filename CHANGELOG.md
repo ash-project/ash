@@ -5,19 +5,19 @@
 ## [v3.5.39](https://github.com/ash-project/ash/compare/v3.5.38...v3.5.39) (2025-09-06)
 
 
-
-
-### Bug Fixes:
+### Security Vulnerabilities Addressed
 
 * authorize before before_transaction hooks in bulk actions by [@zachdaniel](https://github.com/zachdaniel)
+
+This fixes GHSA-jj4j-x5ww-cwh9. See the [advisory](https://github.com/ash-project/ash/security/advisories/GHSA-jj4j-x5ww-cwh9) for more. 
+
+### Bug Fixes:
 
 * special case ci_strings as strings in type casting by [@zachdaniel](https://github.com/zachdaniel)
 
 * make `Ash.PlugHelpers.set_actor/2` typespec accept term as an actor (#2307) by Maciej Malecki
 
 ## [v3.5.38](https://github.com/ash-project/ash/compare/v3.5.37...v3.5.38) (2025-09-04)
-
-
 
 
 ### Bug Fixes:
