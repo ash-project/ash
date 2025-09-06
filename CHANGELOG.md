@@ -9,7 +9,7 @@
 
 * authorize before before_transaction hooks in bulk actions by [@zachdaniel](https://github.com/zachdaniel)
 
-This fixes GHSA-jj4j-x5ww-cwh9. See the [advisory](https://github.com/ash-project/ash/security/advisories/GHSA-jj4j-x5ww-cwh9) for more. 
+This fixes the CVE: CVE-2025-48042. See the [GHSA-jj4j-x5ww-cwh9 advisory](https://github.com/ash-project/ash/security/advisories/GHSA-jj4j-x5ww-cwh9) for more. 
 
 ### Bug Fixes:
 
