@@ -634,11 +634,12 @@ defmodule Ash.Test.Actions.CreateTest do
                Post
                |> Ash.Changeset.new()
                |> Ash.Changeset.change_attributes(%{
-                 title: "foo"
+                 title: "foo",
+                 tag: "v1"
                })
                |> Ash.create!()
 
-      assert %Post{id: ^id, title: "foo", contents: "bar", updated_at: new_updated_at} =
+      assert %Post{id: ^id, title: "foo", contents: "bar", tag: tag, updated_at: new_updated_at} =
                Post
                |> Ash.Changeset.new()
                |> Ash.Changeset.change_attributes(%{
@@ -648,10 +649,12 @@ defmodule Ash.Test.Actions.CreateTest do
                |> Ash.create!(
                  upsert?: true,
                  upsert_identity: :unique_title,
-                 upsert_fields: [:contents, :updated_at]
+                 upsert_fields: [:contents, :tag, :updated_at]
                )
 
       refute updated_at == new_updated_at
+      # tag not set (but included in upsert_fields) so it reverts to default
+      assert tag == "garbage"
     end
 
     test "skips upsert when condition doesn't match" do
