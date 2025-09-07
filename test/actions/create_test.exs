@@ -657,6 +657,34 @@ defmodule Ash.Test.Actions.CreateTest do
       assert tag == "garbage"
     end
 
+    test "allows upserting a record (without using a changeset)" do
+      assert %Post{id: id, title: "foo", updated_at: updated_at} =
+               Post
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.change_attributes(%{
+                 title: "foo",
+                 contents: "bar",
+                 tag: "baz"
+               })
+               |> Ash.create!()
+
+      assert %Post{id: ^id, title: "foo", contents: "bar", tag: tag, updated_at: new_updated_at} =
+               Ash.create!(
+                 Post,
+                 %{
+                   title: "foo",
+                   contents: "ignored"
+                 },
+                 upsert?: true,
+                 upsert_identity: :unique_title,
+                 upsert_fields: [:tag, :updated_at]
+               )
+
+      refute updated_at == new_updated_at
+      # tag not set (but included in upsert_fields) so it reverts to default
+      assert tag == "garbage"
+    end
+
     test "skips upsert when condition doesn't match" do
       assert %Post{id: id, title: "foo", updated_at: updated_at} =
                Post
