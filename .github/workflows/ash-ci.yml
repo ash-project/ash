@@ -556,8 +556,6 @@ jobs:
           # cranelift-codegen panics at 'error when identifying target: "no supported isa found for arch `arm`"'
           # - { target: arm-unknown-linux-gnueabihf , os: ubuntu-20.04 , use-cross: true }
           - { target: aarch64-apple-darwin, os: macos-15 }
-          - { target: aarch64-apple-ios-sim, os: macos-15 }
-          - { target: aarch64-apple-ios, os: macos-15 }
           - {
               target: aarch64-unknown-linux-gnu,
               os: ubuntu-22.04,
@@ -575,7 +573,6 @@ jobs:
               cargo-args: "--no-default-features",
             }
           - { target: x86_64-apple-darwin, os: macos-15 }
-          - { target: x86_64-apple-ios, os: macos-15 }
           - { target: x86_64-pc-windows-gnu, os: windows-2022 }
           - { target: x86_64-pc-windows-msvc, os: windows-2022 }
           - {
