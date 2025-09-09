@@ -109,6 +109,8 @@ defmodule Ash.Resource.Preparation do
               Ash.Query.t() | Ash.ActionInput.t()
   @callback supports(opts :: Keyword.t()) :: [module()]
 
+  @optional_callbacks init:1, supports:1
+
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Preparation
