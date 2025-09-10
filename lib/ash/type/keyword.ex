@@ -157,7 +157,7 @@ defmodule Ash.Type.Keyword do
 
   def dump_to_native(value, _) do
     if Keyword.keyword?(value) do
-      {:ok, Keyword.new(value)}
+      {:ok, Map.new(value)}
     else
       :error
     end
