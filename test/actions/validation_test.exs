@@ -221,4 +221,56 @@ defmodule Ash.Test.Actions.ValidationTest do
       |> Ash.update!()
     end
   end
+
+  describe "conditional present validation with where clause" do
+    defmodule Person do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Domain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private? true
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, create: :*, update: :*]
+      end
+
+      validations do
+        validate present([:first_name, :last_name], where: [absent(:full_name)]) do
+          message "must have either first_name and last_name or full_name"
+        end
+      end
+
+      attributes do
+        uuid_primary_key :id
+
+        attribute :first_name, :string do
+          public?(true)
+        end
+
+        attribute :last_name, :string do
+          public?(true)
+        end
+
+        attribute :full_name, :string do
+          public?(true)
+        end
+      end
+    end
+
+    test "validation does not trigger error when full_name is present" do
+      assert_raise(
+        Ash.Error.Invalid,
+        ~r/unknown options \[:where\], valid options are: \[:at_least, :at_most, :exactly, :attributes\]/,
+        fn ->
+          Person
+          |> Ash.Changeset.for_create(:create, %{full_name: "John Doe"})
+          |> Ash.create!()
+        end
+      )
+    end
+  end
 end
