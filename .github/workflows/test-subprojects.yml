@@ -32,6 +32,7 @@ jobs:
             { org: "ash-project", name: "ash_state_machine" },
             { org: "ash-project", name: "ash_appsignal" },
             { org: "ash-project", name: "ash_oban", migrate: true },
+            { org: "ash-project", name: "ash_typescript" },
             {
               org: "ash-project",
               name: "ash_sqlite",
