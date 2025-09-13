@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.5.40](https://github.com/ash-project/ash/compare/v3.5.39...v3.5.40) (2025-09-13)
+
+
+
+
+### Bug Fixes:
+
+* Make Ash.Type.Keyword.dump_to_native return a map. (#2318) by Torkild Gundersen Kjevik
+
+* nif rustler_precompiled: update targets to ubuntu-22.04 and extend release list to prevent stuck builds by Shahryar Tavakkoli
+
+* update targets to ubuntu-22.04 and extend release list to prevent stuck builds (#2311) by Shahryar Tavakkoli
+
+* Runtime upsert_fields option is not passed to data layer in certain cases (#2310) by jlgeering
+
+* if nils_distinct?, consider multitenancy attribute as an upsert key by Zach Daniel
+
 ## [v3.5.39](https://github.com/ash-project/ash/compare/v3.5.38...v3.5.39) (2025-09-06)
 
 
