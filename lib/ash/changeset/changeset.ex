@@ -3858,54 +3858,56 @@ defmodule Ash.Changeset do
               changeset: changeset
             )
 
-          with {:ok, opts} <- validation.module.init(opts),
-               :ok <-
-                 Ash.Resource.Validation.validate(
-                   validation.module,
-                   changeset,
-                   opts,
-                   struct(
-                     Ash.Resource.Validation.Context,
-                     Map.put(context, :message, validation.message)
-                   )
-                 ) do
-            changeset
-          else
-            :ok ->
-              changeset
-
-            {:error, error} when is_binary(error) ->
-              Ash.Changeset.add_error(changeset, validation.message || error)
-
-            {:error, error} when is_exception(error) ->
-              if validation.message do
-                error = Ash.Error.override_validation_message(error, validation.message)
-                add_error(changeset, error)
-              else
-                add_error(changeset, error)
-              end
-
-            {:error, errors} when is_list(errors) ->
-              if validation.message do
-                errors =
-                  Enum.map(errors, fn error ->
-                    Ash.Error.override_validation_message(error, validation.message)
-                  end)
-
-                add_error(changeset, errors)
-              else
-                add_error(changeset, errors)
-              end
-
+          case validation.module.init(opts) do
             {:error, error} ->
-              error =
-                if Keyword.keyword?(error) do
-                  Keyword.put(error, :message, validation.message || error[:message])
-                else
-                  validation.message || error
-                end
-
               Ash.Changeset.add_error(changeset, error)
+
+            {:ok, opts} ->
+              case Ash.Resource.Validation.validate(
+                     validation.module,
+                     changeset,
+                     opts,
+                     struct(
+                       Ash.Resource.Validation.Context,
+                       Map.put(context, :message, validation.message)
+                     )
+                   ) do
+                :ok ->
+                  changeset
+
+                {:error, error} when is_binary(error) ->
+                  Ash.Changeset.add_error(changeset, validation.message || error)
+
+                {:error, error} when is_exception(error) ->
+                  if validation.message do
+                    error = Ash.Error.override_validation_message(error, validation.message)
+                    add_error(changeset, error)
+                  else
+                    add_error(changeset, error)
+                  end
+
+                {:error, errors} when is_list(errors) ->
+                  if validation.message do
+                    errors =
+                      Enum.map(errors, fn error ->
+                        Ash.Error.override_validation_message(error, validation.message)
+                      end)
+
+                    add_error(changeset, errors)
+                  else
+                    add_error(changeset, errors)
+                  end
+
+                {:error, error} ->
+                  error =
+                    if Keyword.keyword?(error) do
+                      Keyword.put(error, :message, validation.message || error[:message])
+                    else
+                      validation.message || error
+                    end
+
+                  Ash.Changeset.add_error(changeset, error)
+              end
           end
         end
       end
