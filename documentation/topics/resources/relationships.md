@@ -142,6 +142,22 @@ attribute on `MyApp.Profile` is `:user_id`.
 A `has_one` is similar to a `belongs_to` except the reference attribute is on
 the destination resource, instead of the source.
 
+`has_one` is specially useful when trying to load only one of a `has_many`. For example, to load the latest tweet.
+
+```elixir
+# on MyApp.User
+has_many :tweets, MyApp.Tweet
+
+has_one :latest_tweet, MyApp.Tweet do
+  sort inserted_at: :desc
+end
+
+# then load it
+iex> Ash.get!(User, 1, load: [:latest_tweet])
+# %User{id: 1, latest_tweet: %Tweet{id: 23}}
+
+```
+
 #### Attribute Defaults
 
 By default, the `source_attribute` is assumed to be `:id`, and
