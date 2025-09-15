@@ -354,8 +354,10 @@ graph TD
 - Initial setup and parameter validation
 
 ##### 2. Changeset/Query Creation
-- Creates appropriate changeset or query structure
-- Applies initial transformations and validations
+1. Creates appropriate changeset or query structure
+1. Applies initial transformations and validations
+1. Global changes/preparations/validations (in order of definition)
+1. Action changes/preparations/validations (in order of definition)
 
 ##### 3. around_transaction (Start)
 - **When**: Before transaction begins
@@ -521,8 +523,6 @@ The hooks execute in the following order (as of Ash 3.0+):
 1. `around_transaction` (start)
 1. `before_transaction`
 1. Transaction begins
-1. Action preparations/validations/changes (in order of definition)
-1. Global preparations/validations/changes (in order of definition)
 1. `around_action` (start)
 1. `before_action`
 1. Data layer operation
@@ -537,8 +537,6 @@ The hooks execute in the following order (as of Ash 3.0+):
 1. `around_transaction` (start)
 1. `before_transaction`
 1. Transaction begins (if applicable)
-1. Global preparations/validations/changes (in order of definition)
-1. Action preparations/validations/changes (in order of definition)
 1. `around_action` (start)
 1. `before_action`
 1. Data layer operation
@@ -553,8 +551,6 @@ The hooks execute in the following order (as of Ash 3.0+):
 1. `around_transaction` (start)
 1. `before_transaction`
 1. Transaction begins (if `transaction? true`)
-1. Global preparations/validations (in order of definition)
-1. Action preparations/validations (in order of definition)
 1. `around_action` (start)
 1. `before_action`
 1. Custom action logic execution
