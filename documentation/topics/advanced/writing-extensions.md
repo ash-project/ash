@@ -171,7 +171,7 @@ Then we would configure that this base resource exists, with
 
 Now in our resources instead of `use Ash.Resource`, we say `use MyApp.Resource`.
 
-Use `mix ash.gen.base_resource` to create one of these.:w
+Use `mix ash.gen.base_resource` to create one of these.
 
 This pattern is relatively limited, good for simple things like making sure that all
 of our resources use a particular extension. See the section above on extensions for the
