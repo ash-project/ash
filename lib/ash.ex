@@ -3803,6 +3803,16 @@ defmodule Ash do
 
       To send notifications use `Ash.Notifier.notify(notifications)`. It sends any notifications that can be sent, and returns the rest.
       """
+    ],
+    rollback_on_error?: [
+      type: :boolean,
+      default: Application.compile_env(:ash, :transaction_rollback_on_error?, false),
+      doc: """
+      Whether or not to rollback the transaction on error, if the resource is in a transaction.
+
+      If the callback returns `{:error, _}`, automatically calls `Ash.DataLayer.rollback/2`.
+      Defaults to the value of `:transaction_rollback_on_error?` in your `:ash` config, or `false` if not set.
+      """
     ]
   ]
 
@@ -3837,6 +3847,38 @@ defmodule Ash do
       ...> end, return_notifications?: true)
       {:ok, %MyApp.Post{title: "Test"}, [%Ash.Notifier.Notification{}]}
 
+      # Automatic rollback on error
+
+      iex> Ash.transaction(MyApp.Post, fn ->
+      ...>   Ash.create(MyApp.Post, %{title: "Valid Post"})
+      ...>   {:error, :something_went_wrong}
+      ...> end, rollback_on_error?: true)
+      {:error, :something_went_wrong}
+
+      # Transaction was automatically rolled back, no post was created
+
+      # Per-call option overrides application config
+
+      iex> Ash.transaction(MyApp.Post, fn ->
+      ...>   Ash.create(MyApp.Post, %{title: "Another Post"})
+      ...>   {:error, :oops}
+      ...> end, rollback_on_error?: false)
+      {:error, :oops}
+
+      # Transaction was NOT rolled back, post was created
+
+  ## Configuration
+
+  You can set a default rollback behavior for your entire application:
+
+      # config/config.exs
+      config :ash, transaction_rollback_on_error?: true
+
+  **Option Precedence** (highest to lowest priority):
+  1. Per-call `rollback_on_error?` option
+  2. Application config `:transaction_rollback_on_error?`
+  3. Default value (`false`)
+
   ## See also
 
   - [Actions Guide](/documentation/topics/actions/actions.md) for understanding action concepts
@@ -3863,7 +3905,13 @@ defmodule Ash do
       with {:ok, opts} <- TransactionOpts.validate(opts),
            opts <- TransactionOpts.to_options(opts),
            {:ok, result} <-
-             Ash.DataLayer.transaction(resource_or_resources, func, opts[:timeout], opts[:reason]) do
+             Ash.DataLayer.transaction(
+               resource_or_resources,
+               func,
+               opts[:timeout],
+               %{type: :custom, metadata: %{}},
+               Keyword.take(opts, [:rollback_on_error?])
+             ) do
         if opts[:return_notifications?] do
           notifications = Process.delete(:ash_notifications) || []
 

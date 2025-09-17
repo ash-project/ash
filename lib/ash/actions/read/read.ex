@@ -1490,7 +1490,8 @@ defmodule Ash.Actions.Read do
                 action: query.action.name
               },
               data_layer_context: query.context[:data_layer]
-            }
+            },
+            rollback_on_error?: false
           )
           |> case do
             {:error, :rollback} when not is_nil(query.timeout) ->

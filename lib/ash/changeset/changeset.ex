@@ -4201,7 +4201,8 @@ defmodule Ash.Changeset do
               opts[:transaction_metadata],
               :data_layer_context,
               changeset.context[:data_layer] || %{}
-            )
+            ),
+            rollback_on_error?: false
           )
           |> case do
             {:ok, {:ok, value, changeset, instructions}} ->

@@ -24,7 +24,9 @@ defmodule Ash.Reactor.TransactionStep do
             Ash.DataLayer.rollback(resources, reasons)
         end
       end,
-      timeout
+      timeout,
+      %{type: :reactor_transaction, metadata: %{}},
+      rollback_on_error?: false
     )
   end
 end

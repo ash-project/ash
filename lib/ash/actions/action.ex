@@ -107,7 +107,8 @@ defmodule Ash.Actions.Action do
                 actor: opts[:actor]
               },
               data_layer_context: input.context[:data_layer] || %{}
-            }
+            },
+            rollback_on_error?: false
           )
           |> case do
             {:ok, {:ok, result, notifications}} ->

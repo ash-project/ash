@@ -287,7 +287,8 @@ defmodule Ash.Actions.Update.Bulk do
                   actor: opts[:actor]
                 },
                 data_layer_context: opts[:data_layer_context] || %{}
-              }
+              },
+              rollback_on_error?: false
             )
           else
             {:ok, do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)}
@@ -436,7 +437,8 @@ defmodule Ash.Actions.Update.Bulk do
               actor: opts[:actor]
             },
             data_layer_context: opts[:data_layer_context] || %{}
-          }
+          },
+          rollback_on_error?: false
         )
         |> case do
           {:ok, bulk_result} ->
@@ -1856,7 +1858,8 @@ defmodule Ash.Actions.Update.Bulk do
               actor: opts[:actor]
             },
             data_layer_context: opts[:data_layer_context] || context
-          }
+          },
+          rollback_on_error?: false
         )
         |> case do
           {:ok, result} ->
