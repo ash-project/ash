@@ -29,6 +29,7 @@ defmodule Ash.Query.Operator.Has do
       ) do
     cond do
       left_right == right_right -> :mutually_inclusive
+      left_right != right_right -> :mutually_exclusive
       true -> :unknown
     end
   end
