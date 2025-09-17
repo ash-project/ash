@@ -37,14 +37,12 @@ defmodule Ash.Query.Operator.Overlaps do
       MapSet.disjoint?(mapset_left, mapset_right) -> :mutually_exclusive
       true -> :unknown
     end
-
   end
 
   def compare(
         %__MODULE__{left: left, right: %MapSet{} = mapset},
         %Ash.Query.Operator.Has{left: left, right: value}
       ) do
-    
     if MapSet.member?(mapset, value) do
       :left_includes_right
     else

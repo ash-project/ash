@@ -51,7 +51,9 @@ defmodule Ash.Filter do
     In,
     LessThan,
     LessThanOrEqual,
-    NotEq
+    NotEq,
+    Has,
+    Overlaps
   }
 
   alias Ash.Query.{BooleanExpression, Call, Not, Ref}
@@ -100,7 +102,9 @@ defmodule Ash.Filter do
                LessThan,
                GreaterThan,
                LessThanOrEqual,
-               GreaterThanOrEqual
+               GreaterThanOrEqual,
+               Has,
+               Overlaps
              ] ++ Ash.Query.Operator.Basic.operator_modules()
 
   @builtins @functions ++ @operators

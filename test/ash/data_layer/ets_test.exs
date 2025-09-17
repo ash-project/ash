@@ -40,6 +40,7 @@ defmodule Ash.DataLayer.EtsTest do
       attribute :name, :string, public?: true
       attribute :age, :integer, public?: true
       attribute :title, :string, public?: true
+      attribute :roles, {:array, :string}, public?: true
     end
   end
 
@@ -181,10 +182,10 @@ defmodule Ash.DataLayer.EtsTest do
 
   describe "filter" do
     setup do
-      mike = create_user(%{name: "Mike", age: 37, title: "Dad"})
-      joe = create_user(%{name: "Joe", age: 11})
-      matthew = create_user(%{name: "Matthew", age: 9})
-      zachary = create_user(%{name: "Zachary", age: 6})
+      mike = create_user(%{name: "Mike", age: 37, title: "Dad", roles: ["user"]})
+      joe = create_user(%{name: "Joe", age: 11, roles: ["client"]})
+      matthew = create_user(%{name: "Matthew", age: 9, roles: ["manager", "support"]})
+      zachary = create_user(%{name: "Zachary", age: 6, roles: ["admin", "support"]})
       %{mike: mike, zachary: zachary, matthew: matthew, joe: joe}
     end
 
@@ -192,6 +193,84 @@ defmodule Ash.DataLayer.EtsTest do
       assert [^zachary] = strip_metadata(filter_users(name: "Zachary"))
       assert [^joe] = strip_metadata(filter_users(name: "Joe"))
       assert [^matthew] = strip_metadata(filter_users(age: 9))
+    end
+
+    @tag :overlaps_and_has
+    test "or, overlaps, eq", %{mike: mike, zachary: zachary, joe: joe} do
+      assert [^joe, ^mike, ^zachary] =
+               strip_metadata(
+                 filter_users(
+                   or: [
+                     [roles: [overlaps: ["user", "admin"]]],
+                     [age: [eq: 11]]
+                   ]
+                 )
+               )
+    end
+
+    @tag :overlaps_and_has
+    test "and, overlaps, eq", %{mike: mike} do
+      assert [^mike] =
+               strip_metadata(
+                 filter_users(
+                   and: [
+                     [roles: [overlaps: ["user", "admin"]]],
+                     [age: [eq: 37]]
+                   ]
+                 )
+               )
+    end
+
+    @tag :overlaps_and_has
+    test "and, overlaps, not", %{zachary: zachary} do
+      assert [^zachary] =
+               strip_metadata(
+                 filter_users(
+                   and: [
+                     [roles: [overlaps: ["user", "admin"]]],
+                     [not: [age: 37]]
+                   ]
+                 )
+               )
+    end
+
+    @tag :overlaps_and_has
+    test "or, has, eq", %{matthew: matthew, zachary: zachary, joe: joe} do
+      assert [^joe, ^matthew, ^zachary] =
+               strip_metadata(
+                 filter_users(
+                   or: [
+                     [roles: [has: "support"]],
+                     [age: [eq: 11]]
+                   ]
+                 )
+               )
+    end
+
+    @tag :overlaps_and_has
+    test "and, has, eq", %{matthew: matthew} do
+      assert [^matthew] =
+               strip_metadata(
+                 filter_users(
+                   and: [
+                     [roles: [has: "support"]],
+                     [age: [eq: 9]]
+                   ]
+                 )
+               )
+    end
+
+    @tag :overlaps_and_has
+    test "and, has, not", %{zachary: zachary} do
+      assert [^zachary] =
+               strip_metadata(
+                 filter_users(
+                   and: [
+                     [roles: [has: "support"]],
+                     [not: [age: 9]]
+                   ]
+                 )
+               )
     end
 
     test "or, in, eq", %{mike: mike, zachary: zachary, joe: joe} do
