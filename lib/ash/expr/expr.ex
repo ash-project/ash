@@ -1531,6 +1531,9 @@ defmodule Ash.Expr do
       %{__struct__: Ash.Query.UpsertConflict, expr: expr} ->
         determine_type(expr)
 
+      %{__struct__: Ash.Query.Function.GetPath, arguments: [left, path]} ->
+        determine_get_path_type(left, path)
+
       %mod{__predicate__?: _, arguments: arguments} ->
         case determine_types(mod, arguments, nil, true) do
           {_, nil} -> :error
@@ -1547,6 +1550,112 @@ defmodule Ash.Expr do
         :error
     end
   end
+
+  defp determine_get_path_type(left, path) do
+    path = List.wrap(path)
+
+    with {:ok, {type, constraints}} <- determine_type(left),
+         {:ok, {type, constraints}} <- walk_get_path({type, constraints || []}, path) do
+      {:ok, {type, constraints}}
+    else
+      _ -> :error
+    end
+  end
+
+  defp walk_get_path({type, constraints}, []) do
+    {:ok, {type, constraints}}
+  end
+
+  defp walk_get_path({{:array, type}, constraints}, [segment | rest]) when is_integer(segment) do
+    walk_get_path({type, get_item_constraints(constraints)}, rest)
+  end
+
+  defp walk_get_path({type, constraints}, [segment | rest]) when is_integer(segment) do
+    case Ash.Type.get_type(type) do
+      {:array, inner_type} ->
+        walk_get_path({inner_type, get_item_constraints(constraints)}, rest)
+
+      _ ->
+        :error
+    end
+  end
+
+  defp walk_get_path({type, constraints}, [segment | rest])
+       when is_atom(segment) or is_binary(segment) do
+    constraints = constraints || []
+
+    cond do
+      type && Ash.Type.embedded_type?(type) ->
+        base_type =
+          if Ash.Type.NewType.new_type?(type) do
+            Ash.Type.NewType.subtype_of(type)
+          else
+            type
+          end
+
+        case Ash.Resource.Info.attribute(base_type, segment) do
+          %{type: attr_type, constraints: attr_constraints} ->
+            walk_get_path({attr_type, attr_constraints || []}, rest)
+
+          _ ->
+            :error
+        end
+
+      type && Ash.Type.composite?(type, constraints) ->
+        case find_composite_member(type, constraints, segment) do
+          {:ok, {member_type, member_constraints}} ->
+            walk_get_path({member_type, member_constraints || []}, rest)
+
+          :error ->
+            :error
+        end
+
+      true ->
+        :error
+    end
+  end
+
+  defp walk_get_path(_type, _path), do: :error
+
+  defp find_composite_member(type, constraints, key) do
+    type
+    |> Ash.Type.composite_types(constraints || [])
+    |> Enum.map(fn
+      {name, member_type, member_constraints} ->
+        {name, nil, member_type, member_constraints}
+
+      {name, storage_key, member_type, member_constraints} ->
+        {name, storage_key, member_type, member_constraints}
+    end)
+    |> Enum.find(fn {name, storage_key, _member_type, _member_constraints} ->
+      matches_key?(name, key) || matches_key?(storage_key, key)
+    end)
+    |> case do
+      {_, _, member_type, member_constraints} ->
+        {:ok, {member_type, member_constraints}}
+
+      _ ->
+        :error
+    end
+  end
+
+  defp matches_key?(nil, _key), do: false
+
+  defp matches_key?(key_value, key) when is_binary(key) do
+    to_string(key_value) == key
+  end
+
+  defp matches_key?(key_value, key) when is_atom(key) do
+    key_value == key || to_string(key_value) == Atom.to_string(key)
+  end
+
+  defp matches_key?(key_value, key), do: key_value == key
+
+  defp get_item_constraints(constraints) when is_list(constraints) do
+    Keyword.get(constraints, :items) || []
+  end
+
+  defp get_item_constraints(_constraints), do: []
 
   defp get_type({type, constraints}) do
     if type = Ash.Type.get_type(type) do
