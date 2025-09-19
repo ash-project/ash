@@ -4417,10 +4417,7 @@ defmodule Ash.Filter do
       ) do
     new_resource = Ash.Resource.Info.related(context[:resource], at_path ++ path)
 
-    if !new_resource do
-      {:error,
-       "No related resource at path #{inspect(at_path ++ path)} for #{inspect(context[:resource])}"}
-    else
+    if new_resource do
       context = %{
         resource: new_resource,
         root_resource: new_resource,
@@ -4438,6 +4435,9 @@ defmodule Ash.Filter do
         other ->
           other
       end
+    else
+      {:error,
+       "No related resource at path #{inspect(at_path ++ path)} for #{inspect(context[:resource])}"}
     end
   end
 
