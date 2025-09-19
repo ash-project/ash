@@ -1595,7 +1595,7 @@ defmodule Ash.Expr do
 
         case Ash.Resource.Info.attribute(base_type, segment) do
           %{type: attr_type, constraints: attr_constraints} ->
-            walk_get_path({attr_type, attr_constraints || []}, rest)
+            walk_get_path({attr_type, attr_constraints}, rest)
 
           _ ->
             :error
@@ -1648,8 +1648,6 @@ defmodule Ash.Expr do
   defp matches_key?(key_value, key) when is_atom(key) do
     key_value == key || to_string(key_value) == Atom.to_string(key)
   end
-
-  defp matches_key?(key_value, key), do: key_value == key
 
   defp get_item_constraints(constraints) when is_list(constraints) do
     Keyword.get(constraints, :items) || []

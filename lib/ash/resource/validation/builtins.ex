@@ -79,6 +79,21 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
+  Validates that at least one of the provided validations passes
+
+  ## Examples
+
+      validate any([
+        one_of(:status, [:valid]),
+        match(:title, "^[a-z]+$")
+      ])
+  """
+  @spec any(validations :: list(Validation.ref())) :: Validation.ref()
+  def any(validations) do
+    {Validation.Any, validations: validations}
+  end
+
+  @doc """
   Validates that the action name matches the provided action name or names. Primarily meant for use in `where`.
 
   ## Examples
