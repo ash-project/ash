@@ -4417,22 +4417,27 @@ defmodule Ash.Filter do
       ) do
     new_resource = Ash.Resource.Info.related(context[:resource], at_path ++ path)
 
-    context = %{
-      resource: new_resource,
-      root_resource: new_resource,
-      parent_stack: [context[:root_resource] | context[:parent_stack] || []],
-      relationship_path: [],
-      public?: context[:public?],
-      input?: context[:input?],
-      data_layer: Ash.DataLayer.data_layer(new_resource)
-    }
+    if !new_resource do
+      {:error,
+       "No related resource at path #{inspect(at_path ++ path)} for #{inspect(context[:resource])}"}
+    else
+      context = %{
+        resource: new_resource,
+        root_resource: new_resource,
+        parent_stack: [context[:root_resource] | context[:parent_stack] || []],
+        relationship_path: [],
+        public?: context[:public?],
+        input?: context[:input?],
+        data_layer: Ash.DataLayer.data_layer(new_resource)
+      }
 
-    case do_hydrate_refs(expr, context) do
-      {:ok, expr} ->
-        {:ok, %{exists | expr: expr}}
+      case do_hydrate_refs(expr, context) do
+        {:ok, expr} ->
+          {:ok, %{exists | expr: expr}}
 
-      other ->
-        other
+        other ->
+          other
+      end
     end
   end
 
