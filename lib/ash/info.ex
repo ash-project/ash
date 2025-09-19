@@ -73,8 +73,9 @@ defmodule Ash.Info do
   """
   @spec defined_extensions(app :: Application.app()) :: [module()]
   def defined_extensions(app) do
-    app
-    |> Application.spec(:modules)
-    |> Enum.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
+    modules = Application.spec(app, :modules)
+    # Preload the modules to improve performance.
+    Code.ensure_all_loaded(modules)
+    Enum.filter(modules, &Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
   end
 end
