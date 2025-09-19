@@ -41,7 +41,9 @@ defmodule Ash.Filter do
     StringSplit,
     StringTrim,
     Today,
-    Type
+    Type,
+    Has,
+    Intersects
   }
 
   alias Ash.Query.Operator.{
@@ -51,9 +53,7 @@ defmodule Ash.Filter do
     In,
     LessThan,
     LessThanOrEqual,
-    NotEq,
-    Has,
-    Overlaps
+    NotEq
   }
 
   alias Ash.Query.{BooleanExpression, Call, Not, Ref}
@@ -89,7 +89,9 @@ defmodule Ash.Filter do
     StringLength,
     StringPosition,
     StringSplit,
-    StringTrim
+    StringTrim,
+    Has,
+    Intersects
   ]
 
   @inline_aggregates [:count, :first, :sum, :list, :max, :min, :avg, :custom_aggregate]
@@ -102,9 +104,7 @@ defmodule Ash.Filter do
                LessThan,
                GreaterThan,
                LessThanOrEqual,
-               GreaterThanOrEqual,
-               Has,
-               Overlaps
+               GreaterThanOrEqual
              ] ++ Ash.Query.Operator.Basic.operator_modules()
 
   @builtins @functions ++ @operators
