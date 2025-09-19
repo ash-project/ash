@@ -19,8 +19,8 @@ defmodule Ash.Test.Resource.Validation.AnyTest do
 
       update :update_with_any_validation do
         validate any([
-                   Ash.Resource.Validation.Builtins.one_of(:status, [:valid]),
-                   Ash.Resource.Validation.Builtins.match(:title, "^[a-z]+$")
+                   one_of(:status, [:valid]),
+                   match(:title, "^[a-z]+$")
                  ])
       end
     end
@@ -172,7 +172,6 @@ defmodule Ash.Test.Resource.Validation.AnyTest do
         |> Ash.Changeset.for_create(:create, %{status: :invalid, title: "UPPERCASE"})
         |> Ash.create!()
 
-      # Should pass because status becomes :valid (matches one_of validation), even though title fails the match
       updated_post =
         post
         |> Ash.Changeset.for_update(:update_with_any_validation, %{
@@ -191,7 +190,6 @@ defmodule Ash.Test.Resource.Validation.AnyTest do
         |> Ash.Changeset.for_create(:create, %{status: :invalid, title: "UPPERCASE"})
         |> Ash.create!()
 
-      # Should pass because title becomes lowercase (matches regex validation), even though status fails one_of
       updated_post =
         post
         |> Ash.Changeset.for_update(:update_with_any_validation, %{
