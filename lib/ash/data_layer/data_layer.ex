@@ -83,6 +83,8 @@ defmodule Ash.DataLayer do
           | {:query_aggregate, Ash.Query.Aggregate.kind()}
           | :select
           | :expr_error
+          | :calculate
+          | :expression_calculation
           | :expression_calculation_sort
           | :aggregate_filter
           | :aggregate_sort
