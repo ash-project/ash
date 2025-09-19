@@ -40,7 +40,7 @@ defmodule Ash.DataLayer.EtsTest do
       attribute :name, :string, public?: true
       attribute :age, :integer, public?: true
       attribute :title, :string, public?: true
-      attribute :roles, {:array, :string}, public?: true
+      attribute :roles, {:array, :atom}, public?: true
     end
   end
 
@@ -182,10 +182,10 @@ defmodule Ash.DataLayer.EtsTest do
 
   describe "filter" do
     setup do
-      mike = create_user(%{name: "Mike", age: 37, title: "Dad", roles: ["user"]})
-      joe = create_user(%{name: "Joe", age: 11, roles: ["client"]})
-      matthew = create_user(%{name: "Matthew", age: 9, roles: ["manager", "support"]})
-      zachary = create_user(%{name: "Zachary", age: 6, roles: ["admin", "support"]})
+      mike = create_user(%{name: "Mike", age: 37, title: "Dad", roles: [:user]})
+      joe = create_user(%{name: "Joe", age: 11, roles: [:admin, :support]})
+      matthew = create_user(%{name: "Matthew", age: 9, roles: [:admin, :manager]})
+      zachary = create_user(%{name: "Zachary", age: 6, roles: [:admin, :manager]})
       %{mike: mike, zachary: zachary, matthew: matthew, joe: joe}
     end
 
@@ -193,6 +193,22 @@ defmodule Ash.DataLayer.EtsTest do
       assert [^zachary] = strip_metadata(filter_users(name: "Zachary"))
       assert [^joe] = strip_metadata(filter_users(name: "Joe"))
       assert [^matthew] = strip_metadata(filter_users(age: 9))
+    end
+
+    test "has", %{matthew: matthew, zachary: zachary, joe: joe} do
+      assert [^joe, ^matthew, ^zachary] =
+               strip_metadata(filter_users(roles: [has: :admin]))
+
+      assert [] =
+               filter_users(roles: [has: :unknown])
+    end
+
+    test "intersects", %{matthew: matthew, zachary: zachary, joe: joe} do
+      assert [^joe, ^matthew, ^zachary] =
+               strip_metadata(filter_users(roles: [intersects: [:manager, :support]]))
+
+      assert [] =
+               filter_users(roles: [intersects: [:unknown]])
     end
 
     test "or, in, eq", %{mike: mike, zachary: zachary, joe: joe} do
