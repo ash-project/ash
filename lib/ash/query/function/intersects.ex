@@ -2,16 +2,16 @@ defmodule Ash.Query.Function.Intersects do
   @moduledoc """
   Returns true if the two arguments intersect.
 
-     overlaps([1, 2, 3], [1])
+     intersects([1, 2, 3], [1])
      true
 
-     overlaps([1, 2, 3], [4])
+     intersects([1, 2, 3], [4])
      false
 
-     overlaps([1], nil)
+     intersects([1], nil)
      nil
 
-     overlaps(nil, [1])
+     intersects(nil, [1])
      nil
   """
   use Ash.Query.Function, name: :intersects, predicate?: true
