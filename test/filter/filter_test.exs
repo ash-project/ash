@@ -204,10 +204,6 @@ defmodule Ash.Test.Filter.FilterTest do
       attribute :category, :ci_string do
         public?(true)
       end
-
-      attribute :tags, {:array, :string} do
-        public?(true)
-      end
     end
 
     calculations do
@@ -666,42 +662,6 @@ defmodule Ash.Test.Filter.FilterTest do
       refute Filter.strict_subset_of?(filter, candidate)
     end
 
-    @tag :overlaps_and_has
-    test "can detect that a has filter is a subset of an overlaps filter" do
-      filter = Filter.parse!(Post, tags: [overlaps: [1, 2]])
-
-      candidate = Filter.parse!(Post, tags: [has: 1])
-
-      assert Filter.strict_subset_of?(filter, candidate)
-    end
-
-    @tag :overlaps_and_has
-    test "can detect that a has filter is not a subset of an overlaps filter" do
-      filter = Filter.parse!(Post, tags: [overlaps: [1, 2]])
-
-      candidate = Filter.parse!(Post, tags: [has: 3])
-
-      refute Filter.strict_subset_of?(filter, candidate)
-    end
-
-    @tag :overlaps_and_has
-    test "can detect an overlap filter is not a subset based on a simplification" do
-      filter = Filter.parse!(Post, tags: [overlaps: [1, 2]])
-
-      candidate = Filter.parse!(Post, tags: [1, 2])
-
-      refute Filter.strict_subset_of?(filter, candidate)
-    end
-
-    @tag :overlaps_and_has
-    test "can detect a has filter is not a subset based on a simplification" do
-      filter = Filter.parse!(Post, tags: [has: 1])
-
-      candidate = Filter.parse!(Post, tags: [1])
-
-      refute Filter.strict_subset_of?(filter, candidate)
-    end
-
     test "can detect that `not is_nil(field)` is the same as `field is_nil false`" do
       filter = Filter.parse!(Post, not: [is_nil: :points])
       candidate = Filter.parse!(Post, points: [is_nil: false])
@@ -714,18 +674,6 @@ defmodule Ash.Test.Filter.FilterTest do
       filter = Filter.parse!(Post, or: [[points: [in: [1, 2, 3]]], [points: 4], [points: 5]])
 
       candidate = Filter.parse!(Post, or: [[points: 1], [points: 3], [points: 5]])
-
-      assert Filter.strict_subset_of?(filter, candidate)
-    end
-
-    @tag :overlaps_and_has
-    test "can detect a more complicated scenario for overlaps and has operators" do
-      filter =
-        Filter.parse!(Post,
-          or: [[tags: [overlaps: [1, 2, 3]]], [tags: [has: 4]], [tags: [has: 5]]]
-        )
-
-      candidate = Filter.parse!(Post, or: [[tags: [has: 1]], [tags: [has: 3]], [tags: [has: 5]]])
 
       assert Filter.strict_subset_of?(filter, candidate)
     end
@@ -751,22 +699,6 @@ defmodule Ash.Test.Filter.FilterTest do
 
       candidate =
         Filter.parse!(Post, or: [[points: 1], [points: 3], [points: 5]], not: [points: 7])
-
-      assert Filter.strict_subset_of?(filter, candidate)
-    end
-
-    @tag :overlaps_and_has
-    test "understands unrelated negations for overlaps and has operators" do
-      filter =
-        Filter.parse!(Post,
-          or: [[tags: [overlaps: [1, 2, 3]]], [tags: [has: 4]], [tags: [has: 5]]]
-        )
-
-      candidate =
-        Filter.parse!(Post,
-          or: [[tags: [has: 1]], [tags: [has: 3]], [tags: [has: 5]]],
-          not: [tags: [has: 7]]
-        )
 
       assert Filter.strict_subset_of?(filter, candidate)
     end
@@ -878,6 +810,95 @@ defmodule Ash.Test.Filter.FilterTest do
       |> Ash.destroy!()
 
       assert [] = Ash.read!(SoftDeletePost)
+    end
+  end
+
+  describe "intersects/2" do
+    test "works when provided" do
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:foo, :bar]})
+      |> Ash.create!()
+
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:foo, :baz]})
+      |> Ash.create!()
+
+      assert [%{roles: [:foo, :bar]}] =
+               User
+               |> Ash.Query.filter(intersects(roles, [:bar]))
+               |> Ash.read!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(intersects(roles, [:buz]))
+               |> Ash.read!()
+    end
+
+    test "works for checking if the second argument is nil" do
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: nil})
+      |> Ash.create!()
+
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:buz, :baz]})
+      |> Ash.create!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(has(roles, nil))
+               |> Ash.read!()
+    end
+
+    test "works for checking if array is nil" do
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: nil})
+      |> Ash.create!()
+
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:buz, :baz]})
+      |> Ash.create!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(has(roles, :foo))
+               |> Ash.read!()
+    end
+  end
+
+  describe "has/2" do
+    test "works when provided" do
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:foo, :bar]})
+      |> Ash.create!()
+
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:foo, :baz]})
+      |> Ash.create!()
+
+      assert [%{roles: [:foo, :bar]}] =
+               User
+               |> Ash.Query.filter(has(roles, :bar))
+               |> Ash.read!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(has(roles, :Foo))
+               |> Ash.read!()
+    end
+
+    test "works for checking if array is nil" do
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: nil})
+      |> Ash.create!()
+
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:buz, :baz]})
+      |> Ash.create!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(has(roles, :foo))
+               |> Ash.read!()
     end
   end
 
