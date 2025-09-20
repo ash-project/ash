@@ -219,7 +219,7 @@ if Code.ensure_loaded?(Igniter) do
       end)
       |> then(fn igniter ->
         if igniter.args.options[:setup] do
-          Igniter.add_task(igniter, "ash.setup")
+          Igniter.delay_task(igniter, "ash.setup")
         else
           igniter
         end

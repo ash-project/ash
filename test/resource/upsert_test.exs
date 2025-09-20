@@ -282,13 +282,13 @@ defmodule Ash.Test.Resource.UpsertTest do
 
       # This should fail because the upsert_condition is false
       assert {:error, _} =
-        Product
-        |> Ash.Changeset.for_create(:create, %{name: "John", other: "updated"},
-          upsert?: true,
-          upsert_identity: :unique_name,
-          upsert_condition: expr(false)
-        )
-        |> Ash.create()
+               Product
+               |> Ash.Changeset.for_create(:create, %{name: "John", other: "updated"},
+                 upsert?: true,
+                 upsert_identity: :unique_name,
+                 upsert_condition: expr(false)
+               )
+               |> Ash.create()
     end
   end
 end

@@ -395,7 +395,7 @@ defmodule Ash.MixProject do
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Code Generators
-      {:igniter, "~> 0.6 and >= 0.6.4", optional: true},
+      {:igniter, "~> 0.6 and >= 0.6.29", optional: true},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
