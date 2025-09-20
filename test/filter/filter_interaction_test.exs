@@ -64,6 +64,10 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
+    mnesia do
+      table :post_link
+    end
+
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]

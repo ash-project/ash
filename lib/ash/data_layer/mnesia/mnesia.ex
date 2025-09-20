@@ -275,7 +275,7 @@ defmodule Ash.DataLayer.Mnesia do
       ) do
     with {:atomic, records} <-
            Mnesia.transaction(fn ->
-             Mnesia.select(Ash.DataLayer.Ets.Info.table(resource), [{:_, [], [:"$_"]}])
+             Mnesia.select(Ash.DataLayer.Mnesia.Info.table(resource), [{:_, [], [:"$_"]}])
            end),
          {:ok, records} <-
            records |> Enum.map(&elem(&1, 2)) |> Ash.DataLayer.Ets.cast_records(resource),
@@ -336,7 +336,7 @@ defmodule Ash.DataLayer.Mnesia do
     |> case do
       {:ok, values} ->
         case Mnesia.transaction(fn ->
-               Mnesia.write({Ash.DataLayer.Ets.Info.table(resource), pkey, values})
+               Mnesia.write({Ash.DataLayer.Mnesia.Info.table(resource), pkey, values})
              end) do
           {:atomic, _} ->
             {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
@@ -360,7 +360,7 @@ defmodule Ash.DataLayer.Mnesia do
 
     result =
       Mnesia.transaction(fn ->
-        Mnesia.delete({Ash.DataLayer.Ets.Info.table(resource), pkey})
+        Mnesia.delete({Ash.DataLayer.Mnesia.Info.table(resource), pkey})
       end)
 
     case result do
@@ -378,7 +378,7 @@ defmodule Ash.DataLayer.Mnesia do
       Mnesia.transaction(fn ->
         with {:ok, record} <- Ash.Changeset.apply_attributes(%{changeset | action_type: :update}),
              {:ok, record} <-
-               do_update(Ash.DataLayer.Ets.Info.table(resource), {pkey, record}, resource),
+               do_update(Ash.DataLayer.Mnesia.Info.table(resource), {pkey, record}, resource),
              {:ok, record} <- Ash.DataLayer.Ets.cast_record(record, resource) do
           new_pkey = pkey_list(resource, record)
 
@@ -440,7 +440,7 @@ defmodule Ash.DataLayer.Mnesia do
 
     case Ash.DataLayer.Ets.dump_to_native(record, attributes) do
       {:ok, casted} ->
-        case Mnesia.read({Ash.DataLayer.Ets.Info.table(resource), pkey}) do
+        case Mnesia.read({Ash.DataLayer.Mnesia.Info.table(resource), pkey}) do
           [] ->
             {:error, "Record not found matching: #{inspect(pkey)}"}
 

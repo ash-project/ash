@@ -5,6 +5,6 @@ defmodule Ash.DataLayer.Mnesia.Info do
 
   @doc "The mnesia table for a resource"
   def table(resource) do
-    Extension.get_opt(resource, [:ets], :private?, resource, true)
+    Extension.get_opt(resource, [:mnesia], :table, resource, true)
   end
 end
