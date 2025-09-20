@@ -813,6 +813,95 @@ defmodule Ash.Test.Filter.FilterTest do
     end
   end
 
+  describe "intersects/2" do
+    test "works when provided" do
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:foo, :bar]})
+      |> Ash.create!()
+
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:foo, :baz]})
+      |> Ash.create!()
+
+      assert [%{roles: [:foo, :bar]}] =
+               User
+               |> Ash.Query.filter(intersects(roles, [:bar]))
+               |> Ash.read!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(intersects(roles, [:buz]))
+               |> Ash.read!()
+    end
+
+    test "works for checking if the second argument is nil" do
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: nil})
+      |> Ash.create!()
+
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:buz, :baz]})
+      |> Ash.create!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(has(roles, nil))
+               |> Ash.read!()
+    end
+
+    test "works for checking if array is nil" do
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: nil})
+      |> Ash.create!()
+
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:buz, :baz]})
+      |> Ash.create!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(has(roles, :foo))
+               |> Ash.read!()
+    end
+  end
+
+  describe "has/2" do
+    test "works when provided" do
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:foo, :bar]})
+      |> Ash.create!()
+
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:foo, :baz]})
+      |> Ash.create!()
+
+      assert [%{roles: [:foo, :bar]}] =
+               User
+               |> Ash.Query.filter(has(roles, :bar))
+               |> Ash.read!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(has(roles, :Foo))
+               |> Ash.read!()
+    end
+
+    test "works for checking if array is nil" do
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: nil})
+      |> Ash.create!()
+
+      User
+      |> Ash.Changeset.for_create(:create, %{roles: [:buz, :baz]})
+      |> Ash.create!()
+
+      assert [] =
+               User
+               |> Ash.Query.filter(has(roles, :foo))
+               |> Ash.read!()
+    end
+  end
+
   describe "contains/2" do
     test "works for simple strings" do
       Post

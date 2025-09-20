@@ -41,7 +41,9 @@ defmodule Ash.Filter do
     StringSplit,
     StringTrim,
     Today,
-    Type
+    Type,
+    Has,
+    Intersects
   }
 
   alias Ash.Query.Operator.{
@@ -87,7 +89,9 @@ defmodule Ash.Filter do
     StringLength,
     StringPosition,
     StringSplit,
-    StringTrim
+    StringTrim,
+    Has,
+    Intersects
   ]
 
   @inline_aggregates [:count, :first, :sum, :list, :max, :min, :avg, :custom_aggregate]
