@@ -2712,7 +2712,7 @@ defmodule Ash.Changeset do
   end
 
   defp handle_upsert(changeset) do
-    if changeset.context.private[:upsert_condition] do
+    if not is_nil(changeset.context.private[:upsert_condition]) do
       filter(changeset, changeset.context.private.upsert_condition)
     else
       changeset
