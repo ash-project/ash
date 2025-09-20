@@ -2,6 +2,39 @@
 
 <!-- changelog -->
 
+## [v3.5.41](https://github.com/ash-project/ash/compare/v3.5.40...v3.5.41) (2025-09-20)
+
+
+
+
+### Bug Fixes:
+
+* use explicit `is_nil` check for `upsert_condition` by [@zachdaniel](https://github.com/zachdaniel)
+
+* actually use the mnesia table configured ð¤¦ââï¸ by [@zachdaniel](https://github.com/zachdaniel)
+
+* add missing capabilities to data layer spec by [@zachdaniel](https://github.com/zachdaniel)
+
+* Typo in scope documentation (#2328) by [@Munksgaard](https://github.com/Munksgaard)
+
+* properly pass action to requires_original_data? in VerifyActionsAtomic (#2327) by Christopher Bonhage
+
+* avoid crashing on new exception (#2322) by Cyprien Poisson
+
+* handle validation init errors without overriding them with validation message (#2320) by marot
+
+### Improvements:
+
+* add `--setup` flag to `ash.install` to run `ash.setup` by [@zachdaniel](https://github.com/zachdaniel)
+
+* Improve performance of mix tasks that load extensions (#2332) by drtheuns
+
+* better error message on invalid relationship paths in exists by [@zachdaniel](https://github.com/zachdaniel)
+
+* add `any` builtin validation by [@zachdaniel](https://github.com/zachdaniel)
+
+* detect types in `get_path` expressions by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.40](https://github.com/ash-project/ash/compare/v3.5.39...v3.5.40) (2025-09-13)
 
 
