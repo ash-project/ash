@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.5.42](https://github.com/ash-project/ash/compare/v3.5.41...v3.5.42) (2025-09-20)
+
+
+
+
+### Improvements:
+
+* use `delay_task` for `mix ash.setup` by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.5.41](https://github.com/ash-project/ash/compare/v3.5.40...v3.5.41) (2025-09-20)
 
 
