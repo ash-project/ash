@@ -25,7 +25,9 @@ defmodule Ash.Filter do
     Fragment,
     FromNow,
     GetPath,
+    Has,
     If,
+    Intersects,
     IsNil,
     Lazy,
     Length,
@@ -41,9 +43,7 @@ defmodule Ash.Filter do
     StringSplit,
     StringTrim,
     Today,
-    Type,
-    Has,
-    Intersects
+    Type
   }
 
   alias Ash.Query.Operator.{
@@ -72,8 +72,10 @@ defmodule Ash.Filter do
     Fragment,
     FromNow,
     GetPath,
+    Has,
     IsNil,
     If,
+    Intersects,
     Lazy,
     Length,
     Minus,
@@ -89,9 +91,7 @@ defmodule Ash.Filter do
     StringLength,
     StringPosition,
     StringSplit,
-    StringTrim,
-    Has,
-    Intersects
+    StringTrim
   ]
 
   @inline_aggregates [:count, :first, :sum, :list, :max, :min, :avg, :custom_aggregate]
