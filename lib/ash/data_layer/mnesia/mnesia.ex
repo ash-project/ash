@@ -401,7 +401,7 @@ defmodule Ash.DataLayer.Mnesia do
     Mnesia.transaction(fn ->
       Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
         # Sending in `false` prevents a transaction for every write
-        case create(resource, changeset, false) do
+        case create(resource, changeset, with_transaction: false) do
           {:ok, result} ->
             result =
               if options[:return_records?] do
@@ -425,7 +425,7 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def create(resource, changeset, with_transaction \\ true) do
+  def create(resource, changeset, opts \\ []) do
     {:ok, record} = Ash.Changeset.apply_attributes(changeset)
 
     pkey =
@@ -441,7 +441,12 @@ defmodule Ash.DataLayer.Mnesia do
     |> Ash.DataLayer.Ets.dump_to_native(Ash.Resource.Info.attributes(resource))
     |> case do
       {:ok, values} ->
-        case do_write(Ash.DataLayer.Mnesia.Info.table(resource), pkey, values, with_transaction) do
+        case do_write(
+               Ash.DataLayer.Mnesia.Info.table(resource),
+               pkey,
+               values,
+               opts[:with_transaction]
+             ) do
           # If with_transaction is false, we are in a transaction and will only return :ok
           :ok ->
             {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
