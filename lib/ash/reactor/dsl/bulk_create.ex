@@ -50,7 +50,8 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             upsert_fields: [],
             upsert_identity: nil,
             upsert?: false,
-            wait_for: []
+            wait_for: [],
+            __spark_metadata__: nil
 
   @type t :: %__MODULE__{
           __identifier__: any,
@@ -91,7 +92,8 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
           undo_action: nil,
           undo: :never,
           upsert_fields: [],
-          upsert_identity: nil
+          upsert_identity: nil,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @doc false

@@ -21,7 +21,8 @@ defmodule Ash.Resource.Identity do
     :pre_check?,
     :pre_check_with,
     :all_tenants?,
-    nils_distinct?: false
+    nils_distinct?: false,
+    __spark_metadata__: nil
   ]
 
   @schema [
@@ -96,6 +97,7 @@ defmodule Ash.Resource.Identity do
           description: String.t() | nil,
           where: nil | Ash.Expr.t(),
           nils_distinct?: boolean(),
-          all_tenants?: boolean()
+          all_tenants?: boolean(),
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 end

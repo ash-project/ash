@@ -5,7 +5,8 @@ defmodule Ash.Policy.PolicyGroup do
   # on build, when we support nested policies we can change that.
   defstruct [
     :condition,
-    :policies
+    :policies,
+    :__spark_metadata__
   ]
 
   @doc false
