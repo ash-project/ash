@@ -273,15 +273,18 @@ savings_account = Ash.create!(SavingsAccount, %{bank_account_id: bank_account2.i
 ```
 [
   #BankAccount<
-    implementation: #CheckingAccount<
-      bank_account: #Ash.NotLoaded<:relationship, field: :bank_account>,
-      __meta__: #Ecto.Schema.Metadata<:loaded>,
-      id: "1d1a7b6c-dd08-4b8c-9769-2c1155a41a40",
-      bank_account_id: "ce370381-303e-49dc-9950-a05b5052e7f8",
-      aggregates: %{},
-      calculations: %{},
-      ...
-    >,
+    implementation: %Ash.Union{
+      type: :checking_account,
+      value: #CheckingAccount<
+        bank_account: #Ash.NotLoaded<:relationship, field: :bank_account>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "1d1a7b6c-dd08-4b8c-9769-2c1155a41a40",
+        bank_account_id: "ce370381-303e-49dc-9950-a05b5052e7f8",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >
+    },
     savings_account: #Ash.NotLoaded<:relationship, field: :savings_account>,
     checking_account: #Ash.NotLoaded<:relationship, field: :checking_account>,
     __meta__: #Ecto.Schema.Metadata<:loaded>,
@@ -293,15 +296,18 @@ savings_account = Ash.create!(SavingsAccount, %{bank_account_id: bank_account2.i
     ...
   >,
   #BankAccount<
-    implementation: #SavingsAccount<
-      bank_account: #Ash.NotLoaded<:relationship, field: :bank_account>,
-      __meta__: #Ecto.Schema.Metadata<:loaded>,
-      id: "e537116d-c5b8-414a-a350-fa9b2afe0a4e",
-      bank_account_id: "c4739158-2a1f-4de8-bccb-ee1d1ee9e602",
-      aggregates: %{},
-      calculations: %{},
-      ...
-    >,
+    implementation: %Ash.Union{
+      type: :savings_account,
+      value: #SavingsAccount<
+        bank_account: #Ash.NotLoaded<:relationship, field: :bank_account>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "e537116d-c5b8-414a-a350-fa9b2afe0a4e",
+        bank_account_id: "c4739158-2a1f-4de8-bccb-ee1d1ee9e602",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >
+    },
     savings_account: #Ash.NotLoaded<:relationship, field: :savings_account>,
     checking_account: #Ash.NotLoaded<:relationship, field: :checking_account>,
     __meta__: #Ecto.Schema.Metadata<:loaded>,
