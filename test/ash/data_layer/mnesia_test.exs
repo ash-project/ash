@@ -127,8 +127,10 @@ defmodule Ash.DataLayer.MnesiaTest do
     end
 
     test "bulk_create/3 with UPSERT without returning records" do
-      user_a = %{name: "John", age: 30, title: "Developer", roles: [:admin, :user]}
-      {:ok, _} = Ash.create(MnesiaTestUser, user_a)
+      user_a =
+        %{name: "John", age: 30, title: "Developer", roles: [:admin, :user]}
+        |> then(&Ash.create!(MnesiaTestUser, &1))
+        |> resource_to_map()
 
       resp =
         [
@@ -138,7 +140,7 @@ defmodule Ash.DataLayer.MnesiaTest do
         ]
         |> Ash.bulk_create(MnesiaTestUser, :create,
           upsert?: true,
-          upsert_fields: [],
+          upsert_fields: [:name],
           return_records?: true
         )
 
@@ -148,7 +150,7 @@ defmodule Ash.DataLayer.MnesiaTest do
                records: [
                  %MnesiaTestUser{
                    name: "Johnny",
-                   age: 31,
+                   age: 30,
                    title: "Developer",
                    roles: [:admin, :user]
                  },
@@ -164,5 +166,11 @@ defmodule Ash.DataLayer.MnesiaTest do
                error_count: 0
              } = resp
     end
+  end
+
+  defp resource_to_map(resource) do
+    Ash.Resource.Info.public_attributes(resource)
+    |> Enum.map(& &1.name)
+    |> Map.new(fn name -> {name, Map.get(resource, name)} end)
   end
 end

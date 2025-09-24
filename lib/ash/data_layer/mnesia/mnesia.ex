@@ -69,7 +69,7 @@ defmodule Ash.DataLayer.Mnesia do
       :filter,
       :limit,
       :tenant,
-      :sort,
+      sort: [],
       context: %{},
       relationships: %{},
       offset: 0,
