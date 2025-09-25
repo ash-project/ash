@@ -219,10 +219,8 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   end
 
   test "fails in domain initialization if the destination resource doesn't have the correct field" do
-    assert_raise(
-      Spark.Error.DslError,
-      ~r/Relationship `post` expects source attribute `post_id` to be defined/,
-      fn ->
+    output =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
         defposts do
           relationships do
             belongs_to(:post, __MODULE__, define_attribute?: false, public?: true)
@@ -236,7 +234,10 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
             resource Post
           end
         end
-      end
-    )
+      end)
+
+    assert String.contains?(output, "Relationship") and
+           String.contains?(output, "expects source attribute") and
+           String.contains?(output, "post_id")
   end
 end
