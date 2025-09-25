@@ -6,6 +6,7 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
 
   alias Ash.Changeset.ManagedRelationshipHelpers
   alias Spark.Dsl.Verifier
+  alias Spark.Dsl.Entity
   require Logger
 
   @impl true
@@ -23,6 +24,7 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
       |> Enum.each(fn %Ash.Resource.Change{change: {_, opts}} ->
         if !Enum.find(action.arguments, &(&1.name == opts[:argument])) do
           raise Spark.Error.DslError,
+            module: Verifier.get_persisted(dsl_state, :module),
             path:
               [
                 :actions,
@@ -31,12 +33,14 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
                 :change,
                 :manage_relationship
               ] ++ Enum.uniq([opts[:argument], opts[:relationship]]),
+            location: Entity.anno(action),
             message: "Action #{action.name} has no argument `#{inspect(opts[:argument])}`."
         end
 
         relationship =
           Enum.find(relationships, &(&1.name == opts[:relationship])) ||
             raise Spark.Error.DslError,
+              module: Verifier.get_persisted(dsl_state, :module),
               path:
                 [
                   :actions,
@@ -45,6 +49,7 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
                   :change,
                   :manage_relationship
                 ] ++ Enum.uniq([opts[:argument], opts[:relationship]]),
+              location: Entity.anno(action),
               message: "No such relationship #{opts[:relationship]} exists."
 
         if ensure_compiled?(relationship) do
@@ -68,6 +73,7 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
             e ->
               reraise Spark.Error.DslError,
                       [
+                        module: Verifier.get_persisted(dsl_state, :module),
                         path:
                           [
                             :actions,
@@ -76,6 +82,7 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
                             :change,
                             :manage_relationship
                           ] ++ Enum.uniq([opts[:argument], opts[:relationship]]),
+                        location: Entity.anno(action),
                         message: """
                         The following error was raised when validating options provided to manage_relationship.
 
