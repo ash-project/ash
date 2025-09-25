@@ -4,8 +4,8 @@ defmodule Ash.Resource.Verifiers.ValidateMultitenancy do
   """
   use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Verifier
   alias Spark.Dsl.Extension
+  alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
   # sobelow_skip ["DOS.BinToAtom"]

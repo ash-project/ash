@@ -8,8 +8,12 @@ defmodule Ash.CodeInterface do
     action = Ash.Resource.Info.action(resource, interface.action || interface.name)
 
     if !action do
+      # Get location info from the interface entity
+      location = Spark.Dsl.Entity.anno(interface)
+
       raise Spark.Error.DslError,
         module: resource,
+        location: location,
         message:
           "The interface of #{inspect(resource)} refers to a non-existent action #{interface.action || interface.name}",
         path: [:interfaces, :interface, interface.name]

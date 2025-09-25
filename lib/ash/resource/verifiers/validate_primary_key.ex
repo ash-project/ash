@@ -2,8 +2,8 @@ defmodule Ash.Resource.Verifiers.ValidatePrimaryKey do
   @moduledoc "Validates and caches the primary key of a resource"
   use Spark.Dsl.Verifier
 
+  alias Spark.Dsl.Entity
   alias Spark.Dsl.Verifier
-  alias Spark.Dsl.Extension
   alias Spark.Error.DslError
 
   @impl true

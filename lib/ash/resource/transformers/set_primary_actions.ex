@@ -6,9 +6,9 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
   """
   use Spark.Dsl.Transformer
 
-  alias Spark.Dsl.Transformer
-  alias Spark.Dsl.Extension
   alias Spark.Dsl.Entity
+  alias Spark.Dsl.Extension
+  alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
 
   @default_actions_require_atomic? Application.compile_env(

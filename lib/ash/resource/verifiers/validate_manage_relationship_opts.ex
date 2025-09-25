@@ -5,8 +5,8 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
   use Spark.Dsl.Verifier
 
   alias Ash.Changeset.ManagedRelationshipHelpers
-  alias Spark.Dsl.Verifier
   alias Spark.Dsl.Entity
+  alias Spark.Dsl.Verifier
   require Logger
 
   @impl true

@@ -237,7 +237,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
       end)
 
     assert String.contains?(output, "Relationship") and
-           String.contains?(output, "expects source attribute") and
-           String.contains?(output, "post_id")
+             String.contains?(output, "expects source attribute") and
+             String.contains?(output, "post_id")
   end
 end

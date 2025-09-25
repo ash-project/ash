@@ -24,7 +24,8 @@ defmodule Resource.RequireValidArgumentsInCodeInterfaceTest do
         end
       end)
 
-    assert String.contains?(output, "Cannot accept the args") and String.contains?(output, ":oops")
+    assert String.contains?(output, "Cannot accept the args") and
+             String.contains?(output, ":oops")
   end
 
   test "fails if one of the arguments is not an accepted attribute" do
@@ -49,7 +50,8 @@ defmodule Resource.RequireValidArgumentsInCodeInterfaceTest do
         end
       end)
 
-    assert String.contains?(output, "Cannot accept the attributes") and String.contains?(output, ":foo")
+    assert String.contains?(output, "Cannot accept the attributes") and
+             String.contains?(output, ":foo")
   end
 
   test "passes if the arguments are valid" do

@@ -6,9 +6,8 @@ defmodule Ash.Resource.Verifiers.NoReservedFieldNames do
   """
   use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Verifier
-  alias Spark.Dsl.Extension
   alias Spark.Dsl.Entity
+  alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
   def verify(dsl_state) do

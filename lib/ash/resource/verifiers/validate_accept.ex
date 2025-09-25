@@ -2,21 +2,19 @@ defmodule Ash.Resource.Verifiers.ValidateAccept do
   @moduledoc "Validates that accept and reject lists only contain valid attributes"
   use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Verifier
+  alias Spark.Dsl.Entity
   alias Spark.Error.DslError
 
   @impl true
   def verify(dsl_state) do
-    attributes =
-      dsl_state
-      |> Verifier.get_entities([:attributes])
+    attributes = Ash.Resource.Info.attributes(dsl_state)
 
     attribute_names = MapSet.new(attributes, & &1.name)
 
     initial_errors = %{not_attribute: [], not_writable: []}
 
     result =
-      Verifier.get_entities(dsl_state, [:actions])
+      Ash.Resource.Info.actions(dsl_state)
       |> Enum.reduce(%{}, fn
         %{name: action_name, accept: accept}, acc ->
           validate_attribute_name = fn attribute_name ->
@@ -59,25 +57,37 @@ defmodule Ash.Resource.Verifiers.ValidateAccept do
         _, acc ->
           acc
       end)
-      |> Enum.map(fn {action, %{accept: accept}} ->
+      |> Enum.map(fn {action_name, %{accept: accept}} ->
         accept_not_attribute = accept.not_attribute |> Enum.reverse()
         accept_not_writable = accept.not_writable |> Enum.reverse()
 
-        [
-          message(accept_not_attribute, "are not attributes", [:actions, action, :accept]),
-          message(accept_not_writable, "are not writable", [:actions, action, :accept])
-        ]
-        |> Enum.reject(&(&1 == ""))
-        |> Enum.join("\n")
+        # Get the action entity and try to get location info for the accept property specifically
+        action_entity = Ash.Resource.Info.action(dsl_state, action_name)
+        location = Entity.property_anno(action_entity, :accept)
+
+        error_messages =
+          [
+            message(accept_not_attribute, "are not attributes", [:actions, action_name, :accept]),
+            message(accept_not_writable, "are not writable", [:actions, action_name, :accept])
+          ]
+          |> Enum.reject(&(&1 == ""))
+          |> Enum.join("\n")
+
+        {error_messages, location, action_name}
       end)
 
     if result == [] do
       :ok
     else
+      # Use the first error's location and action info
+      {_first_error_msg, first_location, first_action} = hd(result)
+      all_messages = Enum.map(result, fn {msg, _loc, _action} -> msg end)
+
       raise DslError,
         module: Spark.Dsl.Verifier.get_persisted(dsl_state, :module),
-        message: Enum.join(result, "\n"),
-        path: []
+        message: Enum.join(all_messages, "\n"),
+        location: first_location,
+        path: [:actions, first_action, :accept]
     end
   end
 
