@@ -71,13 +71,22 @@ defmodule Ash.TypedStruct do
 
   defmodule Field do
     @moduledoc "Represents a field on a typed struct"
-    defstruct [:name, :type, :constraints, :default, :allow_nil?, :description]
+    defstruct [
+      :name,
+      :type,
+      :constraints,
+      :default,
+      :allow_nil?,
+      :description,
+      :__spark_metadata__
+    ]
 
     @type t :: %__MODULE__{
             name: atom(),
             constraints: Keyword.t(),
             type: Ash.Type.t(),
-            default: nil | term | (-> term)
+            default: nil | term | (-> term),
+            __spark_metadata__: Spark.Dsl.Entity.spark_meta()
           }
   end
 

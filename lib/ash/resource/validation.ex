@@ -25,7 +25,8 @@ defmodule Ash.Resource.Validation do
     :before_action?,
     :where,
     :always_atomic?,
-    on: []
+    on: [],
+    __spark_metadata__: nil
   ]
 
   require Ash.BehaviourHelpers
@@ -37,7 +38,8 @@ defmodule Ash.Resource.Validation do
           only_when_valid?: boolean(),
           description: String.t() | nil,
           where: list({atom(), list(atom())}),
-          on: list(atom())
+          on: list(atom()),
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @type path :: [atom | integer]

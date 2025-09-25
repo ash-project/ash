@@ -6,10 +6,11 @@ defmodule Ash.Resource.Actions.Metadata do
     :name,
     :default,
     :description,
-    constraints: []
+    constraints: [],
+    __spark_metadata__: nil
   ]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
   def schema do
     [

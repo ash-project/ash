@@ -58,7 +58,8 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             type: :bulk_update,
             undo_action: nil,
             undo: :never,
-            wait_for: []
+            wait_for: [],
+            __spark_metadata__: nil
 
   @type t :: %__MODULE__{
           __identifier__: any,
@@ -110,7 +111,8 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
           transaction: :all | :batch | false,
           type: :bulk_create,
           undo_action: nil,
-          undo: :never
+          undo: :never,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @doc false

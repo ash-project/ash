@@ -20,7 +20,8 @@ defmodule Ash.Resource.Actions.Read do
             touches_resources: [],
             timeout: nil,
             transaction?: false,
-            type: :read
+            type: :read,
+            __spark_metadata__: nil
 
   @type t :: %__MODULE__{
           arguments: [Ash.Resource.Actions.Argument.t()],
@@ -42,7 +43,8 @@ defmodule Ash.Resource.Actions.Read do
           touches_resources: [atom],
           timeout: pos_integer() | nil,
           transaction?: boolean,
-          type: :read
+          type: :read,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   import Ash.Resource.Actions.SharedOptions
@@ -153,10 +155,11 @@ defmodule Ash.Resource.Actions.Read do
       stable_sort: nil,
       required?: false,
       keyset?: false,
-      offset?: false
+      offset?: false,
+      __spark_metadata__: nil
     ]
 
-    @type t :: %__MODULE__{}
+    @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
     def transform(pagination) do
       if pagination.keyset? or pagination.offset? do

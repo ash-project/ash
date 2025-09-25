@@ -12,7 +12,13 @@ defmodule Ash.Resource.Preparation do
   To access any query arguments from within a preparation, make sure you are using `Ash.Query.get_argument/2`
   as the argument keys may be strings or atoms.
   """
-  defstruct [:preparation, only_when_valid?: false, where: [], on: [:read]]
+  defstruct [
+    :preparation,
+    only_when_valid?: false,
+    where: [],
+    on: [:read],
+    __spark_metadata__: nil
+  ]
 
   require Ash.BehaviourHelpers
 
@@ -22,7 +28,8 @@ defmodule Ash.Resource.Preparation do
           preparation: __MODULE__.ref(),
           only_when_valid?: boolean(),
           where: [Ash.Resource.Validation.ref()],
-          on: [atom()]
+          on: [atom()],
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @doc false

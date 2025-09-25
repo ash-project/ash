@@ -1,7 +1,7 @@
 defmodule Ash.Resource.Dsl do
   defmodule Filter do
     @moduledoc "Introspection target for a filter for read actions and relationships"
-    defstruct [:filter]
+    defstruct [:filter, __spark_metadata__: nil]
   end
 
   @filter %Spark.Dsl.Entity{

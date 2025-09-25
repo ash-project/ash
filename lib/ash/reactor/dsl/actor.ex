@@ -3,14 +3,15 @@ defmodule Ash.Reactor.Dsl.Actor do
   Specify the actor used to execute an action.
   """
 
-  defstruct __identifier__: nil, source: nil, transform: nil
+  defstruct __identifier__: nil, source: nil, transform: nil, __spark_metadata__: nil
 
   alias Reactor.Template
 
   @type t :: %__MODULE__{
           __identifier__: any,
           source: Template.t(),
-          transform: nil | (any -> any) | {module, keyword} | mfa
+          transform: nil | (any -> any) | {module, keyword} | mfa,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @doc false

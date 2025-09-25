@@ -31,7 +31,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     authorize_read_with: :filter,
     validate_destination_attribute?: true,
     cardinality: :one,
-    type: :belongs_to
+    type: :belongs_to,
+    __spark_metadata__: nil
   ]
 
   @type t :: %__MODULE__{
@@ -58,7 +59,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           source_attribute: atom | nil,
           description: String.t(),
           sort: Keyword.t() | nil,
-          default_sort: Keyword.t() | nil
+          default_sort: Keyword.t() | nil,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   import Ash.Resource.Relationships.SharedOptions

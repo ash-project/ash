@@ -22,12 +22,13 @@ defmodule Ash.Resource.Aggregate do
     filterable?: true,
     sortable?: true,
     sensitive?: false,
-    related?: true
+    related?: true,
+    __spark_metadata__: nil
   ]
 
   defmodule JoinFilter do
     @moduledoc "Represents a join filter on a resource aggregate"
-    defstruct [:relationship_path, :filter]
+    defstruct [:relationship_path, :filter, __spark_metadata__: nil]
   end
 
   @schema [
@@ -126,7 +127,8 @@ defmodule Ash.Resource.Aggregate do
           filterable?: boolean,
           sortable?: boolean,
           sensitive?: boolean,
-          related?: boolean
+          related?: boolean,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @doc false

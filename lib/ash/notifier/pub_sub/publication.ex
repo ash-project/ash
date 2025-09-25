@@ -10,7 +10,8 @@ defmodule Ash.Notifier.PubSub.Publication do
     :filter,
     :transform,
     :dispatcher,
-    :previous_values?
+    :previous_values?,
+    :__spark_metadata__
   ]
 
   @schema [
