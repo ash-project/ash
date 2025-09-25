@@ -58,22 +58,25 @@ defmodule Ash.DataLayer.EtsTest do
   end
 
   test "won't compile with identities that don't precheck" do
-    assert_raise Spark.Error.DslError, ~r/pre_check_with/, fn ->
-      defmodule Example do
-        use Ash.Resource,
-          domain: Domain,
-          data_layer: Ash.DataLayer.Ets
+    output =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        defmodule Example do
+          use Ash.Resource,
+            domain: Domain,
+            data_layer: Ash.DataLayer.Ets
 
-        attributes do
-          uuid_primary_key :id
-          attribute :name, :string, public?: true
-        end
+          attributes do
+            uuid_primary_key :id
+            attribute :name, :string, public?: true
+          end
 
-        identities do
-          identity :unique_name, [:name]
+          identities do
+            identity :unique_name, [:name]
+          end
         end
-      end
-    end
+      end)
+
+    assert String.contains?(output, "pre_check_with")
   end
 
   test "resource_to_query" do

@@ -52,17 +52,18 @@ defmodule Ash.Test.Resource.IdentitiesTest do
     end
 
     test "eager_check_with requires a primary read action" do
-      assert_raise Spark.Error.DslError,
-                   ~r/but the resource has no primary read action./,
-                   fn ->
-                     defposts do
-                       identities do
-                         identity :foobar, [:name],
-                           eager_check_with: Domain,
-                           pre_check_with: Domain
-                       end
-                     end
-                   end
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          defposts do
+            identities do
+              identity :foobar, [:name],
+                eager_check_with: Domain,
+                pre_check_with: Domain
+            end
+          end
+        end)
+
+      assert String.contains?(output, "but the resource has no primary read action")
     end
 
     test "Identity descriptions are allowed" do
@@ -146,42 +147,44 @@ defmodule Ash.Test.Resource.IdentitiesTest do
     end
 
     test "enforce identity constraints on attributes" do
-      assert_raise Spark.Error.DslError,
-                   ~r/All identity keys must be attributes or calculations. Got: :naem/,
-                   fn ->
-                     defmodule Site do
-                       @moduledoc false
-                       use Ash.Resource, domain: Domain
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          defmodule Site do
+            @moduledoc false
+            use Ash.Resource, domain: Domain
 
-                       attributes do
-                         uuid_primary_key :id
+            attributes do
+              uuid_primary_key :id
 
-                         attribute :url, :string do
-                           public?(true)
-                         end
-                       end
-                     end
+              attribute :url, :string do
+                public?(true)
+              end
+            end
+          end
 
-                     defposts do
-                       actions do
-                         default_accept :*
+          defposts do
+            actions do
+              default_accept :*
 
-                         read :read do
-                           primary? true
-                         end
-                       end
+              read :read do
+                primary? true
+              end
+            end
 
-                       identities do
-                         identity :name_site, [:naem, :site]
-                       end
+            identities do
+              identity :name_site, [:naem, :site]
+            end
 
-                       relationships do
-                         belongs_to :site, Site do
-                           public?(true)
-                         end
-                       end
-                     end
-                   end
+            relationships do
+              belongs_to :site, Site do
+                public?(true)
+              end
+            end
+          end
+        end)
+
+      assert String.contains?(output, "All identity keys must be attributes or calculations")
+      assert String.contains?(output, ":naem")
     end
   end
 end

@@ -3,21 +3,22 @@ defmodule Ash.Test.Resource.VerifyFilterExpressionsTest do
   use ExUnit.Case, async: true
 
   import Ash.Test.Helpers
-  alias Spark.Error.DslError
 
   test "Filter expression with undefined argument raises an error" do
-    assert_raise DslError,
-                 ~r/Filter expression references undefined argument `undefined_arg`/,
-                 fn ->
-                   defposts do
-                     actions do
-                       read :example_action do
-                         argument :valid_arg, :string
-                         filter expr(some_field == ^arg(:undefined_arg))
-                       end
-                     end
-                   end
-                 end
+    output =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        defposts do
+          actions do
+            read :example_action do
+              argument :valid_arg, :string
+              filter expr(some_field == ^arg(:undefined_arg))
+            end
+          end
+        end
+      end)
+
+    assert String.contains?(output, "Filter expression references undefined argument")
+    assert String.contains?(output, "undefined_arg")
   end
 
   test "Filter expression with valid argument does not raise an error" do
