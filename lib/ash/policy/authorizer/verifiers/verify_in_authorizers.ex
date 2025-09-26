@@ -9,9 +9,18 @@ defmodule Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers do
          Ash.Policy.Authorizer in List.wrap(Ash.Resource.Info.authorizers(module)) do
       :ok
     else
+      # Get location of the resource configuration (use the policies section if it exists)
+      location =
+        try do
+          Spark.Dsl.Extension.get_section_anno(dsl, [:policies])
+        rescue
+          _ -> nil
+        end
+
       {:error,
        Spark.Error.DslError.exception(
          module: module,
+         location: location,
          message: """
          Ash.Policy.Authorizer was found in extensions, but not in `authorizers`.
          Please add it to the `authorizers` list, *not* the `extensions` list,

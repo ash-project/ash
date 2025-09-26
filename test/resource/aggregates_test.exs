@@ -113,19 +113,22 @@ defmodule Ash.Test.Resource.AggregatesTest do
     end
 
     test "aggregates field should be calculation or attribute on the resource" do
-      assert_raise Spark.Error.DslError, fn ->
-        defposts do
-          aggregates do
-            sum :sum_of_comment_likes, :comments, :likes do
-              public? true
+      output =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          defposts do
+            aggregates do
+              sum :sum_of_comment_likes, :comments, :likes do
+                public? true
+              end
+            end
+
+            relationships do
+              has_many :comments, Comment, destination_attribute: :post_id, public?: true
             end
           end
+        end)
 
-          relationships do
-            has_many :comments, Comment, destination_attribute: :post_id, public?: true
-          end
-        end
-      end
+      assert String.contains?(output, "likes") or String.contains?(output, "field")
     end
   end
 

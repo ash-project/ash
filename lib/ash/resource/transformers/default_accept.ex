@@ -3,6 +3,7 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
 
   use Spark.Dsl.Transformer
 
+  alias Spark.Dsl.Entity
   alias Spark.Dsl.Transformer
 
   def transform(dsl_state) do
@@ -64,11 +65,21 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
             :ok
 
           invalid_attrs ->
+            # Get location info from the action entity, specifically for the accept property
+            action_entity = Ash.Resource.Info.action(dsl_state, action.name, action.type)
+
+            location =
+              case Entity.property_anno(action_entity, :accept) do
+                nil -> Entity.anno(action_entity)
+                other -> other
+              end
+
             raise Spark.Error.DslError,
               module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+              location: location,
               path: [:actions, action.name, :accept],
               message: """
-              Cannot accept #{inspect(invalid_attrs)}, because they are not attributes."
+              Cannot accept #{inspect(invalid_attrs)}, because they are not attributes.
               """
         end
 
@@ -80,8 +91,18 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
             :ok
 
           invalid_required_attributes ->
+            # Get location info from the action entity, specifically for the require_attributes property
+            action_entity = Ash.Resource.Info.action(dsl_state, action.name, action.type)
+
+            location =
+              case Entity.property_anno(action_entity, :require_attributes) do
+                nil -> Entity.anno(action_entity)
+                other -> other
+              end
+
             raise Spark.Error.DslError,
               module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+              location: location,
               path: [:actions, action.name, :require_attributes],
               message: """
               Cannot require #{inspect(invalid_required_attributes)}, because they are not accepted. You must accept in addition to requiring."
@@ -96,10 +117,20 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
             :ok
 
           invalid_allow_nil_inputs ->
+            # Get location info from the action entity, specifically for the allow_nil_input property
+            action_entity = Ash.Resource.Info.action(dsl_state, action.name, action.type)
+
+            location =
+              case Entity.property_anno(action_entity, :allow_nil_input) do
+                nil -> Entity.anno(action_entity)
+                other -> other
+              end
+
             message =
               Exception.message(
                 Spark.Error.DslError.exception(
                   module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+                  location: location,
                   path: [:actions, action.name, :allow_nil_input],
                   message: """
                   It is not necessary to allow nil inputs that are not accepted, got: #{inspect(invalid_allow_nil_inputs)}
@@ -117,11 +148,21 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
             :ok
 
           invalid_attrs ->
+            # Get location info from the action entity, specifically for the accept property
+            action_entity = Ash.Resource.Info.action(dsl_state, action.name, action.type)
+
+            location =
+              case Entity.property_anno(action_entity, :accept) do
+                nil -> Entity.anno(action_entity)
+                other -> other
+              end
+
             raise Spark.Error.DslError,
               module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+              location: location,
               path: [:actions, action.name, :accept],
               message: """
-              Cannot accept #{inspect(invalid_attrs)}, because they are not attributes."
+              Cannot accept #{inspect(invalid_attrs)}, because they are not attributes.
               """
         end
 

@@ -3,27 +3,34 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
   Validates that all relationships point to valid fields
   """
   use Spark.Dsl.Verifier
+  alias Spark.Dsl.Entity
   alias Spark.Dsl.Verifier
 
   @impl true
   def verify(dsl) do
+    module = Verifier.get_persisted(dsl, :module)
+
     attribute_names =
       dsl
-      |> Verifier.get_entities([:attributes])
+      |> Ash.Resource.Info.attributes()
       |> Enum.map(& &1.name)
 
     dsl
-    |> Verifier.get_entities([:relationships])
+    |> Ash.Resource.Info.relationships()
     |> Enum.reject(fn relationship ->
       Map.get(relationship, :manual) || Map.get(relationship, :no_attributes?)
     end)
     |> Enum.filter(& &1.validate_destination_attribute?)
-    |> Enum.each(&validate_relationship(&1, attribute_names))
+    |> Enum.each(&validate_relationship(&1, attribute_names, module))
   end
 
-  defp validate_relationship(relationship, attribute_names) do
+  defp validate_relationship(relationship, attribute_names, module) do
+    location = Entity.anno(relationship)
+
     if relationship.source_attribute not in attribute_names do
       raise Spark.Error.DslError,
+        module: module,
+        location: location,
         path: [:relationships, relationship.name],
         message:
           "Relationship `#{relationship.name}` expects source attribute `#{relationship.source_attribute}` to be defined"
@@ -39,6 +46,8 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
 
           if relationship.source_attribute_on_join_resource not in through_attributes do
             raise Spark.Error.DslError,
+              module: module,
+              location: location,
               path: [:relationships, relationship.name],
               message:
                 "Relationship `#{relationship.name}` expects source attribute on resource `#{relationship.source_attribute_on_join_resource}` to be defined on #{inspect(relationship.through)}"
@@ -46,6 +55,8 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
 
           if relationship.destination_attribute_on_join_resource not in through_attributes do
             raise Spark.Error.DslError,
+              module: module,
+              location: location,
               path: [:relationships, relationship.name],
               message:
                 "Relationship `#{relationship.name}` expects destination attribute on join resource `#{relationship.destination_attribute_on_join_resource}` to be defined on #{inspect(relationship.through)}"
@@ -60,6 +71,8 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
 
       if relationship.destination_attribute not in destination_attributes do
         raise Spark.Error.DslError,
+          module: module,
+          location: location,
           path: [:relationships, relationship.name],
           message:
             "Relationship `#{relationship.name}` expects destination field `#{relationship.destination_attribute}` to be defined on #{inspect(relationship.destination)}"

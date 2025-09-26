@@ -6,6 +6,8 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
   """
   use Spark.Dsl.Transformer
 
+  alias Spark.Dsl.Entity
+  alias Spark.Dsl.Extension
   alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
 
@@ -34,12 +36,18 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
         {type, actions}, {:ok, dsl_state} ->
           case Enum.count_until(actions, & &1.primary?, 2) do
             2 ->
+              # Find the second primary action of this type (the one causing the conflict)
+              second_primary_action = actions |> Enum.filter(& &1.primary?) |> Enum.at(1)
+              location = Entity.anno(second_primary_action)
+
               {:halt,
                {:error,
                 DslError.exception(
+                  module: Transformer.get_persisted(dsl_state, :module),
                   message:
                     "Multiple actions of type #{type} configured as `primary?: true`, but only one action per type can be the primary",
-                  path: [:actions, type]
+                  path: [:actions, type],
+                  location: location
                 )}}
 
             _ ->
@@ -84,9 +92,13 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
       {type, accept} =
         case type_and_accept do
           {type, _accept} when type in [:destroy, :read] ->
+            # Get location info for the default_accept option
+            default_accept_anno = Extension.get_opt_anno(dsl_state, [:actions], :default_accept)
+
             raise Spark.Error.DslError,
               module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
               path: [:actions, :default_accept],
+              location: default_accept_anno,
               message: """
               Do not specify an accept for the default actions of type `:read` and `:destroy`.
 
@@ -106,8 +118,13 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
         end
 
       if type not in [:create, :update, :read, :destroy] do
+        # Get location info for the defaults option
+        defaults_anno = Extension.get_opt_anno(dsl_state, [:actions], :defaults)
+
         raise Spark.Error.DslError,
+          module: Transformer.get_persisted(dsl_state, :module),
           path: [:actions, :defaults, i],
+          location: defaults_anno,
           message: "#{type} is not a valid action type"
       end
 

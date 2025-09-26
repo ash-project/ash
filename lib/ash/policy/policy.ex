@@ -8,10 +8,11 @@ defmodule Ash.Policy.Policy do
     :policies,
     :bypass?,
     :description,
-    :access_type
+    :access_type,
+    :__spark_metadata__
   ]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
   @static_checks [
     {Ash.Policy.Check.Static, [result: true]},

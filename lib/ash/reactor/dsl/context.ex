@@ -3,14 +3,15 @@ defmodule Ash.Reactor.Dsl.Context do
   Specify context to merge into an action's context.
   """
 
-  defstruct __identifier__: nil, context: nil, transform: nil
+  defstruct __identifier__: nil, context: nil, transform: nil, __spark_metadata__: nil
 
   alias Reactor.Template
 
   @type t :: %__MODULE__{
           __identifier__: any,
           context: nil | Ash.Reactor.Dsl.Context.t() | map,
-          transform: nil | (any -> any) | {module, keyword} | mfa
+          transform: nil | (any -> any) | {module, keyword} | mfa,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @doc false

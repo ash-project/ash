@@ -5,7 +5,8 @@ defmodule Ash.Resource.Calculation.Argument do
             constraints: [],
             default: nil,
             name: nil,
-            type: nil
+            type: nil,
+            __spark_metadata__: nil
 
   @type t :: %__MODULE__{
           allow_nil?: boolean,
@@ -13,7 +14,8 @@ defmodule Ash.Resource.Calculation.Argument do
           constraints: keyword,
           default: any,
           name: atom,
-          type: Ash.Type.t()
+          type: Ash.Type.t(),
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @schema [

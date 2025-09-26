@@ -20,7 +20,8 @@ defmodule Ash.Reactor.Dsl.Read do
             tenant: nil,
             transform: nil,
             type: :read,
-            wait_for: []
+            wait_for: [],
+            __spark_metadata__: nil
 
   @type t :: %__MODULE__{
           __identifier__: any,
@@ -39,7 +40,8 @@ defmodule Ash.Reactor.Dsl.Read do
           resource: module,
           tenant: nil | Ash.Reactor.Dsl.Tenant.t(),
           type: :create,
-          wait_for: [Reactor.Dsl.WaitFor.t()]
+          wait_for: [Reactor.Dsl.WaitFor.t()],
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @doc false
