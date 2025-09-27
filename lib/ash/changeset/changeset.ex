@@ -2335,7 +2335,7 @@ defmodule Ash.Changeset do
         else
           if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
             expr(
-              if is_nil(^value) do
+              if is_nil(type(^value, ^attribute.type, ^attribute.constraints)) do
                 error(
                   ^Ash.Error.Changes.Required,
                   %{
@@ -2363,17 +2363,21 @@ defmodule Ash.Changeset do
       end
     end)
     |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
-    |> then(fn changeset ->
-      if changeset.action.type == :update do
-        attributes =
-          changeset.attributes
-          |> Map.keys()
-          |> Enum.reject(&Ash.Resource.Info.attribute(changeset.resource, &1).allow_nil?)
+    |> then(fn
+      {:not_atomic, value} ->
+        {:not_atomic, value}
 
-        require_values(changeset, :update, false, attributes)
-      else
-        changeset
-      end
+      %Ash.Changeset{} = changeset ->
+        if changeset.action.type == :update do
+          attributes =
+            changeset.attributes
+            |> Map.keys()
+            |> Enum.reject(&Ash.Resource.Info.attribute(changeset.resource, &1).allow_nil?)
+
+          require_values(changeset, :update, false, attributes)
+        else
+          changeset
+        end
     end)
   end
 
