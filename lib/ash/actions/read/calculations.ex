@@ -959,75 +959,86 @@ defmodule Ash.Actions.Read.Calculations do
         )
       end)
 
-    ash_query.calculations
-    |> Map.values()
-    |> Enum.reduce({[], [], ash_query}, fn calculation, {in_query, at_runtime, ash_query} ->
-      if calculation.module.has_expression?() do
-        expression =
-          calculation.opts
-          |> Ash.Expr.fill_template(
-            actor: calculation.context.actor,
-            tenant: ash_query.to_tenant,
-            args: calculation.context.arguments,
-            context: calculation.context.source_context
-          )
-          |> calculation.module.expression(calculation.context)
-          |> Ash.Expr.fill_template(
-            actor: calculation.context.actor,
-            tenant: ash_query.to_tenant,
-            args: calculation.context.arguments,
-            context: calculation.context.source_context
-          )
-          |> Ash.Actions.Read.add_calc_context_to_filter(
-            calculation.context.actor,
-            calculation.context.authorize?,
-            calculation.context.tenant,
-            calculation.context.tracer,
-            domain,
-            ash_query.resource,
-            parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
-            source_context: ash_query.context
-          )
+    if ash_query.valid? do
+      ash_query.calculations
+      |> Map.values()
+      |> Enum.reduce_while({:ok, [], [], ash_query}, fn calculation,
+                                                        {:ok, in_query, at_runtime, ash_query} ->
+        if calculation.module.has_expression?() do
+          expression =
+            calculation.opts
+            |> Ash.Expr.fill_template(
+              actor: calculation.context.actor,
+              tenant: ash_query.to_tenant,
+              args: calculation.context.arguments,
+              context: calculation.context.source_context
+            )
+            |> calculation.module.expression(calculation.context)
+            |> Ash.Expr.fill_template(
+              actor: calculation.context.actor,
+              tenant: ash_query.to_tenant,
+              args: calculation.context.arguments,
+              context: calculation.context.source_context
+            )
+            |> Ash.Actions.Read.add_calc_context_to_filter(
+              calculation.context.actor,
+              calculation.context.authorize?,
+              calculation.context.tenant,
+              calculation.context.tracer,
+              domain,
+              ash_query.resource,
+              parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
+              source_context: ash_query.context
+            )
 
-        case try_evaluate(
-               expression,
-               ash_query.resource,
-               calculation,
-               initial_data,
-               reuse_values?
-             ) do
-          {:ok, new_calculation} ->
-            {in_query, [new_calculation | at_runtime], ash_query}
+          case try_evaluate(
+                 expression,
+                 ash_query.resource,
+                 calculation,
+                 initial_data,
+                 reuse_values?
+               ) do
+            {:ok, new_calculation} ->
+              {:cont, {:ok, in_query, [new_calculation | at_runtime], ash_query}}
 
-          _ ->
-            if can_expression_calculation? do
-              if should_be_in_expression?(calculation, expression, ash_query) do
-                {[calculation | in_query], at_runtime, ash_query}
+            _ ->
+              if can_expression_calculation? do
+                case should_be_in_expression?(calculation, expression, ash_query) do
+                  {:ok, true} ->
+                    {:cont, {:ok, [calculation | in_query], at_runtime, ash_query}}
+
+                  {:ok, false} ->
+                    {:cont, {:ok, in_query, [calculation | at_runtime], ash_query}}
+
+                  {:error, error} ->
+                    {:halt, {:error, error}}
+                end
               else
-                {in_query, [calculation | at_runtime], ash_query}
+                if calculation.module.has_calculate?() do
+                  {:cont, {:ok, in_query, [calculation | at_runtime], ash_query}}
+                else
+                  {:cont,
+                   {:ok, in_query,
+                    [
+                      %{
+                        calculation
+                        | module: Ash.Resource.Calculation.RuntimeExpression,
+                          opts: [expr: expression],
+                          required_loads: [],
+                          select: []
+                      }
+                      | at_runtime
+                    ], ash_query}}
+                end
               end
-            else
-              if calculation.module.has_calculate?() do
-                {in_query, [calculation | at_runtime], ash_query}
-              else
-                {in_query,
-                 [
-                   %{
-                     calculation
-                     | module: Ash.Resource.Calculation.RuntimeExpression,
-                       opts: [expr: expression],
-                       required_loads: [],
-                       select: []
-                   }
-                   | at_runtime
-                 ], ash_query}
-              end
-            end
+          end
+        else
+          {:cont, {:ok, in_query, [calculation | at_runtime], ash_query}}
         end
-      else
-        {in_query, [calculation | at_runtime], ash_query}
-      end
-    end)
+      end)
+    else
+      {:error, ash_query}
+    end
   end
 
   defp try_evaluate(
@@ -1126,7 +1137,7 @@ defmodule Ash.Actions.Read.Calculations do
     if calculation.module.has_expression?() do
       case Map.fetch(calculation.context, :should_be_in_expression?) do
         {:ok, value} ->
-          value
+          {:ok, value}
 
         :error ->
           expression =
@@ -1159,13 +1170,17 @@ defmodule Ash.Actions.Read.Calculations do
               |> Enum.all?(fn %{module: module} ->
                 module.has_expression?()
               end)
+              |> then(&{:ok, &1})
 
-            {:error, _error} ->
-              false
+            {:error, error} ->
+              {:error,
+               Ash.Error.to_ash_error(error, nil,
+                 bread_crumbs: ["Building expression for calculation: #{inspect(calculation)}"]
+               )}
           end
       end
     else
-      false
+      {:ok, false}
     end
   end
 
@@ -1186,47 +1201,59 @@ defmodule Ash.Actions.Read.Calculations do
     else
       has_expression? = calculation.module.has_expression?()
 
-      if has_expression? && should_be_in_expression?(calculation, query) do
-        Map.update!(query, :calculations, fn calculations ->
-          Map.update!(calculations, calculation.name, fn calc ->
-            Map.update!(calc, :context, fn context ->
-              Map.put(context, :should_be_in_expression?, true)
-            end)
-          end)
-        end)
-      else
-        query =
-          if has_expression? do
-            Map.update!(query, :calculations, fn calculations ->
-              Map.update!(calculations, calculation.name, fn calc ->
-                Map.update!(calc, :context, fn context ->
-                  Map.put(context, :should_be_in_expression?, false)
-                end)
+      should_be_in_expression_result =
+        if has_expression? do
+          should_be_in_expression?(calculation, query)
+        else
+          {:ok, false}
+        end
+
+      case should_be_in_expression_result do
+        {:error, error} ->
+          Ash.Query.add_error(query, error)
+
+        {:ok, true} ->
+          Map.update!(query, :calculations, fn calculations ->
+            Map.update!(calculations, calculation.name, fn calc ->
+              Map.update!(calc, :context, fn context ->
+                Map.put(context, :should_be_in_expression?, true)
               end)
             end)
-          else
-            query
-          end
+          end)
 
-        checked_calculations = [{calculation.module, calculation.opts} | checked_calculations]
+        {:ok, false} ->
+          query =
+            if has_expression? do
+              Map.update!(query, :calculations, fn calculations ->
+                Map.update!(calculations, calculation.name, fn calc ->
+                  Map.update!(calc, :context, fn context ->
+                    Map.put(context, :should_be_in_expression?, false)
+                  end)
+                end)
+              end)
+            else
+              query
+            end
 
-        calculation.required_loads
-        |> List.wrap()
-        |> Enum.concat(List.wrap(calculation.select))
-        |> do_load_calculation_requirements(
-          domain,
-          query,
-          calculation.name,
-          calculation.load,
-          calc_path,
-          calculation.module.strict_loads?(),
-          relationship_path,
-          can_expression_calculation?,
-          checked_calculations,
-          initial_data,
-          reuse_values?,
-          authorize?
-        )
+          checked_calculations = [{calculation.module, calculation.opts} | checked_calculations]
+
+          calculation.required_loads
+          |> List.wrap()
+          |> Enum.concat(List.wrap(calculation.select))
+          |> do_load_calculation_requirements(
+            domain,
+            query,
+            calculation.name,
+            calculation.load,
+            calc_path,
+            calculation.module.strict_loads?(),
+            relationship_path,
+            can_expression_calculation?,
+            checked_calculations,
+            initial_data,
+            reuse_values?,
+            authorize?
+          )
       end
     end
   end
@@ -1843,26 +1870,32 @@ defmodule Ash.Actions.Read.Calculations do
           query =
             Ash.Query.load(query, new_calculation, strict?: strict_loads?)
 
-          new_calculation =
-            if should_be_in_expression?(new_calculation, query) do
-              new_calculation
-            else
-              query.calculations[new_calculation.name]
-            end
+          case should_be_in_expression?(new_calculation, query) do
+            {:error, error} ->
+              Ash.Query.add_error(query, error)
 
-          domain
-          |> load_calculation_requirements(
-            query,
-            new_calculation,
-            can_expression_calculation?,
-            initial_data,
-            reuse_values?,
-            authorize?,
-            calc_path,
-            relationship_path,
-            checked_calculations
-          )
-          |> add_calculation_dependency(calc_name, new_calculation.name)
+            {:ok, should_be_in_expression?} ->
+              new_calculation =
+                if should_be_in_expression? do
+                  new_calculation
+                else
+                  query.calculations[new_calculation.name]
+                end
+
+              domain
+              |> load_calculation_requirements(
+                query,
+                new_calculation,
+                can_expression_calculation?,
+                initial_data,
+                reuse_values?,
+                authorize?,
+                calc_path,
+                relationship_path,
+                checked_calculations
+              )
+              |> add_calculation_dependency(calc_name, new_calculation.name)
+          end
       end
     end
   end
