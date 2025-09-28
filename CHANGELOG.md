@@ -2,6 +2,41 @@
 
 <!-- changelog -->
 
+## [v3.5.43](https://github.com/ash-project/ash/compare/v3.5.42...v3.5.43) (2025-09-28)
+
+
+
+
+### Bug Fixes:
+
+* cast value to type when requiring atomic attributes by [@zachdaniel](https://github.com/zachdaniel)
+
+* fix amnesia support for upsets by Dan Wanek
+
+* support top-level `:shared` key in `Ash.Scope.ToOpts` for `Map` (#2261) by James Harton
+
+### Improvements:
+
+* add bulk_create for Ash.DataLayer.Mnesia (#2336) by Dan Wanek
+
+* return errors from calculations with invalid expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* add source locations to a whole bunch of errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location to primary key verifier by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location for multitenancy verifier by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location information for manage relationship transformer by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location info for reserved field names transformer by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location info for primary action transformer by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location info for unique action name transformer by [@zachdaniel](https://github.com/zachdaniel)
+
+* implemented 'has' and 'intersects' functions (#2324) by Abdessabour Moutik
+
 ## [v3.5.42](https://github.com/ash-project/ash/compare/v3.5.41...v3.5.42) (2025-09-20)
 
 
