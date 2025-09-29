@@ -2286,16 +2286,19 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(
-         %Ash.Query.Exists{at_path: at_path, related?: related?},
+         %Ash.Query.Exists{at_path: at_path, related?: related?, expr: expression},
          false,
          with_refs?,
-         _expand_aggregates?
+         expand_aggregates?
        ) do
     if related? && !with_refs? do
       [{at_path}]
     else
       []
     end
+    |> Kernel.++(
+      parent_relationship_paths(expression, at_path, false, with_refs?, expand_aggregates?)
+    )
   end
 
   defp do_relationship_paths(
