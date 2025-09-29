@@ -58,8 +58,11 @@ defmodule Ash.DataLayer.MnesiaTest do
 
   describe "create/2" do
     test "it creates a user" do
+      resource = MnesiaTestUser
       user = %{name: "John", age: 30, title: "Developer", roles: [:admin, :user]}
-      assert {:ok, created_user} = Ash.create(MnesiaTestUser, user)
+
+      assert {:ok, created_user} =
+               MnesiaDataLayer.create(resource, Ash.Changeset.for_create(resource, :create, user))
 
       assert %MnesiaTestUser{
                id: _,

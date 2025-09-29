@@ -445,7 +445,7 @@ defmodule Ash.DataLayer.Mnesia do
                Ash.DataLayer.Mnesia.Info.table(resource),
                pkey,
                values,
-               opts[:with_transaction]
+               Keyword.get(opts, :with_transaction, true)
              ) do
           # If with_transaction is false, we are in a transaction and will only return :ok
           :ok ->
@@ -466,7 +466,7 @@ defmodule Ash.DataLayer.Mnesia do
   # This allows for writing to Mnesia without a transaction in case one was
   # started elsewhere. This was explicitly created for `bulk_create/3`.
   defp do_write(table, pkey, values, with_transaction) do
-    if with_transaction do
+    if with_transaction && !Mnesia.is_transaction() do
       Mnesia.transaction(fn ->
         Mnesia.write({table, pkey, values})
       end)
