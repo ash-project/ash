@@ -1487,7 +1487,11 @@ defmodule Ash.Changeset do
             Ash.Expr.expr(type(^new_value, ^attribute.type, ^attribute.constraints))
 
           :error ->
-            expr(^ref(field))
+            if changeset.action.type == :create and changeset.context[:private][:upsert?] do
+              expr(upsert_conflict(^field))
+            else
+              expr(^ref(field))
+            end
         end
     end
   end
