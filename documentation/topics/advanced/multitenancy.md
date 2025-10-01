@@ -4,6 +4,33 @@ Multitenancy is the splitting up your data into discrete areas, typically by cus
 
 In Ash, there are two strategies for implementing multitenancy. The first (and simplest) strategy works for any data layer that supports filtering, and requires little maintenance/mental overhead. It is done via expecting a given attribute to line up with the `tenant`, and is called the `:attribute` strategy. The second, is based on the data layer backing your resource, and is called the `:context` strategy. For information on context based multitenancy, see the documentation of your data layer. For example, `AshPostgres` uses postgres schemas. While the `:attribute` strategy is simple to implement, it offers fewer advantages, primarily acting as another way to ensure your data is filtered to the correct tenant.
 
+## Setting Tenant
+
+### Using Ash.PlugHelpers.set_tenant
+
+You can use `Ash.PlugHelpers.set_tenant/2` in your plug pipeline to set the tenant for all operations:
+
+Example usage of the above:
+
+```elixir
+conn
+|> Ash.PlugHelpers.set_tenant(tenant)
+```
+
+**Important:** If you're using `ash_authentication` with Multitenant User or Token resources, the `Ash.PlugHelpers.set_tenant` plug **must be placed before any authentication plugs** in your pipeline. This ensures the tenant is available when authentication operations need to query or create user/token records.
+
+### Using Ash.Scope
+
+You can also use `Ash.Scope` to you can group up actor/tenant/context into one struct and pass that around.
+
+Example usage of the above:
+
+```elixir
+Ash.Scope.set_tenant(organization_id)
+```
+
+See the Guide [guide](https://hexdocs.pm/ash/Ash.Scope.html).
+
 ## Attribute Multitenancy
 
 ```elixir
@@ -25,7 +52,7 @@ end
 
 In this case, if you were to try to run a query without specifying a tenant, you would get an error telling you that the tenant is required.
 
-Setting the tenant is done via `Ash.Query.set_tenant/2` and `Ash.Changeset.set_tenant/2`. If you are using a [code interface](/documentation/topics/resources/code-interfaces.md), you can pass `tenant: ` in the options list (the final parameter). If you are using an extension, such as `AshJsonApi` or `AshGraphql` the method of setting tenant context is explained in that extension's documentation.
+Setting the tenant is done via `Ash.Query.set_tenant/2` and `Ash.Changeset.set_tenant/2`. If you are using a [code interface](/documentation/topics/resources/code-interfaces.md), you can pass `tenant:` in the options list (the final parameter). If you are using an extension, such as `AshJsonApi` or `AshGraphql` the method of setting tenant context is explained in that extension's documentation.
 
 Example usage of the above:
 
