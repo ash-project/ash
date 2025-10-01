@@ -915,6 +915,47 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     assert result.records == []
   end
 
+  @tag :focus
+  test "returns skipped upserts when upsert_condition prevents update and return_skipped_upserts? is true" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
+    # Create initial record
+    assert %Ash.BulkResult{records: [%{title: "title1", title2: "initial"}]} =
+             Ash.bulk_create!(
+               [%{title: "title1", title2: "initial"}],
+               Post,
+               :create,
+               tenant: org.id,
+               return_records?: true,
+               authorize?: false
+             )
+
+    # Try to upsert with a condition that will prevent the update
+    result =
+      Ash.bulk_create(
+        [%{title: "title1", title2: "attempted_change"}],
+        Post,
+        :create,
+        tenant: org.id,
+        return_records?: true,
+        upsert?: true,
+        upsert_identity: :unique_title,
+        upsert_fields: [:title2],
+        upsert_condition: expr(false),
+        return_skipped_upsert?: true,
+        authorize?: false
+      )
+
+    # Verify the record is returned even though it wasn't updated
+    assert %Ash.BulkResult{records: [returned_record]} = result
+    assert returned_record.title == "title1"
+    # The title2 should still be "initial" since the upsert was skipped
+    assert returned_record.title2 == "initial"
+  end
+
   test "can upsert with :replace" do
     org =
       Org

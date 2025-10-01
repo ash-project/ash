@@ -1231,6 +1231,11 @@ defmodule Ash.Actions.Create.Bulk do
                           nil -> action && action.upsert_condition
                           other -> other
                         end,
+                      return_skipped_upsert?:
+                        case opts[:return_skipped_upsert?] do
+                          nil -> action && action.return_skipped_upsert?
+                          other -> other
+                        end,
                       tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
                     }
                   )
@@ -1251,11 +1256,29 @@ defmodule Ash.Actions.Create.Bulk do
                     end
 
                   case result do
-                    {:ok, {:upsert_skipped, _query, _callback}} ->
-                      []
+                    {:ok, {:upsert_skipped, _query, callback}} ->
+                      if opts[:return_skipped_upsert?] do
+                        case callback.() do
+                          {:ok, record} ->
+                            [
+                              Ash.Resource.set_metadata(record, %{
+                                bulk_create_index: changeset.context.bulk_create.index
+                              })
+                            ]
 
-                    {:ok, %{__metadata__: %{upsert_skipped: true}}} ->
-                      []
+                          _ ->
+                            []
+                        end
+                      else
+                        []
+                      end
+
+                    {:ok, %{__metadata__: %{upsert_skipped: true}} = record} ->
+                      if opts[:return_skipped_upsert?] do
+                        [record]
+                      else
+                        []
+                      end
 
                     {:ok, result} ->
                       {:ok,
