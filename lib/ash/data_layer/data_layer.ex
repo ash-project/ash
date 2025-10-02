@@ -109,6 +109,7 @@ defmodule Ash.DataLayer do
           | {:sort, Ash.Type.t()}
           | :upsert
           | :composite_primary_key
+          | :bulk_upsert_return_skipped
 
   @type lateral_join_link ::
           {Ash.Resource.t(), atom, atom, Ash.Resource.Relationships.relationship()}

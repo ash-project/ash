@@ -102,7 +102,18 @@ defmodule Ash.Actions.Create.Bulk do
           false
       end
 
-    data_layer_can_bulk? = Ash.DataLayer.data_layer_can?(resource, :bulk_create)
+    Ash.DataLayer.data_layer_can?(resource, :bulk_upsert_return_skipped)
+
+    base_changeset = base_changeset(resource, domain, opts, action)
+
+    # If upserting with return_skipped_upsert? and data layer can't handle it in bulk, fall back to single inserts
+    data_layer_can_bulk? =
+      if upsert? and base_changeset.context[:private][:return_skipped_upsert?] and
+           not Ash.DataLayer.data_layer_can?(resource, :bulk_upsert_return_skipped) do
+        false
+      else
+        Ash.DataLayer.data_layer_can?(resource, :bulk_create)
+      end
 
     batch_size =
       cond do
@@ -110,11 +121,6 @@ defmodule Ash.Actions.Create.Bulk do
         action.manual == nil and data_layer_can_bulk? -> opts[:batch_size] || 100
         true -> 1
       end
-
-    ref = make_ref()
-
-    lazy_matching_default_values = lazy_matching_default_values(resource)
-    base_changeset = base_changeset(resource, domain, opts, action)
 
     all_changes =
       pre_template_all_changes(
@@ -157,6 +163,8 @@ defmodule Ash.Actions.Create.Bulk do
         MapSet.to_list(Ash.Resource.Info.attribute_names(resource))
       end
 
+    ref = make_ref()
+
     changeset_stream =
       inputs
       |> Stream.with_index()
@@ -173,7 +181,7 @@ defmodule Ash.Actions.Create.Bulk do
                 &1,
                 action,
                 opts,
-                lazy_matching_default_values,
+                lazy_matching_default_values(resource),
                 base_changeset,
                 argument_names
               )
@@ -387,7 +395,9 @@ defmodule Ash.Actions.Create.Bulk do
             opts[:upsert_fields] || action.upsert_fields,
             resource
           ),
-        upsert_condition: upsert_condition
+        upsert_condition: upsert_condition,
+        return_skipped_upsert?:
+          opts[:return_skipped_upsert?] || (action && action.return_skipped_upsert?) || false
       }
     })
     |> Ash.Actions.Helpers.add_context(opts)
@@ -1257,14 +1267,15 @@ defmodule Ash.Actions.Create.Bulk do
 
                   case result do
                     {:ok, {:upsert_skipped, _query, callback}} ->
-                      if opts[:return_skipped_upsert?] do
+                      if changeset.context[:private][:return_skipped_upsert?] do
                         case callback.() do
                           {:ok, record} ->
-                            [
-                              Ash.Resource.set_metadata(record, %{
-                                bulk_create_index: changeset.context.bulk_create.index
-                              })
-                            ]
+                            {:ok,
+                             [
+                               Ash.Resource.set_metadata(record, %{
+                                 bulk_create_index: changeset.context.bulk_create.index
+                               })
+                             ]}
 
                           _ ->
                             []
@@ -1274,8 +1285,13 @@ defmodule Ash.Actions.Create.Bulk do
                       end
 
                     {:ok, %{__metadata__: %{upsert_skipped: true}} = record} ->
-                      if opts[:return_skipped_upsert?] do
-                        [record]
+                      if changeset.context[:private][:return_skipped_upsert?] do
+                        {:ok,
+                         [
+                           Ash.Resource.set_metadata(record, %{
+                             bulk_create_index: changeset.context.bulk_create.index
+                           })
+                         ]}
                       else
                         []
                       end
