@@ -853,7 +853,10 @@ defmodule Ash.Generator do
             "Invalid action #{inspect(resource)}.#{action_name}"
     end
 
-    arguments = Enum.reject(action.arguments, &find_manage_change(&1, action))
+    arguments =
+      Enum.filter(action.arguments, fn argument ->
+        argument.public? && !find_manage_change(argument, action)
+      end)
 
     resource
     |> Ash.Resource.Info.attributes()
