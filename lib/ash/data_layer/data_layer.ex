@@ -186,6 +186,7 @@ defmodule Ash.DataLayer do
           action_select: list(atom),
           upsert_keys: nil | list(atom),
           upsert_condition: Ash.Expr.t() | nil,
+          return_skipped_upsert?: boolean,
           identity: Ash.Resource.Identity.t() | nil,
           select: list(atom),
           upsert_fields:
