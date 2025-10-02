@@ -108,11 +108,11 @@ defmodule Ash.Actions.Create.Bulk do
 
     # If upserting with return_skipped_upsert? and data layer can't handle it in bulk, fall back to single inserts
     data_layer_can_bulk? =
-      if upsert? and base_changeset.context[:private][:return_skipped_upsert?] and
-           not Ash.DataLayer.data_layer_can?(resource, :bulk_upsert_return_skipped) do
-        false
+      if Ash.DataLayer.data_layer_can?(resource, :bulk_create) do
+        !upsert? || !base_changeset.context[:private][:return_skipped_upsert?] ||
+          Ash.DataLayer.data_layer_can?(resource, :bulk_upsert_return_skipped)
       else
-        Ash.DataLayer.data_layer_can?(resource, :bulk_create)
+        false
       end
 
     batch_size =
