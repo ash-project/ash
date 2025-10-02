@@ -26,7 +26,9 @@ You can also use `Ash.Scope` to you can group up actor/tenant/context into one s
 Example usage of the above:
 
 ```elixir
-Ash.Scope.set_tenant(organization_id)
+scope = %MyApp.Scope{current_user: user, current_tenant: tenant, locale: "en"}
+MyApp.Blog.create_post!("new post", scope: scope)
+
 ```
 
 See the Guide [guide](https://hexdocs.pm/ash/Ash.Scope.html).
