@@ -102,8 +102,6 @@ defmodule Ash.Actions.Create.Bulk do
           false
       end
 
-    Ash.DataLayer.data_layer_can?(resource, :bulk_upsert_return_skipped)
-
     base_changeset = base_changeset(resource, domain, opts, action)
 
     data_layer_can_bulk? =
