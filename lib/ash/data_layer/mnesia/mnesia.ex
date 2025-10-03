@@ -1,5 +1,6 @@
 defmodule Ash.DataLayer.Mnesia do
   @behaviour Ash.DataLayer
+  require Logger
 
   @mnesia %Spark.Dsl.Section{
     name: :mnesia,
@@ -28,13 +29,19 @@ defmodule Ash.DataLayer.Mnesia do
 
   Additionally, you will want to create your mnesia tables there.
 
-  This data layer is *unoptimized*, fetching all records from a table and filtering them
-  in memory. For that reason, it is not recommended to use it with large amounts of data. It can be
-  great for prototyping or light usage, though.
+  ## Performance
+
+  This data layer uses Mnesia matchspecs to push filter operations down to the database
+  level when possible. Supported filters (equality, comparison, boolean logic, etc.) are
+  converted to matchspecs for efficient querying. Unsupported filters fall back to
+  runtime filtering in memory. Due to this limitation, unsupported filtering may
+  have an effect on performance as filtering occurs in memory. For more on the
+  supported options see `Ash.DataLayer.Mnesia.MatchSpec`.
   """
 
   use Spark.Dsl.Extension,
     sections: [@mnesia],
+    persisters: [Ash.DataLayer.Mnesia.Transformers.DefineRecords],
     verifiers: [Ash.DataLayer.Verifiers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
@@ -53,12 +60,12 @@ defmodule Ash.DataLayer.Mnesia do
     |> Ash.Domain.Info.resources()
     |> Enum.concat(resources)
     |> Enum.filter(&(__MODULE__ in Spark.extensions(&1)))
-    |> Enum.flat_map(fn resource ->
-      resource
-      |> Ash.DataLayer.Mnesia.Info.table()
-      |> List.wrap()
+    |> Enum.each(fn resource ->
+      table = Ash.DataLayer.Mnesia.Info.table(resource)
+      attributes = resource.mnesia_record_info()
+      # TODO: Implement configurable type
+      Mnesia.create_table(table, attributes: attributes, type: :ordered_set)
     end)
-    |> Enum.each(&Mnesia.create_table(&1, attributes: [:_pkey, :val]))
   end
 
   defmodule Query do
@@ -154,6 +161,8 @@ defmodule Ash.DataLayer.Mnesia do
   @impl true
   def in_transaction?(_), do: Mnesia.is_transaction()
 
+  def in_transaction?, do: Mnesia.is_transaction()
+
   @doc false
   @impl true
   def limit(query, offset, _), do: {:ok, %{query | limit: offset}}
@@ -237,6 +246,9 @@ defmodule Ash.DataLayer.Mnesia do
         {:error, error}
     end
     |> case do
+      {:ok, acc} ->
+        {:ok, acc}
+
       {:error, error} ->
         {:error, Ash.Error.to_ash_error(error)}
 
@@ -274,17 +286,39 @@ defmodule Ash.DataLayer.Mnesia do
         },
         _resource
       ) do
+    # Build matchspec from filter if possible. If this fails, we will fall back
+    # to runtime filtering. This will only happen for the small subset of
+    # filters we have not implemented.
+    {matchspec_status, matchspec} = build_matchspec(filter)
+
     with {:atomic, records} <-
            Mnesia.transaction(fn ->
-             Mnesia.select(Ash.DataLayer.Mnesia.Info.table(resource), [{:_, [], [:"$_"]}])
+             Mnesia.select(Ash.DataLayer.Mnesia.Info.table(resource), matchspec)
            end),
+         # Convert to Ash.Resource from Erlang Records
          {:ok, records} <-
-           records |> Enum.map(&elem(&1, 2)) |> Ash.DataLayer.Ets.cast_records(resource),
+           records
+           |> Enum.map(&resource.from_ex_record(&1))
+           |> then(fn records -> {:ok, records} end),
+         # Do runtime filtering if our matchspec failed
          {:ok, filtered} <-
-           filter_matches(records, filter, domain, tenant, context[:private][:actor]),
+           filter_if_not_using_matchspec(
+             matchspec_status,
+             records,
+             filter,
+             domain,
+             tenant,
+             context[:private][:actor]
+           ),
+         # Runtime sort, offset, and limit
+         #
+         # TODO: I think we can implement this in Mnesia, but we need to figure
+         # out all of the details based on the table types (bag, set,
+         # ordered_set)
          offset_records <-
            filtered |> Sort.runtime_sort(sort, domain: domain) |> Enum.drop(offset || 0),
          limited_records <- do_limit(offset_records, limit),
+         # Add aggregates
          {:ok, records} <-
            Ash.DataLayer.Ets.do_add_aggregates(
              limited_records,
@@ -292,6 +326,7 @@ defmodule Ash.DataLayer.Mnesia do
              resource,
              aggregates
            ),
+         # Add calculations
          {:ok, records} <-
            Ash.DataLayer.Ets.do_add_calculations(
              records,
@@ -306,6 +341,26 @@ defmodule Ash.DataLayer.Mnesia do
 
       {:aborted, reason} ->
         {:error, reason}
+    end
+  end
+
+  defp filter_if_not_using_matchspec(matchspec_status, records, filter, domain, tenant, actor) do
+    if matchspec_status == :ok do
+      {:ok, records}
+    else
+      filter_matches(records, filter, domain, tenant, actor)
+    end
+  end
+
+  defp build_matchspec(filter) do
+    case Ash.DataLayer.Mnesia.MatchSpec.to_matchspec(filter) do
+      {:ok, matchspec} ->
+        {:ok, matchspec}
+
+      {:error, reason} ->
+        Logger.debug("Unable to convert filter to matchspec: #{reason}. Using runtime filtering.")
+        {:ok, matchspec} = Ash.DataLayer.Mnesia.MatchSpec.to_matchspec(nil)
+        {:runtime, matchspec}
     end
   end
 
@@ -401,7 +456,7 @@ defmodule Ash.DataLayer.Mnesia do
     Mnesia.transaction(fn ->
       Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
         # Sending in `false` prevents a transaction for every write
-        case create(resource, changeset, with_transaction: false) do
+        case create(resource, changeset) do
           {:ok, result} ->
             result =
               if options[:return_records?] do
@@ -425,53 +480,34 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def create(resource, changeset, opts \\ []) do
+  def create(resource, changeset) do
     {:ok, record} = Ash.Changeset.apply_attributes(changeset)
 
-    pkey =
-      resource
-      |> Ash.Resource.Info.primary_key()
-      |> Enum.map(fn attr ->
-        Map.get(record, attr)
-      end)
+    ex_record = resource.to_ex_record(record)
 
-    resource
-    |> Ash.Resource.Info.attributes()
-    |> Map.new(&{&1.name, Map.get(record, &1.name)})
-    |> Ash.DataLayer.Ets.dump_to_native(Ash.Resource.Info.attributes(resource))
-    |> case do
-      {:ok, values} ->
-        case do_write(
-               Ash.DataLayer.Mnesia.Info.table(resource),
-               pkey,
-               values,
-               Keyword.get(opts, :with_transaction, true)
-             ) do
-          # If with_transaction is false, we are in a transaction and will only return :ok
-          :ok ->
-            {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+    case do_write(fn ->
+           Mnesia.write(ex_record)
+         end) do
+      :ok ->
+        {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
 
-          {:atomic, _} ->
-            {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+      {:atomic, :ok} ->
+        {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
 
-          {:aborted, error} ->
-            {:error, error}
-        end
-
-      {:error, error} ->
-        {:error, error}
+      {:aborted, reason} ->
+        {:error, reason}
     end
   end
 
   # This allows for writing to Mnesia without a transaction in case one was
   # started elsewhere. This was explicitly created for `bulk_create/3`.
-  defp do_write(table, pkey, values, with_transaction) do
-    if with_transaction && !Mnesia.is_transaction() do
-      Mnesia.transaction(fn ->
-        Mnesia.write({table, pkey, values})
-      end)
+  defp do_write(write_fn) do
+    if in_transaction?() do
+      write_fn.()
     else
-      Mnesia.write({table, pkey, values})
+      Mnesia.transaction(fn ->
+        write_fn.()
+      end)
     end
   end
 
@@ -482,6 +518,10 @@ defmodule Ash.DataLayer.Mnesia do
       resource
       |> Ash.Resource.Info.primary_key()
       |> Enum.map(&Map.get(record, &1))
+      |> case do
+        [value] -> value
+        [first | rest] -> [first | rest] |> List.to_tuple()
+      end
 
     result =
       Mnesia.transaction(fn ->
@@ -497,15 +537,17 @@ defmodule Ash.DataLayer.Mnesia do
   @doc false
   @impl true
   def update(resource, changeset) do
-    pkey = pkey_list(resource, changeset.data)
+    {:ok, pkey} = pkey_val(resource, changeset.data)
 
     result =
       Mnesia.transaction(fn ->
         with {:ok, record} <- Ash.Changeset.apply_attributes(%{changeset | action_type: :update}),
              {:ok, record} <-
                do_update(Ash.DataLayer.Mnesia.Info.table(resource), {pkey, record}, resource),
-             {:ok, record} <- Ash.DataLayer.Ets.cast_record(record, resource) do
-          new_pkey = pkey_list(resource, record)
+             {:ok, record} <-
+               resource.from_ex_record(record)
+               |> then(&{:ok, &1}) do
+          {:ok, new_pkey} = pkey_val(resource, record)
 
           if new_pkey != pkey do
             case destroy(resource, changeset) do
@@ -554,29 +596,37 @@ defmodule Ash.DataLayer.Mnesia do
     end
   end
 
-  defp pkey_list(resource, data) do
+  # This will return primary keys in the way that Mnesia expects them. If there
+  # is a single primary key, it will be returned as a single value. If there are
+  # multiple primary keys, they will be returned as a tuple. This will always be
+  # stored as the first value in an Mnesia record.
+  defp pkey_val(resource, data) do
     resource
     |> Ash.Resource.Info.primary_key()
     |> Enum.map(&Map.get(data, &1))
+    |> case do
+      [pkey] ->
+        {:ok, pkey}
+
+      [_ | _] = pkeys ->
+        {:ok, List.to_tuple(pkeys)}
+
+      _ ->
+        {:error, "Invalid primary key"}
+    end
   end
 
   defp do_update(table, {pkey, record}, resource) do
-    attributes = Ash.Resource.Info.attributes(resource)
+    case Mnesia.read({table, pkey}) do
+      [] ->
+        {:error, "Record not found matching: #{inspect(pkey)}"}
 
-    case Ash.DataLayer.Ets.dump_to_native(record, attributes) do
-      {:ok, casted} ->
-        case Mnesia.read({Ash.DataLayer.Mnesia.Info.table(resource), pkey}) do
-          [] ->
-            {:error, "Record not found matching: #{inspect(pkey)}"}
-
-          [{_, _, record}] ->
-            Mnesia.write({table, pkey, Map.merge(record, casted)})
-            [{_, _, record}] = Mnesia.read({table, pkey})
-            {:ok, record}
-        end
-
-      {:error, error} ->
-        {:error, error}
+      [ex_record] when is_tuple(ex_record) ->
+        old_record = resource.from_ex_record(ex_record)
+        new_record = Map.merge(old_record, record)
+        new_ex_record = resource.to_ex_record(new_record)
+        :ok = Mnesia.write(new_ex_record)
+        {:ok, new_ex_record}
     end
   end
 
@@ -613,6 +663,8 @@ defmodule Ash.DataLayer.Mnesia do
             |> Map.put(:data, result)
             |> Ash.Changeset.force_change_attributes(to_set)
 
+          # TODO: we are fetching the record above, but `update/2` is going to
+          # fetch it again. This should be optimized to avoid redundant fetches.
           update(resource, changeset)
 
         {:ok, _} ->

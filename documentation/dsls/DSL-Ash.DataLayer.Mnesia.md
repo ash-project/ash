@@ -9,9 +9,14 @@ In your application initialization, you will need to call `Mnesia.create_schema(
 
 Additionally, you will want to create your mnesia tables there.
 
-This data layer is *unoptimized*, fetching all records from a table and filtering them
-in memory. For that reason, it is not recommended to use it with large amounts of data. It can be
-great for prototyping or light usage, though.
+## Performance
+
+This data layer uses Mnesia matchspecs to push filter operations down to the database
+level when possible. Supported filters (equality, comparison, boolean logic, etc.) are
+converted to matchspecs for efficient querying. Unsupported filters fall back to
+runtime filtering in memory. Due to this limitation, unsupported filtering may
+have an effect on performance as filtering occurs in memory. For more on the
+supported options see `Ash.DataLayer.Mnesia.MatchSpec`.
 
 
 ## mnesia

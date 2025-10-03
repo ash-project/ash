@@ -1,7 +1,6 @@
 defmodule Ash.DataLayer.MnesiaTest do
   use ExUnit.Case, async: false
 
-  require IEx
   alias Ash.DataLayer.Mnesia, as: MnesiaDataLayer
   alias Ash.Test.Domain, as: Domain
 
@@ -23,7 +22,7 @@ defmodule Ash.DataLayer.MnesiaTest do
     end
 
     # Create fresh table for each test
-    :mnesia.create_table(@default_test_table, attributes: [:id, :val])
+    :mnesia.create_table(@default_test_table, attributes: [:id, :name, :age, :title, :roles])
     :ok
   end
 
