@@ -46,7 +46,9 @@ defmodule Ash.ActionInput do
   """
   @type after_action_fun ::
           (t, term ->
-             {:ok, term}
+             :ok
+             | {:ok, [Ash.Notifier.Notification.t()]}
+             | {:ok, term}
              | {:ok, term, [Ash.Notifier.Notification.t()]}
              | {:error, any})
 
@@ -64,8 +66,8 @@ defmodule Ash.ActionInput do
   the result (potentially modified) or an error.
   """
   @type after_transaction_fun ::
-          (t, {:ok, term} | {:error, any} ->
-             {:ok, term} | {:error, any})
+          (t, :ok | {:ok, term} | {:error, any} ->
+             :ok | {:ok, term} | {:error, any})
 
   @typedoc """
   Function type for around transaction hooks.
@@ -74,8 +76,8 @@ defmodule Ash.ActionInput do
   and returns the result of calling the callback or an error.
   """
   @type around_transaction_fun ::
-          (t, (t -> {:ok, term} | {:error, any}) ->
-             {:ok, term} | {:error, any})
+          (t, (t -> :ok | {:ok, term} | {:error, any}) ->
+             :ok | {:ok, term} | {:error, any})
 
   @typedoc """
   An action input struct for generic (non-CRUD) actions.
@@ -969,6 +971,13 @@ defmodule Ash.ActionInput do
   from the action. They can modify the result, perform side effects, or return
   errors to halt processing. The hook can return notifications alongside the result.
 
+  > #### Actions without a return type {: .tip}
+  >
+  > After action hooks will work for generic actions without a return type,
+  > however they will receive `nil` as their `result` argument and are
+  > expected to return
+  > `:ok | {:ok, [Ash.Notifier.Notification.t()]} | {:error, term}`.
+
   ## Examples
 
       # Transform the result after action
@@ -1069,6 +1078,12 @@ defmodule Ash.ActionInput do
   After transaction hooks are executed after the transaction completes, regardless of success or failure.
   They receive both the input and the transaction result, and can modify the result.
 
+  > #### Actions without a return type {: .tip}
+  >
+  > After transaction hooks will work for generic actions without a return
+  > type, however they will receive `:ok | {:error, term}` as their `result`
+  > argument and are expected to return `:ok | {:error, term}`.
+
   ## Examples
 
       # Add cleanup after transaction
@@ -1104,6 +1119,13 @@ defmodule Ash.ActionInput do
   function that they must call to execute the transaction, allowing them to add logic
   both before and after the transaction.
 
+  > #### Actions without a return type {: .tip}
+  >
+  > Around transaction hooks will work for generic actions without a return
+  > type, however they will receive `:ok` as the result of the callback
+  > instead of `{:ok, result}`. They are expected to return
+  > `:ok | {:error, any}`.
+
   ## Examples
 
       # Add retry logic around transaction
@@ -1135,7 +1157,9 @@ defmodule Ash.ActionInput do
     end
   end
 
-  @doc false
+  defguardp has_return?(input) when not is_nil(input.action.returns)
+  defguardp has_no_return?(input) when is_nil(input.action.returns)
+
   defp run_preparations_and_validations(input, opts) do
     actor = opts[:actor]
     authorize? = opts[:authorize?]
@@ -1455,7 +1479,7 @@ defmodule Ash.ActionInput do
     Enum.reduce_while(
       input.after_action,
       {:ok, result, input, %{notifications: before_action_notifications}},
-      fn after_action, {:ok, result, input, %{notifications: notifications} = acc} ->
+      fn after_action, {:ok, result, input, acc} ->
         tracer = input.context[:private][:tracer]
 
         metadata = fn ->
@@ -1482,38 +1506,46 @@ defmodule Ash.ActionInput do
           end
 
         case result do
-          {:ok, new_result, new_notifications} ->
-            all_notifications =
-              Enum.map(
-                List.wrap(notifications) ++ List.wrap(new_notifications),
-                fn notification ->
-                  %{
-                    notification
-                    | resource: notification.resource || input.resource,
-                      action:
-                        notification.action ||
-                          Ash.Resource.Info.action(
-                            input.resource,
-                            input.action.name,
-                            :action
-                          ),
-                      data: notification.data || new_result,
-                      actor: notification.actor || input.context[:private][:actor]
-                  }
-                end
-              )
+          {:ok, new_result, new_notifications} when has_return?(input) ->
+            {:cont,
+             {:ok, new_result, input,
+              %{
+                acc
+                | notifications:
+                    merge_after_action_notifications(
+                      input,
+                      new_result,
+                      acc.notifications,
+                      new_notifications
+                    )
+              }}}
 
-            {:cont, {:ok, new_result, input, %{acc | notifications: all_notifications}}}
+          :ok when has_no_return?(input) ->
+            {:cont, {:ok, nil, input, acc}}
 
-          {:ok, new_result} ->
+          {:ok, new_notifications} when has_no_return?(input) and is_list(new_notifications) ->
+            {:cont,
+             {:ok, nil, input,
+              %{
+                acc
+                | notifications:
+                    merge_after_action_notifications(
+                      input,
+                      nil,
+                      acc.notifications,
+                      new_notifications
+                    )
+              }}}
+
+          {:ok, new_result} when has_return?(input) ->
             {:cont, {:ok, new_result, input, acc}}
 
           {:error, error} ->
             {:halt, {:error, error}}
 
-          other ->
+          other when has_return?(input) ->
             raise """
-            Invalid return value from after_action hook. Expected one of:
+            Invalid return value from after_action hook. Because this action has a return type I expected one of:
 
             * {:ok, result}
             * {:ok, result, notifications}
@@ -1523,7 +1555,41 @@ defmodule Ash.ActionInput do
 
             #{inspect(other)}
             """
+
+          other when has_no_return?(input) ->
+            raise """
+            Invalid return value from after_action hook. Because this action has no return type I expected one of:
+
+            * :ok
+            * {:ok, notifications}
+            * {:error, error}
+
+            Got:
+
+            #{inspect(other)}
+            """
         end
+      end
+    )
+  end
+
+  defp merge_after_action_notifications(input, result, old_notifications, new_notifications) do
+    Enum.map(
+      List.wrap(old_notifications) ++ List.wrap(new_notifications),
+      fn notification ->
+        %{
+          notification
+          | resource: notification.resource || input.resource,
+            action:
+              notification.action ||
+                Ash.Resource.Info.action(
+                  input.resource,
+                  input.action.name,
+                  :action
+                ),
+            data: notification.data || result,
+            actor: notification.actor || input.context[:private][:actor]
+        }
       end
     )
   end
@@ -1629,17 +1695,77 @@ defmodule Ash.ActionInput do
       end
     )
     |> case do
-      {:ok, new_result} ->
+      :ok when has_no_return?(input) ->
+        :ok
+
+      {:ok, new_result} when has_return?(input) ->
         {:ok, new_result}
 
       {:error, error} ->
         {:error, error}
+
+      other when has_return?(input) ->
+        raise """
+        Invalid return value from after_transaction hook. Because this action has a return type I expected one of:
+
+        * {:ok, term}
+        * {:error, error}
+
+        Got:
+
+        #{inspect(other)}
+        """
+
+      other when has_no_return?(input) ->
+        raise """
+        Invalid return value from after_transaction hook. Because this action has no return type I expected one of:
+
+        * :ok
+        * {:error, error}
+
+        Got:
+
+        #{inspect(other)}
+        """
     end
   end
 
   @doc false
   def run_around_transaction_hooks(%{around_transaction: []} = input, func) do
-    func.(input)
+    case func.(input) do
+      :ok when has_no_return?(input) ->
+        :ok
+
+      {:ok, term} when has_return?(input) ->
+        {:ok, term}
+
+      {:error, error} ->
+        {:error, error}
+
+      other when has_no_return?(input) ->
+        raise """
+        Invalid return value from around_transaction hook. Because this action has no return type, I expected one of:
+
+        * :ok
+        * {:error, error}
+
+        Got:
+
+        #{inspect(other)}
+        """
+
+      other when has_return?(input) ->
+        raise """
+        Invalid return value from around_transaction hook. Because this action has a return type, I expected one of:
+
+        * {:ok, term}
+        * {:error, error}
+
+        Got:
+
+        #{inspect(other)}
+        """
+    end
   end
 
   def run_around_transaction_hooks(%{around_transaction: [around | rest]} = input, func) do

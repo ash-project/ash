@@ -25,7 +25,7 @@ Notes:
 
 - Every Reactor input must have a corresponding action argument.
 - Ash's action context is passed in as the Reactor's context (including things like actor, tenant, etc).
-- [Reactor runtime options](`t:Reactor.options/0`) can be set by setting `run {MyReactor, opts}` instead of just `run MyReactor`.
+- [Reactor runtime options](`t:Reactor.run_options/0`) can be set by setting `run {MyReactor, opts}` instead of just `run MyReactor`.
 - If you set the `transaction?` action DSL option to true then the Reactor will be run synchronously - regardless of the value of the `async?` runtime option.
 
 ### Example
