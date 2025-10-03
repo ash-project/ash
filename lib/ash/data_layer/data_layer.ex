@@ -109,6 +109,7 @@ defmodule Ash.DataLayer do
           | {:sort, Ash.Type.t()}
           | :upsert
           | :composite_primary_key
+          | :bulk_upsert_return_skipped
 
   @type lateral_join_link ::
           {Ash.Resource.t(), atom, atom, Ash.Resource.Relationships.relationship()}
@@ -185,6 +186,7 @@ defmodule Ash.DataLayer do
           action_select: list(atom),
           upsert_keys: nil | list(atom),
           upsert_condition: Ash.Expr.t() | nil,
+          return_skipped_upsert?: boolean,
           identity: Ash.Resource.Identity.t() | nil,
           select: list(atom),
           upsert_fields:
