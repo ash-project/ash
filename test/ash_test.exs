@@ -497,4 +497,88 @@ defmodule Ash.Test.AshTest do
       refute_received {:notification, %{action: %{type: :create}, resource: Item}}
     end
   end
+
+  describe "transact/3" do
+    alias __MODULE__.Notifier
+    alias __MODULE__.Item
+
+    setup do
+      import ExUnit.CaptureLog
+
+      capture_log(fn ->
+        Ash.DataLayer.Mnesia.start(Domain, [Item])
+      end)
+
+      on_exit(fn ->
+        capture_log(fn ->
+          :mnesia.stop()
+          :mnesia.delete_schema([node()])
+        end)
+      end)
+    end
+
+    test "returns ok tuple with last value from the transaction" do
+      result = Ash.transact(Item, fn -> :yep end)
+
+      assert {:ok, :yep} == result
+    end
+
+    test "collects and sends notifications after the transaction is done" do
+      Ash.transact(Item, fn ->
+        Ash.create!(Item, %{title: "it"})
+
+        refute_received {:notification, %{action: %{type: :create}, resource: Item}}
+      end)
+
+      assert_receive {:notification, %{action: %{type: :create}, resource: Item}}
+    end
+
+    test "does not send notifications if the transaction has failed" do
+      result =
+        Ash.transact(Item, fn ->
+          Ash.create!(Item, %{title: "it"})
+          Ash.create!(Item, %{title: nil})
+        end)
+
+      assert {:error, %Ash.Error.Invalid{}} = result
+
+      refute_received {:notification, %{action: %{type: :create}, resource: Item}}
+    end
+
+    test "returns notifications instead of sending them if `return_notifications?` is true" do
+      result =
+        Ash.transact(
+          Item,
+          fn ->
+            Ash.create!(Item, %{title: "it"})
+          end,
+          return_notifications?: true
+        )
+
+      assert {:ok, _, [%{action: %{type: :create}, resource: Item}]} = result
+
+      refute_received {:notification, %{action: %{type: :create}, resource: Item}}
+    end
+
+    test "automatically rolls back when callback returns {:error, _}" do
+      Ash.transact(Item, fn ->
+        Ash.create!(Item, %{title: "valid"})
+        {:error, :something_went_wrong}
+      end)
+
+      assert {:ok, []} = Ash.read(Item)
+
+      refute_received {:notification, %{action: %{type: :create}, resource: Item}}
+    end
+
+    test "can also use explicit Ash.DataLayer.rollback" do
+      Ash.transact(Item, fn ->
+        Ash.create!(Item, %{title: "valid"})
+        Ash.DataLayer.rollback(Item, :something_went_wrong)
+      end)
+
+      assert {:ok, []} = Ash.read(Item)
+      refute_received {:notification, %{action: %{type: :create}, resource: Item}}
+    end
+  end
 end

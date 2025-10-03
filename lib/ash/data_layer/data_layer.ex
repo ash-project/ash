@@ -457,34 +457,35 @@ defmodule Ash.DataLayer do
         Application.get_env(:ash, :transaction_rollback_on_error?, false)
       )
 
+    callback = fn ->
+      case {func.(), rollback_on_error?} do
+        {{:error, error} = result, true} ->
+          rollback(resource, error)
+          result
+
+        {result, _} ->
+          result
+      end
+    end
+
     if in_transaction?(resource) do
-      {:ok, func.()}
+      {:ok, callback.()}
     else
       data_layer = data_layer(resource)
 
       if data_layer.can?(resource, :transact) do
-        result =
-          cond do
-            !Code.ensure_loaded?(data_layer) ->
-              data_layer.transaction(resource, func)
+        cond do
+          !Code.ensure_loaded?(data_layer) ->
+            data_layer.transaction(resource, callback)
 
-            function_exported?(data_layer, :transaction, 4) ->
-              data_layer.transaction(resource, func, timeout, reason)
+          function_exported?(data_layer, :transaction, 4) ->
+            data_layer.transaction(resource, callback, timeout, reason)
 
-            function_exported?(data_layer, :transaction, 3) ->
-              data_layer.transaction(resource, func, timeout)
+          function_exported?(data_layer, :transaction, 3) ->
+            data_layer.transaction(resource, callback, timeout)
 
-            true ->
-              data_layer.transaction(resource, func)
-          end
-
-        case {result, rollback_on_error?} do
-          {{:error, error}, true} ->
-            rollback(resource, error)
-            result
-
-          {result, _} ->
-            result
+          true ->
+            data_layer.transaction(resource, callback)
         end
       else
         {:ok, func.()}
