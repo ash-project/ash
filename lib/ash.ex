@@ -3803,16 +3803,6 @@ defmodule Ash do
 
       To send notifications use `Ash.Notifier.notify(notifications)`. It sends any notifications that can be sent, and returns the rest.
       """
-    ],
-    rollback_on_error?: [
-      type: :boolean,
-      default: Application.compile_env(:ash, :transaction_rollback_on_error?, false),
-      doc: """
-      Whether or not to rollback the transaction on error, if the resource is in a transaction.
-
-      If the callback returns `{:error, _}`, automatically calls `Ash.DataLayer.rollback/2`.
-      Defaults to the value of `:transaction_rollback_on_error?` in your `:ash` config, or `false` if not set.
-      """
     ]
   ]
 
@@ -3824,70 +3814,41 @@ defmodule Ash do
     use Spark.Options.Validator, schema: transaction_opts
   end
 
-  @doc """
-  Wraps the execution of the function in a transaction with the resource's data_layer.
-  Collects notifications during the function's execution and sends them if the transaction was successful.
+  @doc deprecated: """
+       Use Ash.transact/3 instead.
 
-  ## Examples
+       Wraps the execution of the function in a transaction with the resource's data_layer.
+       Collects notifications during the function's execution and sends them if the transaction was successful.
 
-      iex> Ash.transaction(MyApp.Post, fn ->
-      ...>   post = Ash.create!(MyApp.Post, %{title: "Hello"})
-      ...>   Ash.update!(post, %{content: "World"})
-      ...> end)
-      {:ok, %MyApp.Post{title: "Hello", content: "World"}}
+       ## Examples
 
-      iex> Ash.transaction([MyApp.User, MyApp.Post], fn ->
-      ...>   user = Ash.create!(MyApp.User, %{name: "John"})
-      ...>   Ash.create!(MyApp.Post, %{title: "Hello", author_id: user.id})
-      ...> end)
-      {:ok, %MyApp.Post{title: "Hello"}}
+           iex> Ash.transaction(MyApp.Post, fn ->
+           ...>   post = Ash.create!(MyApp.Post, %{title: "Hello"})
+           ...>   Ash.update!(post, %{content: "World"})
+           ...> end)
+           {:ok, %MyApp.Post{title: "Hello", content: "World"}}
 
-      iex> Ash.transaction(MyApp.Post, fn ->
-      ...>   Ash.create!(MyApp.Post, %{title: "Test"})
-      ...> end, return_notifications?: true)
-      {:ok, %MyApp.Post{title: "Test"}, [%Ash.Notifier.Notification{}]}
+           iex> Ash.transaction([MyApp.User, MyApp.Post], fn ->
+           ...>   user = Ash.create!(MyApp.User, %{name: "John"})
+           ...>   Ash.create!(MyApp.Post, %{title: "Hello", author_id: user.id})
+           ...> end)
+           {:ok, %MyApp.Post{title: "Hello"}}
 
-      # Automatic rollback on error
+           iex> Ash.transaction(MyApp.Post, fn ->
+           ...>   Ash.create!(MyApp.Post, %{title: "Test"})
+           ...> end, return_notifications?: true)
+           {:ok, %MyApp.Post{title: "Test"}, [%Ash.Notifier.Notification{}]}
 
-      iex> Ash.transaction(MyApp.Post, fn ->
-      ...>   Ash.create(MyApp.Post, %{title: "Valid Post"})
-      ...>   {:error, :something_went_wrong}
-      ...> end, rollback_on_error?: true)
-      {:error, :something_went_wrong}
+       ## See also
 
-      # Transaction was automatically rolled back, no post was created
+       - `Ash.transact/3` - recommended replacement that always rolls back on error
+       - [Actions Guide](/documentation/topics/actions/actions.md) for understanding action concepts
+       - [Development Testing Guide](/documentation/topics/development/testing.md) for testing with transactions
 
-      # Per-call option overrides application config
+       ## Options
 
-      iex> Ash.transaction(MyApp.Post, fn ->
-      ...>   Ash.create(MyApp.Post, %{title: "Another Post"})
-      ...>   {:error, :oops}
-      ...> end, rollback_on_error?: false)
-      {:error, :oops}
-
-      # Transaction was NOT rolled back, post was created
-
-  ## Configuration
-
-  You can set a default rollback behavior for your entire application:
-
-      # config/config.exs
-      config :ash, transaction_rollback_on_error?: true
-
-  **Option Precedence** (highest to lowest priority):
-  1. Per-call `rollback_on_error?` option
-  2. Application config `:transaction_rollback_on_error?`
-  3. Default value (`false`)
-
-  ## See also
-
-  - [Actions Guide](/documentation/topics/actions/actions.md) for understanding action concepts
-  - [Development Testing Guide](/documentation/topics/development/testing.md) for testing with transactions
-
-  ## Options
-
-  #{Spark.Options.docs(@transaction_opts_schema)}
-  """
+       #{Spark.Options.docs(@transaction_opts_schema)}
+       """
   @spec transaction(
           resource_or_resources :: Ash.Resource.t() | [Ash.Resource.t()],
           func :: (-> term),
@@ -3909,8 +3870,110 @@ defmodule Ash do
                resource_or_resources,
                func,
                opts[:timeout],
+               %{type: :custom, metadata: %{}}
+             ) do
+        if opts[:return_notifications?] do
+          notifications = Process.delete(:ash_notifications) || []
+
+          {:ok, result, notifications}
+        else
+          if notify? do
+            notifications = Process.delete(:ash_notifications) || []
+
+            remaining = Ash.Notifier.notify(notifications)
+
+            remaining
+            |> Enum.group_by(&{&1.resource, &1.action})
+            |> Enum.each(fn {{resource, action}, remaining} ->
+              Ash.Actions.Helpers.warn_missed!(resource, action, %{notifications: remaining})
+            end)
+          end
+
+          {:ok, result}
+        end
+      else
+        {:error, error} ->
+          Process.delete(:ash_notifications)
+
+          {:error, Ash.Error.to_ash_error(error)}
+      end
+    rescue
+      error ->
+        Process.delete(:ash_notifications)
+
+        reraise error, __STACKTRACE__
+    after
+      if notify? do
+        Process.delete(:ash_started_transaction?)
+      end
+
+      if old_notifications do
+        notifications = Process.get(:ash_notifications) || []
+
+        Process.put(:ash_notifications, old_notifications ++ notifications)
+      end
+    end
+  end
+
+  @doc """
+  Wraps the execution of the function in a transaction with the resource's data_layer.
+  Collects notifications during the function's execution and sends them if the transaction was successful.
+
+  ## Examples
+
+      iex> Ash.transact(MyApp.Post, fn ->
+      ...>   post = Ash.create!(MyApp.Post, %{title: "Hello"})
+      ...>   Ash.update!(post, %{content: "World"})
+      ...> end)
+      {:ok, %MyApp.Post{title: "Hello", content: "World"}}
+
+      # Automatic rollback on error
+
+      iex> Ash.transact(MyApp.Post, fn ->
+      ...>   Ash.create(MyApp.Post, %{title: "Valid Post"})
+      ...>   {:error, :something_went_wrong}
+      ...> end)
+      {:error, :something_went_wrong}
+
+      # Transaction was automatically rolled back, no post was created
+
+      iex> Ash.transact(MyApp.Post, fn ->
+      ...>   Ash.create!(MyApp.Post, %{title: "Test"})
+      ...> end, return_notifications?: true)
+      {:ok, %MyApp.Post{title: "Test"}, [%Ash.Notifier.Notification{}]}
+
+  ## See also
+
+  - [Actions Guide](/documentation/topics/actions/actions.md) for understanding action concepts
+  - [Development Testing Guide](/documentation/topics/development/testing.md) for testing with transactions
+
+  ## Options
+
+  #{Spark.Options.docs(@transaction_opts_schema)}
+  """
+  @spec transact(
+          resource_or_resources :: Ash.Resource.t() | [Ash.Resource.t()],
+          func :: (-> term),
+          opts :: Keyword.t()
+        ) ::
+          {:ok, term}
+          | {:ok, term, list(Ash.Notifier.Notification.t())}
+          | {:error, term}
+  @doc spark_opts: [{2, @transaction_opts_schema}]
+  def transact(resource_or_resources, func, opts \\ []) do
+    notify? = !Process.put(:ash_started_transaction?, true)
+    old_notifications = Process.delete(:ash_notifications)
+
+    try do
+      with {:ok, opts} <- TransactionOpts.validate(opts),
+           opts <- TransactionOpts.to_options(opts),
+           {:ok, result} <-
+             Ash.DataLayer.transaction(
+               resource_or_resources,
+               func,
+               opts[:timeout],
                %{type: :custom, metadata: %{}},
-               Keyword.take(opts, [:rollback_on_error?])
+               rollback_on_error?: true
              ) do
         if opts[:return_notifications?] do
           notifications = Process.delete(:ash_notifications) || []
