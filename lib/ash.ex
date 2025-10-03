@@ -3814,41 +3814,42 @@ defmodule Ash do
     use Spark.Options.Validator, schema: transaction_opts
   end
 
-  @doc deprecated: """
-       Use Ash.transact/3 instead.
+  @doc deprecated: " Use Ash.transact/3 instead."
 
-       Wraps the execution of the function in a transaction with the resource's data_layer.
-       Collects notifications during the function's execution and sends them if the transaction was successful.
+  @doc """
+  Wraps the execution of the function in a transaction with the resource's data_layer.
 
-       ## Examples
+  Collects notifications during the function's execution and sends them if the transaction was successful.
 
-           iex> Ash.transaction(MyApp.Post, fn ->
-           ...>   post = Ash.create!(MyApp.Post, %{title: "Hello"})
-           ...>   Ash.update!(post, %{content: "World"})
-           ...> end)
-           {:ok, %MyApp.Post{title: "Hello", content: "World"}}
+  ## Examples
 
-           iex> Ash.transaction([MyApp.User, MyApp.Post], fn ->
-           ...>   user = Ash.create!(MyApp.User, %{name: "John"})
-           ...>   Ash.create!(MyApp.Post, %{title: "Hello", author_id: user.id})
-           ...> end)
-           {:ok, %MyApp.Post{title: "Hello"}}
+      iex> Ash.transaction(MyApp.Post, fn ->
+      ...>   post = Ash.create!(MyApp.Post, %{title: "Hello"})
+      ...>   Ash.update!(post, %{content: "World"})
+      ...> end)
+      {:ok, %MyApp.Post{title: "Hello", content: "World"}}
 
-           iex> Ash.transaction(MyApp.Post, fn ->
-           ...>   Ash.create!(MyApp.Post, %{title: "Test"})
-           ...> end, return_notifications?: true)
-           {:ok, %MyApp.Post{title: "Test"}, [%Ash.Notifier.Notification{}]}
+      iex> Ash.transaction([MyApp.User, MyApp.Post], fn ->
+      ...>   user = Ash.create!(MyApp.User, %{name: "John"})
+      ...>   Ash.create!(MyApp.Post, %{title: "Hello", author_id: user.id})
+      ...> end)
+      {:ok, %MyApp.Post{title: "Hello"}}
 
-       ## See also
+      iex> Ash.transaction(MyApp.Post, fn ->
+      ...>   Ash.create!(MyApp.Post, %{title: "Test"})
+      ...> end, return_notifications?: true)
+      {:ok, %MyApp.Post{title: "Test"}, [%Ash.Notifier.Notification{}]}
 
-       - `Ash.transact/3` - recommended replacement that always rolls back on error
-       - [Actions Guide](/documentation/topics/actions/actions.md) for understanding action concepts
-       - [Development Testing Guide](/documentation/topics/development/testing.md) for testing with transactions
+  ## See also
 
-       ## Options
+  - `Ash.transact/3` - recommended replacement that always rolls back on error
+  - [Actions Guide](/documentation/topics/actions/actions.md) for understanding action concepts
+  - [Development Testing Guide](/documentation/topics/development/testing.md) for testing with transactions
 
-       #{Spark.Options.docs(@transaction_opts_schema)}
-       """
+  ## Options
+
+  #{Spark.Options.docs(@transaction_opts_schema)}
+  """
   @spec transaction(
           resource_or_resources :: Ash.Resource.t() | [Ash.Resource.t()],
           func :: (-> term),
@@ -3917,6 +3918,7 @@ defmodule Ash do
 
   @doc """
   Wraps the execution of the function in a transaction with the resource's data_layer.
+
   Collects notifications during the function's execution and sends them if the transaction was successful.
 
   ## Examples
