@@ -48,7 +48,8 @@ defmodule Ash.Actions.Create.Bulk do
             actor: opts[:actor]
           },
           data_layer_context: opts[:data_layer_context] || %{}
-        }
+        },
+        rollback_on_error?: false
       )
       |> case do
         {:ok, bulk_result} ->
@@ -590,7 +591,8 @@ defmodule Ash.Actions.Create.Bulk do
               actor: opts[:actor]
             },
             data_layer_context: opts[:data_layer_context] || context
-          }
+          },
+          rollback_on_error?: false
         )
         |> case do
           {:ok, result} ->

@@ -406,34 +406,38 @@ defmodule Ash.DataLayer do
     end
   end
 
-  @doc "Wraps the execution of the function in a transaction with the resource's data_layer"
+  @doc """
+  Wraps the execution of the function in a transaction with the resource's data_layer.
+  """
   @spec transaction(
           Ash.Resource.t() | [Ash.Resource.t()],
           (-> term),
           nil | pos_integer(),
-          reason :: transaction_reason()
+          reason :: transaction_reason(),
+          opts :: Keyword.t()
         ) :: term
 
   def transaction(
         resource_or_resources,
         func,
         timeout \\ nil,
-        reason \\ %{type: :custom, metadata: %{}}
+        reason \\ %{type: :custom, metadata: %{}},
+        opts \\ []
       )
 
-  def transaction([], func, _, _reason) do
+  def transaction([], func, _, _reason, _opts) do
     {:ok, func.()}
   end
 
-  def transaction([resource], func, timeout, reason) do
-    transaction(resource, func, timeout, reason)
+  def transaction([resource], func, timeout, reason, opts) do
+    transaction(resource, func, timeout, reason, opts)
   end
 
-  def transaction([resource | resources], func, timeout, reason) do
+  def transaction([resource | resources], func, timeout, reason, opts) do
     transaction(
       resource,
       fn ->
-        case transaction(resources, func, timeout, reason) do
+        case transaction(resources, func, timeout, reason, opts) do
           {:ok, result} ->
             result
 
@@ -442,29 +446,48 @@ defmodule Ash.DataLayer do
         end
       end,
       timeout,
-      reason
+      reason,
+      opts
     )
   end
 
-  def transaction(resource, func, timeout, reason) do
+  def transaction(resource, func, timeout, reason, opts) do
+    rollback_on_error? =
+      Keyword.get(
+        opts,
+        :rollback_on_error?,
+        Application.get_env(:ash, :transaction_rollback_on_error?, false)
+      )
+
+    callback = fn ->
+      case {func.(), rollback_on_error?} do
+        {{:error, error} = result, true} ->
+          rollback(resource, error)
+          result
+
+        {result, _} ->
+          result
+      end
+    end
+
     if in_transaction?(resource) do
-      {:ok, func.()}
+      {:ok, callback.()}
     else
       data_layer = data_layer(resource)
 
       if data_layer.can?(resource, :transact) do
         cond do
           !Code.ensure_loaded?(data_layer) ->
-            data_layer.transaction(resource, func)
+            data_layer.transaction(resource, callback)
 
           function_exported?(data_layer, :transaction, 4) ->
-            data_layer.transaction(resource, func, timeout, reason)
+            data_layer.transaction(resource, callback, timeout, reason)
 
           function_exported?(data_layer, :transaction, 3) ->
-            data_layer.transaction(resource, func, timeout)
+            data_layer.transaction(resource, callback, timeout)
 
           true ->
-            data_layer.transaction(resource, func)
+            data_layer.transaction(resource, callback)
         end
       else
         {:ok, func.()}

@@ -207,6 +207,12 @@ if Code.ensure_loaded?(Igniter) do
               [:bulk_actions_default_to_errors?],
               true
             )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:transaction_rollback_on_error?],
+              true
+            )
           end)
         end
       )
