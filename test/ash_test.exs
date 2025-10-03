@@ -406,39 +406,39 @@ defmodule Ash.Test.AshTest do
     end
   end
 
+  defmodule Notifier do
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(self(), {:notification, notification})
+    end
+  end
+
+  defmodule Item do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Mnesia,
+      notifiers: [Notifier]
+
+    mnesia do
+      table :ash_transactions
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :title, :string, allow_nil?: false, public?: true
+
+      timestamps()
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, :create, :update]
+    end
+  end
+
   describe "transaction/3" do
-    defmodule Notifier do
-      use Ash.Notifier
-
-      def notify(notification) do
-        send(self(), {:notification, notification})
-      end
-    end
-
-    defmodule Item do
-      use Ash.Resource,
-        domain: Domain,
-        data_layer: Ash.DataLayer.Mnesia,
-        notifiers: [Notifier]
-
-      mnesia do
-        table :ash_transactions
-      end
-
-      attributes do
-        uuid_primary_key :id
-
-        attribute :title, :string, allow_nil?: false, public?: true
-
-        timestamps()
-      end
-
-      actions do
-        default_accept :*
-        defaults [:read, :destroy, :create, :update]
-      end
-    end
-
     setup do
       import ExUnit.CaptureLog
 
@@ -499,9 +499,6 @@ defmodule Ash.Test.AshTest do
   end
 
   describe "transact/3" do
-    alias __MODULE__.Notifier
-    alias __MODULE__.Item
-
     setup do
       import ExUnit.CaptureLog
 
