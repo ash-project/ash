@@ -216,6 +216,11 @@ defmodule Ash.TypedStruct do
         defaults
         # map_required_fields_match
       ) do
+    keyed_defaults =
+      Enum.reduce(defaults, %{}, fn {k, v}, acc ->
+        Map.put(acc, k, {to_string(k), v})
+      end)
+
     quote do
       @enforce_keys unquote(enforce_keys)
       defstruct unquote(Macro.escape(fields_with_defaults))
@@ -250,7 +255,15 @@ defmodule Ash.TypedStruct do
       end
 
       def new(%_{} = fields) do
-        fields = Map.merge(unquote(Macro.escape(defaults)), Map.from_struct(fields))
+        fields =
+          Enum.reduce(unquote(Macro.escape(keyed_defaults)), fields, fn {key, {string_key, value}},
+                                                                        acc ->
+            if Map.has_key?(acc, key) || Map.has_key?(acc, string_key) do
+              acc
+            else
+              Map.put(acc, key, value)
+            end
+          end)
 
         case do_constraints(fields, unquote(Macro.escape(map_constraints))) do
           {:ok, value} -> {:ok, value}
@@ -259,7 +272,17 @@ defmodule Ash.TypedStruct do
       end
 
       def new(fields) do
-        fields = Map.merge(unquote(Macro.escape(defaults)), Map.new(fields))
+        fields =
+          Enum.reduce(unquote(Macro.escape(keyed_defaults)), Map.new(fields), fn {key,
+                                                                                  {string_key,
+                                                                                   value}},
+                                                                                 acc ->
+            if Map.has_key?(acc, key) || Map.has_key?(acc, string_key) do
+              acc
+            else
+              Map.put(acc, key, value)
+            end
+          end)
 
         case do_constraints(
                fields,
