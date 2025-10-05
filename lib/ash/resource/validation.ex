@@ -25,8 +25,11 @@ defmodule Ash.Resource.Validation do
     :before_action?,
     :where,
     :always_atomic?,
-    on: []
+    on: [],
+    __spark_metadata__: nil
   ]
+
+  require Ash.BehaviourHelpers
 
   @type t :: %__MODULE__{
           validation: {atom(), list(atom())},
@@ -35,7 +38,8 @@ defmodule Ash.Resource.Validation do
           only_when_valid?: boolean(),
           description: String.t() | nil,
           where: list({atom(), list(atom())}),
-          on: list(atom())
+          on: list(atom()),
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @type path :: [atom | integer]
@@ -217,6 +221,17 @@ defmodule Ash.Resource.Validation do
          module: module,
          opts: opts
      }}
+  end
+
+  def validate(module, changeset_query_or_input, opts, context) do
+    Ash.BehaviourHelpers.check_type!(
+      module,
+      module.validate(changeset_query_or_input, opts, context),
+      [
+        :ok,
+        {:error, _}
+      ]
+    )
   end
 
   def opt_schema, do: @schema

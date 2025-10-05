@@ -8,15 +8,16 @@ defmodule Ash.Resource.Interface.CustomInput do
     :sensitive?,
     :description,
     :transform,
-    constraints: []
+    constraints: [],
+    __spark_metadata__: nil
   ]
 
   defmodule Transform do
     @moduledoc "Represents a transformation applied to a custom input"
-    defstruct [:to, :using]
+    defstruct [:to, :using, __spark_metadata__: nil]
   end
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
   def schema do
     [

@@ -10,7 +10,7 @@ defmodule Ash.TypedStruct do
   ## Example
 
       defmodule MyApp.UserProfile do
-        use Ash.TypedStruct 
+        use Ash.TypedStruct
 
         typed_struct do
           field :username, :string, allow_nil?: false
@@ -23,14 +23,14 @@ defmodule Ash.TypedStruct do
 
       # Creating instances
       {:ok, profile} = MyApp.UserProfile.new(username: "john", email: "john@example.com")
-      
+
       # Using new! for raising on errors
       profile = MyApp.UserProfile.new!(username: "jane", email: "jane@example.com", age: 25)
 
       # Can be used as an Ash type
       defmodule MyApp.User do
         use Ash.Resource
-        
+
         attributes do
           attribute :profile, MyApp.UserProfile
         end
@@ -70,8 +70,24 @@ defmodule Ash.TypedStruct do
   """
 
   defmodule Field do
-    @moduledoc false
-    defstruct [:name, :type, :constraints, :default, :allow_nil?, :description]
+    @moduledoc "Represents a field on a typed struct"
+    defstruct [
+      :name,
+      :type,
+      :constraints,
+      :default,
+      :allow_nil?,
+      :description,
+      :__spark_metadata__
+    ]
+
+    @type t :: %__MODULE__{
+            name: atom(),
+            constraints: Keyword.t(),
+            type: Ash.Type.t(),
+            default: nil | term | (-> term),
+            __spark_metadata__: Spark.Dsl.Entity.spark_meta()
+          }
   end
 
   defmodule Dsl do
@@ -112,7 +128,7 @@ defmodule Ash.TypedStruct do
           type: :boolean,
           default: true,
           doc: """
-          Whether or not the field can be set to nil. 
+          Whether or not the field can be set to nil.
           """
         ]
       ]
@@ -123,19 +139,18 @@ defmodule Ash.TypedStruct do
       describe: """
       Describe the fields of the struct
       """,
+      after_define: {__MODULE__, :after_define},
       entities: [
         @field
       ]
     }
 
-    defmodule Transformer do
-      @moduledoc false
-      use Spark.Dsl.Transformer
-
-      def transform(dsl) do
-        fields = Spark.Dsl.Transformer.get_entities(dsl, [:typed_struct])
+    # sobelow_skip ["RCE.CodeModule"]
+    def after_define do
+      quote do
+        fields = Spark.Dsl.Extension.get_entities(__MODULE__, [:typed_struct])
         fields_with_defaults = Enum.map(fields, &{&1.name, &1.default})
-        module = Spark.Dsl.Transformer.get_persisted(dsl, :module)
+        module = __MODULE__
 
         defaults =
           Map.new(Enum.reject(fields_with_defaults, &is_nil(elem(&1, 1))))
@@ -148,6 +163,12 @@ defmodule Ash.TypedStruct do
               []
             end
           end)
+
+        # map_required_fields_match =
+        #   enforce_keys
+        #   |> Enum.reject(&(&1 in Map.keys(defaults)))
+        #   |> Enum.map(&{&1, {:_, [], Elixir}})
+        #   |> then(&{:%{}, [], &1})
 
         map_constraints =
           [
@@ -168,112 +189,140 @@ defmodule Ash.TypedStruct do
             instance_of: module
           ]
 
-        {:ok,
-         Spark.Dsl.Transformer.eval(
-           dsl,
-           [],
-           quote do
-             @enforce_keys unquote(enforce_keys)
-             defstruct unquote(Macro.escape(fields_with_defaults))
-
-             use Ash.Type.NewType,
-               subtype_of: :struct,
-               constraints: unquote(Macro.escape(map_constraints))
-
-             @doc "Create a new #{__MODULE__}, raising any error"
-             def new!(fields) do
-               case new(fields) do
-                 {:ok, value} -> value
-                 {:error, error} -> raise Ash.Error.to_error_class(error)
-               end
-             end
-
-             @doc "Create a new #{__MODULE__}, or return an error"
-             def new(%__MODULE__{} = fields) do
-               fields = Map.merge(unquote(Macro.escape(defaults)), fields)
-
-               case do_cast_input(fields, []) do
-                 {:ok, value} -> {:ok, value}
-                 {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
-               end
-             end
-
-             def new(%_{} = fields) do
-               fields = Map.merge(unquote(Macro.escape(defaults)), Map.from_struct(fields))
-
-               case do_cast_input(fields, unquote(Macro.escape(map_constraints))) do
-                 {:ok, value} -> {:ok, value}
-                 {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
-               end
-             end
-
-             def new(fields) do
-               fields = Map.merge(unquote(Macro.escape(defaults)), Map.new(fields))
-
-               case do_cast_input(
-                      fields,
-                      unquote(Macro.escape(map_constraints))
-                    ) do
-                 {:ok, value} ->
-                   {:ok, value}
-
-                 {:error, error} ->
-                   if Keyword.keyword?(error) do
-                     {:error,
-                      Ash.Error.Changes.InvalidAttribute.exception(
-                        field: error[:field],
-                        message: error[:message],
-                        value: error[:value],
-                        vars: error
-                      )}
-                   else
-                     {:error, Ash.Error.to_ash_error(error)}
-                   end
-               end
-             end
-
-             def cast_input(v, constraints) do
-               with {:ok, v} <- new(v) do
-                 super(v, constraints)
-               end
-             end
-
-             defp do_cast_input("", _), do: {:ok, nil}
-
-             defp do_cast_input(nil, _), do: {:ok, nil}
-
-             defp do_cast_input(value, constraints) when is_binary(value) do
-               case Ash.Helpers.json_module().decode(value) do
-                 {:ok, value} ->
-                   do_cast_input(value, constraints)
-
-                 _ ->
-                   :error
-               end
-             end
-
-             defp do_cast_input(value, constraints) when is_map(value) do
-               Ash.Type.apply_constraints(Ash.Type.Struct, value, constraints)
-             end
-
-             defp do_cast_input(_, _), do: :error
-
-             defoverridable new: 1
-           end
-         )}
+        # sobelow_skip ["RCE.CodeModule"]
+        Code.eval_quoted(
+          Ash.TypedStruct.__define_typed_struct__(
+            enforce_keys,
+            fields_with_defaults,
+            map_constraints,
+            defaults
+            # map_required_fields_match
+          ),
+          [],
+          __ENV__
+        )
       end
     end
 
-    use Spark.Dsl.Extension, sections: [@struct], transformers: [Transformer]
+    use Spark.Dsl.Extension,
+      sections: [@struct]
+  end
+
+  @doc false
+  def __define_typed_struct__(
+        enforce_keys,
+        fields_with_defaults,
+        map_constraints,
+        defaults
+        # map_required_fields_match
+      ) do
+    keyed_defaults =
+      Enum.reduce(defaults, %{}, fn {k, v}, acc ->
+        Map.put(acc, k, {to_string(k), v})
+      end)
+
+    quote do
+      @enforce_keys unquote(enforce_keys)
+      defstruct unquote(Macro.escape(fields_with_defaults))
+
+      use Ash.Type.NewType,
+        subtype_of: :struct,
+        constraints: unquote(Macro.escape(map_constraints))
+
+      # if Enum.any?(unquote(enforce_keys), &(&1 not in Map.keys(unquote(Macro.escape(defaults))))) do
+      #   @doc "Create a new #{__MODULE__}, raising any error"
+      #   def new!(unquote(map_required_fields_match) = fields) do
+      #     fields
+      #     |> new()
+      #     |> Ash.Helpers.unwrap_or_raise!()
+      #   end
+      # end
+
+      def new!(fields) do
+        fields
+        |> new()
+        |> Ash.Helpers.unwrap_or_raise!()
+      end
+
+      @doc "Create a new #{__MODULE__}, or return an error"
+      def new(%__MODULE__{} = fields) do
+        fields = Map.merge(unquote(Macro.escape(defaults)), fields)
+
+        case do_constraints(fields, []) do
+          {:ok, value} -> {:ok, value}
+          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+        end
+      end
+
+      def new(%_{} = fields) do
+        fields =
+          Enum.reduce(unquote(Macro.escape(keyed_defaults)), fields, fn {key, {string_key, value}},
+                                                                        acc ->
+            if Map.has_key?(acc, key) || Map.has_key?(acc, string_key) do
+              acc
+            else
+              Map.put(acc, key, value)
+            end
+          end)
+
+        case do_constraints(fields, unquote(Macro.escape(map_constraints))) do
+          {:ok, value} -> {:ok, value}
+          {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+        end
+      end
+
+      def new(fields) do
+        fields =
+          Enum.reduce(unquote(Macro.escape(keyed_defaults)), Map.new(fields), fn {key,
+                                                                                  {string_key,
+                                                                                   value}},
+                                                                                 acc ->
+            if Map.has_key?(acc, key) || Map.has_key?(acc, string_key) do
+              acc
+            else
+              Map.put(acc, key, value)
+            end
+          end)
+
+        case do_constraints(
+               fields,
+               unquote(Macro.escape(map_constraints))
+             ) do
+          {:ok, value} ->
+            {:ok, value}
+
+          {:error, error} ->
+            Ash.Type.CompositeTypeHelpers.convert_errors_to_invalid_attributes(error)
+        end
+      end
+
+      def cast_input("", _), do: {:ok, nil}
+
+      def cast_input(nil, _), do: {:ok, nil}
+
+      def cast_input(value, constraints) when is_binary(value) do
+        case Ash.Helpers.json_module().decode(value) do
+          {:ok, value} ->
+            cast_input(value, constraints)
+
+          _ ->
+            :error
+        end
+      end
+
+      def cast_input(v, constraints) do
+        with {:ok, v} <- new(v) do
+          super(v, constraints)
+        end
+      end
+
+      defp do_constraints(value, constraints) when is_map(value) do
+        Ash.Type.apply_constraints(Ash.Type.Struct, value, constraints)
+      end
+
+      defoverridable new: 1
+    end
   end
 
   use Spark.Dsl, default_extensions: [extensions: [Dsl]]
-
-  def handle_before_compile(_) do
-    quote do
-      require Ash.Type
-
-      Ash.Type.__before_compile__(__ENV__)
-    end
-  end
 end

@@ -2,7 +2,7 @@
 
 ## Understanding Ash
 
-Ash is an opinionated, composable framework for building applications in Elixir. It provides a declarative approach to modeling your domain with resources at the center. Read documentation  *before* attempting to use it's features. Do not assume that you have prior knowledge of the framework or its conventions.
+Ash is an opinionated, composable framework for building applications in Elixir. It provides a declarative approach to modeling your domain with resources at the center. Read documentation  *before* attempting to use its features. Do not assume that you have prior knowledge of the framework or its conventions.
 
 ## Code Structure & Organization
 
@@ -99,7 +99,7 @@ users = MyApp.Accounts.list_users!(
 
 # AVOID - Verbose manual query building
 query = MyApp.Post |> Ash.Query.filter(...) |> Ash.Query.load(...)
-posts = MyApp.Blog.read!(query)
+posts = Ash.read!(query)
 ```
 
 Supported options: `load:`, `query:` (which accepts `filter:`, `sort:`, `limit:`, `offset:`, etc.), `page:`, `stream?:`
@@ -479,14 +479,13 @@ end
 change {MyApp.Changes.ProcessOrder, []}
 ```
 
-## Anonymous Functions
+## Custom Modules vs. Anonymous Functions
 
 Prefer to put code in its own module and refer to that in changes, preparations, validations etc.
 
 For example, prefer this:
 
 ```elixir
-# in
 defmodule MyApp.MyDomain.MyResource.Changes.SlugifyName do
   use Ash.Resource.Change
 
@@ -520,6 +519,8 @@ Relationships describe connections between resources and are a core component of
 - Always choose the appropriate relationship type based on your domain model
 
 #### Relationship Types
+
+- For Polymorphic relationships, you can model them using `Ash.Type.Union`; see the “Polymorphic Relationships” guide for more information.
 
 ```elixir
 relationships do
@@ -595,7 +596,7 @@ Ash.load!(post, :author)
 
 Prefer to use the `strict?` option when loading to only load necessary fields on related data.
 
-```Elixir
+```elixir
 MyApp.Post
 |> Ash.Query.load([comments: [:title]], strict?: true)
 ```
@@ -955,6 +956,26 @@ calculations do
 end
 ```
 
+### Expressions
+
+In order to use expressions outside of resources, changes, preparations etc. you will need to use `Ash.Expr`.
+
+It provides both `expr/1` and template helpers like `actor/1` and `arg/1`.
+
+For example:
+
+```elixir
+import Ash.Expr
+
+Author
+|> Ash.Query.aggregate(:count_of_my_favorited_posts, :count, [:posts], query: [
+  filter: expr(favorited_by(user_id: ^actor(:id)))
+])
+```
+
+See the expressions guide for more information on what is available in expresisons and
+how to use them.
+
 ### Module Calculations
 
 For complex calculations, create a module that implements `Ash.Resource.Calculation`:
@@ -1045,30 +1066,45 @@ MyDomain.full_name("John", "Doe", ", ")  # Returns "John, Doe"
 
 ## Aggregates
 
-Aggregates allow you to retrieve summary information over groups of related data, like counts, sums, or averages. Define aggregates in the `aggregates` block of a resource:
+Aggregates allow you to retrieve summary information over groups of related data, like counts, sums, or averages. Define aggregates in the `aggregates` block of a resource.
+
+Aggregates can work over relationships or directly over unrelated resources:
 
 ```elixir
 aggregates do
-  # Count the number of published posts for a user
+  # Related aggregates - use relationship path
   count :published_post_count, :posts do
     filter expr(published == true)
   end
 
-  # Sum the total amount of all orders
   sum :total_sales, :orders, :amount
 
-  # Check if a user has any admin roles
   exists :is_admin, :roles do
     filter expr(name == "admin")
   end
+
+  # Unrelated aggregates - use resource module directly
+  count :matching_profiles_count, Profile do
+    filter expr(name == parent(name))
+  end
+  
+  sum :total_report_score, Report, :score do
+    filter expr(author_name == parent(name))
+  end
+  
+  exists :has_reports, Report do
+    filter expr(author_name == parent(name))
+  end
 end
 ```
+
+For unrelated aggregates, use `parent/1` to reference fields from the source resource.
 
 ### Aggregate Types
 
 - **count**: Counts related items meeting criteria
 - **sum**: Sums a field across related items
-- **exists**: Returns boolean indicating if matching related items exist
+- **exists**: Returns boolean indicating if matching related items exist (also supports unrelated resources)
 - **first**: Gets the first related value matching criteria
 - **list**: Lists the related values for a specific field
 - **max**: Gets the maximum value of a field
@@ -1116,11 +1152,55 @@ end
 Use aggregates inline within expressions:
 
 ```elixir
+# Related inline aggregates
 calculate :grade_percentage, :decimal, expr(
   count(answers, query: [filter: expr(correct == true)]) * 100 /
   count(answers)
 )
+
+# Unrelated inline aggregates
+calculate :profile_count, :integer, expr(
+  count(Profile, filter: expr(name == parent(name)))
+)
+
+calculate :stats, :map, expr(%{
+  profiles: count(Profile, filter: expr(active == true)),
+  reports: count(Report, filter: expr(author_name == parent(name))),
+  has_active_profile: exists(Profile, active == true and name == parent(name))
+})
 ```
+
+## Exists Expressions
+
+Use `exists/2` to check for the existence of records, either through relationships or unrelated resources:
+
+### Related Exists
+
+```elixir
+# Check if user has any admin roles
+Ash.Query.filter(User, exists(roles, name == "admin"))
+
+# Check if post has comments with high scores
+Ash.Query.filter(Post, exists(comments, score > 50))
+```
+
+### Unrelated Exists
+
+```elixir
+# Check if any profile exists with the same name
+Ash.Query.filter(User, exists(Profile, name == parent(name)))
+
+# Check if user has any reports
+Ash.Query.filter(User, exists(Report, author_name == parent(name)))
+
+# Complex existence checks
+Ash.Query.filter(User, 
+  active == true and 
+  exists(Profile, active == true and name == parent(name))
+)
+```
+
+Unrelated exists expressions automatically apply authorization using the target resource's primary read action. Use `parent/1` to reference fields from the source resource.
 
 ## Testing
 
@@ -1131,3 +1211,53 @@ When testing resources:
 - Use `authorize?: false` in tests where authorization is not the focus
 - Write generators using `Ash.Generator`
 - Prefer to use raising versions of functions whenever possible, as opposed to pattern matching
+
+### Preventing Deadlocks in Concurrent Tests
+
+When running tests concurrently, using fixed values for identity attributes can cause deadlock errors. Multiple tests attempting to create records with the same unique values will conflict.
+
+#### Use Globally Unique Values
+
+Always use globally unique values for identity attributes in tests:
+
+```elixir
+# BAD - Can cause deadlocks in concurrent tests
+%{email: "test@example.com", username: "testuser"}
+
+# GOOD - Use globally unique values
+%{
+  email: "test-#{System.unique_integer([:positive])}@example.com",
+  username: "user_#{System.unique_integer([:positive])}",
+  slug: "post-#{System.unique_integer([:positive])}"
+}
+```
+
+#### Creating Reusable Test Generators
+
+For better organization, create a generator module:
+
+```elixir
+defmodule MyApp.TestGenerators do
+  use Ash.Generator
+
+  def user(opts \\ []) do
+    changeset_generator(
+      User,
+      :create,
+      defaults: [
+        email: "user-#{System.unique_integer([:positive])}@example.com",
+        username: "user_#{System.unique_integer([:positive])}"
+      ],
+      overrides: opts
+    )
+  end
+end
+
+# In your tests
+test "concurrent user creation" do
+  users = MyApp.TestGenerators.generate_many(user(), 10)
+  # Each user has unique identity attributes
+end
+```
+
+This applies to ANY field used in identity constraints, not just primary keys. Using globally unique values prevents frustrating intermittent test failures in CI environments.

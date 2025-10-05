@@ -23,7 +23,7 @@ if Code.ensure_loaded?(Igniter) do
     ## Options
 
     * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `array`, `public`, `sensitive`, and `required`. i.e `-a name:string:required`
-    * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public`. `belongs_to` only modifiers: `primary_key`, `sensitive`, and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`
+    * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public` and `sensitive?`. `belongs_to` only modifiers: `primary_key` and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`. For many_to_many relationship the through relationship is required between name and destination, i.e. `-r many_to_many:posts:MyApp.Blog.PostComment:MyApp.Blog.Comment:public`
     * `--default-actions` - A csv list of default action types to add. The `create` and `update` actions accept the public attributes being added.
     * `--uuid-primary-key` or `-u` - Adds a UUIDv4 primary key with that name. i.e `-u id`
     * `--uuid-v7-primary-key` - Adds a UUIDv7 primary key with that name.
@@ -416,6 +416,48 @@ if Code.ensure_loaded?(Igniter) do
     defp add_relationships_to_resource(igniter, resource, options) do
       Enum.reduce(options[:relationship] || [], igniter, fn relationship, igniter ->
         case String.split(relationship, ":") do
+          ["many_to_many", name, through, destination | modifiers] ->
+            if !valid_attribute_name?(name) do
+              raise "Invalid relationship name provided: #{name}"
+            end
+
+            name_atom = String.to_atom(name)
+
+            relationship_code =
+              if Enum.empty?(modifiers) do
+                "many_to_many :#{name}, #{destination} do
+                  through(#{through})
+                end"
+              else
+                modifier_string =
+                  Enum.map_join(modifiers, "\n", fn
+                    "public" ->
+                      "public? true"
+
+                    "sensitive?" ->
+                      "sensitive? true"
+
+                    invalid_modifier ->
+                      raise ArgumentError,
+                            "Invalid modifier `#{invalid_modifier}` for many_to_many relationship, valid modifiers are `public` and `sensitive`"
+                  end)
+
+                """
+                many_to_many :#{name}, #{destination} do
+                  through(#{through})
+                  #{modifier_string}
+                end
+                """
+              end
+
+            add_relationship_with_conflicts(
+              igniter,
+              resource,
+              name_atom,
+              relationship_code,
+              options[:conflicts]
+            )
+
           [type, name, destination | modifiers] ->
             if !valid_attribute_name?(name) do
               raise "Invalid relationship name provided: #{name}"

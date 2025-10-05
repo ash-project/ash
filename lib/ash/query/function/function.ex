@@ -209,6 +209,7 @@ defmodule Ash.Query.Function do
 
   defmacro __using__(opts) do
     quote do
+      @before_compile Ash.Query.Function
       @behaviour Ash.Query.Function
       if unquote(opts[:predicate?] || false) do
         @behaviour Ash.Filter.Predicate
@@ -272,6 +273,16 @@ defmodule Ash.Query.Function do
             )
           end
         end
+      end
+    end
+  end
+
+  defmacro __before_compile__(_) do
+    quote generated: true do
+      if Module.defines?(__MODULE__, {:partial_evaluate, 1}, :def) do
+        def has_partial_evaluate?, do: true
+      else
+        def has_partial_evaluate?, do: false
       end
     end
   end

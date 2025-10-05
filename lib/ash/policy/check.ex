@@ -15,14 +15,14 @@ defmodule Ash.Policy.Check do
   @type check_type :: :simple | :filter | :manual
   @type ref :: {module(), Keyword.t()} | module()
 
-  defstruct [:check, :check_module, :check_opts, :type]
+  defstruct [:check, :check_module, :check_opts, :type, :__spark_metadata__]
 
   @doc false
   def transform(%{check: {check_module, opts}} = policy) do
     {:ok, %{policy | check_module: check_module, check_opts: opts}}
   end
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
   @doc """
   Strict checks should be cheap, and should never result in external calls (like database or domain)

@@ -538,41 +538,57 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp resolve_expr(
-         %Ash.Query.Exists{at_path: [], path: path, expr: expr},
+         %Ash.Query.Exists{
+           at_path: [],
+           path: path,
+           expr: expr,
+           related?: related?,
+           resource: unrelated_resource
+         },
          record,
          parent,
          resource,
          unknown_on_unknown_refs?
        ) do
-    record
-    |> flatten_relationships([path])
-    |> load_unflattened(path)
-    |> get_related(path, unknown_on_unknown_refs?)
-    |> case do
-      :unknown ->
-        :unknown
+    if related? do
+      record
+      |> flatten_relationships([path])
+      |> load_unflattened(path)
+      |> get_related(path, unknown_on_unknown_refs?)
+      |> case do
+        :unknown ->
+          :unknown
 
-      related ->
-        related
-        |> List.wrap()
-        |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
-          case resolve_expr(
-                 expr,
-                 related,
-                 [record | List.wrap(parent)],
-                 resource,
-                 unknown_on_unknown_refs?
-               ) do
-            {:ok, falsy} when falsy in [nil, false] ->
-              {:cont, {:ok, false}}
+        related ->
+          related
+          |> List.wrap()
+          |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
+            case resolve_expr(
+                   expr,
+                   related,
+                   [record | List.wrap(parent)],
+                   resource,
+                   unknown_on_unknown_refs?
+                 ) do
+              {:ok, falsy} when falsy in [nil, false] ->
+                {:cont, {:ok, false}}
 
-            {:ok, _} ->
-              {:halt, {:ok, true}}
+              {:ok, _} ->
+                {:halt, {:ok, true}}
 
-            other ->
-              {:halt, other}
-          end
-        end)
+              other ->
+                {:halt, other}
+            end
+          end)
+      end
+    else
+      resolve_unrelated_exists(
+        unrelated_resource,
+        expr,
+        record,
+        parent,
+        unknown_on_unknown_refs?
+      )
     end
   end
 
@@ -1389,13 +1405,13 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp partial_evaluate(
-         %mod{__predicate__?: _} = pred,
+         %mod{__function__?: _} = pred,
          _record,
          _parent,
          _resource,
          _unknown_on_unknown_refs?
        ) do
-    if function_exported?(mod, :partial_evaluate, 1) do
+    if mod.has_partial_evaluate?() do
       mod.partial_evaluate(pred)
     else
       {:ok, pred}
@@ -1404,5 +1420,36 @@ defmodule Ash.Filter.Runtime do
 
   defp partial_evaluate(other, _record, _parent, _resource, _unknown_on_unknown_refs?) do
     {:ok, other}
+  end
+
+  defp resolve_unrelated_exists(
+         unrelated_resource,
+         expr,
+         record,
+         parent,
+         unknown_on_unknown_refs?
+       ) do
+    resolved_expr = resolve_parent_expressions(expr, record, parent, unknown_on_unknown_refs?)
+
+    query =
+      unrelated_resource
+      |> Ash.Query.new()
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+      |> Ash.Query.do_filter(resolved_expr)
+
+    Ash.exists(query, authorize?: false)
+  end
+
+  defp resolve_parent_expressions(expr, record, parent, unknown_on_unknown_refs?) do
+    Ash.Filter.map(expr, fn
+      %Ash.Query.Parent{expr: parent_expr} ->
+        case resolve_expr(parent_expr, record, List.wrap(parent), nil, unknown_on_unknown_refs?) do
+          {:ok, value} -> value
+          _ -> nil
+        end
+
+      other ->
+        other
+    end)
   end
 end

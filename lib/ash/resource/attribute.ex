@@ -19,7 +19,8 @@ defmodule Ash.Resource.Attribute do
     sensitive?: false,
     filterable?: true,
     sortable?: true,
-    constraints: []
+    constraints: [],
+    __spark_metadata__: nil
   ]
 
   defmodule Helpers do
@@ -52,7 +53,8 @@ defmodule Ash.Resource.Attribute do
           default: nil | term | (-> term),
           update_default: nil | term | (-> term) | (Ash.Resource.record() -> term),
           sensitive?: boolean(),
-          writable?: boolean()
+          writable?: boolean(),
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @schema [

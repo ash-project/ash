@@ -57,19 +57,14 @@ defmodule Ash.Notifier do
 
   defp do_notify(notifier, notification) do
     tracer = notification.changeset && notification.changeset.context[:private][:tracer]
+    domain = notification.domain || Ash.Resource.Info.domain(notification.resource)
 
     Ash.Tracer.span :notification,
-                    fn ->
-                      Ash.Domain.Info.span_name(
-                        notification.domain,
-                        notification.resource,
-                        :notifier
-                      )
-                    end,
+                    fn -> Ash.Domain.Info.span_name(domain, notification.resource, :notifier) end,
                     tracer do
       metadata = fn ->
         %{
-          domain: notification.domain,
+          domain: domain,
           notifier: notifier,
           resource: notification.resource,
           resource_short_name: Ash.Resource.Info.short_name(notification.resource),
@@ -83,8 +78,7 @@ defmodule Ash.Notifier do
 
       Ash.Tracer.set_metadata(tracer, :action, metadata)
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(notification.domain), :create],
-                                metadata do
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :create], metadata do
         notifier.notify(notification)
       end
     end

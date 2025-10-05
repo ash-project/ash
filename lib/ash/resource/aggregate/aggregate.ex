@@ -3,6 +3,7 @@ defmodule Ash.Resource.Aggregate do
   defstruct [
     :name,
     :relationship_path,
+    :resource,
     :filter,
     :kind,
     :implementation,
@@ -20,12 +21,14 @@ defmodule Ash.Resource.Aggregate do
     authorize?: true,
     filterable?: true,
     sortable?: true,
-    sensitive?: false
+    sensitive?: false,
+    related?: true,
+    __spark_metadata__: nil
   ]
 
   defmodule JoinFilter do
     @moduledoc "Represents a join filter on a resource aggregate"
-    defstruct [:relationship_path, :filter]
+    defstruct [:relationship_path, :filter, __spark_metadata__: nil]
   end
 
   @schema [
@@ -41,8 +44,9 @@ defmodule Ash.Resource.Aggregate do
       """
     ],
     relationship_path: [
-      type: {:wrap_list, :atom},
-      doc: "The relationship or relationship path to use for the aggregate",
+      type: {:or, [{:list, :atom}, :atom]},
+      doc:
+        "The relationship or relationship path to use for the aggregate, or a resource module for resource-based aggregates",
       required: true
     ],
     kind: [
@@ -110,6 +114,7 @@ defmodule Ash.Resource.Aggregate do
   @type t :: %__MODULE__{
           name: atom(),
           relationship_path: list(atom()),
+          resource: atom() | nil,
           filter: Keyword.t(),
           field: atom,
           kind: Ash.Query.Aggregate.kind(),
@@ -121,9 +126,34 @@ defmodule Ash.Resource.Aggregate do
           join_filters: %{list(atom) => term()},
           filterable?: boolean,
           sortable?: boolean,
-          sensitive?: boolean
+          sensitive?: boolean,
+          related?: boolean,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @doc false
   def schema, do: @schema
+
+  @doc false
+  def transform(aggregate) do
+    transformed =
+      case aggregate.relationship_path do
+        path when is_atom(path) ->
+          path_string = to_string(path)
+
+          if String.match?(path_string, ~r/^[A-Z]/) do
+            %{aggregate | related?: false, relationship_path: [], resource: path}
+          else
+            %{aggregate | related?: true, relationship_path: [path], resource: nil}
+          end
+
+        path when is_list(path) ->
+          %{aggregate | related?: true, relationship_path: path, resource: nil}
+
+        _ ->
+          aggregate
+      end
+
+    {:ok, transformed}
+  end
 end

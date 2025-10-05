@@ -69,7 +69,7 @@ defmodule Ash.DataLayer.Mnesia do
       :filter,
       :limit,
       :tenant,
-      :sort,
+      sort: [],
       context: %{},
       relationships: %{},
       offset: 0,
@@ -81,6 +81,7 @@ defmodule Ash.DataLayer.Mnesia do
   @doc false
   @impl true
   def can?(_, :async_engine), do: true
+  def can?(_, :bulk_create), do: true
   def can?(_, :multitenancy), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :upsert), do: true
@@ -92,7 +93,6 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :sort), do: true
   def can?(_, :filter), do: true
   def can?(_, {:filter_relationship, _}), do: true
-  def can?(_, {:query_aggregate, :count}), do: true
   def can?(_, :expression_calculation), do: true
   def can?(_, :expression_calculation_sort), do: true
   def can?(_, :limit), do: true
@@ -111,6 +111,8 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
+  def can?(_, {:aggregate, :unrelated}), do: true
+  def can?(_, {:exists, :unrelated}), do: true
   def can?(resource, {:query_aggregate, kind}), do: can?(resource, {:aggregate, kind})
 
   case Application.compile_env(:ash, :no_join_mnesia_ets) || false do
@@ -274,7 +276,7 @@ defmodule Ash.DataLayer.Mnesia do
       ) do
     with {:atomic, records} <-
            Mnesia.transaction(fn ->
-             Mnesia.select(Ash.DataLayer.Ets.Info.table(resource), [{:_, [], [:"$_"]}])
+             Mnesia.select(Ash.DataLayer.Mnesia.Info.table(resource), [{:_, [], [:"$_"]}])
            end),
          {:ok, records} <-
            records |> Enum.map(&elem(&1, 2)) |> Ash.DataLayer.Ets.cast_records(resource),
@@ -316,9 +318,114 @@ defmodule Ash.DataLayer.Mnesia do
     Ash.Filter.Runtime.filter_matches(domain, records, filter, tenant: tenant, actor: actor)
   end
 
+  @doc """
+  Bulk create records in the database.
+
+  This function is used to create multiple records in a single transaction.
+
+  If you are NOT setting the `upsert? = true` option, this will be optimized by
+  creating a single transaction and bulk creating all of the entries. The way
+  :mnesia.write works, will effectively do an upsert, but you cannot control
+  which fields are updated and the only identity you are matching on is the
+  primary key.
+
+  If you are using an `upsert?` it will be unoptimized and will load all records
+  into memory before performing the upsert operation.
+  """
+  @impl true
+  def bulk_create(resource, stream, options) do
+    stream = Enum.to_list(stream)
+
+    if options[:upsert?] do
+      # This uses a lot of the ETS datalayer as a reference point. It is
+      # recommended to NOT use this and instead upsert on the pkey which should
+      # use the optmized approach in the `else` logic.
+      stream
+      |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
+        changeset =
+          Ash.Changeset.set_context(changeset, %{
+            private:
+              Map.merge(changeset.context[:private] || %{}, %{
+                upsert_fields: options[:upsert_fields] || []
+              })
+          })
+
+        case upsert(resource, changeset, options.upsert_keys) do
+          {:ok, result} ->
+            result =
+              if options[:return_records?] do
+                Ash.Resource.put_metadata(
+                  result,
+                  :bulk_create_index,
+                  changeset.context.bulk_create.index
+                )
+              else
+                result
+              end
+
+            {:cont, {:ok, [result | results]}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+      |> case do
+        {:ok, results} ->
+          if options[:return_records?] do
+            {:ok, Enum.reverse(results)}
+          else
+            :ok
+          end
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      do_bulk_write(resource, stream, options)
+      |> case do
+        {:atomic, {:ok, results}} ->
+          if options[:return_records?] do
+            {:ok, Enum.reverse(results)}
+          else
+            :ok
+          end
+
+        {:aborted, {:error, error}} ->
+          {:error, error}
+      end
+    end
+  end
+
+  # Does a bulk write using a single transaction
+  defp do_bulk_write(resource, stream, options) do
+    Mnesia.transaction(fn ->
+      Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
+        # Sending in `false` prevents a transaction for every write
+        case create(resource, changeset, with_transaction: false) do
+          {:ok, result} ->
+            result =
+              if options[:return_records?] do
+                Ash.Resource.put_metadata(
+                  result,
+                  :bulk_create_index,
+                  changeset.context.bulk_create.index
+                )
+              else
+                result
+              end
+
+            {:cont, {:ok, [result | results]}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+    end)
+  end
+
   @doc false
   @impl true
-  def create(resource, changeset) do
+  def create(resource, changeset, opts \\ []) do
     {:ok, record} = Ash.Changeset.apply_attributes(changeset)
 
     pkey =
@@ -334,9 +441,16 @@ defmodule Ash.DataLayer.Mnesia do
     |> Ash.DataLayer.Ets.dump_to_native(Ash.Resource.Info.attributes(resource))
     |> case do
       {:ok, values} ->
-        case Mnesia.transaction(fn ->
-               Mnesia.write({Ash.DataLayer.Ets.Info.table(resource), pkey, values})
-             end) do
+        case do_write(
+               Ash.DataLayer.Mnesia.Info.table(resource),
+               pkey,
+               values,
+               Keyword.get(opts, :with_transaction, true)
+             ) do
+          # If with_transaction is false, we are in a transaction and will only return :ok
+          :ok ->
+            {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+
           {:atomic, _} ->
             {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
 
@@ -346,6 +460,18 @@ defmodule Ash.DataLayer.Mnesia do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  # This allows for writing to Mnesia without a transaction in case one was
+  # started elsewhere. This was explicitly created for `bulk_create/3`.
+  defp do_write(table, pkey, values, with_transaction) do
+    if with_transaction && !Mnesia.is_transaction() do
+      Mnesia.transaction(fn ->
+        Mnesia.write({table, pkey, values})
+      end)
+    else
+      Mnesia.write({table, pkey, values})
     end
   end
 
@@ -359,7 +485,7 @@ defmodule Ash.DataLayer.Mnesia do
 
     result =
       Mnesia.transaction(fn ->
-        Mnesia.delete({Ash.DataLayer.Ets.Info.table(resource), pkey})
+        Mnesia.delete({Ash.DataLayer.Mnesia.Info.table(resource), pkey})
       end)
 
     case result do
@@ -377,7 +503,7 @@ defmodule Ash.DataLayer.Mnesia do
       Mnesia.transaction(fn ->
         with {:ok, record} <- Ash.Changeset.apply_attributes(%{changeset | action_type: :update}),
              {:ok, record} <-
-               do_update(Ash.DataLayer.Ets.Info.table(resource), {pkey, record}, resource),
+               do_update(Ash.DataLayer.Mnesia.Info.table(resource), {pkey, record}, resource),
              {:ok, record} <- Ash.DataLayer.Ets.cast_record(record, resource) do
           new_pkey = pkey_list(resource, record)
 
@@ -439,7 +565,7 @@ defmodule Ash.DataLayer.Mnesia do
 
     case Ash.DataLayer.Ets.dump_to_native(record, attributes) do
       {:ok, casted} ->
-        case Mnesia.read({Ash.DataLayer.Ets.Info.table(resource), pkey}) do
+        case Mnesia.read({Ash.DataLayer.Mnesia.Info.table(resource), pkey}) do
           [] ->
             {:error, "Record not found matching: #{inspect(pkey)}"}
 

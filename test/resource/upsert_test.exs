@@ -29,6 +29,7 @@ defmodule Ash.Test.Resource.UpsertTest do
       define(:create)
       define(:upsert_variants, args: [:variants])
       define :upsert
+      define :upsert_condition
     end
 
     changes do
@@ -67,6 +68,12 @@ defmodule Ash.Test.Resource.UpsertTest do
         upsert? true
         upsert_identity :unique_name
         upsert_fields({:replace, [:name]})
+      end
+
+      create :upsert_condition do
+        upsert? true
+        upsert_identity :unique_name
+        upsert_condition expr(other == ^actor(:name))
       end
     end
 
@@ -244,6 +251,44 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.create!()
 
       assert product.other == "george"
+    end
+  end
+
+  describe "upsert with upsert_condition referencing actor" do
+    test "with correct actor" do
+      Product.upsert_condition!(%{name: "fred", other: "george"}, actor: %{name: "george"})
+      Product.upsert_condition!(%{name: "fred", other: "george"}, actor: %{name: "george"})
+    end
+
+    test "with wrong actor" do
+      Product.upsert_condition!(%{name: "fred", other: "george"}, actor: %{name: "george"})
+
+      assert_raise Ash.Error.Invalid, fn ->
+        Product.upsert_condition!(%{name: "fred", other: "george"}, actor: %{name: "bob"})
+      end
+    end
+
+    test "with no actor" do
+      assert_raise Ash.Error.Invalid, fn ->
+        Product.upsert_condition!(%{name: "fred", other: "george"})
+      end
+    end
+  end
+
+  describe "upsert with false condition" do
+    test "upsert with expr(false) condition fails on conflict" do
+      # Create initial product
+      Product.upsert!(%{name: "John", other: "initial"})
+
+      # This should fail because the upsert_condition is false
+      assert {:error, _} =
+               Product
+               |> Ash.Changeset.for_create(:create, %{name: "John", other: "updated"},
+                 upsert?: true,
+                 upsert_identity: :unique_name,
+                 upsert_condition: expr(false)
+               )
+               |> Ash.create()
     end
   end
 end

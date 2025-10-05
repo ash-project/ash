@@ -49,4 +49,33 @@ defmodule Ash.Info do
         )
     end
   end
+
+  @doc """
+  Returns a list of extensions in use by all the domains and resources in the
+  given application.
+  """
+  @spec extensions_in_use(app :: Application.app()) :: [module()]
+  def extensions_in_use(app) do
+    app
+    |> domains()
+    |> Enum.flat_map(&Ash.Domain.Info.extensions(&1, include_resource_extensions?: true))
+    |> Enum.uniq()
+  end
+
+  @doc """
+  Returns a list of all defined extensions in the application.
+
+  > #### Speed {: .warning}
+  >
+  > This function will load all modules in the application, which can be slow.
+  > Do not call this function in time sensitive code paths, It is intended for
+  > mix tasks, introspection, and debugging purposes.
+  """
+  @spec defined_extensions(app :: Application.app()) :: [module()]
+  def defined_extensions(app) do
+    modules = Application.spec(app, :modules)
+    # Preload the modules to improve performance.
+    Code.ensure_all_loaded(modules)
+    Enum.filter(modules, &Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
+  end
 end

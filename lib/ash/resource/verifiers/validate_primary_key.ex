@@ -2,6 +2,7 @@ defmodule Ash.Resource.Verifiers.ValidatePrimaryKey do
   @moduledoc "Validates and caches the primary key of a resource"
   use Spark.Dsl.Verifier
 
+  alias Spark.Dsl.Entity
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
@@ -23,9 +24,16 @@ defmodule Ash.Resource.Verifiers.ValidatePrimaryKey do
         if data_layer && data_layer.can?(resource, :composite_primary_key) do
           :ok
         else
+          # Find the second primary key attribute (the one causing the composite key issue)
+          second_pk_name = Enum.at(primary_key, 1)
+          second_pk_attribute = Ash.Resource.Info.attribute(dsl_state, second_pk_name)
+          location = Entity.anno(second_pk_attribute)
+
           {:error,
            DslError.exception(
              module: resource,
+             path: [:attributes, second_pk_name],
+             location: location,
              message: "Data layer does not support composite primary keys"
            )}
         end

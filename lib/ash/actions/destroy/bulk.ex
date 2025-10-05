@@ -291,7 +291,8 @@ defmodule Ash.Actions.Destroy.Bulk do
                   actor: opts[:actor]
                 },
                 data_layer_context: opts[:data_layer_context] || %{}
-              }
+              },
+              rollback_on_error?: false
             )
           else
             {:ok,
@@ -423,7 +424,8 @@ defmodule Ash.Actions.Destroy.Bulk do
               actor: opts[:actor]
             },
             data_layer_context: opts[:data_layer_context] || %{}
-          }
+          },
+          rollback_on_error?: false
         )
         |> case do
           {:ok, bulk_result} ->
@@ -1433,6 +1435,8 @@ defmodule Ash.Actions.Destroy.Bulk do
         :bulk_destroy
       )
 
+    batch = authorize(batch, opts)
+
     batch =
       if re_sort? do
         Enum.sort_by(batch, & &1.context.bulk_destroy.index)
@@ -1550,7 +1554,8 @@ defmodule Ash.Actions.Destroy.Bulk do
               actor: opts[:actor]
             },
             data_layer_context: opts[:data_layer_context] || context
-          }
+          },
+          rollback_on_error?: false
         )
         |> case do
           {:ok, result} ->
@@ -1611,10 +1616,8 @@ defmodule Ash.Actions.Destroy.Bulk do
         end)
 
     batch =
-      batch
-      |> authorize(opts)
-      |> Enum.to_list()
-      |> Ash.Actions.Update.Bulk.run_bulk_before_batches(
+      Ash.Actions.Update.Bulk.run_bulk_before_batches(
+        batch,
         changes,
         all_changes,
         opts,

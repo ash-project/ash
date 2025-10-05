@@ -58,7 +58,7 @@ defmodule Ash.Scope do
       def get_actor(%{current_user: current_user}), do: {:ok, current_user}
       def get_tenant(%{current_tenant: current_tenant}), do: {:ok, current_tenant}
       def get_context(%{locale: locale}), do: {:ok, %{shared: %{locale: locale}}}
-      # You typically configure tracers in config giles
+      # You typically configure tracers in config files
       # so this will typically return :error
       def get_tracer(_), do: :error
 
@@ -186,11 +186,13 @@ defmodule Ash.Scope do
     def get_actor(map), do: Map.fetch(map, :actor)
     def get_tenant(map), do: Map.fetch(map, :tenant)
 
-    def get_context(map) do
-      with {:ok, context} <- Map.fetch(map, :context) do
-        {:ok, Map.take(context, [:shared])}
-      end
-    end
+    def get_context(%{shared: shared0, context: %{shared: shared1}}),
+      do: {:ok, %{shared: Map.merge(shared1, shared0)}}
+
+    def get_context(%{shared: shared}), do: {:ok, %{shared: shared}}
+    def get_context(%{context: %{shared: shared}}), do: {:ok, %{shared: shared}}
+    def get_context(%{context: _}), do: {:ok, %{}}
+    def get_context(_), do: :error
 
     def get_tracer(map), do: Map.fetch(map, :tracer)
     def get_authorize?(map), do: Map.fetch(map, :authorize?)

@@ -8,27 +8,23 @@ defmodule Ash.Mix.Tasks.Helpers do
   @doc """
   Gets all extensions in use by the current project's domains and resources
   """
+  @spec extensions!(argv :: [String.t()], opts :: [in_use?: boolean()]) :: [module()]
   def extensions!(argv, opts \\ []) do
     if opts[:in_use?] do
       Mix.shell().info("Getting extensions in use by resources in current project...")
       domains = Ash.Mix.Tasks.Helpers.domains!(argv)
 
-      resource_extensions =
-        domains
-        |> Enum.flat_map(&Ash.Domain.Info.resources/1)
-        |> all_extensions()
+      extensions =
+        Enum.flat_map(
+          domains,
+          &Ash.Domain.Info.extensions(&1, include_resource_extensions?: true)
+        )
 
-      domains
-      |> all_extensions()
-      |> Enum.concat(resource_extensions)
-      |> Enum.uniq()
-      |> case do
-        [] ->
-          Mix.shell().info("No extensions in use by resources in current project...")
-
-        extensions ->
-          extensions
+      if extensions == [] do
+        Mix.shell().info("No extensions in use by resources in current project...")
       end
+
+      extensions
     else
       Mix.shell().info("Getting extensions in current project...")
 
@@ -46,22 +42,7 @@ defmodule Ash.Mix.Tasks.Helpers do
       apps()
       |> Stream.concat(apps)
       |> Stream.uniq()
-      |> Task.async_stream(
-        fn app ->
-          app
-          |> :application.get_key(:modules)
-          |> case do
-            :undefined ->
-              []
-
-            {_, mods} ->
-              mods
-              |> List.wrap()
-              |> Enum.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
-          end
-        end,
-        timeout: :infinity
-      )
+      |> Task.async_stream(&Ash.Info.defined_extensions/1, timeout: :infinity, ordered: false)
       |> Stream.map(&elem(&1, 1))
       |> Stream.flat_map(& &1)
       |> Stream.uniq()
@@ -138,12 +119,6 @@ defmodule Ash.Mix.Tasks.Helpers do
       domains ->
         domains
     end
-  end
-
-  defp all_extensions(modules) do
-    modules
-    |> Enum.flat_map(&Spark.extensions/1)
-    |> Enum.uniq()
   end
 
   defp ensure_compiled(domain, args) do

@@ -2844,9 +2844,6 @@ defmodule Ash do
 
   ## Examples
 
-      iex> Ash.read_one!(MyApp.User, email: "user@example.com")
-      %MyApp.User{id: 1, email: "user@example.com"}
-
       iex> MyApp.Post |> Ash.Query.filter(published: true) |> Ash.read_one!()
       %MyApp.Post{id: 1, published: true}
 
@@ -3817,8 +3814,11 @@ defmodule Ash do
     use Spark.Options.Validator, schema: transaction_opts
   end
 
+  @doc deprecated: " Use Ash.transact/3 instead."
+
   @doc """
   Wraps the execution of the function in a transaction with the resource's data_layer.
+
   Collects notifications during the function's execution and sends them if the transaction was successful.
 
   ## Examples
@@ -3842,6 +3842,7 @@ defmodule Ash do
 
   ## See also
 
+  - `Ash.transact/3` - recommended replacement that always rolls back on error
   - [Actions Guide](/documentation/topics/actions/actions.md) for understanding action concepts
   - [Development Testing Guide](/documentation/topics/development/testing.md) for testing with transactions
 
@@ -3866,7 +3867,116 @@ defmodule Ash do
       with {:ok, opts} <- TransactionOpts.validate(opts),
            opts <- TransactionOpts.to_options(opts),
            {:ok, result} <-
-             Ash.DataLayer.transaction(resource_or_resources, func, opts[:timeout], opts[:reason]) do
+             Ash.DataLayer.transaction(
+               resource_or_resources,
+               func,
+               opts[:timeout],
+               %{type: :custom, metadata: %{}}
+             ) do
+        if opts[:return_notifications?] do
+          notifications = Process.delete(:ash_notifications) || []
+
+          {:ok, result, notifications}
+        else
+          if notify? do
+            notifications = Process.delete(:ash_notifications) || []
+
+            remaining = Ash.Notifier.notify(notifications)
+
+            remaining
+            |> Enum.group_by(&{&1.resource, &1.action})
+            |> Enum.each(fn {{resource, action}, remaining} ->
+              Ash.Actions.Helpers.warn_missed!(resource, action, %{notifications: remaining})
+            end)
+          end
+
+          {:ok, result}
+        end
+      else
+        {:error, error} ->
+          Process.delete(:ash_notifications)
+
+          {:error, Ash.Error.to_ash_error(error)}
+      end
+    rescue
+      error ->
+        Process.delete(:ash_notifications)
+
+        reraise error, __STACKTRACE__
+    after
+      if notify? do
+        Process.delete(:ash_started_transaction?)
+      end
+
+      if old_notifications do
+        notifications = Process.get(:ash_notifications) || []
+
+        Process.put(:ash_notifications, old_notifications ++ notifications)
+      end
+    end
+  end
+
+  @doc """
+  Wraps the execution of the function in a transaction with the resource's data_layer.
+
+  Collects notifications during the function's execution and sends them if the transaction was successful.
+
+  ## Examples
+
+      iex> Ash.transact(MyApp.Post, fn ->
+      ...>   post = Ash.create!(MyApp.Post, %{title: "Hello"})
+      ...>   Ash.update!(post, %{content: "World"})
+      ...> end)
+      {:ok, %MyApp.Post{title: "Hello", content: "World"}}
+
+      # Automatic rollback on error
+
+      iex> Ash.transact(MyApp.Post, fn ->
+      ...>   Ash.create(MyApp.Post, %{title: "Valid Post"})
+      ...>   {:error, :something_went_wrong}
+      ...> end)
+      {:error, :something_went_wrong}
+
+      # Transaction was automatically rolled back, no post was created
+
+      iex> Ash.transact(MyApp.Post, fn ->
+      ...>   Ash.create!(MyApp.Post, %{title: "Test"})
+      ...> end, return_notifications?: true)
+      {:ok, %MyApp.Post{title: "Test"}, [%Ash.Notifier.Notification{}]}
+
+  ## See also
+
+  - [Actions Guide](/documentation/topics/actions/actions.md) for understanding action concepts
+  - [Development Testing Guide](/documentation/topics/development/testing.md) for testing with transactions
+
+  ## Options
+
+  #{Spark.Options.docs(@transaction_opts_schema)}
+  """
+  @spec transact(
+          resource_or_resources :: Ash.Resource.t() | [Ash.Resource.t()],
+          func :: (-> term),
+          opts :: Keyword.t()
+        ) ::
+          {:ok, term}
+          | {:ok, term, list(Ash.Notifier.Notification.t())}
+          | {:error, term}
+  @doc spark_opts: [{2, @transaction_opts_schema}]
+  def transact(resource_or_resources, func, opts \\ []) do
+    notify? = !Process.put(:ash_started_transaction?, true)
+    old_notifications = Process.delete(:ash_notifications)
+
+    try do
+      with {:ok, opts} <- TransactionOpts.validate(opts),
+           opts <- TransactionOpts.to_options(opts),
+           {:ok, result} <-
+             Ash.DataLayer.transaction(
+               resource_or_resources,
+               func,
+               opts[:timeout],
+               %{type: :custom, metadata: %{}},
+               rollback_on_error?: true
+             ) do
         if opts[:return_notifications?] do
           notifications = Process.delete(:ash_notifications) || []
 

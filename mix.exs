@@ -6,7 +6,7 @@ defmodule Ash.MixProject do
   A declarative, extensible framework for building Elixir applications.
   """
 
-  @version "3.5.33"
+  @version "3.5.43"
 
   def project do
     [
@@ -55,6 +55,8 @@ defmodule Ash.MixProject do
          search_data: Spark.Docs.search_data_for(Ash.DataLayer.Mnesia)},
         {"documentation/dsls/DSL-Ash.Reactor.md",
          search_data: Spark.Docs.search_data_for(Ash.Reactor)},
+        {"documentation/dsls/DSL-Ash.TypedStruct.md",
+         search_data: Spark.Docs.search_data_for(Ash.TypedStruct.Dsl)},
         "documentation/tutorials/get-started.md",
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
@@ -241,7 +243,8 @@ defmodule Ash.MixProject do
           Ash.Policy.Info,
           Ash.DataLayer.Ets.Info,
           Ash.DataLayer.Mnesia.Info,
-          Ash.Notifier.PubSub.Info
+          Ash.Notifier.PubSub.Info,
+          Ash.TypedStruct.Info
         ],
         Visualizations: [
           Ash.Domain.Info.Diagram,
@@ -366,8 +369,9 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:usage_rules, "~> 0.1", only: [:dev]},
       # DSLs
-      {:spark, "~> 2.1 and >= 2.2.65"},
+      {:spark, "~> 2.3 and >= 2.3.3"},
       # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.7"},
       # Used by the ETS data layer
@@ -391,7 +395,7 @@ defmodule Ash.MixProject do
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Code Generators
-      {:igniter, "~> 0.6 and >= 0.6.4", optional: true},
+      {:igniter, "~> 0.6 and >= 0.6.29", optional: true},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
@@ -426,9 +430,9 @@ defmodule Ash.MixProject do
       ],
       format: "format --migrate",
       "spark.formatter":
-        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
+        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.TypedStruct.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
       "spark.cheat_sheets":
-        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
+        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.TypedStruct.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
     ]
   end
 end

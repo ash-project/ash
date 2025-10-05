@@ -287,7 +287,8 @@ defmodule Ash.Actions.Update.Bulk do
                   actor: opts[:actor]
                 },
                 data_layer_context: opts[:data_layer_context] || %{}
-              }
+              },
+              rollback_on_error?: false
             )
           else
             {:ok, do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)}
@@ -436,7 +437,8 @@ defmodule Ash.Actions.Update.Bulk do
               actor: opts[:actor]
             },
             data_layer_context: opts[:data_layer_context] || %{}
-          }
+          },
+          rollback_on_error?: false
         )
         |> case do
           {:ok, bulk_result} ->
@@ -1751,6 +1753,8 @@ defmodule Ash.Actions.Update.Bulk do
         context_key
       )
 
+    batch = authorize(batch, opts)
+
     batch =
       if re_sort? do
         Enum.sort_by(batch, & &1.context[context_key].index)
@@ -1854,7 +1858,8 @@ defmodule Ash.Actions.Update.Bulk do
               actor: opts[:actor]
             },
             data_layer_context: opts[:data_layer_context] || context
-          }
+          },
+          rollback_on_error?: false
         )
         |> case do
           {:ok, result} ->
@@ -1920,9 +1925,8 @@ defmodule Ash.Actions.Update.Bulk do
         end)
 
     batch =
-      batch
-      |> authorize(opts)
-      |> run_bulk_before_batches(
+      run_bulk_before_batches(
+        batch,
         changes,
         all_changes,
         opts,
@@ -3072,13 +3076,15 @@ defmodule Ash.Actions.Update.Bulk do
 
                     if change.only_when_valid? do
                       changeset.valid? &&
-                        module.validate(
+                        Ash.Resource.Validation.validate(
+                          module,
                           changeset,
                           opts,
                           struct(Ash.Resource.Validation.Context, context)
                         ) == :ok
                     else
-                      module.validate(
+                      Ash.Resource.Validation.validate(
+                        module,
                         changeset,
                         opts,
                         struct(Ash.Resource.Validation.Context, context)
@@ -3154,7 +3160,8 @@ defmodule Ash.Actions.Update.Bulk do
 
            {:ok, opts} = module.init(opts)
 
-           module.validate(
+           Ash.Resource.Validation.validate(
+             module,
              changeset,
              opts,
              validation_context
@@ -3172,7 +3179,8 @@ defmodule Ash.Actions.Update.Bulk do
 
         {:ok, opts} = module.init(opts)
 
-        case module.validate(
+        case Ash.Resource.Validation.validate(
+               module,
                changeset,
                opts,
                validation_context
@@ -3246,7 +3254,8 @@ defmodule Ash.Actions.Update.Bulk do
             Enum.map(batch, fn changeset ->
               {:ok, change_opts} = module.init(change_opts)
 
-              module.change(
+              Ash.Resource.Change.change(
+                module,
                 changeset,
                 change_opts,
                 struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
@@ -3323,7 +3332,8 @@ defmodule Ash.Actions.Update.Bulk do
                 module.batch_change(batch, change_opts, context)
               else
                 [
-                  module.change(
+                  Ash.Resource.Change.change(
+                    module,
                     changeset,
                     change_opts,
                     struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
@@ -3346,7 +3356,8 @@ defmodule Ash.Actions.Update.Bulk do
 
               {:ok, change_opts} = module.init(change_opts)
 
-              module.change(
+              Ash.Resource.Change.change(
+                module,
                 changeset,
                 change_opts,
                 struct(struct(Ash.Resource.Change.Context, context), bulk?: true)

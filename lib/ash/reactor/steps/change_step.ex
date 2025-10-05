@@ -54,7 +54,7 @@ defmodule Ash.Reactor.ChangeStep do
         changeset: changeset
       )
 
-    module.validate(changeset, opts, context)
+    Ash.Resource.Validation.validate(module, changeset, opts, context)
   rescue
     error -> {:error, error}
   end
@@ -74,7 +74,7 @@ defmodule Ash.Reactor.ChangeStep do
       )
 
     with {:ok, opts} <- module.init(opts) do
-      {:ok, module.change(changeset, opts, context)}
+      {:ok, Ash.Resource.Change.change(module, changeset, opts, context)}
     end
   end
 

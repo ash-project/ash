@@ -974,7 +974,25 @@ defmodule Ash.Type.Union do
             raise "Found a type without a tag when using the `:map_with_tag` storage constraint. Constraints: #{inspect(union_constraints)}"
           end
 
-          Ash.Type.dump_to_native(type, value, constraints)
+          case Ash.Type.dump_to_native(
+                 type,
+                 value,
+                 constraints
+               ) do
+            {:error, error} ->
+              {:error, error}
+
+            {:ok, nil} ->
+              {:ok, nil}
+
+            {:ok, value} ->
+              if Map.has_key?(value, config[:tag]) ||
+                   (is_atom(config[:tag]) && Map.has_key?(value, to_string(config[:tag]))) do
+                {:ok, value}
+              else
+                {:ok, Map.put(value, config[:tag], config[:tag_value])}
+              end
+          end
       end
     else
       :error

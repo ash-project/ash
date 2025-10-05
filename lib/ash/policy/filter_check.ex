@@ -381,7 +381,7 @@ defmodule Ash.Policy.FilterCheck do
          actor
          |> filter(authorizer, opts)
          |> Ash.Expr.fill_template(
-           actor,
+           actor: actor,
            tenant: authorizer.subject.to_tenant,
            args: authorizer.subject.arguments,
            context: authorizer.subject.context,

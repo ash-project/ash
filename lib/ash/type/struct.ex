@@ -83,7 +83,7 @@ defmodule Ash.Type.Struct do
   Example:
 
       defmodule MyStruct do
-        use Ash.TypedStruct 
+        use Ash.TypedStruct
         typed_struct do
           field :name, :string, allow_nil?: false
           field :age, :integer, constraints: [min: 0]
@@ -397,23 +397,32 @@ defmodule Ash.Type.Struct do
   end
 
   defp check_fields(value, fields) do
-    Enum.reduce(fields, {:ok, %{}}, fn
-      {field, field_constraints}, {:ok, checked_value} ->
+    {errors, result} =
+      Enum.reduce(fields, {[], %{}}, fn {field, field_constraints}, {errors_acc, result_acc} ->
         case fetch_field(value, field) do
           {:ok, field_value} ->
-            check_field(checked_value, field, field_value, field_constraints)
+            case check_field(result_acc, field, field_value, field_constraints) do
+              {:ok, updated_result} ->
+                {errors_acc, updated_result}
+
+              {:error, field_errors} ->
+                {errors_acc ++ field_errors, result_acc}
+            end
 
           :error ->
             if field_constraints[:allow_nil?] == false do
-              {:error, [[message: "field must be present", field: field]]}
+              field_error = [message: "field must be present", field: field]
+              {errors_acc ++ [field_error], result_acc}
             else
-              {:ok, checked_value}
+              {errors_acc, result_acc}
             end
         end
+      end)
 
-      {_, _}, {:error, errors} ->
-        {:error, errors}
-    end)
+    case errors do
+      [] -> {:ok, result}
+      _ -> {:error, errors}
+    end
   end
 
   defp check_field(result, field, field_value, field_constraints) do
@@ -439,11 +448,15 @@ defmodule Ash.Type.Struct do
             {:ok, Map.put(result, field, field_value)}
 
           {:error, errors} ->
-            if Keyword.keyword?(errors) do
-              {:error, Keyword.put(errors, :field, field)}
-            else
-              {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
-            end
+            formatted_errors =
+              errors
+              |> List.wrap()
+              |> Enum.map(
+                &Ash.Type.CompositeTypeHelpers.format_comprehensive_error_as_keyword(&1, field)
+              )
+              |> Ash.Type.CompositeTypeHelpers.filter_non_informative_errors()
+
+            {:error, formatted_errors}
         end
 
       {:error, error} when is_binary(error) ->

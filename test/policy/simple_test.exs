@@ -548,6 +548,22 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert results == [car1.id]
   end
 
+  test "count is skipped when no records are returned due to policies" do
+    car =
+      Car
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!(authorize?: false)
+
+    Mimic.reject(Ash.DataLayer, :run_query, 2)
+    Mimic.reject(Ash.DataLayer, :run_aggregate_query, 3)
+
+    assert %{count: 0, results: []} =
+             Ash.Query.for_read(Car, :with_pagination)
+             |> Ash.Query.filter(id == ^car.id)
+             |> Ash.Query.page(limit: 5, count: true)
+             |> Ash.read!()
+  end
+
   test "calculations that reference aggregates are properly authorized", %{user: user} do
     Car
     |> Ash.Changeset.for_create(:create, %{users: [user.id], active: false}, authorize?: false)
@@ -637,5 +653,100 @@ defmodule Ash.Test.Policy.SimpleTest do
              |> Ash.read!(authorize?: true, actor: user2)
 
     assert user2_got_thing.id == user2_thing.id
+  end
+
+  defmodule ResourceWithBeforeTransactionHook do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      authorizers: [Ash.Policy.Authorizer]
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    actions do
+      defaults [:read]
+
+      create :create do
+        primary? true
+        accept [:name]
+      end
+
+      update :test_action_with_after_transaction do
+        accept [:name]
+
+        change before_transaction(fn changeset, _context ->
+                 raise "running before transaction"
+               end)
+
+        change after_transaction(fn _changeset, res, _context ->
+                 res
+               end)
+
+        require_atomic? false
+      end
+
+      update :test_action_without_after_transaction do
+        accept [:name]
+
+        change before_transaction(fn changeset, _context ->
+                 raise "running before transaction"
+               end)
+
+        require_atomic? false
+      end
+    end
+
+    policies do
+      policy action_type(:read) do
+        authorize_if always()
+      end
+
+      policy action_type(:create) do
+        authorize_if always()
+      end
+    end
+  end
+
+  test "before_transaction hook should not run when action is not authorized via bulk_update" do
+    record = Ash.create!(ResourceWithBeforeTransactionHook, %{name: "test"}, authorize?: false)
+
+    query =
+      ResourceWithBeforeTransactionHook
+      |> Ash.DataLayer.Simple.set_data([record])
+      |> Ash.Query.limit(1)
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Ash.bulk_update!(query, :test_action_with_after_transaction, %{},
+        return_errors?: true,
+        notify?: true,
+        strategy: [:atomic, :stream, :atomic_batches],
+        allow_stream_with: :full_read,
+        authorize_changeset_with: :filter,
+        return_records?: true,
+        authorize?: true,
+        read_action: :read,
+        domain: Ash.Test.Domain,
+        select: [],
+        load: []
+      )
+    end
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Ash.bulk_update!(query, :test_action_without_after_transaction, %{},
+        return_errors?: true,
+        notify?: true,
+        strategy: [:atomic, :stream, :atomic_batches],
+        allow_stream_with: :full_read,
+        authorize_changeset_with: :filter,
+        return_records?: true,
+        authorize?: true,
+        read_action: :read,
+        domain: Ash.Test.Domain,
+        select: [],
+        load: []
+      )
+    end
   end
 end

@@ -67,7 +67,7 @@ defmodule MyApp.Validations.IsPrime do
 
   @impl true
   def init(opts) do
-    if is_atom(opts[:attribute]) do
+    if opts[:attribute] != nil && is_atom(opts[:attribute]) do
       {:ok, opts}
     else
       {:error, "attribute must be an atom!"}

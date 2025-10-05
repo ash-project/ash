@@ -4,16 +4,27 @@ defmodule Ash.Resource.Transformers.RequireUniqueActionNames do
   """
   use Spark.Dsl.Transformer
 
+  alias Spark.Dsl.Entity
   alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
 
   def transform(dsl_state) do
     dsl_state
-    |> Transformer.get_entities([:actions])
+    |> Ash.Resource.Info.actions()
     |> Enum.group_by(& &1.name)
     |> Enum.each(fn {name, actions} ->
       if Enum.count(actions) != 1 do
+        # Find the second action with this name and get location of its name property
+        second_action = Enum.at(actions, 1)
+
+        location =
+          case Entity.property_anno(second_action, :name) do
+            nil -> Entity.anno(second_action)
+            other -> other
+          end
+
         raise DslError.exception(
+                module: Transformer.get_persisted(dsl_state, :module),
                 message: """
                 Multiple actions (#{Enum.count(actions)}) with the name `#{name}` defined.
 
@@ -21,7 +32,8 @@ defmodule Ash.Resource.Transformers.RequireUniqueActionNames do
                 was promoted in the documentation, but that is no longer valid. All
                 actions must have unique names.
                 """,
-                path: [:actions, name]
+                path: [:actions, name],
+                location: location
               )
       end
     end)

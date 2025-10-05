@@ -9,6 +9,7 @@ if Code.ensure_loaded?(Igniter) do
 
     - `--example` - Creates some example resources. When used, will pass
       through options to `mix ash.gen.resource`. See that task docs for more.
+    - `--setup` - Runs `mix ash.setup` after installation to set up extensions.
     """
 
     use Igniter.Mix.Task
@@ -69,9 +70,13 @@ if Code.ensure_loaded?(Igniter) do
     """
 
     @impl Igniter.Mix.Task
-    def info(_argv, _source) do
+    def info(_argv, _parent) do
       %Igniter.Mix.Task.Info{
-        composes: ["spark.install", "ash.gen.resource"]
+        composes: ["spark.install", "ash.gen.resource"],
+        schema: [
+          setup: :boolean,
+          example: :boolean
+        ]
       }
     end
 
@@ -202,12 +207,25 @@ if Code.ensure_loaded?(Igniter) do
               [:bulk_actions_default_to_errors?],
               true
             )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:transaction_rollback_on_error?],
+              true
+            )
           end)
         end
       )
       |> then(fn igniter ->
-        if "--example" in igniter.args.argv_flags do
+        if igniter.args.options[:example] do
           generate_example(igniter, igniter.args.argv_flags)
+        else
+          igniter
+        end
+      end)
+      |> then(fn igniter ->
+        if igniter.args.options[:setup] do
+          Igniter.delay_task(igniter, "ash.setup")
         else
           igniter
         end

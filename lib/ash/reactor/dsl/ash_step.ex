@@ -15,7 +15,8 @@ defmodule Ash.Reactor.Dsl.AshStep do
             name: nil,
             run: nil,
             transform: nil,
-            undo: nil
+            undo: nil,
+            __spark_metadata__: nil
 
   alias Reactor.{Dsl, Step}
 
@@ -34,7 +35,8 @@ defmodule Ash.Reactor.Dsl.AshStep do
                  {:ok, any} | {:ok, any, [Step.t()]} | {:halt | :error, any}),
           transform: nil | (any -> any),
           undo: nil | (any, Reactor.inputs(), Reactor.context() -> :ok | :retry | {:error, any}),
-          __identifier__: any
+          __identifier__: any,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @doc false

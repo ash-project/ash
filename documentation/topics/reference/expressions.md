@@ -96,7 +96,7 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 
 ## Sub-expressions
 
-- `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. See the section on `exists` below.
+- `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. Can also be used with resource modules directly: `exists(SomeResource, name == "fred")`. See the section on `exists` below.
 - `path.exists/2` | Same as `exists` but the source of the relationship is itself a nested relationship. See the section on `exists` below.
 - `parent/1` | Allows an expression scoped to a resource to refer to the "outer" context. Used in relationship filters and `exists`
 
@@ -121,7 +121,11 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 
 ## Inline Aggregates
 
-Aggregates can be referenced in-line, with their relationship path specified and any options provided that match the options given to `Ash.Query.Aggregate.new/4`. For example:
+Aggregates can be referenced in-line, with their relationship path specified and any options provided that match the options given to `Ash.Query.Aggregate.new/4`.
+
+### Relationship-based Inline Aggregates
+
+For aggregating over related data through relationships:
 
 ```elixir
 calculate :grade, :decimal, expr(
@@ -129,6 +133,36 @@ calculate :grade, :decimal, expr(
   count(answers, query: [filter: expr(correct == false)])
 )
 ```
+
+### Resource-based Inline Aggregates
+
+For aggregating over any resource without a relationship:
+
+```elixir
+# Count profiles matching the user's name
+calculate :matching_profiles, :integer, 
+  expr(count(Profile, filter: expr(name == parent(name))))
+
+# Get the latest report title by the user
+calculate :latest_report, :string,
+  expr(first(Report, 
+    field: :title,
+    query: [
+      filter: expr(author_name == parent(name)),
+      sort: [inserted_at: :desc]
+    ]
+  ))
+
+# Complex calculation with multiple resource-based aggregates and exists
+calculate :stats, :map, expr(%{
+  profile_count: count(Profile, filter: expr(name == parent(name))),
+  total_score: sum(Report, field: :score, query: [filter: expr(author_name == parent(name))]),
+  has_active_profile: exists(Profile, active == true and name == parent(name)),
+  has_recent_reports: exists(Report, author_name == parent(name) and inserted_at > ago(1, :week))
+})
+```
+
+The `parent/1` function allows referencing fields from the source resource within resource-based aggregate filters.
 
 The available aggregate kinds can also be seen in the `Ash.Query.Aggregate` module documentation.
 
@@ -234,6 +268,28 @@ Ash.Query.filter(Post, author.exists(roles, name == :admin) and author.active)
 ```
 
 While the above is not common, it can be useful in some specific circumstances, and is used under the hood by the policy authorizer when combining the filters of various resources to create a single filter.
+
+### Resource-based Exists
+
+Sometimes you want to check for the existence of records in any resource, not just through relationships. Resource-based exists allows you to query any resource directly:
+
+```elixir
+# Check if there are any profiles with the same name as the user
+Ash.Query.filter(User, exists(Profile, name == parent(name)))
+
+# Check if user has reports (without needing a relationship)
+Ash.Query.filter(User, exists(Report, author_name == parent(name)))
+
+# Check existence with complex conditions
+Ash.Query.filter(User, exists(Profile, active == true and age > 25))
+
+# Combine with other filters
+Ash.Query.filter(User, 
+  active == true and exists(Profile, name == parent(name))
+)
+```
+
+The `parent/1` function allows you to reference fields from the source resource within the exists expression. Authorization is automatically applied to resource-based exists expressions using the target resource's primary read action.
 
 ## Portability
 

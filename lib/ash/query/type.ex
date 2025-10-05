@@ -7,7 +7,8 @@ defmodule Ash.Query.Type do
 
   def try_cast(list, {:array, type}, constraints) do
     if Enumerable.impl_for(list) do
-      list
+      {:array, type}
+      |> Ash.Type.Helpers.handle_indexed_maps(list)
       |> Enum.reduce_while({:ok, []}, fn value, {:ok, list} ->
         case try_cast(value, type, constraints[:items] || []) do
           {:ok, casted} -> {:cont, {:ok, [casted | list]}}
@@ -27,7 +28,9 @@ defmodule Ash.Query.Type do
     end
   end
 
-  def try_cast(%Ash.CiString{} = str, :string, _constraints), do: {:ok, str}
+  def try_cast(%Ash.CiString{} = str, type, _constraints) when type in [:string, Ash.Type.String],
+    do: {:ok, str}
+
   def try_cast(value, :number, _constraints) when is_number(value), do: {:ok, value}
   def try_cast(value, :any, _constraints), do: {:ok, value}
 

@@ -23,20 +23,52 @@ defmodule Ash.Test.Resource.DomainTest do
     end
   end
 
-  test "cannot define a resource that points to a domain that doesn't accept it" do
-    assert_raise RuntimeError, ~r/domain does not accept this resource/, fn ->
-      defmodule NoResourcesDomain do
-        use Ash.Domain
-      end
-
-      defmodule Bar do
-        use Ash.Resource, domain: NoResourcesDomain
-
-        attributes do
-          uuid_primary_key :id
-        end
-      end
+  test "double macros invocation `use Ash.Domain` should raises a CompileError" do
+    code = """
+    defmodule DoubleMacrosDomain do
+      use Ash.Domain
+      use Ash.Domain, extensions: []
     end
+    """
+
+    try do
+      Code.compile_string(code)
+      flunk("expected CompileError on the second `use Ash.Domain`")
+    rescue
+      e in CompileError ->
+        assert e.line == 1
+        assert String.contains?(e.description, "use Ash.Domain")
+        assert String.contains?(e.description, "only one")
+    end
+  end
+
+  test "single macros invocation `use Ash.Domain` should compile" do
+    code = """
+    defmodule SingleMacrosDomain do
+      use Ash.Domain
+    end
+    """
+
+    assert _compiled = Code.compile_string(code)
+  end
+
+  test "cannot define a resource that points to a domain that doesn't accept it" do
+    output =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        defmodule NoResourcesDomain do
+          use Ash.Domain
+        end
+
+        defmodule Bar do
+          use Ash.Resource, domain: NoResourcesDomain
+
+          attributes do
+            uuid_primary_key :id
+          end
+        end
+      end)
+
+    assert String.contains?(output, "domain does not accept this resource")
   end
 
   test "cannot define a code interface to a non-existing action" do
@@ -62,38 +94,39 @@ defmodule Ash.Test.Resource.DomainTest do
   end
 
   test "cannot define a code interface with invalid arguments" do
-    error_pattern =
-      ~r/Cannot accept the args `\[:bar\]` because they are not arguments or attributes supported by the `:hello` action/
+    output =
+      ExUnit.CaptureIO.capture_io(:stderr, fn ->
+        defmodule FooBar do
+          use Ash.Resource, domain: FooBarDomain
 
-    assert_raise Spark.Error.DslError, error_pattern, fn ->
-      defmodule FooBar do
-        use Ash.Resource, domain: FooBarDomain
+          attributes do
+            uuid_primary_key :id
+          end
 
-        attributes do
-          uuid_primary_key :id
-        end
+          actions do
+            action :hello, :string do
+              argument :name, :string, allow_nil?: false
 
-        actions do
-          action :hello, :string do
-            argument :name, :string, allow_nil?: false
-
-            run(fn input, _context ->
-              {:ok, "Hello #{input.arguments.name}"}
-            end)
+              run(fn input, _context ->
+                {:ok, "Hello #{input.arguments.name}"}
+              end)
+            end
           end
         end
-      end
 
-      defmodule FooBarDomain do
-        use Ash.Domain
+        defmodule FooBarDomain do
+          use Ash.Domain
 
-        resources do
-          resource FooBar do
-            define :hello, args: [:name, :bar]
+          resources do
+            resource FooBar do
+              define :hello, args: [:name, :bar]
+            end
           end
         end
-      end
-    end
+      end)
+
+    assert String.contains?(output, "Cannot accept the args")
+    assert String.contains?(output, ":bar")
   end
 
   test "a resource defined with a domain can be used with functions in `Ash`" do

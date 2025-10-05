@@ -121,6 +121,7 @@ bar to find relevant reference information. Place the text `dsl` before your sea
 - [Ash.Policy.Authorizer DSL](documentation/dsls/DSL-Ash.Policy.Authorizer.md)
 - [Ash.DataLayer.Ets DSL](documentation/dsls/DSL-Ash.DataLayer.Ets.md)
 - [Ash.DataLayer.Mnesia DSL](documentation/dsls/DSL-Ash.DataLayer.Mnesia.md)
+- [Ash.TypedStruct DSL](documentation/dsls/DSL-Ash.TypedStruct.md)
 - [Glossary](documentation/topics/reference/glossary.md)
 - [Expressions](documentation/topics/reference/expressions.md)
 - For other reference documentation, see the sidebar & search bar

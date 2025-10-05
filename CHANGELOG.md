@@ -2,6 +2,264 @@
 
 <!-- changelog -->
 
+## [v3.5.43](https://github.com/ash-project/ash/compare/v3.5.42...v3.5.43) (2025-09-28)
+
+
+
+
+### Bug Fixes:
+
+* cast value to type when requiring atomic attributes by [@zachdaniel](https://github.com/zachdaniel)
+
+* fix amnesia support for upsets by Dan Wanek
+
+* support top-level `:shared` key in `Ash.Scope.ToOpts` for `Map` (#2261) by James Harton
+
+### Improvements:
+
+* add bulk_create for Ash.DataLayer.Mnesia (#2336) by Dan Wanek
+
+* return errors from calculations with invalid expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* add source locations to a whole bunch of errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location to primary key verifier by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location for multitenancy verifier by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location information for manage relationship transformer by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location info for reserved field names transformer by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location info for primary action transformer by [@zachdaniel](https://github.com/zachdaniel)
+
+* add location info for unique action name transformer by [@zachdaniel](https://github.com/zachdaniel)
+
+* implemented 'has' and 'intersects' functions (#2324) by Abdessabour Moutik
+
+## [v3.5.42](https://github.com/ash-project/ash/compare/v3.5.41...v3.5.42) (2025-09-20)
+
+
+
+
+### Improvements:
+
+* use `delay_task` for `mix ash.setup` by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.5.41](https://github.com/ash-project/ash/compare/v3.5.40...v3.5.41) (2025-09-20)
+
+
+
+
+### Bug Fixes:
+
+* use explicit `is_nil` check for `upsert_condition` by [@zachdaniel](https://github.com/zachdaniel)
+
+* actually use the mnesia table configured ð¤¦ââï¸ by [@zachdaniel](https://github.com/zachdaniel)
+
+* add missing capabilities to data layer spec by [@zachdaniel](https://github.com/zachdaniel)
+
+* Typo in scope documentation (#2328) by [@Munksgaard](https://github.com/Munksgaard)
+
+* properly pass action to requires_original_data? in VerifyActionsAtomic (#2327) by Christopher Bonhage
+
+* avoid crashing on new exception (#2322) by Cyprien Poisson
+
+* handle validation init errors without overriding them with validation message (#2320) by marot
+
+### Improvements:
+
+* add `--setup` flag to `ash.install` to run `ash.setup` by [@zachdaniel](https://github.com/zachdaniel)
+
+* Improve performance of mix tasks that load extensions (#2332) by drtheuns
+
+* better error message on invalid relationship paths in exists by [@zachdaniel](https://github.com/zachdaniel)
+
+* add `any` builtin validation by [@zachdaniel](https://github.com/zachdaniel)
+
+* detect types in `get_path` expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.5.40](https://github.com/ash-project/ash/compare/v3.5.39...v3.5.40) (2025-09-13)
+
+
+
+
+### Bug Fixes:
+
+* Make Ash.Type.Keyword.dump_to_native return a map. (#2318) by Torkild Gundersen Kjevik
+
+* nif rustler_precompiled: update targets to ubuntu-22.04 and extend release list to prevent stuck builds by Shahryar Tavakkoli
+
+* update targets to ubuntu-22.04 and extend release list to prevent stuck builds (#2311) by Shahryar Tavakkoli
+
+* Runtime upsert_fields option is not passed to data layer in certain cases (#2310) by jlgeering
+
+* if nils_distinct?, consider multitenancy attribute as an upsert key by Zach Daniel
+
+## [v3.5.39](https://github.com/ash-project/ash/compare/v3.5.38...v3.5.39) (2025-09-06)
+
+
+### Security Vulnerabilities Addressed
+
+* authorize before before_transaction hooks in bulk actions by [@zachdaniel](https://github.com/zachdaniel)
+
+This fixes the CVE: CVE-2025-48042. See the [GHSA-jj4j-x5ww-cwh9 advisory](https://github.com/ash-project/ash/security/advisories/GHSA-jj4j-x5ww-cwh9) for more. 
+
+### Bug Fixes:
+
+* special case ci_strings as strings in type casting by [@zachdaniel](https://github.com/zachdaniel)
+
+* make `Ash.PlugHelpers.set_actor/2` typespec accept term as an actor (#2307) by Maciej Malecki
+
+## [v3.5.38](https://github.com/ash-project/ash/compare/v3.5.37...v3.5.38) (2025-09-04)
+
+
+### Bug Fixes:
+
+* cache action inputs for all action types by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly pass template opts when showing policy errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* add default values to manual action changesets (#2305) by [@Torkan](https://github.com/Torkan)
+
+* properly escape collection defaults in TypedStruct macro (#2304) by [@bradleygolden](https://github.com/bradleygolden)
+
+### Improvements:
+
+* skip count of records when paginating if filter evaluates to false (#2303) by Rodolfo Torres
+
+## [v3.5.37](https://github.com/ash-project/ash/compare/v3.5.36...v3.5.37) (2025-08-31)
+
+
+
+
+### Bug Fixes:
+
+* ensure that count tasks are always stopped by [@zachdaniel](https://github.com/zachdaniel)
+
+* Allow ^actor() in upsert_condition (#2297) by [@FugiTech](https://github.com/FugiTech)
+
+* properly add aggregate with `add_new_aggregate` by [@zachdaniel](https://github.com/zachdaniel)
+
+* resolve variable swapping in authorizer reducer (#2296) by Jesse Williams
+
+* handle notification without set domain in telemetry spans (#2293) by [@vonagam](https://github.com/vonagam)
+
+* Use `:unsafe_to_atom?` constraint when casting stored atom values by Rutgerdj
+
+* add CompileError on duplicate Ash.Domain use by LambdaCalc
+
+* handle indexed maps when typecasting filter values by [@zachdaniel](https://github.com/zachdaniel)
+
+* deterministic partial evaluation by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that unions stored with tags actually have their tags by [@zachdaniel](https://github.com/zachdaniel)
+
+* resolve warning about `nil` atomics by [@zachdaniel](https://github.com/zachdaniel)
+
+* typespec fix for typedstruct info module (#2286) by Matt Beanland
+
+### Improvements:
+
+* properly short-circuit if, || and && by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.5.36](https://github.com/ash-project/ash/compare/v3.5.35...v3.5.36) (2025-08-21)
+
+
+
+
+### Bug Fixes:
+
+* revert typed_struct enhancements by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.5.35](https://github.com/ash-project/ash/compare/v3.5.34...v3.5.35) (2025-08-21)
+
+
+
+
+### Bug Fixes:
+
+* use `Ash.read!` in usage rules by [@zachdaniel](https://github.com/zachdaniel)
+
+* respect disable_async config during pagination count (#2280) by skanderm
+
+* properly handle overriding `new` for typed struct by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't skip authorization for unrelated aggregates by [@zachdaniel](https://github.com/zachdaniel)
+
+* multiple errors (#2260) by [@TwistingTwists](https://github.com/TwistingTwists)
+
+* avoid String.to_atom by pre-computing mixed argument name MapSet (#2262) by James Harton
+
+* Accept nil input for maps and TypedStructs (#2257) by Fugi
+
+* pass actor: nil to ash.get in get_and_lock_for_update (#2256) by Jesse Williams
+
+* add default impl for rewrite/3 & get_rewrites/4 for Ash.Type. (#2251) by Torkild Gundersen Kjevik
+
+* filter out invalid changeset, before running the bulk before transactions (#2249) by Barnabas Jovanovics
+
+* minor tweaks to usage rules (#2246) by albinkc
+
+* handle updates on union types containing arrays  (#2237) by Rutgerdj
+
+### Improvements:
+
+* introspection and docs for typed structs (#2277) by [@matt-beanland](https://github.com/matt-beanland)
+
+* check change and validate callbacks using behaviour helpers by [@zachdaniel](https://github.com/zachdaniel)
+
+* support "unrelated" aggregates (#2240) by [@zachdaniel](https://github.com/zachdaniel)
+
+* support "unrelated" aggregates by [@zachdaniel](https://github.com/zachdaniel)
+
+* add unrelated exists expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* TypedStruct required field pattern matching (#2265) by [@chazwatkins](https://github.com/chazwatkins)
+
+* compilation: Move type list module attrs from Ash.Type to Ash.Type.Registry (#2266) by [@chazwatkins](https://github.com/chazwatkins)
+
+* changeset_generator takes scope opt (#2263) by Joseph Lozano
+
+* Support through for many to many relationship gen (#2233) by Kenneth Kostrešević
+
+* Update usage-rules.md to include Polymorphic Relationships (#2211) by Gonzalo Muñoz
+
+* filter expression verifier (#2243) by Kenneth Kostrešević
+
+* Introduce extension introspection functions on Ash.*.Info (#2239) by Jonatan Männchen
+
+## [v3.5.34](https://github.com/ash-project/ash/compare/v3.5.33...v3.5.34) (2025-08-07)
+
+
+
+
+### Bug Fixes:
+
+* avoid String.to_atom by pre-computing mixed argument name MapSet (#2262) by James Harton
+
+* Accept nil input for maps and TypedStructs (#2257) by [@FugiTech](https://github.com/FugiTech)
+
+* pass actor: nil to ash.get in get_and_lock_for_update (#2256) by Jesse Williams
+
+* add default impl for rewrite/3 & get_rewrites/4 for Ash.Type. (#2251) by [@Torkan](https://github.com/Torkan)
+
+* filter out invalid changeset, before running the bulk before transactions (#2249) by [@barnabasJ](https://github.com/barnabasJ)
+
+* minor tweaks to usage rules (#2246) by albinkc
+
+* handle updates on union types containing arrays  (#2237) by Rutgerdj
+
+### Improvements:
+
+* Support through for many to many relationship gen (#2233) by Kenneth Kostrešević
+
+* Update usage-rules.md to include Polymorphic Relationships (#2211) by Gonzalo Muñoz
+
+* filter expression verifier (#2243) by Kenneth Kostrešević
+
+* Introduce extension introspection functions on Ash.*.Info (#2239) by Jonatan Männchen
+
 ## [v3.5.33](https://github.com/ash-project/ash/compare/v3.5.32...v3.5.33) (2025-07-29)
 
 

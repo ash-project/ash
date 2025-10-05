@@ -19,7 +19,7 @@ defmodule Ash.Query.Operator.InTest do
       assert In.compare(left, right) == :mutually_exclusive
     end
 
-    test "returns :left_includes_left for Eq in In" do
+    test "returns :left_includes_right for Eq in In" do
       left = %In{left: 1, right: MapSet.new([2, 3])}
       right = %Eq{left: 1, right: 2}
 

@@ -18,6 +18,8 @@ if Mix.env() == :dev do
     version_tag_prefix: "v"
 end
 
+config :spark, :skip_diagnostic_warnings, true
+
 config :logger, level: :warning
 
 config :ash, :default_page_type, :keyset

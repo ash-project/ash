@@ -6,11 +6,12 @@ defmodule Ash.Policy.FieldPolicy do
     :policies,
     :description,
     :__identifier__,
+    :__spark_metadata__,
     access_type: :filter,
     bypass?: false
   ]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
   @doc false
   def transform(field_policy) do

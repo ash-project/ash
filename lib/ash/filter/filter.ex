@@ -25,7 +25,9 @@ defmodule Ash.Filter do
     Fragment,
     FromNow,
     GetPath,
+    Has,
     If,
+    Intersects,
     IsNil,
     Lazy,
     Length,
@@ -70,8 +72,10 @@ defmodule Ash.Filter do
     Fragment,
     FromNow,
     GetPath,
+    Has,
     IsNil,
     If,
+    Intersects,
     Lazy,
     Length,
     Minus,
@@ -966,6 +970,8 @@ defmodule Ash.Filter do
       refs =
         group_refs_by_all_paths(paths_with_refs)
 
+      unrelated_exists = collect_unrelated_exists_with_input_refs(query.filter)
+
       paths_with_refs
       |> Enum.map(&elem(&1, 0))
       |> Enum.reduce_while({:ok, filters}, fn path, {:ok, filters} ->
@@ -989,6 +995,14 @@ defmodule Ash.Filter do
         actor,
         tenant,
         refs,
+        authorize?
+      )
+      |> add_unrelated_exists_authorization(
+        domain,
+        unrelated_exists,
+        query,
+        actor,
+        tenant,
         authorize?
       )
     else
@@ -1089,65 +1103,304 @@ defmodule Ash.Filter do
     end)
     |> Enum.concat(aggregates)
     |> Enum.reduce_while({:ok, path_filters}, fn aggregate, {:ok, filters} ->
-      aggregate.relationship_path
-      |> :lists.droplast()
-      |> Ash.Query.Aggregate.subpaths()
-      |> Enum.reduce_while({:ok, filters}, fn subpath, {:ok, filters} ->
-        last_relationship = last_relationship(query.resource, subpath)
+      if Map.get(aggregate, :related?, true) do
+        aggregate.relationship_path
+        |> :lists.droplast()
+        |> Ash.Query.Aggregate.subpaths()
+        |> Enum.reduce_while({:ok, filters}, fn subpath, {:ok, filters} ->
+          last_relationship = last_relationship(query.resource, subpath)
 
-        add_authorization_path_filter(
-          filters,
-          last_relationship,
-          domain,
-          query,
-          actor,
-          tenant,
-          refs,
-          Ash.Query.for_read(
-            last_relationship.destination,
-            Ash.Resource.Info.primary_action(last_relationship.destination, :read).name,
-            %{},
-            actor: actor,
-            tenant: tenant,
-            authorize?: authorize?
-          ),
-          true
-        )
-      end)
+          add_authorization_path_filter(
+            filters,
+            last_relationship,
+            domain,
+            query,
+            actor,
+            tenant,
+            refs,
+            Ash.Query.for_read(
+              last_relationship.destination,
+              Ash.Resource.Info.primary_action(last_relationship.destination, :read).name,
+              %{},
+              actor: actor,
+              tenant: tenant,
+              authorize?: authorize?
+            ),
+            true
+          )
+        end)
+      else
+        case Ash.can(aggregate.query, actor,
+               run_queries?: false,
+               pre_flight?: false,
+               alter_source?: true,
+               no_check?: true,
+               return_forbidden_error?: true,
+               maybe_is: false
+             ) do
+          {:ok, true, authorized_query} ->
+            if is_nil(authorized_query.filter) do
+              {:ok, filters}
+            else
+              filter_key = {aggregate.resource, aggregate.query.action.name}
+              {:ok, Map.put(filters, filter_key, authorized_query.filter)}
+            end
+
+          {:ok, false, _error} ->
+            filter_key = {aggregate.resource, aggregate.query.action.name}
+            false_filter = %Ash.Filter{expression: false, resource: aggregate.resource}
+            {:ok, Map.put(filters, filter_key, false_filter)}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end
       |> case do
         {:ok, filters} ->
-          last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
+          if Map.get(aggregate, :related?, true) do
+            last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
 
-          case relationship_filters(
-                 domain,
-                 aggregate.query,
-                 actor,
-                 tenant,
-                 [],
-                 authorize?,
-                 filters
-               ) do
-            {:ok, filters} ->
-              add_authorization_path_filter(
-                filters,
-                last_relationship,
-                domain,
-                query,
-                actor,
-                tenant,
-                refs,
-                aggregate.query,
-                true
-              )
+            case relationship_filters(
+                   domain,
+                   aggregate.query,
+                   actor,
+                   tenant,
+                   [],
+                   authorize?,
+                   filters
+                 ) do
+              {:ok, filters} ->
+                add_authorization_path_filter(
+                  filters,
+                  last_relationship,
+                  domain,
+                  query,
+                  actor,
+                  tenant,
+                  refs,
+                  aggregate.query,
+                  true
+                )
 
-            {:error, error} ->
-              {:error, error}
+              {:error, error} ->
+                {:error, error}
+            end
+          else
+            case relationship_filters(
+                   domain,
+                   aggregate.query,
+                   actor,
+                   tenant,
+                   [],
+                   authorize?,
+                   filters
+                 ) do
+              {:ok, filters} ->
+                {:cont, {:ok, filters}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
           end
 
         {:error, error} ->
           {:error, error}
       end
     end)
+  end
+
+  defp add_unrelated_exists_authorization(
+         {:ok, filters},
+         domain,
+         unrelated_exists_items,
+         query,
+         actor,
+         tenant,
+         authorize?
+       ) do
+    if authorize? do
+      unrelated_exists_items
+      |> Enum.reduce_while({:ok, filters}, fn item, {:ok, filters} ->
+        case item do
+          {:unrelated_exists, exists} ->
+            case add_unrelated_exists_filter(filters, exists, domain, actor, tenant) do
+              {:ok, new_filters} ->
+                {:cont, {:ok, new_filters}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+
+          {:relationship_path_in_exists, resource, path} ->
+            case add_relationship_path_in_exists_filter(
+                   filters,
+                   resource,
+                   path,
+                   domain,
+                   query,
+                   actor,
+                   tenant
+                 ) do
+              {:ok, new_filters} ->
+                {:cont, {:ok, new_filters}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+        end
+      end)
+    else
+      {:ok, filters}
+    end
+  end
+
+  defp add_unrelated_exists_authorization({:error, error}, _, _, _, _, _, _) do
+    {:error, error}
+  end
+
+  defp collect_unrelated_exists_with_input_refs(filter) do
+    filter
+    |> Ash.Filter.flat_map(&collect_unrelated_exists_from_expression/1)
+    |> Enum.uniq_by(fn
+      {:unrelated_exists, exists} -> exists
+      {:relationship_path_in_exists, resource, path} -> {resource, path}
+    end)
+  end
+
+  defp collect_unrelated_exists_from_expression(
+         %Ash.Query.Exists{related?: false, resource: resource, expr: expr} = exists
+       ) do
+    exists_item = {:unrelated_exists, exists}
+    relationship_paths = collect_relationship_paths_with_input_refs(expr, resource)
+    nested_exists = collect_unrelated_exists_from_expression(expr)
+
+    [exists_item | relationship_paths ++ nested_exists]
+  end
+
+  defp collect_unrelated_exists_from_expression(%Ash.Query.Exists{related?: true}) do
+    []
+  end
+
+  defp collect_unrelated_exists_from_expression(_), do: []
+
+  defp collect_relationship_paths_with_input_refs(expr, resource) do
+    paths_with_refs =
+      expr
+      |> Ash.Filter.relationship_paths(false, true, false)
+      |> Enum.filter(fn {_path, refs} ->
+        Enum.any?(refs, & &1.input?)
+      end)
+      |> Enum.map(fn {path, _refs} -> path end)
+      |> Enum.reject(&(&1 == []))
+
+    Enum.map(paths_with_refs, fn path ->
+      {:relationship_path_in_exists, resource, path}
+    end)
+  end
+
+  defp add_unrelated_exists_filter(
+         filters,
+         %Ash.Query.Exists{resource: unrelated_resource} = _exists,
+         _domain,
+         actor,
+         tenant
+       ) do
+    primary_read_action = Ash.Resource.Info.primary_action!(unrelated_resource, :read)
+
+    base_query =
+      Ash.Query.for_read(
+        unrelated_resource,
+        primary_read_action.name,
+        %{},
+        actor: actor,
+        tenant: tenant,
+        authorize?: true
+      )
+
+    case Ash.can(base_query, actor,
+           run_queries?: false,
+           pre_flight?: false,
+           alter_source?: true,
+           no_check?: true,
+           return_forbidden_error?: true,
+           maybe_is: false
+         ) do
+      {:ok, true, authorized_query} ->
+        related_filter =
+          if is_nil(authorized_query.filter) do
+            %Ash.Filter{expression: true, resource: unrelated_resource}
+          else
+            authorized_query.filter
+          end
+
+        filter_key = {:unrelated_exists, unrelated_resource, primary_read_action.name}
+        {:ok, Map.put(filters, filter_key, related_filter)}
+
+      {:ok, false, _error} ->
+        filter_key = {:unrelated_exists, unrelated_resource, primary_read_action.name}
+        false_filter = %Ash.Filter{expression: false, resource: unrelated_resource}
+        {:ok, Map.put(filters, filter_key, false_filter)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp add_relationship_path_in_exists_filter(
+         filters,
+         resource,
+         path,
+         domain,
+         _query,
+         actor,
+         tenant
+       ) do
+    last_relationship = last_relationship(resource, path)
+
+    case relationship_query(last_relationship, domain, actor, tenant, nil) do
+      %{errors: []} = related_query ->
+        if filters[{last_relationship.source, last_relationship.name, related_query.action.name}] do
+          {:ok, filters}
+        else
+          case Ash.can(related_query, actor,
+                 run_queries?: false,
+                 pre_flight?: false,
+                 alter_source?: true,
+                 no_check?: true,
+                 return_forbidden_error?: true,
+                 maybe_is: false
+               ) do
+            {:ok, true, authorized_related_query} ->
+              related_filter =
+                if is_nil(authorized_related_query.filter) do
+                  %Ash.Filter{expression: true, resource: related_query.resource}
+                else
+                  authorized_related_query.filter
+                end
+
+              {:ok,
+               Map.put(
+                 filters,
+                 {last_relationship.source, last_relationship.name, related_query.action.name},
+                 related_filter
+               )}
+
+            {:ok, false, _error} ->
+              {:ok,
+               Map.put(
+                 filters,
+                 {last_relationship.source, last_relationship.name, related_query.action.name},
+                 %Ash.Filter{expression: false, resource: related_query.resource}
+               )}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end
+
+      error_query ->
+        {:error, error_query.errors}
+    end
   end
 
   defp relationship_query(relationship, domain, actor, tenant, base) do
@@ -2033,51 +2286,72 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(
-         %Ash.Query.Exists{at_path: at_path},
+         %Ash.Query.Exists{at_path: at_path, related?: related?, expr: expression},
          false,
          with_refs?,
-         _expand_aggregates?
+         expand_aggregates?
        ) do
-    if with_refs? do
-      []
-    else
+    if related? && !with_refs? do
       [{at_path}]
+    else
+      []
+    end
+    |> Kernel.++(
+      parent_relationship_paths(expression, at_path, false, with_refs?, expand_aggregates?)
+    )
+  end
+
+  defp do_relationship_paths(
+         %Ash.Query.Exists{
+           path: path,
+           expr: expression,
+           at_path: at_path,
+           related?: related?
+         },
+         include_exists?,
+         false,
+         expand_aggregates?
+       ) do
+    if related? do
+      expression
+      |> do_relationship_paths(include_exists?, false, expand_aggregates?)
+      |> List.flatten()
+      |> Enum.flat_map(fn {rel_path} ->
+        [{at_path ++ path ++ rel_path}]
+      end)
+      |> then(&[{at_path} | &1])
+      |> Kernel.++(
+        parent_relationship_paths(expression, at_path, include_exists?, false, expand_aggregates?)
+      )
+    else
+      []
     end
   end
 
   defp do_relationship_paths(
-         %Ash.Query.Exists{path: path, expr: expression, at_path: at_path},
-         include_exists?,
-         false,
-         expand_aggregates?
-       ) do
-    expression
-    |> do_relationship_paths(include_exists?, false, expand_aggregates?)
-    |> List.flatten()
-    |> Enum.flat_map(fn {rel_path} ->
-      [{at_path ++ path ++ rel_path}]
-    end)
-    |> then(&[{at_path} | &1])
-    |> Kernel.++(
-      parent_relationship_paths(expression, at_path, include_exists?, false, expand_aggregates?)
-    )
-  end
-
-  defp do_relationship_paths(
-         %Ash.Query.Exists{path: path, expr: expression, at_path: at_path},
+         %Ash.Query.Exists{
+           path: path,
+           expr: expression,
+           at_path: at_path,
+           related?: related?
+         },
          include_exists?,
          true,
          expand_aggregates?
        ) do
-    expression
-    |> do_relationship_paths(include_exists?, true, expand_aggregates?)
-    |> List.flatten()
-    |> Enum.flat_map(fn {rel_path, ref} ->
-      [{at_path ++ path ++ rel_path, ref}]
-    end)
-    |> Kernel.++(
-      parent_relationship_paths(expression, at_path, include_exists?, true, expand_aggregates?)
-    )
+    if related? do
+      expression
+      |> do_relationship_paths(include_exists?, true, expand_aggregates?)
+      |> List.flatten()
+      |> Enum.flat_map(fn {rel_path, ref} ->
+        [{at_path ++ path ++ rel_path, ref}]
+      end)
+      |> Kernel.++(
+        parent_relationship_paths(expression, at_path, include_exists?, true, expand_aggregates?)
+      )
+    else
+      []
+    end
   end
 
   defp do_relationship_paths(
@@ -2394,6 +2668,9 @@ defmodule Ash.Filter do
             do_list_refs(value, true, false, expand_calculations?, expand_get_path?)
         end)
 
+      %Ash.Query.Exists{related?: false} ->
+        []
+
       %Ash.Query.Exists{at_path: at_path, path: path, expr: expr} ->
         parent_refs_inside_of_exists =
           flat_map(expr, fn
@@ -2652,12 +2929,28 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part(
-         %Ash.Query.Exists{at_path: at_path, path: path, expr: exists_expression} = exists,
+         %Ash.Query.Exists{
+           at_path: at_path,
+           path: path,
+           expr: exists_expression,
+           related?: related?,
+           resource: resource
+         } = exists,
          context,
          expression,
          _could_be_function?
        ) do
-    related = related(context, at_path ++ path)
+    # Check if data layer supports unrelated exists
+    if !related? && !Ash.DataLayer.data_layer_can?(context.resource, {:exists, :unrelated}) do
+      raise "Data layer does not support unrelated exists expressions"
+    end
+
+    related =
+      if related? do
+        related(context, at_path ++ path)
+      else
+        resource
+      end
 
     if !related do
       raise """
@@ -2686,7 +2979,12 @@ defmodule Ash.Filter do
            )
          ) do
       {:ok, result} ->
-        {:ok, BooleanExpression.optimized_new(:and, expression, %{exists | expr: result})}
+        {:ok,
+         BooleanExpression.optimized_new(:and, expression, %{
+           exists
+           | expr: result,
+             input?: context[:input?] || false
+         })}
 
       {:error, error} ->
         {:error, error}
@@ -2880,8 +3178,26 @@ defmodule Ash.Filter do
         end
 
       aggregate = aggregate(context, field) ->
-        if Ash.DataLayer.data_layer_can?(context.resource, {:aggregate, aggregate.kind}) do
-          related = Ash.Resource.Info.related(context.resource, aggregate.relationship_path)
+        # Check data layer support - for unrelated aggregates, we need to check for :unrelated capability
+        aggregate_capability =
+          if Map.get(aggregate, :related?, true),
+            do: {:aggregate, aggregate.kind},
+            else: {:aggregate, :unrelated}
+
+        if Ash.DataLayer.data_layer_can?(context.resource, aggregate_capability) do
+          # Handle both related and unrelated aggregates
+          {related, aggregate_opts} =
+            if Map.get(aggregate, :related?, true) do
+              # Related aggregate - follow relationship path
+              related = Ash.Resource.Info.related(context.resource, aggregate.relationship_path)
+              opts = [path: aggregate.relationship_path]
+              {related, opts}
+            else
+              # Unrelated aggregate - use target resource directly
+              related = aggregate.resource
+              opts = [resource: related]
+              {related, opts}
+            end
 
           read_action =
             aggregate.read_action || Ash.Resource.Info.primary_action!(related, :read).name
@@ -2899,23 +3215,24 @@ defmodule Ash.Filter do
                    context.resource,
                    aggregate.name,
                    aggregate.kind,
-                   agg_name: aggregate.name,
-                   path: aggregate.relationship_path,
-                   query: aggregate_query,
-                   field: aggregate.field,
-                   default: aggregate.default,
-                   filterable?: aggregate.filterable?,
-                   sortable?: aggregate.sortable?,
-                   sensitive?: aggregate.sensitive?,
-                   type: aggregate.type,
-                   include_nil?: aggregate.include_nil?,
-                   constraints: aggregate.constraints,
-                   implementation: aggregate.implementation,
-                   uniq?: aggregate.uniq?,
-                   read_action: read_action,
-                   authorize?: aggregate.authorize?,
-                   join_filters:
-                     Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                   [
+                     agg_name: aggregate.name,
+                     query: aggregate_query,
+                     field: aggregate.field,
+                     default: aggregate.default,
+                     filterable?: aggregate.filterable?,
+                     sortable?: aggregate.sortable?,
+                     sensitive?: aggregate.sensitive?,
+                     type: aggregate.type,
+                     include_nil?: aggregate.include_nil?,
+                     constraints: aggregate.constraints,
+                     implementation: aggregate.implementation,
+                     uniq?: aggregate.uniq?,
+                     read_action: read_action,
+                     authorize?: aggregate.authorize?,
+                     join_filters:
+                       Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                   ] ++ aggregate_opts
                  ) do
             query_aggregate = %{query_aggregate | load: aggregate.name}
 
@@ -3260,12 +3577,41 @@ defmodule Ash.Filter do
   defp resolve_call(%Call{name: name, args: args} = call, context)
        when name in @inline_aggregates do
     resource = Ash.Resource.Info.related(context.resource, call.relationship_path)
-    path = refs_to_path(Enum.at(args, 0))
-    related = Ash.Resource.Info.related(resource, path)
+    first_arg = Enum.at(args, 0)
 
-    if !related do
-      raise "Expression `#{inspect(call)}` is invalid. `#{inspect(Enum.at(args, 0))}` is not a valid relationship path from #{inspect(resource)}."
-    end
+    # Check if this is an unrelated aggregate (resource module)
+    {related, path, unrelated?} =
+      case first_arg do
+        module when is_atom(module) ->
+          # Check if it's a module that looks like a resource (starts with uppercase)
+          module_string = to_string(module)
+
+          if String.match?(module_string, ~r/^[A-Z]/) and Code.ensure_loaded?(module) do
+            # This is an unrelated aggregate
+            {module, [], true}
+          else
+            # This is a relationship path
+            path = refs_to_path(first_arg)
+            related = Ash.Resource.Info.related(resource, path)
+
+            if !related do
+              raise "Expression `#{inspect(call)}` is invalid. `#{inspect(first_arg)}` is not a valid relationship path from #{inspect(resource)}."
+            end
+
+            {related, path, false}
+          end
+
+        _ ->
+          # This is a relationship path
+          path = refs_to_path(first_arg)
+          related = Ash.Resource.Info.related(resource, path)
+
+          if !related do
+            raise "Expression `#{inspect(call)}` is invalid. `#{inspect(first_arg)}` is not a valid relationship path from #{inspect(resource)}."
+          end
+
+          {related, path, false}
+      end
 
     opts = Enum.at(args, 1) || []
 
@@ -3276,9 +3622,22 @@ defmodule Ash.Filter do
         name
       end
 
-    if Ash.DataLayer.data_layer_can?(context.resource, {:aggregate, kind}) do
+    # Check data layer capability for unrelated aggregates
+    capability = if unrelated?, do: {:aggregate, :unrelated}, else: {:aggregate, kind}
+
+    if Ash.DataLayer.data_layer_can?(context.resource, capability) do
       if Keyword.keyword?(opts) do
-        opts = Keyword.put(opts, :path, path)
+        # Convert inline aggregate options to proper aggregate options
+        opts =
+          opts
+          |> convert_inline_aggregate_options()
+          |> then(fn opts ->
+            if unrelated? do
+              Keyword.put(opts, :resource, related)
+            else
+              Keyword.put(opts, :path, path)
+            end
+          end)
 
         with {:ok, agg} <-
                Aggregate.new(
@@ -3300,6 +3659,13 @@ defmodule Ash.Filter do
       {:error,
        Ash.Error.Query.AggregatesNotSupported.exception(resource: resource, feature: "using")}
     end
+  end
+
+  defp resolve_call(%Call{name: :if, args: args}, context) do
+    do_hydrate_refs(
+      %Ash.Query.Function.If{__predicate__?: false, name: :if, arguments: args},
+      context
+    )
   end
 
   defp resolve_call(%Call{name: name, args: args} = call, context) do
@@ -3504,6 +3870,21 @@ defmodule Ash.Filter do
 
   defp refs_to_path(item), do: [item]
 
+  # Convert inline aggregate options to proper aggregate options
+  defp convert_inline_aggregate_options(opts) do
+    opts
+    |> Keyword.pop(:filter)
+    |> case do
+      {nil, opts} ->
+        opts
+
+      {filter, opts} ->
+        # Convert filter: expr(...) to query: [filter: expr(...)]
+        query = [filter: filter]
+        Keyword.put(opts, :query, query)
+    end
+  end
+
   defp validate_datalayer_supports_nested_expressions(args, resource) do
     if resource && Enum.any?(args, &Ash.Expr.expr?/1) &&
          !Ash.DataLayer.data_layer_can?(resource, :nested_expressions) do
@@ -3665,8 +4046,26 @@ defmodule Ash.Filter do
             end
 
           aggregate = aggregate(context, attribute) ->
-            if Ash.DataLayer.data_layer_can?(context.resource, {:aggregate, aggregate.kind}) do
-              agg_related = Ash.Resource.Info.related(related, aggregate.relationship_path)
+            # Check data layer support - for unrelated aggregates, we need to check for :unrelated capability
+            aggregate_capability =
+              if Map.get(aggregate, :related?, true),
+                do: {:aggregate, aggregate.kind},
+                else: {:aggregate, :unrelated}
+
+            if Ash.DataLayer.data_layer_can?(context.resource, aggregate_capability) do
+              # Handle both related and unrelated aggregates
+              {agg_related, aggregate_opts} =
+                if Map.get(aggregate, :related?, true) do
+                  # Related aggregate - follow relationship path
+                  agg_related = Ash.Resource.Info.related(related, aggregate.relationship_path)
+                  opts = [path: aggregate.relationship_path]
+                  {agg_related, opts}
+                else
+                  # Unrelated aggregate - use target resource directly
+                  agg_related = aggregate.resource
+                  opts = [resource: agg_related]
+                  {agg_related, opts}
+                end
 
               with %{valid?: true} = aggregate_query <-
                      Ash.Query.new(agg_related),
@@ -3682,23 +4081,24 @@ defmodule Ash.Filter do
                        related,
                        aggregate.name,
                        aggregate.kind,
-                       agg_name: aggregate.name,
-                       path: aggregate.relationship_path,
-                       query: aggregate_query,
-                       field: aggregate.field,
-                       default: aggregate.default,
-                       filterable?: aggregate.filterable?,
-                       type: aggregate.type,
-                       sortable?: aggregate.sortable?,
-                       include_nil?: aggregate.include_nil?,
-                       sensitive?: aggregate.sensitive?,
-                       constraints: aggregate.constraints,
-                       implementation: aggregate.implementation,
-                       uniq?: aggregate.uniq?,
-                       read_action: aggregate.read_action,
-                       authorize?: aggregate.authorize?,
-                       join_filters:
-                         Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                       [
+                         agg_name: aggregate.name,
+                         query: aggregate_query,
+                         field: aggregate.field,
+                         default: aggregate.default,
+                         filterable?: aggregate.filterable?,
+                         type: aggregate.type,
+                         sortable?: aggregate.sortable?,
+                         include_nil?: aggregate.include_nil?,
+                         sensitive?: aggregate.sensitive?,
+                         constraints: aggregate.constraints,
+                         implementation: aggregate.implementation,
+                         uniq?: aggregate.uniq?,
+                         read_action: aggregate.read_action,
+                         authorize?: aggregate.authorize?,
+                         join_filters:
+                           Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+                       ] ++ aggregate_opts
                      ) do
                 query_aggregate = %{query_aggregate | load: aggregate.name}
 
@@ -3814,6 +4214,135 @@ defmodule Ash.Filter do
     end
   end
 
+  def do_hydrate_refs(
+        %{
+          __predicate__?: _,
+          name: :&&,
+          left: left,
+          right: right
+        } = expr,
+        context
+      ) do
+    case do_hydrate_refs(left, context) do
+      {:ok, true} ->
+        do_hydrate_refs(right, context)
+
+      {:ok, false} ->
+        {:ok, false}
+
+      {:ok, nil} ->
+        {:ok, nil}
+
+      {:ok, v} ->
+        right_hydrated = do_hydrate_refs(right, context)
+
+        if Ash.Expr.expr?(v) do
+          case right_hydrated do
+            {:ok, right} -> {:ok, %{expr | left: left, right: right}}
+            {:error, error} -> {:error, error}
+          end
+        else
+          right_hydrated
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def do_hydrate_refs(
+        %{
+          __predicate__?: _,
+          name: :||,
+          left: left,
+          right: right
+        } = expr,
+        context
+      ) do
+    case do_hydrate_refs(left, context) do
+      {:ok, true} ->
+        {:ok, true}
+
+      {:ok, false} ->
+        do_hydrate_refs(right, context)
+
+      {:ok, nil} ->
+        do_hydrate_refs(right, context)
+
+      {:ok, v} ->
+        if Ash.Expr.expr?(v) do
+          v
+        else
+          case do_hydrate_refs(right, context) do
+            {:ok, right} -> {:ok, %{expr | left: left, right: right}}
+            {:error, error} -> {:error, error}
+          end
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def do_hydrate_refs(
+        %{
+          __predicate__?: _,
+          name: :if,
+          arguments: [predicate, [{:do, consequence}, {:else, otherwise}]]
+        } = expr,
+        context
+      ) do
+    do_hydrate_refs(%{expr | arguments: [predicate, consequence, otherwise]}, context)
+  end
+
+  def do_hydrate_refs(
+        %{
+          __predicate__?: _,
+          name: :if,
+          arguments: [predicate, [{:do, consequence}]]
+        } = expr,
+        context
+      ) do
+    do_hydrate_refs(%{expr | arguments: [predicate, consequence, nil]}, context)
+  end
+
+  def do_hydrate_refs(
+        %{
+          __predicate__?: _,
+          name: :if,
+          arguments: [predicate, [consequence]]
+        } = expr,
+        context
+      ) do
+    do_hydrate_refs(%{expr | arguments: [predicate, consequence, nil]}, context)
+  end
+
+  def do_hydrate_refs(
+        %{__predicate__?: _, name: :if, arguments: [predicate, consequence, otherwise]} = expr,
+        context
+      ) do
+    case do_hydrate_refs(predicate, context) do
+      {:ok, true} ->
+        do_hydrate_refs(consequence, context)
+
+      {:ok, v} when v in [false, nil] ->
+        do_hydrate_refs(otherwise, context)
+
+      {:ok, predicate} ->
+        if Ash.Expr.expr?(predicate) do
+          with {:ok, consequence} <- do_hydrate_refs(consequence, context),
+               {:ok, otherwise} <- do_hydrate_refs(otherwise, context) do
+            {:ok, %{expr | arguments: [predicate, consequence, otherwise]}}
+          end
+        else
+          do_hydrate_refs(consequence, context)
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   def do_hydrate_refs(%{__predicate__?: _, arguments: arguments} = expr, context) do
     case do_hydrate_refs(arguments, context) do
       {:ok, args} ->
@@ -3867,19 +4396,17 @@ defmodule Ash.Filter do
     do: {:ok, this}
 
   def do_hydrate_refs(
-        %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists,
+        %Ash.Query.Exists{expr: expr, related?: false, resource: resource} = exists,
         context
       ) do
-    new_resource = Ash.Resource.Info.related(context[:resource], at_path ++ path)
-
     context = %{
-      resource: new_resource,
-      root_resource: new_resource,
+      resource: resource,
+      root_resource: resource,
       parent_stack: [context[:root_resource] | context[:parent_stack] || []],
       relationship_path: [],
       public?: context[:public?],
       input?: context[:input?],
-      data_layer: Ash.DataLayer.data_layer(new_resource)
+      data_layer: Ash.DataLayer.data_layer(resource)
     }
 
     case do_hydrate_refs(expr, context) do
@@ -3888,6 +4415,36 @@ defmodule Ash.Filter do
 
       other ->
         other
+    end
+  end
+
+  def do_hydrate_refs(
+        %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists,
+        context
+      ) do
+    new_resource = Ash.Resource.Info.related(context[:resource], at_path ++ path)
+
+    if new_resource do
+      context = %{
+        resource: new_resource,
+        root_resource: new_resource,
+        parent_stack: [context[:root_resource] | context[:parent_stack] || []],
+        relationship_path: [],
+        public?: context[:public?],
+        input?: context[:input?],
+        data_layer: Ash.DataLayer.data_layer(new_resource)
+      }
+
+      case do_hydrate_refs(expr, context) do
+        {:ok, expr} ->
+          {:ok, %{exists | expr: expr}}
+
+        other ->
+          other
+      end
+    else
+      {:error,
+       "No related resource at path #{inspect(at_path ++ path)} for #{inspect(context[:resource])}"}
     end
   end
 

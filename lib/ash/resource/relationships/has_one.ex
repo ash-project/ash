@@ -31,7 +31,8 @@ defmodule Ash.Resource.Relationships.HasOne do
     type: :has_one,
     allow_nil?: false,
     filterable?: true,
-    sortable?: true
+    sortable?: true,
+    __spark_metadata__: nil
   ]
 
   @type t :: %__MODULE__{
@@ -56,7 +57,8 @@ defmodule Ash.Resource.Relationships.HasOne do
           description: String.t(),
           manual: atom | {atom, Keyword.t()} | nil,
           sort: Keyword.t() | nil,
-          default_sort: Keyword.t() | nil
+          default_sort: Keyword.t() | nil,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   import Ash.Resource.Relationships.SharedOptions

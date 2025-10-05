@@ -6,27 +6,17 @@ defmodule Ash.Resource.Verifiers.NoReservedFieldNames do
   """
   use Spark.Dsl.Verifier
 
+  alias Spark.Dsl.Entity
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
   def verify(dsl_state) do
     resource = Verifier.get_persisted(dsl_state, :module)
 
-    attributes =
-      dsl_state
-      |> Verifier.get_entities([:attributes])
-
-    relationships =
-      dsl_state
-      |> Verifier.get_entities([:relationships])
-
-    calculations =
-      dsl_state
-      |> Verifier.get_entities([:calculations])
-
-    aggregates =
-      dsl_state
-      |> Verifier.get_entities([:aggregates])
+    attributes = Ash.Resource.Info.attributes(dsl_state)
+    relationships = Ash.Resource.Info.relationships(dsl_state)
+    calculations = Ash.Resource.Info.calculations(dsl_state)
+    aggregates = Ash.Resource.Info.aggregates(dsl_state)
 
     attributes
     |> Enum.concat(relationships)
@@ -42,6 +32,9 @@ defmodule Ash.Resource.Verifiers.NoReservedFieldNames do
             %{type: type} -> [:relationships, type, name]
           end
 
+        # Get location info from the field entity
+        location = Entity.anno(field)
+
         raise DslError,
           message: """
           Field #{name} is using a reserved name.
@@ -49,6 +42,7 @@ defmodule Ash.Resource.Verifiers.NoReservedFieldNames do
           Reserved field names are: #{inspect(Ash.Resource.reserved_names())}
           """,
           path: path,
+          location: location,
           module: resource
       end
     end)

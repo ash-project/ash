@@ -17,7 +17,8 @@ defmodule Ash.Resource.Calculation do
             public?: false,
             async?: false,
             sensitive?: false,
-            type: nil
+            type: nil,
+            __spark_metadata__: nil
 
   @schema [
     name: [
@@ -132,7 +133,8 @@ defmodule Ash.Resource.Calculation do
           sortable?: boolean,
           name: atom(),
           public?: boolean,
-          type: nil | Ash.Type.t()
+          type: nil | Ash.Type.t(),
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
   @type ref :: {module(), Keyword.t()} | module()

@@ -95,6 +95,12 @@ defmodule Ash.Type.Enum do
   iex> "Closed"
   ```
 
+  A default label is generated based on the value.
+  ```elixir
+  MyApp.TicketStatus.label(:open)
+  iex> "Open"
+  ```
+
   Both the description and label can be retrieved with `details/1`
 
   ```elixir

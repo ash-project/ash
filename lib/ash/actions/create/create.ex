@@ -111,6 +111,13 @@ defmodule Ash.Actions.Create do
         opts[:upsert_identity] || get_in(changeset.context, [:private, :upsert_identity])
       end
 
+    upsert_fields =
+      Ash.Changeset.expand_upsert_fields(
+        opts[:upsert_fields] || get_in(changeset.context, [:private, :upsert_fields]) ||
+          action.upsert_fields,
+        changeset.resource
+      )
+
     opts =
       if get_in(changeset.context, [:private, :return_skipped_upsert?]) do
         Keyword.put(opts, :return_skipped_upsert?, true)
@@ -123,7 +130,11 @@ defmodule Ash.Actions.Create do
 
     changeset =
       Ash.Changeset.set_context(changeset, %{
-        private: %{upsert?: true, upsert_identity: upsert_identity}
+        private: %{
+          upsert?: true,
+          upsert_identity: upsert_identity,
+          upsert_fields: upsert_fields
+        }
       })
 
     with %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
@@ -243,11 +254,15 @@ defmodule Ash.Actions.Create do
 
           keys = identity |> Map.get(:keys)
 
-          if changeset.tenant && !identity.all_tenants? &&
-               Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
-            [Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys]
-          else
+          if identity.all_tenants? do
             keys
+          else
+            if Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute &&
+                 (changeset.tenant || !identity.nils_distinct?) do
+              [Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys]
+            else
+              keys
+            end
           end
       end
 

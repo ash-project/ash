@@ -7,11 +7,22 @@ defmodule Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation do
   def verify(dsl) do
     aggregates = Ash.Resource.Info.aggregates(dsl)
 
-    for %{field: field, relationship_path: paths} <- aggregates do
+    for aggregate <- aggregates do
+      %{field: field, relationship_path: paths, related?: related?, resource: resource} =
+        aggregate
+
       if is_nil(field) do
         :ok
       else
-        case Ash.Resource.Info.related(dsl, paths) do
+        destination =
+          if related? do
+            Ash.Resource.Info.related(dsl, paths)
+          else
+            # For unrelated aggregates, use the target resource directly
+            resource
+          end
+
+        case destination do
           nil ->
             :ok
 

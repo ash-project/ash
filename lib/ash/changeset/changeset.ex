@@ -969,10 +969,17 @@ defmodule Ash.Changeset do
       {key, atomic}, expr ->
         atomic = strip_errors(atomic)
 
+        checker =
+          if is_nil(atomic) do
+            Ash.Expr.expr(not is_nil(^ref(key)))
+          else
+            Ash.Expr.expr(^atomic != ^ref(key))
+          end
+
         if is_nil(expr) do
-          Ash.Expr.expr(^atomic != ^ref(key))
+          checker
         else
-          Ash.Expr.expr(^expr or ^atomic != ^ref(key))
+          Ash.Expr.expr(^expr or ^checker)
         end
     end)
     |> then(fn expr ->
@@ -1087,7 +1094,8 @@ defmodule Ash.Changeset do
 
       {:ok, opts} = module.init(opts)
 
-      case module.validate(
+      case Ash.Resource.Validation.validate(
+             module,
              changeset,
              opts,
              context
@@ -1479,7 +1487,11 @@ defmodule Ash.Changeset do
             Ash.Expr.expr(type(^new_value, ^attribute.type, ^attribute.constraints))
 
           :error ->
-            expr(^ref(field))
+            if changeset.action.type == :create and changeset.context[:private][:upsert?] do
+              expr(upsert_conflict(^field))
+            else
+              expr(^ref(field))
+            end
         end
     end
   end
@@ -1888,10 +1900,6 @@ defmodule Ash.Changeset do
         upsert_condition: upsert_condition
       }
     })
-    |> then(fn
-      changeset when upsert_condition != nil -> filter(changeset, upsert_condition)
-      changeset -> changeset
-    end)
     |> do_for_action(action, params, opts)
   end
 
@@ -2331,7 +2339,7 @@ defmodule Ash.Changeset do
         else
           if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
             expr(
-              if is_nil(^value) do
+              if is_nil(type(^value, ^attribute.type, ^attribute.constraints)) do
                 error(
                   ^Ash.Error.Changes.Required,
                   %{
@@ -2359,17 +2367,21 @@ defmodule Ash.Changeset do
       end
     end)
     |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
-    |> then(fn changeset ->
-      if changeset.action.type == :update do
-        attributes =
-          changeset.attributes
-          |> Map.keys()
-          |> Enum.reject(&Ash.Resource.Info.attribute(changeset.resource, &1).allow_nil?)
+    |> then(fn
+      {:not_atomic, value} ->
+        {:not_atomic, value}
 
-        require_values(changeset, :update, false, attributes)
-      else
-        changeset
-      end
+      %Ash.Changeset{} = changeset ->
+        if changeset.action.type == :update do
+          attributes =
+            changeset.attributes
+            |> Map.keys()
+            |> Enum.reject(&Ash.Resource.Info.attribute(changeset.resource, &1).allow_nil?)
+
+          require_values(changeset, :update, false, attributes)
+        else
+          changeset
+        end
     end)
   end
 
@@ -2533,6 +2545,7 @@ defmodule Ash.Changeset do
                 changeset
                 |> prepare_changeset_for_action(action, opts)
                 |> handle_params(action, params, opts)
+                |> handle_upsert()
                 |> run_action_changes(
                   action,
                   opts[:actor],
@@ -2704,6 +2717,14 @@ defmodule Ash.Changeset do
     |> validate_attributes_accepted(action)
     |> require_values(action.type, false, action.require_attributes)
     |> set_defaults(changeset.action_type, false)
+  end
+
+  defp handle_upsert(changeset) do
+    if is_nil(changeset.context.private[:upsert_condition]) do
+      changeset
+    else
+      filter(changeset, changeset.context.private.upsert_condition)
+    end
   end
 
   defp get_action_entity(resource, name) when is_atom(name),
@@ -3216,7 +3237,8 @@ defmodule Ash.Changeset do
                        changeset: changeset
                      )
 
-                   module.validate(
+                   Ash.Resource.Validation.validate(
+                     module,
                      changeset,
                      opts,
                      struct(Ash.Resource.Validation.Context, context)
@@ -3245,7 +3267,8 @@ defmodule Ash.Changeset do
                     changeset: changeset
                   )
 
-                module.change(
+                Ash.Resource.Change.change(
+                  module,
                   changeset,
                   opts,
                   struct(Ash.Resource.Change.Context, context)
@@ -3812,7 +3835,12 @@ defmodule Ash.Changeset do
 
          case module.init(opts) do
            {:ok, opts} ->
-             module.validate(changeset, opts, struct(Ash.Resource.Validation.Context, context)) ==
+             Ash.Resource.Validation.validate(
+               module,
+               changeset,
+               opts,
+               struct(Ash.Resource.Validation.Context, context)
+             ) ==
                :ok
 
            _ ->
@@ -3838,53 +3866,56 @@ defmodule Ash.Changeset do
               changeset: changeset
             )
 
-          with {:ok, opts} <- validation.module.init(opts),
-               :ok <-
-                 validation.module.validate(
-                   changeset,
-                   opts,
-                   struct(
-                     Ash.Resource.Validation.Context,
-                     Map.put(context, :message, validation.message)
-                   )
-                 ) do
-            changeset
-          else
-            :ok ->
-              changeset
-
-            {:error, error} when is_binary(error) ->
-              Ash.Changeset.add_error(changeset, validation.message || error)
-
-            {:error, error} when is_exception(error) ->
-              if validation.message do
-                error = Ash.Error.override_validation_message(error, validation.message)
-                add_error(changeset, error)
-              else
-                add_error(changeset, error)
-              end
-
-            {:error, errors} when is_list(errors) ->
-              if validation.message do
-                errors =
-                  Enum.map(errors, fn error ->
-                    Ash.Error.override_validation_message(error, validation.message)
-                  end)
-
-                add_error(changeset, errors)
-              else
-                add_error(changeset, errors)
-              end
-
+          case validation.module.init(opts) do
             {:error, error} ->
-              error =
-                if Keyword.keyword?(error) do
-                  Keyword.put(error, :message, validation.message || error[:message])
-                else
-                  validation.message || error
-                end
-
               Ash.Changeset.add_error(changeset, error)
+
+            {:ok, opts} ->
+              case Ash.Resource.Validation.validate(
+                     validation.module,
+                     changeset,
+                     opts,
+                     struct(
+                       Ash.Resource.Validation.Context,
+                       Map.put(context, :message, validation.message)
+                     )
+                   ) do
+                :ok ->
+                  changeset
+
+                {:error, error} when is_binary(error) ->
+                  Ash.Changeset.add_error(changeset, validation.message || error)
+
+                {:error, error} when is_exception(error) ->
+                  if validation.message do
+                    error = Ash.Error.override_validation_message(error, validation.message)
+                    add_error(changeset, error)
+                  else
+                    add_error(changeset, error)
+                  end
+
+                {:error, errors} when is_list(errors) ->
+                  if validation.message do
+                    errors =
+                      Enum.map(errors, fn error ->
+                        Ash.Error.override_validation_message(error, validation.message)
+                      end)
+
+                    add_error(changeset, errors)
+                  else
+                    add_error(changeset, errors)
+                  end
+
+                {:error, error} ->
+                  error =
+                    if Keyword.keyword?(error) do
+                      Keyword.put(error, :message, validation.message || error[:message])
+                    else
+                      validation.message || error
+                    end
+
+                  Ash.Changeset.add_error(changeset, error)
+              end
           end
         end
       end
@@ -4174,7 +4205,8 @@ defmodule Ash.Changeset do
               opts[:transaction_metadata],
               :data_layer_context,
               changeset.context[:data_layer] || %{}
-            )
+            ),
+            rollback_on_error?: false
           )
           |> case do
             {:ok, {:ok, value, changeset, instructions}} ->
@@ -6493,14 +6525,16 @@ defmodule Ash.Changeset do
   ## Examples
 
       # Set computed fields based on other attributes
+      # Note: Use Ash.Changeset.force_change_attribute/2 instead of Ash.Changeset.change_attribute/2,
+      # as the latter will log a warning saying that validations have already been run.
       iex> changeset = Ash.Changeset.for_create(MyApp.Order, :create, %{items: [%{price: 10}, %{price: 15}]})
       iex> changeset = Ash.Changeset.before_action(changeset, fn changeset ->
       ...>   total = changeset.attributes.items |> Enum.map(& &1.price) |> Enum.sum()
       ...>   tax = total * 0.08
       ...>   changeset
-      ...>   |> Ash.Changeset.change_attribute(:subtotal, total)
-      ...>   |> Ash.Changeset.change_attribute(:tax, tax)
-      ...>   |> Ash.Changeset.change_attribute(:total, total + tax)
+      ...>   |> Ash.Changeset.force_change_attribute(:subtotal, total)
+      ...>   |> Ash.Changeset.force_change_attribute(:tax, tax)
+      ...>   |> Ash.Changeset.force_change_attribute(:total, total + tax)
       ...> end)
 
       # Assign resources based on complex business logic
@@ -6510,7 +6544,7 @@ defmodule Ash.Changeset do
       ...>     :urgent ->
       ...>       # Query for available senior agents
       ...>       agent = MyApp.Agent |> MyApp.Query.for_read(:available_senior) |> MyApp.read_one!()
-      ...>       Ash.Changeset.change_attribute(changeset, :assigned_agent_id, agent.id)
+      ...>       Ash.Changeset.force_change_attribute(changeset, :assigned_agent_id, agent.id)
       ...>     _ ->
       ...>       changeset
       ...>   end

@@ -8,10 +8,11 @@ defmodule Ash.Resource.Actions.Argument do
     :sensitive?,
     :description,
     public?: true,
-    constraints: []
+    constraints: [],
+    __spark_metadata__: nil
   ]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
 
   def schema do
     [

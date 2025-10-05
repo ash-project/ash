@@ -48,7 +48,8 @@ defmodule Ash.Actions.Create.Bulk do
             actor: opts[:actor]
           },
           data_layer_context: opts[:data_layer_context] || %{}
-        }
+        },
+        rollback_on_error?: false
       )
       |> case do
         {:ok, bulk_result} ->
@@ -102,7 +103,16 @@ defmodule Ash.Actions.Create.Bulk do
           false
       end
 
-    data_layer_can_bulk? = Ash.DataLayer.data_layer_can?(resource, :bulk_create)
+    base_changeset = base_changeset(resource, domain, opts, action)
+
+    data_layer_can_bulk? =
+      if Ash.DataLayer.data_layer_can?(resource, :bulk_create) do
+        # If upserting with return_skipped_upsert? and data layer can't handle it in bulk, fall back to single inserts
+        !upsert? || !base_changeset.context[:private][:return_skipped_upsert?] ||
+          Ash.DataLayer.data_layer_can?(resource, :bulk_upsert_return_skipped)
+      else
+        false
+      end
 
     batch_size =
       cond do
@@ -110,11 +120,6 @@ defmodule Ash.Actions.Create.Bulk do
         action.manual == nil and data_layer_can_bulk? -> opts[:batch_size] || 100
         true -> 1
       end
-
-    ref = make_ref()
-
-    lazy_matching_default_values = lazy_matching_default_values(resource)
-    base_changeset = base_changeset(resource, domain, opts, action)
 
     all_changes =
       pre_template_all_changes(
@@ -157,6 +162,8 @@ defmodule Ash.Actions.Create.Bulk do
         MapSet.to_list(Ash.Resource.Info.attribute_names(resource))
       end
 
+    ref = make_ref()
+
     changeset_stream =
       inputs
       |> Stream.with_index()
@@ -173,7 +180,7 @@ defmodule Ash.Actions.Create.Bulk do
                 &1,
                 action,
                 opts,
-                lazy_matching_default_values,
+                lazy_matching_default_values(resource),
                 base_changeset,
                 argument_names
               )
@@ -387,7 +394,9 @@ defmodule Ash.Actions.Create.Bulk do
             opts[:upsert_fields] || action.upsert_fields,
             resource
           ),
-        upsert_condition: upsert_condition
+        upsert_condition: upsert_condition,
+        return_skipped_upsert?:
+          opts[:return_skipped_upsert?] || (action && action.return_skipped_upsert?) || false
       }
     })
     |> Ash.Actions.Helpers.add_context(opts)
@@ -501,6 +510,7 @@ defmodule Ash.Actions.Create.Bulk do
           changeset.action.require_attributes
         )
       end)
+      |> authorize(opts)
       |> Ash.Actions.Helpers.split_and_run_simple(
         action,
         opts,
@@ -581,7 +591,8 @@ defmodule Ash.Actions.Create.Bulk do
               actor: opts[:actor]
             },
             data_layer_context: opts[:data_layer_context] || context
-          }
+          },
+          rollback_on_error?: false
         )
         |> case do
           {:ok, result} ->
@@ -645,9 +656,8 @@ defmodule Ash.Actions.Create.Bulk do
         end)
 
     batch =
-      batch
-      |> authorize(opts)
-      |> Ash.Actions.Update.Bulk.run_bulk_before_batches(
+      Ash.Actions.Update.Bulk.run_bulk_before_batches(
+        batch,
         changes,
         all_changes,
         opts,
@@ -1231,6 +1241,11 @@ defmodule Ash.Actions.Create.Bulk do
                           nil -> action && action.upsert_condition
                           other -> other
                         end,
+                      return_skipped_upsert?:
+                        case opts[:return_skipped_upsert?] do
+                          nil -> action && action.return_skipped_upsert?
+                          other -> other
+                        end,
                       tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
                     }
                   )
@@ -1251,11 +1266,35 @@ defmodule Ash.Actions.Create.Bulk do
                     end
 
                   case result do
-                    {:ok, {:upsert_skipped, _query, _callback}} ->
-                      []
+                    {:ok, {:upsert_skipped, _query, callback}} ->
+                      if changeset.context[:private][:return_skipped_upsert?] do
+                        case callback.() do
+                          {:ok, record} ->
+                            {:ok,
+                             [
+                               Ash.Resource.set_metadata(record, %{
+                                 bulk_create_index: changeset.context.bulk_create.index
+                               })
+                             ]}
 
-                    {:ok, %{__metadata__: %{upsert_skipped: true}}} ->
-                      []
+                          _ ->
+                            []
+                        end
+                      else
+                        []
+                      end
+
+                    {:ok, %{__metadata__: %{upsert_skipped: true}} = record} ->
+                      if changeset.context[:private][:return_skipped_upsert?] do
+                        {:ok,
+                         [
+                           Ash.Resource.set_metadata(record, %{
+                             bulk_create_index: changeset.context.bulk_create.index
+                           })
+                         ]}
+                      else
+                        []
+                      end
 
                     {:ok, result} ->
                       {:ok,
@@ -1563,7 +1602,8 @@ defmodule Ash.Actions.Create.Bulk do
 
                   {:ok, opts} = module.init(opts)
 
-                  module.validate(
+                  Ash.Resource.Validation.validate(
+                    module,
                     changeset,
                     opts,
                     struct(Ash.Resource.Validation.Context, context)
@@ -1581,7 +1621,8 @@ defmodule Ash.Actions.Create.Bulk do
 
                   {:ok, opts} = module.init(opts)
 
-                  case module.validate(
+                  case Ash.Resource.Validation.validate(
+                         module,
                          changeset,
                          opts,
                          struct(
@@ -1655,7 +1696,8 @@ defmodule Ash.Actions.Create.Bulk do
 
                     {:ok, opts} = module.init(opts)
 
-                    module.validate(
+                    Ash.Resource.Validation.validate(
+                      module,
                       changeset,
                       opts,
                       struct(Ash.Resource.Validation.Context, context)
@@ -1722,7 +1764,8 @@ defmodule Ash.Actions.Create.Bulk do
           Enum.map(batch, fn changeset ->
             {:ok, change_opts} = module.init(change_opts)
 
-            module.change(
+            Ash.Resource.Change.change(
+              module,
               changeset,
               change_opts,
               struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
@@ -1767,7 +1810,8 @@ defmodule Ash.Actions.Create.Bulk do
 
             {:ok, change_opts} = module.init(change_opts)
 
-            module.change(
+            Ash.Resource.Change.change(
+              module,
               changeset,
               change_opts,
               struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
