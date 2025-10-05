@@ -769,12 +769,12 @@ defmodule Ash.Actions.Read do
                     {:ok, results, count, calculations_at_runtime, calculations_in_query, query}
                   else
                     other ->
-                      handle_failed_query(other, notify_callback, query)
+                      handle_failed_query(other, notify_callback)
                   end
                 end)
               else
                 other ->
-                  handle_failed_query(other, notify_callback, query)
+                  handle_failed_query(other, notify_callback)
               end
             end)
 
@@ -801,11 +801,11 @@ defmodule Ash.Actions.Read do
 
   defp ensure_task_stopped(_, fun), do: fun.()
 
-  defp handle_failed_query(result, notify_callback, query) do
+  defp handle_failed_query(result, notify_callback) do
     case result do
       {%{valid?: false} = query, before_notifications} ->
         notify_callback.(query, before_notifications)
-        {{:error, query}, query}
+        {:error, query}
 
       {{:error, %Ash.Query{} = query}, _} ->
         {:error, query}
@@ -814,13 +814,13 @@ defmodule Ash.Actions.Read do
         {:error, Ash.Query.add_error(query, error)}
 
       {:ok, %Ash.Query{valid?: false} = query} ->
-        {{:error, query}, query}
+        {:error, query}
 
       %Ash.Query{} = query ->
-        {{:error, query}, query}
+        {:error, query}
 
       {:error, error} ->
-        {{:error, error}, query}
+        {:error, error}
     end
   end
 

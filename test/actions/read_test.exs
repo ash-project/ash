@@ -1443,6 +1443,27 @@ defmodule Ash.Test.Actions.ReadTest do
       assert {:error, _} = result
     end
 
+    test "after_transaction hook gets correct result with after_action error" do
+      agent = start_supervised!({Agent, fn -> nil end})
+
+      query =
+        Author
+        |> Ash.Query.after_action(fn _query, _records ->
+          {:error, "Intentional error"}
+        end)
+        |> Ash.Query.after_transaction(fn _query, result ->
+          Agent.update(agent, fn _ -> result end)
+          result
+        end)
+
+      assert_raise Ash.Error.Unknown, fn ->
+        Ash.read!(query, action: :in_transaction)
+      end
+
+      result = Agent.get(agent, & &1)
+      assert {:error, _} = result
+    end
+
     test "multiple after_transaction hooks run in order" do
       Author |> Ash.Changeset.for_create(:create, %{name: "Test"}) |> Ash.create!()
       agent = start_supervised!({Agent, fn -> [] end})
