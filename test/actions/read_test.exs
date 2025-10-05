@@ -1397,13 +1397,11 @@ defmodule Ash.Test.Actions.ReadTest do
           result
         end)
 
-      results = Ash.read!(query, action: :in_transaction)
-
+      author_id = author.id
+      [%{id: ^author_id}] = Ash.read!(query, action: :in_transaction)
       {resource, result_tuple} = Agent.get(agent, & &1)
       assert resource == Author
-      assert {:ok, _, _, _, _, _} = result_tuple
-      assert length(results) == 1
-      assert List.first(results).id == author.id
+      assert {:ok, [%{id: ^author_id}]} = result_tuple
     end
 
     test "after_transaction hook can modify the result" do
@@ -1412,10 +1410,9 @@ defmodule Ash.Test.Actions.ReadTest do
       query =
         Author
         |> Ash.Query.filter(name == "Test")
-        |> Ash.Query.after_transaction(fn _query,
-                                          {:ok, results, count, calc_runtime, calc_query, query} ->
+        |> Ash.Query.after_transaction(fn _query, {:ok, results} ->
           modified_results = Enum.map(results, &Map.put(&1, :__metadata__, :modified))
-          {:ok, modified_results, count, calc_runtime, calc_query, query}
+          {:ok, modified_results}
         end)
 
       results = Ash.read!(query, action: :in_transaction)
