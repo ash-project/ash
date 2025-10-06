@@ -125,6 +125,47 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     end
   end
 
+  # Resource without update_timestamp attribute
+  defmodule Book do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+
+      update :validation_with_update do
+        validate compare(:year, greater_than_or_equal_to: 2000)
+        change atomic_update(:year, expr(year + 1))
+      end
+
+      update :validation_without_update do
+        validate compare(:year, greater_than_or_equal_to: 2000)
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :year, :integer do
+        public?(true)
+      end
+    end
+
+    code_interface do
+      define :validation_with_update
+      define :validation_without_update
+    end
+  end
+
   test "atomics can be added to a changeset" do
     author =
       Author
@@ -186,6 +227,30 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       Ash.Changeset.fully_atomic_changeset(Author, :with_validation, %{name: "fred weasly"})
 
     refute changeset.valid?
+  end
+
+  test "uses changing attribute for validation in changeset" do
+    changeset =
+      Ash.Changeset.fully_atomic_changeset(Book, :validation_with_update, %{})
+
+    # Uses the *changing* attribute for the validation expression.
+    assert Keyword.keys(changeset.atomics) == [:year]
+  end
+
+  test "using changing attribute for validation works" do
+    recent_book =
+      Book
+      |> Ash.Changeset.for_create(:create, %{title: "RecentBook", year: 2020})
+      |> Ash.create!()
+
+    older_book =
+      Book
+      |> Ash.Changeset.for_create(:create, %{title: "OlderBook", year: 1960})
+      |> Ash.create!()
+
+    # Validation passes for recent books, fails for older ones.
+    assert {:ok, %Book{year: 2021}} = Book.validation_with_update(recent_book)
+    assert {:error, %Ash.Error.Invalid{}} = Book.validation_with_update(older_book)
   end
 
   test "policies that require original data" do

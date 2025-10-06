@@ -3535,14 +3535,22 @@ defmodule Ash.Changeset do
 
               :error ->
                 if changeset.action.type == :update || Map.get(changeset.action, :soft?) do
-                  [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
+                  validation_attribute =
+                    case changeset.atomics do
+                      [{first_changing_attribute, _} | _] ->
+                        first_changing_attribute
+
+                      [] ->
+                        [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
+                        first_pkey_field
+                    end
 
                   full_atomic_update =
                     expr(
                       if ^condition_expr do
                         ^error_expr
                       else
-                        ^atomic_ref(changeset, first_pkey_field)
+                        ^atomic_ref(changeset, validation_attribute)
                       end
                     )
 
@@ -3554,7 +3562,7 @@ defmodule Ash.Changeset do
                       {:cont,
                        atomic_update(
                          changeset,
-                         first_pkey_field,
+                         validation_attribute,
                          full_atomic_update
                        )}
 
