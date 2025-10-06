@@ -78,31 +78,33 @@ defmodule Ash.Actions.BulkManualActionHelpers do
         changeset,
         bulk_action_type
       ) do
-    metadata_index_name = :"#{bulk_action_type}#{:_index}"
+    {index_value, metadata_key} = extract_bulk_metadata(changeset, bulk_action_type)
 
     case result do
       {:ok, record} ->
-        record =
-          Ash.Resource.put_metadata(
-            record,
-            metadata_index_name,
-            changeset.context[bulk_action_type].index
-          )
-
+        record = Ash.Resource.put_metadata(record, metadata_key, index_value)
         {:ok, record}
 
       {:ok, record, notifications} ->
-        record =
-          Ash.Resource.put_metadata(
-            record,
-            metadata_index_name,
-            changeset.context[bulk_action_type].index
-          )
-
+        record = Ash.Resource.put_metadata(record, metadata_key, index_value)
         {:ok, record, notifications}
 
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  @doc """
+  Extracts bulk operation index and metadata key from a changeset context.
+  Used by manual actions to maintain proper ordering in bulk operations.
+
+  Returns a tuple of `{index, metadata_key}` for the bulk operation.
+  """
+  def extract_bulk_metadata(changeset, bulk_action_type \\ :bulk_update) do
+    changeset.context
+    |> Enum.find_value(fn
+      {{^bulk_action_type, ref}, value} -> {value.index, {:"#{bulk_action_type}_index", ref}}
+      _ -> nil
+    end)
   end
 end

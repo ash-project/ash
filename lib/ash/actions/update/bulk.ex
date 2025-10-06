@@ -400,14 +400,7 @@ defmodule Ash.Actions.Update.Bulk do
       raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
     end
 
-    {context_key, metadata_key} =
-      case action.type do
-        :update ->
-          {:bulk_update, :bulk_update_index}
-
-        :destroy ->
-          {:bulk_destroy, :bulk_destroy_index}
-      end
+    {context_key, metadata_key} = create_bulk_operation_keys(action.type)
 
     if opts[:transaction] == :all &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
@@ -3446,6 +3439,21 @@ defmodule Ash.Actions.Update.Bulk do
 
       action ->
         Ash.Resource.Info.action(resource, action)
+    end
+  end
+
+  # Creates unique namespaced keys for bulk operations to prevent collisions between
+  # nested operations. The context key stores operation data during processing,
+  # while the metadata key is attached to records for later index-based lookup.
+  defp create_bulk_operation_keys(action_type) do
+    ref = make_ref()
+
+    case action_type do
+      :update ->
+        {{:bulk_update, ref}, {:bulk_update_index, ref}}
+
+      :destroy ->
+        {{:bulk_destroy, ref}, {:bulk_destroy_index, ref}}
     end
   end
 end

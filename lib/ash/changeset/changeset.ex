@@ -4952,7 +4952,7 @@ defmodule Ash.Changeset do
 
   Do not use the `private` key in your custom context, as that is reserved for internal use.
   """
-  @spec put_context(t(), atom, term) :: t()
+  @spec put_context(t(), term, term) :: t()
   def put_context(changeset, key, value) do
     set_context(changeset, %{key => value})
   end
