@@ -908,6 +908,12 @@ defmodule Ash.Resource.Dsl do
         A pluralized version of the resource short_name. May be used by generators or automated tooling.
         """
       ],
+      atomic_validation_default_target_attribute: [
+        type: :atom,
+        doc: """
+        Overrides the attribute used when building atomic validation filters. Defaults to the first primary key attribute when not specified.
+        """
+      ],
       require_primary_key?: [
         type: :boolean,
         required: false,
@@ -1658,6 +1664,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateManagedRelationshipOpts,
     Ash.Resource.Verifiers.ValidateMultitenancy,
     Ash.Resource.Verifiers.ValidatePrimaryKey,
+    Ash.Resource.Verifiers.ValidateAtomicValidationDefaultTargetAttribute,
     Ash.Resource.Verifiers.VerifyAcceptedByDomain,
     Ash.Resource.Verifiers.VerifyActionsAtomic,
     Ash.Resource.Verifiers.VerifyNotifiers,

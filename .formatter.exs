@@ -30,6 +30,7 @@ spark_locals_without_parens = [
   atomic_update: 1,
   atomic_upgrade?: 1,
   atomic_upgrade_with: 1,
+  atomic_validation_default_target_attribute: 1,
   attribute: 1,
   attribute: 2,
   attribute: 3,

@@ -12,6 +12,10 @@ defmodule Ash.Test.Resource.InfoTest do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
+    resource do
+      atomic_validation_default_target_attribute :title
+    end
+
     attributes do
       uuid_primary_key :id
 
@@ -218,6 +222,14 @@ defmodule Ash.Test.Resource.InfoTest do
 
       assert %Resource.Relationships.BelongsTo{name: :post} =
                Info.public_relationship(Post, [:comments, :post])
+    end
+
+    test "atomic validation default target attribute returns nil when unset" do
+      assert nil == Info.atomic_validation_default_target_attribute(Tag)
+    end
+
+    test "atomic validation default target attribute returns configured value" do
+      assert :title == Info.atomic_validation_default_target_attribute(Post)
     end
   end
 

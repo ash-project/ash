@@ -2480,6 +2480,7 @@ end
 | [`hide_inspect_fields`](#resource-hide_inspect_fields){: #resource-hide_inspect_fields } | `list(atom)` | `[]` | A deny-list of fields to hide from the inspect output. Takes precedence over `show_inspect_fields`. |
 | [`show_inspect_fields`](#resource-show_inspect_fields){: #resource-show_inspect_fields } | `list(atom)` |  | An allow-list of fields to show in the inspect output. Sensitive fields are _always_ hidden. |
 | [`plural_name`](#resource-plural_name){: #resource-plural_name } | `atom` |  | A pluralized version of the resource short_name. May be used by generators or automated tooling. |
+| [`atomic_validation_default_target_attribute`](#resource-atomic_validation_default_target_attribute){: #resource-atomic_validation_default_target_attribute } | `atom` |  | Overrides the attribute used when building atomic validation filters. Defaults to the first primary key attribute when not specified. |
 | [`require_primary_key?`](#resource-require_primary_key?){: #resource-require_primary_key? } | `boolean` | `true` | Allow the resource to be used without any primary key fields. Warning: this option is experimental, and should not be used unless you know what you're doing. |
 
 
