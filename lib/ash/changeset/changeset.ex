@@ -3535,15 +3535,7 @@ defmodule Ash.Changeset do
 
               :error ->
                 if changeset.action.type == :update || Map.get(changeset.action, :soft?) do
-                  validation_attribute =
-                    case changeset.atomics do
-                      [{first_changing_attribute, _} | _] ->
-                        first_changing_attribute
-
-                      [] ->
-                        [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
-                        first_pkey_field
-                    end
+                  validation_attribute = validation_attribute(changeset)
 
                   full_atomic_update =
                     expr(
@@ -3748,6 +3740,20 @@ defmodule Ash.Changeset do
     do: function.()
 
   defp default(:update, %{update_default: value}), do: value
+
+  defp validation_attribute(%{atomics: [{first_changing_attribute, _} | _]}),
+    do: first_changing_attribute
+
+  defp validation_attribute(changeset) do
+    case Ash.Resource.Info.atomic_validation_default_target_attribute(changeset.resource) do
+      nil ->
+        [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
+        first_pkey_field
+
+      attribute_name ->
+        attribute_name
+    end
+  end
 
   defp add_validations(changeset, tracer, metadata, actor) do
     if changeset.action.skip_global_validations? do

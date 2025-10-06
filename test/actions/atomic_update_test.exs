@@ -130,6 +130,10 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
+    resource do
+      atomic_validation_default_target_attribute :title
+    end
+
     ets do
       private?(true)
     end
@@ -251,6 +255,30 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     # Validation passes for recent books, fails for older ones.
     assert {:ok, %Book{year: 2021}} = Book.validation_with_update(recent_book)
     assert {:error, %Ash.Error.Invalid{}} = Book.validation_with_update(older_book)
+  end
+
+  test "uses default target attribute for validation in changeset" do
+    changeset =
+      Ash.Changeset.fully_atomic_changeset(Book, :validation_without_update, %{})
+
+    # Uses the default atomic attribute for the validation expression.
+    assert Keyword.keys(changeset.atomics) == [:title]
+  end
+
+  test "using default target attribute for validation works" do
+    recent_book =
+      Book
+      |> Ash.Changeset.for_create(:create, %{title: "RecentBook", year: 2020})
+      |> Ash.create!()
+
+    older_book =
+      Book
+      |> Ash.Changeset.for_create(:create, %{title: "OlderBook", year: 1960})
+      |> Ash.create!()
+
+    # Validation passes for recent books, fails for older ones.
+    assert {:ok, %Book{year: 2020}} = Book.validation_without_update(recent_book)
+    assert {:error, %Ash.Error.Invalid{}} = Book.validation_without_update(older_book)
   end
 
   test "policies that require original data" do
