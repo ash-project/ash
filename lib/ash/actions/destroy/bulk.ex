@@ -2,6 +2,8 @@ defmodule Ash.Actions.Destroy.Bulk do
   @moduledoc false
   require Ash.Query
 
+  alias Ash.Actions.BulkManualActionHelpers
+
   @spec run(Ash.Domain.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
           Ash.BulkResult.t()
 
@@ -1439,7 +1441,9 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     batch =
       if re_sort? do
-        Enum.sort_by(batch, & &1.context.bulk_destroy.index)
+        Enum.sort_by(batch, fn changeset ->
+          BulkManualActionHelpers.get_changeset_index(changeset, :bulk_destroy)
+        end)
       else
         batch
       end
@@ -1467,10 +1471,11 @@ defmodule Ash.Actions.Destroy.Bulk do
             {:ok, result} when not is_list(result) ->
               Process.put({:any_success?, ref}, true)
 
+              {index, metadata_key} =
+                BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_destroy)
+
               [
-                Ash.Resource.set_metadata(result, %{
-                  bulk_destroy_index: changeset.context.bulk_destroy.index
-                })
+                Ash.Resource.put_metadata(result, metadata_key, index)
               ]
 
             {:ok, notifications} ->
@@ -1485,10 +1490,11 @@ defmodule Ash.Actions.Destroy.Bulk do
 
               store_notification(ref, notifications, opts)
 
+              {index, metadata_key} =
+                BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_destroy)
+
               [
-                Ash.Resource.set_metadata(result, %{
-                  bulk_destroy_index: changeset.context.bulk_destroy.index
-                })
+                Ash.Resource.put_metadata(result, metadata_key, index)
               ]
 
             {:error, error} ->
@@ -1670,12 +1676,14 @@ defmodule Ash.Actions.Destroy.Bulk do
          argument_names,
          domain
        ) do
+    {context_key, _metadata_key} = BulkManualActionHelpers.create_bulk_operation_keys(action.type)
+
     record
     |> Ash.Changeset.new()
     |> Map.put(:domain, domain)
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
     |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
-    |> Ash.Changeset.put_context(:bulk_destroy, %{index: index})
+    |> Ash.Changeset.put_context(context_key, %{index: index})
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> handle_params(
       Keyword.get(opts, :assume_casted?, false),
@@ -1767,9 +1775,11 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp index_changesets(batch) do
     Enum.reduce(batch, %{}, fn changeset, changesets_by_index ->
+      index = BulkManualActionHelpers.get_changeset_index(changeset, :bulk_destroy)
+
       Map.put(
         changesets_by_index,
-        changeset.context.bulk_destroy.index,
+        index,
         changeset
       )
     end)
@@ -1909,7 +1919,11 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp sort(%{records: records} = result, opts) when is_list(records) do
     if opts[:sorted?] do
-      %{result | records: Enum.sort_by(records, & &1.__metadata__.bulk_destroy_index)}
+      %{
+        result
+        | records:
+            Enum.sort_by(records, &BulkManualActionHelpers.get_bulk_index(&1, :bulk_destroy))
+      }
     else
       result
     end
@@ -2030,14 +2044,14 @@ defmodule Ash.Actions.Destroy.Bulk do
 
                   [
                     mod.destroy(changeset, manual_opts, ctx)
-                    |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
+                    |> BulkManualActionHelpers.process_non_bulk_result(
                       changeset,
                       :bulk_destroy
                     )
                   ]
                 end
                 |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
+                |> BulkManualActionHelpers.process_bulk_results(
                   mod,
                   :bulk_destroy,
                   &store_notification/3,
@@ -2065,10 +2079,12 @@ defmodule Ash.Actions.Destroy.Bulk do
                          state: :deleted,
                          schema: changeset.resource
                        })
-                       |> Ash.Resource.put_metadata(
-                         :bulk_destroy_index,
-                         changeset.context.bulk_destroy.index
-                       )
+                       |> then(fn record ->
+                         {index, metadata_key} =
+                           BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_destroy)
+
+                         Ash.Resource.put_metadata(record, metadata_key, index)
+                       end)
                      ]}
 
                   {:error, error} ->
@@ -2116,7 +2132,8 @@ defmodule Ash.Actions.Destroy.Bulk do
          changesets_by_index
        ) do
     Enum.flat_map(batch_results, fn result ->
-      changeset = changesets_by_index[result.__metadata__.bulk_destroy_index]
+      changeset =
+        changesets_by_index[BulkManualActionHelpers.get_bulk_index(result, :bulk_destroy)]
 
       case manage_relationships(result, domain, changeset,
              actor: opts[:actor],
@@ -2163,6 +2180,9 @@ defmodule Ash.Actions.Destroy.Bulk do
          resource,
          base_changeset
        ) do
+    {_context_key, metadata_key} =
+      BulkManualActionHelpers.create_bulk_operation_keys(base_changeset.action.type)
+
     changes
     |> Ash.Actions.Update.Bulk.run_bulk_after_changes(
       all_changes,
@@ -2172,10 +2192,11 @@ defmodule Ash.Actions.Destroy.Bulk do
       opts,
       ref,
       resource,
-      :bulk_destroy_index
+      metadata_key
     )
     |> Enum.flat_map(fn result ->
-      changeset = changesets_by_index[result.__metadata__[:bulk_destroy_index]]
+      changeset =
+        changesets_by_index[BulkManualActionHelpers.get_bulk_index(result, :bulk_destroy)]
 
       if opts[:notify?] || opts[:return_notifications?] do
         store_notification(ref, notification(changeset, result, opts), opts)

@@ -2,6 +2,7 @@ defmodule Ash.Actions.Helpers do
   @moduledoc false
   require Logger
   require Ash.Flags
+  alias Ash.Actions.BulkManualActionHelpers
 
   @keep_read_action_loads_when_loading? Application.compile_env(
                                           :ash,
@@ -59,7 +60,8 @@ defmodule Ash.Actions.Helpers do
           all_changes
           |> Enum.flat_map(fn
             {%{change: {mod, change_opts}} = change, change_index} ->
-              index = changeset.context |> Map.get(context_key) |> Map.get(:index)
+              index =
+                BulkManualActionHelpers.get_changeset_index(changeset, context_key)
 
               applicable = changes[change_index]
 
