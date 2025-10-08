@@ -148,6 +148,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       end
 
       update :validation_without_update do
+        accept [:title, :year]
         validate compare(:year, greater_than_or_equal_to: 2000)
       end
     end
@@ -279,6 +280,17 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     # Validation passes for recent books, fails for older ones.
     assert {:ok, %Book{year: 2020}} = Book.validation_without_update(recent_book)
     assert {:error, %Ash.Error.Invalid{}} = Book.validation_without_update(older_book)
+  end
+
+  test "can update validation default target attribute" do
+    recent_book =
+      Book
+      |> Ash.Changeset.for_create(:create, %{title: "RecentBook", year: 2020})
+      |> Ash.create!()
+
+    updated_book = Book.validation_without_update!(recent_book, %{title: "UpdatedTitle"})
+
+    assert updated_book.title == "UpdatedTitle"
   end
 
   test "policies that require original data" do
