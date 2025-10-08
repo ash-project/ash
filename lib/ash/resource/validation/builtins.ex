@@ -20,6 +20,18 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
+  Validates that the original value is in a given list
+
+  ## Examples
+
+      validate data_one_of(:status, [:closed_won, :closed_lost])
+  """
+  @spec data_one_of(attribute :: atom, list(any)) :: Validation.ref()
+  def data_one_of(attribute, values) do
+    {Validation.DataOneOf, attribute: attribute, values: values}
+  end
+
+  @doc """
   Validates that an attribute or relationship is being changed
 
   ## Examples
