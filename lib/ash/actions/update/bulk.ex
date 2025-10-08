@@ -2,6 +2,7 @@ defmodule Ash.Actions.Update.Bulk do
   @moduledoc false
 
   require Ash.Query
+  alias Ash.Actions.BulkManualActionHelpers
 
   @spec run(Ash.Domain.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
           Ash.BulkResult.t()
@@ -400,7 +401,8 @@ defmodule Ash.Actions.Update.Bulk do
       raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
     end
 
-    {context_key, metadata_key} = create_bulk_operation_keys(action.type)
+    {context_key, metadata_key} =
+      BulkManualActionHelpers.create_bulk_operation_keys(action.type)
 
     if opts[:transaction] == :all &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
@@ -1750,7 +1752,14 @@ defmodule Ash.Actions.Update.Bulk do
 
     batch =
       if re_sort? do
-        Enum.sort_by(batch, & &1.context[context_key].index)
+        Enum.sort_by(batch, fn changeset ->
+          {bulk_action_type, _ref} = context_key
+
+          {index, _} =
+            BulkManualActionHelpers.extract_bulk_metadata(changeset, bulk_action_type)
+
+          index
+        end)
       else
         batch
       end
@@ -1782,9 +1791,11 @@ defmodule Ash.Actions.Update.Bulk do
               Process.put({:any_success?, ref}, true)
 
               [
-                Ash.Resource.set_metadata(result, %{
-                  metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
-                })
+                Ash.Resource.put_metadata(
+                  result,
+                  metadata_key,
+                  BulkManualActionHelpers.get_changeset_index(changeset, context_key)
+                )
               ]
 
             {:ok, result, notifications} ->
@@ -1793,9 +1804,11 @@ defmodule Ash.Actions.Update.Bulk do
               store_notification(ref, notifications, opts)
 
               [
-                Ash.Resource.set_metadata(result, %{
-                  metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
-                })
+                Ash.Resource.put_metadata(
+                  result,
+                  metadata_key,
+                  BulkManualActionHelpers.get_changeset_index(changeset, context_key)
+                )
               ]
 
             {:error, error} ->
@@ -2083,9 +2096,14 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp index_changesets(batch, context_key) do
     Enum.reduce(batch, %{}, fn changeset, changesets_by_index ->
+      {bulk_action_type, _ref} = context_key
+
+      {index, _} =
+        BulkManualActionHelpers.extract_bulk_metadata(changeset, bulk_action_type)
+
       Map.put(
         changesets_by_index,
-        changeset.context[context_key].index,
+        index,
         changeset
       )
     end)
@@ -2204,7 +2222,13 @@ defmodule Ash.Actions.Update.Bulk do
                 false
 
               changeset ->
-                changeset.context[context_key].index in List.wrap(changes[index])
+                {changeset_index, _} =
+                  BulkManualActionHelpers.extract_bulk_metadata(
+                    changeset,
+                    context_key
+                  )
+
+                changeset_index in List.wrap(changes[index])
             end)
 
           before_batch_results =
@@ -2522,14 +2546,14 @@ defmodule Ash.Actions.Update.Bulk do
 
                     [
                       mod.update(changeset, manual_opts, ctx)
-                      |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
+                      |> BulkManualActionHelpers.process_non_bulk_result(
                         changeset,
                         :bulk_update
                       )
                     ]
                   end
                   |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                  |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
+                  |> BulkManualActionHelpers.process_bulk_results(
                     mod,
                     :bulk_update,
                     &store_notification/3,
@@ -2562,11 +2586,19 @@ defmodule Ash.Actions.Update.Bulk do
                         |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
                         |> case do
                           {:ok, result} ->
+                            {bulk_action_type, _ref} = context_key
+
+                            {index, _} =
+                              BulkManualActionHelpers.extract_bulk_metadata(
+                                changeset,
+                                bulk_action_type
+                              )
+
                             result =
                               Ash.Resource.put_metadata(
                                 result,
                                 metadata_key,
-                                changeset.context[context_key].index
+                                index
                               )
 
                             {:cont, {:ok, [result | results]}}
@@ -2578,11 +2610,19 @@ defmodule Ash.Actions.Update.Bulk do
                             {:halt, {:error, error}}
                         end
                       else
+                        {bulk_action_type, _ref} = context_key
+
+                        {index, _} =
+                          BulkManualActionHelpers.extract_bulk_metadata(
+                            changeset,
+                            bulk_action_type
+                          )
+
                         result =
                           Ash.Resource.put_metadata(
                             changeset.data,
                             metadata_key,
-                            changeset.context[context_key].index
+                            index
                           )
 
                         {:cont, {:ok, [result | results]}}
@@ -2814,9 +2854,11 @@ defmodule Ash.Actions.Update.Bulk do
 
         if changes[index] == :all do
           results =
-            Enum.map(results, fn result ->
-              {changesets_by_index[result.__metadata__[metadata_key]], result}
-            end)
+            BulkManualActionHelpers.pair_changesets_with_results(
+              results,
+              changesets_by_index,
+              metadata_key
+            )
 
           case change_opts do
             {:templated, change_opts} ->
@@ -3113,7 +3155,21 @@ defmodule Ash.Actions.Update.Bulk do
               if Enum.empty?(non_matches) do
                 :all
               else
-                Enum.map(matches, & &1.context[context_key].index)
+                Enum.map(matches, fn changeset ->
+                  bulk_action_type =
+                    case context_key do
+                      {type, _ref} -> type
+                      type -> type
+                    end
+
+                  {index, _} =
+                    BulkManualActionHelpers.extract_bulk_metadata(
+                      changeset,
+                      bulk_action_type
+                    )
+
+                  index
+                end)
               end
 
             %{
@@ -3439,21 +3495,6 @@ defmodule Ash.Actions.Update.Bulk do
 
       action ->
         Ash.Resource.Info.action(resource, action)
-    end
-  end
-
-  # Creates unique namespaced keys for bulk operations to prevent collisions between
-  # nested operations. The context key stores operation data during processing,
-  # while the metadata key is attached to records for later index-based lookup.
-  defp create_bulk_operation_keys(action_type) do
-    ref = make_ref()
-
-    case action_type do
-      :update ->
-        {{:bulk_update, ref}, {:bulk_update_index, ref}}
-
-      :destroy ->
-        {{:bulk_destroy, ref}, {:bulk_destroy_index, ref}}
     end
   end
 end

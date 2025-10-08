@@ -37,6 +37,7 @@ defmodule Ash.DataLayer.Mnesia do
     sections: [@mnesia],
     verifiers: [Ash.DataLayer.Verifiers.RequirePreCheckWith]
 
+  alias Ash.Actions.BulkManualActionHelpers
   alias Ash.Actions.Sort
   alias :mnesia, as: Mnesia
 
@@ -354,10 +355,16 @@ defmodule Ash.DataLayer.Mnesia do
           {:ok, result} ->
             result =
               if options[:return_records?] do
+                {index, metadata_key} =
+                  BulkManualActionHelpers.extract_bulk_metadata(
+                    changeset,
+                    :bulk_create
+                  )
+
                 Ash.Resource.put_metadata(
                   result,
-                  :bulk_create_index,
-                  changeset.context.bulk_create.index
+                  metadata_key,
+                  index
                 )
               else
                 result
@@ -405,10 +412,16 @@ defmodule Ash.DataLayer.Mnesia do
           {:ok, result} ->
             result =
               if options[:return_records?] do
+                {index, metadata_key} =
+                  BulkManualActionHelpers.extract_bulk_metadata(
+                    changeset,
+                    :bulk_create
+                  )
+
                 Ash.Resource.put_metadata(
                   result,
-                  :bulk_create_index,
-                  changeset.context.bulk_create.index
+                  metadata_key,
+                  index
                 )
               else
                 result

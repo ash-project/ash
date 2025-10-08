@@ -3,6 +3,7 @@ defmodule Ash.DataLayer.Ets do
   require Ash.Query
   import Ash.Expr
   require Logger
+  alias Ash.Actions.BulkManualActionHelpers
 
   @ets %Spark.Dsl.Section{
     name: :ets,
@@ -1565,13 +1566,16 @@ defmodule Ash.DataLayer.Ets do
             if Ash.Resource.get_metadata(result, :upsert_skipped) do
               {:cont, {:ok, results}}
             else
+              {index, metadata_key} =
+                BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_create)
+
               {:cont,
                {:ok,
                 [
                   Ash.Resource.put_metadata(
                     result,
-                    :bulk_create_index,
-                    changeset.context.bulk_create.index
+                    metadata_key,
+                    index
                   )
                   | results
                 ]}}
@@ -1591,7 +1595,10 @@ defmodule Ash.DataLayer.Ets do
           with {:ok, pkey} <- get_valid_pkey(resource, changeset),
                {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
                record <- unload_relationships(resource, record) do
-            {:cont, {:ok, [{pkey, changeset.context.bulk_create.index, record} | results]}}
+            {index, metadata_key} =
+              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_create)
+
+            {:cont, {:ok, [{pkey, index, metadata_key, record} | results]}}
           else
             {:error, error} ->
               {:halt, {:error, error}}
@@ -1662,10 +1669,11 @@ defmodule Ash.DataLayer.Ets do
   defp put_or_insert_new_batch(table, records, resource, return_records?) do
     attributes = resource |> Ash.Resource.Info.attributes()
 
-    Enum.reduce_while(records, {:ok, [], []}, fn {pkey, index, record}, {:ok, acc, indices} ->
+    Enum.reduce_while(records, {:ok, [], []}, fn {pkey, index, metadata_key, record},
+                                                 {:ok, acc, indices} ->
       case dump_to_native(record, attributes) do
         {:ok, casted} ->
-          {:cont, {:ok, [{pkey, casted} | acc], [{pkey, index} | indices]}}
+          {:cont, {:ok, [{pkey, casted} | acc], [{pkey, index, metadata_key} | indices]}}
 
         {:error, error} ->
           {:halt, {:error, error}}
@@ -1676,13 +1684,12 @@ defmodule Ash.DataLayer.Ets do
         case ETS.Set.put(table, batch) do
           {:ok, set} ->
             if return_records? do
-              Enum.reduce_while(indices, {:ok, []}, fn {pkey, index}, {:ok, acc} ->
+              Enum.reduce_while(indices, {:ok, []}, fn {pkey, index, metadata_key}, {:ok, acc} ->
                 {_key, record} = ETS.Set.get!(set, pkey)
 
                 case cast_record(record, resource) do
                   {:ok, casted} ->
-                    {:cont,
-                     {:ok, [Ash.Resource.put_metadata(casted, :bulk_create_index, index) | acc]}}
+                    {:cont, {:ok, [Ash.Resource.put_metadata(casted, metadata_key, index) | acc]}}
 
                   {:error, error} ->
                     {:halt, {:error, error}}

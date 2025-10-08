@@ -302,6 +302,37 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       create :create_message do
         change ChangeMessage
       end
+
+      create :create_with_nested_bulk_update do
+        change after_action(fn changeset, result, context ->
+                 other_posts = Post |> Ash.read!(tenant: changeset.tenant, authorize?: false)
+
+                 other_posts
+                 |> Enum.reject(fn post -> post.id == result.id end)
+                 |> Ash.bulk_update!(:update, %{title2: "nested_update"},
+                   notify?: true,
+                   strategy: :stream,
+                   return_records?: false,
+                   tenant: changeset.tenant,
+                   authorize?: false
+                 )
+
+                 {:ok, result}
+               end)
+      end
+
+      create :create_with_nested_bulk_create do
+        change after_action(fn changeset, result, context ->
+                 Ash.bulk_create!([%{title: "nested_post"}], Post, :create,
+                   notify?: true,
+                   return_records?: false,
+                   tenant: changeset.tenant,
+                   authorize?: false
+                 )
+
+                 {:ok, result}
+               end)
+      end
     end
 
     identities do
@@ -1711,6 +1742,54 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                before: nil,
                after: ^keyset
              } = tag.related_tags
+    end
+  end
+
+  describe "nested bulk operations" do
+    setup do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
+      Ash.bulk_create!(
+        [%{title: "setup1"}, %{title: "setup2"}, %{title: "setup3"}],
+        Post,
+        :create,
+        return_stream?: true,
+        return_records?: true,
+        authorize?: false,
+        tenant: org.id
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
+
+      {:ok, %{org: org}}
+    end
+
+    test "supports bulk_update in after_action callbacks", %{org: org} do
+      assert %Ash.BulkResult{} =
+               Ash.bulk_create!(
+                 [%{title: "trigger_nested"}],
+                 Post,
+                 :create_with_nested_bulk_update,
+                 notify?: true,
+                 return_records?: false,
+                 authorize?: false,
+                 tenant: org.id
+               )
+    end
+
+    test "supports bulk_create in after_action callbacks", %{org: org} do
+      assert %Ash.BulkResult{} =
+               Ash.bulk_create!(
+                 [%{title: "trigger_nested"}],
+                 Post,
+                 :create_with_nested_bulk_create,
+                 notify?: true,
+                 return_records?: false,
+                 authorize?: false,
+                 tenant: org.id
+               )
     end
   end
 

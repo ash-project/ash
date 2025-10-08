@@ -1,4 +1,6 @@
 defmodule Ash.Actions.Create.Bulk do
+  alias Ash.Actions.BulkManualActionHelpers
+
   @moduledoc false
   @spec run(Ash.Domain.t(), Ash.Resource.t(), atom(), Enumerable.t(map), Keyword.t()) ::
           Ash.BulkResult.t()
@@ -492,7 +494,12 @@ defmodule Ash.Actions.Create.Bulk do
 
     batch =
       if re_sort? do
-        Enum.sort_by(batch, & &1.context.bulk_create.index)
+        Enum.sort_by(batch, fn changeset ->
+          {index, _metadata_key} =
+            BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_create)
+
+          index
+        end)
       else
         batch
       end
@@ -522,10 +529,11 @@ defmodule Ash.Actions.Create.Bulk do
             {:ok, result} ->
               Process.put({:any_success?, ref}, true)
 
+              {index, metadata_key} =
+                BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_create)
+
               [
-                Ash.Resource.set_metadata(result, %{
-                  bulk_create_index: changeset.context.bulk_create.index
-                })
+                Ash.Resource.put_metadata(result, metadata_key, index)
               ]
 
             {:ok, result, notifications} ->
@@ -533,10 +541,11 @@ defmodule Ash.Actions.Create.Bulk do
 
               store_notification(ref, notifications, opts)
 
+              {index, metadata_key} =
+                BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_create)
+
               [
-                Ash.Resource.set_metadata(result, %{
-                  bulk_create_index: changeset.context.bulk_create.index
-                })
+                Ash.Resource.put_metadata(result, metadata_key, index)
               ]
 
             {:error, error} ->
@@ -715,8 +724,11 @@ defmodule Ash.Actions.Create.Bulk do
          base,
          argument_names
        ) do
+    {context_key, _metadata_key} =
+      BulkManualActionHelpers.create_bulk_operation_keys(action.type)
+
     base
-    |> Ash.Changeset.put_context(:bulk_create, %{index: index})
+    |> Ash.Changeset.put_context(context_key, %{index: index})
     |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
     |> handle_params(
       Keyword.get(opts, :assume_casted?, false),
@@ -865,9 +877,12 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp index_changesets(batch) do
     Enum.reduce(batch, %{}, fn changeset, changesets_by_index ->
+      {index, _metadata_key} =
+        BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_create)
+
       Map.put(
         changesets_by_index,
-        changeset.context.bulk_create.index,
+        index,
         changeset
       )
     end)
@@ -1007,7 +1022,14 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp sort(%{records: records} = result, opts) when is_list(records) do
     if opts[:sorted?] do
-      %{result | records: Enum.sort_by(records, & &1.__metadata__.bulk_create_index)}
+      %{
+        result
+        | records:
+            Enum.sort_by(
+              records,
+              &BulkManualActionHelpers.get_bulk_index(&1, :bulk_create)
+            )
+      }
     else
       result
     end
@@ -1193,14 +1215,14 @@ defmodule Ash.Actions.Create.Bulk do
 
                   [
                     mod.create(changeset, manual_opts, ctx)
-                    |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
+                    |> BulkManualActionHelpers.process_non_bulk_result(
                       changeset,
                       :bulk_create
                     )
                   ]
                 end
                 |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
+                |> BulkManualActionHelpers.process_bulk_results(
                   mod,
                   :bulk_create,
                   &store_notification/3,
@@ -1270,11 +1292,15 @@ defmodule Ash.Actions.Create.Bulk do
                       if changeset.context[:private][:return_skipped_upsert?] do
                         case callback.() do
                           {:ok, record} ->
+                            {index, metadata_key} =
+                              BulkManualActionHelpers.extract_bulk_metadata(
+                                changeset,
+                                :bulk_create
+                              )
+
                             {:ok,
                              [
-                               Ash.Resource.set_metadata(record, %{
-                                 bulk_create_index: changeset.context.bulk_create.index
-                               })
+                               Ash.Resource.put_metadata(record, metadata_key, index)
                              ]}
 
                           _ ->
@@ -1286,25 +1312,30 @@ defmodule Ash.Actions.Create.Bulk do
 
                     {:ok, %{__metadata__: %{upsert_skipped: true}} = record} ->
                       if changeset.context[:private][:return_skipped_upsert?] do
+                        {index, metadata_key} =
+                          BulkManualActionHelpers.extract_bulk_metadata(
+                            changeset,
+                            :bulk_create
+                          )
+
                         {:ok,
                          [
-                           Ash.Resource.set_metadata(record, %{
-                             bulk_create_index: changeset.context.bulk_create.index
-                           })
+                           Ash.Resource.put_metadata(record, metadata_key, index)
                          ]}
                       else
                         []
                       end
 
                     {:ok, result} ->
+                      {index, metadata_key} =
+                        BulkManualActionHelpers.extract_bulk_metadata(
+                          changeset,
+                          :bulk_create
+                        )
+
                       {:ok,
                        [
-                         Ash.Resource.set_metadata(
-                           result,
-                           %{
-                             bulk_create_index: changeset.context.bulk_create.index
-                           }
-                         )
+                         Ash.Resource.put_metadata(result, metadata_key, index)
                        ]}
 
                     {:error, :no_rollback, error} ->
@@ -1367,7 +1398,8 @@ defmodule Ash.Actions.Create.Bulk do
          ref
        ) do
     Enum.flat_map(batch_results, fn result ->
-      changeset = changesets_by_index[result.__metadata__.bulk_create_index]
+      index = BulkManualActionHelpers.get_bulk_index(result, :bulk_create)
+      changeset = changesets_by_index[index]
 
       case manage_relationships(result, domain, changeset,
              upsert?: opts[:upsert?],
@@ -1416,9 +1448,12 @@ defmodule Ash.Actions.Create.Bulk do
          must_return_records_for_changes?,
          action
        ) do
+    {_context_key, metadata_key} = BulkManualActionHelpers.create_bulk_operation_keys(action.type)
+
     results =
       Enum.flat_map(batch, fn result ->
-        changeset = changesets_by_index[result.__metadata__.bulk_create_index]
+        index = BulkManualActionHelpers.get_bulk_index(result, :bulk_create)
+        changeset = changesets_by_index[index]
 
         if opts[:notify?] || opts[:return_notifications?] do
           store_notification(ref, notification(changeset, result, opts), opts)
@@ -1456,7 +1491,7 @@ defmodule Ash.Actions.Create.Bulk do
       opts,
       ref,
       resource,
-      :bulk_create_index
+      metadata_key
     )
     |> then(fn records ->
       if opts[:return_records?] do
@@ -1742,7 +1777,15 @@ defmodule Ash.Actions.Create.Bulk do
                     Map.put(
                       state.changes,
                       change_index,
-                      Enum.map(matches, & &1.context.bulk_create.index)
+                      Enum.map(matches, fn changeset ->
+                        {index, _metadata_key} =
+                          BulkManualActionHelpers.extract_bulk_metadata(
+                            changeset,
+                            :bulk_create
+                          )
+
+                        index
+                      end)
                     )
               }
             end
