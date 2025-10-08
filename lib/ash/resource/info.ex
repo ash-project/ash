@@ -211,6 +211,14 @@ defmodule Ash.Resource.Info do
   end
 
   @doc """
+  The configured default target attribute for atomic validations.
+  """
+  @spec atomic_validation_default_target_attribute(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
+  def atomic_validation_default_target_attribute(resource) do
+    Extension.get_opt(resource, [:resource], :atomic_validation_default_target_attribute, nil)
+  end
+
+  @doc """
   The base filter of the resource
   """
   @spec base_filter(Spark.Dsl.t() | Ash.Resource.t()) :: term
