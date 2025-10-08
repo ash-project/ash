@@ -68,6 +68,9 @@ on:
       community-files:
         type: boolean
         default: true
+      reuse:
+        type: boolean
+        default: false
 env:
   PG_VERSION: ${{inputs.postgres-version}}
   ASH_CI_BUILD: true
@@ -511,6 +514,15 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-dialyzer@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: dev
+
+  reuse:
+    name: REUSE compliance
+    runs-on: ubuntu-latest
+    if: ${{inputs.reuse}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: REUSE compliance check
+        uses: fsfe/reuse-action@v4
 
   build-dev:
     name: MIX_ENV=dev mix.compile
