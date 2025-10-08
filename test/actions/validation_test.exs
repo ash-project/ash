@@ -172,6 +172,96 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
   end
 
+  describe "data_one_of" do
+    defmodule StatusResource do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Domain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private? true
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, create: :*]
+
+        update :update_non_atomic do
+          require_atomic? false
+
+          change fn changeset, _ctx ->
+            # force non-atomic
+            changeset
+          end
+        end
+
+        update :update_atomic do
+          require_atomic? true
+        end
+      end
+
+      validations do
+        validate data_one_of(:status, ["allowed", "valid"]), on: :update
+      end
+
+      attributes do
+        uuid_primary_key :id
+
+        attribute :status, :string do
+          public?(true)
+        end
+      end
+    end
+
+    test "non-atomic: succeeds when original value is in the allowed list" do
+      record =
+        StatusResource
+        |> Ash.Changeset.for_create(:create, %{status: "allowed"})
+        |> Ash.create!()
+
+      record
+      |> Ash.Changeset.for_update(:update_non_atomic, %{status: "different"})
+      |> Ash.update!()
+    end
+
+    test "non-atomic: fails when original value is not in the allowed list" do
+      record =
+        StatusResource
+        |> Ash.Changeset.for_create(:create, %{status: "not_allowed"})
+        |> Ash.create!()
+
+      assert_raise(Ash.Error.Invalid, ~r/expected one of \"allowed, valid\"/, fn ->
+        record
+        |> Ash.Changeset.for_update(:update_non_atomic, %{status: "something"})
+        |> Ash.update!()
+      end)
+    end
+
+    test "atomic: succeeds when original value is in the allowed list" do
+      record =
+        StatusResource
+        |> Ash.Changeset.for_create(:create, %{status: "valid"})
+        |> Ash.create!()
+
+      Ash.bulk_update!([record], :update_atomic, %{status: "changed"},
+        return_records?: true,
+        return_errors?: true
+      )
+    end
+
+    test "atomic: fails when original value is not in the allowed list" do
+      record =
+        StatusResource
+        |> Ash.Changeset.for_create(:create, %{status: "invalid"})
+        |> Ash.create!()
+
+      assert_raise(Ash.Error.Invalid, ~r/expected one of \"allowed, valid\"/, fn ->
+        Ash.bulk_update!([record], :update_atomic, %{status: "updated"}, return_errors?: true)
+      end)
+    end
+  end
+
   describe "attributes_present, attributes_absent" do
     defmodule Author do
       @moduledoc false
