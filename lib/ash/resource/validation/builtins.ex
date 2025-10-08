@@ -26,7 +26,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
       validate data_one_of(:status, [:closed_won, :closed_lost])
   """
-  @spec one_of(attribute :: atom, list(any)) :: Validation.ref()
+  @spec data_one_of(attribute :: atom, list(any)) :: Validation.ref()
   def data_one_of(attribute, values) do
     {Validation.DataOneOf, attribute: attribute, values: values}
   end
