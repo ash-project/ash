@@ -267,12 +267,18 @@ defmodule Ash.Policy.Policy do
     false
   end
 
-  defp compile_policy_expression([%struct{condition: condition, policies: policies}])
+  defp compile_policy_expression([
+         %struct{condition: condition, policies: policies, bypass?: bypass?}
+       ])
        when struct in [__MODULE__, Ash.Policy.FieldPolicy] do
     condition_expression = condition_expression(condition)
     compiled_policies = compile_policy_expression(policies)
 
-    {:or, {:and, condition_expression, compiled_policies}, {:not, condition_expression}}
+    if bypass? do
+      {:and, condition_expression, compiled_policies}
+    else
+      {:or, {:and, condition_expression, compiled_policies}, {:not, condition_expression}}
+    end
   end
 
   defp compile_policy_expression([

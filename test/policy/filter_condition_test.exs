@@ -31,6 +31,55 @@ defmodule Ash.Test.Policy.FilterConditionTest do
     end
   end
 
+  defmodule RuntimeFalsyCheck do
+    @moduledoc false
+    use Ash.Policy.Check
+
+    @impl Ash.Policy.Check
+    def describe(_), do: "returns true at runtime"
+
+    @impl Ash.Policy.Check
+    def strict_check(_, _, _), do: {:ok, :unknown}
+
+    @impl Ash.Policy.Check
+    def check(_actor, _list, _map, _options), do: []
+  end
+
+  defmodule RuntimeBypassResource do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Ash.Test.Policy.FilterConditionTest.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    policies do
+      default_access_type :filter
+
+      bypass RuntimeFalsyCheck do
+        description "Bypass never active"
+        authorize_if always()
+      end
+
+      # policy always() do
+      #   description "Should never return true"
+      #   forbid_if always()
+      # end
+    end
+  end
+
   defmodule Domain do
     @moduledoc false
     use Ash.Domain
@@ -41,6 +90,7 @@ defmodule Ash.Test.Policy.FilterConditionTest do
 
     resources do
       resource Resource
+      resource RuntimeBypassResource
     end
   end
 
@@ -176,5 +226,16 @@ defmodule Ash.Test.Policy.FilterConditionTest do
              post
              |> Ash.Changeset.for_update(:update, %{title: "title 2"}, actor: author)
              |> Ash.update()
+  end
+
+  test "bypass works with filter policies" do
+    RuntimeBypassResource
+    |> Ash.Changeset.for_create(:create, %{}, authorize?: false)
+    |> Ash.create!()
+
+    assert [] =
+             RuntimeBypassResource
+             |> Ash.Query.for_read(:read, %{}, actor: nil, authorize?: true)
+             |> Ash.read!()
   end
 end
