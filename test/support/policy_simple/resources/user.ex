@@ -41,7 +41,7 @@ defmodule Ash.Test.Support.PolicySimple.User do
   calculations do
     calculate :restricted_from_driving,
               :boolean,
-              expr(is_nil(most_recent_car) or most_recent_car >= ago(1, :microsecond)) do
+              expr(if is_nil(most_recent_car), do: true, else: false) do
       public?(true)
     end
 

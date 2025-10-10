@@ -100,6 +100,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
       define :hello_actor_with_function_default,
         default_options: fn ->
+          Process.sleep(50)  # Increase delay further to ensure timestamp is different
           [actor: %{name: "Dynamic Actor at #{DateTime.utc_now() |> DateTime.to_iso8601()}"}]
         end,
         action: :hello_actor
