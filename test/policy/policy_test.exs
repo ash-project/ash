@@ -28,6 +28,25 @@ defmodule Ash.Test.Policy.Policy do
     def match?(_actor, _authorizer, _options), do: {:error, :something_went_wrong}
   end
 
+  describe inspect(&Ash.Policy.Policy.expression/1) do
+    test "yields valid expression" do
+      assert {Ash.Test.Policy.Policy.RuntimeCheck, []} =
+               Ash.Policy.Policy.expression(%Ash.Policy.Policy{
+                 condition: [
+                   {RuntimeCheck, []}
+                 ],
+                 policies: [
+                   %Ash.Policy.Check{
+                     check: {Ash.Policy.Check.Static, [result: true]},
+                     check_module: Ash.Policy.Check.Static,
+                     check_opts: [result: true, access_type: :filter],
+                     type: :authorize_if
+                   }
+                 ]
+               })
+    end
+  end
+
   describe inspect(&Ash.Policy.Policy.solve/1) do
     test "returns directly for runtime expandable policies" do
       authorization = %Ash.Policy.Authorizer{
@@ -868,6 +887,20 @@ defmodule Ash.Test.Policy.Policy do
 
       assert Ash.Policy.Policy.fetch_or_strict_check_fact(authorizer, check) ==
                {:ok, true, %{authorizer | facts: %{check => true}}}
+    end
+
+    test "calculates and does not store static content" do
+      check = {Ash.Policy.Check.Static, [result: true]}
+
+      authorizer = %Ash.Policy.Authorizer{
+        resource: Resource,
+        action: :read,
+        actor: :actor,
+        facts: %{}
+      }
+
+      assert Ash.Policy.Policy.fetch_or_strict_check_fact(authorizer, check) ==
+               {:ok, true, authorizer}
     end
 
     test "gives stored fact" do

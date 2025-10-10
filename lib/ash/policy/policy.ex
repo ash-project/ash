@@ -1,6 +1,10 @@
 defmodule Ash.Policy.Policy do
   @moduledoc "Represents a policy on an Ash.Resource"
 
+  alias Ash.Policy.Check
+  alias Ash.Policy.FieldPolicy
+  alias Ash.SatSolver
+
   # For now we just write to `checks` and move them to `policies`
   # on build, when we support nested policies we can change that.
   defstruct [
@@ -22,11 +26,25 @@ defmodule Ash.Policy.Policy do
         }
 
   @static_checks [
-    {Ash.Policy.Check.Static, [result: true]},
-    {Ash.Policy.Check.Static, [result: false]},
+    {Check.Static, [result: true]},
+    {Check.Static, [result: false]},
     true,
     false
   ]
+
+  @spec expression(policies :: t() | FieldPolicy.t() | [t() | FieldPolicy.t()]) ::
+          SatSolver.boolean_expr(Check.ref())
+  def expression(policies) do
+    policies = List.wrap(policies)
+
+    at_least_one_policy_expression =
+      at_least_one_policy_expression(policies)
+
+    policy_expression =
+      compile_policy_expression(policies)
+
+    simplify_policy_expression({:and, at_least_one_policy_expression, policy_expression})
+  end
 
   def solve(authorizer) do
     authorizer = strict_check_all_conditions(authorizer)
@@ -104,7 +122,7 @@ defmodule Ash.Policy.Policy do
          """}
 
       policy.condition |> List.wrap() |> Enum.empty?() ->
-        {:ok, %{policy | condition: [{Ash.Policy.Check.Static, result: true}]}}
+        {:ok, %{policy | condition: [{Check.Static, result: true}]}}
 
       true ->
         {:ok, policy}
@@ -112,14 +130,7 @@ defmodule Ash.Policy.Policy do
   end
 
   defp build_requirements_expression(policies, authorizer) do
-    at_least_one_policy_expression =
-      at_least_one_policy_expression(policies)
-
-    policy_expression =
-      compile_policy_expression(policies)
-
-    policy_and_condition_expression =
-      {:and, at_least_one_policy_expression, policy_expression}
+    policy_and_condition_expression = expression(policies)
 
     authorizer = %{authorizer | solver_statement: policy_and_condition_expression}
 
@@ -161,7 +172,7 @@ defmodule Ash.Policy.Policy do
     fetch_or_strict_check_fact(authorizer, {mod, opts})
   end
 
-  def fetch_or_strict_check_fact(authorizer, {Ash.Policy.Check.Static, opts}) do
+  def fetch_or_strict_check_fact(authorizer, {Check.Static, opts}) do
     {:ok, opts[:result], authorizer}
   end
 
@@ -226,7 +237,7 @@ defmodule Ash.Policy.Policy do
     fetch_fact(facts, {mod, opts})
   end
 
-  def fetch_fact(_facts, {Ash.Policy.Check.Static, opts}) do
+  def fetch_fact(_facts, {Check.Static, opts}) do
     {:ok, opts[:result]}
   end
 
@@ -357,21 +368,21 @@ defmodule Ash.Policy.Policy do
     right = clean_constant_checks(right)
 
     case {left, right} do
-      {{Ash.Policy.Check.Static, left_opts}, {Ash.Policy.Check.Static, right_opts}} ->
+      {{Check.Static, left_opts}, {Check.Static, right_opts}} ->
         if left_opts[:result] && right_opts[:result] do
-          {Ash.Policy.Check.Static, Keyword.put(left_opts, :result, true)}
+          {Check.Static, Keyword.put(left_opts, :result, true)}
         else
           {combinator, left, right}
         end
 
-      {{Ash.Policy.Check.Static, left_opts}, right} ->
+      {{Check.Static, left_opts}, right} ->
         if left_opts[:result] do
           right
         else
           {combinator, left, right}
         end
 
-      {left, {Ash.Policy.Check.Static, right_opts}} ->
+      {left, {Check.Static, right_opts}} ->
         if right_opts[:result] do
           left
         else
@@ -385,8 +396,8 @@ defmodule Ash.Policy.Policy do
 
   defp clean_constant_checks({:not, expr}) do
     case clean_constant_checks(expr) do
-      {Ash.Policy.Check.Static, opts} ->
-        {Ash.Policy.Check.Static, Keyword.put(opts, :result, !opts[:result])}
+      {Check.Static, opts} ->
+        {Check.Static, Keyword.put(opts, :result, !opts[:result])}
 
       other ->
         {:not, other}
@@ -448,6 +459,17 @@ defmodule Ash.Policy.Policy do
   end
 
   defp handle_constants(other, authorizer), do: {other, authorizer}
+
+  @spec simplify_policy_expression(expression :: SatSolver.boolean_expr(Check.ref())) ::
+          SatSolver.boolean_expr(Check.ref())
+  defp simplify_policy_expression(expression) do
+    expression
+    |> SatSolver.walk_expression(fn
+      {Check.Static, opts} -> opts[:result]
+      other -> other
+    end)
+    |> SatSolver.simplify_expression()
+  end
 
   defp do_debug_expr({:and, l, r}) do
     quote do
