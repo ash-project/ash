@@ -9,8 +9,7 @@
 
 ### Bug Fixes:
 
-* properly apply bypass policies that can never pass by [@zachdaniel](https://github.com/zachdaniel)
-
+* properly apply bypass policies that can never pass by [@maennchen](https://github.com/maennchen)
 resolves CVE-2025-48043
 
 ## [v3.6.1](https://github.com/ash-project/ash/compare/v3.6.0...v3.6.1) (2025-10-10)
