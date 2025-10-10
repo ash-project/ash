@@ -1398,66 +1398,70 @@ defmodule Ash.Policy.Authorizer do
     end)
     |> Ash.Policy.SatSolver.simplify_clauses()
     |> Enum.reduce([], fn scenario, or_filters ->
-      scenario
-      |> Enum.map(fn
-        {{check_module, check_opts}, true} ->
-          result =
-            try do
-              nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
-            rescue
-              e ->
-                reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                          bread_crumbs:
-                            "Creating filter for check: #{check_module.describe(check_opts)} on resource: #{authorizer.resource}"
-                        ),
-                        __STACKTRACE__
-            end
-
-          if is_nil(result) do
-            false
-          else
-            result
-          end
-
-        {{check_module, check_opts}, false} ->
-          result =
-            try do
-              if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-                nil_to_false(
-                  check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
-                )
-              else
-                [
-                  not:
-                    nil_to_false(
-                      check_module.auto_filter(authorizer.actor, authorizer, check_opts)
-                    )
-                ]
+      if scenario == %{} do
+        [false | or_filters]
+      else
+        scenario
+        |> Enum.map(fn
+          {{check_module, check_opts}, true} ->
+            result =
+              try do
+                nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
+              rescue
+                e ->
+                  reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
+                            bread_crumbs:
+                              "Creating filter for check: #{check_module.describe(check_opts)} on resource: #{authorizer.resource}"
+                          ),
+                          __STACKTRACE__
               end
-            rescue
-              e ->
-                reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                          bread_crumbs:
-                            "Creating filter for check: #{check_module.describe(check_opts)} on resource: #{authorizer.resource}"
-                        ),
-                        __STACKTRACE__
+
+            if is_nil(result) do
+              false
+            else
+              result
             end
 
-          if is_nil(result) do
-            false
-          else
-            result
-          end
-      end)
-      |> case do
-        [] ->
-          or_filters
+          {{check_module, check_opts}, false} ->
+            result =
+              try do
+                if :erlang.function_exported(check_module, :auto_filter_not, 3) do
+                  nil_to_false(
+                    check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+                  )
+                else
+                  [
+                    not:
+                      nil_to_false(
+                        check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+                      )
+                  ]
+                end
+              rescue
+                e ->
+                  reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
+                            bread_crumbs:
+                              "Creating filter for check: #{check_module.describe(check_opts)} on resource: #{authorizer.resource}"
+                          ),
+                          __STACKTRACE__
+              end
 
-        [single] ->
-          [single | or_filters]
+            if is_nil(result) do
+              false
+            else
+              result
+            end
+        end)
+        |> case do
+          [] ->
+            or_filters
 
-        filters ->
-          [[and: filters] | or_filters]
+          [single] ->
+            [single | or_filters]
+
+          filters ->
+            [[and: filters] | or_filters]
+        end
       end
     end)
   end

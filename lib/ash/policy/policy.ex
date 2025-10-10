@@ -41,7 +41,7 @@ defmodule Ash.Policy.Policy do
         end)
         |> case do
           {:ok, scenarios} ->
-            {:ok, scenarios, authorizer}
+            {:ok, Enum.uniq(scenarios), authorizer}
 
           {:error, error} ->
             {:error, authorizer, error}
@@ -80,7 +80,7 @@ defmodule Ash.Policy.Policy do
   @doc false
   def transform(policy) do
     cond do
-      Enum.empty?(policy.policies) ->
+      policy.policies |> List.wrap() |> Enum.empty?() ->
         {:error, "Policies must have at least one check."}
 
       policy.bypass? &&
@@ -96,7 +96,7 @@ defmodule Ash.Policy.Policy do
          never have an effect.
          """}
 
-      policy.condition in [nil, []] ->
+      policy.condition |> List.wrap() |> Enum.empty?() ->
         {:ok, %{policy | condition: [{Ash.Policy.Check.Static, result: true}]}}
 
       true ->
@@ -267,12 +267,18 @@ defmodule Ash.Policy.Policy do
     false
   end
 
-  defp compile_policy_expression([%struct{condition: condition, policies: policies}])
+  defp compile_policy_expression([
+         %struct{condition: condition, policies: policies, bypass?: bypass?}
+       ])
        when struct in [__MODULE__, Ash.Policy.FieldPolicy] do
     condition_expression = condition_expression(condition)
     compiled_policies = compile_policy_expression(policies)
 
-    {:or, {:and, condition_expression, compiled_policies}, {:not, condition_expression}}
+    if bypass? do
+      {:and, condition_expression, compiled_policies}
+    else
+      {:or, {:and, condition_expression, compiled_policies}, {:not, condition_expression}}
+    end
   end
 
   defp compile_policy_expression([
@@ -336,7 +342,7 @@ defmodule Ash.Policy.Policy do
     |> clean_constant_checks()
     |> do_debug_expr()
     |> Macro.to_string()
-    |> then(&"#{label}: \n\n #{&1}")
+    |> then(&"#{label}:\n\n#{&1}")
   end
 
   defp clean_constant_checks({combinator, left, right}) when combinator in [:and, :or] do
