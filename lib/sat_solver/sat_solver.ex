@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Warning.BoolOperationOnSameValues
 defmodule Ash.SatSolver do
   @moduledoc """
   Tools for working with the satsolver that drives filter subset checking (for authorization)
@@ -13,11 +14,12 @@ defmodule Ash.SatSolver do
 
   @dialyzer {:nowarn_function, overlap?: 2}
 
-  @typep boolean_expr ::
-           {:and, boolean_expr, boolean_expr}
-           | {:or, boolean_expr, boolean_expr}
-           | {:not, boolean_expr}
-           | Ash.Expr.t()
+  @type boolean_expr() ::
+          {:and, boolean_expr, boolean_expr}
+          | {:or, boolean_expr, boolean_expr}
+          | {:not, boolean_expr}
+          | Ash.Expr.t()
+  @type boolean_expr(custom) :: boolean_expr() | custom
 
   @doc """
   Creates tuples of a boolean statement.
@@ -25,34 +27,28 @@ defmodule Ash.SatSolver do
   i.e `b(1 and 2) #=> {:and, 1, 2}`
   """
   defmacro b(statement) do
-    value =
-      Macro.prewalk(
-        statement,
-        fn
-          {:and, _, [left, right]} ->
-            quote do
-              {:and, unquote(left), unquote(right)}
-            end
+    Macro.prewalk(
+      statement,
+      fn
+        {:and, _, [left, right]} ->
+          quote do
+            {:and, unquote(left), unquote(right)}
+          end
 
-          {:or, _, [left, right]} ->
-            quote do
-              {:or, unquote(left), unquote(right)}
-            end
+        {:or, _, [left, right]} ->
+          quote do
+            {:or, unquote(left), unquote(right)}
+          end
 
-          {:not, _, [value]} ->
-            quote do
-              {:not, unquote(value)}
-            end
+        {:not, _, [value]} ->
+          quote do
+            {:not, unquote(value)}
+          end
 
-          other ->
-            other
-        end
-      )
-
-    quote do
-      unquote(value)
-      |> Ash.SatSolver.balance()
-    end
+        other ->
+          other
+      end
+    )
   end
 
   @doc "Returns true if the candidate filter returns the same or less data than the filter"
@@ -111,6 +107,174 @@ defmodule Ash.SatSolver do
   end
 
   def balance(other), do: other
+
+  @doc false
+  @spec walk_expression(boolean_expr(), (boolean_expr() -> boolean_expr())) :: boolean_expr()
+  def walk_expression(expression, callback) do
+    {new_expression, nil} =
+      walk_expression(expression, nil, fn expr, nil -> {callback.(expr), nil} end)
+
+    new_expression
+  end
+
+  @doc false
+  @spec walk_expression(boolean_expr(), acc, (boolean_expr(), acc -> {boolean_expr(), acc})) ::
+          {boolean_expr(), acc}
+        when acc: term()
+  def walk_expression(expression, acc, callback)
+
+  def walk_expression(b(left or right), acc, callback) do
+    {left, acc} = walk_expression(left, acc, callback)
+    {right, acc} = walk_expression(right, acc, callback)
+    callback.(b(left or right), acc)
+  end
+
+  def walk_expression(b(left and right), acc, callback) do
+    {left, acc} = walk_expression(left, acc, callback)
+    {right, acc} = walk_expression(right, acc, callback)
+    callback.(b(left and right), acc)
+  end
+
+  def walk_expression(b(not expr), acc, callback) do
+    {expr, acc} = walk_expression(expr, acc, callback)
+    callback.(b(not expr), acc)
+  end
+
+  def walk_expression(other, acc, callback), do: callback.(other, acc)
+
+  @doc false
+  @spec expand_expression(boolean_expr(), (boolean_expr() -> boolean_expr())) :: boolean_expr()
+  def expand_expression(expression, callback) do
+    {new_expression, nil} =
+      expand_expression(expression, nil, fn expr, nil -> {callback.(expr), nil} end)
+
+    new_expression
+  end
+
+  @doc false
+  @spec expand_expression(boolean_expr(), acc, (boolean_expr(), acc -> {boolean_expr(), acc})) ::
+          {boolean_expr(), acc}
+        when acc: term()
+  def expand_expression(expression, acc, callback)
+
+  def expand_expression(b(left or right), acc, callback) do
+    left
+    |> simplify_one_expression()
+    |> expand_expression(acc, callback)
+    |> case do
+      {true, acc} ->
+        callback.(true, acc)
+
+      {left, acc} ->
+        right
+        |> simplify_one_expression()
+        |> expand_expression(acc, callback)
+        |> case do
+          {true, acc} ->
+            callback.(true, acc)
+
+          {right, acc} ->
+            callback.(b(left or right), acc)
+        end
+    end
+  end
+
+  def expand_expression(b(left and right), acc, callback) do
+    left
+    |> simplify_one_expression()
+    |> expand_expression(acc, callback)
+    |> case do
+      {false, acc} ->
+        callback.(false, acc)
+
+      {left, acc} ->
+        right
+        |> simplify_one_expression()
+        |> expand_expression(acc, callback)
+        |> case do
+          {false, acc} ->
+            callback.(false, acc)
+
+          {right, acc} ->
+            callback.(b(left and right), acc)
+        end
+    end
+  end
+
+  def expand_expression(b(not expr), acc, callback) do
+    case expand_expression(expr, acc, callback) do
+      {true, acc} ->
+        callback.(false, acc)
+
+      {false, acc} ->
+        callback.(true, acc)
+
+      {expr, acc} ->
+        callback.(b(not expr), acc)
+    end
+  end
+
+  def expand_expression(other, acc, callback),
+    do: other |> simplify_one_expression() |> callback.(acc)
+
+  @doc false
+  @spec simplify_expression(boolean_expr()) :: boolean_expr()
+  def simplify_expression(expression) do
+    walk_expression(expression, &simplify_one_expression/1)
+  end
+
+  @spec simplify_one_expression(boolean_expr()) :: boolean_expr()
+  defp simplify_one_expression(expression)
+
+  # Identity and Annihilator Laws
+  defp simplify_one_expression(b(true and right)), do: right
+  defp simplify_one_expression(b(left and true)), do: left
+  defp simplify_one_expression(b(false and _right)), do: false
+  defp simplify_one_expression(b(_left and false)), do: false
+  defp simplify_one_expression(b(true or _right)), do: true
+  defp simplify_one_expression(b(_left or true)), do: true
+  defp simplify_one_expression(b(false or right)), do: right
+  defp simplify_one_expression(b(left or false)), do: left
+
+  # Idempotent Laws
+  defp simplify_one_expression(b(expr and expr)), do: expr
+  defp simplify_one_expression(b(expr or expr)), do: expr
+
+  # Absorption Laws
+  defp simplify_one_expression(b(expr or (expr and _))), do: expr
+  defp simplify_one_expression(b(expr and (expr or _))), do: expr
+  defp simplify_one_expression(b((expr and _) or expr)), do: expr
+  defp simplify_one_expression(b((expr or _) and expr)), do: expr
+
+  # Associativity Optimizations
+  defp simplify_one_expression(b(left or (left or right))), do: b(left or right)
+  defp simplify_one_expression(b(left or right or left)), do: b(left or right)
+  defp simplify_one_expression(b(left and (left and right))), do: b(left and right)
+  defp simplify_one_expression(b(left and right and left)), do: b(left and right)
+
+  # Distributivity-based Simplifications
+  defp simplify_one_expression(b(expr and (not expr or right))), do: b(expr and right)
+  defp simplify_one_expression(b(expr or (not expr and right))), do: b(expr or right)
+  defp simplify_one_expression(b(not expr and (expr or right))), do: b(not expr and right)
+  defp simplify_one_expression(b(not expr or (expr and right))), do: b(not expr or right)
+
+  # Complement Laws
+  defp simplify_one_expression(b(expression or not expression)), do: true
+  defp simplify_one_expression(b(not expression or expression)), do: true
+  defp simplify_one_expression(b(expression and not expression)), do: false
+  defp simplify_one_expression(b(not expression and expression)), do: false
+
+  # Additional Complement Laws
+  defp simplify_one_expression(b((expr and left) or (expr and not left))), do: expr
+  defp simplify_one_expression(b((expr or left) and (expr or not left))), do: expr
+
+  # Negation Laws
+  defp simplify_one_expression(b(not true)), do: false
+  defp simplify_one_expression(b(not false)), do: true
+  defp simplify_one_expression(b(not (not expression))), do: expression
+
+  # Catch-all
+  defp simplify_one_expression(other), do: other
 
   @doc "Returns `true` if the relationship paths are synonymous from a data perspective"
   @spec synonymous_relationship_paths?(
@@ -305,6 +469,35 @@ defmodule Ash.SatSolver do
   @doc "Returns `b(not (left and not right))`"
   def left_implies_right(left, right) do
     b(not (left and not right))
+  end
+
+  @doc """
+  Generates random boolean expressions for property-based testing.
+
+  Uses StreamData.tree to create recursive boolean expressions with the provided
+  leaf generator for terminal values. Automatically includes boolean constants (true/false)
+  alongside the provided inner generator.
+  """
+  @spec generate_expression(StreamData.t(term())) :: StreamData.t(boolean_expr())
+  def generate_expression(inner_generator) do
+    inner_generator = StreamData.one_of([StreamData.boolean(), inner_generator])
+
+    StreamData.tree(inner_generator, fn child_expr ->
+      StreamData.frequency([
+        {2,
+         StreamData.map(StreamData.tuple({child_expr, child_expr}), fn {left, right} ->
+           b(left and right)
+         end)},
+        {2,
+         StreamData.map(StreamData.tuple({child_expr, child_expr}), fn {left, right} ->
+           b(left or right)
+         end)},
+        {1,
+         StreamData.map(child_expr, fn expr ->
+           b(not expr)
+         end)}
+      ])
+    end)
   end
 
   defp shares_ref?(left, right) do
