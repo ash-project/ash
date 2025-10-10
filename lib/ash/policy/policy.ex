@@ -153,16 +153,19 @@ defmodule Ash.Policy.Policy do
 
     authorizer = %{authorizer | solver_statement: policy_and_condition_expression}
 
-    facts_expression =
+    {expression, authorizer} =
       authorizer.facts
       |> Map.drop([true, false])
       |> Ash.Policy.SatSolver.facts_to_statement()
+      |> case do
+        nil -> policy_and_condition_expression
+        facts_expression -> b(facts_expression and policy_and_condition_expression)
+      end
+      |> expand_constants(authorizer)
 
-    if is_nil(facts_expression) do
-      handle_constants(policy_and_condition_expression, authorizer)
-    else
-      handle_constants({:and, facts_expression, policy_and_condition_expression}, authorizer)
-    end
+    expression = simplify_policy_expression(expression)
+
+    {expression, authorizer}
   end
 
   # at least one policy must apply
@@ -367,59 +370,28 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  defp handle_constants({:and, l, r}, authorizer) do
-    case handle_constants(l, authorizer) do
-      {false, authorizer} ->
-        {false, authorizer}
+  @spec expand_constants(
+          expression :: SatSolver.boolean_expr(Check.ref()),
+          authorizer :: Authorizer.t()
+        ) :: {SatSolver.boolean_expr(Check.ref()), Authorizer.t()}
+  defp expand_constants(expression, authorizer) do
+    SatSolver.expand_expression(expression, authorizer, fn
+      {Check.Static, opts}, authorizer ->
+        {opts[:result], authorizer}
 
-      {l, authorizer} ->
-        case {l, handle_constants(r, authorizer)} do
-          {_, {false, authorizer}} -> {false, authorizer}
-          {false, {_, authorizer}} -> {false, authorizer}
-          {true, {true, authorizer}} -> {true, authorizer}
-          {true, {r, authorizer}} -> {r, authorizer}
-          {l, {true, authorizer}} -> {l, authorizer}
-          {l, {r, authorizer}} -> {{:and, l, r}, authorizer}
+      expr, authorizer when is_expression_check(expr) ->
+        case fetch_or_strict_check_fact(authorizer, expr) do
+          {:ok, result, authorizer} ->
+            {result, authorizer}
+
+          {:error, authorizer} ->
+            {expr, authorizer}
         end
-    end
+
+      other, authorizer ->
+        {other, authorizer}
+    end)
   end
-
-  defp handle_constants({:or, l, r}, authorizer) do
-    case handle_constants(l, authorizer) do
-      {true, authorizer} ->
-        {true, authorizer}
-
-      {l, authorizer} ->
-        case {l, handle_constants(r, authorizer)} do
-          {_, {true, authorizer}} -> {true, authorizer}
-          {true, {_, authorizer}} -> {true, authorizer}
-          {false, {false, authorizer}} -> {false, authorizer}
-          {false, {r, authorizer}} -> {r, authorizer}
-          {l, {false, authorizer}} -> {l, authorizer}
-          {l, {r, authorizer}} -> {{:or, l, r}, authorizer}
-        end
-    end
-  end
-
-  defp handle_constants({:not, l}, authorizer) do
-    case handle_constants(l, authorizer) do
-      {true, authorizer} -> {false, authorizer}
-      {false, authorizer} -> {true, authorizer}
-      {l, authorizer} -> {{:not, l}, authorizer}
-    end
-  end
-
-  defp handle_constants({mod, opts}, authorizer) do
-    case fetch_or_strict_check_fact(authorizer, {mod, opts}) do
-      {:ok, result, authorizer} ->
-        {result, authorizer}
-
-      {:error, authorizer} ->
-        {{mod, opts}, authorizer}
-    end
-  end
-
-  defp handle_constants(other, authorizer), do: {other, authorizer}
 
   @spec simplify_policy_expression(expression :: SatSolver.boolean_expr(Check.ref())) ::
           SatSolver.boolean_expr(Check.ref())
