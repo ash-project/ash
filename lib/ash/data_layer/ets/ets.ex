@@ -1449,9 +1449,16 @@ defmodule Ash.DataLayer.Ets do
     else
       key_filters =
         Enum.map(keys, fn key ->
+          value =
+            Ash.Changeset.get_attribute(changeset, key) || Map.get(changeset.params, key) ||
+              Map.get(changeset.params, to_string(key))
+
           {key,
-           Ash.Changeset.get_attribute(changeset, key) || Map.get(changeset.params, key) ||
-             Map.get(changeset.params, to_string(key))}
+           if is_nil(value) do
+             [is_nil: true]
+           else
+             value
+           end}
         end)
 
       query =

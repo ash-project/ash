@@ -119,6 +119,21 @@ defmodule Ash.DataLayer.EtsTest do
     assert [{%{id: ^id}, %EtsTestUser{name: "Joe", id: ^id}}] = user_table()
   end
 
+  test "upsert with nil key value" do
+    %EtsTestUser{id: id} =
+      create_user(%{name: nil}, upsert?: true, upsert_identity: :unique_name)
+
+    assert [{%{id: ^id}, %EtsTestUser{id: ^id, name: nil}}] = user_table()
+
+    create_user(%{name: nil, age: 25},
+      upsert?: true,
+      upsert_identity: :unique_name
+    )
+
+    assert [{%{id: ^id}, %EtsTestUser{name: nil, age: 25}}] =
+             user_table()
+  end
+
   test "destroy" do
     mike = create_user(%{name: "Mike"})
     %EtsTestUser{id: joes_id} = joe = create_user(%{name: "Joe"})
