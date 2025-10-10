@@ -168,16 +168,18 @@ defmodule Ash.Policy.Policy do
           | {:error, Authorizer.t()}
   def fetch_or_strict_check_fact(authorizer, check)
 
-  def fetch_or_strict_check_fact(authorizer, %{check_module: mod, check_opts: opts}) do
-    fetch_or_strict_check_fact(authorizer, {mod, opts})
-  end
+  def fetch_or_strict_check_fact(authorizer, %Check{check_module: mod, check_opts: opts}),
+    do: fetch_or_strict_check_fact(authorizer, {mod, opts})
 
-  def fetch_or_strict_check_fact(authorizer, {Check.Static, opts}) do
-    {:ok, opts[:result], authorizer}
-  end
+  def fetch_or_strict_check_fact(authorizer, check) when is_atom(check),
+    do: fetch_or_strict_check_fact(authorizer, {check, []})
+
+  def fetch_or_strict_check_fact(authorizer, {Check.Static, opts}),
+    do: {:ok, opts[:result], authorizer}
 
   def fetch_or_strict_check_fact(authorizer, {check_module, opts}) do
-    Enum.find_value(authorizer.facts, fn
+    authorizer.facts
+    |> Enum.find_value(fn
       {{fact_mod, fact_opts}, result} when result != :unknown ->
         if check_module == fact_mod &&
              Keyword.drop(fact_opts, [:access_type, :ash_field_policy?]) ==
@@ -238,13 +240,10 @@ defmodule Ash.Policy.Policy do
           {:ok, SatSolver.boolean_expr(Check.ref())} | :error
   def fetch_fact(facts, check)
 
-  def fetch_fact(facts, %{check_module: mod, check_opts: opts}) do
-    fetch_fact(facts, {mod, opts})
-  end
+  def fetch_fact(facts, %{check_module: mod, check_opts: opts}),
+    do: fetch_fact(facts, {mod, opts})
 
-  def fetch_fact(_facts, {Check.Static, opts}) do
-    {:ok, opts[:result]}
-  end
+  def fetch_fact(_facts, {Check.Static, opts}), do: {:ok, opts[:result]}
 
   def fetch_fact(facts, {mod, opts}) do
     Enum.find_value(facts, fn
