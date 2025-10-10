@@ -2,6 +2,53 @@
 
 <!-- changelog -->
 
+## [v3.6.0](https://github.com/ash-project/ash/compare/v3.5.43...v3.6.0) (2025-10-10)
+
+
+
+
+### Features:
+
+* Improve selection of atomic validation attribute, including resource-level option (#2356) by [@stevebrambilla](https://github.com/stevebrambilla)
+
+* data_one_of validation (#2358) by [@barnabasJ](https://github.com/barnabasJ)
+
+* add `Ash.transact/3` (#2341) by [@barnabasJ](https://github.com/barnabasJ)
+
+### Bug Fixes:
+
+* don't stringify fieldset atoms in read action by [@zachdaniel](https://github.com/zachdaniel)
+
+* extended context collision prevention to all bulk operation types and added convenience helpers (#2357) by Daniel Gollings
+
+* improve nested bulk action notification handling (#2353) by Daniel Gollings
+
+* Ash.Query.after_transaction result argument issues. (#2354) by James Harton
+
+* after_transaction on read error bug. by James Harton
+
+* correct after_transaction result type for successful queries. by James Harton
+
+* properly set defaults when using string keys in typed structs by [@zachdaniel](https://github.com/zachdaniel)
+
+* move rollback_on_error logic to DataLayer.transaction by [@barnabasJ](https://github.com/barnabasJ)
+
+* handle return_skipped_upsert? in bulk creates (#2343) by [@barnabasJ](https://github.com/barnabasJ)
+
+* Incorrect return type checking for generic action hooks (#2352) by James Harton
+
+* remove non public arguments in generator action_input (#2350) by Minsub Kim
+
+* handle atomic_refs in bulk upserts (#2342) by [@barnabasJ](https://github.com/barnabasJ)
+
+* fix with_transaction bug in Mnesia data layer (#2340) by Dan Wanek
+
+* properly retrieve `parent` relationship paths out of `exists` by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* add can? callback for return_skipped_upsert? for bulk by [@barnabasJ](https://github.com/barnabasJ)
+
 ## [v3.5.43](https://github.com/ash-project/ash/compare/v3.5.42...v3.5.43) (2025-09-28)
 
 
