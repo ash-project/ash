@@ -436,6 +436,35 @@ defmodule Ash.SatSolver do
     b(not (left and not right))
   end
 
+  @doc """
+  Generates random boolean expressions for property-based testing.
+
+  Uses StreamData.tree to create recursive boolean expressions with the provided
+  leaf generator for terminal values. Automatically includes boolean constants (true/false)
+  alongside the provided inner generator.
+  """
+  @spec generate_expression(StreamData.t(term())) :: StreamData.t(boolean_expr())
+  def generate_expression(inner_generator) do
+    inner_generator = StreamData.one_of([StreamData.boolean(), inner_generator])
+
+    StreamData.tree(inner_generator, fn child_expr ->
+      StreamData.frequency([
+        {2,
+         StreamData.map({child_expr, child_expr}, fn {left, right} ->
+           b(left and right)
+         end)},
+        {2,
+         StreamData.map({child_expr, child_expr}, fn {left, right} ->
+           b(left or right)
+         end)},
+        {1,
+         StreamData.map(child_expr, fn expr ->
+           b(not expr)
+         end)}
+      ])
+    end)
+  end
+
   defp shares_ref?(left, right) do
     any_refs_in_common?(refs(left), refs(right))
   end

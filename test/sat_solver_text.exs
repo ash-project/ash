@@ -1,5 +1,6 @@
 defmodule Ash.Test.SatSolver do
   use ExUnit.Case, async: true
+  use ExUnitProperties
 
   alias Ash.SatSolver
 
@@ -86,6 +87,38 @@ defmodule Ash.Test.SatSolver do
     test "left or (left or right) -> left or right" do
       expr = b(:x or (:x or :y))
       assert b(:x or :y) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    property "idempotent simplification" do
+      check all(expr <- Ash.SatSolver.generate_expression(StreamData.atom(:alphanumeric))) do
+        simplified = Ash.SatSolver.simplify_expression(expr)
+        re_simplified = Ash.SatSolver.simplify_expression(simplified)
+        assert simplified == re_simplified
+      end
+    end
+
+    property "simplified gets same result as SAT solver" do
+      check all(
+              assignments <-
+                StreamData.map_of(StreamData.atom(:alphanumeric), StreamData.boolean(),
+                  min_length: 1
+                ),
+              variable_names = Enum.map(assignments, &elem(&1, 0)),
+              expr <- Ash.SatSolver.generate_expression(StreamData.member_of(variable_names))
+            ) do
+        simplified = Ash.SatSolver.simplify_expression(expr)
+
+        assert run_test_expression(expr, assignments) ==
+                 run_test_expression(simplified, assignments),
+               """
+               Simplification changed the logical outcome!
+               Original: #{inspect(expr, pretty: true)}
+               Simplified: #{inspect(simplified, pretty: true)}
+               Result: #{inspect(run_test_expression(expr, assignments), pretty: true)}
+               Result after simplification: #{inspect(run_test_expression(simplified, assignments), pretty: true)}
+               Assignments: #{inspect(assignments, pretty: true)}
+               """
+      end
     end
   end
 
@@ -178,4 +211,24 @@ defmodule Ash.Test.SatSolver do
       assert result
     end
   end
+
+  @spec run_test_expression(
+          expression :: Ash.SatSolver.boolean_expression(),
+          assignments :: %{atom() => boolean()}
+        ) :: boolean()
+  defp run_test_expression(expression, assignments)
+
+  defp run_test_expression(b(left and right), assignments),
+    do: run_test_expression(left, assignments) and run_test_expression(right, assignments)
+
+  defp run_test_expression(b(left or right), assignments),
+    do: run_test_expression(left, assignments) or run_test_expression(right, assignments)
+
+  defp run_test_expression(b(not expression), assignments),
+    do: not run_test_expression(expression, assignments)
+
+  defp run_test_expression(boolean, _) when is_boolean(boolean), do: boolean
+
+  defp run_test_expression(atom, assignments) when is_atom(atom),
+    do: Map.fetch!(assignments, atom)
 end
