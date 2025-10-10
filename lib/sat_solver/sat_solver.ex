@@ -220,7 +220,12 @@ defmodule Ash.SatSolver do
   @doc false
   @spec simplify_expression(boolean_expr()) :: boolean_expr()
   def simplify_expression(expression) do
-    walk_expression(expression, &simplify_one_expression/1)
+    walk_expression(expression, fn expr ->
+      case simplify_one_expression(expr) do
+        ^expr -> expr
+        simplified -> simplify_expression(simplified)
+      end
+    end)
   end
 
   @spec simplify_one_expression(boolean_expr()) :: boolean_expr()
@@ -272,6 +277,13 @@ defmodule Ash.SatSolver do
   defp simplify_one_expression(b(not true)), do: false
   defp simplify_one_expression(b(not false)), do: true
   defp simplify_one_expression(b(not (not expression))), do: expression
+
+  # Other Encountered Patterns
+  defp simplify_one_expression(b(expr or not expr)), do: true
+  defp simplify_one_expression(b(expr or (not expr or _))), do: true
+  defp simplify_one_expression(b(not expr or expr)), do: expr
+  defp simplify_one_expression(b(expr and not expr)), do: false
+  defp simplify_one_expression(b(not expr and expr)), do: false
 
   # Catch-all
   defp simplify_one_expression(other), do: other
