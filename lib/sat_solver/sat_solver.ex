@@ -485,11 +485,11 @@ defmodule Ash.SatSolver do
     StreamData.tree(inner_generator, fn child_expr ->
       StreamData.frequency([
         {2,
-         StreamData.map({child_expr, child_expr}, fn {left, right} ->
+         StreamData.map(StreamData.tuple({child_expr, child_expr}), fn {left, right} ->
            b(left and right)
          end)},
         {2,
-         StreamData.map({child_expr, child_expr}, fn {left, right} ->
+         StreamData.map(StreamData.tuple({child_expr, child_expr}), fn {left, right} ->
            b(left or right)
          end)},
         {1,

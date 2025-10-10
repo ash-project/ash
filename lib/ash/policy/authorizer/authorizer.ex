@@ -35,7 +35,7 @@ defmodule Ash.Policy.Authorizer do
           scenarios: [map],
           real_scenarios: [map],
           check_scenarios: [map],
-          policies: [term],
+          policies: [term] | nil,
           facts: map(),
           data_facts: map()
         }

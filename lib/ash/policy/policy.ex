@@ -41,7 +41,8 @@ defmodule Ash.Policy.Policy do
     policies
     |> List.wrap()
     |> Enum.map(fn policy ->
-      cond_expr = condition_expression(policy)
+      # Simplification is important here to detect empty field policies
+      cond_expr = policy |> condition_expression() |> simplify_policy_expression()
       pol_expr = policies_expression(policy)
       complete_expr = b(cond_expr and pol_expr)
       {policy, cond_expr, complete_expr}
@@ -61,14 +62,20 @@ defmodule Ash.Policy.Policy do
           b(complete_expr or all_policies_match)
         }
 
-      {%FieldPolicy{bypass?: true}, _cond_expr, complete_expr},
+      {%FieldPolicy{bypass?: true}, true, complete_expr},
       {one_condition_matches, all_policies_match} ->
         {
-          # FilterPolicy Conditions are always set to true and therefore
+          # FieldPolicy Conditions are always set to true and therefore
           # don't need to be considered in the one_condition_matches
           one_condition_matches,
           b(complete_expr or all_policies_match)
         }
+
+      {%FieldPolicy{bypass?: true}, cond_expr, _complete_expr}, _acc ->
+        raise Ash.Error.Framework.AssumptionFailed,
+          message: """
+          FieldPolicy conditions should always be true. #{debug_expr(cond_expr, "Condition")}\
+          """
 
       {%{}, cond_expr, complete_expr}, {one_condition_matches, all_policies_match} ->
         {
