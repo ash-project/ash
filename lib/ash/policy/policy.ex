@@ -91,8 +91,6 @@ defmodule Ash.Policy.Policy do
           {:ok, boolean() | list(map), Authorizer.t()}
           | {:error, Authorizer.t(), Ash.Error.t()}
   def solve(authorizer) do
-    authorizer = strict_check_all_conditions(authorizer)
-
     {expression, authorizer} =
       build_requirements_expression(authorizer)
 
@@ -117,18 +115,6 @@ defmodule Ash.Policy.Policy do
   catch
     {:error, authorizer, error} ->
       {:error, authorizer, error}
-  end
-
-  defp strict_check_all_conditions(authorizer) do
-    Enum.reduce(authorizer.policies || [], authorizer, fn policy, authorizer ->
-      Enum.reduce_while(policy.condition || [], authorizer, fn condition, authorizer ->
-        case fetch_or_strict_check_fact(authorizer, condition) do
-          {:ok, true, authorizer} -> {:cont, authorizer}
-          {:ok, _, authorizer} -> {:halt, authorizer}
-          {:error, authorizer} -> {:halt, authorizer}
-        end
-      end)
-    end)
   end
 
   @doc false
