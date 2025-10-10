@@ -48,34 +48,28 @@ defmodule Ash.Policy.Policy do
       {policy, cond_expr, complete_expr}
     end)
     |> List.foldr({false, true}, fn
-      {%__MODULE__{bypass?: true}, cond_expr, complete_expr}, {one_condition_matches, true} ->
+      {%{bypass?: true}, cond_expr, complete_expr}, {one_condition_matches, true} ->
         {
           b(cond_expr or one_condition_matches),
           # Bypass can't relay to the next bypass if there is none
           complete_expr
         }
 
-      {%__MODULE__{bypass?: true}, cond_expr, complete_expr},
-      {one_condition_matches, all_policies_match} ->
-        {
-          b(cond_expr or one_condition_matches),
-          b(complete_expr or all_policies_match)
-        }
-
       {%FieldPolicy{bypass?: true}, true, complete_expr},
       {one_condition_matches, all_policies_match} ->
         {
-          # FieldPolicy Conditions are always set to true and therefore
-          # don't need to be considered in the one_condition_matches
+          # FieldPolicy Conditions are set to true by default and therefore
+          # have to be ignore to not change the meaning of the
+          # one_condition_matches condition
           one_condition_matches,
           b(complete_expr or all_policies_match)
         }
 
-      {%FieldPolicy{bypass?: true}, cond_expr, _complete_expr}, _acc ->
-        raise Ash.Error.Framework.AssumptionFailed,
-          message: """
-          FieldPolicy conditions should always be true. #{debug_expr(cond_expr, "Condition")}\
-          """
+      {%{bypass?: true}, cond_expr, complete_expr}, {one_condition_matches, all_policies_match} ->
+        {
+          b(cond_expr or one_condition_matches),
+          b(complete_expr or all_policies_match)
+        }
 
       {%{}, cond_expr, complete_expr}, {one_condition_matches, all_policies_match} ->
         {

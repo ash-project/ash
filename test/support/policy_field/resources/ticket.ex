@@ -55,6 +55,10 @@ defmodule Ash.Test.Support.PolicyField.Ticket do
   field_policies do
     private_fields :hide
 
+    field_policy_bypass :*, actor_attribute_equals(:role, :admin) do
+      authorize_if true
+    end
+
     field_policy :status do
       authorize_if relates_to_actor_via(:representative)
       authorize_if relates_to_actor_via(:reporter)
