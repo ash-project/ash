@@ -13,11 +13,12 @@ defmodule Ash.SatSolver do
 
   @dialyzer {:nowarn_function, overlap?: 2}
 
-  @typep boolean_expr ::
+  @type boolean_expr() ::
            {:and, boolean_expr, boolean_expr}
            | {:or, boolean_expr, boolean_expr}
            | {:not, boolean_expr}
            | Ash.Expr.t()
+  @type boolean_expr(custom) :: boolean_expr() | custom
 
   @doc """
   Creates tuples of a boolean statement.
@@ -105,6 +106,49 @@ defmodule Ash.SatSolver do
   end
 
   def balance(other), do: other
+
+  @doc false
+  @spec walk_expression(boolean_expr(), (boolean_expr() -> boolean_expr())) :: boolean_expr()
+  def walk_expression(expression, callback) do
+    {new_expression, nil} =
+      walk_expression(expression, nil, fn expr, nil -> {callback.(expr), nil} end)
+
+    new_expression
+  end
+
+  @doc false
+  @spec walk_expression(boolean_expr(), acc, (boolean_expr(), acc -> {boolean_expr(), acc})) ::
+          {boolean_expr(), acc}
+        when acc: term()
+  def walk_expression(expression, acc, callback)
+
+  def walk_expression(b(left or right), acc, callback) do
+    {left, acc} = walk_expression(left, acc, callback)
+    {right, acc} = walk_expression(right, acc, callback)
+    callback.(b(left or right), acc)
+  end
+
+  def walk_expression(b(left and right), acc, callback) do
+    {left, acc} = walk_expression(left, acc, callback)
+    {right, acc} = walk_expression(right, acc, callback)
+    callback.(b(left and right), acc)
+  end
+
+  def walk_expression(b(not expr), acc, callback) do
+    {expr, acc} = walk_expression(expr, acc, callback)
+    callback.(b(not expr), acc)
+  end
+
+  def walk_expression(other, acc, callback), do: callback.(other, acc)
+
+  @doc false
+  @spec expand_expression(boolean_expr(), (boolean_expr() -> boolean_expr())) :: boolean_expr()
+  def expand_expression(expression, callback) do
+    {new_expression, nil} =
+      expand_expression(expression, nil, fn expr, nil -> {callback.(expr), nil} end)
+
+    new_expression
+  end
 
   @doc "Returns `true` if the relationship paths are synonymous from a data perspective"
   @spec synonymous_relationship_paths?(
