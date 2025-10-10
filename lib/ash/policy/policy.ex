@@ -35,6 +35,13 @@ defmodule Ash.Policy.Policy do
     false
   ]
 
+  defguardp is_expression_operation(term)
+            when (is_tuple(term) and (tuple_size(term) == 2 and elem(term, 0) == :not)) or
+                   (tuple_size(term) == 3 and elem(term, 0) in [:and, :or])
+
+  defguardp is_expression_check(term)
+            when not is_expression_operation(term) and not is_boolean(term)
+
   @spec expression(policies :: t() | FieldPolicy.t() | [t() | FieldPolicy.t()]) ::
           SatSolver.boolean_expr(Check.ref())
   def expression(policies) do
