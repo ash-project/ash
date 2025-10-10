@@ -3,6 +3,7 @@ defmodule Ash.Policy.Policy do
 
   import Ash.SatSolver, only: [b: 1]
 
+  alias Ash.Policy.Authorizer
   alias Ash.Policy.Check
   alias Ash.Policy.FieldPolicy
   alias Ash.SatSolver
@@ -48,6 +49,9 @@ defmodule Ash.Policy.Policy do
     simplify_policy_expression({:and, at_least_one_policy_expression, policy_expression})
   end
 
+  @spec solve(authorizer :: Authorizer.t()) ::
+          {:ok, boolean() | list(map), Authorizer.t()}
+          | {:error, Authorizer.t(), Ash.Error.t()}
   def solve(authorizer) do
     authorizer = strict_check_all_conditions(authorizer)
 
@@ -105,6 +109,7 @@ defmodule Ash.Policy.Policy do
   end
 
   @doc false
+  @spec transform(policy :: t()) :: {:ok, t()} | {:error, String.t()}
   def transform(policy) do
     cond do
       policy.policies |> List.wrap() |> Enum.empty?() ->
@@ -131,6 +136,11 @@ defmodule Ash.Policy.Policy do
     end
   end
 
+  @spec build_requirements_expression(
+          policies :: t() | FieldPolicy.t() | [t() | FieldPolicy.t()],
+          authorizer :: Authorizer.t()
+        ) ::
+          {SatSolver.boolean_expr(Check.ref()), Authorizer.t()}
   defp build_requirements_expression(policies, authorizer) do
     policy_and_condition_expression = expression(policies)
 
@@ -169,6 +179,14 @@ defmodule Ash.Policy.Policy do
       end
     end)
   end
+
+  @spec fetch_or_strict_check_fact(
+          Authorizer.t(),
+          Check.t() | Check.ref()
+        ) ::
+          {:ok, SatSolver.boolean_expr(Check.ref()), Authorizer.t()}
+          | {:error, Authorizer.t()}
+  def fetch_or_strict_check_fact(authorizer, check)
 
   def fetch_or_strict_check_fact(authorizer, %{check_module: mod, check_opts: opts}) do
     fetch_or_strict_check_fact(authorizer, {mod, opts})
@@ -227,13 +245,18 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  defp missing_original_data?(%{
+  @spec missing_original_data?(authorizer :: Authorizer.t()) :: boolean()
+  defp missing_original_data?(%Authorizer{
          changeset: %Ash.Changeset{data: %Ash.Changeset.OriginalDataNotAvailable{}}
        }) do
     true
   end
 
   defp missing_original_data?(_), do: false
+
+  @spec fetch_fact(facts :: map, check :: Check.t() | Check.ref()) ::
+          {:ok, SatSolver.boolean_expr(Check.ref())} | :error
+  def fetch_fact(facts, check)
 
   def fetch_fact(facts, %{check_module: mod, check_opts: opts}) do
     fetch_fact(facts, {mod, opts})
@@ -465,6 +488,7 @@ defmodule Ash.Policy.Policy do
   end
 
   @doc false
+  @spec debug_expr(expr :: SatSolver.boolean_expr(Check.ref()), label :: String.t()) :: String.t()
   def debug_expr(expr, label \\ "Expr") do
     expr
     |> clean_constant_checks()
