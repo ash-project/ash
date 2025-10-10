@@ -1667,7 +1667,11 @@ defmodule Ash.Changeset do
     Ash.Filter.map(expr, fn
       %Ash.Query.Function.Error{arguments: [module, nested_expr]} = func
       when is_map(nested_expr) and not is_struct(nested_expr) ->
-        %{func | arguments: [module, Map.put(nested_expr, :field, field)]}
+        if Map.has_key?(nested_expr, :field) || Map.has_key?(nested_expr, :fields) do
+          func
+        else
+          %{func | arguments: [module, Map.put(nested_expr, :field, field)]}
+        end
 
       other ->
         other
