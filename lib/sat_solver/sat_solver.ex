@@ -14,10 +14,10 @@ defmodule Ash.SatSolver do
   @dialyzer {:nowarn_function, overlap?: 2}
 
   @type boolean_expr() ::
-           {:and, boolean_expr, boolean_expr}
-           | {:or, boolean_expr, boolean_expr}
-           | {:not, boolean_expr}
-           | Ash.Expr.t()
+          {:and, boolean_expr, boolean_expr}
+          | {:or, boolean_expr, boolean_expr}
+          | {:not, boolean_expr}
+          | Ash.Expr.t()
   @type boolean_expr(custom) :: boolean_expr() | custom
 
   @doc """
@@ -26,28 +26,28 @@ defmodule Ash.SatSolver do
   i.e `b(1 and 2) #=> {:and, 1, 2}`
   """
   defmacro b(statement) do
-      Macro.prewalk(
-        statement,
-        fn
-          {:and, _, [left, right]} ->
-            quote do
-              {:and, unquote(left), unquote(right)}
-            end
+    Macro.prewalk(
+      statement,
+      fn
+        {:and, _, [left, right]} ->
+          quote do
+            {:and, unquote(left), unquote(right)}
+          end
 
-          {:or, _, [left, right]} ->
-            quote do
-              {:or, unquote(left), unquote(right)}
-            end
+        {:or, _, [left, right]} ->
+          quote do
+            {:or, unquote(left), unquote(right)}
+          end
 
-          {:not, _, [value]} ->
-            quote do
-              {:not, unquote(value)}
-            end
+        {:not, _, [value]} ->
+          quote do
+            {:not, unquote(value)}
+          end
 
-          other ->
-            other
-        end
-      )
+        other ->
+          other
+      end
+    )
   end
 
   @doc "Returns true if the candidate filter returns the same or less data than the filter"
@@ -149,6 +149,31 @@ defmodule Ash.SatSolver do
 
     new_expression
   end
+
+  @doc false
+  @spec simplify_expression(boolean_expr()) :: boolean_expr()
+  def simplify_expression(expression) do
+    walk_expression(expression, &simplify_one_expression/1)
+  end
+
+  @spec simplify_one_expression(boolean_expr()) :: boolean_expr()
+  defp simplify_one_expression(b(true and right)), do: right
+  defp simplify_one_expression(b(left and true)), do: left
+  defp simplify_one_expression(b(false and _right)), do: false
+  defp simplify_one_expression(b(_left and false)), do: false
+  defp simplify_one_expression(b(true or _right)), do: true
+  defp simplify_one_expression(b(_left or true)), do: true
+  defp simplify_one_expression(b(false or right)), do: right
+  defp simplify_one_expression(b(left or false)), do: left
+  defp simplify_one_expression(b(left or (left or right))), do: b(left or right)
+  defp simplify_one_expression(b(not true)), do: false
+  defp simplify_one_expression(b(not false)), do: true
+  defp simplify_one_expression(b(not (not expression))), do: expression
+  defp simplify_one_expression(b(expression or not expression)), do: true
+  defp simplify_one_expression(b(not expression or expression)), do: true
+  defp simplify_one_expression(b(expression and not expression)), do: false
+  defp simplify_one_expression(b(not expression and expression)), do: false
+  defp simplify_one_expression(other), do: other
 
   @doc "Returns `true` if the relationship paths are synonymous from a data perspective"
   @spec synonymous_relationship_paths?(

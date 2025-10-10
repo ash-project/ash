@@ -5,6 +5,90 @@ defmodule Ash.Test.SatSolver do
 
   import Ash.SatSolver, only: [b: 1]
 
+  describe inspect(&SatSolver.simplify_expression/1) do
+    test "true and X -> X" do
+      assert :x = Ash.SatSolver.simplify_expression(b(true and :x))
+    end
+
+    test "X and true -> X" do
+      assert :x = Ash.SatSolver.simplify_expression(b(:x and true))
+    end
+
+    test "false and X -> false" do
+      refute Ash.SatSolver.simplify_expression(b(false and :x))
+    end
+
+    test "X and false -> false" do
+      refute Ash.SatSolver.simplify_expression(b(:x and false))
+    end
+
+    test "true or X -> true" do
+      assert Ash.SatSolver.simplify_expression(b(true or :x))
+    end
+
+    test "X or true -> true" do
+      assert Ash.SatSolver.simplify_expression(b(:x or true))
+    end
+
+    test "false or X -> X" do
+      assert :x = Ash.SatSolver.simplify_expression(b(false or :x))
+    end
+
+    test "X or false -> X" do
+      assert :x = Ash.SatSolver.simplify_expression(b(:x or false))
+    end
+
+    test "not true -> false" do
+      refute Ash.SatSolver.simplify_expression(b(not true))
+    end
+
+    test "not false -> true" do
+      assert Ash.SatSolver.simplify_expression(b(not false))
+    end
+
+    test "not not X -> X" do
+      assert :x = Ash.SatSolver.simplify_expression(b(not not :x))
+    end
+
+    test "X or not X -> true" do
+      assert Ash.SatSolver.simplify_expression(b(:x or not :x))
+    end
+
+    test "not X or X -> true" do
+      assert Ash.SatSolver.simplify_expression(b(not :x or :x))
+    end
+
+    test "X and not X -> false" do
+      refute Ash.SatSolver.simplify_expression(b(:x and not :x))
+    end
+
+    test "not X and X -> false" do
+      refute Ash.SatSolver.simplify_expression(b(not :x and :x))
+    end
+
+    test "complex nested expression" do
+      # (true and :x) or (false and :y) -> :x or false -> :x
+      expr = b((true and :x) or (false and :y))
+      assert :x = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "deeply nested simplification" do
+      # ((true or :x) and (false or :y)) -> (true and :y) -> :y
+      expr = b((true or :x) and (false or :y))
+      assert :y = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "preserves non-boolean expressions" do
+      expr = b({:custom, :check} and :other)
+      assert b({:custom, :check} and :other) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "left or (left or right) -> left or right" do
+      expr = b(:x or (:x or :y))
+      assert b(:x or :y) = Ash.SatSolver.simplify_expression(expr)
+    end
+  end
+
   describe inspect(&SatSolver.walk_expression/3) do
     test "walks all nodes in expression" do
       expr = b((:a and :b) or not :c)
