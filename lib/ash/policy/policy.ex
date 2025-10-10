@@ -28,13 +28,6 @@ defmodule Ash.Policy.Policy do
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
-  @static_checks [
-    {Check.Static, [result: true]},
-    {Check.Static, [result: false]},
-    true,
-    false
-  ]
-
   defguardp is_expression_operation(term)
             when (is_tuple(term) and (tuple_size(term) == 2 and elem(term, 0) == :not)) or
                    (tuple_size(term) == 3 and elem(term, 0) in [:and, :or])
@@ -102,7 +95,7 @@ defmodule Ash.Policy.Policy do
         Ash.Policy.SatSolver.solve(expression, fn scenario, bindings ->
           scenario
           |> Ash.SatSolver.solutions_to_predicate_values(bindings)
-          |> Map.drop(@static_checks)
+          |> Map.drop([true, false])
         end)
         |> case do
           {:ok, scenarios} ->
