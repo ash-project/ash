@@ -25,7 +25,6 @@ defmodule Ash.SatSolver do
   i.e `b(1 and 2) #=> {:and, 1, 2}`
   """
   defmacro b(statement) do
-    value =
       Macro.prewalk(
         statement,
         fn
@@ -48,11 +47,6 @@ defmodule Ash.SatSolver do
             other
         end
       )
-
-    quote do
-      unquote(value)
-      |> Ash.SatSolver.balance()
-    end
   end
 
   @doc "Returns true if the candidate filter returns the same or less data than the filter"
