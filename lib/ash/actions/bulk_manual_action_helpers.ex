@@ -163,8 +163,18 @@ defmodule Ash.Actions.BulkManualActionHelpers do
   def extract_bulk_metadata(changeset, bulk_action_type) when is_atom(bulk_action_type) do
     changeset.context
     |> Enum.find_value(fn
-      {{^bulk_action_type, ref}, value} -> {value.index, {:"#{bulk_action_type}_index", ref}}
-      _ -> nil
+      {{^bulk_action_type, ref}, value} ->
+        metadata_atom =
+          case bulk_action_type do
+            :bulk_create -> :bulk_create_index
+            :bulk_update -> :bulk_update_index
+            :bulk_destroy -> :bulk_destroy_index
+          end
+
+        {value.index, {metadata_atom, ref}}
+
+      _ ->
+        nil
     end)
   end
 
@@ -195,7 +205,12 @@ defmodule Ash.Actions.BulkManualActionHelpers do
   all possible namespaced metadata keys for the given bulk action type.
   """
   def get_bulk_index(record, bulk_action_type \\ :bulk_update) do
-    metadata_atom = :"#{bulk_action_type}_index"
+    metadata_atom =
+      case bulk_action_type do
+        :bulk_create -> :bulk_create_index
+        :bulk_update -> :bulk_update_index
+        :bulk_destroy -> :bulk_destroy_index
+      end
 
     record.__metadata__
     |> Enum.find_value(fn
