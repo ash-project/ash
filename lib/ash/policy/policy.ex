@@ -12,7 +12,14 @@ defmodule Ash.Policy.Policy do
     :__spark_metadata__
   ]
 
-  @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
+  @type t :: %__MODULE__{
+          condition: nil | Check.ref() | list(Check.ref()),
+          policies: list(Check.t()),
+          bypass?: boolean(),
+          description: String.t() | nil,
+          access_type: :strict | :filter | :runtime,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
+        }
 
   @static_checks [
     {Ash.Policy.Check.Static, [result: true]},
