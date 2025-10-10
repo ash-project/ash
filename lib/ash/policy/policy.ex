@@ -172,9 +172,9 @@ defmodule Ash.Policy.Policy do
         end
       else
         if condition_exprs == false do
-          condition_expression(policy.condition)
+          condition_expression(policy)
         else
-          {:or, condition_expression(policy.condition), condition_exprs}
+          {:or, condition_expression(policy), condition_exprs}
         end
       end
     end)
@@ -290,15 +290,31 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  defp condition_expression(condition) do
+  @spec condition_expression(policy :: t() | FieldPolicy.t()) ::
+          SatSolver.boolean_expr(Check.ref())
+  defp condition_expression(%{condition: condition}) do
     condition
     |> List.wrap()
-    |> Enum.reduce(true, fn condition, expression ->
-      if expression == true do
-        condition
-      else
-        {:and, condition, expression}
-      end
+    |> Enum.reduce(true, &b(&2 and &1))
+  end
+
+  @spec policies_expression(policy :: t() | FieldPolicy.t()) ::
+          SatSolver.boolean_expr(Check.ref())
+  defp policies_expression(%{policies: policies}) do
+    policies
+    |> List.wrap()
+    |> List.foldr(false, fn
+      %Check{type: :authorize_if} = clause, acc ->
+        b({clause.check_module, clause.check_opts} or acc)
+
+      %Check{type: :authorize_unless} = clause, acc ->
+        b(not {clause.check_module, clause.check_opts} or acc)
+
+      %Check{type: :forbid_if} = clause, acc ->
+        b(not {clause.check_module, clause.check_opts} and acc)
+
+      %Check{type: :forbid_unless} = clause, acc ->
+        b({clause.check_module, clause.check_opts} and acc)
     end)
   end
 
@@ -311,72 +327,37 @@ defmodule Ash.Policy.Policy do
   end
 
   defp compile_policy_expression([
-         %struct{condition: condition, policies: policies, bypass?: bypass?}
+         %struct{bypass?: bypass?} = policy
        ])
        when struct in [__MODULE__, Ash.Policy.FieldPolicy] do
-    condition_expression = condition_expression(condition)
-    compiled_policies = compile_policy_expression(policies)
+    condition_expression = condition_expression(policy)
+    policy_expression = policies_expression(policy)
 
     if bypass? do
-      {:and, condition_expression, compiled_policies}
+      {:and, condition_expression, policy_expression}
     else
-      {:or, {:and, condition_expression, compiled_policies}, {:not, condition_expression}}
+      {:or, {:and, condition_expression, policy_expression}, {:not, condition_expression}}
     end
   end
 
   defp compile_policy_expression([
-         %{condition: condition, policies: policies, bypass?: bypass?} | rest
+         %{bypass?: bypass?} = policy | rest
        ]) do
-    condition_expression = condition_expression(condition)
+    condition_expression = condition_expression(policy)
+    policy_expression = policies_expression(policy)
 
     if bypass? do
-      policy_expression = compile_policy_expression(policies)
-
       condition_and_policy_expression = {:and, condition_expression, policy_expression}
 
       rest = compile_policy_expression(rest)
 
       {:or, condition_and_policy_expression, rest}
     else
-      policy_expression = compile_policy_expression(policies)
       rest_expr = compile_policy_expression(rest)
 
       {:and, {:or, {:not, condition_expression}, {:and, condition_expression, policy_expression}},
        rest_expr}
     end
-  end
-
-  defp compile_policy_expression([%{type: :authorize_if} = clause]) do
-    {clause.check_module, clause.check_opts}
-  end
-
-  defp compile_policy_expression([%{type: :authorize_if} = clause | rest]) do
-    {:or, {clause.check_module, clause.check_opts}, compile_policy_expression(rest)}
-  end
-
-  defp compile_policy_expression([%{type: :authorize_unless} = clause]) do
-    {:not, {clause.check_module, clause.check_opts}}
-  end
-
-  defp compile_policy_expression([%{type: :authorize_unless} = clause | rest]) do
-    rest = compile_policy_expression(rest)
-    {:or, {:not, {clause.check_module, clause.check_opts}}, rest}
-  end
-
-  defp compile_policy_expression([%{type: :forbid_if}]) do
-    false
-  end
-
-  defp compile_policy_expression([%{type: :forbid_if} = clause | rest]) do
-    {:and, {:not, {clause.check_module, clause.check_opts}}, compile_policy_expression(rest)}
-  end
-
-  defp compile_policy_expression([%{type: :forbid_unless}]) do
-    false
-  end
-
-  defp compile_policy_expression([%{type: :forbid_unless} = clause | rest]) do
-    {:and, {clause.check_module, clause.check_opts}, compile_policy_expression(rest)}
   end
 
   defp clean_constant_checks({combinator, left, right}) when combinator in [:and, :or] do
