@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.6.1](https://github.com/ash-project/ash/compare/v3.6.0...v3.6.1) (2025-10-10)
+
+
+
+
+### Bug Fixes:
+
+* only add field to error function if not already present by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.6.0](https://github.com/ash-project/ash/compare/v3.5.43...v3.6.0) (2025-10-10)
 
 
