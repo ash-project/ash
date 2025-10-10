@@ -1,6 +1,8 @@
 defmodule Ash.Policy.Policy do
   @moduledoc "Represents a policy on an Ash.Resource"
 
+  import Ash.SatSolver, only: [b: 1]
+
   alias Ash.Policy.Check
   alias Ash.Policy.FieldPolicy
   alias Ash.SatSolver
@@ -354,15 +356,6 @@ defmodule Ash.Policy.Policy do
     {:and, {clause.check_module, clause.check_opts}, compile_policy_expression(rest)}
   end
 
-  @doc false
-  def debug_expr(expr, label \\ "Expr") do
-    expr
-    |> clean_constant_checks()
-    |> do_debug_expr()
-    |> Macro.to_string()
-    |> then(&"#{label}:\n\n#{&1}")
-  end
-
   defp clean_constant_checks({combinator, left, right}) when combinator in [:and, :or] do
     left = clean_constant_checks(left)
     right = clean_constant_checks(right)
@@ -471,19 +464,28 @@ defmodule Ash.Policy.Policy do
     |> SatSolver.simplify_expression()
   end
 
-  defp do_debug_expr({:and, l, r}) do
+  @doc false
+  def debug_expr(expr, label \\ "Expr") do
+    expr
+    |> clean_constant_checks()
+    |> do_debug_expr()
+    |> Macro.to_string()
+    |> then(&"#{label}:\n\n#{&1}")
+  end
+
+  defp do_debug_expr(b(l and r)) do
     quote do
       unquote(do_debug_expr(l)) and unquote(do_debug_expr(r))
     end
   end
 
-  defp do_debug_expr({:or, l, r}) do
+  defp do_debug_expr(b(l or r)) do
     quote do
       unquote(do_debug_expr(l)) or unquote(do_debug_expr(r))
     end
   end
 
-  defp do_debug_expr({:not, v}) do
+  defp do_debug_expr(b(not v)) do
     quote do
       not unquote(do_debug_expr(v))
     end
