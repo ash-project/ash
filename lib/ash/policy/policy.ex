@@ -45,15 +45,46 @@ defmodule Ash.Policy.Policy do
   @spec expression(policies :: t() | FieldPolicy.t() | [t() | FieldPolicy.t()]) ::
           SatSolver.boolean_expr(Check.ref())
   def expression(policies) do
-    policies = List.wrap(policies)
+    policies
+    |> List.wrap()
+    |> Enum.map(fn policy ->
+      cond_expr = condition_expression(policy)
+      pol_expr = policies_expression(policy)
+      complete_expr = b(cond_expr and pol_expr)
+      {policy, cond_expr, complete_expr}
+    end)
+    |> List.foldr({false, true}, fn
+      {%__MODULE__{bypass?: true}, cond_expr, complete_expr}, {one_condition_matches, true} ->
+        {
+          b(cond_expr or one_condition_matches),
+          # Bypass can't relay to the next bypass if there is none
+          complete_expr
+        }
 
-    at_least_one_policy_expression =
-      at_least_one_policy_expression(policies)
+      {%__MODULE__{bypass?: true}, cond_expr, complete_expr},
+      {one_condition_matches, all_policies_match} ->
+        {
+          b(cond_expr or one_condition_matches),
+          b(complete_expr or all_policies_match)
+        }
 
-    policy_expression =
-      compile_policy_expression(policies)
+      {%FieldPolicy{bypass?: true}, _cond_expr, complete_expr},
+      {one_condition_matches, all_policies_match} ->
+        {
+          # FilterPolicy Conditions are always set to true and therefore
+          # don't need to be considered in the one_condition_matches
+          one_condition_matches,
+          b(complete_expr or all_policies_match)
+        }
 
-    simplify_policy_expression({:and, at_least_one_policy_expression, policy_expression})
+      {%{}, cond_expr, complete_expr}, {one_condition_matches, all_policies_match} ->
+        {
+          b(cond_expr or one_condition_matches),
+          b((complete_expr or not cond_expr) and all_policies_match)
+        }
+    end)
+    |> then(&b(elem(&1, 0) and elem(&1, 1)))
+    |> simplify_policy_expression()
   end
 
   @spec solve(authorizer :: Authorizer.t()) ::
@@ -62,10 +93,8 @@ defmodule Ash.Policy.Policy do
   def solve(authorizer) do
     authorizer = strict_check_all_conditions(authorizer)
 
-    policies = policies_that_may_apply(authorizer)
-
     {expression, authorizer} =
-      build_requirements_expression(policies, authorizer)
+      build_requirements_expression(authorizer)
 
     case expression do
       expr when is_boolean(expr) ->
@@ -102,19 +131,6 @@ defmodule Ash.Policy.Policy do
     end)
   end
 
-  defp policies_that_may_apply(authorizer) do
-    Enum.filter(authorizer.policies || [], fn policy ->
-      Enum.all?(policy.condition || [], fn condition ->
-        case fetch_fact(authorizer.facts, condition) do
-          {:ok, true} -> true
-          {:ok, false} -> false
-          {:ok, :unknown} -> true
-          :error -> true
-        end
-      end)
-    end)
-  end
-
   @doc false
   @spec transform(policy :: t()) :: {:ok, t()} | {:error, String.t()}
   def transform(policy) do
@@ -143,51 +159,26 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  @spec build_requirements_expression(
-          policies :: t() | FieldPolicy.t() | [t() | FieldPolicy.t()],
-          authorizer :: Authorizer.t()
-        ) ::
+  @spec build_requirements_expression(authorizer :: Authorizer.t()) ::
           {SatSolver.boolean_expr(Check.ref()), Authorizer.t()}
-  defp build_requirements_expression(policies, authorizer) do
-    policy_and_condition_expression = expression(policies)
-
-    authorizer = %{authorizer | solver_statement: policy_and_condition_expression}
+  defp build_requirements_expression(authorizer) do
+    expression = expression(authorizer.policies)
 
     {expression, authorizer} =
       authorizer.facts
       |> Map.drop([true, false])
       |> Ash.Policy.SatSolver.facts_to_statement()
       |> case do
-        nil -> policy_and_condition_expression
-        facts_expression -> b(facts_expression and policy_and_condition_expression)
+        nil -> expression
+        facts_expression -> b(facts_expression and expression)
       end
       |> expand_constants(authorizer)
 
     expression = simplify_policy_expression(expression)
 
-    {expression, authorizer}
-  end
+    authorizer = %{authorizer | solver_statement: expression}
 
-  # at least one policy must apply
-  # or one bypass must authorize
-  def at_least_one_policy_expression(policies) do
-    policies
-    |> List.wrap()
-    |> Enum.reduce(false, fn policy, condition_exprs ->
-      if policy.bypass? do
-        if condition_exprs == false do
-          compile_policy_expression([policy])
-        else
-          {:or, compile_policy_expression([policy]), condition_exprs}
-        end
-      else
-        if condition_exprs == false do
-          condition_expression(policy)
-        else
-          {:or, condition_expression(policy), condition_exprs}
-        end
-      end
-    end)
+    {expression, authorizer}
   end
 
   @spec fetch_or_strict_check_fact(
@@ -326,48 +317,6 @@ defmodule Ash.Policy.Policy do
       %Check{type: :forbid_unless} = clause, acc ->
         b({clause.check_module, clause.check_opts} and acc)
     end)
-  end
-
-  defp compile_policy_expression([]) do
-    false
-  end
-
-  defp compile_policy_expression(nil) do
-    false
-  end
-
-  defp compile_policy_expression([
-         %struct{bypass?: bypass?} = policy
-       ])
-       when struct in [__MODULE__, Ash.Policy.FieldPolicy] do
-    condition_expression = condition_expression(policy)
-    policy_expression = policies_expression(policy)
-
-    if bypass? do
-      {:and, condition_expression, policy_expression}
-    else
-      {:or, {:and, condition_expression, policy_expression}, {:not, condition_expression}}
-    end
-  end
-
-  defp compile_policy_expression([
-         %{bypass?: bypass?} = policy | rest
-       ]) do
-    condition_expression = condition_expression(policy)
-    policy_expression = policies_expression(policy)
-
-    if bypass? do
-      condition_and_policy_expression = {:and, condition_expression, policy_expression}
-
-      rest = compile_policy_expression(rest)
-
-      {:or, condition_and_policy_expression, rest}
-    else
-      rest_expr = compile_policy_expression(rest)
-
-      {:and, {:or, {:not, condition_expression}, {:and, condition_expression, policy_expression}},
-       rest_expr}
-    end
   end
 
   @spec expand_constants(
