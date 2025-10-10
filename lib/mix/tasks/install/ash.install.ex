@@ -14,33 +14,32 @@ if Code.ensure_loaded?(Igniter) do
 
     use Igniter.Mix.Task
 
-    # I know for a fact that this will spark lots of conversation, debate and bike shedding.
-    # I will direct everyone who wants to debate about it here, and that will be all.
-    #
-    # Number of people who wanted this to be different: 0
+    # This was originally unsorted
+    # Starting with a default sort order may make more sense,
+    # However users are free to sort using any criteria they choose
     @resource_default_section_order [
-      :resource,
-      :code_interface,
       :actions,
-      :policies,
-      :pub_sub,
-      :preparations,
-      :changes,
-      :validations,
-      :multitenancy,
-      :attributes,
-      :relationships,
-      :calculations,
       :aggregates,
-      :identities
+      :attributes,
+      :calculations,
+      :changes,
+      :code_interface,
+      :identities,
+      :multitenancy,
+      :policies,
+      :preparations,
+      :pub_sub,
+      :relationships,
+      :resource,
+      :validations
     ]
 
     @domain_default_section_order [
-      :resources,
-      :policies,
       :authorization,
       :domain,
-      :execution
+      :execution,
+      :policies,
+      :resources
     ]
 
     @manual_lead_in """
