@@ -266,6 +266,32 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
 
       assert nested_ticket.internal_status == nil
     end
+
+    test "conditional bypass is applied correctly",
+         %{ticket: ticket, user: user, admin: admin} do
+      ticket = Ash.update!(ticket, %{internal_status: :new}, authorize?: false)
+
+      assert [user_ticket] =
+               Ticket
+               |> Ash.Query.select(:internal_status)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Ash.Query.filter(id == ^ticket.id)
+               |> Ash.read!()
+
+      assert user_ticket.internal_status == %Ash.ForbiddenField{
+               field: :internal_status,
+               type: :attribute
+             }
+
+      assert [admin_ticket] =
+               Ticket
+               |> Ash.Query.select(:internal_status)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: admin)
+               |> Ash.Query.filter(id == ^ticket.id)
+               |> Ash.read!()
+
+      assert admin_ticket.internal_status == ticket.internal_status
+    end
   end
 
   describe "private_fields" do
