@@ -360,49 +360,6 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  defp clean_constant_checks({combinator, left, right}) when combinator in [:and, :or] do
-    left = clean_constant_checks(left)
-    right = clean_constant_checks(right)
-
-    case {left, right} do
-      {{Check.Static, left_opts}, {Check.Static, right_opts}} ->
-        if left_opts[:result] && right_opts[:result] do
-          {Check.Static, Keyword.put(left_opts, :result, true)}
-        else
-          {combinator, left, right}
-        end
-
-      {{Check.Static, left_opts}, right} ->
-        if left_opts[:result] do
-          right
-        else
-          {combinator, left, right}
-        end
-
-      {left, {Check.Static, right_opts}} ->
-        if right_opts[:result] do
-          left
-        else
-          {combinator, left, right}
-        end
-
-      {left, right} ->
-        {combinator, left, right}
-    end
-  end
-
-  defp clean_constant_checks({:not, expr}) do
-    case clean_constant_checks(expr) do
-      {Check.Static, opts} ->
-        {Check.Static, Keyword.put(opts, :result, !opts[:result])}
-
-      other ->
-        {:not, other}
-    end
-  end
-
-  defp clean_constant_checks(other), do: other
-
   defp handle_constants({:and, l, r}, authorizer) do
     case handle_constants(l, authorizer) do
       {false, authorizer} ->
@@ -472,7 +429,6 @@ defmodule Ash.Policy.Policy do
   @spec debug_expr(expr :: SatSolver.boolean_expr(Check.ref()), label :: String.t()) :: String.t()
   def debug_expr(expr, label \\ "Expr") do
     expr
-    |> clean_constant_checks()
     |> do_debug_expr()
     |> Macro.to_string()
     |> then(&"#{label}:\n\n#{&1}")
