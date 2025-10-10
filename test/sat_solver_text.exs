@@ -121,4 +121,61 @@ defmodule Ash.Test.SatSolver do
       assert b(:x and :y) = result
     end
   end
+
+  describe inspect(&SatSolver.expand_expression/3) do
+    test "short-circuits on true in or" do
+      expr = b(true or :never_evaluated)
+
+      {result, visited} =
+        Ash.SatSolver.expand_expression(expr, [], fn node, visited ->
+          {node, [node | visited]}
+        end)
+
+      assert result
+      # Should not visit :never_evaluated
+      refute :never_evaluated in visited
+    end
+
+    test "short-circuits on false in and" do
+      expr = b(false and :never_evaluated)
+
+      {result, visited} =
+        Ash.SatSolver.expand_expression(expr, [], fn node, visited ->
+          {node, [node | visited]}
+        end)
+
+      refute result
+      # Should not visit :never_evaluated
+      refute :never_evaluated in visited
+    end
+
+    test "evaluates both sides when no short-circuit" do
+      expr = b(:a and :b)
+
+      {result, visited} =
+        Ash.SatSolver.expand_expression(expr, [], fn node, visited ->
+          {node, [node | visited]}
+        end)
+
+      assert result == expr
+      assert :a in visited
+      assert :b in visited
+    end
+
+    test "simplifies not true immediately" do
+      expr = b(not true)
+
+      result = Ash.SatSolver.expand_expression(expr, fn node -> node end)
+
+      refute result
+    end
+
+    test "simplifies not false immediately" do
+      expr = b(not false)
+
+      result = Ash.SatSolver.expand_expression(expr, fn node -> node end)
+
+      assert result
+    end
+  end
 end

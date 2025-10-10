@@ -151,6 +151,72 @@ defmodule Ash.SatSolver do
   end
 
   @doc false
+  @spec expand_expression(boolean_expr(), acc, (boolean_expr(), acc -> {boolean_expr(), acc})) ::
+          {boolean_expr(), acc}
+        when acc: term()
+  def expand_expression(expression, acc, callback)
+
+  def expand_expression(b(left or right), acc, callback) do
+    left
+    |> simplify_one_expression()
+    |> expand_expression(acc, callback)
+    |> case do
+      {true, acc} ->
+        callback.(true, acc)
+
+      {left, acc} ->
+        right
+        |> simplify_one_expression()
+        |> expand_expression(acc, callback)
+        |> case do
+          {true, acc} ->
+            callback.(true, acc)
+
+          {right, acc} ->
+            callback.(b(left or right), acc)
+        end
+    end
+  end
+
+  def expand_expression(b(left and right), acc, callback) do
+    left
+    |> simplify_one_expression()
+    |> expand_expression(acc, callback)
+    |> case do
+      {false, acc} ->
+        callback.(false, acc)
+
+      {left, acc} ->
+        right
+        |> simplify_one_expression()
+        |> expand_expression(acc, callback)
+        |> case do
+          {false, acc} ->
+            callback.(false, acc)
+
+          {right, acc} ->
+            callback.(b(left and right), acc)
+        end
+    end
+  end
+
+  def expand_expression(b(not expr), acc, callback) do
+    case expand_expression(expr, acc, callback) do
+      {true, acc} ->
+        callback.(false, acc)
+
+      {false, acc} ->
+        callback.(true, acc)
+
+      {expr, acc} ->
+        callback.(b(not expr), acc)
+    end
+  end
+
+  def expand_expression(other, acc, callback),
+    do: other |> simplify_one_expression() |> callback.(acc)
+
+  @doc false
   @spec simplify_expression(boolean_expr()) :: boolean_expr()
   def simplify_expression(expression) do
     walk_expression(expression, &simplify_one_expression/1)
