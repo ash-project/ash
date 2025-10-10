@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Warning.BoolOperationOnSameValues
 defmodule Ash.Test.SatSolver do
   use ExUnit.Case, async: true
   use ExUnitProperties
@@ -7,63 +8,63 @@ defmodule Ash.Test.SatSolver do
   import Ash.SatSolver, only: [b: 1]
 
   describe inspect(&SatSolver.simplify_expression/1) do
-    test "true and X -> X" do
+    test "Identity Law (AND): true and X -> X" do
       assert :x = Ash.SatSolver.simplify_expression(b(true and :x))
     end
 
-    test "X and true -> X" do
+    test "Identity Law (AND): X and true -> X" do
       assert :x = Ash.SatSolver.simplify_expression(b(:x and true))
     end
 
-    test "false and X -> false" do
+    test "Annihilator Law (AND): false and X -> false" do
       refute Ash.SatSolver.simplify_expression(b(false and :x))
     end
 
-    test "X and false -> false" do
+    test "Annihilator Law (AND): X and false -> false" do
       refute Ash.SatSolver.simplify_expression(b(:x and false))
     end
 
-    test "true or X -> true" do
+    test "Annihilator Law (OR): true or X -> true" do
       assert Ash.SatSolver.simplify_expression(b(true or :x))
     end
 
-    test "X or true -> true" do
+    test "Annihilator Law (OR): X or true -> true" do
       assert Ash.SatSolver.simplify_expression(b(:x or true))
     end
 
-    test "false or X -> X" do
+    test "Identity Law (OR): false or X -> X" do
       assert :x = Ash.SatSolver.simplify_expression(b(false or :x))
     end
 
-    test "X or false -> X" do
+    test "Identity Law (OR): X or false -> X" do
       assert :x = Ash.SatSolver.simplify_expression(b(:x or false))
     end
 
-    test "not true -> false" do
+    test "Negation Law: not true -> false" do
       refute Ash.SatSolver.simplify_expression(b(not true))
     end
 
-    test "not false -> true" do
+    test "Negation Law: not false -> true" do
       assert Ash.SatSolver.simplify_expression(b(not false))
     end
 
-    test "not not X -> X" do
+    test "Double Negation Law: not not X -> X" do
       assert :x = Ash.SatSolver.simplify_expression(b(not not :x))
     end
 
-    test "X or not X -> true" do
+    test "Complement Law (OR): X or not X -> true" do
       assert Ash.SatSolver.simplify_expression(b(:x or not :x))
     end
 
-    test "not X or X -> true" do
+    test "Complement Law (OR): not X or X -> true" do
       assert Ash.SatSolver.simplify_expression(b(not :x or :x))
     end
 
-    test "X and not X -> false" do
+    test "Complement Law (AND): X and not X -> false" do
       refute Ash.SatSolver.simplify_expression(b(:x and not :x))
     end
 
-    test "not X and X -> false" do
+    test "Complement Law (AND): not X and X -> false" do
       refute Ash.SatSolver.simplify_expression(b(not :x and :x))
     end
 
@@ -84,9 +85,115 @@ defmodule Ash.Test.SatSolver do
       assert b({:custom, :check} and :other) = Ash.SatSolver.simplify_expression(expr)
     end
 
-    test "left or (left or right) -> left or right" do
+    test "Associativity (partial): X or (X or Y) -> X or Y" do
       expr = b(:x or (:x or :y))
       assert b(:x or :y) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    # Idempotent Laws
+    test "Idempotent Law: X and X -> X" do
+      expr = b(:x and :x)
+      assert :x = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Idempotent Law: X or X -> X" do
+      expr = b(:x or :x)
+      assert :x = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    # Absorption Laws
+    test "Absorption Law: X or (X and Y) -> X" do
+      expr = b(:x or (:x and :y))
+      assert :x = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Absorption Law: X and (X or Y) -> X" do
+      expr = b(:x and (:x or :y))
+      assert :x = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Absorption Law: (X and Y) or X -> X" do
+      expr = b((:x and :y) or :x)
+      assert :x = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Absorption Law: (X or Y) and X -> X" do
+      expr = b((:x or :y) and :x)
+      assert :x = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    # Associativity Optimizations
+    test "Associativity: X and (X and Y) -> X and Y" do
+      expr = b(:x and (:x and :y))
+      assert b(:x and :y) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Associativity: (X and Y) and X -> X and Y" do
+      expr = b(:x and :y and :x)
+      assert b(:x and :y) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Associativity: (X or Y) or X -> X or Y" do
+      expr = b(:x or :y or :x)
+      assert b(:x or :y) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    # Distributivity-based Simplifications
+    test "Distributivity: X and (not X or Y) -> X and Y" do
+      expr = b(:x and (not :x or :y))
+      assert b(:x and :y) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Distributivity: X or (not X and Y) -> X or Y" do
+      expr = b(:x or (not :x and :y))
+      assert b(:x or :y) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Distributivity: not X and (X or Y) -> not X and Y" do
+      expr = b(not :x and (:x or :y))
+      assert b(not :x and :y) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Distributivity: not X or (X and Y) -> not X or Y" do
+      expr = b(not :x or (:x and :y))
+      assert b(not :x or :y) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    # Additional Complement Laws
+    test "Complement Law: (X and Y) or (X and not Y) -> X" do
+      expr = b((:x and :y) or (:x and not :y))
+      assert :x = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Complement Law: (X or Y) and (X or not Y) -> X" do
+      expr = b((:x or :y) and (:x or not :y))
+      assert :x = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    # Complex nested expressions testing multiple laws
+    test "Complex: Nested idempotent and absorption" do
+      # (x and x) or ((x and x) and y) -> x or (x and y) -> x
+      expr = b((:x and :x) or (:x and :x and :y))
+      assert :x = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Complex: Multiple distributivity simplifications" do
+      # (x or (not x and y)) and (z or (not z and w))
+      # -> (x or y) and (z or w)
+      expr = b((:x or (not :x and :y)) and (:z or (not :z and :w)))
+      assert b((:x or :y) and (:z or :w)) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Complex: Chained associativity" do
+      # ((x and y) and x) and z -> (x and y) and z
+      expr = b(:x and :y and :x and :z)
+      assert b(:x and :y and :z) = Ash.SatSolver.simplify_expression(expr)
+    end
+
+    test "Complex: Mixed complement and absorption" do
+      # (x or not x) and (x or (x and y)) -> true and x -> x
+      expr = b((:x or not :x) and (:x or (:x and :y)))
+      assert :x = Ash.SatSolver.simplify_expression(expr)
     end
 
     property "idempotent simplification" do

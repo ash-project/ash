@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Warning.BoolOperationOnSameValues
 defmodule Ash.SatSolver do
   @moduledoc """
   Tools for working with the satsolver that drives filter subset checking (for authorization)
@@ -223,6 +224,9 @@ defmodule Ash.SatSolver do
   end
 
   @spec simplify_one_expression(boolean_expr()) :: boolean_expr()
+  defp simplify_one_expression(expression)
+
+  # Identity and Annihilator Laws
   defp simplify_one_expression(b(true and right)), do: right
   defp simplify_one_expression(b(left and true)), do: left
   defp simplify_one_expression(b(false and _right)), do: false
@@ -231,14 +235,45 @@ defmodule Ash.SatSolver do
   defp simplify_one_expression(b(_left or true)), do: true
   defp simplify_one_expression(b(false or right)), do: right
   defp simplify_one_expression(b(left or false)), do: left
+
+  # Idempotent Laws
+  defp simplify_one_expression(b(expr and expr)), do: expr
+  defp simplify_one_expression(b(expr or expr)), do: expr
+
+  # Absorption Laws
+  defp simplify_one_expression(b(expr or (expr and _))), do: expr
+  defp simplify_one_expression(b(expr and (expr or _))), do: expr
+  defp simplify_one_expression(b((expr and _) or expr)), do: expr
+  defp simplify_one_expression(b((expr or _) and expr)), do: expr
+
+  # Associativity Optimizations
   defp simplify_one_expression(b(left or (left or right))), do: b(left or right)
-  defp simplify_one_expression(b(not true)), do: false
-  defp simplify_one_expression(b(not false)), do: true
-  defp simplify_one_expression(b(not (not expression))), do: expression
+  defp simplify_one_expression(b(left or right or left)), do: b(left or right)
+  defp simplify_one_expression(b(left and (left and right))), do: b(left and right)
+  defp simplify_one_expression(b(left and right and left)), do: b(left and right)
+
+  # Distributivity-based Simplifications
+  defp simplify_one_expression(b(expr and (not expr or right))), do: b(expr and right)
+  defp simplify_one_expression(b(expr or (not expr and right))), do: b(expr or right)
+  defp simplify_one_expression(b(not expr and (expr or right))), do: b(not expr and right)
+  defp simplify_one_expression(b(not expr or (expr and right))), do: b(not expr or right)
+
+  # Complement Laws
   defp simplify_one_expression(b(expression or not expression)), do: true
   defp simplify_one_expression(b(not expression or expression)), do: true
   defp simplify_one_expression(b(expression and not expression)), do: false
   defp simplify_one_expression(b(not expression and expression)), do: false
+
+  # Additional Complement Laws
+  defp simplify_one_expression(b((expr and left) or (expr and not left))), do: expr
+  defp simplify_one_expression(b((expr or left) and (expr or not left))), do: expr
+
+  # Negation Laws
+  defp simplify_one_expression(b(not true)), do: false
+  defp simplify_one_expression(b(not false)), do: true
+  defp simplify_one_expression(b(not (not expression))), do: expression
+
+  # Catch-all
   defp simplify_one_expression(other), do: other
 
   @doc "Returns `true` if the relationship paths are synonymous from a data perspective"
