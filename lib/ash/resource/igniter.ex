@@ -13,17 +13,40 @@ if Code.ensure_loaded?(Igniter) do
 
     @doc "List all resource modules found in the project"
     def list_resources(igniter) do
-      Igniter.Project.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
-        zipper
-        |> Igniter.Code.Module.move_to_use(resource_mods(igniter))
-        |> case do
-          {:ok, _} ->
-            true
+      case get_compiled_resources(igniter) do
+        {:ok, compiled_resources} ->
+          # Fast path: combine compiled resources with any changed sources
+          changed_resources = scan_sources_for_resources(igniter, scan_all: false)
+          {igniter, Enum.uniq(compiled_resources ++ changed_resources)}
 
-          _ ->
-            false
-        end
-      end)
+        :error ->
+          # Fallback: scan all sources if we can't get compiled resources
+          {igniter, scan_sources_for_resources(igniter, scan_all: true)}
+      end
+    end
+
+    defp get_compiled_resources(igniter) do
+      app_name = Igniter.Project.Application.app_name(igniter)
+
+      resources =
+        app_name
+        |> Ash.Info.domains_and_resources()
+        |> Map.values()
+        |> List.flatten()
+
+      {:ok, resources}
+    rescue
+      _ -> :error
+    end
+
+    defp scan_sources_for_resources(igniter, opts) do
+      Ash.Igniter.find_all_matching_modules(
+        igniter,
+        fn _module, zipper ->
+          match?({:ok, _}, Igniter.Code.Module.move_to_use(zipper, resource_mods(igniter)))
+        end,
+        opts
+      )
     end
 
     @doc "Gets the domain from the given resource module"
