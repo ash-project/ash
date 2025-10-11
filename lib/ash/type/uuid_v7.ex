@@ -25,6 +25,15 @@ defmodule Ash.Type.UUIDv7 do
   end
 
   @impl true
+  def coerce(<<_::128>> = value, _) do
+    {:ok, encode(value)}
+  end
+
+  def coerce(value, _) do
+    cast_input(value, [])
+  end
+
+  @impl true
   def cast_input(%Ash.CiString{string: string}, constraints), do: cast_input(string, constraints)
   def cast_input(nil, _), do: {:ok, nil}
 
@@ -42,7 +51,14 @@ defmodule Ash.Type.UUIDv7 do
     hex_uuid -> {:ok, hex_uuid}
   end
 
-  def cast_input(<<_::128>> = value, _), do: {:ok, Ash.UUIDv7.encode(value)}
+  def cast_input(<<_::48, version::4, _::12, variant::2, _::62>> = value, _) do
+    if valid_uuid_structure?(version, variant) do
+      {:ok, Ash.UUIDv7.encode(value)}
+    else
+      :error
+    end
+  end
+
   def cast_input(_, _), do: :error
 
   @impl true
@@ -92,4 +108,36 @@ defmodule Ash.Type.UUIDv7 do
   defp c(?e), do: ?e
   defp c(?f), do: ?f
   defp c(_), do: throw(:error)
+
+  defp valid_uuid_structure?(7, 0b10), do: true
+  defp valid_uuid_structure?(_, _), do: false
+
+  defp encode(
+         <<a1::4, a2::4, a3::4, a4::4, a5::4, a6::4, a7::4, a8::4, b1::4, b2::4, b3::4, b4::4,
+           c1::4, c2::4, c3::4, c4::4, d1::4, d2::4, d3::4, d4::4, e1::4, e2::4, e3::4, e4::4,
+           e5::4, e6::4, e7::4, e8::4, e9::4, e10::4, e11::4, e12::4>>
+       ) do
+    <<e(a1), e(a2), e(a3), e(a4), e(a5), e(a6), e(a7), e(a8), ?-, e(b1), e(b2), e(b3), e(b4), ?-,
+      e(c1), e(c2), e(c3), e(c4), ?-, e(d1), e(d2), e(d3), e(d4), ?-, e(e1), e(e2), e(e3), e(e4),
+      e(e5), e(e6), e(e7), e(e8), e(e9), e(e10), e(e11), e(e12)>>
+  end
+
+  @compile {:inline, e: 1}
+
+  defp e(0), do: ?0
+  defp e(1), do: ?1
+  defp e(2), do: ?2
+  defp e(3), do: ?3
+  defp e(4), do: ?4
+  defp e(5), do: ?5
+  defp e(6), do: ?6
+  defp e(7), do: ?7
+  defp e(8), do: ?8
+  defp e(9), do: ?9
+  defp e(10), do: ?a
+  defp e(11), do: ?b
+  defp e(12), do: ?c
+  defp e(13), do: ?d
+  defp e(14), do: ?e
+  defp e(15), do: ?f
 end
