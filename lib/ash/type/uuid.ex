@@ -43,8 +43,13 @@ defmodule Ash.Type.UUID do
     hex_uuid -> {:ok, hex_uuid}
   end
 
-  def cast_input(<<_::128>> = raw_uuid, _),
-    do: {:ok, encode(raw_uuid)}
+  def cast_input(<<_::48, version::4, _::12, variant::2, _::62>> = raw_uuid, _) do
+    if valid_uuid_structure?(version, variant) do
+      {:ok, encode(raw_uuid)}
+    else
+      :error
+    end
+  end
 
   def cast_input(value, _) when is_binary(value) do
     case String.trim(value) do
@@ -126,6 +131,10 @@ defmodule Ash.Type.UUID do
   defp c(?e), do: ?e
   defp c(?f), do: ?f
   defp c(_), do: throw(:error)
+
+  defp valid_uuid_structure?(version, variant) when version in 1..5 and variant == 0b10, do: true
+  defp valid_uuid_structure?(7, 0b10), do: true
+  defp valid_uuid_structure?(_, _), do: false
 
   defp encode(
          <<a1::4, a2::4, a3::4, a4::4, a5::4, a6::4, a7::4, a8::4, b1::4, b2::4, b3::4, b4::4,

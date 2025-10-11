@@ -42,7 +42,14 @@ defmodule Ash.Type.UUIDv7 do
     hex_uuid -> {:ok, hex_uuid}
   end
 
-  def cast_input(<<_::128>> = value, _), do: {:ok, Ash.UUIDv7.encode(value)}
+  def cast_input(<<_::48, version::4, _::12, variant::2, _::62>> = value, _) do
+    if valid_uuid_structure?(version, variant) do
+      {:ok, Ash.UUIDv7.encode(value)}
+    else
+      :error
+    end
+  end
+
   def cast_input(_, _), do: :error
 
   @impl true
@@ -92,4 +99,7 @@ defmodule Ash.Type.UUIDv7 do
   defp c(?e), do: ?e
   defp c(?f), do: ?f
   defp c(_), do: throw(:error)
+
+  defp valid_uuid_structure?(7, 0b10), do: true
+  defp valid_uuid_structure?(_, _), do: false
 end
