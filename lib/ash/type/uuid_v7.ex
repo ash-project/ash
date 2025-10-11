@@ -25,6 +25,15 @@ defmodule Ash.Type.UUIDv7 do
   end
 
   @impl true
+  def coerce(<<_::128>> = value, _) do
+    {:ok, encode(value)}
+  end
+
+  def coerce(value, _) do
+    cast_input(value, [])
+  end
+
+  @impl true
   def cast_input(%Ash.CiString{string: string}, constraints), do: cast_input(string, constraints)
   def cast_input(nil, _), do: {:ok, nil}
 
