@@ -13,15 +13,21 @@ if Code.ensure_loaded?(Igniter) do
 
     @doc "List all resource modules found in the project"
     def list_resources(igniter) do
-      case get_compiled_resources(igniter) do
-        {:ok, compiled_resources} ->
-          # Fast path: combine compiled resources with any changed sources
-          changed_resources = scan_sources_for_resources(igniter, scan_all: false)
-          {igniter, Enum.uniq(compiled_resources ++ changed_resources)}
+      # If any files have been removed, fall back to scanning all sources
+      # since a removed file could have contained a resource definition
+      if igniter.rms != [] do
+        {igniter, scan_sources_for_resources(igniter, scan_all: true)}
+      else
+        case get_compiled_resources(igniter) do
+          {:ok, compiled_resources} ->
+            # Fast path: combine compiled resources with any changed sources
+            changed_resources = scan_sources_for_resources(igniter, scan_all: false)
+            {igniter, Enum.uniq(compiled_resources ++ changed_resources)}
 
-        :error ->
-          # Fallback: scan all sources if we can't get compiled resources
-          {igniter, scan_sources_for_resources(igniter, scan_all: true)}
+          :error ->
+            # Fallback: scan all sources if we can't get compiled resources
+            {igniter, scan_sources_for_resources(igniter, scan_all: true)}
+        end
       end
     end
 

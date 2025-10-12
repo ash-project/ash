@@ -4,15 +4,21 @@ if Code.ensure_loaded?(Igniter) do
 
     @doc "List all domain modules found in the project"
     def list_domains(igniter) do
-      case get_compiled_domains(igniter) do
-        {:ok, compiled_domains} ->
-          # Fast path: combine compiled domains with any changed sources
-          changed_domains = scan_sources_for_domains(igniter, scan_all: false)
-          {igniter, Enum.uniq(compiled_domains ++ changed_domains)}
+      # If any files have been removed, fall back to scanning all sources
+      # since a removed file could have contained a domain definition
+      if igniter.rms != [] do
+        {igniter, scan_sources_for_domains(igniter, scan_all: true)}
+      else
+        case get_compiled_domains(igniter) do
+          {:ok, compiled_domains} ->
+            # Fast path: combine compiled domains with any changed sources
+            changed_domains = scan_sources_for_domains(igniter, scan_all: false)
+            {igniter, Enum.uniq(compiled_domains ++ changed_domains)}
 
-        :error ->
-          # Fallback: scan all sources if we can't get compiled domains
-          {igniter, scan_sources_for_domains(igniter, scan_all: true)}
+          :error ->
+            # Fallback: scan all sources if we can't get compiled domains
+            {igniter, scan_sources_for_domains(igniter, scan_all: true)}
+        end
       end
     end
 
