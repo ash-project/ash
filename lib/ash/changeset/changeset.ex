@@ -1670,7 +1670,11 @@ defmodule Ash.Changeset do
         if Map.has_key?(nested_expr, :field) || Map.has_key?(nested_expr, :fields) do
           func
         else
-          %{func | arguments: [module, Map.put(nested_expr, :field, field)]}
+          if Map.has_key?(module.__struct__(), :fields) do
+            %{func | arguments: [module, Map.put(nested_expr, :fields, [field])]}
+          else
+            %{func | arguments: [module, Map.put(nested_expr, :field, field)]}
+          end
         end
 
       other ->
