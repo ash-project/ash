@@ -71,8 +71,21 @@ on:
       reuse:
         type: boolean
         default: false
+      mysql:
+        type: boolean
+        default: false
+      ash_mysql:
+        type: boolean
+        default: false
+      ecto_mysql:
+        type: boolean
+        default: false
+      mysql-version:
+        type: string
+        default: "8.0"
 env:
   PG_VERSION: ${{inputs.postgres-version}}
+  MYSQL_VERSION: ${{inputs.mysql-version}}
   ASH_CI_BUILD: true
 permissions:
   contents: read
@@ -449,6 +462,13 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+      mysql:
+        image: mysql:${{inputs.mysql-version}}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+        ports:
+          - 3306:3306
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
@@ -496,6 +516,36 @@ jobs:
           mix-env: test
           task: ash_sqlite.migrate
         if: ${{inputs.sqlite}}
+      - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{inputs.mysql && inputs.ash_mysql}}
+        with:
+          mix-env: test
+          task: ash_mysql.generate_migrations --check
+      - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        with:
+          mix-env: test
+          task: ash_mysql.create
+        if: ${{inputs.mysql && inputs.ash_mysql}}
+      - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        with:
+          mix-env: test
+          task: ecto.create
+        if: ${{inputs.mysql && inputs.ecto_mysql}}
+      - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        with:
+          mix-env: test
+          task: ash_mysql.migrate
+        if: ${{inputs.mysql && inputs.ash_mysql}}
+      - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        with:
+          mix-env: test
+          task: ash_mysql.migrate
+        if: ${{inputs.mysql && inputs.ash_mysql}}
+      - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        with:
+          mix-env: test
+          task: ecto.migrate
+        if: ${{inputs.mysql && inputs.ecto_mysql}}
       - uses: team-alembic/staple-actions/actions/mix-test@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
