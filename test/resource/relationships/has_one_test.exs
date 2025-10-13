@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Resource.Relationships.HasOneTest do
   @moduledoc false
   use ExUnit.Case, async: true

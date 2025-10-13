@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.Dsl.Inputs do
   @moduledoc """
   The `inputs` entity for the `Ash.Reactor` reactor extension.

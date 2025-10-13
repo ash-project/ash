@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.FilterCheck do
   @moduledoc """
   A type of check that is represented by a filter statement

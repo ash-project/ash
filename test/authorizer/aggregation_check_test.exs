@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 alias Ash.Test.AggregationCheckTest, as: ThisTest
 alias Ash.Changeset
 

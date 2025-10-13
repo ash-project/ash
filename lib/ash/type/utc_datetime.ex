@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.UtcDatetime do
   @moduledoc """
   Represents a utc datetime, with 'second' precision. A wrapper around `:datetime` for backwards compatibility.

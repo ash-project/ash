@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Page.InvalidKeyset do
   @moduledoc "Used when a value is provided for a keyset that cannot be Base64 decoded."
 

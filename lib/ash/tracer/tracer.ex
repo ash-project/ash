@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Tracer do
   @moduledoc """
   A behaviour for implementing tracing for an Ash application.

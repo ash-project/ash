@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Actions.Create.Bulk do
   alias Ash.Actions.BulkManualActionHelpers
 

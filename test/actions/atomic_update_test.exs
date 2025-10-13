@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Actions.AtomicUpdateTest do
   @moduledoc false
   use ExUnit.Case, async: true

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.ValidateAggregatesSupported do
   @moduledoc """
   Confirms that all aggregates are supported by the data layer

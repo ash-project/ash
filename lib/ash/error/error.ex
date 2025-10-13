@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error do
   @moduledoc """
   Tools and utilities used by Ash to manage and conform errors

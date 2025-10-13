@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.CreateJoinRelationship do
   @moduledoc """
   Creates an automatically named `has_many` relationship for each many_to_many.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.UUIDv7 do
   @moduledoc """
   Helpers for working with UUIDs version 7.

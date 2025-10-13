@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defimpl Reactor.Argument.Build, for: Ash.Reactor.Dsl.Context do
   import Reactor.Template, only: [is_template: 1]
 

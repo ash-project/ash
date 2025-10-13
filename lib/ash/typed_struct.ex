@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.TypedStruct do
   @moduledoc """
   A DSL for defining typed structs with field validation and constraints.

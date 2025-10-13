@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Actions.Argument do
   @moduledoc "Represents an argument to an action"
   defstruct [

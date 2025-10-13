@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Actions do
   @moduledoc "Types for Ash actions"
   alias Ash.Resource.Actions.{Action, Create, Destroy, Read, Update}

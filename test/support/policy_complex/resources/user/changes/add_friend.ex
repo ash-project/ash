@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Support.PolicyComplex.User.Changes.AddFriend do
   @moduledoc false
   use Ash.Resource.Change

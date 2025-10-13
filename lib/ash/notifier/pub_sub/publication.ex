@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Notifier.PubSub.Publication do
   @moduledoc "Represents a configured publication from the pubsub notifier on an Ash.Resource"
 

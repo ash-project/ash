@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Domain.Verifiers.EnsureNoEmbeds do
   @moduledoc """
   Ensures that all resources for a given domain are not embeds.

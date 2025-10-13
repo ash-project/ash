@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Relationships.HasMany do
   @moduledoc "Represents a has_many relationship on a resource"
   defstruct [

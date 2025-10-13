@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.Unavailable do
   @moduledoc """
   Used when a given resource is unavailable.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.NotFound do
   @moduledoc "Used when an entity that not exist is referenced"
 

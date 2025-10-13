@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.UnsupportedPredicate do
   @moduledoc "Used when the data_layer does not support a provided predicate"
 

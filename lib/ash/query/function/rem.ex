@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.Rem do
   @moduledoc """
   Rounds a float, decimal or integer to the given number of points

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.FromNow do
   @moduledoc """
   Adds the given interval or Duration from the current time in UTC.

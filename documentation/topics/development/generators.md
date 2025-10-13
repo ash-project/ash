@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Generators
 
 Ash comes with multiple generators, packages as mix tasks, to help you generate and make modifications to your applications.

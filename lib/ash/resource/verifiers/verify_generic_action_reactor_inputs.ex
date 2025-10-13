@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.VerifyGenericActionReactorInputs do
   @moduledoc """
   Returns an error if a generic action calls a Reactor module without specifying

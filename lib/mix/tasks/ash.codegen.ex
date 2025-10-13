@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Mix.Tasks.Ash.Codegen do
   @moduledoc """
   Runs all codegen tasks for any extension on any resource/domain in your application.

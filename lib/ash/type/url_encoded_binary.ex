@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.UrlEncodedBinary do
   @moduledoc """
   Represents a binary that attempts to decode input strings as a url encoded base64 string.

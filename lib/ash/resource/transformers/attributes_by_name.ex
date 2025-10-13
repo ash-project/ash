@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.AttributesByName do
   @moduledoc """
   Persists attribute_names and attributes_by_name.

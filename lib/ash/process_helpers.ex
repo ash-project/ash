@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.ProcessHelpers do
   @moduledoc """
   Helpers for working with processes and Ash actions.

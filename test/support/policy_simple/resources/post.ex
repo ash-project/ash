@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Support.PolicySimple.Post do
   @moduledoc false
   use Ash.Resource,

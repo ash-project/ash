@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.VerifyReservedCalculationArguments do
   @moduledoc "Verifies that standard context keys are not used as calculation arguments"
   use Spark.Dsl.Verifier

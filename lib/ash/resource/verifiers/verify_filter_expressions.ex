@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.VerifyFilterExpressions do
   @moduledoc """
   Raises an error if a filter expression references an undefined argument.

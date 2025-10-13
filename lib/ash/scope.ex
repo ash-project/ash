@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Scope do
   @moduledoc """
   Determines how the `actor`, `tenant` and `context` are extracted from a data structure.

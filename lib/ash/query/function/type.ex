@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.Type do
   @moduledoc """
   Casts the value to a given type. Can also be used to provide type hints to data layers, where appropriate.

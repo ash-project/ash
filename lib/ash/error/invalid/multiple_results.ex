@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.MultipleResults do
   @moduledoc "Used when multiple results are returned in a case where only one result was expected"
 

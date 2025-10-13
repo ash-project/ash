@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Combination Queries
 
 Ash Framework provides a powerful feature called "combination queries" that allows you to combine multiple queries into a single result set, giving you the ability to create complex data retrieval patterns with minimal effort. For SQL data-layers, this feature is implemented using SQL's UNION, INTERSECT, and EXCEPT operations.

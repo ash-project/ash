@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.InvalidExpression do
   @moduledoc "Used when an invalid expression is used in a filter"
 

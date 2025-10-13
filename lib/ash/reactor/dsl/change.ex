@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.Dsl.Change do
   @moduledoc """
   The `change` entity for the `Ash.Reactor` reactor extension.

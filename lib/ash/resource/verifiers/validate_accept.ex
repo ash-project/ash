@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.ValidateAccept do
   @moduledoc "Validates that accept and reject lists only contain valid attributes"
   use Spark.Dsl.Verifier

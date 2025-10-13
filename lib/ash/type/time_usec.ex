@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.TimeUsec do
   @moduledoc """
   Represents a time with `microsecond` precision.

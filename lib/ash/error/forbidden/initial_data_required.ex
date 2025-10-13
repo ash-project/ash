@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Forbidden.InitialDataRequired do
   @moduledoc "Used when initial data was not supplied when it was required"
   use Splode.Error, fields: [:source], class: :forbidden

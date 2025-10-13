@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.DateAdd do
   @moduledoc """
   Adds the given interval or Duration to the current time in UTC

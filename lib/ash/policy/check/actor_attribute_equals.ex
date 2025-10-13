@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.ActorAttributeEquals do
   @moduledoc "This check is true when the value of the specified attribute of the actor equals the specified value."
   use Ash.Policy.SimpleCheck

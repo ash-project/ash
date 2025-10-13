@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.Selecting do
   @moduledoc "This check is true when the field is being selected and false when it is not."
   use Ash.Policy.SimpleCheck

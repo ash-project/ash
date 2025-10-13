@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.Static do
   @moduledoc "This check is always the result provided"
   use Ash.Policy.SimpleCheck

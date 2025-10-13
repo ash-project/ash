@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.ActionType do
   @moduledoc "This check is true when the action type matches the provided type"
   use Ash.Policy.SimpleCheck

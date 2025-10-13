@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Reactor.BulkCreateTest do
   @moduledoc false
   use ExUnit.Case, async: true

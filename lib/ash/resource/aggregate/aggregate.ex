@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Aggregate do
   @moduledoc "Represents a named aggregate on the resource that can be loaded"
   defstruct [

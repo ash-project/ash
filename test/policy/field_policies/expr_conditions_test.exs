@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
   use ExUnit.Case, async: true
 

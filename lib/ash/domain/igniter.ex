@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 if Code.ensure_loaded?(Igniter) do
   defmodule Ash.Domain.Igniter do
     @moduledoc "Codemods for working with Ash.Domain modules"

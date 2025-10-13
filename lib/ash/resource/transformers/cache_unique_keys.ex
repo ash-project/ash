@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.CacheUniqueKeys do
   @moduledoc "Stores the set of unique keys for a resource"
   use Spark.Dsl.Transformer

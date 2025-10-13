@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Actions
 
 In Ash, actions are the primary way to interact with your resources. There are five types of actions:

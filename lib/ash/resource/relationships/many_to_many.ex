@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Relationships.ManyToMany do
   @moduledoc "Represents a many_to_many relationship on a resource"
   defstruct [

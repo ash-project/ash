@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.SetRelationshipSource do
   @moduledoc "Sets the `source` key on relationships to be the resource they were defined on"
   use Spark.Dsl.Transformer

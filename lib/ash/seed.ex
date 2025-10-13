@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Seed do
   @moduledoc """
   Helpers for seeding data, useful for quickly creating lots of data either for database seeding or testing.

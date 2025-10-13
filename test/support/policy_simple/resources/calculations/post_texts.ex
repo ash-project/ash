@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Support.PolicySimple.Calculations.PostTexts do
   @moduledoc false
   use Ash.Resource.Calculation

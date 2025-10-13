@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.ValidateMultitenancy do
   @moduledoc """
   Ensures that the multitenancy configuration is valid for the given resource

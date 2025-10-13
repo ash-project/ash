@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Changes.InvalidChanges do
   @moduledoc "Used when a change is provided that covers multiple attributes/relationships"
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.ValidateAtomicValidationDefaultTargetAttribute do
   @moduledoc """
   Ensures that the `atomic_validation_default_target_attribute` option references an existing attribute.

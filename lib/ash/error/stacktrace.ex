@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Stacktrace do
   @moduledoc "A placeholder for a stacktrace so that we can avoid printing it everywhere"
   defstruct [:stacktrace]

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.AggregatesNotSupported do
   @moduledoc "Used when the data_layer does not support aggregates, or filtering/sorting them"
 

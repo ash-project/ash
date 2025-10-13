@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Framework.FlagAssertionFailed do
   @moduledoc "Used when unreachable code/conditions are reached in the framework"
   use Splode.Error, fields: [:flag, :heading], class: :framework

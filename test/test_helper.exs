@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 # We compile modules with the same name often while testing the DSL
 Mimic.copy(Ash.Reactor.Notifications)
 Mimic.copy(Ash.DataLayer)

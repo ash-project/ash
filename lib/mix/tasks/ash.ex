@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Mix.Tasks.Ash do
   # Copied from Phoenix
   # https://github.com/phoenixframework/phoenix/blob/v1.8.0-rc.3/lib/mix/tasks/phx.ex#L38

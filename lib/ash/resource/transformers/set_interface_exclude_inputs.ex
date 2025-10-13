@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.SetInterfaceExcludeInputs do
   @moduledoc false
   use Spark.Dsl.Transformer

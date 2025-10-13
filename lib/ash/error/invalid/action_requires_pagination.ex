@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.ActionRequiresPagination do
   @moduledoc "Used when page option is passed but pagination is not enabled."
 

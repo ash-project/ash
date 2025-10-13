@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Reactor.TransactionTest do
   @moduledoc false
   use ExUnit.Case, async: false

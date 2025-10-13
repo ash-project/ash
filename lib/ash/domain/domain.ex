@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Domain do
   @moduledoc """
   A domain allows you to interact with your resources, and holds domain-wide configuration.

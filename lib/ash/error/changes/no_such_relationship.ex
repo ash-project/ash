@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Changes.NoSuchRelationship do
   @moduledoc "Used when a change is provided for an relationship that does not exist"
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Subject do
   @moduledoc """
   Provides a consistent API for common operations across `Ash.Changeset`,

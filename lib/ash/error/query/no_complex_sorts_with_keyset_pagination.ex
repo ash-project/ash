@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.NoComplexSortsWithKeysetPagination do
   @moduledoc """
   Due to the filter-based implementation of keyset pagination, it cannot be used with sorts on calculations.

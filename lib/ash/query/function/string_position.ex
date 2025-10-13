@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.StringPosition do
   @moduledoc """
   Returns the zero-based position of a substring within a string, nil if the string does not contain the substring.

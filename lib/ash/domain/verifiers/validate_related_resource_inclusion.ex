@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Domain.Verifiers.ValidateRelatedResourceInclusion do
   @moduledoc """
   Ensures that all related resources are included in a domain.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.NoSuchInput do
   @moduledoc "Used when an input is provided to an action or calculation that is not accepted"
 

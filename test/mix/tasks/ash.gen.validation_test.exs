@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Mix.Tasks.Ash.Gen.ValidationTest do
   use ExUnit.Case
   import Igniter.Test

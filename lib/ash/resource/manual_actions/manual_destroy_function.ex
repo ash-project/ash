@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.ManualDestroy.Function do
   @moduledoc false
   use Ash.Resource.ManualDestroy

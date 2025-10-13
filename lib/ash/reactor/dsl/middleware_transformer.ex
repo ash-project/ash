@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.Dsl.MiddlewareTransformer do
   @moduledoc """
   Ensures that the required middlewares are added to the Reactor.

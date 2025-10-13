@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 # credo:disable-for-this-file Credo.Check.Warning.BoolOperationOnSameValues
 defmodule Ash.SatSolver do
   @moduledoc """

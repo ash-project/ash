@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
   @moduledoc """
   Raises an error on update or destroy actions with `require_atomic?` set to

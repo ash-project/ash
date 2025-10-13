@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.ValidationsAndChangesForType do
   @moduledoc """
   Persists global changes/validations and what type they go on.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Relationships.HasOne do
   @moduledoc "Represents a has_one relationship on a resource"
 

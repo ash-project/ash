@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.CompositeTypeHelpers do
   @moduledoc """
   Shared utilities for composite type validation and error handling.

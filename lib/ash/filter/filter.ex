@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Filter do
   # credo:disable-for-this-file Credo.Check.Readability.StrictModuleLayout
   @dialyzer {:nowarn_function, do_map: 2, map: 2}

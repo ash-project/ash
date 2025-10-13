@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.Error do
   @moduledoc """
   If the predicate is truthy, the provided exception is raised with the provided values.

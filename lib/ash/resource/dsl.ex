@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Dsl do
   defmodule Filter do
     @moduledoc "Introspection target for a filter for read actions and relationships"

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.ValidateArgumentsToCodeInterface do
   @moduledoc """
   Validate the arguments defined in the code interface

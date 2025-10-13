@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.NoSuchFilterPredicate do
   @moduledoc "Used when a filter predicate that does not exist is referenced"
 

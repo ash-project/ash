@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 if Code.ensure_loaded?(Plug.Conn) do
   defmodule Ash.PlugHelpers do
     @moduledoc """

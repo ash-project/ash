@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.NonCountableAction do
   @moduledoc "Used when page[:count] option is passed but the action's pagination is not countable."
   use Splode.Error, fields: [:resource, :action], class: :invalid

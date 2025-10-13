@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.ForbiddenField do
   @moduledoc "Represents a field that was hidden due to authorization rules."
   @type field_type :: :aggregate | :attribute | :calculation | :relationship

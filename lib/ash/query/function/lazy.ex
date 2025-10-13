@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.Lazy do
   @moduledoc """
   Runs the provided MFA and returns the result as a known value.

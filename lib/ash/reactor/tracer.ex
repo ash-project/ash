@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.Tracer do
   @moduledoc """
   Reactor middleware which threads Ash's tracing information through to new

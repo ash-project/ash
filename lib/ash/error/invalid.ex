@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid do
   @moduledoc "The top level invalid error"
   use Splode.ErrorClass, fields: [:changeset, :query, :action_input], class: :invalid

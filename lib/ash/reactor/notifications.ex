@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.Notifications do
   @moduledoc """
   Reactor middleware used to collect and emit notifications upon successful

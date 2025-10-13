@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Calculation.Argument do
   @moduledoc "An argument to a calculation"
   defstruct allow_nil?: true,

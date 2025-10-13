@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Notifier.PubSub.Verifiers.VerifyActionNames do
   @moduledoc "Verifies action names in configured publications"
   use Spark.Dsl.Verifier

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Load.NoSuchRelationship do
   @moduledoc "Used when attempting to load a relationship that does not exist"
 

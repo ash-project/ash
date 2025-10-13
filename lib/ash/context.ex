@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Context do
   @moduledoc """
   Functions for working with the context provided to various callbacks in Ash.

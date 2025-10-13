@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Forbidden.DomainRequiresActor do
   @moduledoc "Used when a domain that has `require_actor? true` is provided no actor"
 

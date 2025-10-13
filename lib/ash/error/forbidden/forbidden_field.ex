@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Forbidden.ForbiddenField do
   @moduledoc "Raised in cases where access to a specific field was prevented"
 

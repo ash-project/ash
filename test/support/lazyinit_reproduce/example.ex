@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Type.LazyInitTest.Example do
   @moduledoc false
   use Ash.Type.NewType,

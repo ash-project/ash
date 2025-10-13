@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Forbidden.Placeholder do
   @moduledoc "A placeholder exception that the user should never see"
   use Splode.Error, fields: [:authorizer], class: :forbidden

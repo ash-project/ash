@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.BelongsToAttribute do
   @moduledoc """
   Creates the attribute for belongs_to relationships that have `define_attribute?: true`

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.VerifyPrimaryKeyPresent do
   @moduledoc """
   Raises an error when a required primary key is missing

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.ValidatePrimaryKey do
   @moduledoc "Validates and caches the primary key of a resource"
   use Spark.Dsl.Verifier

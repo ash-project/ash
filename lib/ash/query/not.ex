@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Not do
   @moduledoc "Represents the negation of the contained expression"
   defstruct [:expression]

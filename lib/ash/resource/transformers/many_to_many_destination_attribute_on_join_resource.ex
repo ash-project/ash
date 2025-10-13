@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.ManyToManyDestinationAttributeOnJoinResource do
   @moduledoc """
   Guesses the `destination_attribute_on_join_resource` for many to many relationships unless provided.

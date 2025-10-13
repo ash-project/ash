@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Framework.SynchronousEngineStuck do
   @moduledoc "Used when the sycnrhonous engine cannot proceed"
 

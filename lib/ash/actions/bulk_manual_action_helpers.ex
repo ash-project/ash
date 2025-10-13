@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Actions.BulkManualActionHelpers do
   @moduledoc """
   Helper functions used for handling manual actions when used in bulk operations.
