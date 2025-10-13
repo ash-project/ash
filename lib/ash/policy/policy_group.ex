@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.PolicyGroup do
   @moduledoc "Represents a policy group on an Ash.Resource"
 

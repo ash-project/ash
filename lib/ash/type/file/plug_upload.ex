@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 if Code.ensure_loaded?(Plug.Upload) do
   defmodule Ash.Type.File.PlugUpload do
     @moduledoc false

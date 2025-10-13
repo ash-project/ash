@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.InvalidFilterReference do
   @moduledoc "Used when an invalid reference is used in a filter"
 

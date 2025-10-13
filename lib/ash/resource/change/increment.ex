@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Change.Increment do
   @moduledoc """
   Increments an attribute's value by the amount specified, which defaults to 1.

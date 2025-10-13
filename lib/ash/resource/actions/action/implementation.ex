@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Actions.Implementation do
   @moduledoc """
   An implementation of a [generic action](generic-actions.md).

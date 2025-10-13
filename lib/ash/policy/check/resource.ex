@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.Resource do
   @moduledoc "This check is true when the resource matches the provided resource name or names."
   use Ash.Policy.SimpleCheck

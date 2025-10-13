@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Page.Unpaged do
   # Utility struct to store all the info for a paged relationship to be first split between
   # related records and then paged

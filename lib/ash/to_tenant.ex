@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defprotocol Ash.ToTenant do
   @moduledoc """
   Converts a value to a tenant. To add this to a resource, implement the protocol like so:application

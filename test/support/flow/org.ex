@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Flow.Org do
   @moduledoc false
   use Ash.Resource, domain: Ash.Test.Flow.Domain, data_layer: Ash.DataLayer.Mnesia

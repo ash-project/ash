@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.NoReservedFieldNames do
   @moduledoc """
   Confirms that a resource does not use reserved names for field names.

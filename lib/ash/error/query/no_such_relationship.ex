@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.NoSuchRelationship do
   @moduledoc "Used when an relationship that doesn't exist is used in a query"
 

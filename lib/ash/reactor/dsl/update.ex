@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.Dsl.Update do
   @moduledoc """
   The `update` entity for the `Ash.Reactor` reactor extension.

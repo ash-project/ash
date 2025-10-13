@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.GetByReadActions do
   @moduledoc """
   Transform any read actions which contain a `get_by` option.

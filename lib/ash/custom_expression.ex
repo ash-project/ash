@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.CustomExpression do
   @moduledoc """
   A module for defining custom functions that can be called in Ash expressions.

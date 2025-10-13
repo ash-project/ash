@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Mix.Tasks.Ash.Migrate do
   @moduledoc """
   Runs all migration tasks for any extension on any resource/domain in your application.

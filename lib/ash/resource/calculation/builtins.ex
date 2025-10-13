@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Calculation.Builtins do
   @moduledoc "Built in calculations that are automatically imported in the calculations section"
 

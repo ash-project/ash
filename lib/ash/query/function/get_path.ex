@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.GetPath do
   @moduledoc """
   Gets the value at the provided path in the value, which must be a map or embed.

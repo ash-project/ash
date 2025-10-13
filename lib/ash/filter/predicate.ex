@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Filter.Predicate do
   @moduledoc """
   Represents a predicate which can be simplified and/or compared with other predicates

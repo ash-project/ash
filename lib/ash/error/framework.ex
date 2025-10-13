@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Framework do
   @moduledoc "Used when an unknown/generic framework error occurs"
   use Splode.ErrorClass, fields: [:changeset, :query, :action_input], class: :framework

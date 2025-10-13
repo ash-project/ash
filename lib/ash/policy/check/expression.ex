@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.Expression do
   @moduledoc "The check module used for `expr`s in policies"
   use Ash.Policy.FilterCheck

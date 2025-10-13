@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Calculation do
   @moduledoc """
   The behaviour for defining a module calculation, and the struct for storing a defined calculation.

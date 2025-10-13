@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Filter.Runtime do
   @moduledoc """
   Tools to checks a record to see if it matches a filter statement, or to

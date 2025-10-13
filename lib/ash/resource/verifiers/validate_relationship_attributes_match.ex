@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributesMatch do
   @moduledoc """
   Shows a warning on potentially incompatible relationship attributes.

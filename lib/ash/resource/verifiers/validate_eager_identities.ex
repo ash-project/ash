@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.ValidateEagerIdentities do
   @moduledoc """
   Confirms that eager identities are not declared on a resource with no primary read.

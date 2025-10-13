@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.NonStreamableAction do
   @moduledoc "Used when Ash.stream is used with an action that does not support keyset pagination"
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.ChangingRelationships do
   @moduledoc "This check is true when the specified relationship is changing"
   use Ash.Policy.SimpleCheck

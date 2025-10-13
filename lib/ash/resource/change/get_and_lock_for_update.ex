@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Change.GetAndLockForUpdate do
   @moduledoc """
   Refetches the record being updated or destroyed, and locks it for update.

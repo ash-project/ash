@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Multitenancy
 
 Multitenancy is the splitting up your data into discrete areas, typically by customer. One of the most common examples of this, is the idea of splitting up a postgres database into "schemas" one for each customer that you have. Then, when making any queries, you ensure to always specify the "schema" you are querying, and you never need to worry about data crossing over between customers. The biggest benefits of this kind of strategy are the simplification of authorization logic, and better performance. Instead of all queries from all customers needing to use the same large table, they are each instead all using their own smaller tables. Another benefit is that it is much easier to delete a single customer's data on request.

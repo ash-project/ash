@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.Matches do
   @moduledoc "This check is true when the specified function returns true"
   use Ash.Policy.SimpleCheck

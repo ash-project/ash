@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Type.UUIDv7Test do
   @moduledoc false
   use ExUnit.Case, async: true

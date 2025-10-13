@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Reactor
 
 `Ash.Reactor` is an extension for [`Reactor`](https://github.com/ash-project/reactor) which adds explicit support for interacting with resources via their defined actions.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Relationships.BelongsTo do
   @moduledoc "Represents a belongs_to relationship on a resource"
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.CalculationRequiresPrimaryKey do
   @moduledoc "Used when a calculation requires a primary key but was not supplied with one"
 

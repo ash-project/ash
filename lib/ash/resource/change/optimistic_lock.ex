@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Change.OptimisticLock do
   @moduledoc """
   Apply an "optimistic lock" on a record being updated or destroyed.

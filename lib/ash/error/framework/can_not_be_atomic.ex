@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Framework.CanNotBeAtomic do
   @moduledoc "Used when a change that is only atomic cannot be done atomically"
   use Splode.Error, fields: [:resource, :change, :reason], class: :framework

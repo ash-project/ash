@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Actions.ManagedRelationships do
   @moduledoc false
   # This shouldn't be its own flow, it should use regular lifecycle hooks

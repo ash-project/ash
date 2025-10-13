@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.NoIdentityFound do
   @moduledoc "Used when an identity name is used that does not reference identity on the resource"
 

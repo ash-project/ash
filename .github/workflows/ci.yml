@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 name: Ash CI
 on:
   push:
@@ -27,3 +31,4 @@ jobs:
       igniter-upgrade: ${{matrix.sat_solver == 'Picosat'}}
       publish-docs: ${{matrix.sat_solver == 'Picosat'}}
       release: ${{matrix.sat_solver == 'Picosat'}}
+      reuse: true

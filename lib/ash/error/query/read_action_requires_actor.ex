@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.ReadActionRequiresActor do
   @moduledoc "Used when an actor is referenced in a filter template, but no actor exists"
 

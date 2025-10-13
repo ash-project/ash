@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.VerifyPrimaryReadActionHasNoArguments do
   @moduledoc "Verifies that primary read actions do not have any arguments"
   use Spark.Dsl.Verifier

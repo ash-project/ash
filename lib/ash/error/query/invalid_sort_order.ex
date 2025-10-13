@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Query.InvalidSortOrder do
   @moduledoc "Used when an invalid sort order is provided"
 

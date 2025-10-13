@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Relationships do
   @moduledoc "Types Ash relationships"
   alias Ash.Resource.Relationships.{BelongsTo, HasMany, HasOne, ManyToMany}

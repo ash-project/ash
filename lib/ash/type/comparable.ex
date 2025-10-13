@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.Comparable do
   @moduledoc "Helpers for working with `Comparable`"
   defmacro defcomparable(

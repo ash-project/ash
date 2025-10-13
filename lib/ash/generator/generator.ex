@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Generator do
   @moduledoc """
   Tools for generating input to Ash resource actions and for generating seed data.

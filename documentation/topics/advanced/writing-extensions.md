@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Writing Extensions
 
 Extensions allow you to make powerful modifications to DSL entities. If you are using `AshPostgres`, `AshGraphql` or `AshJsonApi`, they are all integrated into Ash using extensions. In this guide we will build a simple extension for `Ash.Resource` that adds timestamps to your resource. We'll also show some simple patterns that can help ensure that all of your resources are using your extension.

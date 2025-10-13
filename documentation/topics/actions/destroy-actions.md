@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Destroy Actions
 
 Destroy actions are comparatively simple. They expect to remove a given record, and by default return `:ok` in the successful case.

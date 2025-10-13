@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.DataLayer.Verifiers.RequirePreCheckWith do
   @moduledoc """
   Ensures that all identities have a `pre_check_with` configured, or raises.

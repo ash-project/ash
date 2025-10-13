@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.ChangingAttributes do
   @moduledoc "This check is true when attribute changes correspond to the provided options."
   use Ash.Policy.FilterCheck

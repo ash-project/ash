@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.If do
   @moduledoc """
   If predicate is truthy, then the second argument is returned, otherwise the third.

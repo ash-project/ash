@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Notifier.Notification do
   @moduledoc """
   Represents a notification that will be handled by a resource's notifiers

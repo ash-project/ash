@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.DurationName do
   @values ~w(year month week day hour minute second millisecond microsecond)a
   @moduledoc """

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.NoSuchAction do
   @moduledoc "Used when an action name is provided that doesn't exist"
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.MixProject do
   @moduledoc false
   use Mix.Project
@@ -345,17 +349,19 @@ defmodule Ash.MixProject do
 
   defp package do
     [
-      name: :ash,
+      maintainers: [
+        "Zach Daniel <zach@zachdaniel.dev>"
+      ],
       licenses: ["MIT"],
-      maintainers: ["Zach Daniel"],
       files: ~w(lib .formatter.exs mix.exs README* LICENSE*
       CHANGELOG* usage-rules.md),
       links: %{
-        GitHub: "https://github.com/ash-project/ash",
-        Discord: "https://discord.gg/HTHRaaVPUc",
-        Website: "https://ash-hq.org",
-        Forum: "https://elixirforum.com/c/elixir-framework-forums/ash-framework-forum",
-        Changelog: "https://github.com/ash-project/ash/blob/main/CHANGELOG.md"
+        "GitHub" => "https://github.com/ash-project/ash",
+        "Changelog" => "https://github.com/ash-project/ash/blob/main/CHANGELOG.md",
+        "Discord" => "https://discord.gg/HTHRaaVPUc",
+        "Website" => "https://ash-hq.org",
+        "Forum" => "https://elixirforum.com/c/elixir-framework-forums/ash-framework-forum",
+        "REUSE Compliance" => "https://api.reuse.software/info/github.com/ash-project/ash"
       }
     ]
   end

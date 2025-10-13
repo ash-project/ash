@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.FieldPolicy do
   @moduledoc "Represents a field policy in an Ash.Resource"
   defstruct [

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Framework.MustBeAtomic do
   @moduledoc "Used when an action that must be atomic cannot be done atomically"
 

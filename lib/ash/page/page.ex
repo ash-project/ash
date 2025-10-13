@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Page do
   @moduledoc "Types for Ash pages"
   @type page :: Ash.Page.Keyset.t() | Ash.Page.Offset.t()

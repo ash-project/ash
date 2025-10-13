@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Identities
 
 Identities are a way to declare that a record (an instance of a resource) can be uniquely identified by a set of attributes. This information can be used in various ways throughout the framework. The primary key of the resource does not need to be listed as an identity.

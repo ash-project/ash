@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.CodeInterface do
   @moduledoc """
   Used to define the functions of a code interface for a resource.

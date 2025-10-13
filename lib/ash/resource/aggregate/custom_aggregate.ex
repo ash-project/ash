@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Aggregate.CustomAggregate do
   @moduledoc """
   The root behavior for a custom aggregate.

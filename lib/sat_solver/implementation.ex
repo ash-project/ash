@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 cond do
   Application.compile_env(:ash, :sat_testing) ->
     defmodule Ash.SatSolver.Implementation do

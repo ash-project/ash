@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Destroy do
   @moduledoc false
 

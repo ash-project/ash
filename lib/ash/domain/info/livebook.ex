@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Domain.Info.Livebook do
   @moduledoc """
   Generate a Livebook from a specified domain.

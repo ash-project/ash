@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Validations
 
 Validations are similar to [changes](/documentation/topics/resources/changes.md), except they cannot modify the changeset. They can only continue, or add an error.

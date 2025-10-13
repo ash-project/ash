@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 list = Enum.to_list(1..10_000)
 map_fun = fn i -> [i, i * i] end
 

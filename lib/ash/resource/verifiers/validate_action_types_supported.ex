@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.ValidateActionTypesSupported do
   @moduledoc """
   Confirms that all action types declared on a resource are supported by its data layer

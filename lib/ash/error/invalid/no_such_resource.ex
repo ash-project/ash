@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.NoSuchResource do
   @moduledoc "Used when a resource or alias is provided that doesn't exist"
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Load.InvalidQuery do
   @moduledoc "Used when an invalid query is provided in a load"
 

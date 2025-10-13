@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.Loading do
   @moduledoc "This check is true when the field or relationship, or path to field, is being loaded and false when it is not."
   use Ash.Policy.SimpleCheck

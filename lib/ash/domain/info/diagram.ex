@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Domain.Info.Diagram do
   @moduledoc """
   Generate Mermaid diagrams from a specified domain.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Mix.Tasks.Ash.Rollback do
   @moduledoc """
   Runs all rollback tasks for any extension on any resource/domain in your application.

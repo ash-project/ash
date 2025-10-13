@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.Length do
   @moduledoc """
   Returns the length of a list attribute defined by the composite type `{:array, Type}`.

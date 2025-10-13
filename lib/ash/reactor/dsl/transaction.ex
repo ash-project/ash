@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.Dsl.Transaction do
   @moduledoc """
   The `transaction` entity for the `Ash.Reactor` reactor extension.

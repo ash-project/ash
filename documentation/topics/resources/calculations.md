@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Calculations
 
 Calculations in Ash allow for displaying complex values as a top level value of a resource.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.AshStep do
   @moduledoc """
   A reactor step which runs a step-module or an anonymous function, and enqueues any returned

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.ReadOneStep do
   @moduledoc """
   The Reactor step which is used to execute get actions.

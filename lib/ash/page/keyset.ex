@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Page.Keyset do
   @moduledoc """
   A page of results from `keyset` based pagination.

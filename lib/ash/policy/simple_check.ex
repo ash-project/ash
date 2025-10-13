@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.SimpleCheck do
   @moduledoc """
   A type of check that operates only on request context, never on the data

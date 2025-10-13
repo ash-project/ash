@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.SimpleDataLayer.NoDataProvided do
   @moduledoc "Used when no data was provided to the simple data layer"
 

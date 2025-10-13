@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers do
   @moduledoc false
   use Spark.Dsl.Verifier

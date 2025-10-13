@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2020 Zach Daniel
+
+SPDX-License-Identifier: MIT
+-->
+
 # Backwards Compatibility Config
 
 All of these configurations are potentially breaking changes when applied

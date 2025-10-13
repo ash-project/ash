@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.File.Implementation do
   @moduledoc """
   Behaviour for file implementations that are compatible with `Ash.Type.File`.

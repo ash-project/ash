@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 Benchee.run(%{
   "uuid_v7 raw" => fn ->
     Ash.UUIDv7.bingenerate()

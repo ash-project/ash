@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Calculation.LoadAttribute do
   @moduledoc """
   Loads an attribute as a calculation.

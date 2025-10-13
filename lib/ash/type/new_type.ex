@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.NewType do
   @moduledoc """
   Allows defining a new type that is the combination of an existing type and custom constraints

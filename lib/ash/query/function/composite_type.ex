@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.CompositeType do
   @moduledoc """
   Constructs a composite type in a way that is natively understood by the data layer

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Changes.StaleRecord do
   @moduledoc "Used when a stale record is attempted to be updated or deleted"
 

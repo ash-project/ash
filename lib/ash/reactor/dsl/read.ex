@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.Dsl.Read do
   @moduledoc """
   The `read` entity for the `Ash.Reactor` reactor extension.

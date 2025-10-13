@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Zach Daniel
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.CalculationInterface do
   @moduledoc """
   Represents a function that evaluates a calculation in a resource's code interface
