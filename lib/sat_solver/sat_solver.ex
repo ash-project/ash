@@ -547,22 +547,12 @@ defmodule Ash.SatSolver do
     )
   end
 
-  @doc "Returns true if the candidate filter returns the same or less data than the filter"
-  @spec strict_filter_subset(Ash.Filter.t(), Ash.Filter.t()) :: boolean | :maybe
+  @doc deprecated: "Use `Ash.Filter.strict_subset/2` instead."
   def strict_filter_subset(filter, candidate) do
-    case {filter, candidate} do
-      {%{expression: nil}, %{expression: nil}} ->
-        true
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    IO.warn("Use `Ash.Filter.strict_subset/2` instead.", stacktrace)
 
-      {%{expression: nil}, _candidate_expr} ->
-        true
-
-      {_filter_expr, %{expression: nil}} ->
-        false
-
-      {filter, candidate} ->
-        do_strict_filter_subset(filter, candidate)
-    end
+    Ash.Filter.strict_subset(filter, candidate)
   end
 
   @doc deprecated: "Use Ash.Expr.to_sat_expression/2 instead"
@@ -623,50 +613,6 @@ defmodule Ash.SatSolver do
       search,
             right_resource
           )
-  end
-
-  defp do_strict_filter_subset(filter, candidate) do
-    filter =
-      Filter.map(filter, fn
-        %Ref{} = ref ->
-          %{ref | input?: false}
-
-        other ->
-          other
-      end)
-
-    candidate =
-      Filter.map(candidate, fn
-        %Ref{} = ref ->
-          %{ref | input?: false}
-
-        other ->
-          other
-      end)
-
-    expr = BooleanExpression.new(:and, filter.expression, candidate.expression)
-
-    case transform_and_solve(
-           filter.resource,
-           expr
-         ) do
-      {:error, :unsatisfiable} ->
-        false
-
-      {:ok, _scenario} ->
-        expr = BooleanExpression.new(:and, Not.new(filter.expression), candidate.expression)
-
-        case transform_and_solve(
-               filter.resource,
-               expr
-             ) do
-          {:error, :unsatisfiable} ->
-            true
-
-          {:ok, _scenario} ->
-            :maybe
-        end
-    end
   end
 
   @doc "Returns a statement expressing that the predicates are mutually exclusive."
