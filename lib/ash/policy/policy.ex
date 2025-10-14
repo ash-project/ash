@@ -39,6 +39,10 @@ defmodule Ash.Policy.Policy do
   defguardp is_expression_check(term)
             when not is_expression_operation(term) and not is_boolean(term)
 
+  # Temporarily making this private so that the function can be changed without
+  # a major version bump in the SAT refactoring PR.
+  # TODO: Make public with #2375 
+  @doc false
   @spec expression(policies :: t() | FieldPolicy.t() | [t() | FieldPolicy.t()]) ::
           SatSolver.boolean_expr(Check.ref())
   def expression(policies) do
