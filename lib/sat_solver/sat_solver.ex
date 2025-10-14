@@ -615,82 +615,69 @@ defmodule Ash.SatSolver do
           )
   end
 
-  @doc "Returns a statement expressing that the predicates are mutually exclusive."
-  @spec mutually_exclusive([Ash.Expr.t()]) :: boolean_expr()
-  def mutually_exclusive(predicates, acc \\ [])
-  def mutually_exclusive([], acc), do: acc
+  @doc deprecated: "Use `Ash.SatSolver.Expression.at_most_one/1` instead."
+  def mutually_exclusive(predicates) do
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    IO.warn("Use `Ash.SatSolver.Expression.at_most_one/1` instead.", stacktrace)
 
-  def mutually_exclusive([predicate | rest], acc) do
-    new_acc =
-      Enum.reduce(rest, acc, fn other_predicate, acc ->
-        [b(not (predicate and other_predicate)) | acc]
-      end)
-
-    mutually_exclusive(rest, new_acc)
+    case Expression.at_most_one(predicates) do
+      result when result in [true, false] -> []
+      result -> [result]
+    end
   end
 
-  @doc "Returns a statement expressing that the predicates are mutually exclusive and collectively exhaustive."
-  @spec mutually_exclusive_and_collectively_exhaustive([Ash.Expr.t()]) :: boolean_expr()
-  def mutually_exclusive_and_collectively_exhaustive([]), do: []
-
-  def mutually_exclusive_and_collectively_exhaustive([_]), do: []
-
+  @doc deprecated: "Use `Ash.SatSolver.Expression.exactly_one/1` instead."
   def mutually_exclusive_and_collectively_exhaustive(predicates) do
-    mutually_exclusive(predicates) ++
-      Enum.flat_map(predicates, fn predicate ->
-        other_predicates = Enum.reject(predicates, &(&1 == predicate))
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    IO.warn("Use `Ash.SatSolver.Expression.exactly_one/1` instead.", stacktrace)
 
-        other_predicates_union =
-          Enum.reduce(other_predicates, nil, fn other_predicate, expr ->
-            if expr do
-              b(expr or other_predicate)
-            else
-              other_predicate
-            end
-          end)
-
-        b(
-          not (predicate and other_predicates_union) and
-            not (not predicate and not other_predicates_union)
-        )
-      end)
+    case Expression.exactly_one(predicates) do
+      result when result in [true, false] -> []
+      result -> [result]
+    end
   end
 
-  @doc "Returns `b(not (left and right))`"
-  @spec left_excludes_right(Ash.Expr.t(), Ash.Expr.t()) :: boolean_expr()
+  @doc deprecated: "Use `Ash.SatSolver.Expression.b(nand(left, right))` instead."
   def left_excludes_right(left, right) do
-    b(not (left and right))
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    IO.warn("Use `Ash.SatSolver.Expression.b(nand(left, right))` instead.", stacktrace)
+
+    Expression.b(nand(left, right))
   end
 
-  @doc "Returns `b(not (right and left))`"
-  @spec right_excludes_left(Ash.Expr.t(), Ash.Expr.t()) :: boolean_expr()
+  @doc deprecated: "Use `Ash.SatSolver.Expression.b(nand(left, right))` instead."
   def right_excludes_left(left, right) do
-    b(not (right and left))
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    IO.warn("Use `Ash.SatSolver.Expression.b(nand(left, right))` instead.", stacktrace)
+
+    Expression.b(nand(left, right))
   end
 
-  @doc "Returns a statement expressing that the predicates are mutually inclusive"
-  @spec mutually_inclusive([Ash.Expr.t()]) :: boolean_expr()
-  def mutually_inclusive(predicates, acc \\ [])
-  def mutually_inclusive([], acc), do: acc
+  @doc deprecated: "Use `Ash.SatSolver.Expression.all_or_none/1` instead."
+  def mutually_inclusive(predicates) do
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    IO.warn("Use `Ash.SatSolver.Expression.all_or_none/1` instead.", stacktrace)
 
-  def mutually_inclusive([predicate | rest], acc) do
-    new_acc =
-      Enum.reduce(rest, acc, fn other_predicate, acc ->
-        [b((predicate and other_predicate) or (not predicate and not other_predicate)) | acc]
-      end)
-
-    mutually_exclusive(rest, new_acc)
+    case Expression.all_or_none(predicates) do
+      result when result in [true, false] -> []
+      result -> [result]
+    end
   end
 
-  @doc "Returns `b(not (right and not left))`"
-  @spec right_implies_left(Ash.Expr.t(), Ash.Expr.t()) :: boolean_expr()
+  @doc deprecated: "Use `Ash.SatSolver.Expression.b(implied_by(left, right))` instead."
   def right_implies_left(left, right) do
-    b(not (right and not left))
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    IO.warn("Use `Ash.SatSolver.Expression.b(implied_by(left, right))` instead.", stacktrace)
+
+    Expression.b(implied_by(left, right))
   end
 
-  @doc "Returns `b(not (left and not right))`"
+  @doc deprecated: "Use `Ash.SatSolver.Expression.b(implies(left, right))` instead."
   def left_implies_right(left, right) do
-    b(not (left and not right))
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    IO.warn("Use `Ash.SatSolver.Expression.b(implies(left, right))` instead.", stacktrace)
+
+    Expression.b(implies(left, right))
   end
 
   # Temporarily making this private so that the function can be moved without
