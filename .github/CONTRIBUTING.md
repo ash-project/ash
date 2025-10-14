@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2025 Zach Daniel
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
 
 SPDX-License-Identifier: MIT
 -->
