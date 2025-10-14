@@ -517,12 +517,10 @@ defmodule Ash.SatSolver do
   # DEPRECATED FUNCTIONS - TODO: Remove in V4.0.0
   # ============================================================================
 
-  @doc """
-  Creates tuples of a boolean statement.
-
-  i.e `b(1 and 2) #=> {:and, 1, 2}`
-  """
+  @doc deprecated: "Use Ash.SatSolver.Expression.b/1 instead"
   defmacro b(statement) do
+    IO.warn("Deprecated, use Ash.SatSolver.Expression.b/1 instead", __CALLER__)
+
     Macro.prewalk(
       statement,
       fn
