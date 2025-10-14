@@ -678,32 +678,6 @@ defmodule Ash.SatSolver do
     Expression.b(implies(left, right))
   end
 
-  # Temporarily making this private so that the function can be moved without
-  # a major version bump in the SAT refactoring PR.
-  # TODO: Make public with #2375 
-  @doc false
-  @spec generate_expression(StreamData.t(term())) :: StreamData.t(boolean_expr())
-  def generate_expression(inner_generator) do
-    inner_generator = StreamData.one_of([StreamData.boolean(), inner_generator])
-
-    StreamData.tree(inner_generator, fn child_expr ->
-      StreamData.frequency([
-        {2,
-         StreamData.map(StreamData.tuple({child_expr, child_expr}), fn {left, right} ->
-           b(left and right)
-         end)},
-        {2,
-         StreamData.map(StreamData.tuple({child_expr, child_expr}), fn {left, right} ->
-           b(left or right)
-         end)},
-        {1,
-         StreamData.map(child_expr, fn expr ->
-           b(not expr)
-         end)}
-      ])
-    end)
-  end
-
   @doc """
   Transforms a statement to Conjunctive Normal Form(CNF), as lists of lists of integers.
   """
