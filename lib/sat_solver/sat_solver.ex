@@ -131,25 +131,10 @@ defmodule Ash.SatSolver do
   @spec decision_tree(Formula.t(variable), opts(variable)) :: tree(variable)
         when variable: term()
   def decision_tree(formula, opts \\ []) do
-    # Set default options
-    opts =
-      Keyword.merge(
-        [
-          sorter: &<=/2,
-          conflicts?: fn _, _ -> false end,
-          implies?: fn _, _ -> false end
-        ],
-        opts
-      )
-
-    sorter = opts[:sorter]
-
-    variables =
-      formula.bindings
-      |> Map.values()
-      |> Enum.sort(sorter)
-
-    build_tree_recursive(formula.cnf, formula, variables, [], opts)
+    sorter = Keyword.get(opts, :sorter, &<=/2)
+    variables = formula.bindings |> Map.values() |> Enum.sort(sorter)
+    scenarios = satisfying_scenarios(formula, opts)
+    build_decision_tree(variables, [], scenarios, opts)
   end
 
   @doc """
@@ -375,97 +360,93 @@ defmodule Ash.SatSolver do
     end)
   end
 
-  @spec build_tree_recursive(
-          Formula.cnf(),
-          Formula.t(variable),
+  # Builds a decision tree by filtering pre-computed satisfying scenarios.
+  # This approach avoids expensive SAT solving at each node by working with
+  # known satisfying assignments and using early termination when a scenario
+  # is already covered by the current path.
+  @spec build_decision_tree(
           [variable],
           [{variable, boolean()}],
+          [%{variable => boolean()}],
           opts(variable)
         ) :: tree(variable)
         when variable: term()
-  defp build_tree_recursive(cnf, _formula, [], _path, _opts) do
-    case Ash.SatSolver.Implementation.solve_expression(cnf) do
-      {:ok, _} -> true
-      {:error, :unsatisfiable} -> false
+  defp build_decision_tree(_vars, _path, [], _opts), do: false
+
+  defp build_decision_tree(vars, path, scenarios, opts) do
+    if Enum.any?(scenarios, &covered_by_path?(&1, path)) do
+      true
+    else
+      case vars do
+        [] ->
+          true
+
+        [variable | rest] ->
+          case branch_shortcuts_with_validate(variable, path, opts) do
+            :force_true ->
+              right_scenarios = filter_and_strip(scenarios, variable, true)
+              build_decision_tree(rest, [{variable, true} | path], right_scenarios, opts)
+
+            :force_false ->
+              left_scenarios = filter_and_strip(scenarios, variable, false)
+              build_decision_tree(rest, [{variable, false} | path], left_scenarios, opts)
+
+            :both ->
+              left_scenarios = filter_and_strip(scenarios, variable, false)
+              right_scenarios = filter_and_strip(scenarios, variable, true)
+
+              left = build_decision_tree(rest, [{variable, false} | path], left_scenarios, opts)
+              right = build_decision_tree(rest, [{variable, true} | path], right_scenarios, opts)
+
+              if left == right, do: left, else: {variable, left, right}
+
+            :unsat ->
+              false
+          end
+      end
     end
   end
 
-  defp build_tree_recursive(
-         cnf,
-         formula,
-         [variable | remaining_variables],
-         path,
-         opts
-       ) do
-    true_validation = validate_assignment(path, {variable, true}, opts)
-    false_validation = validate_assignment(path, {variable, false}, opts)
-
-    case {false_validation, true_validation} do
-      {:implied, _} ->
-        build_single_branch(cnf, formula, variable, false, remaining_variables, path, opts)
-
-      {_, :implied} ->
-        build_single_branch(cnf, formula, variable, true, remaining_variables, path, opts)
-
-      {:conflict, :conflict} ->
-        false
-
-      {:conflict, _} ->
-        build_single_branch(cnf, formula, variable, true, remaining_variables, path, opts)
-
-      {_, :conflict} ->
-        build_single_branch(cnf, formula, variable, false, remaining_variables, path, opts)
-
-      {:ok, :ok} ->
-        left_tree =
-          build_single_branch(cnf, formula, variable, false, remaining_variables, path, opts)
-
-        right_tree =
-          build_single_branch(cnf, formula, variable, true, remaining_variables, path, opts)
-
-        # Optimization: if both branches are the same, skip this variable
-        case {left_tree, right_tree} do
-          {same, same} -> same
-          _ -> {variable, left_tree, right_tree}
-        end
-    end
-  end
-
-  @spec build_single_branch(
-          Formula.cnf(),
-          Formula.t(variable),
-          variable,
-          boolean(),
-          [variable],
-          [{variable, boolean()}],
-          opts(variable)
-        ) :: boolean() | {variable, any(), any()}
+  # Determines the branching strategy for a variable based on validation results.
+  # Uses conflict and implication analysis to skip impossible branches early.
+  @spec branch_shortcuts_with_validate(variable, [{variable, boolean()}], opts(variable)) ::
+          :force_true | :force_false | :both | :unsat
         when variable: term()
-  defp build_single_branch(cnf, formula, variable, value, remaining_variables, path, opts) do
-    constrained_cnf = add_constraint_to_cnf(cnf, formula, variable, value)
-
-    case Ash.SatSolver.Implementation.solve_expression(constrained_cnf) do
-      {:ok, _} ->
-        build_tree_recursive(
-          constrained_cnf,
-          formula,
-          remaining_variables,
-          [{variable, value} | path],
-          opts
-        )
-
-      {:error, :unsatisfiable} ->
-        false
+  defp branch_shortcuts_with_validate(variable, path, opts) do
+    case {validate_assignment(path, {variable, false}, opts),
+          validate_assignment(path, {variable, true}, opts)} do
+      {:conflict, :conflict} -> :unsat
+      {:conflict, _} -> :force_true
+      {_, :implied} -> :force_true
+      {_, :conflict} -> :force_false
+      {:ok, :ok} -> :both
     end
   end
 
-  @spec add_constraint_to_cnf(Formula.cnf(), Formula.t(variable), variable, boolean()) ::
-          Formula.cnf()
+  # Filters scenarios to those compatible with variable=value, removing the variable
+  # from matching scenarios to enable early coverage detection downstream.
+  @spec filter_and_strip([%{variable => boolean()}], variable, boolean()) :: [
+          %{variable => boolean()}
+        ]
         when variable: term()
-  defp add_constraint_to_cnf(cnf, formula, variable, value) do
-    integer_var = Map.fetch!(formula.reverse_bindings, variable)
-    constraint_clause = if value, do: [integer_var], else: [-integer_var]
-    [constraint_clause | cnf]
+  defp filter_and_strip(scenarios, variable, value) do
+    Enum.reduce(scenarios, [], fn scenario, acc ->
+      case scenario do
+        %{^variable => ^value} -> [Map.delete(scenario, variable) | acc]
+        %{^variable => other} when other != value -> acc
+        # don’t-care
+        _missing -> [scenario | acc]
+      end
+    end)
+  end
+
+  # Returns true if the current path covers all variable assignments in the scenario.
+  # Used for early termination when a satisfying assignment is already guaranteed.
+  @spec covered_by_path?(%{variable => boolean()}, [{variable, boolean()}]) :: boolean()
+        when variable: term()
+  defp covered_by_path?(scenario, path) do
+    path_map = Map.new(path)
+    Enum.all?(scenario, fn {variable, value} -> Map.get(path_map, variable) == value end)
   end
 
   # Validates a single variable assignment against existing assignments
