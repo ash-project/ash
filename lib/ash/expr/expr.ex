@@ -6,6 +6,9 @@ defmodule Ash.Expr do
   @moduledoc "Tools to build Ash expressions"
   alias Ash.Query.{BooleanExpression, Not}
 
+  @doc "Prepares a filter for comparison"
+  defdelegate to_sat_expression(resource, expression), to: Ash.Expr.SAT
+
   @type t :: any
   @pass_through_funcs [:where, :or_where, :expr, :@]
 
