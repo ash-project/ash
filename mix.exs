@@ -295,7 +295,7 @@ defmodule Ash.MixProject do
           Ash.ProcessHelpers,
           Ash.Mix.Tasks.Helpers,
           Ash.PlugHelpers,
-          Ash.SatSolver
+          ~r/^Ash.SatSolver(\.|$)/
         ],
         Types: [
           "Ash.Type",
