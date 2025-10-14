@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 [![Hex version badge](https://img.shields.io/hexpm/v/ash.svg)](https://hex.pm/packages/ash)
 [![Hexdocs badge](https://img.shields.io/badge/docs-hexdocs-purple)](https://hexdocs.pm/ash)
 [![REUSE status](https://api.reuse.software/badge/github.com/ash-project/ash)](https://api.reuse.software/info/github.com/ash-project/ash)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ash-project/ash)
 
 # Ash Framework
 
