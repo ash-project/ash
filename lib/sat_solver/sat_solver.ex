@@ -565,15 +565,49 @@ defmodule Ash.SatSolver do
     Ash.Expr.to_sat_expression(resource, expression)
   end
 
-  @doc "Calls `transform/2` and solves the expression"
-  @spec transform_and_solve(Ash.Resource.t(), Ash.Expr.t()) ::
-          {:ok, [integer()]} | {:error, :unsatisfiable}
+  @doc deprecated: """
+       Use the following instead:
+
+           Ash.Expr.to_sat_expression/2
+           |> Ash.SatSolver.Formula.from_expression()
+           |> Ash.SatSolver.solve()
+       """
   def transform_and_solve(resource, expression) do
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+
+    IO.warn(
+      """
+      Ash.SatSolver.transform_and_solve/2 is deprecated. Use the following instead:
+
+          Ash.Expr.to_sat_expression/2
+          |> Ash.SatSolver.Formula.from_expression()
+          |> Ash.SatSolver.solve()
+      """,
+      stacktrace
+    )
+
     resource
-    |> transform(expression)
-    |> to_cnf()
-    |> elem(0)
-    |> Ash.SatSolver.Implementation.solve_expression()
+    |> Ash.Expr.to_sat_expression(expression)
+    |> Ash.SatSolver.Formula.from_expression()
+    |> solve()
+    |> case do
+      {:error, :unsatisfiable} ->
+        {:error, :unsatisfiable}
+
+      {:ok, scenario} ->
+        # Fake Indexes for old Format since this is a public function
+        # Does not make a lot of sense because the indexes without the bindings
+        # are not very meaningful...
+        indices =
+          scenario
+          |> Enum.with_index(1)
+          |> Enum.map(fn
+            {{_variable, true}, index} -> index
+            {{_variable, false}, index} -> 0 - index
+          end)
+
+        {:ok, indices}
+    end
   end
 
   @doc deprecated: "Use `Ash.Resource.Info.synonymous_relationship_paths?/4` instead."
