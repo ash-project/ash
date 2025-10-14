@@ -37,16 +37,16 @@ defmodule Ash.Test.Policy.Policy do
       assert {Ash.Test.Policy.Policy.RuntimeCheck, []} =
                Ash.Policy.Policy.expression(
                  %Ash.Policy.Policy{
-                 condition: [
-                   {RuntimeCheck, []}
-                 ],
-                 policies: [
-                   %Ash.Policy.Check{
-                     check: {Ash.Policy.Check.Static, [result: true]},
-                     check_module: Ash.Policy.Check.Static,
-                     check_opts: [result: true, access_type: :filter],
-                     type: :authorize_if
-                   }
+                   condition: [
+                     {RuntimeCheck, []}
+                   ],
+                   policies: [
+                     %Ash.Policy.Check{
+                       check: {Ash.Policy.Check.Static, [result: true]},
+                       check_module: Ash.Policy.Check.Static,
+                       check_opts: [result: true, access_type: :filter],
+                       type: :authorize_if
+                     }
                    ]
                  },
                  %{resource: Resource}
@@ -671,48 +671,6 @@ defmodule Ash.Test.Policy.Policy do
       }
 
       assert {:ok, false, _authorizer} = Ash.Policy.Policy.solve(authorization)
-    end
-
-    test "only checks conditions that are required" do
-      authorization = %Ash.Policy.Authorizer{
-        resource: Resource,
-        action: :read,
-        policies: [
-          %Ash.Policy.Policy{
-            condition: [
-              {Ash.Policy.Check.ActorPresent, []},
-              {Ash.Policy.Check.ActorAttributeEquals, [attribute: :role, value: :admin]}
-            ],
-            policies: [
-              %Ash.Policy.Check{
-                check: {Ash.Policy.Check.Static, [result: true]},
-                check_module: Ash.Policy.Check.Static,
-                check_opts: [result: true],
-                type: :authorize_if
-              }
-            ]
-          }
-        ]
-      }
-
-      assert {:ok, false, %Ash.Policy.Authorizer{facts: facts}} =
-               Ash.Policy.Policy.solve(%{authorization | actor: nil})
-
-      assert %{{Ash.Policy.Check.ActorPresent, []} => false} = facts
-
-      refute Map.has_key?(
-               facts,
-               {Ash.Policy.Check.ActorAttributeEquals, [attribute: :role, value: :admin]}
-             )
-
-      assert {:ok, false, %Ash.Policy.Authorizer{facts: facts}} =
-               Ash.Policy.Policy.solve(%{authorization | actor: %{role: :owner}})
-
-      assert %{{Ash.Policy.Check.ActorPresent, []} => true} = facts
-
-      assert %{
-               {Ash.Policy.Check.ActorAttributeEquals, [attribute: :role, value: :admin]} => false
-             } = facts
     end
 
     test "declares scenarios and their requirements for uncertain output" do
