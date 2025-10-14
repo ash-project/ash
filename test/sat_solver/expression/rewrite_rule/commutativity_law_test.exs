@@ -1,4 +1,5 @@
-# SPDX-FileCopyrightText: 2020 Zach Daniel
+# SPDX-FileCopyrightText: ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
 #
 # SPDX-License-Identifier: MIT
 
