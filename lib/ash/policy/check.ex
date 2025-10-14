@@ -91,7 +91,7 @@ defmodule Ash.Policy.Check do
   action types could be simplified into an OR expression of separate checks for each
   action type. Or ActorAbsent could simplify into `not(ActorPresent)`.
   """
-  @callback simplify(ref(), context()) :: Ash.SatSolver.Expression.t(ref())
+  @callback simplify(ref(), context()) :: Crux.Expression.t(ref())
 
   @doc """
   Determine if the first check reference implies the second check reference.

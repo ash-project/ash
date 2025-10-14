@@ -5,13 +5,14 @@
 defmodule Ash.Policy.Policy do
   @moduledoc "Represents a policy on an Ash.Resource"
 
-  import Ash.SatSolver.Expression, only: [b: 1, is_variable: 1]
+  import Crux.Expression, only: [b: 1, is_variable: 1]
 
   alias Ash.Policy.Authorizer
   alias Ash.Policy.Check
   alias Ash.Policy.FieldPolicy
-  alias Ash.SatSolver
-  alias Ash.SatSolver.Formula
+  alias Crux
+  alias Crux.Expression
+  alias Crux.Formula
 
   # For now we just write to `checks` and move them to `policies`
   # on build, when we support nested policies we can change that.
@@ -36,8 +37,7 @@ defmodule Ash.Policy.Policy do
   @spec expression(
           policies :: t() | FieldPolicy.t() | [t() | FieldPolicy.t()],
           check_context :: Check.context()
-        ) ::
-          SatSolver.Expression.t(Check.ref())
+        ) :: Expression.t(Check.ref())
   def expression(policies, check_context) do
     policies
     |> List.wrap()
@@ -101,7 +101,7 @@ defmodule Ash.Policy.Policy do
 
         expression
         |> Formula.from_expression()
-        |> SatSolver.satisfying_scenarios(scenario_options)
+        |> Crux.satisfying_scenarios(scenario_options)
         |> case do
           [] ->
             {:error, authorizer, :unsatisfiable}
@@ -147,8 +147,7 @@ defmodule Ash.Policy.Policy do
   @spec build_requirements_expression(
           authorizer :: Authorizer.t(),
           check_context :: Check.context()
-        ) ::
-          {SatSolver.Expression.t(Check.ref()), Authorizer.t()}
+        ) :: {Expression.t(Check.ref()), Authorizer.t()}
   defp build_requirements_expression(authorizer, check_context) do
     {expression, authorizer} =
       authorizer.policies
@@ -165,7 +164,7 @@ defmodule Ash.Policy.Policy do
           Authorizer.t(),
           Check.t() | Check.ref()
         ) ::
-          {:ok, SatSolver.Expression.t(Check.ref()), Authorizer.t()}
+          {:ok, Expression.t(Check.ref()), Authorizer.t()}
           | {:error, Authorizer.t()}
   def fetch_or_strict_check_fact(authorizer, check)
 
@@ -238,7 +237,7 @@ defmodule Ash.Policy.Policy do
   defp missing_original_data?(_), do: false
 
   @spec fetch_fact(facts :: map, check :: Check.t() | Check.ref()) ::
-          {:ok, SatSolver.Expression.t(Check.ref())} | :error
+          {:ok, Expression.t(Check.ref())} | :error
   def fetch_fact(facts, check)
 
   def fetch_fact(facts, %{check_module: mod, check_opts: opts}),
@@ -270,16 +269,14 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  @spec condition_expression(policy :: t() | FieldPolicy.t()) ::
-          SatSolver.Expression.t(Check.ref())
+  @spec condition_expression(policy :: t() | FieldPolicy.t()) :: Expression.t(Check.ref())
   defp condition_expression(%{condition: condition}) do
     condition
     |> List.wrap()
     |> Enum.reduce(true, &b(&2 and &1))
   end
 
-  @spec policies_expression(policy :: t() | FieldPolicy.t()) ::
-          SatSolver.Expression.t(Check.ref())
+  @spec policies_expression(policy :: t() | FieldPolicy.t()) :: Expression.t(Check.ref())
   defp policies_expression(%{policies: policies}) do
     policies
     |> List.wrap()
@@ -299,11 +296,11 @@ defmodule Ash.Policy.Policy do
   end
 
   @spec expand_constants(
-          expression :: SatSolver.Expression.t(Check.ref()),
+          expression :: Expression.t(Check.ref()),
           authorizer :: Authorizer.t()
-        ) :: {SatSolver.Expression.t(Check.ref()), Authorizer.t()}
+        ) :: {Expression.t(Check.ref()), Authorizer.t()}
   defp expand_constants(expression, authorizer) do
-    SatSolver.Expression.expand(expression, authorizer, fn
+    Expression.expand(expression, authorizer, fn
       expr, authorizer when is_variable(expr) ->
         case fetch_or_strict_check_fact(authorizer, expr) do
           {:ok, result, authorizer} ->
@@ -319,13 +316,12 @@ defmodule Ash.Policy.Policy do
   end
 
   @spec simplify_policy_expression(
-          expression :: SatSolver.Expression.t(Check.ref()),
+          expression :: Expression.t(Check.ref()),
           context :: Check.context()
-        ) ::
-          SatSolver.Expression.t(Check.ref())
+        ) :: Expression.t(Check.ref())
   defp simplify_policy_expression(expression, context) do
     expression
-    |> SatSolver.Expression.postwalk(fn
+    |> Expression.postwalk(fn
       {check, _opts} = expr when is_variable(expr) ->
         Code.ensure_loaded!(check)
 
@@ -338,14 +334,14 @@ defmodule Ash.Policy.Policy do
       other ->
         other
     end)
-    |> SatSolver.Expression.simplify()
+    |> Expression.simplify()
   end
 
   @doc false
-  @spec debug_expr(expr :: SatSolver.Expression.t(Check.ref()), label :: String.t()) :: String.t()
+  @spec debug_expr(expr :: Expression.t(Check.ref()), label :: String.t()) :: String.t()
   def debug_expr(expr, label \\ "Expr") do
     expr
-    |> Ash.SatSolver.Expression.to_string(fn
+    |> Crux.Expression.to_string(fn
       {check_module, check_opts} -> check_module.describe(check_opts)
       v -> Macro.escape(v)
     end)
@@ -358,13 +354,12 @@ defmodule Ash.Policy.Policy do
   end
 
   @spec expand_invariants(
-          expression :: SatSolver.Expression.t(Check.ref()),
+          expression :: Expression.t(Check.ref()),
           check_context :: Check.context()
-        ) ::
-          SatSolver.Expression.t(Check.ref())
+        ) :: Expression.t(Check.ref())
   defp expand_invariants(expression, check_context) do
     {_, variables} =
-      SatSolver.Expression.postwalk(expression, [], fn
+      Expression.postwalk(expression, [], fn
         check, acc when is_variable(check) -> {check, [check | acc]}
         other, acc -> {other, acc}
       end)
@@ -412,9 +407,9 @@ defmodule Ash.Policy.Policy do
                     |> Map.new()
 
   @doc """
-  Default Options for SatSolver scenarios
+  Default Options for Crux scenarios
   """
-  @spec scenario_options(check_context :: Check.context()) :: SatSolver.opts(Check.ref())
+  @spec scenario_options(check_context :: Check.context()) :: Crux.opts(Check.ref())
   def scenario_options(check_context) do
     [
       sorter: fn left, right ->

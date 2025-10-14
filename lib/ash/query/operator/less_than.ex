@@ -23,9 +23,9 @@ defmodule Ash.Query.Operator.LessThan do
     predicate?: true,
     types: [:same, :any]
 
-  import Ash.SatSolver.Expression, only: [b: 1]
+  import Crux.Expression, only: [b: 1]
 
-  alias Ash.SatSolver.Expression
+  alias Crux.Expression
   alias Ash.Query.Operator.{Eq, IsNil}
 
   def evaluate(%{left: nil}), do: {:known, nil}

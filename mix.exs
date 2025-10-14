@@ -397,6 +397,7 @@ defmodule Ash.MixProject do
       {:stream_data, "~> 1.0"},
 
       # SAT Solvers
+      {:crux, "~> 0.1.0"},
       {:picosat_elixir, "~> 0.2", optional: true},
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 

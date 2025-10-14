@@ -17,7 +17,7 @@ defmodule Ash.Query.Operator.Eq do
     predicate?: true,
     types: [:any, :same]
 
-  alias Ash.SatSolver.Expression
+  alias Crux.Expression
 
   def new(left, right) do
     {:ok, struct(__MODULE__, left: left, right: right)}

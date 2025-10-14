@@ -6,7 +6,7 @@ defmodule Ash.Policy.Check.ActorAbsent do
   @moduledoc "This check is true when the actor is `nil`, and false when the actor is specified."
   use Ash.Policy.SimpleCheck
 
-  import Ash.SatSolver.Expression, only: [b: 1]
+  import Crux.Expression, only: [b: 1]
 
   @impl true
   def describe(_) do

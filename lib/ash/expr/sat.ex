@@ -7,13 +7,13 @@ defmodule Ash.Expr.SAT do
 
   alias Ash.Filter
   alias Ash.Query.{BooleanExpression, Not, Ref}
-  require Ash.SatSolver.Expression
+  require Crux.Expression
 
   @dialyzer {:nowarn_function, overlap?: 2}
 
   @doc "Prepares a filter for comparison"
   @spec to_sat_expression(Ash.Resource.t(), Ash.Expr.t()) ::
-          Ash.SatSolver.Expression.t(Ash.Expr.t())
+          Crux.Expression.t(Ash.Expr.t())
   def to_sat_expression(resource, expression) do
     expression
     |> consolidate_relationships(resource)
@@ -31,7 +31,7 @@ defmodule Ash.Expr.SAT do
   defp filter_to_expr(%Ash.CustomExpression{expression: expression}), do: expression
 
   defp filter_to_expr(%Not{expression: expression}),
-    do: Ash.SatSolver.Expression.b(not filter_to_expr(expression))
+    do: Crux.Expression.b(not filter_to_expr(expression))
 
   defp filter_to_expr(%BooleanExpression{op: op, left: left, right: right}) do
     {op, filter_to_expr(left), filter_to_expr(right)}
@@ -254,27 +254,27 @@ defmodule Ash.Expr.SAT do
             :right_includes_left ->
               # b || !a
 
-              [Ash.SatSolver.Expression.b(other_predicate or not predicate) | new_expressions]
+              [Crux.Expression.b(other_predicate or not predicate) | new_expressions]
 
             :left_includes_right ->
               # a || ! b
-              [Ash.SatSolver.Expression.b(predicate or not other_predicate) | new_expressions]
+              [Crux.Expression.b(predicate or not other_predicate) | new_expressions]
 
             :mutually_inclusive ->
               # (a && b) || (! a && ! b)
               [
-                Ash.SatSolver.Expression.b(
+                Crux.Expression.b(
                   (predicate and other_predicate) or (not predicate and not other_predicate)
                 )
                 | new_expressions
               ]
 
             :mutually_exclusive ->
-              [Ash.SatSolver.Expression.b(nand(other_predicate, predicate)) | new_expressions]
+              [Crux.Expression.b(nand(other_predicate, predicate)) | new_expressions]
 
             :mutually_exclusive_and_collectively_exhaustive ->
               [
-                Ash.SatSolver.Expression.b(
+                Crux.Expression.b(
                   not (other_predicate and predicate) and
                     not (not other_predicate and not predicate)
                 )
@@ -293,7 +293,7 @@ defmodule Ash.Expr.SAT do
 
     expression_with_comparisons =
       Enum.reduce(comparison_expressions, expression, fn comparison_expression, expression ->
-        Ash.SatSolver.Expression.b(comparison_expression and expression)
+        Crux.Expression.b(comparison_expression and expression)
       end)
 
     all_predicates
@@ -307,7 +307,7 @@ defmodule Ash.Expr.SAT do
       end
     end)
     |> Enum.reduce(expression_with_comparisons, fn comparison_expression, expression ->
-      Ash.SatSolver.Expression.b(comparison_expression and expression)
+      Crux.Expression.b(comparison_expression and expression)
     end)
   end
 

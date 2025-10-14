@@ -24,18 +24,18 @@ Benchee.run(
   %{
     solve: fn input ->
       input
-      |> Ash.SatSolver.Formula.from_expression()
-      |> Ash.SatSolver.solve()
+      |> Crux.Formula.from_expression()
+      |> Crux.solve()
     end,
     satisfying_scenarios: fn input ->
       input
-      |> Ash.SatSolver.Formula.from_expression()
-      |> Ash.SatSolver.satisfying_scenarios()
+      |> Crux.Formula.from_expression()
+      |> Crux.satisfying_scenarios()
     end,
     decision_tree: fn input ->
       input
-      |> Ash.SatSolver.Formula.from_expression()
-      |> Ash.SatSolver.decision_tree()
+      |> Crux.Formula.from_expression()
+      |> Crux.decision_tree()
     end
   },
   inputs: %{

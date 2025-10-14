@@ -997,17 +997,17 @@ defmodule Ash.Filter do
     formula =
       filter.resource
       |> Ash.Expr.to_sat_expression(expr)
-      |> Ash.SatSolver.Formula.from_expression()
+      |> Crux.Formula.from_expression()
 
-    if Ash.SatSolver.satisfiable?(formula) do
+    if Crux.satisfiable?(formula) do
       expr = BooleanExpression.new(:and, Not.new(filter.expression), candidate.expression)
 
       formula =
         filter.resource
         |> Ash.Expr.to_sat_expression(expr)
-        |> Ash.SatSolver.Formula.from_expression()
+        |> Crux.Formula.from_expression()
 
-      if Ash.SatSolver.satisfiable?(formula) do
+      if Crux.satisfiable?(formula) do
         :maybe
       else
         true
