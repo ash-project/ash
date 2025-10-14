@@ -487,13 +487,10 @@ defmodule Ash.SatSolver do
     b(not (left and not right))
   end
 
-  @doc """
-  Generates random boolean expressions for property-based testing.
-
-  Uses StreamData.tree to create recursive boolean expressions with the provided
-  leaf generator for terminal values. Automatically includes boolean constants (true/false)
-  alongside the provided inner generator.
-  """
+  # Temporarily making this private so that the function can be moved without
+  # a major version bump in the SAT refactoring PR.
+  # TODO: Make public with #2375 
+  @doc false
   @spec generate_expression(StreamData.t(term())) :: StreamData.t(boolean_expr())
   def generate_expression(inner_generator) do
     inner_generator = StreamData.one_of([StreamData.boolean(), inner_generator])
