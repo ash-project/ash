@@ -576,25 +576,6 @@ defmodule Ash.SatSolver do
     |> Ash.SatSolver.Implementation.solve_expression()
   end
 
-  @doc false
-  def balance({op, left, right}) do
-    left = balance(left)
-    right = balance(right)
-    [left, right] = Enum.sort([left, right])
-
-    {op, left, right}
-  end
-
-  def balance({:not, {:not, right}}) do
-    balance(right)
-  end
-
-  def balance({:not, statement}) do
-    {:not, balance(statement)}
-  end
-
-  def balance(other), do: other
-
   @doc deprecated: "Use `Ash.Resource.Info.synonymous_relationship_paths?/4` instead."
   def synonymous_relationship_paths?(
         left_resource,
