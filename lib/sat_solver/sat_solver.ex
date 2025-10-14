@@ -13,20 +13,9 @@ defmodule Ash.SatSolver do
   If you are looking for information about how authorization works, see the [policy guide](/documentation/topics/security/policies.md)
   """
 
-  alias Ash.Filter
-  alias Ash.Query.{BooleanExpression, Not, Ref}
   alias Ash.SatSolver.Expression
   alias Ash.SatSolver.Formula
   require Expression
-
-  @dialyzer {:nowarn_function, overlap?: 2}
-
-  @type boolean_expr() ::
-          {:and, boolean_expr, boolean_expr}
-          | {:or, boolean_expr, boolean_expr}
-          | {:not, boolean_expr}
-          | Ash.Expr.t()
-  @type boolean_expr(custom) :: boolean_expr() | custom
 
   @typedoc """
   A binary decision tree for exploring satisfying assignments.
@@ -512,7 +501,7 @@ defmodule Ash.SatSolver do
         :ok
     end
   end
-  
+
   # ============================================================================
   # DEPRECATED FUNCTIONS - TODO: Remove in V4.0.0
   # ============================================================================
@@ -621,11 +610,11 @@ defmodule Ash.SatSolver do
     IO.warn("Use `Ash.Resource.Info.synonymous_relationship_paths?/4` instead.", stacktrace)
 
     Ash.Resource.Info.synonymous_relationship_paths?(
-            left_resource,
+      left_resource,
       candidate,
       search,
-            right_resource
-          )
+      right_resource
+    )
   end
 
   @doc deprecated: "Use `Ash.SatSolver.Expression.at_most_one/1` instead."
