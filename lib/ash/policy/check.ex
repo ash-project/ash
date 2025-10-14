@@ -26,7 +26,15 @@ defmodule Ash.Policy.Check do
     {:ok, %{policy | check_module: check_module, check_opts: opts}}
   end
 
-  @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
+  @type context() :: %{resource: Ash.Resource.t()}
+
+  @type t :: %__MODULE__{
+          check: ref(),
+          check_module: module(),
+          check_opts: options(),
+          type: check_type(),
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
+        }
 
   @doc """
   Strict checks should be cheap, and should never result in external calls (like database or domain)
@@ -74,7 +82,39 @@ defmodule Ash.Policy.Check do
   """
   @callback type() :: check_type()
   @callback eager_evaluate?() :: boolean()
-  @optional_callbacks check: 4, auto_filter: 3, expand_description: 3
+
+  @doc """
+  Simplify a check reference into a SAT expression of simpler check references.
+
+  This is used by the SAT solver to break down complex checks into simpler components
+  for more efficient policy evaluation. For example, a check that matches multiple
+  action types could be simplified into an OR expression of separate checks for each
+  action type. Or ActorAbsent could simplify into `not(ActorPresent)`.
+  """
+  @callback simplify(ref(), context()) :: Ash.SatSolver.Expression.t(ref())
+
+  @doc """
+  Determine if the first check reference implies the second check reference.
+
+  This is used by the SAT solver to optimize policy evaluation by understanding
+  when one check being true guarantees another check is also true.
+  """
+  @callback implies?(ref(), ref(), context()) :: boolean()
+
+  @doc """
+  Determine if two check references are mutually exclusive (conflicting).
+
+  This is used by the SAT solver to optimize policy evaluation by understanding
+  when two checks cannot both be true at the same time.
+  """
+  @callback conflicts?(ref(), ref(), context()) :: boolean()
+
+  @optional_callbacks check: 4,
+                      auto_filter: 3,
+                      expand_description: 3,
+                      simplify: 2,
+                      implies?: 3,
+                      conflicts?: 3
 
   def defines_check?(module) do
     :erlang.function_exported(module, :check, 4)
@@ -95,11 +135,17 @@ defmodule Ash.Policy.Check do
       def requires_original_data?(_, _), do: false
       def prefer_expanded_description?, do: false
       def eager_evaluate?, do: false
+      def simplify(ref, _context), do: ref
+      def implies?(_, _, _context), do: false
+      def conflicts?(_, _, _context), do: false
 
       defoverridable type: 0,
                      requires_original_data?: 2,
                      prefer_expanded_description?: 0,
-                     eager_evaluate?: 0
+                     eager_evaluate?: 0,
+                     simplify: 2,
+                     implies?: 3,
+                     conflicts?: 3
     end
   end
 end

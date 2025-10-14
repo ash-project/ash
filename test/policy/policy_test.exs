@@ -5,7 +5,7 @@
 defmodule Ash.Test.Policy.Policy do
   use ExUnit.Case, async: true
 
-  import Ash.SatSolver, only: [b: 1]
+  import Ash.SatSolver.Expression, only: [b: 1]
 
   defmodule RuntimeCheck do
     @moduledoc false
@@ -35,7 +35,8 @@ defmodule Ash.Test.Policy.Policy do
   describe inspect(&Ash.Policy.Policy.expression/1) do
     test "yields valid expression" do
       assert {Ash.Test.Policy.Policy.RuntimeCheck, []} =
-               Ash.Policy.Policy.expression(%Ash.Policy.Policy{
+               Ash.Policy.Policy.expression(
+                 %Ash.Policy.Policy{
                  condition: [
                    {RuntimeCheck, []}
                  ],
@@ -46,8 +47,10 @@ defmodule Ash.Test.Policy.Policy do
                      check_opts: [result: true, access_type: :filter],
                      type: :authorize_if
                    }
-                 ]
-               })
+                   ]
+                 },
+                 %{resource: Resource}
+               )
     end
   end
 
