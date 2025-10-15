@@ -45,14 +45,11 @@ defmodule Ash.Changeset do
   """
 
   @doc false
-  # Clears non-essential metadata while preserving system metadata
+  # Removes transient/unsafe matadata keys while preserving the essential system metadata.
   defp clear_metadata(%{__metadata__: metadata} = record) when is_map(metadata) do
-    preserved_keys = [:tenant, :timestamp]
-    cleaned_metadata =
-      metadata
-      |> Enum.filter(fn {k, _} -> k in preserved_keys end)
-      |> Enum.into(%{})
-    
+    # metadata keys that are only relevant at runtime and should be eleminated later
+    clear_keys = [:upsert_skipped, :manual_key, :join_key, :private, :__rector__, :example_matadata]
+    cleaned_metadata = Map.drop(metadata, clear_keys)
     Map.put(record, :__metadata__, cleaned_metadata)
   end
   defp clear_metadata(record), do: record
@@ -1981,7 +1978,9 @@ defmodule Ash.Changeset do
           changeset
 
         %mod{} = struct when mod != __MODULE__ ->
-          new(struct)
+          struct
+          |> clear_metadata()
+          |> new()
 
         other ->
           raise ArgumentError,
@@ -2063,6 +2062,7 @@ defmodule Ash.Changeset do
 
         %_{} = struct ->
           struct
+          |> clear_metadata()
           |> new()
           |> Map.put(:action_type, :destroy)
 
