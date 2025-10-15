@@ -8,6 +8,29 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.6.3](https://github.com/ash-project/ash/compare/v3.6.2...v3.6.3) (2025-10-15)
+
+
+
+
+### Bug Fixes:
+
+* use `fields` key in atomic errors when exception has fields by [@zachdaniel](https://github.com/zachdaniel)
+
+* use is_nil in ets upsert filter if the value is nil (#2363) by [@barnabasJ](https://github.com/barnabasJ)
+
+* bypass field policy with condition (#2369) by [@maennchen](https://github.com/maennchen)
+
+### Improvements:
+
+* optimize Ash.Resource.Igniter.list_resources and Ash.Domain.Igniter.list_domains for large codebases (#2371) by Elliot Bowes
+
+* optimize list_resources and list_domains for large codebases by Elliot Bowes
+
+* Improve SatSolver.simplify_expression/1 (#2367) by [@maennchen](https://github.com/maennchen)
+
+* Policy Refactoring (#2365) by [@maennchen](https://github.com/maennchen)
+
 ## [v3.6.2](https://github.com/ash-project/ash/compare/v3.6.1...v3.6.2) (2025-10-10)
 
 
