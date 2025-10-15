@@ -178,6 +178,11 @@ jobs:
 
               actual_content=$(cat "$filepath")
 
+              # Remove SPDX comment from CONTRIBUTING.md if present
+              if [ "$file" = "CONTRIBUTING.md" ]; then
+                actual_content=$(echo "$actual_content" | sed '/^<!--$/,/^-->$/{ /^<!--$/d; /^-->$/d; /^SPDX-/d; /^$/d; }')
+              fi
+
               if [ "$actual_content" != "$expected_content" ]; then
                 echo "❌ Content of $filepath does not match expected content from ash-project/.github"
                 echo "   Please update the file content or delete it to use the standard version."
