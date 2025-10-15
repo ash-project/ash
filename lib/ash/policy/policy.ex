@@ -153,7 +153,7 @@ defmodule Ash.Policy.Policy do
       authorizer.policies
       |> expression(check_context)
       |> simplify_policy_expression(check_context)
-      |> expand_constants(authorizer)
+      |> expand_constants(authorizer, check_context)
 
     authorizer = %{authorizer | solver_statement: expression}
 
@@ -297,22 +297,26 @@ defmodule Ash.Policy.Policy do
 
   @spec expand_constants(
           expression :: Expression.t(Check.ref()),
-          authorizer :: Authorizer.t()
+          authorizer :: Authorizer.t(),
+          check_context :: Check.context()
         ) :: {Expression.t(Check.ref()), Authorizer.t()}
-  defp expand_constants(expression, authorizer) do
-    Expression.expand(expression, authorizer, fn
-      expr, authorizer when is_variable(expr) ->
-        case fetch_or_strict_check_fact(authorizer, expr) do
-          {:ok, result, authorizer} ->
-            {result, authorizer}
+  defp expand_constants(expression, authorizer, check_context) do
+    {expression, authorizer} =
+      Expression.expand(expression, authorizer, fn
+        expr, authorizer when is_variable(expr) ->
+          case fetch_or_strict_check_fact(authorizer, expr) do
+            {:ok, result, authorizer} ->
+              {result, authorizer}
 
-          {:error, authorizer} ->
-            {expr, authorizer}
-        end
+            {:error, authorizer} ->
+              {expr, authorizer}
+          end
 
-      other, authorizer ->
-        {other, authorizer}
-    end)
+        other, authorizer ->
+          {other, authorizer}
+      end)
+
+    {simplify_policy_expression(expression, check_context), authorizer}
   end
 
   @spec simplify_policy_expression(
