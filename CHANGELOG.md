@@ -8,6 +8,19 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.7.0](https://github.com/ash-project/ash/compare/v3.6.3...v3.7.0) (2025-10-15)
+
+
+
+
+### Features:
+
+* Refactor SAT Solver into `crux` (#2375) by [@maennchen](https://github.com/maennchen)
+
+### Improvements:
+
+* Add combination_acc callback to DataLayer behaviour by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.6.3](https://github.com/ash-project/ash/compare/v3.6.2...v3.6.3) (2025-10-15)
 
 
