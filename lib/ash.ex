@@ -639,7 +639,7 @@ defmodule Ash do
                              ],
                              return_skipped_upsert?: [
                                type: :boolean,
-                               hide: true
+                               hide: false
                              ],
                              upsert_identity: [
                                type: :atom,
