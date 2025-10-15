@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Operator.In do
   @moduledoc """
   left in [1, 2, 3]

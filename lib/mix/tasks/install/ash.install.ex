@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 if Code.ensure_loaded?(Igniter) do
   defmodule Mix.Tasks.Ash.Install do
     @shortdoc "Installs Ash into a project. Should be called with `mix igniter.install ash`"
@@ -17,7 +21,7 @@ if Code.ensure_loaded?(Igniter) do
     # I know for a fact that this will spark lots of conversation, debate and bike shedding.
     # I will direct everyone who wants to debate about it here, and that will be all.
     #
-    # Number of people who wanted this to be different: 0
+    # Number of people who wanted this to be different: 2
     @resource_default_section_order [
       :resource,
       :code_interface,

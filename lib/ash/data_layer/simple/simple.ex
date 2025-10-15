@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.DataLayer.Simple do
   @moduledoc """
   A data layer that returns structs.

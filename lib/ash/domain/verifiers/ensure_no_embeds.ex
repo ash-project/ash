@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Domain.Verifiers.EnsureNoEmbeds do
   @moduledoc """
   Ensures that all resources for a given domain are not embeds.

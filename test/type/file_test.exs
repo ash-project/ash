@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.FileTest do
   use ExUnit.Case
 
@@ -103,7 +107,7 @@ defmodule Ash.Type.FileTest do
 
       assert {:ok, handle} = FileType.open(file, [:read])
 
-      assert IO.read(handle, 9) == "defmodule"
+      assert IO.read(handle, 9) == "# SPDX-Fi"
     end
 
     test "can open IO device" do
@@ -123,7 +127,7 @@ defmodule Ash.Type.FileTest do
 
       assert {:ok, handle} = FileType.open(file, [:read])
 
-      assert IO.read(handle, 9) == "defmodule"
+      assert IO.read(handle, 9) == "# SPDX-Fi"
     end
   end
 

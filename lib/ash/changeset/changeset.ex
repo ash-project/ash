@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Changeset do
   @moduledoc """
   Changesets are used to create and update data in Ash.
@@ -1683,7 +1687,15 @@ defmodule Ash.Changeset do
     Ash.Filter.map(expr, fn
       %Ash.Query.Function.Error{arguments: [module, nested_expr]} = func
       when is_map(nested_expr) and not is_struct(nested_expr) ->
-        %{func | arguments: [module, Map.put(nested_expr, :field, field)]}
+        if Map.has_key?(nested_expr, :field) || Map.has_key?(nested_expr, :fields) do
+          func
+        else
+          if Map.has_key?(module.__struct__(), :fields) do
+            %{func | arguments: [module, Map.put(nested_expr, :fields, [field])]}
+          else
+            %{func | arguments: [module, Map.put(nested_expr, :field, field)]}
+          end
+        end
 
       other ->
         other

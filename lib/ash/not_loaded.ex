@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.NotLoaded do
   @moduledoc "Used when a field hasn't been loaded or selected."
   defstruct [:field, :type]

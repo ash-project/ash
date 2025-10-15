@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Notifier.PubSub.Publication do
   @moduledoc "Represents a configured publication from the pubsub notifier on an Ash.Resource"
 

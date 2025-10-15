@@ -1,5 +1,0 @@
-image: elixir:latest
-  
-tasks:
-  - init: mix deps.get && mix compile
-    command: iex -S mix

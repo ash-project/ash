@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Actions.Implementation do
   @moduledoc """
   An implementation of a [generic action](generic-actions.md).

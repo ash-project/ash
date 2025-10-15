@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Expressions
 
 Ash expressions are used in various places like calculations, filters, and policies, and are meant to be portable representations of elixir expressions. You can create an expression using the `Ash.Expr.expr/1` macro, like so:

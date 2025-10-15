@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.AtomicsNotSupported do
   @moduledoc "Used when atomics for the given action type are not not supported by the data layer, but one is used."
 

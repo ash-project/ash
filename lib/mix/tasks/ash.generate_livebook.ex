@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Mix.Tasks.Ash.GenerateLivebook do
   @moduledoc """
   Generates a Livebook for each Ash domain.

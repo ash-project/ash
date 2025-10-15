@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Preparations
 
 Preparations are the primary way of customizing read action behavior, and are also supported by generic actions. If you are familiar with `Plug`, you can think of an `Ash.Resource.Preparation` as the equivalent of a `Plug` for queries and action inputs. At its most basic, a preparation will take a query or action input and return a new query or action input. Preparations can be simple, like adding a filter or a sort, or more complex, attaching hooks to be executed within the lifecycle of the action.

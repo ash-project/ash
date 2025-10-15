@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Mix.Tasks.Ash do
   # Copied from Phoenix
   # https://github.com/phoenixframework/phoenix/blob/v1.8.0-rc.3/lib/mix/tasks/phx.ex#L38

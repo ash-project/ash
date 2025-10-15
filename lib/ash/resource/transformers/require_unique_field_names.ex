@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.RequireUniqueFieldNames do
   @moduledoc """
   Confirms that a resource does not have multiple fields(attributes, calculations, aggregates, and relationships) with the same name.

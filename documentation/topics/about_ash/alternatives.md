@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Alternatives
 
 There aren't really any alternatives to Ash that we are aware of that do all of the same things, but there are many different packages out there that do some of the things that Ash does.

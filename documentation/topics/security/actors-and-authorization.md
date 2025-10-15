@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Actors & Authorization
 
 Authorization in Ash involves three things:

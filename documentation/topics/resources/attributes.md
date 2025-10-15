@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Attributes
 
 Attributes specify the `name`, `type` and additional configuration of a simple property of a record. When using SQL data layers, for example, an attribute would correspond to a column in a database table. For information on types, see `Ash.Type`.

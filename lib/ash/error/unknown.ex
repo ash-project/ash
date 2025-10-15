@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Unknown do
   @moduledoc "The top level unknown error container"
   use Splode.ErrorClass, fields: [:changeset, :query, :action_input], class: :unknown

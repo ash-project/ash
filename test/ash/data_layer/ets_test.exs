@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.DataLayer.EtsTest do
   use ExUnit.Case, async: false
 
@@ -117,6 +121,21 @@ defmodule Ash.DataLayer.EtsTest do
     create_user(%{name: "Joe", id: id}, upsert?: true)
 
     assert [{%{id: ^id}, %EtsTestUser{name: "Joe", id: ^id}}] = user_table()
+  end
+
+  test "upsert with nil key value" do
+    %EtsTestUser{id: id} =
+      create_user(%{name: nil}, upsert?: true, upsert_identity: :unique_name)
+
+    assert [{%{id: ^id}, %EtsTestUser{id: ^id, name: nil}}] = user_table()
+
+    create_user(%{name: nil, age: 25},
+      upsert?: true,
+      upsert_identity: :unique_name
+    )
+
+    assert [{%{id: ^id}, %EtsTestUser{name: nil, age: 25}}] =
+             user_table()
   end
 
   test "destroy" do

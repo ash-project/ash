@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Validation.ActionIs do
   @moduledoc "Validates that the action is the specified action."
   use Ash.Resource.Validation

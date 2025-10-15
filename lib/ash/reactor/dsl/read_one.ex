@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.Dsl.ReadOne do
   @moduledoc """
   The `read_one` entity for the `Ash.Reactor` reactor extension.

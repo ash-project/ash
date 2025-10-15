@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.CompositeTypeHelpers do
   @moduledoc """
   Shared utilities for composite type validation and error handling.

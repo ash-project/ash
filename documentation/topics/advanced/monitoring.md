@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Monitoring
 
 Monitoring in Ash has two primary components, `Ash.Tracer` and `:telemetry`. Monitoring might also be referred to as observability and instrumentation.

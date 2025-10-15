@@ -1,5 +1,18 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Policy do
   @moduledoc "Represents a policy on an Ash.Resource"
+
+  import Crux.Expression, only: [b: 1, is_variable: 1]
+
+  alias Ash.Policy.Authorizer
+  alias Ash.Policy.Check
+  alias Ash.Policy.FieldPolicy
+  alias Crux
+  alias Crux.Expression
+  alias Crux.Formula
 
   # For now we just write to `checks` and move them to `policies`
   # on build, when we support nested policies we can change that.
@@ -12,39 +25,90 @@ defmodule Ash.Policy.Policy do
     :__spark_metadata__
   ]
 
-  @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
+  @type t :: %__MODULE__{
+          condition: nil | Check.ref() | list(Check.ref()),
+          policies: list(Check.t()),
+          bypass?: boolean(),
+          description: String.t() | nil,
+          access_type: :strict | :filter | :runtime,
+          __spark_metadata__: Spark.Dsl.Entity.spark_meta()
+        }
 
-  @static_checks [
-    {Ash.Policy.Check.Static, [result: true]},
-    {Ash.Policy.Check.Static, [result: false]},
-    true,
-    false
-  ]
+  @spec expression(
+          policies :: t() | FieldPolicy.t() | [t() | FieldPolicy.t()],
+          check_context :: Check.context()
+        ) :: Expression.t(Check.ref())
+  def expression(policies, check_context) do
+    policies
+    |> List.wrap()
+    |> Enum.map(fn policy ->
+      # Simplification is important here to detect empty field policies
+      cond_expr = policy |> condition_expression() |> simplify_policy_expression(check_context)
+      pol_expr = policies_expression(policy)
+      complete_expr = b(cond_expr and pol_expr)
+      {policy, cond_expr, complete_expr}
+    end)
+    |> List.foldr({false, true}, fn
+      {%{bypass?: true}, cond_expr, complete_expr}, {one_condition_matches, true} ->
+        {
+          b(cond_expr or one_condition_matches),
+          # Bypass can't relay to the next bypass if there is none
+          complete_expr
+        }
 
+      {%FieldPolicy{bypass?: true}, true, complete_expr},
+      {one_condition_matches, all_policies_match} ->
+        {
+          # FieldPolicy Conditions are set to true by default and therefore
+          # have to be ignore to not change the meaning of the
+          # one_condition_matches condition
+          one_condition_matches,
+          b(complete_expr or all_policies_match)
+        }
+
+      {%{bypass?: true}, cond_expr, complete_expr}, {one_condition_matches, all_policies_match} ->
+        {
+          b(cond_expr or one_condition_matches),
+          b(complete_expr or all_policies_match)
+        }
+
+      {%{}, cond_expr, complete_expr}, {one_condition_matches, all_policies_match} ->
+        {
+          b(cond_expr or one_condition_matches),
+          b(implied_by(complete_expr, cond_expr) and all_policies_match)
+        }
+    end)
+    |> then(&b(elem(&1, 0) and elem(&1, 1)))
+    |> simplify_policy_expression(check_context)
+    |> expand_invariants(check_context)
+  end
+
+  @spec solve(authorizer :: Authorizer.t()) ::
+          {:ok, boolean() | list(map), Authorizer.t()}
+          | {:error, Authorizer.t(), Ash.Error.t()}
   def solve(authorizer) do
-    authorizer = strict_check_all_conditions(authorizer)
-
-    policies = policies_that_may_apply(authorizer)
+    check_context = check_context(authorizer)
 
     {expression, authorizer} =
-      build_requirements_expression(policies, authorizer)
+      build_requirements_expression(authorizer, check_context)
 
     case expression do
       expr when is_boolean(expr) ->
         {:ok, expr, authorizer}
 
       expression ->
-        Ash.Policy.SatSolver.solve(expression, fn scenario, bindings ->
-          scenario
-          |> Ash.SatSolver.solutions_to_predicate_values(bindings)
-          |> Map.drop(@static_checks)
-        end)
-        |> case do
-          {:ok, scenarios} ->
-            {:ok, scenarios, authorizer}
+        scenario_options = scenario_options(check_context)
 
-          {:error, error} ->
-            {:error, authorizer, error}
+        expression
+        |> Formula.from_expression()
+        |> Crux.satisfying_scenarios(scenario_options)
+        |> case do
+          [] ->
+            {:error, authorizer, :unsatisfiable}
+
+          scenarios ->
+            mapped_scenarios = Enum.map(scenarios, &Map.drop(&1, [true, false]))
+            {:ok, Enum.uniq(mapped_scenarios), authorizer}
         end
     end
   catch
@@ -52,35 +116,11 @@ defmodule Ash.Policy.Policy do
       {:error, authorizer, error}
   end
 
-  defp strict_check_all_conditions(authorizer) do
-    Enum.reduce(authorizer.policies || [], authorizer, fn policy, authorizer ->
-      Enum.reduce_while(policy.condition || [], authorizer, fn condition, authorizer ->
-        case fetch_or_strict_check_fact(authorizer, condition) do
-          {:ok, true, authorizer} -> {:cont, authorizer}
-          {:ok, _, authorizer} -> {:halt, authorizer}
-          {:error, authorizer} -> {:halt, authorizer}
-        end
-      end)
-    end)
-  end
-
-  defp policies_that_may_apply(authorizer) do
-    Enum.filter(authorizer.policies || [], fn policy ->
-      Enum.all?(policy.condition || [], fn condition ->
-        case fetch_fact(authorizer.facts, condition) do
-          {:ok, true} -> true
-          {:ok, false} -> false
-          {:ok, :unknown} -> true
-          :error -> true
-        end
-      end)
-    end)
-  end
-
   @doc false
+  @spec transform(policy :: t()) :: {:ok, t()} | {:error, String.t()}
   def transform(policy) do
     cond do
-      Enum.empty?(policy.policies) ->
+      policy.policies |> List.wrap() |> Enum.empty?() ->
         {:error, "Policies must have at least one check."}
 
       policy.bypass? &&
@@ -96,70 +136,50 @@ defmodule Ash.Policy.Policy do
          never have an effect.
          """}
 
-      policy.condition in [nil, []] ->
-        {:ok, %{policy | condition: [{Ash.Policy.Check.Static, result: true}]}}
+      policy.condition |> List.wrap() |> Enum.empty?() ->
+        {:ok, %{policy | condition: [{Check.Static, result: true}]}}
 
       true ->
         {:ok, policy}
     end
   end
 
-  defp build_requirements_expression(policies, authorizer) do
-    at_least_one_policy_expression =
-      at_least_one_policy_expression(policies)
+  @spec build_requirements_expression(
+          authorizer :: Authorizer.t(),
+          check_context :: Check.context()
+        ) :: {Expression.t(Check.ref()), Authorizer.t()}
+  defp build_requirements_expression(authorizer, check_context) do
+    {expression, authorizer} =
+      authorizer.policies
+      |> expression(check_context)
+      |> simplify_policy_expression(check_context)
+      |> expand_constants(authorizer)
 
-    policy_expression =
-      compile_policy_expression(policies)
+    authorizer = %{authorizer | solver_statement: expression}
 
-    policy_and_condition_expression =
-      {:and, at_least_one_policy_expression, policy_expression}
-
-    authorizer = %{authorizer | solver_statement: policy_and_condition_expression}
-
-    facts_expression =
-      authorizer.facts
-      |> Map.drop([true, false])
-      |> Ash.Policy.SatSolver.facts_to_statement()
-
-    if is_nil(facts_expression) do
-      handle_constants(policy_and_condition_expression, authorizer)
-    else
-      handle_constants({:and, facts_expression, policy_and_condition_expression}, authorizer)
-    end
+    {expression, authorizer}
   end
 
-  # at least one policy must apply
-  # or one bypass must authorize
-  def at_least_one_policy_expression(policies) do
-    policies
-    |> List.wrap()
-    |> Enum.reduce(false, fn policy, condition_exprs ->
-      if policy.bypass? do
-        if condition_exprs == false do
-          compile_policy_expression([policy])
-        else
-          {:or, compile_policy_expression([policy]), condition_exprs}
-        end
-      else
-        if condition_exprs == false do
-          condition_expression(policy.condition)
-        else
-          {:or, condition_expression(policy.condition), condition_exprs}
-        end
-      end
-    end)
-  end
+  @spec fetch_or_strict_check_fact(
+          Authorizer.t(),
+          Check.t() | Check.ref()
+        ) ::
+          {:ok, Expression.t(Check.ref()), Authorizer.t()}
+          | {:error, Authorizer.t()}
+  def fetch_or_strict_check_fact(authorizer, check)
 
-  def fetch_or_strict_check_fact(authorizer, %{check_module: mod, check_opts: opts}) do
-    fetch_or_strict_check_fact(authorizer, {mod, opts})
-  end
+  def fetch_or_strict_check_fact(authorizer, %Check{check_module: mod, check_opts: opts}),
+    do: fetch_or_strict_check_fact(authorizer, {mod, opts})
 
-  def fetch_or_strict_check_fact(authorizer, {Ash.Policy.Check.Static, opts}) do
-    {:ok, opts[:result], authorizer}
-  end
+  def fetch_or_strict_check_fact(authorizer, check) when is_atom(check),
+    do: fetch_or_strict_check_fact(authorizer, {check, []})
+
+  def fetch_or_strict_check_fact(authorizer, {Check.Static, opts}),
+    do: {:ok, opts[:result], authorizer}
 
   def fetch_or_strict_check_fact(authorizer, {check_module, opts}) do
-    Enum.find_value(authorizer.facts, fn
+    authorizer.facts
+    |> Enum.find_value(fn
       {{fact_mod, fact_opts}, result} when result != :unknown ->
         if check_module == fact_mod &&
              Keyword.drop(fact_opts, [:access_type, :ash_field_policy?]) ==
@@ -207,7 +227,8 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  defp missing_original_data?(%{
+  @spec missing_original_data?(authorizer :: Authorizer.t()) :: boolean()
+  defp missing_original_data?(%Authorizer{
          changeset: %Ash.Changeset{data: %Ash.Changeset.OriginalDataNotAvailable{}}
        }) do
     true
@@ -215,13 +236,14 @@ defmodule Ash.Policy.Policy do
 
   defp missing_original_data?(_), do: false
 
-  def fetch_fact(facts, %{check_module: mod, check_opts: opts}) do
-    fetch_fact(facts, {mod, opts})
-  end
+  @spec fetch_fact(facts :: map, check :: Check.t() | Check.ref()) ::
+          {:ok, Expression.t(Check.ref())} | :error
+  def fetch_fact(facts, check)
 
-  def fetch_fact(_facts, {Ash.Policy.Check.Static, opts}) do
-    {:ok, opts[:result]}
-  end
+  def fetch_fact(facts, %{check_module: mod, check_opts: opts}),
+    do: fetch_fact(facts, {mod, opts})
+
+  def fetch_fact(_facts, {Check.Static, opts}), do: {:ok, opts[:result]}
 
   def fetch_fact(facts, {mod, opts}) do
     Enum.find_value(facts, fn
@@ -247,220 +269,167 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  defp condition_expression(condition) do
+  @spec condition_expression(policy :: t() | FieldPolicy.t()) :: Expression.t(Check.ref())
+  defp condition_expression(%{condition: condition}) do
     condition
     |> List.wrap()
-    |> Enum.reduce(true, fn condition, expression ->
-      if expression == true do
-        condition
-      else
-        {:and, condition, expression}
-      end
+    |> Enum.reduce(true, &b(&2 and &1))
+  end
+
+  @spec policies_expression(policy :: t() | FieldPolicy.t()) :: Expression.t(Check.ref())
+  defp policies_expression(%{policies: policies}) do
+    policies
+    |> List.wrap()
+    |> List.foldr(false, fn
+      %Check{type: :authorize_if} = clause, acc ->
+        b({clause.check_module, clause.check_opts} or acc)
+
+      %Check{type: :authorize_unless} = clause, acc ->
+        b(implies({clause.check_module, clause.check_opts}, acc))
+
+      %Check{type: :forbid_if} = clause, acc ->
+        b(not {clause.check_module, clause.check_opts} and acc)
+
+      %Check{type: :forbid_unless} = clause, acc ->
+        b({clause.check_module, clause.check_opts} and acc)
     end)
   end
 
-  defp compile_policy_expression([]) do
-    false
+  @spec expand_constants(
+          expression :: Expression.t(Check.ref()),
+          authorizer :: Authorizer.t()
+        ) :: {Expression.t(Check.ref()), Authorizer.t()}
+  defp expand_constants(expression, authorizer) do
+    Expression.expand(expression, authorizer, fn
+      expr, authorizer when is_variable(expr) ->
+        case fetch_or_strict_check_fact(authorizer, expr) do
+          {:ok, result, authorizer} ->
+            {result, authorizer}
+
+          {:error, authorizer} ->
+            {expr, authorizer}
+        end
+
+      other, authorizer ->
+        {other, authorizer}
+    end)
   end
 
-  defp compile_policy_expression(nil) do
-    false
-  end
+  @spec simplify_policy_expression(
+          expression :: Expression.t(Check.ref()),
+          context :: Check.context()
+        ) :: Expression.t(Check.ref())
+  defp simplify_policy_expression(expression, context) do
+    expression
+    |> Expression.postwalk(fn
+      {check, _opts} = expr when is_variable(expr) ->
+        Code.ensure_loaded!(check)
 
-  defp compile_policy_expression([%struct{condition: condition, policies: policies}])
-       when struct in [__MODULE__, Ash.Policy.FieldPolicy] do
-    condition_expression = condition_expression(condition)
-    compiled_policies = compile_policy_expression(policies)
+        if function_exported?(check, :simplify, 2) do
+          check.simplify(expr, context)
+        else
+          expr
+        end
 
-    {:or, {:and, condition_expression, compiled_policies}, {:not, condition_expression}}
-  end
-
-  defp compile_policy_expression([
-         %{condition: condition, policies: policies, bypass?: bypass?} | rest
-       ]) do
-    condition_expression = condition_expression(condition)
-
-    if bypass? do
-      policy_expression = compile_policy_expression(policies)
-
-      condition_and_policy_expression = {:and, condition_expression, policy_expression}
-
-      rest = compile_policy_expression(rest)
-
-      {:or, condition_and_policy_expression, rest}
-    else
-      policy_expression = compile_policy_expression(policies)
-      rest_expr = compile_policy_expression(rest)
-
-      {:and, {:or, {:not, condition_expression}, {:and, condition_expression, policy_expression}},
-       rest_expr}
-    end
-  end
-
-  defp compile_policy_expression([%{type: :authorize_if} = clause]) do
-    {clause.check_module, clause.check_opts}
-  end
-
-  defp compile_policy_expression([%{type: :authorize_if} = clause | rest]) do
-    {:or, {clause.check_module, clause.check_opts}, compile_policy_expression(rest)}
-  end
-
-  defp compile_policy_expression([%{type: :authorize_unless} = clause]) do
-    {:not, {clause.check_module, clause.check_opts}}
-  end
-
-  defp compile_policy_expression([%{type: :authorize_unless} = clause | rest]) do
-    rest = compile_policy_expression(rest)
-    {:or, {:not, {clause.check_module, clause.check_opts}}, rest}
-  end
-
-  defp compile_policy_expression([%{type: :forbid_if}]) do
-    false
-  end
-
-  defp compile_policy_expression([%{type: :forbid_if} = clause | rest]) do
-    {:and, {:not, {clause.check_module, clause.check_opts}}, compile_policy_expression(rest)}
-  end
-
-  defp compile_policy_expression([%{type: :forbid_unless}]) do
-    false
-  end
-
-  defp compile_policy_expression([%{type: :forbid_unless} = clause | rest]) do
-    {:and, {clause.check_module, clause.check_opts}, compile_policy_expression(rest)}
+      other ->
+        other
+    end)
+    |> Expression.simplify()
   end
 
   @doc false
+  @spec debug_expr(expr :: Expression.t(Check.ref()), label :: String.t()) :: String.t()
   def debug_expr(expr, label \\ "Expr") do
     expr
-    |> clean_constant_checks()
-    |> do_debug_expr()
-    |> Macro.to_string()
-    |> then(&"#{label}: \n\n #{&1}")
+    |> Crux.Expression.to_string(fn
+      {check_module, check_opts} -> check_module.describe(check_opts)
+      v -> Macro.escape(v)
+    end)
+    |> then(&"#{label}:\n\n#{&1}")
   end
 
-  defp clean_constant_checks({combinator, left, right}) when combinator in [:and, :or] do
-    left = clean_constant_checks(left)
-    right = clean_constant_checks(right)
+  @spec check_context(authorizer :: Authorizer.t()) :: Check.context()
+  defp check_context(%Authorizer{resource: resource}) do
+    %{resource: resource}
+  end
 
-    case {left, right} do
-      {{Ash.Policy.Check.Static, left_opts}, {Ash.Policy.Check.Static, right_opts}} ->
-        if left_opts[:result] && right_opts[:result] do
-          {Ash.Policy.Check.Static, Keyword.put(left_opts, :result, true)}
+  @spec expand_invariants(
+          expression :: Expression.t(Check.ref()),
+          check_context :: Check.context()
+        ) :: Expression.t(Check.ref())
+  defp expand_invariants(expression, check_context) do
+    {_, variables} =
+      Expression.postwalk(expression, [], fn
+        check, acc when is_variable(check) -> {check, [check | acc]}
+        other, acc -> {other, acc}
+      end)
+
+    unique_variables = Enum.uniq(variables)
+
+    for {check, _} <- unique_variables do
+      Code.ensure_loaded!(check)
+    end
+
+    expression =
+      for {check, _} = left <- unique_variables,
+          right <- unique_variables,
+          left != right,
+          reduce: expression do
+        acc ->
+          cond do
+            not function_exported?(check, :implies?, 3) -> acc
+            check.implies?(left, right, check_context) -> b(acc and implies(left, right))
+            true -> acc
+          end
+      end
+
+    for {check, _} = left <- unique_variables,
+        right <- unique_variables,
+        left != right,
+        reduce: expression do
+      acc ->
+        cond do
+          not function_exported?(check, :conflict?, 3) -> acc
+          check.conflict?(left, right, check_context) -> b(acc and nand(left, right))
+          true -> acc
+        end
+    end
+  end
+
+  @check_priorities [
+                      Ash.Policy.Check.Static,
+                      Ash.Policy.Check.Action,
+                      Ash.Policy.Check.ActionType,
+                      Ash.Policy.Check.ActorAbsent,
+                      Ash.Policy.Check.ActorPresent
+                    ]
+                    |> Enum.with_index()
+                    |> Map.new()
+
+  @doc """
+  Default Options for Crux scenarios
+  """
+  @spec scenario_options(check_context :: Check.context()) :: Crux.opts(Check.ref())
+  def scenario_options(check_context) do
+    [
+      sorter: fn left, right ->
+        left_priority = Map.get(@check_priorities, elem(left, 0), 1_000)
+        right_priority = Map.get(@check_priorities, elem(right, 0), 1_000)
+
+        if left_priority != right_priority do
+          left_priority <= right_priority
         else
-          {combinator, left, right}
+          left <= right
         end
-
-      {{Ash.Policy.Check.Static, left_opts}, right} ->
-        if left_opts[:result] do
-          right
-        else
-          {combinator, left, right}
-        end
-
-      {left, {Ash.Policy.Check.Static, right_opts}} ->
-        if right_opts[:result] do
-          left
-        else
-          {combinator, left, right}
-        end
-
-      {left, right} ->
-        {combinator, left, right}
-    end
-  end
-
-  defp clean_constant_checks({:not, expr}) do
-    case clean_constant_checks(expr) do
-      {Ash.Policy.Check.Static, opts} ->
-        {Ash.Policy.Check.Static, Keyword.put(opts, :result, !opts[:result])}
-
-      other ->
-        {:not, other}
-    end
-  end
-
-  defp clean_constant_checks(other), do: other
-
-  defp handle_constants({:and, l, r}, authorizer) do
-    case handle_constants(l, authorizer) do
-      {false, authorizer} ->
-        {false, authorizer}
-
-      {l, authorizer} ->
-        case {l, handle_constants(r, authorizer)} do
-          {_, {false, authorizer}} -> {false, authorizer}
-          {false, {_, authorizer}} -> {false, authorizer}
-          {true, {true, authorizer}} -> {true, authorizer}
-          {true, {r, authorizer}} -> {r, authorizer}
-          {l, {true, authorizer}} -> {l, authorizer}
-          {l, {r, authorizer}} -> {{:and, l, r}, authorizer}
-        end
-    end
-  end
-
-  defp handle_constants({:or, l, r}, authorizer) do
-    case handle_constants(l, authorizer) do
-      {true, authorizer} ->
-        {true, authorizer}
-
-      {l, authorizer} ->
-        case {l, handle_constants(r, authorizer)} do
-          {_, {true, authorizer}} -> {true, authorizer}
-          {true, {_, authorizer}} -> {true, authorizer}
-          {false, {false, authorizer}} -> {false, authorizer}
-          {false, {r, authorizer}} -> {r, authorizer}
-          {l, {false, authorizer}} -> {l, authorizer}
-          {l, {r, authorizer}} -> {{:or, l, r}, authorizer}
-        end
-    end
-  end
-
-  defp handle_constants({:not, l}, authorizer) do
-    case handle_constants(l, authorizer) do
-      {true, authorizer} -> {false, authorizer}
-      {false, authorizer} -> {true, authorizer}
-      {l, authorizer} -> {{:not, l}, authorizer}
-    end
-  end
-
-  defp handle_constants({mod, opts}, authorizer) do
-    case fetch_or_strict_check_fact(authorizer, {mod, opts}) do
-      {:ok, result, authorizer} ->
-        {result, authorizer}
-
-      {:error, authorizer} ->
-        {{mod, opts}, authorizer}
-    end
-  end
-
-  defp handle_constants(other, authorizer), do: {other, authorizer}
-
-  defp do_debug_expr({:and, l, r}) do
-    quote do
-      unquote(do_debug_expr(l)) and unquote(do_debug_expr(r))
-    end
-  end
-
-  defp do_debug_expr({:or, l, r}) do
-    quote do
-      unquote(do_debug_expr(l)) or unquote(do_debug_expr(r))
-    end
-  end
-
-  defp do_debug_expr({:not, v}) do
-    quote do
-      not unquote(do_debug_expr(v))
-    end
-  end
-
-  defp do_debug_expr({check_module, check_opts}) do
-    check_module.describe(check_opts)
-  end
-
-  defp do_debug_expr(v) do
-    quote do
-      unquote(Macro.escape(v))
-    end
+      end,
+      conflicts?: fn {check, _otps} = left, right ->
+        function_exported?(check, :conflicts?, 3) and
+          check.conflicts?(left, right, check_context)
+      end,
+      implies?: fn {check, _opts} = left, right ->
+        function_exported?(check, :implies?, 3) and
+          check.implies?(left, right, check_context)
+      end
+    ]
   end
 end

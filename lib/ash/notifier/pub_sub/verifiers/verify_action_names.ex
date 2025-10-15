@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Notifier.PubSub.Verifiers.VerifyActionNames do
   @moduledoc "Verifies action names in configured publications"
   use Spark.Dsl.Verifier

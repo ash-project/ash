@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Seed do
   @moduledoc """
   Helpers for seeding data, useful for quickly creating lots of data either for database seeding or testing.

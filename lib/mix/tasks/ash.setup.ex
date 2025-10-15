@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Mix.Tasks.Ash.Setup do
   @moduledoc """
   Runs all setup tasks for any extension on any resource/domain in your application.

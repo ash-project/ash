@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Operator.LessThan do
   @moduledoc """
   left < right
@@ -19,6 +23,9 @@ defmodule Ash.Query.Operator.LessThan do
     predicate?: true,
     types: [:same, :any]
 
+  import Crux.Expression, only: [b: 1]
+
+  alias Crux.Expression
   alias Ash.Query.Operator.{Eq, IsNil}
 
   def evaluate(%{left: nil}), do: {:known, nil}
@@ -58,7 +65,7 @@ defmodule Ash.Query.Operator.LessThan do
       other ->
         new_acc =
           other
-          |> Enum.map(&Ash.SatSolver.left_implies_right(first, &1))
+          |> Enum.map(&b(implies(first, &1)))
           |> Kernel.++(acc)
 
         inclusive_values(rest, new_acc)
@@ -76,7 +83,7 @@ defmodule Ash.Query.Operator.LessThan do
       other ->
         new_acc =
           other
-          |> Enum.map(&Ash.SatSolver.right_implies_left(first, &1))
+          |> Enum.map(&b(implied_by(first, &1)))
           |> Kernel.++(acc)
 
         inclusive_values(rest, new_acc)
@@ -94,7 +101,7 @@ defmodule Ash.Query.Operator.LessThan do
       other ->
         new_acc =
           other
-          |> Enum.map(&Ash.SatSolver.left_excludes_right(first, &1))
+          |> Enum.map(&b(nand(first, &1)))
           |> Kernel.++(acc)
 
         exclusive_values(rest, new_acc)
@@ -115,9 +122,7 @@ defmodule Ash.Query.Operator.LessThan do
       is_nils ->
         predicates
         |> Enum.filter(&(&1.__struct__ == __MODULE__))
-        |> Enum.flat_map(fn lt ->
-          Ash.SatSolver.mutually_exclusive([lt | is_nils])
-        end)
+        |> Enum.map(&Expression.at_most_one([&1 | is_nils]))
     end
   end
 

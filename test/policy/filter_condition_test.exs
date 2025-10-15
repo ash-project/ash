@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Policy.FilterConditionTest do
   use ExUnit.Case, async: true
 
@@ -31,6 +35,90 @@ defmodule Ash.Test.Policy.FilterConditionTest do
     end
   end
 
+  defmodule RuntimeFalsyCheck do
+    @moduledoc false
+    use Ash.Policy.Check
+
+    @impl Ash.Policy.Check
+    def describe(_), do: "returns false at runtime"
+
+    @impl Ash.Policy.Check
+    def strict_check(_, _, _), do: {:ok, :unknown}
+
+    @impl Ash.Policy.Check
+    def check(_actor, _list, _map, _options), do: []
+  end
+
+  defmodule FilterFalsyCheck do
+    @moduledoc false
+    use Ash.Policy.Check
+
+    @impl Ash.Policy.Check
+    def describe(_), do: "returns false in a filter"
+
+    @impl Ash.Policy.Check
+    def strict_check(_, _, _), do: {:ok, false}
+  end
+
+  defmodule FinalBypassResource do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Ash.Test.Policy.FilterConditionTest.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    policies do
+      bypass always() do
+        access_type :runtime
+        description "Bypass never active"
+        authorize_if FilterFalsyCheck
+      end
+    end
+  end
+
+  defmodule RuntimeBypassResource do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Ash.Test.Policy.FilterConditionTest.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    policies do
+      default_access_type :filter
+
+      bypass RuntimeFalsyCheck do
+        description "Bypass never active"
+        authorize_if always()
+      end
+    end
+  end
+
   defmodule Domain do
     @moduledoc false
     use Ash.Domain
@@ -41,6 +129,8 @@ defmodule Ash.Test.Policy.FilterConditionTest do
 
     resources do
       resource Resource
+      resource RuntimeBypassResource
+      resource FinalBypassResource
     end
   end
 
@@ -176,5 +266,27 @@ defmodule Ash.Test.Policy.FilterConditionTest do
              post
              |> Ash.Changeset.for_update(:update, %{title: "title 2"}, actor: author)
              |> Ash.update()
+  end
+
+  test "bypass works with filter policies" do
+    RuntimeBypassResource
+    |> Ash.Changeset.for_create(:create, %{}, authorize?: false)
+    |> Ash.create!()
+
+    assert [] =
+             RuntimeBypassResource
+             |> Ash.Query.for_read(:read, %{}, actor: nil, authorize?: true)
+             |> Ash.read!()
+  end
+
+  test "bypass at the end works with filter policies" do
+    FinalBypassResource
+    |> Ash.Changeset.for_create(:create, %{}, authorize?: false)
+    |> Ash.create!()
+
+    assert [] =
+             FinalBypassResource
+             |> Ash.Query.for_read(:read, %{}, actor: nil, authorize?: true)
+             |> Ash.read!()
   end
 end

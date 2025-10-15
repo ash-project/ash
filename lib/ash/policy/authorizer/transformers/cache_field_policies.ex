@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Authorizer.Transformers.CacheFieldPolicies do
   @moduledoc "Cache field policies for each field"
   use Spark.Dsl.Transformer

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation do
   @moduledoc """
   Ensures that the field at the end of the path is an attribute or calculation.

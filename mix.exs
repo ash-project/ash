@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.MixProject do
   @moduledoc false
   use Mix.Project
@@ -6,7 +10,7 @@ defmodule Ash.MixProject do
   A declarative, extensible framework for building Elixir applications.
   """
 
-  @version "3.5.43"
+  @version "3.6.3"
 
   def project do
     [
@@ -291,7 +295,7 @@ defmodule Ash.MixProject do
           Ash.ProcessHelpers,
           Ash.Mix.Tasks.Helpers,
           Ash.PlugHelpers,
-          Ash.SatSolver
+          ~r/^Ash.SatSolver(\.|$)/
         ],
         Types: [
           "Ash.Type",
@@ -345,17 +349,19 @@ defmodule Ash.MixProject do
 
   defp package do
     [
-      name: :ash,
+      maintainers: [
+        "Zach Daniel <zach@zachdaniel.dev>"
+      ],
       licenses: ["MIT"],
-      maintainers: ["Zach Daniel"],
       files: ~w(lib .formatter.exs mix.exs README* LICENSE*
       CHANGELOG* usage-rules.md),
       links: %{
-        GitHub: "https://github.com/ash-project/ash",
-        Discord: "https://discord.gg/HTHRaaVPUc",
-        Website: "https://ash-hq.org",
-        Forum: "https://elixirforum.com/c/elixir-framework-forums/ash-framework-forum",
-        Changelog: "https://github.com/ash-project/ash/blob/main/CHANGELOG.md"
+        "GitHub" => "https://github.com/ash-project/ash",
+        "Changelog" => "https://github.com/ash-project/ash/blob/main/CHANGELOG.md",
+        "Discord" => "https://discord.gg/HTHRaaVPUc",
+        "Website" => "https://ash-hq.org",
+        "Forum" => "https://elixirforum.com/c/elixir-framework-forums/ash-framework-forum",
+        "REUSE Compliance" => "https://api.reuse.software/info/github.com/ash-project/ash"
       }
     ]
   end
@@ -391,6 +397,7 @@ defmodule Ash.MixProject do
       {:stream_data, "~> 1.0"},
 
       # SAT Solvers
+      {:crux, "~> 0.1.0"},
       {:picosat_elixir, "~> 0.2", optional: true},
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 

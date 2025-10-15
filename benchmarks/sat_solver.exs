@@ -1,5 +1,6 @@
-list = Enum.to_list(1..10_000)
-map_fun = fn i -> [i, i * i] end
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
 
 mixed = fn count ->
   Enum.reduce(1..count, 0, fn var, expr ->
@@ -17,42 +18,35 @@ mixed = fn count ->
         {:or, -var, expr}
     end
   end)
-  |> Ash.Policy.SatSolver.solve()
 end
 
 Benchee.run(
   %{
     solve: fn input ->
-      Ash.Policy.SatSolver.solve(input)
+      input
+      |> Crux.Formula.from_expression()
+      |> Crux.solve()
+    end,
+    satisfying_scenarios: fn input ->
+      input
+      |> Crux.Formula.from_expression()
+      |> Crux.satisfying_scenarios()
+    end,
+    decision_tree: fn input ->
+      input
+      |> Crux.Formula.from_expression()
+      |> Crux.decision_tree()
     end
   },
   inputs: %{
-    "3 conjunctive" =>
-      Enum.to_list(1..3)
-      |> Enum.reduce(0, fn var, expr -> {:and, var, expr} end)
-      |> Ash.Policy.SatSolver.solve(),
-    "3 disjunctive" =>
-      Enum.to_list(1..3)
-      |> Enum.reduce(0, fn var, expr -> {:or, var, expr} end)
-      |> Ash.Policy.SatSolver.solve(),
+    "3 conjunctive" => Enum.reduce(1..3, 0, fn var, expr -> {:and, var, expr} end),
+    "3 disjunctive" => Enum.reduce(1..3, 0, fn var, expr -> {:or, var, expr} end),
     "3 mixed" => mixed.(3),
-    "5 conjunctive" =>
-      Enum.to_list(1..5)
-      |> Enum.reduce(0, fn var, expr -> {:and, var, expr} end)
-      |> Ash.Policy.SatSolver.solve(),
-    "5 disjunctive" =>
-      Enum.to_list(1..5)
-      |> Enum.reduce(0, fn var, expr -> {:or, var, expr} end)
-      |> Ash.Policy.SatSolver.solve(),
+    "5 conjunctive" => Enum.reduce(1..5, 0, fn var, expr -> {:and, var, expr} end),
+    "5 disjunctive" => Enum.reduce(1..5, 0, fn var, expr -> {:or, var, expr} end),
     "5 mixed" => mixed.(5),
-    "7 conjunctive" =>
-      Enum.to_list(1..7)
-      |> Enum.reduce(0, fn var, expr -> {:and, var, expr} end)
-      |> Ash.Policy.SatSolver.solve(),
-    "7 disjunctive" =>
-      Enum.to_list(1..7)
-      |> Enum.reduce(0, fn var, expr -> {:or, var, expr} end)
-      |> Ash.Policy.SatSolver.solve(),
+    "7 conjunctive" => Enum.reduce(1..7, 0, fn var, expr -> {:and, var, expr} end),
+    "7 disjunctive" => Enum.reduce(1..7, 0, fn var, expr -> {:or, var, expr} end),
     "7 mixed" => mixed.(7)
   }
 )

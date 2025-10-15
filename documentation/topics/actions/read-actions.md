@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Read Actions
 
 Read actions operate on an `Ash.Query`. Read actions always return lists of data. The act of [pagination](#pagination), or returning a [single result](#ash-get), is handled as part of the interface, and is not a concern of the action itself. Here is an example of a read action:

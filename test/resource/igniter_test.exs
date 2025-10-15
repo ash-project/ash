@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.IgniterTest do
   use ExUnit.Case
 
@@ -128,6 +132,19 @@ defmodule Ash.Resource.IgniterTest do
           "name:string:required:public"
         ])
         |> apply_igniter!()
+
+      # Register the domain in Application config for this test.
+      # The list_domains/1 optimization uses compiled domains from config + changed sources.
+      # Since apply_igniter! writes files without marking them as changed, the domain
+      # won't be found unless we add it to the config here.
+      app_name = Igniter.Project.Application.app_name(igniter)
+      existing_domains = Application.get_env(app_name, :ash_domains, [])
+      Application.put_env(app_name, :ash_domains, [MyApp.Accounts | existing_domains])
+
+      on_exit(fn ->
+        # Clean up - restore original config
+        Application.put_env(app_name, :ash_domains, existing_domains)
+      end)
 
       %{igniter: igniter}
     end

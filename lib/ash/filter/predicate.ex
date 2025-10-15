@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Filter.Predicate do
   @moduledoc """
   Represents a predicate which can be simplified and/or compared with other predicates
@@ -28,7 +32,7 @@ defmodule Ash.Filter.Predicate do
 
   The best way to do it is to find lists of predicates that are mutually
   exclusive or mutually inclusive, and pass those lists into
-  `Ash.SatSolver.mutually_exclusive/1` and `Ash.SatSolver.mutually_inclusive/1`
+  `Crux.Expression.at_most_one/1` and `Crux.Expression.all_or_none/1`
   """
   @callback bulk_compare([predicate()]) :: term
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Change.GetAndLockForUpdate do
   @moduledoc """
   Refetches the record being updated or destroyed, and locks it for update.

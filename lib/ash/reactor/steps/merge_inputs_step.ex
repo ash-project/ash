@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Reactor.MergeInputsStep do
   @moduledoc """
   A custom step which merges any number of `inputs` results into a single map.

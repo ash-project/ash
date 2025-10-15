@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Framework.PendingCodegen do
   @moduledoc "Used when an extension has pending code generation and the --check flag is provided"
 

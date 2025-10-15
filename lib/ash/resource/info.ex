@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Info do
   @moduledoc "Introspection for resources"
 
@@ -948,4 +952,77 @@ defmodule Ash.Resource.Info do
   """
   @spec extensions(resource :: Ash.Resource.t()) :: list(module())
   defdelegate extensions(resource), to: Spark
+
+  @doc "Returns `true` if the relationship paths are synonymous from a data perspective"
+  @spec synonymous_relationship_paths?(
+          Ash.Resource.t(),
+          [atom()],
+          [atom()],
+          Ash.Resource.t()
+        ) :: boolean
+  def synonymous_relationship_paths?(
+        left_resource,
+        candidate,
+        search,
+        right_resource \\ nil
+      )
+
+  def synonymous_relationship_paths?(_, [], [], _), do: true
+  def synonymous_relationship_paths?(_, [], _, _), do: false
+  def synonymous_relationship_paths?(_, _, [], _), do: false
+
+  def synonymous_relationship_paths?(
+        left_resource,
+        [candidate_first | candidate_rest],
+        [first | rest],
+        right_resource
+      ) do
+    right_resource = right_resource || left_resource
+    relationship = relationship(left_resource, first)
+    candidate_relationship = relationship(right_resource, candidate_first)
+
+    cond do
+      !relationship || !candidate_relationship ->
+        false
+
+      relationship.type == :many_to_many && candidate_relationship.type == :has_many ->
+        synonymous_relationship_paths?(left_resource, [relationship.join_relationship], [
+          candidate_first
+        ]) && !Enum.empty?(candidate_rest) &&
+          synonymous_relationship_paths?(
+            left_resource,
+            candidate_rest,
+            rest,
+            right_resource
+          )
+
+      relationship.type == :has_many && candidate_relationship.type == :many_to_many ->
+        synonymous_relationship_paths?(left_resource, [relationship.name], [
+          candidate_relationship.join_relationship
+        ]) && !Enum.empty?(rest) &&
+          synonymous_relationship_paths?(
+            left_resource,
+            candidate_rest,
+            rest,
+            right_resource
+          )
+
+      true ->
+        comparison_keys = [
+          :source_attribute,
+          :destination_attribute,
+          :source_attribute_on_join_resource,
+          :destination_attribute_on_join_resource,
+          :destination_attribute,
+          :destination,
+          :manual,
+          :sort,
+          :filter
+        ]
+
+        Map.take(relationship, comparison_keys) ==
+          Map.take(candidate_relationship, comparison_keys) and
+          synonymous_relationship_paths?(relationship.destination, candidate_rest, rest)
+    end
+  end
 end

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Actions.Read do
   @moduledoc false
 
@@ -1193,7 +1197,7 @@ defmodule Ash.Actions.Read do
       (Enum.empty?(runtime_calculations) && Enum.empty?(load)) ||
       Enum.all?(
         Ash.Resource.Info.primary_key(query.resource),
-        &Enum.member?(fieldset, Atom.to_string(&1))
+        &Enum.member?(fieldset, &1)
       )
   end
 

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Validations
 
 Validations are similar to [changes](/documentation/topics/resources/changes.md), except they cannot modify the changeset. They can only continue, or add an error.
@@ -67,10 +73,10 @@ defmodule MyApp.Validations.IsPrime do
 
   @impl true
   def init(opts) do
-    if opts[:attribute] != nil && is_atom(opts[:attribute]) do
+    if opts[:field] != nil && is_atom(opts[:field]) do
       {:ok, opts}
     else
-      {:error, "attribute must be an atom!"}
+      {:error, "field must be an atom!"}
     end
   end
 
@@ -79,13 +85,13 @@ defmodule MyApp.Validations.IsPrime do
 
   @impl true
   def validate(changeset, opts, _context) do
-    value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
+    value = Ash.Changeset.get_attribute(changeset, opts[:field])
     # this is a function I made up for example
     if is_nil(value) || Math.is_prime?(value) do
       :ok
     else
       # The returned error will be passed into `Ash.Error.to_ash_error/3`
-      {:error, field: opts[:attribute], message: "must be prime"}
+      {:error, field: opts[:field], message: "must be prime"}
     end
   end
 end
@@ -109,12 +115,12 @@ defmodule MyApp.Validations.ValidEmail do
 
   @impl true
   def validate(subject, opts, _context) do
-    value = get_value(subject, opts[:attribute])
+    value = get_value(subject, opts[:field])
     
     if is_nil(value) || valid_email?(value) do
       :ok
     else
-      {:error, field: opts[:attribute], message: "must be a valid email"}
+      {:error, field: opts[:field], message: "must be a valid email"}
     end
   end
 
@@ -259,19 +265,19 @@ defmodule MyApp.Validations.IsPrime do
     # lets ignore that there is no easy/built-in way to check prime numbers in postgres
     {:atomic,
       # the list of attributes that are involved in the validation
-      [opts[:attribute]],
+      [opts[:field]],
       # the condition that should cause the error
       # here we refer to the new value or the current value
-      expr(not(fragment("is_prime(?)", ^atomic_ref(opts[:attribute])))),
+      expr(not(fragment("is_prime(?)", ^atomic_ref(opts[:field])))),
       # the error expression
       expr(
         error(^InvalidAttribute, %{
-          field: ^opts[:attribute],
+          field: ^opts[:field],
           # the value that caused the error
-          value: ^atomic_ref(opts[:attribute]),
+          value: ^atomic_ref(opts[:field]),
           # the message to display
           message: ^(context.message || "%{field} must be prime"),
-          vars: %{field: ^opts[:attribute]}
+          vars: %{field: ^opts[:field]}
         })
       )
     }

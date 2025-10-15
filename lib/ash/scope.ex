@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Scope do
   @moduledoc """
   Determines how the `actor`, `tenant` and `context` are extracted from a data structure.

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Error Handling
 
 As of 3.0, Ash uses `Splode` to as our basis for errors. The documentation below still applies, but it is powered by `Splode` under the hood.

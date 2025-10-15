@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.BooleanExpression do
   @moduledoc "Represents a boolean expression"
   @dialyzer {:nowarn_function, optimized_new: 3}

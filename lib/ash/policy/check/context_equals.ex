@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.ContextEquals do
   @moduledoc "This check is true when the value of the specified key or path in the changeset or query context equals the specified value."
   use Ash.Policy.SimpleCheck

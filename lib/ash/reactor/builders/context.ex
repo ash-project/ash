@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defimpl Reactor.Argument.Build, for: Ash.Reactor.Dsl.Context do
   import Reactor.Template, only: [is_template: 1]
 

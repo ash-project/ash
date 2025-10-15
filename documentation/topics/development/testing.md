@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Testing
 
 Take a look at [the how-to guide](/documentation/how-to/test-resources.livemd) for a practical look at writing tests

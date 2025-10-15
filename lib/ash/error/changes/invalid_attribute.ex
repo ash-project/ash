@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Changes.InvalidAttribute do
   @moduledoc "Used when an invalid value is provided for an attribute change"
 

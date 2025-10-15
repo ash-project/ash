@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Operator.Eq do
   @moduledoc """
   left == right
@@ -12,6 +16,8 @@ defmodule Ash.Query.Operator.Eq do
     name: :eq,
     predicate?: true,
     types: [:any, :same]
+
+  alias Crux.Expression
 
   def new(left, right) do
     {:ok, struct(__MODULE__, left: left, right: right)}
@@ -40,8 +46,8 @@ defmodule Ash.Query.Operator.Eq do
         false
     end)
     |> Enum.group_by(& &1.left)
-    |> Enum.flat_map(fn {_, predicates} ->
-      Ash.SatSolver.mutually_exclusive(predicates)
+    |> Enum.map(fn {_, predicates} ->
+      Expression.at_most_one(predicates)
     end)
   end
 

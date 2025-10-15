@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.RelatingToActor do
   @moduledoc "This check is true when the specified relationship is being changed to the current actor."
   use Ash.Policy.FilterCheck

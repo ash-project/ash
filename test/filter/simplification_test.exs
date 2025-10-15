@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Filter.SimplificationTest do
   @moduledoc false
   use ExUnit.Case, async: true
@@ -48,7 +52,7 @@ defmodule Ash.Test.Filter.SimplificationTest do
       assert %Ash.Query.Operator.LessThan{
                operator: :<,
                right: ~D[2021-01-02]
-             } = Ash.SatSolver.transform(Post, expr)
+             } = Ash.Expr.to_sat_expression(Post, expr)
     end
 
     test "less than" do
@@ -57,7 +61,7 @@ defmodule Ash.Test.Filter.SimplificationTest do
       assert %Ash.Query.Operator.LessThan{
                operator: :<,
                right: ~D[2021-01-01]
-             } = Ash.SatSolver.transform(Post, expr)
+             } = Ash.Expr.to_sat_expression(Post, expr)
     end
 
     test "greater than or equal to" do
@@ -67,7 +71,7 @@ defmodule Ash.Test.Filter.SimplificationTest do
               %Ash.Query.Operator.LessThan{
                 operator: :<,
                 right: ~D[2021-01-01]
-              }} = Ash.SatSolver.transform(Post, expr)
+              }} = Ash.Expr.to_sat_expression(Post, expr)
     end
 
     test "greater than" do
@@ -77,7 +81,7 @@ defmodule Ash.Test.Filter.SimplificationTest do
               %Ash.Query.Operator.LessThan{
                 operator: :<,
                 right: ~D[2021-01-02]
-              }} = Ash.SatSolver.transform(Post, expr)
+              }} = Ash.Expr.to_sat_expression(Post, expr)
     end
   end
 
@@ -88,7 +92,7 @@ defmodule Ash.Test.Filter.SimplificationTest do
       assert %Ash.Query.Operator.LessThan{
                operator: :<,
                right: 2
-             } = Ash.SatSolver.transform(Post, expr)
+             } = Ash.Expr.to_sat_expression(Post, expr)
     end
 
     test "less than" do
@@ -97,7 +101,7 @@ defmodule Ash.Test.Filter.SimplificationTest do
       assert %Ash.Query.Operator.LessThan{
                operator: :<,
                right: 1
-             } = Ash.SatSolver.transform(Post, expr)
+             } = Ash.Expr.to_sat_expression(Post, expr)
     end
 
     test "greater than or equal to" do
@@ -107,7 +111,7 @@ defmodule Ash.Test.Filter.SimplificationTest do
               %Ash.Query.Operator.LessThan{
                 operator: :<,
                 right: 1
-              }} = Ash.SatSolver.transform(Post, expr)
+              }} = Ash.Expr.to_sat_expression(Post, expr)
     end
 
     test "greater than" do
@@ -117,7 +121,7 @@ defmodule Ash.Test.Filter.SimplificationTest do
               %Ash.Query.Operator.LessThan{
                 operator: :<,
                 right: 2
-              }} = Ash.SatSolver.transform(Post, expr)
+              }} = Ash.Expr.to_sat_expression(Post, expr)
     end
   end
 end

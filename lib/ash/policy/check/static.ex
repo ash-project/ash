@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.Static do
   @moduledoc "This check is always the result provided"
   use Ash.Policy.SimpleCheck
@@ -11,4 +15,7 @@ defmodule Ash.Policy.Check.Static do
   def match?(_actor, _request, options) do
     options[:result]
   end
+
+  @impl true
+  def simplify({__MODULE__, options}, _context), do: options[:result]
 end

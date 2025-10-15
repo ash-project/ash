@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 import Config
 
 if Mix.env() == :dev do
@@ -40,7 +44,7 @@ config :ash, :keep_read_action_loads_when_loading?, false
 config :ash, :read_action_after_action_hooks_in_order?, true
 config :ash, :bulk_actions_default_to_errors?, true
 
-config :ash, :sat_testing, true
+config :crux, :sat_testing, true
 config :ash, :no_join_mnesia_ets, :dynamic
 
 config :ash, :validate_domain_resource_inclusion?, false

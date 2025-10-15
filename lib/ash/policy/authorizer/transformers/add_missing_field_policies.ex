@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Authorizer.Transformers.AddMissingFieldPolicies do
   @moduledoc "Adds field policies for any missing fields"
   use Spark.Dsl.Transformer

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Project Structure
 
 In this guide we'll discuss some best practices for how to structure your project. These recommendations align well with [Elixir conventions](https://hexdocs.pm/elixir/1.16.2/naming-conventions.html#casing) around file and module naming. These conventions allow for a logical coupling of module and file names, and help keep your project organized and easy to navigate.

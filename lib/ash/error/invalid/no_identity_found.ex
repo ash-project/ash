@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.NoIdentityFound do
   @moduledoc "Used when an identity name is used that does not reference identity on the resource"
 

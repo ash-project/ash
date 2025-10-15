@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defprotocol Ash.Type.File.Source do
   @moduledoc """
   Protocol for allowing the casting of something into an `Ash.Type.File`.

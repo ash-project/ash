@@ -1,20 +1,47 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 if Code.ensure_loaded?(Igniter) do
   defmodule Ash.Domain.Igniter do
     @moduledoc "Codemods for working with Ash.Domain modules"
 
     @doc "List all domain modules found in the project"
     def list_domains(igniter) do
-      Igniter.Project.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
-        zipper
-        |> Igniter.Code.Module.move_to_use(Ash.Domain)
-        |> case do
-          {:ok, _} ->
-            true
+      # If any files have been removed, fall back to scanning all sources
+      # since a removed file could have contained a domain definition
+      if igniter.rms != [] do
+        {igniter, scan_sources_for_domains(igniter, scan_all: true)}
+      else
+        case get_compiled_domains(igniter) do
+          {:ok, compiled_domains} ->
+            # Fast path: combine compiled domains with any changed sources
+            changed_domains = scan_sources_for_domains(igniter, scan_all: false)
+            {igniter, Enum.uniq(compiled_domains ++ changed_domains)}
 
-          _ ->
-            false
+          :error ->
+            # Fallback: scan all sources if we can't get compiled domains
+            {igniter, scan_sources_for_domains(igniter, scan_all: true)}
         end
-      end)
+      end
+    end
+
+    defp get_compiled_domains(igniter) do
+      app_name = Igniter.Project.Application.app_name(igniter)
+      domains = Application.get_env(app_name, :ash_domains, [])
+      {:ok, domains}
+    rescue
+      _ -> :error
+    end
+
+    defp scan_sources_for_domains(igniter, opts) do
+      Ash.Igniter.find_all_matching_modules(
+        igniter,
+        fn _module, zipper ->
+          match?({:ok, _}, Igniter.Code.Module.move_to_use(zipper, Ash.Domain))
+        end,
+        opts
+      )
     end
 
     @doc "Adds a resource reference to a domain's `resources` block"

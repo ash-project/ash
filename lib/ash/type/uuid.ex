@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Type.UUID do
   @moduledoc """
   Represents a UUID.
@@ -25,26 +29,23 @@ defmodule Ash.Type.UUID do
   end
 
   @impl true
+  def coerce(<<_::128>> = value, _) do
+    {:ok, encode(value)}
+  end
+
+  def coerce(value, _) do
+    cast_input(value, [])
+  end
+
+  @impl true
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(%Ash.CiString{string: string}, constraints), do: cast_input(string, constraints)
 
-  def cast_input(
-        <<a1, a2, a3, a4, a5, a6, a7, a8, ?-, b1, b2, b3, b4, ?-, c1, c2, c3, c4, ?-, d1, d2, d3,
-          d4, ?-, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12>>,
-        _
-      ) do
-    <<c(a1), c(a2), c(a3), c(a4), c(a5), c(a6), c(a7), c(a8), ?-, c(b1), c(b2), c(b3), c(b4), ?-,
-      c(c1), c(c2), c(c3), c(c4), ?-, c(d1), c(d2), c(d3), c(d4), ?-, c(e1), c(e2), c(e3), c(e4),
-      c(e5), c(e6), c(e7), c(e8), c(e9), c(e10), c(e11), c(e12)>>
-  catch
-    :error -> :error
-  else
-    hex_uuid -> {:ok, hex_uuid}
+  def cast_input(<<_::48, version::4, _::12, 0b10::2, _::62>> = raw_uuid, _)
+      when version in 1..5 or version == 7 do
+    {:ok, encode(raw_uuid)}
   end
-
-  def cast_input(<<_::128>> = raw_uuid, _),
-    do: {:ok, encode(raw_uuid)}
 
   def cast_input(value, _) when is_binary(value) do
     case String.trim(value) do

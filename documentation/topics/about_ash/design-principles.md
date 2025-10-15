@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Design Principles
 
 The design principles behind Ash allows us to build an extremely flexible and powerful set of tools, without locking users into specific choices at any level. The framework acts as a spinal cord for your application, with extension points at every level to allow for custom behavior. What follows are the core tenets behind Ash Framework.

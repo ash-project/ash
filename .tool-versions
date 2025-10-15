@@ -1,2 +1,3 @@
 erlang 27.1.2
 elixir 1.18.4-otp-27
+pipx 1.8.0

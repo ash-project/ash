@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Check.RelatesToActorVia do
   @moduledoc "This check passes if the data relates to the actor via the specified relationship or path of relationships."
   use Ash.Policy.FilterCheck

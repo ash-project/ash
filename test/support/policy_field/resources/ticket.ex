@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Support.PolicyField.Ticket do
   @moduledoc false
   use Ash.Resource,
@@ -54,6 +58,10 @@ defmodule Ash.Test.Support.PolicyField.Ticket do
 
   field_policies do
     private_fields :hide
+
+    field_policy_bypass :*, actor_attribute_equals(:role, :admin) do
+      authorize_if true
+    end
 
     field_policy :status do
       authorize_if relates_to_actor_via(:representative)

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.CacheActionInputs do
   @moduledoc "Stores the set of valid input keys for each action"
   use Spark.Dsl.Transformer

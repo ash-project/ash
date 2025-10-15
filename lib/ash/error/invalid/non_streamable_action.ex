@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Invalid.NonStreamableAction do
   @moduledoc "Used when Ash.stream is used with an action that does not support keyset pagination"
 

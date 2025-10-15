@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Working with LLMs
 
 LLMs are a new technology, and the patterns on how best to leverage them evolve every day. It is also _quite_ debatable whether it is a good idea to use them at all. Nothing in Ash will ever be predicated on the usage of these tools, but we do want to provide at least some level of base guidance on what we think are the best practices for those that do. This is also to help those who are interested in trying these tools but don't yet know where to start.

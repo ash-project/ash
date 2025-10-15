@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Tracer.Simple do
   @moduledoc """
   A simple tracer that can send traces to the current process or call a module with the trace.

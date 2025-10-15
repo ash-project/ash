@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Error.Framework.UnsupportedSubject do
   @moduledoc "Used when a subject is provided to a validation or preparation that it does not support"
 

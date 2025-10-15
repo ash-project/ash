@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+
+SPDX-License-Identifier: MIT
+-->
+
 # Manual Actions
 
 Manual actions allow you to control how an action is performed instead of dispatching to a data layer. To do this, specify the `manual` option with a module that adopts the appropriate behavior.

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Policy.Checker do
   @moduledoc false
 
@@ -45,9 +49,7 @@ defmodule Ash.Policy.Checker do
   end
 
   defp scenario_is_reality(scenario, facts) do
-    scenario
-    |> Map.drop([true, false])
-    |> Enum.reduce_while(:reality, fn {fact, requirement}, status ->
+    Enum.reduce_while(scenario, :reality, fn {fact, requirement}, status ->
       case Policy.fetch_fact(facts, fact) do
         {:ok, ^requirement} ->
           {:cont, status}
@@ -69,7 +71,6 @@ defmodule Ash.Policy.Checker do
       {:ok, scenarios, authorizer} ->
         scenarios
         |> remove_scenarios_with_impossible_facts(authorizer)
-        |> Ash.Policy.SatSolver.simplify_clauses()
         |> case do
           [] -> {:ok, false, authorizer}
           scenarios -> {:ok, scenarios, authorizer}

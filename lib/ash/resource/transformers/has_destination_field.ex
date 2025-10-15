@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Resource.Transformers.HasDestinationField do
   @moduledoc "Guesses the `destination_attribute` for has many and has one relationships unless provided"
   use Spark.Dsl.Transformer

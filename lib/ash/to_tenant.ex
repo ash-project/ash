@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs.contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defprotocol Ash.ToTenant do
   @moduledoc """
   Converts a value to a tenant. To add this to a resource, implement the protocol like so:application
