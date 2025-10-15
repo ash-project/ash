@@ -26,17 +26,14 @@ defmodule Ash.Policy.Check.ActionType do
 
   @impl true
   def simplify({__MODULE__, options}, _context) do
-    case options[:type] do
-      [_single_type] ->
-        {__MODULE__, options}
+    case List.wrap(options[:type]) do
+      [] ->
+        false
 
-      multiple_types when is_list(multiple_types) ->
+      [_ | _] = multiple_types ->
         multiple_types
         |> Enum.map(&{__MODULE__, Keyword.put(options, :type, [&1])})
         |> Enum.reduce(&b(&2 or &1))
-
-      single_type ->
-        {__MODULE__, Keyword.put(options, :type, [single_type])}
     end
   end
 

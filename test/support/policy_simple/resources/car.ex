@@ -78,6 +78,10 @@ defmodule Ash.Test.Support.PolicySimple.Car do
     policy [action_type(:read), always()] do
       authorize_if always()
     end
+
+    policy action_type([]) do
+      authorize_if always()
+    end
   end
 
   relationships do
