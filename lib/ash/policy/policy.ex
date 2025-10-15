@@ -5,12 +5,14 @@
 defmodule Ash.Policy.Policy do
   @moduledoc "Represents a policy on an Ash.Resource"
 
-  import Ash.SatSolver, only: [b: 1]
+  import Crux.Expression, only: [b: 1, is_variable: 1]
 
   alias Ash.Policy.Authorizer
   alias Ash.Policy.Check
   alias Ash.Policy.FieldPolicy
-  alias Ash.SatSolver
+  alias Crux
+  alias Crux.Expression
+  alias Crux.Formula
 
   # For now we just write to `checks` and move them to `policies`
   # on build, when we support nested policies we can change that.
@@ -32,25 +34,16 @@ defmodule Ash.Policy.Policy do
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
-  defguardp is_expression_operation(term)
-            when (is_tuple(term) and (tuple_size(term) == 2 and elem(term, 0) == :not)) or
-                   (tuple_size(term) == 3 and elem(term, 0) in [:and, :or])
-
-  defguardp is_expression_check(term)
-            when not is_expression_operation(term) and not is_boolean(term)
-
-  # Temporarily making this private so that the function can be changed without
-  # a major version bump in the SAT refactoring PR.
-  # TODO: Make public with #2375 
-  @doc false
-  @spec expression(policies :: t() | FieldPolicy.t() | [t() | FieldPolicy.t()]) ::
-          SatSolver.boolean_expr(Check.ref())
-  def expression(policies) do
+  @spec expression(
+          policies :: t() | FieldPolicy.t() | [t() | FieldPolicy.t()],
+          check_context :: Check.context()
+        ) :: Expression.t(Check.ref())
+  def expression(policies, check_context) do
     policies
     |> List.wrap()
     |> Enum.map(fn policy ->
       # Simplification is important here to detect empty field policies
-      cond_expr = policy |> condition_expression() |> simplify_policy_expression()
+      cond_expr = policy |> condition_expression() |> simplify_policy_expression(check_context)
       pol_expr = policies_expression(policy)
       complete_expr = b(cond_expr and pol_expr)
       {policy, cond_expr, complete_expr}
@@ -82,36 +75,40 @@ defmodule Ash.Policy.Policy do
       {%{}, cond_expr, complete_expr}, {one_condition_matches, all_policies_match} ->
         {
           b(cond_expr or one_condition_matches),
-          b((complete_expr or not cond_expr) and all_policies_match)
+          b(implied_by(complete_expr, cond_expr) and all_policies_match)
         }
     end)
     |> then(&b(elem(&1, 0) and elem(&1, 1)))
-    |> simplify_policy_expression()
+    |> simplify_policy_expression(check_context)
+    |> expand_invariants(check_context)
   end
 
   @spec solve(authorizer :: Authorizer.t()) ::
           {:ok, boolean() | list(map), Authorizer.t()}
           | {:error, Authorizer.t(), Ash.Error.t()}
   def solve(authorizer) do
+    check_context = check_context(authorizer)
+
     {expression, authorizer} =
-      build_requirements_expression(authorizer)
+      build_requirements_expression(authorizer, check_context)
 
     case expression do
       expr when is_boolean(expr) ->
         {:ok, expr, authorizer}
 
       expression ->
-        Ash.Policy.SatSolver.solve(expression, fn scenario, bindings ->
-          scenario
-          |> Ash.SatSolver.solutions_to_predicate_values(bindings)
-          |> Map.drop([true, false])
-        end)
-        |> case do
-          {:ok, scenarios} ->
-            {:ok, Enum.uniq(scenarios), authorizer}
+        scenario_options = scenario_options(check_context)
 
-          {:error, error} ->
-            {:error, authorizer, error}
+        expression
+        |> Formula.from_expression()
+        |> Crux.satisfying_scenarios(scenario_options)
+        |> case do
+          [] ->
+            {:error, authorizer, :unsatisfiable}
+
+          scenarios ->
+            mapped_scenarios = Enum.map(scenarios, &Map.drop(&1, [true, false]))
+            {:ok, Enum.uniq(mapped_scenarios), authorizer}
         end
     end
   catch
@@ -147,22 +144,16 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  @spec build_requirements_expression(authorizer :: Authorizer.t()) ::
-          {SatSolver.boolean_expr(Check.ref()), Authorizer.t()}
-  defp build_requirements_expression(authorizer) do
-    expression = expression(authorizer.policies)
-
+  @spec build_requirements_expression(
+          authorizer :: Authorizer.t(),
+          check_context :: Check.context()
+        ) :: {Expression.t(Check.ref()), Authorizer.t()}
+  defp build_requirements_expression(authorizer, check_context) do
     {expression, authorizer} =
-      authorizer.facts
-      |> Map.drop([true, false])
-      |> Ash.Policy.SatSolver.facts_to_statement()
-      |> case do
-        nil -> expression
-        facts_expression -> b(facts_expression and expression)
-      end
+      authorizer.policies
+      |> expression(check_context)
+      |> simplify_policy_expression(check_context)
       |> expand_constants(authorizer)
-
-    expression = simplify_policy_expression(expression)
 
     authorizer = %{authorizer | solver_statement: expression}
 
@@ -173,7 +164,7 @@ defmodule Ash.Policy.Policy do
           Authorizer.t(),
           Check.t() | Check.ref()
         ) ::
-          {:ok, SatSolver.boolean_expr(Check.ref()), Authorizer.t()}
+          {:ok, Expression.t(Check.ref()), Authorizer.t()}
           | {:error, Authorizer.t()}
   def fetch_or_strict_check_fact(authorizer, check)
 
@@ -246,7 +237,7 @@ defmodule Ash.Policy.Policy do
   defp missing_original_data?(_), do: false
 
   @spec fetch_fact(facts :: map, check :: Check.t() | Check.ref()) ::
-          {:ok, SatSolver.boolean_expr(Check.ref())} | :error
+          {:ok, Expression.t(Check.ref())} | :error
   def fetch_fact(facts, check)
 
   def fetch_fact(facts, %{check_module: mod, check_opts: opts}),
@@ -278,16 +269,14 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  @spec condition_expression(policy :: t() | FieldPolicy.t()) ::
-          SatSolver.boolean_expr(Check.ref())
+  @spec condition_expression(policy :: t() | FieldPolicy.t()) :: Expression.t(Check.ref())
   defp condition_expression(%{condition: condition}) do
     condition
     |> List.wrap()
     |> Enum.reduce(true, &b(&2 and &1))
   end
 
-  @spec policies_expression(policy :: t() | FieldPolicy.t()) ::
-          SatSolver.boolean_expr(Check.ref())
+  @spec policies_expression(policy :: t() | FieldPolicy.t()) :: Expression.t(Check.ref())
   defp policies_expression(%{policies: policies}) do
     policies
     |> List.wrap()
@@ -296,7 +285,7 @@ defmodule Ash.Policy.Policy do
         b({clause.check_module, clause.check_opts} or acc)
 
       %Check{type: :authorize_unless} = clause, acc ->
-        b(not {clause.check_module, clause.check_opts} or acc)
+        b(implies({clause.check_module, clause.check_opts}, acc))
 
       %Check{type: :forbid_if} = clause, acc ->
         b(not {clause.check_module, clause.check_opts} and acc)
@@ -307,15 +296,12 @@ defmodule Ash.Policy.Policy do
   end
 
   @spec expand_constants(
-          expression :: SatSolver.boolean_expr(Check.ref()),
+          expression :: Expression.t(Check.ref()),
           authorizer :: Authorizer.t()
-        ) :: {SatSolver.boolean_expr(Check.ref()), Authorizer.t()}
+        ) :: {Expression.t(Check.ref()), Authorizer.t()}
   defp expand_constants(expression, authorizer) do
-    SatSolver.expand_expression(expression, authorizer, fn
-      {Check.Static, opts}, authorizer ->
-        {opts[:result], authorizer}
-
-      expr, authorizer when is_expression_check(expr) ->
+    Expression.expand(expression, authorizer, fn
+      expr, authorizer when is_variable(expr) ->
         case fetch_or_strict_check_fact(authorizer, expr) do
           {:ok, result, authorizer} ->
             {result, authorizer}
@@ -329,51 +315,121 @@ defmodule Ash.Policy.Policy do
     end)
   end
 
-  @spec simplify_policy_expression(expression :: SatSolver.boolean_expr(Check.ref())) ::
-          SatSolver.boolean_expr(Check.ref())
-  defp simplify_policy_expression(expression) do
+  @spec simplify_policy_expression(
+          expression :: Expression.t(Check.ref()),
+          context :: Check.context()
+        ) :: Expression.t(Check.ref())
+  defp simplify_policy_expression(expression, context) do
     expression
-    |> SatSolver.walk_expression(fn
-      {Check.Static, opts} -> opts[:result]
-      other -> other
+    |> Expression.postwalk(fn
+      {check, _opts} = expr when is_variable(expr) ->
+        Code.ensure_loaded!(check)
+
+        if function_exported?(check, :simplify, 2) do
+          check.simplify(expr, context)
+        else
+          expr
+        end
+
+      other ->
+        other
     end)
-    |> SatSolver.simplify_expression()
+    |> Expression.simplify()
   end
 
   @doc false
-  @spec debug_expr(expr :: SatSolver.boolean_expr(Check.ref()), label :: String.t()) :: String.t()
+  @spec debug_expr(expr :: Expression.t(Check.ref()), label :: String.t()) :: String.t()
   def debug_expr(expr, label \\ "Expr") do
     expr
-    |> do_debug_expr()
-    |> Macro.to_string()
+    |> Crux.Expression.to_string(fn
+      {check_module, check_opts} -> check_module.describe(check_opts)
+      v -> Macro.escape(v)
+    end)
     |> then(&"#{label}:\n\n#{&1}")
   end
 
-  defp do_debug_expr(b(l and r)) do
-    quote do
-      unquote(do_debug_expr(l)) and unquote(do_debug_expr(r))
+  @spec check_context(authorizer :: Authorizer.t()) :: Check.context()
+  defp check_context(%Authorizer{resource: resource}) do
+    %{resource: resource}
+  end
+
+  @spec expand_invariants(
+          expression :: Expression.t(Check.ref()),
+          check_context :: Check.context()
+        ) :: Expression.t(Check.ref())
+  defp expand_invariants(expression, check_context) do
+    {_, variables} =
+      Expression.postwalk(expression, [], fn
+        check, acc when is_variable(check) -> {check, [check | acc]}
+        other, acc -> {other, acc}
+      end)
+
+    unique_variables = Enum.uniq(variables)
+
+    for {check, _} <- unique_variables do
+      Code.ensure_loaded!(check)
+    end
+
+    expression =
+      for {check, _} = left <- unique_variables,
+          right <- unique_variables,
+          left != right,
+          reduce: expression do
+        acc ->
+          cond do
+            not function_exported?(check, :implies?, 3) -> acc
+            check.implies?(left, right, check_context) -> b(acc and implies(left, right))
+            true -> acc
+          end
+      end
+
+    for {check, _} = left <- unique_variables,
+        right <- unique_variables,
+        left != right,
+        reduce: expression do
+      acc ->
+        cond do
+          not function_exported?(check, :conflict?, 3) -> acc
+          check.conflict?(left, right, check_context) -> b(acc and nand(left, right))
+          true -> acc
+        end
     end
   end
 
-  defp do_debug_expr(b(l or r)) do
-    quote do
-      unquote(do_debug_expr(l)) or unquote(do_debug_expr(r))
-    end
-  end
+  @check_priorities [
+                      Ash.Policy.Check.Static,
+                      Ash.Policy.Check.Action,
+                      Ash.Policy.Check.ActionType,
+                      Ash.Policy.Check.ActorAbsent,
+                      Ash.Policy.Check.ActorPresent
+                    ]
+                    |> Enum.with_index()
+                    |> Map.new()
 
-  defp do_debug_expr(b(not v)) do
-    quote do
-      not unquote(do_debug_expr(v))
-    end
-  end
+  @doc """
+  Default Options for Crux scenarios
+  """
+  @spec scenario_options(check_context :: Check.context()) :: Crux.opts(Check.ref())
+  def scenario_options(check_context) do
+    [
+      sorter: fn left, right ->
+        left_priority = Map.get(@check_priorities, elem(left, 0), 1_000)
+        right_priority = Map.get(@check_priorities, elem(right, 0), 1_000)
 
-  defp do_debug_expr({check_module, check_opts}) do
-    check_module.describe(check_opts)
-  end
-
-  defp do_debug_expr(v) do
-    quote do
-      unquote(Macro.escape(v))
-    end
+        if left_priority != right_priority do
+          left_priority <= right_priority
+        else
+          left <= right
+        end
+      end,
+      conflicts?: fn {check, _otps} = left, right ->
+        function_exported?(check, :conflicts?, 3) and
+          check.conflicts?(left, right, check_context)
+      end,
+      implies?: fn {check, _opts} = left, right ->
+        function_exported?(check, :implies?, 3) and
+          check.implies?(left, right, check_context)
+      end
+    ]
   end
 end

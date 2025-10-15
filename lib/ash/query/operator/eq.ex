@@ -17,6 +17,8 @@ defmodule Ash.Query.Operator.Eq do
     predicate?: true,
     types: [:any, :same]
 
+  alias Crux.Expression
+
   def new(left, right) do
     {:ok, struct(__MODULE__, left: left, right: right)}
   end
@@ -44,8 +46,8 @@ defmodule Ash.Query.Operator.Eq do
         false
     end)
     |> Enum.group_by(& &1.left)
-    |> Enum.flat_map(fn {_, predicates} ->
-      Ash.SatSolver.mutually_exclusive(predicates)
+    |> Enum.map(fn {_, predicates} ->
+      Expression.at_most_one(predicates)
     end)
   end
 

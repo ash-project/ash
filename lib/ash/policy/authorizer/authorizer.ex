@@ -20,7 +20,7 @@ defmodule Ash.Policy.Authorizer do
     :solver_statement,
     context: %{},
     policies: [],
-    facts: %{true => true, false => false},
+    facts: %{},
     data_facts: %{}
   ]
 
@@ -1400,7 +1400,6 @@ defmodule Ash.Policy.Authorizer do
       end)
       |> Map.new()
     end)
-    |> Ash.Policy.SatSolver.simplify_clauses()
     |> Enum.reduce([], fn scenario, or_filters ->
       if scenario == %{} do
         [false | or_filters]

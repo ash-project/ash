@@ -1760,7 +1760,7 @@ defmodule Ash.Query do
 
       right_filter = %{left_filter | expression: right_expression}
 
-      Ash.SatSolver.strict_filter_subset(left_filter, right_filter)
+      Ash.Filter.strict_subset(left_filter, right_filter)
     end
   end
 
@@ -1806,7 +1806,7 @@ defmodule Ash.Query do
         })
 
       left_filter = %{right_filter | expression: left_expression}
-      Ash.SatSolver.strict_filter_subset(left_filter, right_filter)
+      Ash.Filter.strict_subset(left_filter, right_filter)
     end
   end
 

@@ -15,4 +15,7 @@ defmodule Ash.Policy.Check.Static do
   def match?(_actor, _request, options) do
     options[:result]
   end
+
+  @impl true
+  def simplify({__MODULE__, options}, _context), do: options[:result]
 end

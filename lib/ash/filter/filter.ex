@@ -952,7 +952,69 @@ defmodule Ash.Filter do
       do: false
 
   def strict_subset_of(filter, candidate) do
-    Ash.SatSolver.strict_filter_subset(filter, candidate)
+    strict_subset(filter, candidate)
+  end
+
+  @doc "Returns true if the candidate filter returns the same or less data than the filter"
+  @spec strict_subset(t(), t()) :: boolean | :maybe
+  def strict_subset(filter, candidate) do
+    case {filter, candidate} do
+      {%{expression: nil}, %{expression: nil}} ->
+        true
+
+      {%{expression: nil}, _candidate_expr} ->
+        true
+
+      {_filter_expr, %{expression: nil}} ->
+        false
+
+      {filter, candidate} ->
+        do_strict_subset(filter, candidate)
+    end
+  end
+
+  defp do_strict_subset(filter, candidate) do
+    filter =
+      map(filter, fn
+        %Ref{} = ref ->
+          %{ref | input?: false}
+
+        other ->
+          other
+      end)
+
+    candidate =
+      map(candidate, fn
+        %Ref{} = ref ->
+          %{ref | input?: false}
+
+        other ->
+          other
+      end)
+
+    expr = BooleanExpression.new(:and, filter.expression, candidate.expression)
+
+    formula =
+      filter.resource
+      |> Ash.Expr.to_sat_expression(expr)
+      |> Crux.Formula.from_expression()
+
+    if Crux.satisfiable?(formula) do
+      expr = BooleanExpression.new(:and, Not.new(filter.expression), candidate.expression)
+
+      formula =
+        filter.resource
+        |> Ash.Expr.to_sat_expression(expr)
+        |> Crux.Formula.from_expression()
+
+      if Crux.satisfiable?(formula) do
+        :maybe
+      else
+        true
+      end
+    else
+      false
+    end
   end
 
   def strict_subset_of?(filter, candidate) do
