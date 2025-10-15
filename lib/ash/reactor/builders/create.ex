@@ -73,7 +73,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
 
   def verify(create, dsl_state) do
     with {:ok, action} <- get_action(dsl_state, create.resource, create.undo_action),
-         :ok <- verify_is_destroy_action(dsl_state, create.resource, action) do
+         :ok <- verify_undo_action_type(dsl_state, create.resource, action) do
       verify_action_takes_changeset(dsl_state, create.resource, action)
     end
   end
@@ -94,16 +94,21 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
     end
   end
 
-  defp verify_is_destroy_action(_dsl_state, _resource, action)
+  defp verify_undo_action_type(_dsl_state, _resource, action)
        when is_struct(action, Ash.Resource.Actions.Destroy),
        do: :ok
 
-  defp verify_is_destroy_action(dsl_state, _resource, _action) do
+  defp verify_undo_action_type(_dsl_state, _resource, action)
+       when is_struct(action, Ash.Resource.Actions.Update),
+       do: :ok
+
+  defp verify_undo_action_type(dsl_state, _resource, _action) do
     {:error,
      DslError.exception(
        module: Transformer.get_persisted(dsl_state, :module),
        path: [:create, :undo_action],
-       message: "The undo action for a create step should also be a destroy."
+       message:
+         "The undo action for a create step should be either a destroy or an update action."
      )}
   end
 

@@ -58,6 +58,7 @@ defmodule Ash.Test.ReactorCreateTest do
       uuid_primary_key :id
       attribute :title, :string, allow_nil?: false, public?: true
       attribute :sub_title, :string, public?: true
+      attribute :deleted, :boolean, default: false, public?: true
     end
 
     actions do
@@ -66,6 +67,16 @@ defmodule Ash.Test.ReactorCreateTest do
 
       create :with_actor_as_author do
         change relate_actor(:author)
+      end
+
+      update :soft_delete do
+        accept []
+
+        argument :changeset, :struct do
+          constraints instance_of: Ash.Changeset
+        end
+
+        change set_attribute(:deleted, true)
       end
     end
 
@@ -284,6 +295,53 @@ defmodule Ash.Test.ReactorCreateTest do
     end)
 
     assert [] = Ash.read!(Author)
+  end
+
+  test "it can undo the creation with an update action on error" do
+    defmodule UndoingCreatePostWithUpdateReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      ash do
+        default_domain(Domain)
+      end
+
+      input :title
+      input :sub_title
+
+      create :create_post, Post, :create do
+        inputs(%{title: input(:title), sub_title: input(:sub_title)})
+
+        undo :always
+        undo_action(:soft_delete)
+      end
+
+      step :fail do
+        argument :post, result(:create_post)
+
+        run fn _, _ ->
+          assert [post] = Ash.read!(Post)
+          assert post.deleted == false
+
+          raise "hell"
+        end
+      end
+    end
+
+    UndoingCreatePostWithUpdateReactor
+    |> Reactor.run(%{title: "Test Post", sub_title: "Test Sub"}, %{}, async?: false)
+    |> Ash.Test.assert_has_error(fn
+      %Reactor.Error.Invalid.RunStepError{error: %RuntimeError{message: "hell"}} ->
+        true
+
+      _ ->
+        false
+    end)
+
+    # The post should still exist but be marked as deleted
+    assert [post] = Ash.read!(Post)
+    assert post.deleted == true
+    assert post.title == "Test Post"
   end
 
   test "it can be provided a changeset as the initial value" do
