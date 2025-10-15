@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.6.4](https://github.com/ash-project/ash/compare/v3.6.3...v3.6.4) (2025-10-15)
+
+
+
+
+### Bug Fixes:
+
+* don't return skipped upserts by default by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.6.3](https://github.com/ash-project/ash/compare/v3.6.2...v3.6.3) (2025-10-15)
 
 
