@@ -149,7 +149,7 @@ jobs:
         run: |
           EXIT_CODE=0
           # Check if files exist in root and fail if they do
-          for file in CODE_OF_CONDUCT.md CONTRIBUTING.md FUNDING.yml; do
+          for file in CODE_OF_CONDUCT.md FUNDING.yml; do
             if [ -f "$file" ]; then
               echo "❌ $file found in root directory. Please move it to .github/ directory."
               EXIT_CODE=1
@@ -165,7 +165,7 @@ jobs:
             }
           }
           # Check files in .github directory
-          for file in CODE_OF_CONDUCT.md CONTRIBUTING.md FUNDING.yml; do
+          for file in CODE_OF_CONDUCT.md FUNDING.yml; do
             filepath=".github/$file"
             if [ -f "$filepath" ]; then
               echo "✅ Found $file in .github directory"
@@ -177,11 +177,6 @@ jobs:
               fi
 
               actual_content=$(cat "$filepath")
-
-              # Remove SPDX comment from CONTRIBUTING.md if present
-              if [ "$file" = "CONTRIBUTING.md" ]; then
-                actual_content=$(echo "$actual_content" | sed '/^<!--$/,/^-->$/{ /^<!--$/d; /^-->$/d; /^SPDX-/d; /^$/d; }')
-              fi
 
               if [ "$actual_content" != "$expected_content" ]; then
                 echo "❌ Content of $filepath does not match expected content from ash-project/.github"
