@@ -6087,8 +6087,8 @@ defmodule Ash.Changeset do
                Ash.Type.include_source(argument.type, changeset, argument.constraints),
              {:ok, casted} <-
                Ash.Type.cast_input(argument.type, value, constraints),
-             {{:ok, casted}, _last_val}  <-
-                {Ash.Type.apply_constraints(argument.type, casted, constraints), casted} do
+             {{:ok, casted}, _last_val} <-
+               {Ash.Type.apply_constraints(argument.type, casted, constraints), casted} do
           %{changeset | arguments: Map.put(changeset.arguments, argument.name, casted)}
           |> store_casted_argument(argument.name, casted, store_casted?)
         else
