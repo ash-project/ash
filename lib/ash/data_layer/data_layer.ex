@@ -127,6 +127,8 @@ defmodule Ash.DataLayer do
               {:ok, data_layer_query()} | {:error, term}
   @callback filter(data_layer_query(), Ash.Filter.t(), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
+
+  @callback combination_acc(data_layer_query()) :: any
   @callback sort(data_layer_query(), Ash.Sort.t(), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
   @callback distinct_sort(data_layer_query(), Ash.Sort.t(), resource :: Ash.Resource.t()) ::
@@ -308,6 +310,7 @@ defmodule Ash.DataLayer do
               {:ok, data_layer_query()} | {:error, term}
 
   @optional_callbacks source: 1,
+                      combination_acc: 1,
                       run_query: 2,
                       bulk_create: 3,
                       update_query: 4,
@@ -692,6 +695,17 @@ defmodule Ash.DataLayer do
       end
     else
       {:error, "Data layer does not support combining queries"}
+    end
+  end
+
+  @spec combination_acc(data_layer_query(), Ash.Resource.t()) :: any()
+  def combination_acc(data_layer_query, resource) do
+    data_layer = Ash.DataLayer.data_layer(resource)
+
+    if function_exported?(data_layer, :combination_acc, 1) do
+      data_layer.combination_acc(data_layer_query)
+    else
+      data_layer
     end
   end
 

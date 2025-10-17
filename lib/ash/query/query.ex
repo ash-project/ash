@@ -4468,7 +4468,12 @@ defmodule Ash.Query do
         Map.update!(
           context,
           :data_layer,
-          &Map.put(&1, :previous_combination, opts[:previous_combination])
+          &Map.put(
+            &1,
+            :previous_combination,
+            opts[:previous_combination] &&
+              Ash.DataLayer.combination_acc(opts[:previous_combination], resource)
+          )
         )
       else
         context
@@ -4543,7 +4548,8 @@ defmodule Ash.Query do
                    Ash.DataLayer.combination_of(combinations, ash_query.resource, domain) do
               {:ok, query,
                %{
-                 previous_combination: previous,
+                 previous_combination:
+                   previous && Ash.DataLayer.combination_acc(previous, ash_query.resource),
                  combination_of_queries?: true,
                  combination_fieldset:
                    Enum.uniq(

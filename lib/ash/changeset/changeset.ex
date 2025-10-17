@@ -6106,22 +6106,17 @@ defmodule Ash.Changeset do
                Ash.Type.include_source(argument.type, changeset, argument.constraints),
              {:ok, casted} <-
                Ash.Type.cast_input(argument.type, value, constraints),
-             {:constrained, {:ok, casted}, _last_val} when not is_nil(casted) <-
-               {:constrained, Ash.Type.apply_constraints(argument.type, casted, constraints),
-                casted} do
+             {{:ok, casted}, _last_val} <-
+               {Ash.Type.apply_constraints(argument.type, casted, constraints), casted} do
           %{changeset | arguments: Map.put(changeset.arguments, argument.name, casted)}
           |> store_casted_argument(argument.name, casted, store_casted?)
         else
-          {:constrained, {:ok, nil}, _} ->
-            %{changeset | arguments: Map.put(changeset.arguments, argument.name, nil)}
-            |> store_casted_argument(argument.name, nil, store_casted?)
-
-          {:constrained, {:error, error}, last_val} ->
-            add_invalid_errors(value, :argument, changeset, argument, error)
-            |> store_casted_argument(argument.name, last_val, store_casted?)
-
           {:error, error} ->
             add_invalid_errors(value, :argument, changeset, argument, error)
+
+          {{:error, error}, last_val} ->
+            add_invalid_errors(value, :argument, changeset, argument, error)
+            |> store_casted_argument(argument.name, last_val, store_casted?)
         end
       else
         %{changeset | arguments: Map.put(changeset.arguments, argument, value)}

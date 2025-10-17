@@ -1,5 +1,4 @@
 # SPDX-FileCopyrightText: SPDX-FileCopyrightText: ash contributors <https://github.com/ash-project/ash/graphs.contributors>
-#ch Daniel
 #
 # SPDX-License-Identifier: MIT
 

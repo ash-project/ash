@@ -207,6 +207,7 @@ defmodule Ash.Actions.BulkManualActionHelpers do
   @doc """
   Finds the bulk operation index value from a record's metadata, searching through
   all possible namespaced metadata keys for the given bulk action type.
+  Also supports the normalized simple format after metadata cleanup.
   """
   def get_bulk_index(record, bulk_action_type \\ :bulk_update) do
     metadata_atom =
@@ -218,7 +219,10 @@ defmodule Ash.Actions.BulkManualActionHelpers do
 
     record.__metadata__
     |> Enum.find_value(fn
+      # Namespaced format (during processing)
       {{^metadata_atom, _ref}, index} -> index
+      # Simple format (after normalization)
+      {^metadata_atom, index} -> index
       _ -> nil
     end)
   end
@@ -258,4 +262,39 @@ defmodule Ash.Actions.BulkManualActionHelpers do
     {_, metadata_key} = extract_bulk_metadata(changeset, bulk_action_type)
     metadata_key
   end
+
+  @doc """
+  Normalizes bulk operation metadata from the internal namespaced format to the simple public format.
+
+  This removes the reference-based keys like `{{:bulk_create_index, ref}, index}` and replaces them
+  with simple keys like `{:bulk_create_index, index}` for cleaner public APIs.
+  """
+  def normalize_record_metadata(record, bulk_action_type) when is_struct(record) do
+    case get_bulk_index(record, bulk_action_type) do
+      nil ->
+        record
+
+      index ->
+        metadata_atom =
+          case bulk_action_type do
+            :bulk_create -> :bulk_create_index
+            :bulk_update -> :bulk_update_index
+            :bulk_destroy -> :bulk_destroy_index
+          end
+
+        # Remove the namespaced metadata key and add the simple one
+        metadata =
+          record.__metadata__
+          |> Enum.reject(fn
+            {{^metadata_atom, _ref}, _} -> true
+            _ -> false
+          end)
+          |> Map.new()
+          |> Map.put(metadata_atom, index)
+
+        %{record | __metadata__: metadata}
+    end
+  end
+
+  def normalize_record_metadata(other, _bulk_action_type), do: other
 end

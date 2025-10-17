@@ -708,6 +708,7 @@ defmodule Ash.Actions.Create.Bulk do
       action
     )
     |> Stream.concat(must_be_simple_results)
+    |> Stream.map(&BulkManualActionHelpers.normalize_record_metadata(&1, :bulk_create))
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
