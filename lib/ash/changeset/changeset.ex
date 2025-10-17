@@ -11,12 +11,6 @@ defmodule Ash.Changeset do
   actually incurs changes in a data layer. To commit a changeset, see `Ash.create/2`
   and `Ash.update/2`.
 
-  ## Metadata Handling
-  
-  When records are passed to update or destroy operations, their metadata is cleared
-  except for essential system metadata (tenant, timestamps) to prevent stale metadata
-  from affecting operations."""
-
   # Changeset lifecycle
 
   ## Action Lifecycle
@@ -47,12 +41,10 @@ defmodule Ash.Changeset do
   end
   ```
   """
-
-    clear_keys = [:upsert_skipped, :manual_key, :join_key, :__reactor__]
   # Removes transient/unsafe matadata keys while preserving the essential system metadata.
   defp clear_metadata(%{__metadata__: metadata} = record) when is_map(metadata) do
     # metadata keys that are only relevant at runtime and should be eleminated later
-    clear_keys = [:upsert_skipped, :manual_key, :join_key, :private, :__rector__, :example_matadata]
+    clear_keys = [:upsert_skipped, :manual_key, :join_keys, :private, :__reactor__, :example_metadata]
     cleaned_metadata = Map.drop(metadata, clear_keys)
     Map.put(record, :__metadata__, cleaned_metadata)
   end
