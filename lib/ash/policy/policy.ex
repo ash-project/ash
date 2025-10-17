@@ -49,9 +49,11 @@ defmodule Ash.Policy.Policy do
       {policy, cond_expr, complete_expr}
     end)
     |> List.foldr({false, true}, fn
-      {%{bypass?: true}, cond_expr, complete_expr}, {one_condition_matches, true} ->
+      {%{bypass?: true}, _cond_expr, complete_expr}, {one_condition_matches, true} ->
         {
-          b(cond_expr or one_condition_matches),
+          # Bypass should only contribute to "at least one policy applies" if it actually authorizes.
+          # Use complete_expr (condition AND policies) not just condition.
+          b(complete_expr or one_condition_matches),
           # Bypass can't relay to the next bypass if there is none
           complete_expr
         }
@@ -66,9 +68,11 @@ defmodule Ash.Policy.Policy do
           b(complete_expr or all_policies_match)
         }
 
-      {%{bypass?: true}, cond_expr, complete_expr}, {one_condition_matches, all_policies_match} ->
+      {%{bypass?: true}, _cond_expr, complete_expr},
+      {one_condition_matches, all_policies_match} ->
         {
-          b(cond_expr or one_condition_matches),
+          # Bypass should only contribute to "at least one policy applies" if it actually authorizes.
+          b(complete_expr or one_condition_matches),
           b(complete_expr or all_policies_match)
         }
 
