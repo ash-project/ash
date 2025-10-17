@@ -659,6 +659,41 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert user2_got_thing.id == user2_thing.id
   end
 
+  defmodule ResourceWithBypassAndReadPolicy do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    actions do
+      defaults [:read]
+
+      create :create do
+        primary? true
+        accept [:name]
+      end
+    end
+
+    policies do
+      bypass always() do
+        authorize_if actor_attribute_equals(:admin, true)
+      end
+
+      policy action_type(:read) do
+        authorize_if always()
+      end
+    end
+  end
+
   defmodule ResourceWithBeforeTransactionHook do
     use Ash.Resource,
       domain: Ash.Test.Domain,
@@ -711,6 +746,28 @@ defmodule Ash.Test.Policy.SimpleTest do
         authorize_if always()
       end
     end
+  end
+
+  test "bypass with only admin check should not allow non-admin creates", %{
+    user: user,
+    admin: admin
+  } do
+    # Non-admin user should not be able to create
+    assert_raise Ash.Error.Forbidden, fn ->
+      ResourceWithBypassAndReadPolicy
+      |> Ash.Changeset.for_create(:create, %{name: "test"})
+      |> Ash.create!(actor: user)
+    end
+
+    # Admin should be able to create via bypass
+    assert %{name: "admin_record"} =
+             ResourceWithBypassAndReadPolicy
+             |> Ash.Changeset.for_create(:create, %{name: "admin_record"})
+             |> Ash.create!(actor: admin)
+
+    # Both admin and non-admin should be able to read
+    assert [_] = Ash.read!(ResourceWithBypassAndReadPolicy, actor: admin)
+    assert [_] = Ash.read!(ResourceWithBypassAndReadPolicy, actor: user)
   end
 
   test "before_transaction hook should not run when action is not authorized via bulk_update" do
