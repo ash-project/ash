@@ -170,7 +170,7 @@ semantics.
 The behaviour of the `undo_action` is action specific:
 
 - For `create` actions, the `undo_action` should be the name of a `destroy`
-  action with no specific requirements.
+  or `update` action with no specific requirements.
 - For `update` actions, the `undo_action` should also be an `update` action
   which takes a `changeset` argument, which will contain the `Ash.Changeset`
   which was used to execute the original update.
