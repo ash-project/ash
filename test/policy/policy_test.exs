@@ -912,4 +912,39 @@ defmodule Ash.Test.Policy.Policy do
              """
     end
   end
+
+  describe "bypass policy with always-true condition" do
+    test "denies when bypass condition is true but bypass policies fail" do
+      policies = [
+        %Ash.Policy.Policy{
+          bypass?: true,
+          condition: [{Ash.Policy.Check.Static, result: true}],
+          policies: [
+            %Ash.Policy.Check{
+              type: :authorize_if,
+              check: {Ash.Policy.Check.Static, result: false},
+              check_module: Ash.Policy.Check.Static,
+              check_opts: [result: false]
+            }
+          ]
+        },
+        %Ash.Policy.Policy{
+          bypass?: false,
+          condition: [{Ash.Policy.Check.Static, result: false}],
+          policies: [
+            %Ash.Policy.Check{
+              type: :authorize_if,
+              check: {Ash.Policy.Check.Static, result: true},
+              check_module: Ash.Policy.Check.Static,
+              check_opts: [result: true]
+            }
+          ]
+        }
+      ]
+
+      expression = Ash.Policy.Policy.expression(policies, %{})
+
+      assert expression == false
+    end
+  end
 end

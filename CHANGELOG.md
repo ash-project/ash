@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.7.1](https://github.com/ash-project/ash/compare/v3.7.0...v3.7.1) (2025-10-17)
+
+
+
+
+### Bug Fixes:
+
+* normalize bulk index metadata before returning by [@zachdaniel](https://github.com/zachdaniel)
+
+* reuse type constraints when matching relationship records (#2391) by Hannes Wüthrich
+
 ## [v3.7.0](https://github.com/ash-project/ash/compare/v3.6.3...v3.7.0) (2025-10-15)
 
 
