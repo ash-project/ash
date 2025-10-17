@@ -1969,6 +1969,7 @@ defmodule Ash.Actions.Update.Bulk do
       domain,
       base_changeset
     )
+    |> Stream.map(&BulkManualActionHelpers.normalize_record_metadata(&1, :bulk_update))
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
