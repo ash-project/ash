@@ -2731,7 +2731,7 @@ defmodule Ash.Actions.Update.Bulk do
          domain,
          base_changeset
        ) do
-    run_bulk_after_changes(
+    results_after_changes = run_bulk_after_changes(
       changes,
       all_changes,
       batch,
@@ -2742,9 +2742,36 @@ defmodule Ash.Actions.Update.Bulk do
       base_changeset.resource,
       metadata_key
     )
-    |> Enum.flat_map(fn result ->
-      changeset = changesets_by_index[result.__metadata__[metadata_key]]
 
+    # Apply the proven AshPostgres pattern: extract metadata from changeset context and put it back onto results
+    results_with_reconstructed_metadata =
+      results_after_changes
+      |> Enum.with_index()
+      |> Enum.map(fn {result, index} ->
+        changeset = changesets_by_index[index]
+
+        if changeset do
+          case get_bulk_operation_metadata(changeset, :bulk_update) do
+            {index, metadata_key} ->
+              Ash.Resource.put_metadata(result, metadata_key, index)
+
+            nil ->
+              # Compatibility fallback - extract from context directly
+              context_metadata = changeset.context[:bulk_update]
+              if context_metadata && is_map(context_metadata) do
+                Ash.Resource.put_metadata(result, :bulk_update_index, context_metadata.index)
+              else
+                result
+              end
+          end
+        else
+          result
+        end
+      end)
+
+    # Zip results with changesets directly to avoid metadata lookup issues
+    results_with_reconstructed_metadata
+    |> Enum.zip_with(Map.values(changesets_by_index), fn result, changeset ->
       if opts[:notify?] || opts[:return_notifications?] do
         store_notification(ref, notification(changeset, result, opts), opts)
       end
@@ -2771,6 +2798,7 @@ defmodule Ash.Actions.Update.Bulk do
           []
       end
     end)
+    |> List.flatten()
     |> load_data(domain, resource, base_changeset, opts)
     |> case do
       {:ok, records} ->
@@ -2817,6 +2845,22 @@ defmodule Ash.Actions.Update.Bulk do
       other ->
         other
     end
+  end
+
+  defp get_bulk_operation_metadata(changeset, bulk_action_type) do
+    changeset.context
+    |> Enum.find_value(fn
+      # New format: {{:bulk_create, ref}, value} -> {index, metadata_key}
+      {{^bulk_action_type, ref}, value} ->
+        {value.index, {:"#{bulk_action_type}_index", ref}}
+
+      # Fallback for old format: {:bulk_create, value} -> {index, metadata_key}
+      {^bulk_action_type, value} when is_map(value) ->
+        {value.index, :"#{bulk_action_type}_index"}
+
+      _ ->
+        nil
+    end)
   end
 
   def run_bulk_after_changes(
