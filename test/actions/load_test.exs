@@ -620,14 +620,10 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
         |> Ash.create!()
 
-      Process.sleep(50)  # Add delay to ensure timestamp difference
-
       post1_same =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "post1", category: "bar"})
         |> Ash.create!()
-
-      Process.sleep(50)  # Add delay to ensure timestamp difference
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "post2", category: "baz"})
@@ -906,7 +902,6 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.Changeset.for_create(:create, %{name: "zerg"})
         |> Ash.create!()
 
-      Process.sleep(50)  # Add delay to ensure timestamp difference
 
       post1 =
         Post
@@ -914,7 +909,6 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Ash.create!()
 
-      Process.sleep(50)  # Add delay to ensure timestamp difference
 
       post2 =
         Post
@@ -1292,7 +1286,6 @@ defmodule Ash.Test.Actions.LoadTest do
       |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Ash.create!()
 
-      Process.sleep(50)  # Add delay to ensure timestamp difference
 
       post2 =
         Post
