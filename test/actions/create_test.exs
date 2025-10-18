@@ -643,7 +643,6 @@ defmodule Ash.Test.Actions.CreateTest do
                })
                |> Ash.create!()
 
-      Process.sleep(50)  # Add delay to ensure timestamp difference
       assert %Post{id: ^id, title: "foo", contents: "bar", tag: tag, updated_at: new_updated_at} =
                Post
                |> Ash.Changeset.new()
@@ -673,7 +672,6 @@ defmodule Ash.Test.Actions.CreateTest do
                })
                |> Ash.create!()
 
-      Process.sleep(50)  # Add delay to ensure timestamp difference
       assert %Post{id: ^id, title: "foo", contents: "bar", tag: tag, updated_at: new_updated_at} =
                Ash.create!(
                  Post,
