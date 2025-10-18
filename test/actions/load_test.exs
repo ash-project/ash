@@ -902,13 +902,11 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.Changeset.for_create(:create, %{name: "zerg"})
         |> Ash.create!()
 
-
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "post1"})
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Ash.create!()
-
 
       post2 =
         Post
@@ -1285,7 +1283,6 @@ defmodule Ash.Test.Actions.LoadTest do
       |> Ash.Changeset.for_create(:create, %{title: "post1"})
       |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Ash.create!()
-
 
       post2 =
         Post
