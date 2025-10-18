@@ -41,20 +41,17 @@ defmodule Ash.Changeset do
   end
   ```
   """
-  # Removes transient/unsafe matadata keys while preserving the essential system metadata.
   defp clear_metadata(%{__metadata__: metadata} = record) when is_map(metadata) do
-    # metadata keys that are only relevant at runtime and should be eleminated later
-    clear_keys = [
-      :upsert_skipped,
-      :manual_key,
-      :join_keys,
-      :private,
-      :__reactor__,
-      :example_metadata
-    ]
-
-    cleaned_metadata = Map.drop(metadata, clear_keys)
-    Map.put(record, :__metadata__, cleaned_metadata)
+    %{
+      record
+      | __metadata__:
+          Map.drop(metadata, [
+            :upsert_skipped,
+            :manual_key,
+            :private,
+            :__reactor__
+          ])
+    }
   end
 
   defp clear_metadata(record), do: record
