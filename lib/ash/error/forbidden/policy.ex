@@ -113,6 +113,7 @@ defmodule Ash.Error.Forbidden.Policy do
                   domain: error.domain,
                   resource: error.resource,
                   actor: error.actor,
+                  action: error.action,
                   solver_statement: error.solver_statement,
                   must_pass_strict_check?: must_pass_strict_check?,
                   subject: error.subject,
@@ -415,13 +416,12 @@ defmodule Ash.Error.Forbidden.Policy do
   defp describe_checks(checks, resource, facts, success?, actor, subject) do
     {description, state} =
       Enum.reduce(checks, {[], :unknown}, fn check, {descriptions, state} ->
+        fact_result = Policy.fetch_fact(facts, check.check)
+
         new_state =
           case state do
             :unknown ->
-              new_state(
-                check.type,
-                Policy.fetch_fact(facts, check.check)
-              )
+              new_state(check.type, fact_result)
 
             other ->
               other
@@ -438,8 +438,7 @@ defmodule Ash.Error.Forbidden.Policy do
               "⛔"
 
             {:unknown, :unknown} ->
-              if (success? && filter_check? && Policy.fetch_fact(facts, check.check) == :error) ||
-                   {:ok, :unknown} do
+              if (success? && filter_check? && fact_result == :error) || filter_check? do
                 "🔎"
               else
                 "⬇"
@@ -453,7 +452,7 @@ defmodule Ash.Error.Forbidden.Policy do
            describe_check(
              check,
              resource,
-             Policy.fetch_fact(facts, check.check),
+             fact_result,
              tag,
              success?,
              filter_check?,
@@ -476,10 +475,7 @@ defmodule Ash.Error.Forbidden.Policy do
         {:ok, false} ->
           "✘"
 
-        {:ok, :unknown} ->
-          unknown_or_error_glyph(success?, filter_check?)
-
-        :error ->
+        _ ->
           unknown_or_error_glyph(success?, filter_check?)
       end
 

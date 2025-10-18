@@ -1811,20 +1811,46 @@ defmodule Ash.Policy.Authorizer do
       true
     else
       if Enum.any?(authorizer.policies, fn policy ->
-           Enum.all?(policy.condition || [], fn {check_module, check_opts} ->
-             Policy.fetch_fact(authorizer.facts, {check_module, check_opts}) in [
-               {:ok, true},
-               :unknown
-             ]
-           end)
+           {all_conditions_true?, _authorizer} =
+             Enum.reduce_while(policy.condition || [], {true, authorizer}, fn
+               {check_module, check_opts}, {_acc, auth} ->
+                 case Policy.fetch_or_strict_check_fact(auth, {check_module, check_opts}) do
+                   {:ok, true, updated_auth} ->
+                     {:cont, {true, updated_auth}}
+
+                   _ ->
+                     {:halt, {false, auth}}
+                 end
+             end)
+
+           all_conditions_true?
          end) do
         authorizer.policies
-        |> Enum.any?(fn policy ->
-          policy.access_type == :strict and
-            Enum.all?(policy.condition || [], fn {check_module, check_opts} ->
-              Policy.fetch_fact(authorizer.facts, {check_module, check_opts}) == {:ok, true}
-            end) and
-            policy_fails_statically?(authorizer, policy)
+        |> Enum.reduce_while(false, fn policy, _acc ->
+          if policy.access_type == :strict do
+            {all_conditions_true?, updated_authorizer} =
+              Enum.reduce_while(
+                policy.condition || [],
+                {true, authorizer},
+                fn {check_module, check_opts}, {_acc, auth} ->
+                  case Policy.fetch_or_strict_check_fact(auth, {check_module, check_opts}) do
+                    {:ok, true, updated_auth} ->
+                      {:cont, {true, updated_auth}}
+
+                    _ ->
+                      {:halt, {false, auth}}
+                  end
+                end
+              )
+
+            if all_conditions_true? and policy_fails_statically?(updated_authorizer, policy) do
+              {:halt, true}
+            else
+              {:cont, false}
+            end
+          else
+            {:cont, false}
+          end
         end)
       else
         true
@@ -1833,41 +1859,70 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp policy_fails_statically?(authorizer, policy) do
-    Enum.reduce_while(policy.policies, :forbidden, fn check, status ->
+    Enum.reduce_while(policy.policies, {:forbidden, authorizer}, fn check, {status, auth} ->
       case check.type do
         :authorize_if ->
-          if Policy.fetch_fact(authorizer.facts, {check.check_module, check.check_opts}) ==
-               {:ok, true} do
-            {:halt, :authorized}
-          else
-            {:cont, status}
+          case Policy.fetch_or_strict_check_fact(
+                 auth,
+                 {check.check_module, check.check_opts}
+               ) do
+            {:ok, true, updated_auth} ->
+              {:halt, {:authorized, updated_auth}}
+
+            {:ok, _, updated_auth} ->
+              {:cont, {status, updated_auth}}
+
+            {:error, updated_auth} ->
+              {:halt, {:forbidden, updated_auth}}
           end
 
         :forbid_if ->
-          if Policy.fetch_fact(authorizer.facts, {check.check_module, check.check_opts}) ==
-               {:ok, true} do
-            {:halt, :forbidden}
-          else
-            {:cont, status}
+          case Policy.fetch_or_strict_check_fact(
+                 auth,
+                 {check.check_module, check.check_opts}
+               ) do
+            {:ok, true, updated_auth} ->
+              {:halt, {:forbidden, updated_auth}}
+
+            {:ok, _, updated_auth} ->
+              {:cont, {status, updated_auth}}
+
+            {:error, updated_auth} ->
+              {:halt, {:forbidden, updated_auth}}
           end
 
         :authorize_unless ->
-          if Policy.fetch_fact(authorizer.facts, {check.check_module, check.check_opts}) ==
-               {:ok, true} do
-            {:cont, status}
-          else
-            {:halt, :authorized}
+          case Policy.fetch_or_strict_check_fact(
+                 auth,
+                 {check.check_module, check.check_opts}
+               ) do
+            {:ok, false, updated_auth} ->
+              {:halt, {:authorized, updated_auth}}
+
+            {:ok, _, updated_auth} ->
+              {:cont, {status, updated_auth}}
+
+            {:error, updated_auth} ->
+              {:halt, {:forbidden, updated_auth}}
           end
 
         :forbid_unless ->
-          if Policy.fetch_fact(authorizer.facts, {check.check_module, check.check_opts}) ==
-               {:ok, true} do
-            {:cont, status}
-          else
-            {:halt, :forbidden}
+          case Policy.fetch_or_strict_check_fact(
+                 auth,
+                 {check.check_module, check.check_opts}
+               ) do
+            {:ok, false, updated_auth} ->
+              {:cont, {:forbidden, updated_auth}}
+
+            {:ok, _, updated_auth} ->
+              {:cont, {status, updated_auth}}
+
+            {:error, updated_auth} ->
+              {:halt, {:forbidden, updated_auth}}
           end
       end
     end)
+    |> elem(0)
     |> Kernel.==(:forbidden)
   end
 
