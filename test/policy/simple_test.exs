@@ -164,6 +164,32 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  defmodule ResourceWithMixedActionTypePolicy do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true, allow_nil?: false
+    end
+
+    actions do
+      defaults [:read, :destroy, create: [:name], update: [:name]]
+    end
+
+    policies do
+      policy action_type([:create, :read, :update, :destroy]) do
+        authorize_if actor_present()
+      end
+    end
+  end
+
   setup do
     old_env = Application.get_env(:ash, :policies, [])
 
@@ -808,6 +834,34 @@ defmodule Ash.Test.Policy.SimpleTest do
         select: [],
         load: []
       )
+    end
+  end
+
+  describe "ResourceWithMixedActionTypePolicy" do
+    test "when an actor is provided, the data is returned" do
+      data =
+        ResourceWithMixedActionTypePolicy
+        |> Ash.Changeset.for_create(:create, %{name: "Joe"}, actor: :bob, authorize?: false)
+        |> Ash.create!()
+        |> List.wrap()
+
+      assert [%{name: "Joe"}] =
+               ResourceWithMixedActionTypePolicy
+               |> Ash.DataLayer.Simple.set_data(data)
+               |> Ash.read!(actor: :bob)
+    end
+
+    test "when no actor is provided, filtering is applied as expected" do
+      data =
+        ResourceWithMixedActionTypePolicy
+        |> Ash.Changeset.for_create(:create, %{name: "Joe"}, actor: :bob, authorize?: false)
+        |> Ash.create!()
+        |> List.wrap()
+
+      assert [] =
+               ResourceWithMixedActionTypePolicy
+               |> Ash.DataLayer.Simple.set_data(data)
+               |> Ash.read!()
     end
   end
 end
