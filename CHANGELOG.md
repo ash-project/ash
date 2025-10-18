@@ -8,6 +8,21 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.7.2](https://github.com/ash-project/ash/compare/v3.7.1...v3.7.2) (2025-10-18)
+
+
+
+
+### Bug Fixes:
+
+* update crux for proper eager check evaluation by [@zachdaniel](https://github.com/zachdaniel)
+
+* clear metadata before for_update and for_destroy actions (#2362) by bipasamaji
+
+* ensure that we detect filter checks failing statically by [@zachdaniel](https://github.com/zachdaniel)
+
+* use *last* changing attribute for atomic validation target by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.7.1](https://github.com/ash-project/ash/compare/v3.7.0...v3.7.1) (2025-10-17)
 
 
