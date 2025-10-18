@@ -6,8 +6,6 @@ defmodule Ash.Policy.Check.ActionType do
   @moduledoc "This check is true when the action type matches the provided type"
   use Ash.Policy.SimpleCheck
 
-  import Crux.Expression, only: [b: 1]
-
   @impl true
   def describe(options) do
     {operator, type} =
@@ -25,16 +23,8 @@ defmodule Ash.Policy.Check.ActionType do
   end
 
   @impl true
-  def simplify({__MODULE__, options}, _context) do
-    case List.wrap(options[:type]) do
-      [] ->
-        false
-
-      [_ | _] = multiple_types ->
-        multiple_types
-        |> Enum.map(&{__MODULE__, Keyword.put(options, :type, [&1])})
-        |> Enum.reduce(&b(&2 or &1))
-    end
+  def simplify({__MODULE__, options}, context) do
+    context.action.type in options[:type]
   end
 
   @impl true

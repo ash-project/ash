@@ -352,8 +352,8 @@ defmodule Ash.Policy.Policy do
   end
 
   @spec check_context(authorizer :: Authorizer.t()) :: Check.context()
-  defp check_context(%Authorizer{resource: resource}) do
-    %{resource: resource}
+  defp check_context(%Authorizer{resource: resource, action: action}) do
+    %{resource: resource, action: action}
   end
 
   @spec expand_invariants(
