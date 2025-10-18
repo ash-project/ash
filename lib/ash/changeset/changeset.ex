@@ -3753,17 +3753,20 @@ defmodule Ash.Changeset do
 
   defp default(:update, %{update_default: value}), do: value
 
-  defp validation_attribute(%{atomics: [{first_changing_attribute, _} | _]}),
-    do: first_changing_attribute
-
   defp validation_attribute(changeset) do
-    case Ash.Resource.Info.atomic_validation_default_target_attribute(changeset.resource) do
-      nil ->
-        [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
-        first_pkey_field
+    case List.last(changeset.atomics) do
+      {attr, _} ->
+        attr
 
-      attribute_name ->
-        attribute_name
+      _ ->
+        case Ash.Resource.Info.atomic_validation_default_target_attribute(changeset.resource) do
+          nil ->
+            [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
+            first_pkey_field
+
+          attribute_name ->
+            attribute_name
+        end
     end
   end
 
