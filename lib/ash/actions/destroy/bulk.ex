@@ -1653,7 +1653,6 @@ defmodule Ash.Actions.Destroy.Bulk do
       base_changeset
     )
     |> Stream.concat(must_be_simple_results)
-    |> Stream.map(&BulkManualActionHelpers.normalize_record_metadata(&1, :bulk_destroy))
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream

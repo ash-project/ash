@@ -199,6 +199,59 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
     end
   end
 
+  defmodule CreateManualWithNested do
+    use Ash.Resource.ManualCreate
+
+    def create(changeset, _module_opts, ctx) do
+      opts = Helpers.build_create_opts(ctx)
+
+      changeset.resource
+      |> Ash.Changeset.for_create(:create, Map.take(changeset.attributes, [:name]), opts)
+      |> Ash.create(opts)
+    end
+
+    def bulk_create(changesets, module_opts, ctx) do
+      create_ctx = Helpers.build_create_ctx(ctx)
+
+      Enum.reduce(changesets, [], fn changeset, results ->
+        # Trigger a nested bulk_create to test context collision
+        Ash.bulk_create!(
+          [%{name: "nested"}],
+          Ash.Test.Actions.BulkCreateManualTest.Author,
+          :create,
+          return_records?: false,
+          authorize?: false
+        )
+
+        create(changeset, module_opts, create_ctx)
+        |> case do
+          {:ok, record} ->
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_create_index,
+                changeset.context.bulk_create.index
+              )
+
+            [{:ok, record} | results]
+
+          {:ok, record, notifications} ->
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_create_index,
+                changeset.context.bulk_create.index
+              )
+
+            [{:ok, record, notifications} | results]
+
+          {:error, error} ->
+            [{:error, error} | results]
+        end
+      end)
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -234,6 +287,11 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
       create :create_manual_ok do
         accept [:name]
         manual CreateManualOk
+      end
+
+      create :create_manual_with_nested do
+        accept [:name]
+        manual CreateManualWithNested
       end
 
       create :create do
@@ -463,5 +521,19 @@ defmodule Ash.Test.Actions.BulkCreateManualTest do
     assert Enum.empty?(result.records)
     assert result.notifications == nil
     assert result.error_count == 1
+  end
+
+  test "bulk_create manual action with nested bulk operation" do
+    result =
+      [%{name: "Author1"}, %{name: "Author2"}]
+      |> Ash.bulk_create(Author, :create_manual_with_nested,
+        return_errors?: true,
+        return_records?: true,
+        return_notifications?: false
+      )
+
+    # This test may fail due to context collision between nested bulk operations
+    assert Enum.count(result.records) == 2
+    assert result.error_count == 0
   end
 end

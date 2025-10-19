@@ -8,6 +8,9 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
   import ExUnit.CaptureLog
 
+  require Ash.Query
+  import Ash.Expr
+
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -461,6 +464,24 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
 
       update :other_update
+
+      update :update_with_nested_bulk_update do
+        atomic_upgrade? false
+
+        change after_action(fn changeset, result, context ->
+                 other_posts = MnesiaPost |> Ash.read!()
+
+                 other_posts
+                 |> Enum.reject(fn post -> post.id == result.id end)
+                 |> Ash.bulk_update!(:update, %{title2: "nested_update"},
+                   notify?: true,
+                   strategy: :stream,
+                   return_records?: false
+                 )
+
+                 {:ok, result}
+               end)
+      end
     end
   end
 
@@ -1631,6 +1652,62 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                )
 
       assert author.contact.email == "brooklyn@example.com"
+    end
+  end
+
+  describe "nested bulk operations" do
+    setup do
+      Ash.bulk_create!(
+        [%{title: "test1"}, %{title: "test2"}, %{title: "test3"}],
+        MnesiaPost,
+        :create,
+        return_stream?: true,
+        return_records?: true,
+        authorize?: false
+      )
+      |> Enum.map(fn {:ok, result} -> result end)
+
+      :ok
+    end
+
+    test "supports bulk updates in after_action callbacks" do
+      assert %Ash.BulkResult{} =
+               MnesiaPost
+               |> Ash.Query.filter(expr(title == "test1"))
+               |> Ash.bulk_update!(:update_with_nested_bulk_update, %{title2: "trigger_nested"},
+                 strategy: :stream,
+                 notify?: true,
+                 return_records?: false,
+                 authorize?: false
+               )
+    end
+
+    test "supports nested operations with atomic strategy" do
+      assert %Ash.BulkResult{} =
+               MnesiaPost
+               |> Ash.Query.filter(expr(title == "test1"))
+               |> Ash.bulk_update!(:update_with_nested_bulk_update, %{title2: "trigger_nested"},
+                 strategy: :atomic_batches,
+                 notify?: true,
+                 return_records?: false,
+                 authorize?: false
+               )
+    end
+
+    test "maintains notification isolation between operations" do
+      assert %Ash.BulkResult{notifications: notifications} =
+               MnesiaPost
+               |> Ash.Query.filter(expr(title == "test1"))
+               |> Ash.bulk_update!(:update_with_nested_bulk_update, %{title2: "trigger_nested"},
+                 strategy: :stream,
+                 notify?: true,
+                 return_notifications?: true,
+                 return_records?: false,
+                 authorize?: false
+               )
+
+      assert is_list(notifications)
+      assert length(notifications) > 0
     end
   end
 end
