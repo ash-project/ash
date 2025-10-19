@@ -3584,7 +3584,7 @@ defmodule Ash.Changeset do
                        atomic_update(
                          changeset,
                          validation_attribute,
-                         full_atomic_update
+                         {:atomic, full_atomic_update}
                        )}
 
                     {:error, error} ->
