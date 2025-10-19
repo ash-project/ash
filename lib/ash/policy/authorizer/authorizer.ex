@@ -1812,27 +1812,33 @@ defmodule Ash.Policy.Authorizer do
     else
       check_context = %{resource: authorizer.resource}
 
-      {any_strict_error?, _authorizer} =
-        authorizer.policies
-        |> Enum.map(&{&1, Policy.policy_expression(&1, check_context)})
-        |> Enum.reduce_while({true, authorizer}, fn
-          {policy, {cond_expr, complete_expr}}, {acc, authorizer} ->
-            strict? = policy.access_type == :strict
+      authorizer.policies
+      |> Enum.map(&{&1, Policy.policy_expression(&1, check_context)})
+      |> Enum.reduce_while({false, false, authorizer}, fn
+        {policy, {cond_expr, complete_expr}}, {_any?, applied?, authorizer} ->
+          case Policy.expand_constants(cond_expr, authorizer, check_context) do
+            {true, authorizer} ->
+              if policy.bypass? || policy.access_type != :strict do
+                {:halt, {false, true, authorizer}}
+              else
+                case Policy.expand_constants(complete_expr, authorizer, check_context) do
+                  {false, authorizer} ->
+                    {:halt, {true, true, authorizer}}
 
-            {cond_expr, authorizer} =
-              Policy.expand_constants(cond_expr, authorizer, check_context)
+                  {_, authorizer} ->
+                    {:cont, {false, true, authorizer}}
+                end
+              end
 
-            {complete_expr, authorizer} =
-              Policy.expand_constants(complete_expr, authorizer, check_context)
-
-            case {cond_expr, complete_expr} do
-              {true, false} when strict? -> {:halt, {true, authorizer}}
-              {true, _} -> {:cont, {false, authorizer}}
-              _ -> {:cont, {acc, authorizer}}
-            end
-        end)
-
-      any_strict_error?
+            _ ->
+              {:cont, {false, applied?, authorizer}}
+          end
+      end)
+      |> case do
+        {_, false, _} -> true
+        {true, _, _} -> true
+        _ -> false
+      end
     end
   end
 
