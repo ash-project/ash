@@ -1927,4 +1927,120 @@ defmodule Ash.Test.CalculationTest do
       assert result.calc_baz == "baz"
     end
   end
+
+  defmodule QueryContextsCalc do
+    use Ash.Resource.Calculation
+
+    def calculate(records, _opts, context) do
+      Enum.map(records, fn _ ->
+        Map.take(context.source_context, [:preparation_time, :before_transaction])
+      end)
+    end
+  end
+
+  defmodule PreparationTime do
+    use Ash.Resource.Preparation
+
+    require Ash.Query
+
+    @impl Ash.Resource.Preparation
+    def prepare(query, _opts, _context) do
+      Ash.Query.put_context(query, :preparation_time, "preparation time")
+    end
+  end
+
+  defmodule BeforeTransaction do
+    use Ash.Resource.Preparation
+
+    require Ash.Query
+
+    @impl Ash.Resource.Preparation
+    def prepare(query, _opts, _context) do
+      Ash.Query.before_transaction(query, fn query ->
+        Ash.Query.put_context(query, :before_transaction, "before transaction")
+      end)
+    end
+  end
+
+  defmodule ContextTestPost do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+
+      read :context_read do
+        prepare __MODULE__.Preparations.PreparationTime
+        prepare __MODULE__.Preparations.BeforeTransaction
+      end
+    end
+
+    attributes do
+      uuid_v7_primary_key :id
+      attribute :title, :string, public?: true
+    end
+
+    calculations do
+      calculate :query_contexts, :map, Ash.Test.CalculationTest.QueryContextsCalc do
+        public?(true)
+      end
+    end
+
+    defmodule Preparations do
+      defmodule PreparationTime do
+        use Ash.Resource.Preparation
+
+        require Ash.Query
+
+        @impl Ash.Resource.Preparation
+        def prepare(query, _opts, _context) do
+          Ash.Query.put_context(query, :preparation_time, "preparation time")
+        end
+      end
+
+      defmodule BeforeTransaction do
+        use Ash.Resource.Preparation
+
+        require Ash.Query
+
+        @impl Ash.Resource.Preparation
+        def prepare(query, _opts, _context) do
+          Ash.Query.before_transaction(query, fn query ->
+            Ash.Query.put_context(query, :before_transaction, "before transaction")
+          end)
+        end
+      end
+    end
+  end
+
+  describe "calculation context" do
+    setup do
+      Ash.Seed.seed!(ContextTestPost, %{title: "First Post"})
+      :ok
+    end
+
+    test "calculations can access context added in the query at preparation time" do
+      result =
+        ContextTestPost
+        |> Ash.Query.for_read(:context_read, %{}, authorize?: false)
+        |> Ash.Query.load([:query_contexts])
+        |> Ash.read_one!()
+
+      assert %{preparation_time: "preparation time"} = result.query_contexts
+    end
+
+    test "calculations can access context added in before_transaction hooks" do
+      result =
+        ContextTestPost
+        |> Ash.Query.for_read(:context_read, %{}, authorize?: false)
+        |> Ash.Query.load([:query_contexts])
+        |> Ash.read_one!()
+
+      assert %{before_transaction: "before transaction"} = result.query_contexts
+    end
+  end
 end

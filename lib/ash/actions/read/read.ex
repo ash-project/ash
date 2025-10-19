@@ -616,6 +616,48 @@ defmodule Ash.Actions.Read do
          } do
       case run_before_transaction_hooks(query) do
         {:ok, query} ->
+          # Update calculation contexts with any context changes from before_transaction hooks
+          query =
+            add_calc_context_to_query(
+              query,
+              opts[:actor],
+              opts[:authorize?],
+              query.tenant,
+              opts[:tracer],
+              query.domain,
+              expand?: false,
+              parent_stack: parent_stack_from_context(query.context),
+              source_context: query.context
+            )
+
+          calculations_at_runtime =
+            Enum.map(calculations_at_runtime, fn calc ->
+              add_calc_context(
+                calc,
+                opts[:actor],
+                opts[:authorize?],
+                query.tenant,
+                opts[:tracer],
+                query.domain,
+                query.resource,
+                source_context: query.context
+              )
+            end)
+
+          calculations_in_query =
+            Enum.map(calculations_in_query, fn calc ->
+              add_calc_context(
+                calc,
+                opts[:actor],
+                opts[:authorize?],
+                query.tenant,
+                opts[:tracer],
+                query.domain,
+                query.resource,
+                source_context: query.context
+              )
+            end)
+
           maybe_in_transaction(query, opts, fn notify_callback ->
             with query_before_pagination <- query,
                  {query, calculations_at_runtime, calculations_in_query} <-
