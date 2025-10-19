@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.7.6](https://github.com/ash-project/ash/compare/v3.7.5...v3.7.6) (2025-10-19)
+
+
+
+
+### Bug Fixes:
+
+* ensure attribute used in atomic update is casted fully by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.7.5](https://github.com/ash-project/ash/compare/v3.7.4...v3.7.5) (2025-10-19)
 
 
