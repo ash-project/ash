@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.7.4](https://github.com/ash-project/ash/compare/v3.7.3...v3.7.4) (2025-10-19)
+
+### Bug Fixes:
+
+* ensure that a filter vs forbidden response is correctly deteermined by [@zachdaniel]
+
+(not a security issue, only affects the response type)
+
+
 ## [v3.7.3](https://github.com/ash-project/ash/compare/v3.7.2...v3.7.3) (2025-10-19)
 
 
