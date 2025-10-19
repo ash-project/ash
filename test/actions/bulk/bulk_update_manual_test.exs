@@ -19,7 +19,6 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
 
   defmodule UpdateManual do
     use Ash.Resource.ManualUpdate
-    alias Ash.Actions.BulkManualActionHelpers
 
     def update(changeset, _module_opts, ctx) do
       opts = Helpers.build_update_opts(ctx)
@@ -36,13 +35,23 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
         update(changeset, module_opts, update_ctx)
         |> case do
           {:ok, record} ->
-            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_update_index,
+                changeset.context.bulk_update.index
+              )
+
             [{:ok, record} | results]
 
           {:ok, record, notifications} ->
-            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_update_index,
+                changeset.context.bulk_update.index
+              )
+
             [{:ok, record, notifications} | results]
 
           {:error, error} ->
@@ -54,7 +63,6 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
 
   defmodule UpdateManualMapReturn do
     use Ash.Resource.ManualUpdate
-    alias Ash.Actions.BulkManualActionHelpers
 
     def update(changeset, _module_opts, ctx) do
       opts = Helpers.build_update_opts(ctx)
@@ -71,13 +79,23 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
         update(changeset, module_opts, update_ctx)
         |> case do
           {:ok, record} ->
-            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_update_index,
+                changeset.context.bulk_update.index
+              )
+
             [{:ok, record} | results]
 
           {:ok, record, notifications} ->
-            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_update_index,
+                changeset.context.bulk_update.index
+              )
+
             [{:ok, record, %{notifications: notifications}} | results]
 
           {:error, error} ->
@@ -89,7 +107,6 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
 
   defmodule UpdateManualNoNotifications do
     use Ash.Resource.ManualUpdate
-    alias Ash.Actions.BulkManualActionHelpers
 
     def update(changeset, _module_opts, ctx) do
       opts = Helpers.build_update_opts(ctx)
@@ -106,13 +123,23 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
         update(changeset, module_opts, update_ctx)
         |> case do
           {:ok, record} ->
-            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_update_index,
+                changeset.context.bulk_update.index
+              )
+
             [{:ok, record} | results]
 
           {:ok, record, _notifications} ->
-            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_update_index,
+                changeset.context.bulk_update.index
+              )
+
             [{:ok, record} | results]
 
           {:error, error} ->

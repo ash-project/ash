@@ -70,8 +70,6 @@ defmodule Ash.DataLayer.Ets do
       relationships: %{},
       offset: 0
     ]
-
-    @type t() :: %__MODULE__{}
   end
 
   defmodule TableManager do
@@ -1277,7 +1275,6 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  @spec load_combinations(Ash.DataLayer.Ets.Query.t()) :: Ash.DataLayer.Ets.Query.t()
   defp load_combinations(query) do
     %{
       query

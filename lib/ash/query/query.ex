@@ -2747,7 +2747,7 @@ defmodule Ash.Query do
   - `for_read/4` for passing context when creating queries
   - Preparations and calculations can access context for custom logic
   """
-  @spec put_context(t() | Ash.Resource.t(), term, term) :: t()
+  @spec put_context(t() | Ash.Resource.t(), atom, term) :: t()
   def put_context(query, key, value) do
     query = new(query)
     set_context(query, %{key => value})

@@ -67,7 +67,7 @@ defmodule Ash.DataLayer do
               optional(:data_layer_context) => %{}
             }
           | %{required(:type) => :custom, required(:metadata) => map()}
-          | %{required(:type) => atom | tuple(), required(:metadata) => map()}
+          | %{required(:type) => atom, required(:metadata) => map()}
 
   @type combination_type :: :union | :union_all | :intersection
 

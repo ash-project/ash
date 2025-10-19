@@ -420,7 +420,7 @@ defmodule Ash.Resource do
 
   def set_meta(struct, _), do: struct
 
-  @spec put_metadata(Ash.Resource.record(), term, term) :: Ash.Resource.record()
+  @spec put_metadata(Ash.Resource.record(), atom, term) :: Ash.Resource.record()
   def put_metadata(record, key, term) do
     set_metadata(record, %{key => term})
   end
@@ -680,7 +680,7 @@ defmodule Ash.Resource do
     Ash.Type.loaded?(type, value, path, constraints, opts)
   end
 
-  @spec get_metadata(Ash.Resource.record(), term | list(term)) :: term
+  @spec get_metadata(Ash.Resource.record(), atom | list(atom)) :: term
   def get_metadata(record, key_or_path) do
     get_in(record.__metadata__ || %{}, List.wrap(key_or_path))
   end
