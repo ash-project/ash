@@ -299,6 +299,64 @@ defmodule Ash.Test.Policy.SimpleTest do
              |> Ash.read!(actor: %{admin: true})
   end
 
+  defmodule ResourceWithBypassAndStrictPolicy do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    actions do
+      defaults [:read, create: [:name]]
+    end
+
+    policies do
+      # Bypass that won't apply to regular users
+      bypass always() do
+        authorize_if actor_attribute_equals(:admin, true)
+      end
+
+      # Strict policy that requires admin
+      policy action_type(:read) do
+        access_type :strict
+        authorize_if actor_attribute_equals(:admin, true)
+      end
+    end
+  end
+
+  test "strict policy without matching bypass returns forbidden instead of empty list", %{
+    user: user,
+    admin: admin
+  } do
+    # Create some records
+    ResourceWithBypassAndStrictPolicy
+    |> Ash.Changeset.for_create(:create, %{name: "test1"})
+    |> Ash.create!(authorize?: false)
+
+    ResourceWithBypassAndStrictPolicy
+    |> Ash.Changeset.for_create(:create, %{name: "test2"})
+    |> Ash.create!(authorize?: false)
+
+    # Admin should be able to read via bypass
+    assert [_, _] = Ash.read!(ResourceWithBypassAndStrictPolicy, actor: admin)
+
+    # Non-admin user should get forbidden error, NOT empty list
+    # This reproduces the issue where strict policies were incorrectly
+    # returning 200 with empty data instead of 403 forbidden
+    assert_raise Ash.Error.Forbidden, fn ->
+      ResourceWithBypassAndStrictPolicy
+      |> Ash.read!(actor: user)
+    end
+  end
+
   test "bypass with condition does not apply subsequent filters", %{admin: admin, user: user} do
     Ash.create!(Ash.Changeset.for_create(Tweet, :create), authorize?: false)
 
