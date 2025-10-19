@@ -41,22 +41,28 @@ defmodule Ash.Policy.Policy do
   def expression(policies, check_context) do
     policies
     |> List.wrap()
-    |> Enum.map(&{&1, policy_expression(&1, check_context)})
+    |> Enum.map(fn policy ->
+      # Simplification is important here to detect empty field policies
+      cond_expr = policy |> condition_expression() |> simplify_policy_expression(check_context)
+      pol_expr = policies_expression(policy)
+      complete_expr = b(cond_expr and pol_expr)
+      {policy, cond_expr, complete_expr}
+    end)
     |> List.foldr({false, true}, fn
-      {%{bypass?: true}, {_cond_expr, complete_expr}}, {one_condition_matches, true} ->
+      {%{bypass?: true}, _cond_expr, complete_expr}, {one_condition_matches, true} ->
         {
           b(complete_expr or one_condition_matches),
           complete_expr
         }
 
-      {%FieldPolicy{bypass?: true}, {true, complete_expr}},
+      {%FieldPolicy{bypass?: true}, true, complete_expr},
       {one_condition_matches, all_policies_match} ->
         {
           one_condition_matches,
           b(complete_expr or all_policies_match)
         }
 
-      {%{bypass?: true}, {_cond_expr, complete_expr}},
+      {%{bypass?: true}, _cond_expr, complete_expr},
       {one_condition_matches, all_policies_match} ->
         {
           # Bypass should only contribute to "at least one policy applies" if it actually authorizes.
@@ -65,7 +71,7 @@ defmodule Ash.Policy.Policy do
           b(complete_expr or all_policies_match)
         }
 
-      {%{}, {cond_expr, complete_expr}}, {one_condition_matches, all_policies_match} ->
+      {%{}, cond_expr, complete_expr}, {one_condition_matches, all_policies_match} ->
         {
           b(cond_expr or one_condition_matches),
           b(implied_by(complete_expr, cond_expr) and all_policies_match)
@@ -173,9 +179,10 @@ defmodule Ash.Policy.Policy do
   def fetch_or_strict_check_fact(authorizer, {check_module, opts}) do
     authorizer.facts
     |> Enum.find_value(fn
-      {{^check_module, fact_opts}, result} when result != :unknown ->
-        if Keyword.drop(fact_opts, [:access_type, :ash_field_policy?]) ==
-             Keyword.drop(opts, [:access_type, :ash_field_policy?]) do
+      {{fact_mod, fact_opts}, result} when result != :unknown ->
+        if check_module == fact_mod &&
+             Keyword.drop(fact_opts, [:access_type, :ash_field_policy?]) ==
+               Keyword.drop(opts, [:access_type, :ash_field_policy?]) do
           {:ok, result}
         end
 
@@ -261,18 +268,6 @@ defmodule Ash.Policy.Policy do
     end
   end
 
-  @doc false
-  @spec policy_expression(policy :: t() | FieldPolicy.t(), check_context :: Check.context()) ::
-          {Expression.t(Check.ref()), Expression.t(Check.ref())}
-  def policy_expression(policy, check_context) do
-    # Simplification is important here to detect empty field policies
-    cond_expr = policy |> condition_expression() |> simplify_policy_expression(check_context)
-    pol_expr = policies_expression(policy)
-    complete_expr = b(cond_expr and pol_expr)
-
-    {cond_expr, complete_expr}
-  end
-
   @spec condition_expression(policy :: t() | FieldPolicy.t()) :: Expression.t(Check.ref())
   defp condition_expression(%{condition: condition}) do
     condition
@@ -299,13 +294,12 @@ defmodule Ash.Policy.Policy do
     end)
   end
 
-  @doc false
   @spec expand_constants(
           expression :: Expression.t(Check.ref()),
           authorizer :: Authorizer.t(),
           check_context :: Check.context()
         ) :: {Expression.t(Check.ref()), Authorizer.t()}
-  def expand_constants(expression, authorizer, check_context) do
+  defp expand_constants(expression, authorizer, check_context) do
     {expression, authorizer} =
       Expression.expand(expression, authorizer, fn
         expr, authorizer when is_variable(expr) ->
