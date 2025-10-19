@@ -8,6 +8,21 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.7.3](https://github.com/ash-project/ash/compare/v3.7.2...v3.7.3) (2025-10-19)
+
+
+
+
+### Bug Fixes:
+
+* don't re-cast atomic updates when adding validations by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure calculation contexts include changes from before_transaction hooks by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* Simplify forbidden_due_to_strict_policy check (#2400) by [@maennchen](https://github.com/maennchen)
+
 ## [v3.7.2](https://github.com/ash-project/ash/compare/v3.7.1...v3.7.2) (2025-10-18)
 
 
