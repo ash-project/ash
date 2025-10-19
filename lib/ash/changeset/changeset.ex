@@ -2272,7 +2272,9 @@ defmodule Ash.Changeset do
   - `change_attribute/3` for regular (non-atomic) attribute changes
   """
   @spec atomic_update(t(), atom(), {:atomic, Ash.Expr.t()} | Ash.Expr.t()) :: t()
-  def atomic_update(changeset, key, {:atomic, value}) do
+  def atomic_update(changeset, key, value, opts \\ [])
+
+  def atomic_update(changeset, key, {:atomic, value}, _opts) do
     %{
       changeset
       | atomics: Keyword.put(changeset.atomics, key, value),
@@ -2280,15 +2282,15 @@ defmodule Ash.Changeset do
     }
   end
 
-  def atomic_update(changeset, key, value) do
-    do_atomic_update(changeset, key, value)
+  def atomic_update(changeset, key, value, opts) do
+    do_atomic_update(changeset, key, value, opts)
   end
 
   defp try_atomic_update(changeset, key, value) do
-    do_atomic_update(changeset, key, value, true)
+    do_atomic_update(changeset, key, value, return_not_atomic?: true)
   end
 
-  defp do_atomic_update(changeset, key, value, return_not_atomic? \\ false) do
+  defp do_atomic_update(changeset, key, value, opts) do
     attribute =
       Ash.Resource.Info.attribute(changeset.resource, key) ||
         raise "Unknown attribute `#{inspect(changeset.resource)}.#{inspect(key)}`"
@@ -2337,16 +2339,21 @@ defmodule Ash.Changeset do
         add_invalid_errors(value, :attribute, changeset, attribute, error)
 
       {:not_atomic, message} ->
-        if return_not_atomic? do
-          {:not_atomic, message}
-        else
-          add_error(
-            changeset,
-            Ash.Error.Unknown.UnknownError.exception(
-              error:
-                "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
+        cond do
+          opts[:fallback_to_no_cast?] ->
+            atomic_update(changeset, key, {:atomic, value})
+
+          Keyword.get(opts, :return_not_atomic?, false) ->
+            {:not_atomic, message}
+
+          true ->
+            add_error(
+              changeset,
+              Ash.Error.Unknown.UnknownError.exception(
+                error:
+                  "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
+              )
             )
-          )
         end
     end
   end
@@ -3584,7 +3591,8 @@ defmodule Ash.Changeset do
                        atomic_update(
                          changeset,
                          validation_attribute,
-                         {:atomic, full_atomic_update}
+                         full_atomic_update,
+                         fallback_to_no_cast?: true
                        )}
 
                     {:error, error} ->
