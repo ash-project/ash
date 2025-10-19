@@ -8,6 +8,14 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.7.5](https://github.com/ash-project/ash/compare/v3.7.4...v3.7.5) (2025-10-19)
+
+
+### Bug Fixes:
+
+* revert changes to bulk action index context/metadata keys
+
+
 ## [v3.7.4](https://github.com/ash-project/ash/compare/v3.7.3...v3.7.4) (2025-10-19)
 
 ### Bug Fixes:
