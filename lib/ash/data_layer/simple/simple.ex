@@ -10,7 +10,6 @@ defmodule Ash.DataLayer.Simple do
   by embedded resources, and resources without data layers.
   """
 
-  alias Ash.Actions.BulkManualActionHelpers
   use Spark.Dsl.Extension, transformers: [], sections: []
 
   @behaviour Ash.DataLayer
@@ -167,16 +166,13 @@ defmodule Ash.DataLayer.Simple do
       Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, acc} ->
         case Ash.Changeset.apply_attributes(changeset) do
           {:ok, applied} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_create)
-
             {:cont,
              {:ok,
               [
                 Ash.Resource.put_metadata(
                   applied,
-                  metadata_key,
-                  index
+                  :bulk_create_index,
+                  changeset.context.bulk_create.index
                 )
                 | acc
               ]}}

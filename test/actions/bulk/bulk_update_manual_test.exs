@@ -36,16 +36,12 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
         update(changeset, module_opts, update_ctx)
         |> case do
           {:ok, record} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_update)
-
+            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
             record = Ash.Resource.put_metadata(record, metadata_key, index)
             [{:ok, record} | results]
 
           {:ok, record, notifications} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_update)
-
+            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
             record = Ash.Resource.put_metadata(record, metadata_key, index)
             [{:ok, record, notifications} | results]
 
@@ -75,16 +71,12 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
         update(changeset, module_opts, update_ctx)
         |> case do
           {:ok, record} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_update)
-
+            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
             record = Ash.Resource.put_metadata(record, metadata_key, index)
             [{:ok, record} | results]
 
           {:ok, record, notifications} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_update)
-
+            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
             record = Ash.Resource.put_metadata(record, metadata_key, index)
             [{:ok, record, %{notifications: notifications}} | results]
 
@@ -114,16 +106,12 @@ defmodule Ash.Test.Actions.BulkUpdateManualTest do
         update(changeset, module_opts, update_ctx)
         |> case do
           {:ok, record} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_update)
-
+            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
             record = Ash.Resource.put_metadata(record, metadata_key, index)
             [{:ok, record} | results]
 
           {:ok, record, _notifications} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_update)
-
+            {index, metadata_key} = BulkManualActionHelpers.extract_bulk_metadata(changeset)
             record = Ash.Resource.put_metadata(record, metadata_key, index)
             [{:ok, record} | results]
 

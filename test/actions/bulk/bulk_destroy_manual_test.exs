@@ -6,7 +6,6 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  alias Ash.Actions.BulkManualActionHelpers
   alias Ash.Test.Actions.BulkDestroyManualTest.Helpers
   alias Ash.Test.Domain, as: Domain
 
@@ -39,18 +38,22 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
             [:ok | results]
 
           {:ok, record} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_destroy)
-
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_destroy_index,
+                changeset.context.bulk_destroy.index
+              )
 
             [{:ok, record} | results]
 
           {:ok, record, notifications} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_destroy)
-
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_destroy_index,
+                changeset.context.bulk_destroy.index
+              )
 
             [{:ok, record, notifications} | results]
 
@@ -82,18 +85,22 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
             [:ok | results]
 
           {:ok, record} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_destroy)
-
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_destroy_index,
+                changeset.context.bulk_destroy.index
+              )
 
             [{:ok, record} | results]
 
           {:ok, record, notifications} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_destroy)
-
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_destroy_index,
+                changeset.context.bulk_destroy.index
+              )
 
             [{:ok, record, %{notifications: notifications}} | results]
 
@@ -125,18 +132,22 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
             [:ok | results]
 
           {:ok, record} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_destroy)
-
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_destroy_index,
+                changeset.context.bulk_destroy.index
+              )
 
             [{:ok, record} | results]
 
           {:ok, record, _notifications} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_destroy)
-
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_destroy_index,
+                changeset.context.bulk_destroy.index
+              )
 
             [{:ok, record} | results]
 
@@ -168,10 +179,12 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
             [:ok | results]
 
           {:ok, record} ->
-            {index, metadata_key} =
-              BulkManualActionHelpers.extract_bulk_metadata(changeset, :bulk_destroy)
-
-            record = Ash.Resource.put_metadata(record, metadata_key, index)
+            record =
+              Ash.Resource.put_metadata(
+                record,
+                :bulk_destroy_index,
+                changeset.context.bulk_destroy.index
+              )
 
             [{:ok, record} | results]
 
