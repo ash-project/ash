@@ -211,6 +211,41 @@ defmodule Ash.Test.Policy.Policy do
       assert {:ok, true, _authorizer} = Ash.Policy.Policy.solve(authorization)
     end
 
+    test "bypass policy after passing policy" do
+      authorization = %Ash.Policy.Authorizer{
+        resource: Resource,
+        action: :read,
+        actor: :actor,
+        policies: [
+          %Ash.Policy.Policy{
+            condition: [{Ash.Policy.Check.Static, [result: true]}],
+            policies: [
+              %Ash.Policy.Check{
+                check: {Ash.Policy.Check.Static, [result: true]},
+                check_module: Ash.Policy.Check.Static,
+                check_opts: [result: true],
+                type: :authorize_if
+              }
+            ]
+          },
+          %Ash.Policy.Policy{
+            bypass?: true,
+            condition: [{Ash.Policy.Check.Static, [result: true]}],
+            policies: [
+              %Ash.Policy.Check{
+                check: {Ash.Policy.Check.Static, [result: false]},
+                check_module: Ash.Policy.Check.Static,
+                check_opts: [result: false],
+                type: :authorize_if
+              }
+            ]
+          }
+        ]
+      }
+
+      assert {:ok, true, _authorizer} = Ash.Policy.Policy.solve(authorization)
+    end
+
     test "bypass policy alone - when condition fails" do
       authorization = %Ash.Policy.Authorizer{
         resource: Resource,
