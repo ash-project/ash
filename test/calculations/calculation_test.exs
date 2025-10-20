@@ -861,6 +861,14 @@ defmodule Ash.Test.CalculationTest do
       end
 
       calculate :yob_string, :string, expr("Born in: " <> year_of_birth)
+
+      calculate :inner_with_context, :string, expr(first_name <> " " <> ^context(:suffix)) do
+        public?(true)
+      end
+
+      calculate :outer_using_inner, :string, expr(inner_with_context <> " - processed") do
+        public?(true)
+      end
     end
 
     aggregates do
@@ -2041,6 +2049,52 @@ defmodule Ash.Test.CalculationTest do
         |> Ash.read_one!()
 
       assert %{before_transaction: "before transaction"} = result.query_contexts
+    end
+
+    test "calculations can use context template helper when loaded directly" do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create, %{first_name: "John"})
+        |> Ash.create!()
+
+      # Loading the calculation directly with context works correctly
+      result =
+        User
+        |> Ash.Query.filter(id == ^user.id)
+        |> Ash.Query.put_context(:suffix, "Smith")
+        |> Ash.Query.load([:inner_with_context])
+        |> Ash.read_one!()
+
+      assert result.inner_with_context == "John Smith"
+    end
+
+    test "nested calculations can use context template helper" do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create, %{first_name: "John"})
+        |> Ash.create!()
+
+      # Loading the inner calculation directly works
+      result_inner =
+        User
+        |> Ash.Query.filter(id == ^user.id)
+        |> Ash.Query.put_context(:suffix, "Smith")
+        |> Ash.Query.load([:inner_with_context])
+        |> Ash.read_one!()
+
+      assert result_inner.inner_with_context == "John Smith"
+
+      # But when the inner calculation is loaded via the outer calculation,
+      # the context is not passed through (this demonstrates the bug)
+      result_outer =
+        User
+        |> Ash.Query.filter(id == ^user.id)
+        |> Ash.Query.put_context(:suffix, "Smith")
+        |> Ash.Query.load([:outer_using_inner])
+        |> Ash.read_one!()
+
+      # This currently fails because context isn't propagated to nested calculations
+      assert result_outer.outer_using_inner == "John Smith - processed"
     end
   end
 end
