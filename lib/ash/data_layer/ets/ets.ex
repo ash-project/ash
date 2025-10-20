@@ -707,7 +707,8 @@ defmodule Ash.DataLayer.Ets do
                    resource: resource,
                    domain: domain,
                    actor: calculation.context.actor,
-                   tenant: calculation.context.tenant
+                   tenant: calculation.context.tenant,
+                   context: calculation.context.source_context || %{}
                  ) do
               {:ok, value} ->
                 if calculation.load do

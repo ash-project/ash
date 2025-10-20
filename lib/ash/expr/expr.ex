@@ -129,7 +129,8 @@ defmodule Ash.Expr do
       opts[:domain],
       opts[:unknown_on_unknown_refs?],
       opts[:actor],
-      opts[:tenant]
+      opts[:tenant],
+      opts[:context] || %{}
     )
   end
 

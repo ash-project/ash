@@ -207,7 +207,8 @@ defmodule Ash.Filter.Runtime do
         domain \\ nil,
         unknown_on_unknown_refs? \\ false,
         actor \\ nil,
-        tenant \\ nil
+        tenant \\ nil,
+        context \\ %{}
       ) do
     if domain && record do
       refs_to_load =
@@ -226,7 +227,7 @@ defmodule Ash.Filter.Runtime do
             load =
               resource
               |> load_all(refs)
-              |> Ash.Query.set_context(%{private: %{internal?: true}})
+              |> Ash.Query.set_context(Map.merge(context, %{private: %{internal?: true}}))
 
             Ash.load!(record, load,
               domain: domain,
