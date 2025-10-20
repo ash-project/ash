@@ -49,19 +49,6 @@ defmodule Ash.Policy.Policy do
       {policy, cond_expr, complete_expr}
     end)
     |> List.foldr({false, true}, fn
-      {%{bypass?: true}, _cond_expr, complete_expr}, {one_condition_matches, true} ->
-        {
-          b(complete_expr or one_condition_matches),
-          complete_expr
-        }
-
-      {%FieldPolicy{bypass?: true}, true, complete_expr},
-      {one_condition_matches, all_policies_match} ->
-        {
-          one_condition_matches,
-          b(complete_expr or all_policies_match)
-        }
-
       {%{bypass?: true}, _cond_expr, complete_expr},
       {one_condition_matches, all_policies_match} ->
         {

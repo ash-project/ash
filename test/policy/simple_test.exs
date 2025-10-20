@@ -125,6 +125,42 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  defmodule ConditionalAccessCheckBroken do
+    use Ash.Policy.FilterCheck
+
+    @impl true
+    def describe(_opts) do
+      "conditional access based on actor level"
+    end
+
+    @impl true
+    def filter(actor, _context, _opts) do
+      case actor[:level] do
+        :full -> true
+        :partial -> expr(access_level != :confidential)
+        _ -> false
+      end
+    end
+  end
+
+  defmodule ConditionalAccessCheckFixed do
+    use Ash.Policy.FilterCheck
+
+    @impl true
+    def describe(_opts) do
+      "conditional access based on actor level"
+    end
+
+    @impl true
+    def filter(actor, _context, _opts) do
+      case actor[:level] do
+        :full -> expr(true)
+        :partial -> expr(access_level != :confidential)
+        _ -> expr(false)
+      end
+    end
+  end
+
   defmodule ResourceWithFailedFilterTest do
     use Ash.Resource,
       domain: Ash.Test.Domain,
@@ -186,6 +222,71 @@ defmodule Ash.Test.Policy.SimpleTest do
     policies do
       policy action_type([:create, :read, :update, :destroy]) do
         authorize_if actor_present()
+      end
+    end
+  end
+
+  defmodule ResourceWithBrokenConditionalCheck do
+    @moduledoc """
+    This resource intentionally has a trailing bypass to reproduce the bug
+    where returning raw `true` from a FilterCheck causes all records to be
+    filtered out when there's a trailing bypass.
+    """
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :access_level, :atom, public?: true
+    end
+
+    actions do
+      defaults [:read, create: [:access_level]]
+    end
+
+    policies do
+      policy action_type(:read) do
+        authorize_if ConditionalAccessCheckBroken
+      end
+
+      bypass actor_attribute_equals(:super_admin, true) do
+        authorize_if always()
+      end
+    end
+  end
+
+  defmodule ResourceWithFixedConditionalCheck do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :access_level, :atom, public?: true
+    end
+
+    actions do
+      defaults [:read, create: [:access_level]]
+    end
+
+    policies do
+      bypass actor_attribute_equals(:super_admin, true) do
+        authorize_if always()
+      end
+
+      policy action_type(:read) do
+        authorize_if ConditionalAccessCheckFixed
       end
     end
   end
@@ -920,6 +1021,88 @@ defmodule Ash.Test.Policy.SimpleTest do
                ResourceWithMixedActionTypePolicy
                |> Ash.DataLayer.Simple.set_data(data)
                |> Ash.read!()
+    end
+  end
+
+  describe "FilterCheck with trailing bypass bug" do
+    test "returning raw true/false from FilterCheck fails with trailing bypass" do
+      public_record =
+        ResourceWithBrokenConditionalCheck
+        |> Ash.Changeset.for_create(:create, %{access_level: :public}, authorize?: false)
+        |> Ash.create!()
+
+      confidential_record =
+        ResourceWithBrokenConditionalCheck
+        |> Ash.Changeset.for_create(:create, %{access_level: :confidential}, authorize?: false)
+        |> Ash.create!()
+
+      full_actor = %{level: :full}
+
+      full_results =
+        ResourceWithBrokenConditionalCheck
+        |> Ash.read!(actor: full_actor)
+        |> Enum.map(& &1.id)
+        |> Enum.sort()
+
+      assert full_results == Enum.sort([public_record.id, confidential_record.id])
+
+      partial_actor = %{level: :partial}
+
+      partial_results =
+        ResourceWithBrokenConditionalCheck
+        |> Ash.read!(actor: partial_actor)
+        |> Enum.map(& &1.id)
+        |> Enum.sort()
+
+      assert partial_results == [public_record.id]
+    end
+
+    test "returning expr(true) and expr(false) from FilterCheck works correctly with trailing bypass" do
+      # Create test records
+      public_record =
+        ResourceWithFixedConditionalCheck
+        |> Ash.Changeset.for_create(:create, %{access_level: :public}, authorize?: false)
+        |> Ash.create!()
+
+      confidential_record =
+        ResourceWithFixedConditionalCheck
+        |> Ash.Changeset.for_create(:create, %{access_level: :confidential}, authorize?: false)
+        |> Ash.create!()
+
+      full_actor = %{level: :full}
+
+      full_results =
+        ResourceWithFixedConditionalCheck
+        |> Ash.read!(actor: full_actor)
+        |> Enum.map(& &1.id)
+        |> Enum.sort()
+
+      assert full_results == Enum.sort([public_record.id, confidential_record.id])
+
+      partial_actor = %{level: :partial}
+
+      partial_results =
+        ResourceWithFixedConditionalCheck
+        |> Ash.read!(actor: partial_actor)
+        |> Enum.map(& &1.id)
+        |> Enum.sort()
+
+      assert partial_results == [public_record.id]
+
+      no_access_actor = %{level: :none}
+
+      no_results = Ash.read!(ResourceWithFixedConditionalCheck, actor: no_access_actor)
+      assert no_results == []
+
+      super_admin_actor = %{super_admin: true, level: :none}
+
+      super_admin_results =
+        ResourceWithFixedConditionalCheck
+        |> Ash.read!(actor: super_admin_actor)
+        |> Enum.map(& &1.id)
+        |> Enum.sort()
+
+      assert super_admin_results == Enum.sort([public_record.id, confidential_record.id])
     end
   end
 end
