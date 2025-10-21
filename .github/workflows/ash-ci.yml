@@ -271,7 +271,7 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-compile@04f27881d51ef973841fc40c549aefb7b52db7f7 # main
         with:
           mix-env: test
-      -   args: "--warnings-as-errors"
+          args: "--warnings-as-errors"
   build-docs:
     name: mix docs
     runs-on: ubuntu-latest
