@@ -268,9 +268,10 @@ jobs:
       - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
       - name: Set OS deps compile partition count
         run: echo "MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(($(lscpu -p | grep -v '^#' | sort -u -t, -k 2,4 | wc -l) / 2))" >> $GITHUB_ENV
-      - uses: team-alembic/staple-actions/actions/mix-compile@59199173e18eee6748b65d01626ef82d51c6e963 # main
+      - uses: team-alembic/staple-actions/actions/mix-compile@04f27881d51ef973841fc40c549aefb7b52db7f7 # main
         with:
           mix-env: test
+      -   args: --warnings-as-errors
   build-docs:
     name: mix docs
     runs-on: ubuntu-latest
