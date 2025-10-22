@@ -1658,6 +1658,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.VerifyPrimaryReadActionHasNoArguments,
     Ash.Resource.Verifiers.VerifySelectedByDefault,
     Ash.Resource.Verifiers.VerifyFilterExpressions,
+    Ash.Resource.Verifiers.VerifyExistsExpressions,
     Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation,
     Ash.Resource.Verifiers.ValidateRelationshipAttributes,
     Ash.Resource.Verifiers.NoReservedFieldNames,
