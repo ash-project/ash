@@ -854,7 +854,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     resource = opts[:resource]
     opts = Ash.Actions.Helpers.set_opts(opts, domain)
 
-    read_action = get_read_action(resource, opts)
+    read_action = Ash.Actions.Update.Bulk.get_read_action(resource, action, opts)
 
     {context_cs, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
@@ -994,7 +994,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       fn batch ->
         pkeys = [or: Enum.map(batch, &Map.take(&1, pkey))]
 
-        read_action = get_read_action(resource, opts).name
+        read_action = Ash.Actions.Update.Bulk.get_read_action(resource, action, opts).name
 
         resource
         |> Ash.Query.for_read(read_action, %{},
@@ -2264,15 +2264,5 @@ defmodule Ash.Actions.Destroy.Bulk do
       data: result,
       changeset: changeset
     }
-  end
-
-  defp get_read_action(resource, opts) do
-    case opts[:read_action] do
-      nil ->
-        Ash.Resource.Info.primary_action!(resource, :read)
-
-      action ->
-        Ash.Resource.Info.action(resource, action)
-    end
   end
 end

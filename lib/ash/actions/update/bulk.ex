@@ -3424,7 +3424,8 @@ defmodule Ash.Actions.Update.Bulk do
     )
   end
 
-  defp get_read_action(resource, action, opts) do
+  @doc false
+  def get_read_action(resource, action, opts) do
     case opts[:read_action] do
       nil ->
         case action do
