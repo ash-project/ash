@@ -968,6 +968,9 @@ defmodule Ash.Actions.Create.Bulk do
             {:ok, true, changeset} ->
               changeset
 
+            {:ok, true, changeset, _query} ->
+              changeset
+
             {:ok, false, error} ->
               Ash.Changeset.add_error(changeset, error)
 
