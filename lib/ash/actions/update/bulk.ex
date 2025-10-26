@@ -404,14 +404,9 @@ defmodule Ash.Actions.Update.Bulk do
       raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
     end
 
-    {context_key, metadata_key} =
-      case action.type do
-        :update ->
-          {:bulk_update, :bulk_update_index}
-
-        :destroy ->
-          {:bulk_destroy, :bulk_destroy_index}
-      end
+    context_key = :bulk_update
+    metadata_key = :bulk_update_index
+    ref_metadata_key = :bulk_action_ref
 
     if opts[:transaction] == :all &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
@@ -428,6 +423,7 @@ defmodule Ash.Actions.Update.Bulk do
               input,
               Keyword.merge(opts, notify?: opts[:notify?], return_notifications?: opts[:notify?]),
               metadata_key,
+              ref_metadata_key,
               context_key,
               not_atomic_reason
             )
@@ -497,7 +493,16 @@ defmodule Ash.Actions.Update.Bulk do
       end
     else
       domain
-      |> do_run(stream, action, input, opts, metadata_key, context_key, not_atomic_reason)
+      |> do_run(
+        stream,
+        action,
+        input,
+        opts,
+        metadata_key,
+        ref_metadata_key,
+        context_key,
+        not_atomic_reason
+      )
       |> handle_bulk_result(metadata_key, opts)
     end
   rescue
@@ -1119,7 +1124,17 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp do_run(domain, stream, action, input, opts, metadata_key, context_key, not_atomic_reason) do
+  defp do_run(
+         domain,
+         stream,
+         action,
+         input,
+         opts,
+         metadata_key,
+         ref_metadata_key,
+         context_key,
+         not_atomic_reason
+       ) do
     resource = opts[:resource]
     opts = Ash.Actions.Helpers.set_opts(opts, domain)
     read_action = get_read_action(resource, action, opts)
@@ -1188,6 +1203,7 @@ defmodule Ash.Actions.Update.Bulk do
                     input,
                     opts,
                     metadata_key,
+                    ref_metadata_key,
                     context_key
                   )
                 else
@@ -1223,7 +1239,16 @@ defmodule Ash.Actions.Update.Bulk do
 
           {:not_atomic, not_atomic_batches_reason} ->
             if :stream in opts[:strategy] do
-              do_stream_batches(domain, stream, action, input, opts, metadata_key, context_key)
+              do_stream_batches(
+                domain,
+                stream,
+                action,
+                input,
+                opts,
+                metadata_key,
+                ref_metadata_key,
+                context_key
+              )
             else
               %Ash.BulkResult{
                 status: :error,
@@ -1331,7 +1356,16 @@ defmodule Ash.Actions.Update.Bulk do
     |> run_batches(ref, atomic_changeset.resource, atomic_changeset.action.name, opts)
   end
 
-  defp do_stream_batches(domain, stream, action, input, opts, metadata_key, context_key) do
+  defp do_stream_batches(
+         domain,
+         stream,
+         action,
+         input,
+         opts,
+         metadata_key,
+         ref_metadata_key,
+         context_key
+       ) do
     resource = opts[:resource]
 
     action_select =
@@ -1394,8 +1428,7 @@ defmodule Ash.Actions.Update.Bulk do
               opts,
               input,
               argument_names,
-              domain,
-              context_key
+              domain
             )
           )
           |> handle_batch(
@@ -1407,6 +1440,7 @@ defmodule Ash.Actions.Update.Bulk do
             ref,
             context_key,
             metadata_key,
+            ref_metadata_key,
             base_changeset,
             action_select
           )
@@ -1736,6 +1770,7 @@ defmodule Ash.Actions.Update.Bulk do
          ref,
          context_key,
          metadata_key,
+         ref_metadata_key,
          base_changeset,
          action_select
        ) do
@@ -1794,7 +1829,8 @@ defmodule Ash.Actions.Update.Bulk do
 
               [
                 Ash.Resource.set_metadata(result, %{
-                  metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
+                  metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index),
+                  ref_metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:ref)
                 })
               ]
 
@@ -1805,7 +1841,8 @@ defmodule Ash.Actions.Update.Bulk do
 
               [
                 Ash.Resource.set_metadata(result, %{
-                  metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
+                  metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index),
+                  ref_metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:ref)
                 })
               ]
 
@@ -1845,6 +1882,7 @@ defmodule Ash.Actions.Update.Bulk do
               all_changes,
               ref,
               metadata_key,
+              ref_metadata_key,
               context_key,
               base_changeset,
               must_return_records_for_changes?,
@@ -1896,6 +1934,7 @@ defmodule Ash.Actions.Update.Bulk do
         all_changes,
         ref,
         metadata_key,
+        ref_metadata_key,
         context_key,
         base_changeset,
         must_return_records_for_changes?,
@@ -1915,6 +1954,7 @@ defmodule Ash.Actions.Update.Bulk do
          all_changes,
          ref,
          metadata_key,
+         ref_metadata_key,
          context_key,
          base_changeset,
          must_return_records_for_changes?,
@@ -1948,10 +1988,11 @@ defmodule Ash.Actions.Update.Bulk do
       domain,
       ref,
       metadata_key,
+      ref_metadata_key,
       context_key,
       action_select
     )
-    |> run_after_action_hooks(opts, domain, ref, metadata_key)
+    |> run_after_action_hooks(opts, domain, ref, metadata_key, ref_metadata_key)
     |> process_results(
       changes,
       all_changes,
@@ -1959,6 +2000,7 @@ defmodule Ash.Actions.Update.Bulk do
       ref,
       batch,
       metadata_key,
+      ref_metadata_key,
       resource,
       domain,
       base_changeset
@@ -1967,7 +2009,7 @@ defmodule Ash.Actions.Update.Bulk do
       if opts[:return_stream?] do
         stream
         |> Stream.concat(must_be_simple_results)
-        |> Stream.map(&{:ok, &1})
+        |> Stream.map(&{:ok, clear_ref_metadata(&1)})
         |> Stream.concat(error_stream(ref))
         |> Stream.concat(notification_stream(ref))
       else
@@ -1982,15 +2024,17 @@ defmodule Ash.Actions.Update.Bulk do
          opts,
          input,
          argument_names,
-         domain,
-         context_key
+         domain
        ) do
+    # Generate unique ref per changeset (not per batch)
+    ref = make_ref()
+
     record
     |> Ash.Changeset.new()
     |> Map.put(:domain, domain)
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
     |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
-    |> Ash.Changeset.put_context(context_key, %{index: index})
+    |> Ash.Changeset.put_context(:bulk_update, %{index: index, ref: ref})
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.atomic_update(opts[:atomic_update] || [])
     |> Ash.Changeset.hydrate_atomic_refs(opts[:actor], opts)
@@ -2092,11 +2136,11 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp index_changesets(batch, context_key) do
-    Enum.reduce(batch, %{}, fn changeset, changesets_by_index ->
+  defp index_changesets_by_ref(batch, context_key) do
+    Enum.reduce(batch, %{}, fn changeset, changesets_by_ref ->
       Map.put(
-        changesets_by_index,
-        changeset.context[context_key].index,
+        changesets_by_ref,
+        changeset.context[context_key].ref,
         changeset
       )
     end)
@@ -2358,6 +2402,7 @@ defmodule Ash.Actions.Update.Bulk do
   defp handle_bulk_result(%Ash.BulkResult{} = bulk_result, metadata_key, opts) do
     bulk_result
     |> sort(metadata_key, opts)
+    |> clear_ref_metadata_from_records()
     |> ensure_records_return_type(opts)
     |> ensure_errors_return_type(opts)
   end
@@ -2401,6 +2446,7 @@ defmodule Ash.Actions.Update.Bulk do
          domain,
          ref,
          metadata_key,
+         ref_metadata_key,
          context_key,
          action_select
        ) do
@@ -2472,7 +2518,7 @@ defmodule Ash.Actions.Update.Bulk do
         end
       end)
 
-    changesets_by_index = index_changesets(batch, context_key)
+    changesets_by_ref = index_changesets_by_ref(batch, context_key)
 
     batch =
       batch
@@ -2548,6 +2594,7 @@ defmodule Ash.Actions.Update.Bulk do
                     ref,
                     opts
                   )
+                  |> add_metadata_to_results(batch, metadata_key, ref_metadata_key, context_key)
 
                 _ ->
                   Enum.reduce_while(
@@ -2574,10 +2621,14 @@ defmodule Ash.Actions.Update.Bulk do
                         |> case do
                           {:ok, result} ->
                             result =
-                              Ash.Resource.put_metadata(
-                                result,
+                              result
+                              |> Ash.Resource.put_metadata(
                                 metadata_key,
                                 changeset.context[context_key].index
+                              )
+                              |> Ash.Resource.put_metadata(
+                                ref_metadata_key,
+                                changeset.context[context_key].ref
                               )
 
                             {:cont, {:ok, [result | results]}}
@@ -2590,10 +2641,14 @@ defmodule Ash.Actions.Update.Bulk do
                         end
                       else
                         result =
-                          Ash.Resource.put_metadata(
-                            changeset.data,
+                          changeset.data
+                          |> Ash.Resource.put_metadata(
                             metadata_key,
                             changeset.context[context_key].index
+                          )
+                          |> Ash.Resource.put_metadata(
+                            ref_metadata_key,
+                            changeset.context[context_key].ref
                           )
 
                         {:cont, {:ok, [result | results]}}
@@ -2621,7 +2676,7 @@ defmodule Ash.Actions.Update.Bulk do
           end)
       end
 
-    {batch, changesets_by_index}
+    {batch, changesets_by_ref}
   end
 
   defp manage_relationships(updated, domain, changeset, engine_opts) do
@@ -2639,15 +2694,19 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp run_after_action_hooks(
-         {batch_results, changesets_by_index},
+         {batch_results, changesets_by_ref},
          opts,
          domain,
          ref,
-         metadata_key
+         metadata_key,
+         ref_metadata_key
        ) do
     results =
       Enum.flat_map(batch_results, fn result ->
-        changeset = changesets_by_index[result.__metadata__[metadata_key]]
+        changeset =
+          result
+          |> find_changeset(changesets_by_ref, metadata_key, ref_metadata_key)
+          |> ensure_changeset!(result, metadata_key, ref_metadata_key)
 
         case manage_relationships(result, domain, changeset,
                actor: opts[:actor],
@@ -2682,17 +2741,18 @@ defmodule Ash.Actions.Update.Bulk do
         end
       end)
 
-    {results, changesets_by_index}
+    {results, changesets_by_ref}
   end
 
   defp process_results(
-         {batch, changesets_by_index},
+         {batch, changesets_by_ref},
          changes,
          all_changes,
          opts,
          ref,
          changesets,
          metadata_key,
+         ref_metadata_key,
          resource,
          domain,
          base_changeset
@@ -2701,15 +2761,19 @@ defmodule Ash.Actions.Update.Bulk do
       changes,
       all_changes,
       batch,
-      changesets_by_index,
+      changesets_by_ref,
       changesets,
       opts,
       ref,
       base_changeset.resource,
-      metadata_key
+      metadata_key,
+      ref_metadata_key
     )
     |> Enum.flat_map(fn result ->
-      changeset = changesets_by_index[result.__metadata__[metadata_key]]
+      changeset =
+        result
+        |> find_changeset(changesets_by_ref, metadata_key, ref_metadata_key)
+        |> ensure_changeset!(result, metadata_key, ref_metadata_key)
 
       if opts[:notify?] || opts[:return_notifications?] do
         store_notification(ref, notification(changeset, result, opts), opts)
@@ -2789,12 +2853,13 @@ defmodule Ash.Actions.Update.Bulk do
         changes,
         all_changes,
         results,
-        changesets_by_index,
+        changesets_by_ref,
         changesets,
         opts,
         ref,
         resource,
-        metadata_key
+        metadata_key,
+        ref_metadata_key \\ nil
       ) do
     source_context =
       case changesets do
@@ -2826,7 +2891,10 @@ defmodule Ash.Actions.Update.Bulk do
         if changes[index] == :all do
           results =
             Enum.map(results, fn result ->
-              {changesets_by_index[result.__metadata__[metadata_key]], result}
+              changeset =
+                find_changeset(result, changesets_by_ref, metadata_key, ref_metadata_key)
+
+              {changeset, result}
             end)
 
           case change_opts do
@@ -2874,7 +2942,13 @@ defmodule Ash.Actions.Update.Bulk do
             results
             |> Enum.split_with(fn
               {:ok, result} ->
-                result.__metadata__[metadata_key] in List.wrap(changes[index])
+                result_matches_changes?(
+                  result,
+                  changes[index],
+                  changesets_by_ref,
+                  metadata_key,
+                  ref_metadata_key
+                )
 
               _ ->
                 false
@@ -2884,7 +2958,7 @@ defmodule Ash.Actions.Update.Bulk do
 
           matches =
             Enum.map(matches, fn match ->
-              {changesets_by_index[match.__metadata__[metadata_key]], match}
+              {changesets_by_ref[match.__metadata__[metadata_key]], match}
             end)
 
           after_batch_results =
@@ -3453,4 +3527,80 @@ defmodule Ash.Actions.Update.Bulk do
         Ash.Resource.Info.action(resource, action)
     end
   end
+
+  defp find_changeset_by_ref(result, changesets_by_ref, ref_metadata_key) do
+    ref_key = result.__metadata__[ref_metadata_key]
+
+    if ref_key do
+      changesets_by_ref[ref_key]
+    else
+      raise "Missing ref metadata for record. The record should have had metadata key #{inspect(ref_metadata_key)} set during bulk update."
+    end
+  end
+
+  defp find_changeset_by_index(result, changesets_by_ref, metadata_key) do
+    changesets_by_ref[result.__metadata__[metadata_key]]
+  end
+
+  defp find_changeset(result, changesets_by_ref, _metadata_key, ref_metadata_key)
+       when not is_nil(ref_metadata_key) do
+    find_changeset_by_ref(result, changesets_by_ref, ref_metadata_key)
+  end
+
+  defp find_changeset(result, changesets_by_ref, metadata_key, nil) do
+    find_changeset_by_index(result, changesets_by_ref, metadata_key)
+  end
+
+  defp add_metadata_to_results({:ok, results}, batch, metadata_key, ref_metadata_key, context_key) do
+    results_with_metadata =
+      results
+      |> Enum.zip(batch)
+      |> Enum.map(fn {result, changeset} ->
+        result
+        |> Ash.Resource.put_metadata(metadata_key, changeset.context[context_key].index)
+        |> Ash.Resource.put_metadata(ref_metadata_key, changeset.context[context_key].ref)
+      end)
+
+    {:ok, results_with_metadata}
+  end
+
+  defp add_metadata_to_results(other, _batch, _metadata_key, _ref_metadata_key, _context_key) do
+    other
+  end
+
+  defp ensure_changeset!(nil, _result, _metadata_key, ref_metadata_key) do
+    raise "Missing ref metadata for record. The record should have had metadata key #{inspect(ref_metadata_key)} set during bulk update."
+  end
+
+  defp ensure_changeset!(changeset, _result, _metadata_key, _ref_metadata_key) do
+    changeset
+  end
+
+  defp result_matches_changes?(result, changes, changesets_by_ref, metadata_key, ref_metadata_key) do
+    if ref_metadata_key do
+      ref_key = result.__metadata__[ref_metadata_key]
+
+      if ref_key do
+        ref_key in List.wrap(changes)
+      else
+        # Fallback: find if this record ID has a changeset with ref in changes
+        Enum.any?(changesets_by_ref, fn {changeset_ref, changeset} ->
+          Map.get(changeset.data, :id) == result.id and
+            changeset_ref in List.wrap(changes)
+        end)
+      end
+    else
+      result.__metadata__[metadata_key] in List.wrap(changes)
+    end
+  end
+
+  defp clear_ref_metadata(record) do
+    Ash.Resource.set_metadata(record, Map.delete(record.__metadata__, :bulk_action_ref))
+  end
+
+  defp clear_ref_metadata_from_records(%{records: records} = result) when is_list(records) do
+    %{result | records: Enum.map(records, &clear_ref_metadata/1)}
+  end
+
+  defp clear_ref_metadata_from_records(result), do: result
 end

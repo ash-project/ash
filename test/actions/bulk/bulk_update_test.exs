@@ -42,6 +42,86 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  # This change simulates the Zelo scenario where an after_action
+  # does a fresh query that loses bulk operation metadata
+  defmodule FreshQueryAfterAction do
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.after_action(changeset, fn _changeset, result ->
+        # Simulate what RecalculateRoutesOnVehicleAssignment does:
+        # Do a fresh query which will lose bulk metadata
+        case Ash.get(result.__struct__, result.id) do
+          {:ok, fresh_result} ->
+            # This fresh result will have new metadata (potentially with keyset)
+            # but will lose the bulk_update_index from the original result
+            {:ok, fresh_result}
+
+          error ->
+            error
+        end
+      end)
+    end
+  end
+
+  defmodule CorruptMetadataChange do
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, opts, _context) do
+      corruption_type = opts[:corruption_type] || :remove_ref
+
+      Ash.Changeset.after_action(changeset, fn _changeset, result ->
+        case corruption_type do
+          :remove_ref ->
+            # Remove ref but keep index - this should trigger ID-based fallback
+            corrupted_metadata = Map.delete(result.__metadata__, :bulk_action_ref)
+            {:ok, %{result | __metadata__: corrupted_metadata}}
+
+          :invalid_ref ->
+            # Set ref to something that doesn't exist - should trigger fallback then error
+            corrupted_metadata = Map.put(result.__metadata__, :bulk_action_ref, make_ref())
+            {:ok, %{result | __metadata__: corrupted_metadata}}
+
+          :remove_all ->
+            # Remove both ref and index - should cause lookup failure
+            {:ok, %{result | __metadata__: %{}}}
+
+          :wrong_id ->
+            # Change the record ID to something that won't match any changeset
+            {:ok, %{result | id: "nonexistent-id-#{System.unique_integer()}"}}
+        end
+      end)
+    end
+  end
+
+  defmodule ConditionalCorruptMetadataChange do
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, opts, _context) do
+      corruption_condition = opts[:corrupt_if] || "none"
+
+      Ash.Changeset.after_action(changeset, fn _changeset, result ->
+        should_corrupt =
+          case corruption_condition do
+            "odd_ids" -> rem(String.to_integer(result.id), 2) == 1
+            "title_contains_2" -> String.contains?(result.title, "2")
+            _ -> false
+          end
+
+        if should_corrupt do
+          # Corrupt metadata for this specific result
+          corrupted_metadata = Map.delete(result.__metadata__, :bulk_action_ref)
+          {:ok, %{result | __metadata__: corrupted_metadata}}
+        else
+          {:ok, result}
+        end
+      end)
+    end
+  end
+
   defmodule AddBeforeToTitle do
     use Ash.Resource.Change
 
@@ -317,6 +397,26 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                    send(self(), {:error, error})
                    {:error, error}
                end)
+      end
+
+      update :update_with_fresh_query do
+        require_atomic? false
+
+        change FreshQueryAfterAction
+      end
+
+      update :update_with_corrupted_ref do
+        require_atomic? false
+        argument :corruption_type, :atom, allow_nil?: false
+
+        change {CorruptMetadataChange, corruption_type: arg(:corruption_type)}
+      end
+
+      update :update_with_conditional_corruption do
+        require_atomic? false
+        argument :corrupt_condition, :string, allow_nil?: false
+
+        change {ConditionalCorruptMetadataChange, corrupt_if: arg(:corrupt_condition)}
       end
 
       update :update_with_policy do
@@ -620,7 +720,9 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   end
 
   test "returns updated records" do
-    assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
+    assert %Ash.BulkResult{
+             records: [%{title2: "updated value"}, %{title2: "updated value"}] = records
+           } =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true,
@@ -636,6 +738,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                return_errors?: true,
                authorize?: false
              )
+
+    Enum.each(records, fn record ->
+      refute Map.has_key?(record.__metadata__, :bulk_action_ref)
+    end)
   end
 
   test "sends notifications" do
@@ -1708,6 +1814,266 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
       assert is_list(notifications)
       assert length(notifications) > 0
+    end
+
+    test "raises error when fresh queries in after_action lose metadata" do
+      # Create posts for bulk update
+      posts =
+        1..3
+        |> Enum.map(fn i ->
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "post#{i}"})
+          |> Ash.create!()
+        end)
+
+      # This should now fail when the fresh query in after_action loses metadata
+      error =
+        assert_raise Ash.Error.Unknown, fn ->
+          Post
+          |> Ash.Query.filter(expr(id in ^Enum.map(posts, & &1.id)))
+          |> Ash.bulk_update!(:update_with_fresh_query, %{title2: "updated"},
+            strategy: :stream,
+            notify?: true,
+            return_notifications?: true,
+            return_records?: true,
+            authorize?: false
+          )
+        end
+
+      # Should fail with missing ref metadata error
+      error_message = Exception.message(hd(error.errors))
+      assert error_message =~ "Missing ref metadata for record"
+    end
+  end
+
+  describe "negative path tests for ref-based changeset lookup" do
+    test "raises error when changeset lookup fails completely" do
+      posts =
+        1..2
+        |> Enum.map(fn i ->
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "post#{i}"})
+          |> Ash.create!()
+        end)
+
+      # Test with invalid ref corruption - should trigger fallback then complete failure
+      error =
+        assert_raise Ash.Error.Unknown, fn ->
+          Post
+          |> Ash.Query.filter(expr(id in ^Enum.map(posts, & &1.id)))
+          |> Ash.bulk_update!(
+            :update_with_corrupted_ref,
+            %{
+              title2: "updated",
+              corruption_type: :invalid_ref
+            },
+            strategy: :stream,
+            notify?: true,
+            return_records?: true,
+            authorize?: false
+          )
+        end
+
+      error_message = Exception.message(hd(error.errors))
+      assert error_message =~ "Missing ref metadata for record"
+    end
+
+    test "raises error when all metadata is removed" do
+      posts =
+        1..2
+        |> Enum.map(fn i ->
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "post#{i}"})
+          |> Ash.create!()
+        end)
+
+      # Test with all metadata removed - should raise error without fallback
+      error =
+        assert_raise Ash.Error.Unknown, fn ->
+          Post
+          |> Ash.Query.filter(expr(id in ^Enum.map(posts, & &1.id)))
+          |> Ash.bulk_update!(
+            :update_with_corrupted_ref,
+            %{
+              title2: "updated",
+              corruption_type: :remove_all
+            },
+            strategy: :stream,
+            notify?: true,
+            return_notifications?: true,
+            return_records?: true,
+            authorize?: false
+          )
+        end
+
+      # Should fail with missing ref metadata error
+      error_message = Exception.message(hd(error.errors))
+      assert error_message =~ "Missing ref metadata for record"
+    end
+
+    test "works even when record ID is changed (ref-based lookup)" do
+      posts =
+        1..2
+        |> Enum.map(fn i ->
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "post#{i}"})
+          |> Ash.create!()
+        end)
+
+      # With ref-based lookup, changing the ID shouldn't matter
+      # as long as the ref metadata is intact
+      assert %Ash.BulkResult{records: records} =
+               Post
+               |> Ash.Query.filter(expr(id in ^Enum.map(posts, & &1.id)))
+               |> Ash.bulk_update!(
+                 :update_with_corrupted_ref,
+                 %{
+                   title2: "updated",
+                   corruption_type: :wrong_id
+                 },
+                 strategy: :stream,
+                 notify?: true,
+                 return_records?: true,
+                 authorize?: false
+               )
+
+      # Should work fine with ref-based lookup
+      assert length(records) == 2
+      assert Enum.all?(records, fn r -> r.title2 == "updated" end)
+    end
+
+    test "raises error when ref metadata is missing" do
+      posts =
+        1..3
+        |> Enum.map(fn i ->
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "post#{i}"})
+          |> Ash.create!()
+        end)
+
+      # Test with ref removed - should raise an error now that fallback is removed
+      error =
+        assert_raise Ash.Error.Unknown, fn ->
+          Post
+          |> Ash.Query.filter(expr(id in ^Enum.map(posts, & &1.id)))
+          |> Ash.bulk_update!(
+            :update_with_corrupted_ref,
+            %{
+              title2: "updated",
+              corruption_type: :remove_ref
+            },
+            strategy: :stream,
+            notify?: true,
+            return_notifications?: true,
+            return_records?: true,
+            authorize?: false
+          )
+        end
+
+      # Should fail with missing ref metadata error
+      error_message = Exception.message(hd(error.errors))
+      assert error_message =~ "Missing ref metadata for record"
+    end
+
+    test "raises error when any record loses ref metadata" do
+      posts =
+        1..4
+        |> Enum.map(fn i ->
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "post#{i}"})
+          |> Ash.create!()
+        end)
+
+      # Should fail when any record loses its ref metadata
+      # This will corrupt only records with "2" in title (post2)
+      error =
+        assert_raise Ash.Error.Unknown, fn ->
+          Post
+          |> Ash.Query.filter(expr(id in ^Enum.map(posts, & &1.id)))
+          |> Ash.bulk_update!(
+            :update_with_conditional_corruption,
+            %{
+              title2: "updated",
+              corrupt_condition: "title_contains_2"
+            },
+            strategy: :stream,
+            notify?: true,
+            return_notifications?: true,
+            return_records?: true,
+            authorize?: false
+          )
+        end
+
+      # Should fail with missing ref metadata error
+      error_message = Exception.message(hd(error.errors))
+      assert error_message =~ "Missing ref metadata for record"
+    end
+
+    test "raises error with stream strategy when ref is missing (multiple batches)" do
+      posts =
+        1..6
+        |> Enum.map(fn i ->
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "post#{i}"})
+          |> Ash.create!()
+        end)
+
+      # Test with stream strategy and smaller batch size to trigger multiple batches
+      error =
+        assert_raise Ash.Error.Unknown, fn ->
+          Post
+          |> Ash.Query.filter(expr(id in ^Enum.map(posts, & &1.id)))
+          |> Ash.bulk_update!(
+            :update_with_corrupted_ref,
+            %{
+              title2: "updated",
+              corruption_type: :remove_ref
+            },
+            strategy: :stream,
+            batch_size: 2,
+            notify?: true,
+            return_notifications?: true,
+            return_records?: true,
+            authorize?: false
+          )
+        end
+
+      # Should fail with missing ref metadata error
+      error_message = Exception.message(hd(error.errors))
+      assert error_message =~ "Missing ref metadata for record"
+    end
+
+    test "error messages include helpful debugging information" do
+      posts =
+        1..1
+        |> Enum.map(fn i ->
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "post#{i}"})
+          |> Ash.create!()
+        end)
+
+      # Test that error message includes metadata info
+      error =
+        assert_raise Ash.Error.Unknown, fn ->
+          Post
+          |> Ash.Query.filter(expr(id in ^Enum.map(posts, & &1.id)))
+          |> Ash.bulk_update!(
+            :update_with_corrupted_ref,
+            %{
+              title2: "updated",
+              corruption_type: :invalid_ref
+            },
+            strategy: :stream,
+            notify?: true,
+            return_records?: true,
+            authorize?: false
+          )
+        end
+
+      # Error message should include ref metadata key
+      error_message = Exception.message(hd(error.errors))
+      assert error_message =~ "Missing ref metadata for record"
+      assert error_message =~ ":bulk_action_ref"
     end
   end
 end
