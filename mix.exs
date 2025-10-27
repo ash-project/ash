@@ -22,7 +22,11 @@ defmodule Ash.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       deps: deps(),
-      dialyzer: [plt_add_apps: [:mix, :mnesia, :plug, :ex_unit, :stream_data]],
+      # Workaround for Elixir dialyzer opaque type bug: https://github.com/elixir-lang/elixir/issues/14837#issuecomment-3452772021
+      dialyzer: [
+        plt_add_apps: [:mix, :mnesia, :plug, :ex_unit, :stream_data],
+        flags: [:no_opaque]
+      ],
       docs: &docs/0,
       aliases: aliases(),
       description: @description,
