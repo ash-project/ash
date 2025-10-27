@@ -104,19 +104,7 @@ defmodule Ash.Changeset do
   defimpl Inspect do
     import Inspect.Algebra
 
-    @spec inspect(Ash.Changeset.t(), Inspect.Opts.t()) ::
-            {:doc_cons, :doc_line | :doc_nil | binary | tuple,
-             :doc_line | :doc_nil | binary | tuple}
-            | {:doc_group,
-               :doc_line
-               | :doc_nil
-               | binary
-               | {:doc_collapse, pos_integer}
-               | {:doc_force, any}
-               | {:doc_break | :doc_color | :doc_cons | :doc_fits | :doc_group | :doc_string, any,
-                  any}
-               | {:doc_nest, any, :cursor | :reset | non_neg_integer, :always | :break},
-               :inherit | :self}
+    @spec inspect(Ash.Changeset.t(), Inspect.Opts.t()) :: Inspect.Algebra.t()
     def inspect(changeset, opts) do
       context = Map.delete(changeset.context, :private)
 
@@ -526,19 +514,20 @@ defmodule Ash.Changeset do
     context = Ash.Resource.Info.default_context(resource) || %{}
 
     if Ash.Resource.Info.resource?(resource) do
-      %__MODULE__{resource: resource, data: record, action_type: action_type}
+      new_changeset(resource, record, action_type)
       |> set_context(context)
       |> set_tenant(tenant)
     else
-      %__MODULE__{
-        resource: resource,
-        action_type: action_type,
-        data: struct(resource)
-      }
+      new_changeset(resource, struct(resource), action_type)
       |> add_error(NoSuchResource.exception(resource: resource))
       |> set_tenant(tenant)
       |> set_context(context)
     end
+  end
+
+  @spec new_changeset(Ash.Resource.t(), term(), atom()) :: t()
+  defp new_changeset(resource, data, action_type) do
+    %__MODULE__{resource: resource, data: data, action_type: action_type}
   end
 
   @doc """
