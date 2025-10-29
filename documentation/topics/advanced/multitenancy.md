@@ -137,9 +137,54 @@ multitenancy do
 end
 ```
 
-You can also provide the `parse_attribute` option if the tenant being set
-doesn't exactly match the attribute value, e.g the tenant is `org_10` and the
-attribute is `organization_id`, which requires just `10`.
+### Transforming Tenant Values
+
+You can provide the `parse_attribute` option if the tenant being set doesn't
+exactly match the attribute value. For example, if the tenant is `"org_10"` and
+the attribute is `organization_id`, which requires just `10`.
+
+```elixir
+defmodule MyApp.Users do
+  use Ash.Resource, ...
+
+  multitenancy do
+    strategy :attribute
+    attribute :organization_id
+    parse_attribute {MyApp.Users, :parse_tenant, []}
+  end
+
+  def parse_tenant("org_" <> id), do: String.to_integer(id)
+  def parse_tenant(id) when is_integer(id), do: id
+end
+```
+
+The inverse transformation can be configured with `tenant_from_attribute`, which
+takes an attribute value and returns the tenant. This is primarily used by
+extensions that need to convert an attribute value back to its tenant
+representation.
+
+```elixir
+defmodule MyApp.Users do
+  use Ash.Resource, ...
+
+  multitenancy do
+    strategy :attribute
+    attribute :organization_id
+    parse_attribute {MyApp.Users, :parse_tenant, []}
+    tenant_from_attribute {MyApp.Users, :format_tenant, []}
+  end
+
+  # Transforms tenant -> attribute value
+  def parse_tenant("org_" <> id), do: String.to_integer(id)
+  def parse_tenant(id) when is_integer(id), do: id
+
+  # Transforms attribute value -> tenant (inverse of parse_tenant)
+  def format_tenant(id) when is_integer(id), do: "org_#{id}"
+end
+```
+
+**Note:** The `parse_attribute` and `tenant_from_attribute` functions should be
+inverses of each other for consistent behavior across extensions.
 
 ## Tenant-Aware Identities
 

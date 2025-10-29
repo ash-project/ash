@@ -1608,7 +1608,7 @@ defmodule Ash.Resource.Dsl do
       tenant_from_attribute: [
         type: :mfa,
         doc:
-          "An mfa ({module, function, args}) pointing to a function that takes an attribute value and returns the tenant. This is the inverse of `parse_attribute` and is primarily used by extensions.",
+          "An mfa ({module, function, args}) pointing to a function that takes an attribute value and returns the tenant. This is the inverse of `parse_attribute`.",
         default: {__MODULE__, :identity, []}
       ]
     ]
