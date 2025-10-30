@@ -6,15 +6,34 @@ SPDX-License-Identifier: MIT
 
 # Multitenancy
 
-Multitenancy is the splitting up your data into discrete areas, typically by customer. One of the most common examples of this, is the idea of splitting up a postgres database into "schemas" one for each customer that you have. Then, when making any queries, you ensure to always specify the "schema" you are querying, and you never need to worry about data crossing over between customers. The biggest benefits of this kind of strategy are the simplification of authorization logic, and better performance. Instead of all queries from all customers needing to use the same large table, they are each instead all using their own smaller tables. Another benefit is that it is much easier to delete a single customer's data on request.
+Multitenancy is the splitting up your data into discrete areas, typically by
+customer. One of the most common examples of this, is the idea of splitting up a
+postgres database into "schemas" one for each customer that you have. Then, when
+making any queries, you ensure to always specify the "schema" you are querying,
+and you never need to worry about data crossing over between customers. The
+biggest benefits of this kind of strategy are the simplification of
+authorization logic, and better performance. Instead of all queries from all
+customers needing to use the same large table, they are each instead all using
+their own smaller tables. Another benefit is that it is much easier to delete a
+single customer's data on request.
 
-In Ash, there are two strategies for implementing multitenancy. The first (and simplest) strategy works for any data layer that supports filtering, and requires little maintenance/mental overhead. It is done via expecting a given attribute to line up with the `tenant`, and is called the `:attribute` strategy. The second, is based on the data layer backing your resource, and is called the `:context` strategy. For information on context based multitenancy, see the documentation of your data layer. For example, `AshPostgres` uses postgres schemas. While the `:attribute` strategy is simple to implement, it offers fewer advantages, primarily acting as another way to ensure your data is filtered to the correct tenant.
+In Ash, there are two strategies for implementing multitenancy. The first (and
+simplest) strategy works for any data layer that supports filtering, and
+requires little maintenance/mental overhead. It is done via expecting a given
+attribute to line up with the `tenant`, and is called the `:attribute` strategy.
+The second, is based on the data layer backing your resource, and is called the
+`:context` strategy. For information on context based multitenancy, see the
+documentation of your data layer. For example, `AshPostgres` uses postgres
+schemas. While the `:attribute` strategy is simple to implement, it offers fewer
+advantages, primarily acting as another way to ensure your data is filtered to
+the correct tenant.
 
 ## Setting Tenant
 
 ### Using Ash.PlugHelpers.set_tenant
 
-You can use `Ash.PlugHelpers.set_tenant/2` in your plug pipeline to set the tenant for all operations:
+You can use `Ash.PlugHelpers.set_tenant/2` in your plug pipeline to set the
+tenant for all operations:
 
 Example usage of the above:
 
@@ -23,11 +42,16 @@ conn
 |> Ash.PlugHelpers.set_tenant(tenant)
 ```
 
-**Important:** If you're using `ash_authentication` with Multitenant User or Token resources, the `Ash.PlugHelpers.set_tenant` plug **must be placed before any authentication plugs** in your pipeline. This ensures the tenant is available when authentication operations need to query or create user/token records.
+**Important:** If you're using `ash_authentication` with Multitenant User or
+Token resources, the `Ash.PlugHelpers.set_tenant` plug **must be placed before
+any authentication plugs** in your pipeline. This ensures the tenant is
+available when authentication operations need to query or create user/token
+records.
 
 ### Using Ash.Scope
 
-You can also use `Ash.Scope` to you can group up actor/tenant/context into one struct and pass that around.
+You can also use `Ash.Scope` to you can group up actor/tenant/context into one
+struct and pass that around.
 
 Example usage of the above:
 
@@ -58,9 +82,15 @@ defmodule MyApp.Users do
 end
 ```
 
-In this case, if you were to try to run a query without specifying a tenant, you would get an error telling you that the tenant is required.
+In this case, if you were to try to run a query without specifying a tenant, you
+would get an error telling you that the tenant is required.
 
-Setting the tenant is done via `Ash.Query.set_tenant/2` and `Ash.Changeset.set_tenant/2`. If you are using a [code interface](/documentation/topics/resources/code-interfaces.md), you can pass `tenant:` in the options list (the final parameter). If you are using an extension, such as `AshJsonApi` or `AshGraphql` the method of setting tenant context is explained in that extension's documentation.
+Setting the tenant is done via `Ash.Query.set_tenant/2` and
+`Ash.Changeset.set_tenant/2`. If you are using a
+[code interface](/documentation/topics/resources/code-interfaces.md), you can
+pass `tenant:` in the options list (the final parameter). If you are using an
+extension, such as `AshJsonApi` or `AshGraphql` the method of setting tenant
+context is explained in that extension's documentation.
 
 Example usage of the above:
 
@@ -94,7 +124,10 @@ MyApp.Users
 MyApp.Users.list_all(tenant: 1)
 ```
 
-If you want to enable running queries _without_ a tenant as well as queries with a tenant, the `global?` option supports this. You will likely need to incorporate this ability into any authorization rules though, to ensure that users from one tenant can't access other tenant's data.
+If you want to enable running queries _without_ a tenant as well as queries with
+a tenant, the `global?` option supports this. You will likely need to
+incorporate this ability into any authorization rules though, to ensure that
+users from one tenant can't access other tenant's data.
 
 ```elixir
 multitenancy do
@@ -104,13 +137,65 @@ multitenancy do
 end
 ```
 
-You can also provide the `parse_attribute?` option if the tenant being set doesn't exactly match the attribute value, e.g the tenant is `org_10` and the attribute is `organization_id`, which requires just `10`.
+### Transforming Tenant Values
+
+You can provide the `parse_attribute` option if the tenant being set doesn't
+exactly match the attribute value. For example, if the tenant is `"org_10"` and
+the attribute is `organization_id`, which requires just `10`.
+
+```elixir
+defmodule MyApp.Users do
+  use Ash.Resource, ...
+
+  multitenancy do
+    strategy :attribute
+    attribute :organization_id
+    parse_attribute {MyApp.Users, :parse_tenant, []}
+  end
+
+  def parse_tenant("org_" <> id), do: String.to_integer(id)
+  def parse_tenant(id) when is_integer(id), do: id
+end
+```
+
+The inverse transformation can be configured with `tenant_from_attribute`, which
+takes an attribute value and returns the tenant. This is primarily used by
+extensions that need to convert an attribute value back to its tenant
+representation.
+
+```elixir
+defmodule MyApp.Users do
+  use Ash.Resource, ...
+
+  multitenancy do
+    strategy :attribute
+    attribute :organization_id
+    parse_attribute {MyApp.Users, :parse_tenant, []}
+    tenant_from_attribute {MyApp.Users, :format_tenant, []}
+  end
+
+  # Transforms tenant -> attribute value
+  def parse_tenant("org_" <> id), do: String.to_integer(id)
+  def parse_tenant(id) when is_integer(id), do: id
+
+  # Transforms attribute value -> tenant (inverse of parse_tenant)
+  def format_tenant(id) when is_integer(id), do: "org_#{id}"
+end
+```
+
+**Note:** The `parse_attribute` and `tenant_from_attribute` functions should be
+inverses of each other for consistent behavior across extensions.
 
 ## Tenant-Aware Identities
 
-When using identities in a multitenant resource, the tenant attribute is automatically included in the uniqueness constraints. This means that the same identity value can exist across different tenants, but must be unique within a single tenant. For example, if you have a `User` resource with an email identity, users in different organizations could have the same email address.
+When using identities in a multitenant resource, the tenant attribute is
+automatically included in the uniqueness constraints. This means that the same
+identity value can exist across different tenants, but must be unique within a
+single tenant. For example, if you have a `User` resource with an email
+identity, users in different organizations could have the same email address.
 
-If you need an identity to be globally unique across all tenants (like a global user email system), you can set `all_tenants?: true` on the identity.
+If you need an identity to be globally unique across all tenants (like a global
+user email system), you can set `all_tenants?: true` on the identity.
 
 ```elixir
 defmodule MyApp.User do
@@ -159,15 +244,28 @@ User
 
 ## Context Multitenancy
 
-Context multitenancy allows for the data layer to dictate how multitenancy works. For example, a csv data layer might implement multitenancy via saving the file with different suffixes, or an API wrapping data layer might use different subdomains for the tenant.
+Context multitenancy allows for the data layer to dictate how multitenancy
+works. For example, a csv data layer might implement multitenancy via saving the
+file with different suffixes, or an API wrapping data layer might use different
+subdomains for the tenant.
 
-For `AshPostgres` context multitenancy, which uses postgres schemas and is referred to ash "Schema Based Multitenancy", see the [guide](https://hexdocs.pm/ash_postgres/schema-based-multitenancy.html)
+For `AshPostgres` context multitenancy, which uses postgres schemas and is
+referred to ash "Schema Based Multitenancy", see the
+[guide](https://hexdocs.pm/ash_postgres/schema-based-multitenancy.html)
 
 ## Possible Values for tenant
 
-By default, the tenant value is passed directly to the relevant implementation. For example, if you are using schema multitenancy with `ash_postgres`, you might provide a schema like `organization.subdomain`. In Ash, a tenant should be identifiable by a single value, like an integer or a string.
+By default, the tenant value is passed directly to the relevant implementation.
+For example, if you are using schema multitenancy with `ash_postgres`, you might
+provide a schema like `organization.subdomain`. In Ash, a tenant should be
+identifiable by a single value, like an integer or a string.
 
-You can use the `Ash.ToTenant` protocol to automatically convert values into this simple value. The example below will allow you to use the same organization everywhere, and have it automatically converted into the correct schema for postgres, and the correct id for attribute-based multitenant resources. You can use this without looking up the relevant record as well, as long as the required fields used in your protocol are present.
+You can use the `Ash.ToTenant` protocol to automatically convert values into
+this simple value. The example below will allow you to use the same organization
+everywhere, and have it automatically converted into the correct schema for
+postgres, and the correct id for attribute-based multitenant resources. You can
+use this without looking up the relevant record as well, as long as the required
+fields used in your protocol are present.
 
 ```elixir
 Ash.Changeset.for_create(..., tenant: %MyApp.Organization{id: id})
@@ -188,4 +286,6 @@ defimpl Ash.ToTenant do
 end
 ```
 
-This allows you to pass an `%Organization{}` or an organization_id around, and have that `organization_id` properly used with attribute and context-based multitenancy.
+This allows you to pass an `%Organization{}` or an organization_id around, and
+have that `organization_id` properly used with attribute and context-based
+multitenancy.

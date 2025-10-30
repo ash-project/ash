@@ -445,6 +445,18 @@ defmodule Ash.Resource.Info do
     )
   end
 
+  @doc "The function to get the tenant from the attribute value"
+  @spec multitenancy_tenant_from_attribute(Spark.Dsl.t() | Ash.Resource.t()) ::
+          {atom, atom, list(any)}
+  def multitenancy_tenant_from_attribute(resource) do
+    Spark.Dsl.Extension.get_opt(
+      resource,
+      [:multitenancy],
+      :tenant_from_attribute,
+      {__MODULE__, :_identity, []}
+    )
+  end
+
   @doc false
   def _identity(x), do: x
 

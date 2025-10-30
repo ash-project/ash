@@ -294,6 +294,7 @@ spark_locals_without_parens = [
   table: 1,
   tenant: 1,
   tenant: 2,
+  tenant_from_attribute: 1,
   through: 1,
   timeout: 1,
   to: 1,

@@ -652,4 +652,92 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.read!()
     end
   end
+
+  describe "tenant_from_attribute option" do
+    defmodule TenantFromAttributeThing do
+      @moduledoc false
+      use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private?(true)
+      end
+
+      multitenancy do
+        strategy(:attribute)
+        attribute(:tenant_id)
+        parse_attribute {__MODULE__, :parse_tenant, []}
+        tenant_from_attribute({__MODULE__, :format_tenant, []})
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, create: :*, update: :*]
+      end
+
+      attributes do
+        uuid_primary_key :id
+
+        attribute :tenant_id, :integer do
+          public?(true)
+        end
+
+        attribute :name, :string do
+          public?(true)
+        end
+      end
+
+      def parse_tenant("org_" <> id), do: String.to_integer(id)
+      def parse_tenant(id) when is_integer(id), do: id
+
+      def format_tenant(id) when is_integer(id), do: "org_#{id}"
+    end
+
+    test "tenant_from_attribute option can be configured" do
+      assert {TenantFromAttributeThing, :format_tenant, []} ==
+               Ash.Resource.Info.multitenancy_tenant_from_attribute(TenantFromAttributeThing)
+    end
+
+    test "default is identity function when not specified" do
+      assert {Ash.Resource.Dsl, :identity, []} ==
+               Ash.Resource.Info.multitenancy_tenant_from_attribute(User)
+    end
+
+    test "round-trip conversion works with parse_attribute and tenant_from_attribute" do
+      tenant = "org_42"
+
+      {m1, f1, a1} = Ash.Resource.Info.multitenancy_parse_attribute(TenantFromAttributeThing)
+      attribute_value = apply(m1, f1, [tenant | a1])
+      assert attribute_value == 42
+
+      {m2, f2, a2} =
+        Ash.Resource.Info.multitenancy_tenant_from_attribute(TenantFromAttributeThing)
+
+      tenant_result = apply(m2, f2, [attribute_value | a2])
+      assert tenant_result == tenant
+    end
+
+    test "works with create and read operations" do
+      tenant = "org_123"
+
+      thing =
+        TenantFromAttributeThing
+        |> Ash.Changeset.for_create(:create, %{name: "test"}, tenant: tenant)
+        |> Ash.create!()
+
+      assert thing.tenant_id == 123
+
+      results =
+        TenantFromAttributeThing
+        |> Ash.Query.set_tenant(tenant)
+        |> Ash.read!()
+
+      assert [%{tenant_id: 123, name: "test"}] = results
+
+      {m, f, a} =
+        Ash.Resource.Info.multitenancy_tenant_from_attribute(TenantFromAttributeThing)
+
+      converted_tenant = apply(m, f, [thing.tenant_id | a])
+      assert converted_tenant == tenant
+    end
+  end
 end
