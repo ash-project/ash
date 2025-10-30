@@ -2495,18 +2495,33 @@ defmodule Ash.Actions.Read do
             )
 
           expr =
-            Ash.Filter.move_to_relationship_path(expr, relationship_path)
+            add_calc_context_to_filter(
+              expr,
+              actor,
+              authorize?,
+              tenant,
+              tracer,
+              domain,
+              ref.resource,
+              opts
+            )
 
-          add_calc_context_to_filter(
-            expr,
-            actor,
-            authorize?,
-            tenant,
-            tracer,
-            domain,
-            ref.resource,
-            opts
-          )
+          expanded_calc = %Ash.Query.Calculation{
+            name: calc.name,
+            module: Ash.Resource.Calculation.Expression,
+            opts: [expr: expr],
+            type: calc.type,
+            constraints: calc.constraints,
+            filterable?: calc.filterable?,
+            sortable?: calc.sortable?,
+            sensitive?: calc.sensitive?,
+            load: calc.load,
+            select: calc.select,
+            context: calc.context
+          }
+
+          # Return a Ref at the relationship path with the expanded calculation
+          %{ref | attribute: expanded_calc, relationship_path: relationship_path}
         else
           %{ref | attribute: calc}
         end
