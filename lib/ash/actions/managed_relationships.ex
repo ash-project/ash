@@ -1220,7 +1220,9 @@ defmodule Ash.Actions.ManagedRelationships do
   defp do_handle_create(record, current_value, relationship, input, changeset, actor, index, opts) do
     case opts[:on_no_match] do
       :error ->
-        if opts[:on_lookup] != :ignore do
+        # Return NotFound for modify/remove operations or when on_lookup != :ignore
+        if opts[:on_lookup] != :ignore ||
+             opts[:on_match] not in [:ignore, :error, :no_match, :missing] do
           {:error,
            NotFound.exception(
              primary_key: input,

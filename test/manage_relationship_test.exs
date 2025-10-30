@@ -63,6 +63,81 @@ defmodule Ash.Test.ManageRelationshipTest do
                  on_missing: {:destroy, :destroy_hard, :destroy_hard}
                )
       end
+
+      update :remove_other_resource do
+        require_atomic? false
+        argument :other_resource_id, :uuid
+
+        change manage_relationship(:other_resource_id, :other_resources, type: :remove)
+      end
+
+      update :remove_other_resource_ignore do
+        require_atomic? false
+        argument :other_resource_id, :uuid
+
+        change manage_relationship(:other_resource_id, :other_resources,
+                 on_no_match: :ignore,
+                 on_match: :unrelate
+               )
+      end
+
+      update :append_other_resource do
+        require_atomic? false
+        argument :other_resource_id, :uuid
+
+        change manage_relationship(:other_resource_id, :other_resources, type: :append)
+      end
+
+      update :unrelate_with_action do
+        require_atomic? false
+        argument :other_resource_id, :uuid
+
+        change manage_relationship(:other_resource_id, :other_resources,
+                 on_no_match: :error,
+                 on_match: {:unrelate, :update}
+               )
+      end
+
+      update :destroy_with_action do
+        require_atomic? false
+        argument :other_resource_id, :uuid
+
+        change manage_relationship(:other_resource_id, :other_resources,
+                 on_no_match: :error,
+                 on_match: {:destroy, :destroy}
+               )
+      end
+
+      update :create_with_lookup_ignore do
+        require_atomic? false
+        argument :other_resource_id, :uuid
+
+        change manage_relationship(:other_resource_id, :other_resources,
+                 on_lookup: :ignore,
+                 on_no_match: :error,
+                 on_match: :ignore
+               )
+      end
+
+      update :update_other_resource do
+        require_atomic? false
+        argument :other_resource_id, :uuid
+
+        change manage_relationship(:other_resource_id, :other_resources,
+                 on_no_match: :error,
+                 on_match: :update
+               )
+      end
+
+      update :update_other_resource_with_action do
+        require_atomic? false
+        argument :other_resource_id, :uuid
+
+        change manage_relationship(:other_resource_id, :other_resources,
+                 on_no_match: :error,
+                 on_match: {:update, :update}
+               )
+      end
     end
 
     changes do
@@ -494,5 +569,171 @@ defmodule Ash.Test.ManageRelationshipTest do
     third = Enum.find(updated_parent.many_to_many_resources, &(&1.name == "third"))
     assert is_nil(third.archived_at)
     assert is_nil(hd(third.join_resources).archived_at)
+  end
+
+  test "removing non-existent relationship returns NotFound error" do
+    parent =
+      ParentResource
+      |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+      |> Ash.create!()
+
+    non_existent_id = Ash.UUID.generate()
+
+    assert {:error,
+            %Ash.Error.Invalid{
+              errors: [%Ash.Error.Query.NotFound{} = error | _]
+            }} =
+             parent
+             |> Ash.Changeset.for_update(:remove_other_resource, %{
+               other_resource_id: non_existent_id
+             })
+             |> Ash.update()
+
+    assert Exception.message(error) =~ "record with id: #{inspect(non_existent_id)} not found"
+  end
+
+  test "removing non-existent relationship with on_no_match: :ignore succeeds" do
+    parent =
+      ParentResource
+      |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+      |> Ash.create!()
+
+    non_existent_id = Ash.UUID.generate()
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:remove_other_resource_ignore, %{
+               other_resource_id: non_existent_id
+             })
+             |> Ash.update()
+
+    assert updated_parent.id == parent.id
+  end
+
+  test "append operation with non-existent relationship returns NotFound error" do
+    parent =
+      ParentResource
+      |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+      |> Ash.create!()
+
+    non_existent_id = Ash.UUID.generate()
+
+    assert {:error,
+            %Ash.Error.Invalid{
+              errors: [%Ash.Error.Query.NotFound{} = error | _]
+            }} =
+             parent
+             |> Ash.Changeset.for_update(:append_other_resource, %{
+               other_resource_id: non_existent_id
+             })
+             |> Ash.update()
+
+    assert Exception.message(error) =~ "record with id: #{inspect(non_existent_id)} not found"
+  end
+
+  test "unrelate with action tuple returns NotFound error" do
+    parent =
+      ParentResource
+      |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+      |> Ash.create!()
+
+    non_existent_id = Ash.UUID.generate()
+
+    assert {:error,
+            %Ash.Error.Invalid{
+              errors: [%Ash.Error.Query.NotFound{} = error | _]
+            }} =
+             parent
+             |> Ash.Changeset.for_update(:unrelate_with_action, %{
+               other_resource_id: non_existent_id
+             })
+             |> Ash.update()
+
+    assert Exception.message(error) =~ "record with id: #{inspect(non_existent_id)} not found"
+  end
+
+  test "destroy with action tuple returns NotFound error" do
+    parent =
+      ParentResource
+      |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+      |> Ash.create!()
+
+    non_existent_id = Ash.UUID.generate()
+
+    assert {:error,
+            %Ash.Error.Invalid{
+              errors: [%Ash.Error.Query.NotFound{} = error | _]
+            }} =
+             parent
+             |> Ash.Changeset.for_update(:destroy_with_action, %{
+               other_resource_id: non_existent_id
+             })
+             |> Ash.update()
+
+    assert Exception.message(error) =~ "record with id: #{inspect(non_existent_id)} not found"
+  end
+
+  test "create operation with on_lookup ignore shows create error message" do
+    parent =
+      ParentResource
+      |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+      |> Ash.create!()
+
+    non_existent_id = Ash.UUID.generate()
+
+    assert {:error,
+            %Ash.Error.Invalid{
+              errors: [%Ash.Error.Changes.InvalidRelationship{} = error]
+            }} =
+             parent
+             |> Ash.Changeset.for_update(:create_with_lookup_ignore, %{
+               other_resource_id: non_existent_id
+             })
+             |> Ash.update()
+
+    assert Exception.message(error) =~
+             "Invalid value provided for other_resources: changes would create a new related record."
+  end
+
+  test "update operation with missing relationship returns NotFound error" do
+    parent =
+      ParentResource
+      |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+      |> Ash.create!()
+
+    non_existent_id = Ash.UUID.generate()
+
+    assert {:error,
+            %Ash.Error.Invalid{
+              errors: [%Ash.Error.Query.NotFound{} = error | _]
+            }} =
+             parent
+             |> Ash.Changeset.for_update(:update_other_resource, %{
+               other_resource_id: non_existent_id
+             })
+             |> Ash.update()
+
+    assert Exception.message(error) =~ "record with id: #{inspect(non_existent_id)} not found"
+  end
+
+  test "update with action tuple returns NotFound error" do
+    parent =
+      ParentResource
+      |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+      |> Ash.create!()
+
+    non_existent_id = Ash.UUID.generate()
+
+    assert {:error,
+            %Ash.Error.Invalid{
+              errors: [%Ash.Error.Query.NotFound{} = error | _]
+            }} =
+             parent
+             |> Ash.Changeset.for_update(:update_other_resource_with_action, %{
+               other_resource_id: non_existent_id
+             })
+             |> Ash.update()
+
+    assert Exception.message(error) =~ "record with id: #{inspect(non_existent_id)} not found"
   end
 end
