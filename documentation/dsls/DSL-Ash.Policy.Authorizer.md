@@ -823,9 +823,9 @@ all access explicitly, i.e
 
 ```elixir
 policies do
-policy always() do
-authorize_if always()
-end
+  policy always() do
+    authorize_if always()
+  end
 end
 ```
 
