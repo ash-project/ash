@@ -1874,8 +1874,25 @@ defmodule Ash.DataLayer.Ets do
     |> case do
       {:ok, results} ->
         Enum.reduce_while(results, acc, fn result, acc ->
-          case update(query.resource, %{changeset | data: result}, nil, true) do
+          result_changeset = %{changeset | data: result}
+
+          case update(query.resource, result_changeset, nil, true) do
             {:ok, result} ->
+              result =
+                if result_changeset.context[:bulk_update] do
+                  result
+                  |> Ash.Resource.put_metadata(
+                    :bulk_update_index,
+                    result_changeset.context.bulk_update.index
+                  )
+                  |> Ash.Resource.put_metadata(
+                    :bulk_action_ref,
+                    result_changeset.context.bulk_update.ref
+                  )
+                else
+                  result
+                end
+
               case acc do
                 :ok ->
                   {:cont, :ok}
