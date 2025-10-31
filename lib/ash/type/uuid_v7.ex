@@ -46,6 +46,10 @@ defmodule Ash.Type.UUIDv7 do
     {:ok, Ash.UUIDv7.encode(value)}
   end
 
+  def cast_input(<<_::48, 4::4, _::12, 0b10::2, _::62>> = value, _) do
+    if match_v4_uuids?(), do: Ecto.UUID.cast(value), else: :error
+  end
+
   def cast_input(value, _) when is_binary(value) do
     case String.trim(value) do
       <<a1, a2, a3, a4, a5, a6, a7, a8, ?-, b1, b2, b3, b4, ?-, c1, c2, c3, c4, ?-, d1, d2, d3,
@@ -143,4 +147,8 @@ defmodule Ash.Type.UUIDv7 do
   defp e(13), do: ?d
   defp e(14), do: ?e
   defp e(15), do: ?f
+
+  def match_v4_uuids?() do
+    Keyword.get(Application.get_env(:ash, Ash.Type.UUIDv7, []), :match_v4_uuids?, false)
+  end
 end
