@@ -395,7 +395,7 @@ jobs:
         with:
           task: credo --format sarif > results.sarif
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@fca7ace96b7d713c7035871441bd52efbe39e27e # v3.28.19
+        uses: github/codeql-action/upload-sarif@0499de31b99561a6d14a36a5f662c2a54f91beee # v4.31.2
         with:
           sarif_file: results.sarif
           category: credo
@@ -445,7 +445,7 @@ jobs:
           task: igniter.upgrade --git-ci --yes
         if: github.event.pull_request.user.login == 'dependabot[bot]'
       - name: Commit Changes
-        uses: stefanzweifel/git-auto-commit-action@778341af668090896ca464160c2def5d1d1a3eb0 # v6.0.1
+        uses: stefanzweifel/git-auto-commit-action@28e16e81777b558cc906c8750092100bbb34c5e3 # v7.0.0
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         with:
           commit_message: "[dependabot skip] Apply Igniter Upgrades"
@@ -577,9 +577,9 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{inputs.reuse}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: REUSE compliance check
-        uses: fsfe/reuse-action@v4
+        uses: fsfe/reuse-action@v6
 
   build-dev:
     name: MIX_ENV=dev mix.compile
@@ -690,13 +690,13 @@ jobs:
           cargo-args: ${{ matrix.job.cargo-args }}
 
       - name: Artifact upload
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: ${{ steps.build-crate.outputs.file-name }}
           path: ${{ steps.build-crate.outputs.file-path }}
 
       - name: Publish archives and packages
-        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
         with:
           files: |
             ${{ steps.build-crate.outputs.file-path }}
