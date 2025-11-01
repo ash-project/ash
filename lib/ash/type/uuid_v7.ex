@@ -12,6 +12,8 @@ defmodule Ash.Type.UUIDv7 do
   use Ash.Type,
     autogenerate_enabled?: true
 
+  @match_v4_uuids? Application.compile_env(:ash, [Ash.Type.UUIDv7, :match_v4_uuids?], false)
+
   @impl true
   def storage_type(_), do: :uuid
 
@@ -44,6 +46,12 @@ defmodule Ash.Type.UUIDv7 do
 
   def cast_input(<<_::48, 7::4, _::12, 0b10::2, _::62>> = value, _) do
     {:ok, Ash.UUIDv7.encode(value)}
+  end
+
+  if @match_v4_uuids? do
+    def cast_input(<<_::48, 4::4, _::12, 0b10::2, _::62>> = value, _) do
+      Ecto.UUID.cast(value)
+    end
   end
 
   def cast_input(value, _) when is_binary(value) do

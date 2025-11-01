@@ -43,6 +43,12 @@ defmodule Ash.Test.Type.UUIDv7Test do
     assert {:ok, ^uuid_v7} = Ash.Type.cast_input(Ash.Type.UUIDv7, binary_uuid_v7)
   end
 
+  test "it casts v4 UUIDs when match_v4_uuids? is configured true" do
+    uuid_v4 = "550e8400-e29b-41d4-a716-446655440000"
+    {:ok, binary_uuid_v4} = Ecto.UUID.dump(uuid_v4)
+    assert {:ok, ^uuid_v4} = Ash.Type.cast_input(Ash.Type.UUIDv7, binary_uuid_v4)
+  end
+
   test "cast_input/3 accepts valid uuid v7 strings 16 bytes" do
     assert {:ok, "01903fa1-2523-7580-a9d6-84620dcbf2ba"} =
              Ash.Type.cast_input(Ash.Type.UUIDv7, "01903fa1-2523-7580-a9d6-84620dcbf2ba")
