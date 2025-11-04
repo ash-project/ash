@@ -8,7 +8,7 @@ defmodule Type.StructTest do
   alias Ash.Test.Domain, as: Domain
 
   defmodule Metadata do
-    defstruct [:foo, :bar]
+    defstruct [:foo, :bar, not_nil_by_default: "foo"]
   end
 
   defmodule Embedded do
@@ -87,6 +87,31 @@ defmodule Type.StructTest do
              Ash.Type.apply_constraints(Ash.Type.Struct, %{"name" => "fred", :title => "title"},
                instance_of: Embedded
              )
+  end
+
+  test "cast_stored does not cast keys with nil values by default" do
+    constraints = [
+      instance_of: Metadata,
+      fields: [
+        not_nil_by_default: [type: :string]
+      ]
+    ]
+
+    assert {:ok, %Metadata{not_nil_by_default: "foo"}} =
+             Ash.Type.cast_stored(Ash.Type.Struct, %{"not_nil_by_default" => nil}, constraints)
+  end
+
+  test "cast_stored casts keys with nil values by default" do
+    constraints = [
+      instance_of: Metadata,
+      preserve_nil_values?: true,
+      fields: [
+        not_nil_by_default: [type: :string]
+      ]
+    ]
+
+    assert {:ok, %Metadata{not_nil_by_default: nil}} =
+             Ash.Type.cast_stored(Ash.Type.Struct, %{"not_nil_by_default" => nil}, constraints)
   end
 
   test "it handles valid maps" do

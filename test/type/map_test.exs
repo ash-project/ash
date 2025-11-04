@@ -70,6 +70,26 @@ defmodule Ash.Type.MapTest do
              Ash.Type.cast_stored(MapWithFields, %{"foo" => "bar"}, constraints)
   end
 
+  test "cast_stored does not cast keys with nil values by default" do
+    {:ok, constraints} = Ash.Type.init(Ash.Type.Map, fields: [foo: [type: :string]])
+
+    assert {:ok, %{}} = Ash.Type.cast_stored(Ash.Type.Map, %{"foo" => nil}, constraints)
+  end
+
+  test "cast_input casts keys with nil values by default" do
+    {:ok, constraints} = Ash.Type.init(Ash.Type.Map, fields: [foo: [type: :string]])
+
+    assert {:ok, %{"foo" => nil}} =
+             Ash.Type.cast_input(Ash.Type.Map, %{"foo" => nil}, constraints)
+  end
+
+  test "cast_stored casts keys with nil values when preserve_nil_values? is true" do
+    {:ok, constraints} =
+      Ash.Type.init(Ash.Type.Map, fields: [foo: [type: :string]], preserve_nil_values?: true)
+
+    assert {:ok, %{foo: nil}} = Ash.Type.cast_stored(Ash.Type.Map, %{"foo" => nil}, constraints)
+  end
+
   test "it handles valid maps" do
     changeset =
       Post

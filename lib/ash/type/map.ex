@@ -4,6 +4,16 @@
 
 defmodule Ash.Type.Map do
   @constraints [
+    preserve_nil_values?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      If set to true, nil values will be preserved both when storing and in the casted map.
+      Otherwise, keys whose values are `nil` will be omitted.
+
+      preserved_nil_values? is false by default
+      """
+    ],
     fields: [
       type: :keyword_list,
       keys: [
@@ -145,7 +155,7 @@ defmodule Ash.Type.Map do
 
   def cast_stored(value, constraints) when is_map(value) do
     if fields = constraints[:fields] do
-      nil_values = constraints[:store_nil_values?]
+      nil_values = constraints[:preserve_nil_values?]
 
       Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
         case fetch_field(value, key) do
@@ -185,6 +195,9 @@ defmodule Ash.Type.Map do
     Enum.reduce(constraints, {:ok, value}, fn
       {:fields, fields}, {:ok, value} ->
         check_fields(value, fields)
+
+      {:preserve_nil_values?, _}, errors ->
+        errors
 
       {_, _}, {:error, errors} ->
         {:error, errors}

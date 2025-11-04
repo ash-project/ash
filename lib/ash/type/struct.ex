@@ -11,8 +11,12 @@ defmodule Ash.Type.Struct do
     preserve_nil_values?: [
       type: :boolean,
       default: false,
-      doc:
-        "If set to true, when storing, nil values will be kept. Otherwise, nil values will be omitted."
+      doc: """
+      If set to true, nil values will be preserved both when storing and in the casted struct.
+      Otherwise, keys whose values are `nil` will be omitted.
+
+      preserved_nil_values? is false by default
+      """
     ],
     fields: [
       type: :keyword_list,
@@ -193,7 +197,7 @@ defmodule Ash.Type.Struct do
   def cast_stored(value, constraints) when is_map(value) do
     if fields = fields(constraints) do
       if constraints[:instance_of] do
-        nil_values = constraints[:store_nil_values?]
+        nil_values = constraints[:preserve_nil_values?]
 
         Enum.reduce_while(fields, {:ok, struct(constraints[:instance_of], [])}, fn {key, config},
                                                                                    {:ok, acc} ->
