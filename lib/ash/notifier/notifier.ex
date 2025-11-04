@@ -82,7 +82,7 @@ defmodule Ash.Notifier do
 
       Ash.Tracer.set_metadata(tracer, :action, metadata)
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :create], metadata do
+      Ash.Tracer.telemetry_span [:ash, :notifier], metadata do
         notifier.notify(notification)
       end
     end
