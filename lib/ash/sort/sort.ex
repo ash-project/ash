@@ -22,8 +22,7 @@ defmodule Ash.Sort do
           list(sort_item)
           | sort_item
 
-  alias Ash.Error.Query.UnsortableField
-  alias Ash.Error.Query.{InvalidSortOrder, NoSuchField}
+  alias Ash.Error.Query.{InvalidSortOrder, NoSuchField, UnsortableField}
 
   @doc """
   Builds an expression to be used in a sort statement. Prefer to use `Ash.Expr.calc/2` instead.

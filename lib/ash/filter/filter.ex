@@ -60,8 +60,7 @@ defmodule Ash.Filter do
     NotEq
   }
 
-  alias Ash.Query.{BooleanExpression, Call, Not, Ref}
-  alias Ash.Query.{Aggregate, Calculation, Function, Operator}
+  alias Ash.Query.{Aggregate, BooleanExpression, Calculation, Call, Function, Not, Operator, Ref}
 
   @custom_expressions Application.compile_env(:ash, :custom_expressions) || []
 

@@ -25,8 +25,8 @@ defmodule Ash.Query.Operator.LessThan do
 
   import Crux.Expression, only: [b: 1]
 
-  alias Crux.Expression
   alias Ash.Query.Operator.{Eq, IsNil}
+  alias Crux.Expression
 
   def evaluate(%{left: nil}), do: {:known, nil}
   def evaluate(%{right: nil}), do: {:known, nil}
