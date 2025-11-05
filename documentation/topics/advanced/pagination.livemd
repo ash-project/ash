@@ -91,7 +91,7 @@ This can be leveraged by extensions to provide arbitrarily nested pagination, or
 > ```elixir
 > read :read do
 >   primary? true
->   pagination required? false, offset? true, keyset? true
+>   pagination required?: false, offset?: true, keyset?: true
 > end
 > ```
 >
