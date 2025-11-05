@@ -8,6 +8,35 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.8.0](https://github.com/ash-project/ash/compare/v3.7.6...v3.8.0) (2025-11-05)
+
+
+
+
+### Features:
+
+* tenant_from_attribute dsl option (#2412) by [@barnabasJ](https://github.com/barnabasJ) [(#2412)](https://github.com/ash-project/ash/pull/2412)
+
+### Bug Fixes:
+
+* use correct telemetry span name for notifier invocations by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure preserve_nil_values? constraint is taking into account in Struct type by [@Malian](https://github.com/Malian) [(#2414)](https://github.com/ash-project/ash/pull/2414)
+
+* Default tenant to changeset.tenant if not set (#2422) by [@shahryarjb](https://github.com/shahryarjb) [(#2422)](https://github.com/ash-project/ash/pull/2422)
+
+* retain calculation boundaries when expanding calculations in by [@zachdaniel](https://github.com/zachdaniel)
+
+* use atomic_upgrade_with for bulk destroys by [@zachdaniel](https://github.com/zachdaniel)
+
+* trailing bypass in policies (#2404) by [@maennchen](https://github.com/maennchen) [(#2404)](https://github.com/ash-project/ash/pull/2404)
+
+### Improvements:
+
+* Add preserve_nil_values? to map and struct types (#2414) by [@Malian](https://github.com/Malian) [(#2414)](https://github.com/ash-project/ash/pull/2414)
+
+* enable configuring match v4 uuids for v7 uuids (#2416) by Kenneth Kostrešević [(#2416)](https://github.com/ash-project/ash/pull/2416)
+
 ## [v3.7.6](https://github.com/ash-project/ash/compare/v3.7.5...v3.7.6) (2025-10-19)
 
 
