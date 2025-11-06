@@ -2147,13 +2147,15 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp index_changesets_by_ref(batch, context_key) do
-    Enum.reduce(batch, %{}, fn changeset, changesets_by_ref ->
-      Map.put(
-        changesets_by_ref,
-        changeset.context[context_key].ref,
-        changeset
-      )
+  defp index_changesets(batch, context_key) do
+    Enum.reduce(batch, {%{}, %{}}, fn changeset, {by_ref, by_index} ->
+      ref = changeset.context[context_key].ref
+      index = changeset.context[context_key].index
+
+      {
+        Map.put(by_ref, ref, changeset),
+        Map.put(by_index, index, ref)
+      }
     end)
   end
 
@@ -2529,7 +2531,7 @@ defmodule Ash.Actions.Update.Bulk do
         end
       end)
 
-    changesets_by_ref = index_changesets_by_ref(batch, context_key)
+    {changesets_by_ref, changesets_by_index} = index_changesets(batch, context_key)
 
     batch =
       batch
@@ -2686,7 +2688,7 @@ defmodule Ash.Actions.Update.Bulk do
           end)
       end
 
-    {batch, changesets_by_ref}
+    {batch, changesets_by_ref, changesets_by_index}
   end
 
   defp manage_relationships(updated, domain, changeset, engine_opts) do
@@ -2704,7 +2706,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp run_after_action_hooks(
-         {batch_results, changesets_by_ref},
+         {batch_results, changesets_by_ref, changesets_by_index},
          opts,
          domain,
          ref,
@@ -2715,7 +2717,12 @@ defmodule Ash.Actions.Update.Bulk do
       Enum.flat_map(batch_results, fn result ->
         changeset =
           result
-          |> find_changeset(changesets_by_ref, metadata_key, ref_metadata_key)
+          |> find_changeset(
+            changesets_by_ref,
+            metadata_key,
+            ref_metadata_key,
+            changesets_by_index
+          )
           |> ensure_changeset!(result, metadata_key, ref_metadata_key)
 
         case manage_relationships(result, domain, changeset,
@@ -2759,11 +2766,11 @@ defmodule Ash.Actions.Update.Bulk do
         end
       end)
 
-    {results, changesets_by_ref}
+    {results, changesets_by_ref, changesets_by_index}
   end
 
   defp process_results(
-         {batch, changesets_by_ref},
+         {batch, changesets_by_ref, changesets_by_index},
          changes,
          all_changes,
          opts,
@@ -2780,6 +2787,7 @@ defmodule Ash.Actions.Update.Bulk do
       all_changes,
       batch,
       changesets_by_ref,
+      changesets_by_index,
       changesets,
       opts,
       ref,
@@ -2790,7 +2798,7 @@ defmodule Ash.Actions.Update.Bulk do
     |> Enum.flat_map(fn result ->
       changeset =
         result
-        |> find_changeset(changesets_by_ref, metadata_key, ref_metadata_key)
+        |> find_changeset(changesets_by_ref, metadata_key, ref_metadata_key, changesets_by_index)
         |> ensure_changeset!(result, metadata_key, ref_metadata_key)
 
       if opts[:notify?] || opts[:return_notifications?] do
@@ -2872,6 +2880,7 @@ defmodule Ash.Actions.Update.Bulk do
         all_changes,
         results,
         changesets_by_ref,
+        changesets_by_index,
         changesets,
         opts,
         ref,
@@ -2910,7 +2919,13 @@ defmodule Ash.Actions.Update.Bulk do
           results =
             Enum.map(results, fn result ->
               changeset =
-                find_changeset(result, changesets_by_ref, metadata_key, ref_metadata_key)
+                find_changeset(
+                  result,
+                  changesets_by_ref,
+                  metadata_key,
+                  ref_metadata_key,
+                  changesets_by_index
+                )
 
               {changeset, result}
             end)
@@ -2964,6 +2979,7 @@ defmodule Ash.Actions.Update.Bulk do
                   result,
                   changes[index],
                   changesets_by_ref,
+                  changesets_by_index,
                   metadata_key,
                   ref_metadata_key
                 )
@@ -2976,7 +2992,16 @@ defmodule Ash.Actions.Update.Bulk do
 
           matches =
             Enum.map(matches, fn match ->
-              {changesets_by_ref[match.__metadata__[metadata_key]], match}
+              changeset =
+                find_changeset(
+                  match,
+                  changesets_by_ref,
+                  metadata_key,
+                  ref_metadata_key,
+                  changesets_by_index
+                )
+
+              {changeset, match}
             end)
 
           after_batch_results =
@@ -3546,23 +3571,21 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp find_changeset_by_ref(result, changesets_by_ref, ref_metadata_key) do
-    ref_key = result.__metadata__[ref_metadata_key]
-
-    if ref_key do
-      changesets_by_ref[ref_key]
+  defp find_changeset(
+         result,
+         changesets_by_ref,
+         metadata_key,
+         ref_metadata_key,
+         changesets_by_index
+       ) do
+    with nil <- result.__metadata__[ref_metadata_key],
+         index when not is_nil(index) <- result.__metadata__[metadata_key],
+         ref when not is_nil(ref) <- changesets_by_index[index] do
+      changesets_by_ref[ref]
     else
-      raise "Missing ref metadata for record. The record should have had metadata key #{inspect(ref_metadata_key)} set during bulk update."
+      ref when not is_nil(ref) -> changesets_by_ref[ref]
+      _ -> nil
     end
-  end
-
-  defp find_changeset(result, changesets_by_ref, _metadata_key, ref_metadata_key)
-       when not is_nil(ref_metadata_key) do
-    find_changeset_by_ref(result, changesets_by_ref, ref_metadata_key)
-  end
-
-  defp find_changeset(result, changesets_by_ref, metadata_key, nil) do
-    find_changeset_by_ref(result, changesets_by_ref, metadata_key)
   end
 
   defp ensure_changeset!(nil, _result, _metadata_key, ref_metadata_key) do
@@ -3573,18 +3596,39 @@ defmodule Ash.Actions.Update.Bulk do
     changeset
   end
 
-  defp result_matches_changes?(result, changes, changesets_by_ref, metadata_key, ref_metadata_key) do
-    if ref_metadata_key do
-      ref_key = result.__metadata__[ref_metadata_key]
+  defp result_matches_changes?(
+         result,
+         changes,
+         _changesets_by_ref,
+         _changesets_by_index,
+         metadata_key,
+         nil = _ref_metadata_key
+       ) do
+    result.__metadata__[metadata_key] in List.wrap(changes)
+  end
 
-      changesets_by_ref
-      |> Map.get(ref_key)
-      |> ensure_changeset!(result, metadata_key, ref_metadata_key)
+  defp result_matches_changes?(
+         result,
+         changes,
+         changesets_by_ref,
+         changesets_by_index,
+         metadata_key,
+         ref_metadata_key
+       ) do
+    ref_key =
+      with nil <- result.__metadata__[ref_metadata_key],
+           index when not is_nil(index) <- result.__metadata__[metadata_key] do
+        changesets_by_index[index]
+      else
+        ref when not is_nil(ref) -> ref
+        _ -> nil
+      end
 
-      ref_key in List.wrap(changes)
-    else
-      result.__metadata__[metadata_key] in List.wrap(changes)
-    end
+    changesets_by_ref
+    |> Map.get(ref_key)
+    |> ensure_changeset!(result, metadata_key, ref_metadata_key)
+
+    ref_key in List.wrap(changes)
   end
 
   defp clear_ref_metadata(record) do

@@ -36,4 +36,23 @@ defmodule Ash.Test.Helpers do
       })
     end
   end
+
+  @doc """
+  Strips bulk_action_ref metadata from records to simulate legacy data layer behavior.
+
+  Use this in tests that verify backwards compatibility with data layers that don't
+  support returning the bulk action ref.
+  """
+  def strip_bulk_action_refs(%Ash.BulkResult{records: records} = result)
+      when is_list(records) do
+    %{result | records: Enum.map(records, &strip_bulk_action_ref/1)}
+  end
+
+  def strip_bulk_action_refs(result), do: result
+
+  def strip_bulk_action_ref(record) when is_struct(record) do
+    Ash.Resource.set_metadata(record, Map.delete(record.__metadata__, :bulk_action_ref))
+  end
+
+  def strip_bulk_action_ref(other), do: other
 end

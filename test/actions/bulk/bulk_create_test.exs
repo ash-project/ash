@@ -697,6 +697,41 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              )
   end
 
+  test "runs after batch hooks with legacy data layers (no refs)" do
+    Application.put_env(:ash, :test_bulk_index_only, true)
+
+    try do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{
+               records: [%{title: "before_title1_after"}, %{title: "before_title2_after"}]
+             } =
+               Ash.bulk_create!(
+                 [%{title: "title1"}, %{title: "title2"}],
+                 Post,
+                 :create_with_after_batch,
+                 tenant: org.id,
+                 return_records?: true,
+                 sorted?: true,
+                 authorize?: false
+               )
+
+      assert %{title: "before_title_after"} =
+               Ash.create!(
+                 Post,
+                 %{title: "title"},
+                 action: :create_with_after_batch,
+                 tenant: org.id,
+                 authorize?: false
+               )
+    after
+      Application.delete_env(:ash, :test_bulk_index_only)
+    end
+  end
+
   test "will return error count" do
     org =
       Org
