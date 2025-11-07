@@ -18,6 +18,7 @@ defmodule Ash.Query.Aggregate do
     :load,
     :read_action,
     :agg_name,
+    :multitenancy,
     join_filters: %{},
     context: %{},
     authorize?: true,
@@ -143,6 +144,14 @@ defmodule Ash.Query.Aggregate do
       doc: "The tenant to use for the aggregate, if applicable.",
       default: nil
     ],
+    multitenancy: [
+      type: {:in, [:bypass]},
+      doc: """
+      Configures multitenancy behavior for the aggregate.
+
+      * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set.
+      """
+    ],
     authorize?: [
       type: :boolean,
       default: true,
@@ -228,6 +237,19 @@ defmodule Ash.Query.Aggregate do
         case opts.query || Ash.Query.new(target_resource) do
           %Ash.Query{} = query -> query
           build_opts -> build_query(target_resource, resource, build_opts)
+        end
+
+      # Set bypass context IMMEDIATELY if multitenancy bypass is requested
+      query =
+        if opts.multitenancy == :bypass do
+          query
+          |> Ash.Query.set_tenant(nil)
+          |> Ash.Query.set_context(%{
+            multitenancy: :bypass_all,
+            shared: %{multitenancy: :bypass_all}
+          })
+        else
+          query
         end
 
       Enum.reduce_while(opts.join_filters, {:ok, %{}}, fn {path, filter}, {:ok, acc} ->
@@ -387,8 +409,9 @@ defmodule Ash.Query.Aggregate do
                {:ok, type, constraints} <-
                  get_type(kind, type, attribute_type, attribute_constraints, constraints),
                %{valid?: true} = query <- build_query(related, resource, query) do
+            # Tenant is already set for bypass earlier, just handle normal tenant case here
             query =
-              if opts.tenant do
+              if opts.multitenancy != :bypass && opts.tenant do
                 Ash.Query.set_tenant(query, opts.tenant)
               else
                 query
@@ -414,6 +437,7 @@ defmodule Ash.Query.Aggregate do
                sensitive?: sensitive?,
                authorize?: authorize?,
                read_action: read_action,
+               multitenancy: opts.multitenancy,
                join_filters:
                  Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end),
                related?: related?

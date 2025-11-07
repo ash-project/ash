@@ -84,9 +84,22 @@ defmodule Ash.Actions.Aggregate do
             with {:ok, query} <- Ash.Actions.Read.handle_multitenancy(query),
                  {:ok, %{valid?: true} = query} <-
                    authorize_query(query, opts, agg_authorize?),
-                 {:ok, aggregates} <- validate_aggregates(query, aggregates, opts),
-                 {:ok, data_layer_query} <-
-                   Ash.Query.data_layer_query(%Ash.Query{
+                 {:ok, aggregates} <- validate_aggregates(query, aggregates, opts) do
+              # Check if any aggregate has bypass multitenancy
+              bypass_tenant? = Enum.any?(aggregates, &(&1.multitenancy == :bypass))
+              data_layer_tenant = if bypass_tenant?, do: nil, else: query.tenant
+
+              data_layer_context =
+                if bypass_tenant? do
+                  Map.merge(query.context || %{}, %{
+                    multitenancy: :bypass_all,
+                    shared: %{multitenancy: :bypass_all}
+                  })
+                else
+                  query.context
+                end
+
+              case Ash.Query.data_layer_query(%Ash.Query{
                      action: Ash.Resource.Info.action(query.resource, read_action),
                      resource: query.resource,
                      limit: query.limit,
@@ -95,18 +108,27 @@ defmodule Ash.Actions.Aggregate do
                      distinct_sort: query.distinct_sort,
                      sort: query.sort,
                      domain: query.domain,
-                     tenant: query.tenant,
+                     tenant: data_layer_tenant,
                      filter: query.filter,
                      to_tenant: query.to_tenant,
-                     context: query.context
-                   }),
-                 {:ok, result} <-
-                   Ash.DataLayer.run_aggregate_query(
-                     data_layer_query,
-                     aggregates,
-                     query.resource
-                   ) do
-              {:cont, {:ok, Map.merge(acc, result)}}
+                     context: data_layer_context
+                   }) do
+                {:ok, data_layer_query} ->
+                  case Ash.DataLayer.run_aggregate_query(
+                         data_layer_query,
+                         aggregates,
+                         query.resource
+                       ) do
+                    {:ok, result} ->
+                      {:cont, {:ok, Map.merge(acc, result)}}
+
+                    {:error, error} ->
+                      {:halt, {:error, error}}
+                  end
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
             else
               {:ok, %Ash.Query{} = query} ->
                 {:halt, {:error, Ash.Error.to_error_class(query)}}
