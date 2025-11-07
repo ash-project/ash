@@ -696,12 +696,34 @@ defmodule Ash.Test.Resource.AggregatesTest do
       assert mixed_post.count_current_tenant == 3
 
       # Test Case 4: Action WITH bypass + Aggregate WITHOUT bypass
-      # When action has no tenant (bypass), non-bypass aggregates don't know which tenant to use
+      # Solution: Pass tenant via opts for non-bypass aggregates
+      # The bypass action sees all posts, but aggregates can still use specific tenant
+      all_posts_with_tenant_agg =
+        MultitenantPost
+        |> Ash.Query.filter(title in ["Post T1", "Post T2"])
+        # Non-bypass aggregate
+        |> Ash.Query.load([:count_current_tenant, :count_all_tenants])
+        # Pass tenant in opts
+        |> Ash.read!(action: :read_bypass, tenant: "tenant1")
+
+      # Should get both posts (bypass action)
+      assert length(all_posts_with_tenant_agg) == 2
+
+      post1_with_tenant = Enum.find(all_posts_with_tenant_agg, &(&1.id == post_t1.id))
+      # Non-bypass aggregate uses the tenant from opts (tenant1), sees only 3 comments
+      assert post1_with_tenant.count_current_tenant == 3
+      assert post1_with_tenant.count_all_tenants == 5
+
+      post2_with_tenant = Enum.find(all_posts_with_tenant_agg, &(&1.id == post_t2.id))
+      # Post T2 has no comments in tenant1
+      assert post2_with_tenant.count_current_tenant == 0
+      assert post2_with_tenant.count_all_tenants == 4
+
+      # Test Case 5: Without tenant in opts
+      # This is the limit of bypass actions; it should still error
       assert_raise Ash.Error.Invalid, fn ->
         MultitenantPost
-        # Non-bypass aggregate needs tenant
         |> Ash.Query.load([:count_current_tenant])
-        # Bypass action has no tenant
         |> Ash.read!(action: :read_bypass)
       end
     end
