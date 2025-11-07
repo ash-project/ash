@@ -85,49 +85,58 @@ defmodule Ash.Actions.Aggregate do
                  {:ok, %{valid?: true} = query} <-
                    authorize_query(query, opts, agg_authorize?),
                  {:ok, aggregates} <- validate_aggregates(query, aggregates, opts) do
-              # Check if any aggregate has bypass multitenancy
-              bypass_tenant? = Enum.any?(aggregates, &(&1.multitenancy == :bypass))
-              data_layer_tenant = if bypass_tenant?, do: nil, else: query.tenant
+              # Group aggregates by bypass vs tenant-specific
+              {bypass_aggs, tenant_aggs} =
+                Enum.split_with(aggregates, &(&1.multitenancy == :bypass))
 
-              data_layer_context =
-                if bypass_tenant? do
-                  Map.merge(query.context || %{}, %{
-                    multitenancy: :bypass_all,
-                    shared: %{multitenancy: :bypass_all}
-                  })
-                else
-                  query.context
-                end
+              # Run both groups and merge results
+              results =
+                Enum.reduce_while(
+                  [
+                    {bypass_aggs, nil,
+                     Map.merge(query.context || %{}, %{
+                       multitenancy: :bypass_all,
+                       shared: %{multitenancy: :bypass_all}
+                     })},
+                    {tenant_aggs, query.tenant, query.context}
+                  ],
+                  {:ok, %{}},
+                  fn
+                    {[], _tenant, _context}, acc ->
+                      {:cont, acc}
 
-              case Ash.Query.data_layer_query(%Ash.Query{
-                     action: Ash.Resource.Info.action(query.resource, read_action),
-                     resource: query.resource,
-                     limit: query.limit,
-                     offset: query.offset,
-                     distinct: query.distinct,
-                     distinct_sort: query.distinct_sort,
-                     sort: query.sort,
-                     domain: query.domain,
-                     tenant: data_layer_tenant,
-                     filter: query.filter,
-                     to_tenant: query.to_tenant,
-                     context: data_layer_context
-                   }) do
-                {:ok, data_layer_query} ->
-                  case Ash.DataLayer.run_aggregate_query(
-                         data_layer_query,
-                         aggregates,
-                         query.resource
-                       ) do
-                    {:ok, result} ->
-                      {:cont, {:ok, Map.merge(acc, result)}}
-
-                    {:error, error} ->
-                      {:halt, {:error, error}}
+                    {aggs, tenant, context}, {:ok, results_acc} ->
+                      with {:ok, data_layer_query} <-
+                             Ash.Query.data_layer_query(%Ash.Query{
+                               action: Ash.Resource.Info.action(query.resource, read_action),
+                               resource: query.resource,
+                               limit: query.limit,
+                               offset: query.offset,
+                               distinct: query.distinct,
+                               distinct_sort: query.distinct_sort,
+                               sort: query.sort,
+                               domain: query.domain,
+                               tenant: tenant,
+                               filter: query.filter,
+                               to_tenant: tenant,
+                               context: context
+                             }),
+                           {:ok, group_results} <-
+                             Ash.DataLayer.run_aggregate_query(
+                               data_layer_query,
+                               aggs,
+                               query.resource
+                             ) do
+                        {:cont, {:ok, Map.merge(results_acc, group_results)}}
+                      else
+                        {:error, error} -> {:halt, {:error, error}}
+                      end
                   end
+                )
 
-                {:error, error} ->
-                  {:halt, {:error, error}}
+              case results do
+                {:ok, merged} -> {:cont, {:ok, Map.merge(acc, merged)}}
+                {:error, error} -> {:halt, {:error, error}}
               end
             else
               {:ok, %Ash.Query{} = query} ->
