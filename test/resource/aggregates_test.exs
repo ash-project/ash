@@ -444,7 +444,8 @@ defmodule Ash.Test.Resource.AggregatesTest do
             %{
               post_id: tenant1_post.id,
               status: "active",
-              rating: idx * 10 + i * 5,  # tenant1: 5,10  tenant2: 15,20
+              # tenant1: 5,10  tenant2: 15,20
+              rating: idx * 10 + i * 5,
               author_name: "Author#{idx}#{i}",
               created_at: DateTime.utc_now() |> DateTime.add(idx * 100 + i, :second)
             },
@@ -460,7 +461,8 @@ defmodule Ash.Test.Resource.AggregatesTest do
           %{
             post_id: tenant1_post.id,
             status: "inactive",
-            rating: idx * 10 + 25,  # tenant1: 25  tenant2: 35
+            # tenant1: 25  tenant2: 35
+            rating: idx * 10 + 25,
             author_name: "InactiveAuthor#{idx}",
             created_at: DateTime.utc_now() |> DateTime.add(idx * 100 + 50, :second)
           },
@@ -525,7 +527,15 @@ defmodule Ash.Test.Resource.AggregatesTest do
       # LIST: All author names
       all_authors = post_with_aggregates.comment_authors_all_tenants
       assert length(all_authors) == 6
-      assert Enum.sort(all_authors) == ["Author01", "Author02", "Author11", "Author12", "InactiveAuthor0", "InactiveAuthor1"]
+
+      assert Enum.sort(all_authors) == [
+               "Author01",
+               "Author02",
+               "Author11",
+               "Author12",
+               "InactiveAuthor0",
+               "InactiveAuthor1"
+             ]
 
       tenant1_authors = post_with_aggregates.comment_authors_current_tenant
       assert length(tenant1_authors) == 3
