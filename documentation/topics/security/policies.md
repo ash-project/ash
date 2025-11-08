@@ -303,7 +303,7 @@ on `MyApp.Author`, that prevents us from reading an author that has been deactiv
 ```elixir
 policy action_type(:read) do
   access_type :filter # This is the default access type. It is here for example.
-  forbid_if expr(active == false)
+  authorize_unless expr(active == false)
 end
 ```
 
