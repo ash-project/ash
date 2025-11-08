@@ -303,7 +303,7 @@ on `MyApp.Author`, that prevents us from reading an author that has been deactiv
 ```elixir
 policy action_type(:read) do
   access_type :filter # This is the default access type. It is here for example.
-  authorize_if expr(active == false)
+  forbid_if expr(active == false)
 end
 ```
 
@@ -321,7 +321,7 @@ belongs_to :author, MyApp.Author do
 end
 ```
 
-Now, that filter will be applied in such a way that produces an error if any record exists that matches `not(active == false)`.
+Now, that filter will be applied in such a way that produces an error if any record exists that matches `active == false`.
 
 So a forbidden read of the `:author` relationship will never produce a `nil` value, nor will it produce an `{:error, %Ash.Error.Forbidden{}}`
 result. Instead, the value of `:author` will be `%Ash.ForbiddenField{}`!
