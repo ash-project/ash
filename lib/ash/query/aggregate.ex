@@ -245,7 +245,6 @@ defmodule Ash.Query.Aggregate do
           query
           |> Ash.Query.set_tenant(nil)
           |> Ash.Query.set_context(%{
-            multitenancy: :bypass_all,
             shared: %{multitenancy: :bypass_all}
           })
         else
