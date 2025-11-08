@@ -98,7 +98,6 @@ defmodule Ash.Actions.Aggregate do
                   [
                     {bypass_aggs, nil,
                      Map.merge(query.context || %{}, %{
-                       multitenancy: :bypass_all,
                        shared: %{multitenancy: :bypass_all}
                      })},
                     {tenant_aggs, query.tenant || original_tenant, query.context}
