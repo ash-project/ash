@@ -979,4 +979,73 @@ defmodule Ash.Actions.Helpers do
       {attribute.name, %Ash.NotLoaded{field: attribute.name, type: :attribute}}
     end)
   end
+
+  @doc """
+  Looks up changeset for a result, with backwards compatibility for legacy data layers.
+
+  First tries ref metadata (new), falls back to index->ref lookup (legacy).
+  """
+  def lookup_changeset(result, changesets_by_ref, changesets_by_index, opts) do
+    index_key = opts[:index_key]
+    ref_key = opts[:ref_key] || :bulk_action_ref
+
+    result.__metadata__
+    |> get_ref_from_metadata(ref_key, index_key, changesets_by_index)
+    |> then(&changesets_by_ref[&1])
+  end
+
+  defp get_ref_from_metadata(metadata, ref_key, index_key, changesets_by_index) do
+    with nil <- metadata[ref_key],
+         index when not is_nil(index) <- metadata[index_key],
+         ref when not is_nil(ref) <- changesets_by_index[index] do
+      ref
+    else
+      ref when not is_nil(ref) -> ref
+      _ -> nil
+    end
+  end
+
+  @doc """
+  Sets bulk operation metadata on a result record from a changeset.
+
+  Uses pattern matching to extract index/ref from changeset context.
+  """
+  def put_bulk_metadata(result, %{context: %{bulk_create: %{index: index, ref: ref}}}) do
+    result
+    |> Ash.Resource.put_metadata(:bulk_create_index, index)
+    |> maybe_put_ref_metadata(ref, :bulk_action_ref)
+  end
+
+  def put_bulk_metadata(result, %{context: %{bulk_destroy: %{index: index, ref: ref}}}) do
+    result
+    |> Ash.Resource.put_metadata(:bulk_destroy_index, index)
+    |> maybe_put_ref_metadata(ref, :bulk_action_ref)
+  end
+
+  def put_bulk_metadata(result, %{context: %{bulk_update: %{index: index, ref: ref}}}) do
+    result
+    |> Ash.Resource.put_metadata(:bulk_update_index, index)
+    |> maybe_put_ref_metadata(ref, :bulk_action_ref)
+  end
+
+  def put_bulk_metadata(result, _changeset), do: result
+
+  @doc """
+  Sets bulk operation metadata with explicit values (for batch operations).
+
+  Used when index/ref are already extracted as separate variables.
+  """
+  def put_bulk_metadata(result, index, ref, index_key) when is_integer(index) do
+    result
+    |> Ash.Resource.put_metadata(index_key, index)
+    |> maybe_put_ref_metadata(ref, :bulk_action_ref)
+  end
+
+  defp maybe_put_ref_metadata(result, ref, ref_key) do
+    if Application.get_env(:ash, :test_bulk_index_only, false) do
+      result
+    else
+      Ash.Resource.put_metadata(result, ref_key, ref)
+    end
+  end
 end
