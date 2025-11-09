@@ -2653,12 +2653,12 @@ defmodule Ash.Actions.Read do
         {:ok, handle_attribute_multitenancy(query)}
 
       :bypass ->
-        {:ok, %{query | tenant: nil, to_tenant: nil}}
+        {:ok, query}
 
       :bypass_all ->
         query = Ash.Query.set_context(query, %{shared: %{multitenancy: :bypass_all}})
 
-        {:ok, %{query | tenant: nil, to_tenant: nil}}
+        {:ok, query}
     end
     |> case do
       {:ok, query} -> handle_aggregate_multitenancy(query)
