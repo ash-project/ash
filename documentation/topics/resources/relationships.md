@@ -164,6 +164,25 @@ iex> Ash.get!(User, 1, load: [:latest_tweet])
 
 ```
 
+#### Enforcing Uniqueness
+
+If you are modelling a true one-to-one relationship, you will need to use an identity to create the constraint.
+
+```elixir
+# on MyApp.User
+has_one :profile, MyApp.Profile
+
+# on MyApp.Profile
+belongs_to :user, MyApp.User
+
+identities do
+  # Creates a unique constraint on the `user_id` foreign key
+  identity :user_id, [:user_id]
+end
+```
+
+See the [identities guide](/documentation/topics/resources/identities.md) for more.
+
 #### Attribute Defaults
 
 By default, the `source_attribute` is assumed to be `:id`, and
