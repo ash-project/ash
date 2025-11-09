@@ -17,7 +17,7 @@ defmodule Ash.Resource.Validation.Match do
       hide: true
     ],
     match: [
-      type: :regex_as_mfa,
+      type: :regex,
       required: true,
       doc: "The value that the attribute should match against"
     ],
@@ -66,11 +66,14 @@ defmodule Ash.Resource.Validation.Match do
       {:ok, value} when not is_nil(value) ->
         case string_value(value, opts) do
           {:ok, value} ->
-            {m, f, a} =
-              opts[:match]
-
             match =
-              apply(m, f, a)
+              case opts[:match] do
+                {m, f, a} ->
+                  apply(m, f, a)
+
+                regex ->
+                  regex
+              end
 
             if String.match?(value, match) do
               :ok
