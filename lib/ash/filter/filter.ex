@@ -198,10 +198,10 @@ defmodule Ash.Filter do
     [first_name: "Zar"],
     [last_name: "Doz"],
     [or: [
-      [high_score: [greater_than: 10]]],
+      [high_score: [greater_than: 10]],
       [high_score: [less_than: -10]]
     ]
-  ]])
+  ]]])
   ```
 
   ### Other formats

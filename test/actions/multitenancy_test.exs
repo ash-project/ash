@@ -9,6 +9,16 @@ defmodule Ash.Actions.MultitenancyTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  defmodule PassingIfTenantIsNotNil do
+    use Ash.Policy.SimpleCheck
+
+    def describe(_), do: "pass if tenant is present"
+
+    def match?(_actor, %{query: %{tenant: tenant}}, _) when not is_nil(tenant) do
+      true
+    end
+  end
+
   defmodule User do
     @moduledoc false
     use Ash.Resource,
@@ -26,6 +36,14 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     policies do
+      policy action(:bypass_tenant_with_policy) do
+        authorize_if PassingIfTenantIsNotNil
+      end
+
+      policy action(:bypass_all_tenant_with_policy) do
+        authorize_if PassingIfTenantIsNotNil
+      end
+
       policy action(:has_policies) do
         authorize_if relates_to_actor_via(:self)
       end
@@ -47,6 +65,14 @@ defmodule Ash.Actions.MultitenancyTest do
 
       read :bypass_tenant do
         multitenancy(:bypass)
+      end
+
+      read :bypass_tenant_with_policy do
+        multitenancy(:bypass)
+      end
+
+      read :bypass_all_tenant_with_policy do
+        multitenancy(:bypass_all)
       end
 
       read :bypass_all do
@@ -379,9 +405,18 @@ defmodule Ash.Actions.MultitenancyTest do
         |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
         |> Ash.create!()
 
-      # assert [fetched_user1, fetched_user2] =
       User
       |> Ash.Query.for_read(:has_policies, %{}, actor: user1, tenant: tenant1)
+      |> Ash.read!()
+    end
+
+    test ":bypass and :bypass_all does not alter the initial query", %{tenant1: tenant1} do
+      User
+      |> Ash.Query.for_read(:bypass_tenant_with_policy, %{}, tenant: tenant1)
+      |> Ash.read!()
+
+      User
+      |> Ash.Query.for_read(:bypass_all_tenant_with_policy, %{}, tenant: tenant1)
       |> Ash.read!()
     end
 

@@ -548,6 +548,39 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     assert [] = Ash.read!(Post)
   end
 
+  test "runs after batch hooks with legacy data layers (no refs)" do
+    Application.put_env(:ash, :test_bulk_index_only, true)
+
+    try do
+      assert %Ash.BulkResult{
+               records: [
+                 %{title: "title1_after"},
+                 %{title: "title2_after"}
+               ]
+             } =
+               Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+                 return_stream?: true,
+                 return_records?: true
+               )
+               |> Stream.map(fn {:ok, result} ->
+                 result
+               end)
+               |> Ash.bulk_destroy!(:destroy_with_after_batch, %{},
+                 resource: Post,
+                 strategy: [:atomic],
+                 return_records?: true,
+                 return_errors?: true
+               )
+               |> Map.update!(:records, fn records ->
+                 Enum.sort_by(records, & &1.title)
+               end)
+
+      assert [] = Ash.read!(Post)
+    after
+      Application.delete_env(:ash, :test_bulk_index_only)
+    end
+  end
+
   test "will return errors on request" do
     assert %Ash.BulkResult{
              error_count: 1,

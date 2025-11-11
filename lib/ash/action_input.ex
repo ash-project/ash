@@ -98,7 +98,7 @@ defmodule Ash.ActionInput do
           resource: Ash.Resource.t(),
           invalid_keys: MapSet.t(),
           context: map(),
-          domain: Ash.Domain.t(),
+          domain: Ash.Domain.t() | nil,
           valid?: boolean(),
           errors: [Ash.Error.t()],
           before_action: [before_action_fun],
@@ -132,7 +132,7 @@ defmodule Ash.ActionInput do
   - `set_argument/3` for adding arguments
   - `set_context/2` for adding context
   """
-  @spec new(Ash.Resource.t(), Ash.Domain.t()) :: t
+  @spec new(Ash.Resource.t(), Ash.Domain.t() | nil) :: t
   def new(resource, domain \\ nil) do
     %__MODULE__{resource: resource, domain: domain}
   end

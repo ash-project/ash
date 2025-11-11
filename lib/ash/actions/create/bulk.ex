@@ -669,7 +669,7 @@ defmodule Ash.Actions.Create.Bulk do
         :bulk_create
       )
 
-    changesets_by_index = index_changesets(batch)
+    {changesets_by_ref, changesets_by_index} = index_changesets(batch)
 
     run_batch(
       resource,
@@ -683,6 +683,7 @@ defmodule Ash.Actions.Create.Bulk do
       ref,
       attrs_to_require,
       action_select,
+      changesets_by_ref,
       changesets_by_index
     )
     |> run_after_action_hooks(opts, domain, ref)
@@ -691,6 +692,7 @@ defmodule Ash.Actions.Create.Bulk do
       all_changes,
       opts,
       ref,
+      changesets_by_ref,
       changesets_by_index,
       batch,
       domain,
@@ -720,7 +722,7 @@ defmodule Ash.Actions.Create.Bulk do
          argument_names
        ) do
     base
-    |> Ash.Changeset.put_context(:bulk_create, %{index: index})
+    |> Ash.Changeset.put_context(:bulk_create, %{index: index, ref: make_ref()})
     |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
     |> handle_params(
       Keyword.get(opts, :assume_casted?, false),
@@ -868,12 +870,14 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp index_changesets(batch) do
-    Enum.reduce(batch, %{}, fn changeset, changesets_by_index ->
-      Map.put(
-        changesets_by_index,
-        changeset.context.bulk_create.index,
-        changeset
-      )
+    Enum.reduce(batch, {%{}, %{}}, fn changeset, {by_ref, by_index} ->
+      ref = changeset.context.bulk_create.ref
+      index = changeset.context.bulk_create.index
+
+      {
+        Map.put(by_ref, ref, changeset),
+        Map.put(by_index, index, ref)
+      }
     end)
   end
 
@@ -1031,6 +1035,7 @@ defmodule Ash.Actions.Create.Bulk do
          ref,
          attrs_to_require,
          action_select,
+         changesets_by_ref,
          changesets_by_index
        ) do
     batch
@@ -1092,7 +1097,7 @@ defmodule Ash.Actions.Create.Bulk do
     end)
     |> case do
       [] ->
-        {[], changesets_by_index}
+        {[], changesets_by_ref, changesets_by_index}
 
       batch ->
         upsert_keys =
@@ -1122,7 +1127,7 @@ defmodule Ash.Actions.Create.Bulk do
             end
           end
 
-        changesets_by_index = index_changesets(batch)
+        {changesets_by_ref, changesets_by_index} = index_changesets(batch)
 
         batch
         |> Enum.group_by(&{&1.atomics, &1.filter})
@@ -1346,7 +1351,7 @@ defmodule Ash.Actions.Create.Bulk do
               []
           end
         end)
-        |> then(&{&1, changesets_by_index})
+        |> then(&{&1, changesets_by_ref, changesets_by_index})
     end
   end
 
@@ -1365,13 +1370,20 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp run_after_action_hooks(
-         {batch_results, changesets_by_index},
+         {batch_results, changesets_by_ref, changesets_by_index},
          opts,
          domain,
          ref
        ) do
     Enum.flat_map(batch_results, fn result ->
-      changeset = changesets_by_index[result.__metadata__.bulk_create_index]
+      changeset =
+        Ash.Actions.Helpers.lookup_changeset(
+          result,
+          changesets_by_ref,
+          changesets_by_index,
+          index_key: :bulk_create_index,
+          ref_key: :bulk_action_ref
+        )
 
       case manage_relationships(result, domain, changeset,
              upsert?: opts[:upsert?],
@@ -1413,6 +1425,7 @@ defmodule Ash.Actions.Create.Bulk do
          all_changes,
          opts,
          ref,
+         changesets_by_ref,
          changesets_by_index,
          changesets,
          domain,
@@ -1422,7 +1435,14 @@ defmodule Ash.Actions.Create.Bulk do
        ) do
     results =
       Enum.flat_map(batch, fn result ->
-        changeset = changesets_by_index[result.__metadata__.bulk_create_index]
+        changeset =
+          Ash.Actions.Helpers.lookup_changeset(
+            result,
+            changesets_by_ref,
+            changesets_by_index,
+            index_key: :bulk_create_index,
+            ref_key: :bulk_action_ref
+          )
 
         if opts[:notify?] || opts[:return_notifications?] do
           store_notification(ref, notification(changeset, result, opts), opts)
@@ -1455,12 +1475,14 @@ defmodule Ash.Actions.Create.Bulk do
     |> Ash.Actions.Update.Bulk.run_bulk_after_changes(
       all_changes,
       results,
+      changesets_by_ref,
       changesets_by_index,
       changesets,
       opts,
       ref,
       resource,
-      :bulk_create_index
+      :bulk_create_index,
+      :bulk_action_ref
     )
     |> then(fn records ->
       if opts[:return_records?] do

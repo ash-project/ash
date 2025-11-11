@@ -8,6 +8,19 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.9.0](https://github.com/ash-project/ash/compare/v3.8.0...v3.9.0) (2025-11-09)
+
+
+
+
+### Features:
+
+* keep tenant in query when using :bypass and :bypass_all (#2429) by [@Malian](https://github.com/Malian) [(#2429)](https://github.com/ash-project/ash/pull/2429)
+
+### Bug Fixes:
+
+* added bulk_action_ref for changeset lookups (#2411) by Daniel Gollings [(#2411)](https://github.com/ash-project/ash/pull/2411)
+
 ## [v3.8.0](https://github.com/ash-project/ash/compare/v3.7.6...v3.8.0) (2025-11-05)
 
 

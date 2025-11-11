@@ -620,7 +620,9 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   end
 
   test "returns updated records" do
-    assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
+    assert %Ash.BulkResult{
+             records: [%{title2: "updated value"}, %{title2: "updated value"}] = records
+           } =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true,
@@ -636,6 +638,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                return_errors?: true,
                authorize?: false
              )
+
+    Enum.each(records, fn record ->
+      refute Map.has_key?(record.__metadata__, :bulk_action_ref)
+    end)
   end
 
   test "sends notifications" do
@@ -956,6 +962,40 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
              end)
+  end
+
+  test "runs after batch hooks with legacy data layers (no refs)" do
+    Application.put_env(:ash, :test_bulk_index_only, true)
+
+    try do
+      assert %Ash.BulkResult{
+               records: [
+                 %{title: "before_title1_after", title2: "updated value"},
+                 %{title: "before_title2_after", title2: "updated value"}
+               ]
+             } =
+               Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+                 return_stream?: true,
+                 return_records?: true,
+                 authorize?: false
+               )
+               |> Stream.map(fn {:ok, result} ->
+                 result
+               end)
+               |> Enum.to_list()
+               |> Ash.bulk_update!(:update_with_after_batch, %{title2: "updated value"},
+                 resource: Post,
+                 strategy: :stream,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+               |> Map.update!(:records, fn records ->
+                 Enum.sort_by(records, & &1.title)
+               end)
+    after
+      Application.delete_env(:ash, :test_bulk_index_only)
+    end
   end
 
   test "runs changes in batches" do
