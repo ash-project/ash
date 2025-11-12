@@ -407,7 +407,11 @@ has_one name, destination
 
 Declares a `has_one` relationship. In a relational database, the foreign key would be on the *other* table.
 
-Generally speaking, a `has_one` also implies that the destination table is unique on that foreign key. To add a uniqueness constraint, you will need to add an identity for the foreign key column on the resource which defines the `belongs_to` side of the relationship. See the [identities guide](/documentation/topics/resources/identities.md) to learn more.
+Generally speaking, a `has_one` also implies that the destination table is
+unique on that foreign key. To add a uniqueness constraint, you will need
+to add an identity for the foreign key column on the resource which defines
+the `belongs_to` side of the relationship. See the 
+[identities guide](/documentation/topics/resources/identities.md) to learn more.
 
 See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
 
