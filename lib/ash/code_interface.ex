@@ -465,7 +465,7 @@ defmodule Ash.CodeInterface do
 
              #{interface_options.docs()}
              """
-             |> Ash.CodeInterface.trim_double_newlines()
+             |> Ash.CodeInterface.trim_triple_newlines()
         @doc spark_opts: [
                {opts_location, interface_options.schema()}
              ]
@@ -531,7 +531,7 @@ defmodule Ash.CodeInterface do
 
              #{interface_options.docs()}
              """
-             |> Ash.CodeInterface.trim_double_newlines()
+             |> Ash.CodeInterface.trim_triple_newlines()
         @doc spark_opts: [
                {opts_location, interface_options.schema()}
              ]
@@ -1651,7 +1651,7 @@ defmodule Ash.CodeInterface do
 
              #{interface_options.docs()}
              """
-             |> Ash.CodeInterface.trim_double_newlines()
+             |> Ash.CodeInterface.trim_triple_newlines()
 
         @doc spark_opts: [
                {first_opts_location, interface_options.schema()},
@@ -1683,7 +1683,7 @@ defmodule Ash.CodeInterface do
 
              #{interface_options.docs()}
              """
-             |> Ash.CodeInterface.trim_double_newlines()
+             |> Ash.CodeInterface.trim_triple_newlines()
 
         @doc spark_opts: [
                {first_opts_location, interface_options.schema()},
@@ -1728,7 +1728,7 @@ defmodule Ash.CodeInterface do
 
                #{Spark.Options.docs(subject_opts)}
                """
-               |> Ash.CodeInterface.trim_double_newlines()
+               |> Ash.CodeInterface.trim_triple_newlines()
           @doc spark_opts: [
                  {first_opts_location, subject_opts},
                  {first_opts_location + 1, subject_opts}
@@ -1754,7 +1754,7 @@ defmodule Ash.CodeInterface do
 
              #{Ash.Resource.Interface.CanOpts.docs()}
              """
-             |> Ash.CodeInterface.trim_double_newlines()
+             |> Ash.CodeInterface.trim_triple_newlines()
         @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 3}}
         @doc spark_opts: [
                {first_opts_location + 1, Ash.Resource.Interface.CanOpts.schema()},
@@ -1842,7 +1842,7 @@ defmodule Ash.CodeInterface do
 
              #{Ash.Resource.Interface.CanQuestionMarkOpts.docs()}
              """
-             |> Ash.CodeInterface.trim_double_newlines()
+             |> Ash.CodeInterface.trim_triple_newlines()
         def unquote(:"can_#{interface.name}?")(
               actor,
               unquote_splicing(common_args),
@@ -2303,6 +2303,12 @@ defmodule Ash.CodeInterface do
   def trim_double_newlines(str) do
     str
     |> String.replace(~r/\n{2,}/, "\n")
+    |> String.trim_trailing()
+  end
+
+  def trim_triple_newlines(str) do
+    str
+    |> String.replace(~r/\n{3,}/, "\n\n")
     |> String.trim_trailing()
   end
 
