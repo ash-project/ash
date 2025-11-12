@@ -502,6 +502,16 @@ defmodule Ash.Test.AshTest do
     end
   end
 
+  describe "get!/2" do
+    test "raises error when action does not exist" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert_raise Ash.Error.Invalid, ~r/no such action/i, fn ->
+        Ash.get!(User, user.id, action: :this_action_does_not_exist)
+      end
+    end
+  end
+
   describe "transact/3" do
     setup do
       import ExUnit.CaptureLog
