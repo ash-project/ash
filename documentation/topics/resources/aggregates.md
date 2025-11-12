@@ -61,8 +61,7 @@ Aggregates are loaded and filtered on in the same way that calculations are. Let
 ```elixir
 User
 |> Ash.Query.load(:count_of_posts)
-|> Map.get(:count_of_posts)
-# => 10
+# => %Ash.Query{aggregates: %{count_of_posts: %Ash.Query.Aggregate{...}}, ...}
 
 users
 |> Ash.load!(:count_of_posts)
