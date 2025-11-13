@@ -46,7 +46,11 @@ defmodule Ash.Domain.Interface do
               actor :: term,
               opts :: Keyword.t()
             ) ::
-              {:ok, boolean | :maybe} | {:error, term}
+              {:ok, boolean | :maybe}
+              | {:ok, true, Ash.Changeset.t() | Ash.Query.t()}
+              | {:ok, true, Ash.Changeset.t(), Ash.Query.t()}
+              | {:ok, false, Exception.t()}
+              | {:error, term}
       def can(action_or_query_or_changeset, actor, opts \\ []) do
         opts = Keyword.put(opts, :domain, __MODULE__)
         Ash.can(action_or_query_or_changeset, actor, opts)
