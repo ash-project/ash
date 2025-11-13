@@ -1113,6 +1113,73 @@ defmodule Ash.CodeInterface do
     end
   end
 
+  @doc """
+  Executes a calculation, handling both bang and non-bang variants.
+
+  This function is called at runtime by generated code interface calculation functions.
+  It consolidates the logic for both safe and bang calculation functions, eliminating
+  duplication between the two variants.
+
+  ## Parameters
+  - `resource` - The Ash resource module
+  - `domain` - The Ash domain module
+  - `calculation_name` - Name of the calculation to execute
+  - `refs` - Referenced calculations (from process_calc_args)
+  - `arguments` - Calculation arguments (from process_calc_args)
+  - `record` - Optional record to calculate on (from process_calc_args)
+  - `custom_input_errors` - List of custom validation errors (from process_calc_args)
+  - `opts` - Additional calculation options
+  - `raise_on_error?` - If true, raises on errors; if false, returns {:error, error}
+
+  ## Returns
+  - When `raise_on_error?` is `true`: Returns result or raises on error
+  - When `raise_on_error?` is `false`: Returns `result` or `{:error, error}`
+
+  ## Example
+  ```elixir
+  # Bang version (raises on error)
+  Ash.CodeInterface.execute_calculation(
+    MyResource, MyDomain, :calculate_total,
+    refs, args, record, errors, opts, true
+  )
+
+  # Safe version (returns {:error, error})
+  Ash.CodeInterface.execute_calculation(
+    MyResource, MyDomain, :calculate_total,
+    refs, args, record, errors, opts, false
+  )
+  ```
+  """
+  def execute_calculation(
+        resource,
+        domain,
+        calculation_name,
+        refs,
+        arguments,
+        record,
+        custom_input_errors,
+        opts,
+        raise_on_error?
+      ) do
+    case custom_input_errors do
+      [] ->
+        calc_opts = [domain: domain, refs: refs, args: arguments, record: record] ++ opts
+
+        if raise_on_error? do
+          Ash.calculate!(resource, calculation_name, calc_opts)
+        else
+          Ash.calculate(resource, calculation_name, calc_opts)
+        end
+
+      errors ->
+        if raise_on_error? do
+          raise Ash.Error.to_error_class(errors)
+        else
+          {:error, Ash.Error.to_error_class(errors)}
+        end
+    end
+  end
+
   @doc false
   def process_calc_args(
         arg_access,
@@ -1513,6 +1580,74 @@ defmodule Ash.CodeInterface do
         opts_location = Enum.count(arg_bindings)
         interface_options = Ash.Resource.Interface.interface_options(:calculate, nil)
 
+        bang_body =
+          quote bind_quoted: [
+                  arg_access: arg_access,
+                  exclude_inputs: exclude_inputs,
+                  custom_inputs: custom_inputs,
+                  resource: resource,
+                  interface_calculation: interface_calculation,
+                  arg_bindings_count: Enum.count(arg_bindings),
+                  domain: domain
+                ] do
+            {refs, arguments, record, custom_input_errors} =
+              Ash.CodeInterface.process_calc_args(
+                arg_access,
+                opts,
+                exclude_inputs,
+                custom_inputs,
+                resource,
+                interface_calculation,
+                arg_bindings_count
+              )
+
+            Ash.CodeInterface.execute_calculation(
+              resource,
+              domain,
+              interface_calculation,
+              refs,
+              arguments,
+              record,
+              custom_input_errors,
+              opts,
+              true
+            )
+          end
+
+        safe_body =
+          quote bind_quoted: [
+                  arg_access: arg_access,
+                  exclude_inputs: exclude_inputs,
+                  custom_inputs: custom_inputs,
+                  resource: resource,
+                  interface_calculation: interface_calculation,
+                  arg_bindings_count: Enum.count(arg_bindings),
+                  domain: domain
+                ] do
+            {refs, arguments, record, custom_input_errors} =
+              Ash.CodeInterface.process_calc_args(
+                arg_access,
+                opts,
+                exclude_inputs,
+                custom_inputs,
+                resource,
+                interface_calculation,
+                arg_bindings_count
+              )
+
+            Ash.CodeInterface.execute_calculation(
+              resource,
+              domain,
+              interface_calculation,
+              refs,
+              arguments,
+              record,
+              custom_input_errors,
+              opts,
+              false
+            )
+          end
+
         @doc """
              #{calculation.description || "Calculates #{calculation.name} action on #{inspect(resource)}."}
 
@@ -1527,27 +1662,7 @@ defmodule Ash.CodeInterface do
                {opts_location, interface_options.schema()}
              ]
         def unquote(bang_name)(unquote_splicing(arg_bindings), opts) do
-          {refs, arguments, record, custom_input_errors} =
-            Ash.CodeInterface.process_calc_args(
-              [unquote_splicing(arg_access)],
-              opts,
-              unquote(exclude_inputs),
-              unquote(custom_inputs),
-              unquote(resource),
-              unquote(interface_calculation),
-              unquote(Enum.count(arg_bindings))
-            )
-
-          case custom_input_errors do
-            [] ->
-              opts =
-                [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
-
-              Ash.calculate!(unquote(resource), unquote(interface_calculation), opts)
-
-            errors ->
-              raise Ash.Error.to_error_class(errors)
-          end
+          unquote(bang_body)
         end
 
         @doc """
@@ -1564,27 +1679,7 @@ defmodule Ash.CodeInterface do
                {opts_location, interface_options.schema()}
              ]
         def unquote(safe_name)(unquote_splicing(arg_bindings), opts) do
-          {refs, arguments, record, custom_input_errors} =
-            Ash.CodeInterface.process_calc_args(
-              [unquote_splicing(arg_access)],
-              opts,
-              unquote(exclude_inputs),
-              unquote(custom_inputs),
-              unquote(resource),
-              unquote(interface_calculation),
-              unquote(Enum.count(arg_bindings))
-            )
-
-          case custom_input_errors do
-            [] ->
-              opts =
-                [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
-
-              Ash.calculate(unquote(resource), unquote(interface_calculation), opts)
-
-            errors ->
-              {:error, Ash.Error.to_error_class(errors)}
-          end
+          unquote(safe_body)
         end
       end
 
@@ -1660,20 +1755,30 @@ defmodule Ash.CodeInterface do
         interface_args_count = Enum.count(interface_args)
 
         resolve_params_and_opts =
-          quote do
+          quote bind_quoted: [
+                  interface_default_options: interface_default_options,
+                  interface_options: interface_options,
+                  arg_params: arg_params,
+                  interface_exclude_inputs: interface_exclude_inputs,
+                  interface_custom_inputs: interface_custom_inputs,
+                  resource: resource,
+                  interface_name_atom: interface_name_atom,
+                  interface_args_count_plus_2: interface_args_count + 2,
+                  filter_params: filter_params
+                ] do
             {params, custom_input_errors, opts, filter_params} =
               Ash.CodeInterface.resolve_params_opts_and_filters(
                 params_or_opts,
                 opts,
-                unquote(interface_default_options),
-                unquote(interface_options),
-                unquote(arg_params),
-                unquote(interface_exclude_inputs),
-                unquote(interface_custom_inputs),
-                unquote(resource),
-                unquote(interface_name_atom),
-                unquote(interface_args_count + 2),
-                unquote(filter_params)
+                interface_default_options,
+                interface_options,
+                arg_params,
+                interface_exclude_inputs,
+                interface_custom_inputs,
+                resource,
+                interface_name_atom,
+                interface_args_count_plus_2,
+                filter_params
               )
           end
 
