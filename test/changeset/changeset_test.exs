@@ -473,6 +473,26 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     assert post.slug == "foo-bar"
   end
 
+  describe "inspect" do
+    test "empty map context is omitted" do
+      changeset =
+        Category
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
+        |> Ash.Changeset.set_context(%{})
+
+      refute inspect(changeset) =~ "context:"
+    end
+
+    test "nonempty map context is redacted" do
+      changeset =
+        Category
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
+        |> Ash.Changeset.set_context(%{secret: "value"})
+
+      assert inspect(changeset) =~ "context: \"**redacted**\""
+    end
+  end
+
   describe "new" do
     test "it wraps a new resource in a `create` changeset" do
       assert %Ash.Changeset{

@@ -313,6 +313,8 @@ defmodule Ash.Query do
         | calculations: Ash.Actions.Read.Calculations.map_without_calc_deps(query.calculations)
       }
 
+      context = Map.delete(query.context, :private)
+
       sort? = query.sort != []
       distinct_sort? = query.distinct_sort != []
       load? = query.load != []
@@ -323,6 +325,7 @@ defmodule Ash.Query do
       filter? = not is_nil(query.filter)
       errors? = not Enum.empty?(query.errors)
       tenant? = not is_nil(query.tenant)
+      context? = query.context != %{}
       select? = query.select not in [[], nil]
       distinct? = query.distinct not in [[], nil]
       lock? = not is_nil(query.lock)
@@ -338,6 +341,7 @@ defmodule Ash.Query do
             not is_nil(query.action)
           ),
           or_empty(concat("tenant: ", to_doc(query.to_tenant, opts)), tenant?),
+          or_empty(concat("context: ", to_doc(Ash.Helpers.redact(context), opts)), context?),
           arguments(query, opts),
           # TODO: inspect these specially
           or_empty(
