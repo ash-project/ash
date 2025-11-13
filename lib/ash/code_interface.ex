@@ -7,6 +7,12 @@ defmodule Ash.CodeInterface do
   Used to define the functions of a code interface for a resource.
   """
 
+  # Compile-time optimization: Common literal values
+  @stream_with_full_read :full_read
+  @atomic_strategies [:atomic, :stream, :atomic_batches]
+  @notify_true [notify?: true]
+  @atomic_can_opts [:tenant, :authorize?, :tracer, :context, :skip_unknown_inputs]
+
   @doc false
   def require_action(resource, interface) do
     action = Ash.Resource.Info.action(resource, interface.action || interface.name)
@@ -789,14 +795,14 @@ defmodule Ash.CodeInterface do
                 bulk_opts
                 |> Keyword.put(:return_records?, true)
                 |> Keyword.put(:return_errors?, true)
-                |> Keyword.put(:allow_stream_with, :full_read)
+                |> Keyword.put(:allow_stream_with, @stream_with_full_read)
                 |> Keyword.put_new(:authorize_with, authorize_with)
-                |> Keyword.put(:notify?, true)
+                |> Keyword.merge(@notify_true)
               else
                 Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
               end
             end)
-            |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
+            |> Keyword.put_new(:strategy, @atomic_strategies)
 
           bulk_opts =
             if method in [:stream, :query] do
@@ -1009,18 +1015,18 @@ defmodule Ash.CodeInterface do
                 |> Keyword.put(:return_errors?, true)
                 |> then(fn opts ->
                   if raise_on_error? do
-                    Keyword.put(opts, :allow_stream_with, :full_read)
+                    Keyword.put(opts, :allow_stream_with, @stream_with_full_read)
                   else
                     opts
                   end
                 end)
                 |> Keyword.put_new(:authorize_with, authorize_with)
-                |> Keyword.put(:notify?, true)
+                |> Keyword.merge(@notify_true)
               else
                 bulk_opts
               end
             end)
-            |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
+            |> Keyword.put_new(:strategy, @atomic_strategies)
 
           bulk_opts =
             if method in [:stream, :query] do
@@ -2437,13 +2443,7 @@ defmodule Ash.CodeInterface do
   def atomic_can(query, action_name, actor, opts, params, question_mark?) do
     action_opts =
       opts
-      |> Keyword.take([
-        :tenant,
-        :authorize?,
-        :tracer,
-        :context,
-        :skip_unknown_inputs
-      ])
+      |> Keyword.take(@atomic_can_opts)
       |> Keyword.put(:actor, actor)
 
     query =
