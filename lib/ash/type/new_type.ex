@@ -481,21 +481,22 @@ defmodule Ash.Type.NewType do
         end
       end
 
-      defoverridable storage_type: 1,
+      defoverridable apply_constraints_array: 2,
+                     cast_input_array: 2,
                      cast_input: 2,
-                     prepare_change: 3,
-                     dump_to_embedded: 2,
-                     handle_change: 3,
-                     dump_to_embedded_array: 2,
-                     include_source: 2,
-                     apply_constraints_array: 2,
-                     handle_change_array: 3,
                      cast_stored_array: 2,
-                     prepare_change_array: 3,
                      cast_stored: 2,
-                     generator: 1,
-                     dump_to_native: 2,
+                     dump_to_embedded_array: 2,
+                     dump_to_embedded: 2,
                      dump_to_native_array: 2,
+                     dump_to_native: 2,
+                     generator: 1,
+                     handle_change_array: 3,
+                     handle_change: 3,
+                     include_source: 2,
+                     prepare_change_array: 3,
+                     prepare_change: 3,
+                     storage_type: 1,
                      type_constraints: 2
     end
   end
