@@ -355,12 +355,15 @@ defmodule Ash.CodeInterface do
         :authorize?,
         :tracer,
         :context,
-        :scope
+        :scope,
+        :load
       ])
 
     {query_val, query_opts} = Keyword.pop(query_opts, :query)
 
     query_opts = Keyword.put(query_opts, :domain, domain)
+
+    opts = if query_opts[:load], do: Keyword.put(opts, :load, query_opts[:load]), else: opts
 
     query =
       case query_val do
@@ -384,6 +387,7 @@ defmodule Ash.CodeInterface do
           Ash.Query.build(resource, query || [])
       end
       |> Ash.Query.add_error(custom_input_errors)
+
 
     query =
       if filter_keys && !Enum.empty?(filter_keys) do

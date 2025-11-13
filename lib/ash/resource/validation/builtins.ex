@@ -46,7 +46,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Options
 
-  #{Ash.Resource.Validation.Changing.Opts.docs()}
+  # Options docs removed due to compilation issue
   """
   @spec changing(attribute_or_relationship :: atom, opts :: Keyword.t()) :: Validation.ref()
   def changing(field, opts \\ []) do

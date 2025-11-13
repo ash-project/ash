@@ -1241,6 +1241,50 @@ defmodule Ash.Actions.Read.Calculations do
 
           checked_calculations = [{calculation.module, calculation.opts} | checked_calculations]
 
+          query =
+            case calculation do
+              %{module: Ash.Resource.Calculation.Expression, opts: [expr: expression]} ->
+                refs = Ash.Filter.list_refs(expression)
+
+                aggregate_names =
+                  refs
+                  |> Enum.filter(&(&1.relationship_path == []))
+                  |> Enum.map(&(&1.attribute))
+                  |> Enum.filter(&is_atom/1)
+                  |> Enum.filter(fn field_name ->
+                    Ash.Resource.Info.aggregate(query.resource, field_name) != nil
+                  end)
+
+                aggregates_to_load =
+                  aggregate_names
+                  |> Enum.filter(fn aggregate_name ->
+                    not Map.has_key?(query.aggregates, aggregate_name)
+                  end)
+                  |> Enum.map(fn aggregate_name ->
+                    aggregate = Ash.Resource.Info.aggregate(query.resource, aggregate_name)
+                    if aggregate.relationship_path == [] do
+                      # This is an unrelated aggregate - create it directly
+                      aggregate
+                    else
+                      # This is a relationship-based aggregate - create query aggregate
+                      query_opts = [path: aggregate.relationship_path, field: aggregate.field]
+                      query_opts = if aggregate.filter || aggregate.sort do
+                        Keyword.put(query_opts, :query, [filter: aggregate.filter, sort: aggregate.sort])
+                      else
+                        query_opts
+                      end
+                      {:ok, query_aggregate} = Ash.Query.Aggregate.new(query.resource, aggregate.name, aggregate.kind, query_opts)
+                      query_aggregate
+                    end
+                  end)
+
+                Enum.reduce(aggregates_to_load, query, fn aggregate, acc_query ->
+                  %{acc_query | aggregates: Map.put(acc_query.aggregates, aggregate.name, aggregate)}
+                end)
+              _ ->
+                query
+            end
+
           calculation.required_loads
           |> List.wrap()
           |> Enum.concat(List.wrap(calculation.select))

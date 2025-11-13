@@ -1012,4 +1012,143 @@ defmodule Ash.Test.CodeInterfaceTest do
              event: "product enabled"
            } = log_event
   end
+
+  describe "runtime load option with calculations depending on aggregates" do
+    defmodule LoadTestDomain do
+      @moduledoc false
+      use Ash.Domain
+
+      resources do
+        resource Ash.Test.CodeInterfaceTest.OrderItem
+        resource Ash.Test.CodeInterfaceTest.Order
+      end
+    end
+
+    defmodule OrderItem do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.CodeInterfaceTest.LoadTestDomain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private?(true)
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :quantity, :integer, public?: true, allow_nil?: false
+        attribute :order_id, :uuid, public?: true, allow_nil?: false
+      end
+
+      relationships do
+        belongs_to :order, Ash.Test.CodeInterfaceTest.Order do
+          public?(true)
+          attribute_writable?(true)
+        end
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, create: :*, update: :*]
+      end
+
+      code_interface do
+        define :create
+      end
+    end
+
+    defmodule Order do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.CodeInterfaceTest.LoadTestDomain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private?(true)
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, public?: true
+      end
+
+      relationships do
+        has_many :items, Ash.Test.CodeInterfaceTest.OrderItem do
+          public?(true)
+          destination_attribute :order_id
+        end
+      end
+
+      aggregates do
+        sum :total_quantity, :items, :quantity do
+          public?(true)
+        end
+      end
+
+      calculations do
+        calculate :doubled_quantity,
+                  :integer,
+                  expr(total_quantity * 2) do
+          public?(true)
+        end
+
+        calculate :complex_calc,
+                  :integer,
+                  expr(
+                    fragment(
+                      "COALESCE(?, 0)",
+                      total_quantity
+                    )
+                  ) do
+          public?(true)
+        end
+
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, create: :*, update: :*]
+
+        read :minimal_read do
+          # This action doesn't pre-load any relationships, similar to zelo's for_depot_by_date
+          prepare build(sort: {:name, :asc})
+        end
+      end
+
+      code_interface do
+        define :create
+        define :list_orders, action: :read
+        define :list_orders_minimal, action: :minimal_read
+      end
+    end
+
+    test "loading calculation that depends on aggregate via runtime load option" do
+      order = Order.create!(%{name: "Test Order"})
+
+      OrderItem.create!(%{order_id: order.id, quantity: 5})
+      OrderItem.create!(%{order_id: order.id, quantity: 3})
+
+      {:ok, [loaded_order]} = Order.list_orders(%{}, load: [:doubled_quantity, :total_quantity])
+
+      # Debug output for comparison
+      IO.inspect(loaded_order.doubled_quantity, label: "doubled_quantity (working)")
+      IO.inspect(loaded_order.total_quantity, label: "total_quantity (working)")
+
+      assert loaded_order.doubled_quantity == 16
+    end
+
+    test "loading calculation that depends on aggregate via runtime load option with minimal action" do
+      order = Order.create!(%{name: "Test Order"})
+
+      OrderItem.create!(%{order_id: order.id, quantity: 5})
+      OrderItem.create!(%{order_id: order.id, quantity: 3})
+
+      # This should fail with the current ash code because the minimal_read action
+      # doesn't pre-load relationships, so the aggregate joins aren't established
+      # when the calculation is loaded at runtime
+      {:ok, [loaded_order]} = Order.list_orders_minimal(%{}, load: [:doubled_quantity])
+
+      assert loaded_order.doubled_quantity == 16
+    end
+  end
 end

@@ -2311,6 +2311,95 @@ defmodule Ash.Query do
 
           query = Map.update!(query, :calculations, &Map.put(&1, name, calculation))
 
+          # Process calculation dependencies during query building to establish necessary joins
+          # Detect aggregate field references in calculation expressions and load them automatically
+          query =
+            case calculation do
+              %{module: Ash.Resource.Calculation.Expression, opts: [expr: expression]} ->
+                # Extract field references from the expression
+                refs = Ash.Filter.list_refs(expression)
+
+                # Find aggregate field references and load the corresponding aggregates
+                aggregate_names =
+                  refs
+                  |> Enum.filter(&(&1.relationship_path == []))  # Only direct field references on this resource
+                  |> Enum.map(&(&1.attribute))  # Get the field names
+                  |> Enum.filter(&is_atom/1)  # Only atomic field names
+                  |> Enum.filter(fn field_name ->
+                    # Check if this field is an aggregate on the resource
+                    Ash.Resource.Info.aggregate(query.resource, field_name) != nil
+                  end)
+
+                # Build list of aggregates to load
+                aggregates_to_load =
+                  aggregate_names
+                  |> Enum.filter(fn aggregate_name ->
+                    # Only add if not already present
+                    not Map.has_key?(query.aggregates, aggregate_name)
+                  end)
+                  |> Enum.map(fn aggregate_name ->
+                    aggregate = Ash.Resource.Info.aggregate(query.resource, aggregate_name)
+                    if aggregate.relationship_path == [] do
+                      # This is an unrelated aggregate - create it directly
+                      aggregate
+                    else
+                      # This is a relationship-based aggregate - create query aggregate
+                      query_opts = [
+                        path: aggregate.relationship_path,
+                        field: aggregate.field
+                      ]
+
+                      query_opts = if aggregate.filter || aggregate.sort do
+                        Keyword.put(query_opts, :query, [
+                          filter: aggregate.filter,
+                          sort: aggregate.sort
+                        ])
+                      else
+                        query_opts
+                      end
+
+                      {:ok, query_aggregate} = Ash.Query.Aggregate.new(
+                        query.resource,
+                        aggregate.name,
+                        aggregate.kind,
+                        query_opts
+                      )
+                      query_aggregate
+                    end
+                  end)
+
+                # Add aggregates to ash query structure
+                # The data layer query generation will handle these properly later
+                Enum.reduce(aggregates_to_load, query, fn aggregate, acc_query ->
+                  %{acc_query | aggregates: Map.put(acc_query.aggregates, aggregate.name, aggregate)}
+                end)
+
+              _ ->
+                # For other calculation types, check required_loads for explicit dependencies
+                if calculation.required_loads && calculation.required_loads != [] do
+                  aggregate_dependencies =
+                    calculation.required_loads
+                    |> Enum.filter(fn item ->
+                      # Runtime check for aggregate struct without compile-time pattern matching
+                      is_struct(item) && is_atom(item.name) && Map.has_key?(item, :kind) &&
+                      Map.has_key?(item, :field) && Map.has_key?(item, :relationship_path)
+                    end)
+
+                  # Add aggregate structs to ash query structure
+                  # The data layer query generation will handle these properly later
+                  Enum.reduce(aggregate_dependencies, query, fn aggregate, acc_query ->
+                    # Only add if not already present
+                    if Map.has_key?(acc_query.aggregates, aggregate.name) do
+                      acc_query
+                    else
+                      %{acc_query | aggregates: Map.put(acc_query.aggregates, aggregate.name, aggregate)}
+                    end
+                  end)
+                else
+                  query
+                end
+            end
+
           if load_through do
             load_through(query, :calculation, name, load_through)
           else
