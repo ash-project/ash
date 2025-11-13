@@ -28,6 +28,7 @@ ash-*.tar
 
 # Ignoring Elixir Language Server
 .elixir_ls/
+.expert/
 
 # Ignore Nix and direnv
 shell.nix
