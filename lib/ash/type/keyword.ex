@@ -62,7 +62,7 @@ defmodule Ash.Type.Keyword do
   @moduledoc """
   Represents a keyword list, stored as a `:map` in the database.
 
-  A builtin type that can be referenced via `:keyword_list`
+  A builtin type that can be referenced via `:keyword`
 
   #{Spark.Options.docs(@constraints)}
   """
