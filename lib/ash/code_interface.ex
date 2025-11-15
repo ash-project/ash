@@ -736,7 +736,6 @@ defmodule Ash.CodeInterface do
                   quote do
                     Ash.CodeInterface.read_list_act(
                       query,
-                      unquote(interface.not_found_error?),
                       opts
                     )
                   end
