@@ -2116,6 +2116,12 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.set_tenant(tenant)
         |> Ash.destroy(return_notifications?: true)
         |> case do
+        {:ok, _record, notifications} -> 
+          debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
+
+          {:ok, notifications}
+
+        {:ok, notifications}
           {:ok, notifications} ->
             debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
 
@@ -2306,6 +2312,11 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Changeset.set_tenant(tenant)
     |> Ash.destroy(return_notifications?: true)
     |> case do
+      {:ok, _record, notifications} -> 
+        debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
+
+        {:ok, notifications}
+
       {:ok, notifications} ->
         debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
         {:ok, notifications}
