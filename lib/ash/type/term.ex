@@ -6,7 +6,7 @@ defmodule Ash.Type.Term do
   @moduledoc """
   Represents a raw elixir term in the database
 
-  A builtin type that can be referenced via `:binary`
+  A builtin type that can be referenced via `:term`
   """
   use Ash.Type
 
