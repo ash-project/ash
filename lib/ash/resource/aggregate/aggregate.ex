@@ -20,6 +20,7 @@ defmodule Ash.Resource.Aggregate do
     :sort,
     :default,
     :uniq?,
+    :multitenancy,
     include_nil?: false,
     join_filters: [],
     authorize?: true,
@@ -112,6 +113,14 @@ defmodule Ash.Resource.Aggregate do
       doc: """
       Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
       """
+    ],
+    multitenancy: [
+      type: {:in, [:bypass]},
+      doc: """
+      Configures multitenancy behavior for the aggregate.
+
+      * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set.
+      """
     ]
   ]
 
@@ -132,6 +141,7 @@ defmodule Ash.Resource.Aggregate do
           sortable?: boolean,
           sensitive?: boolean,
           related?: boolean,
+          multitenancy: nil | :bypass,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 

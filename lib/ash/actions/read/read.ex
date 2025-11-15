@@ -2787,9 +2787,19 @@ defmodule Ash.Actions.Read do
 
   defp handle_aggregate_multitenancy(query) do
     Enum.reduce_while(query.aggregates, {:ok, %{}}, fn {key, aggregate}, {:ok, acc} ->
-      case handle_multitenancy(
-             Ash.Query.set_tenant(aggregate.query, aggregate.query.tenant || query.tenant)
-           ) do
+      aggregate_query =
+        if aggregate.multitenancy == :bypass do
+          aggregate.query
+          |> Ash.Query.set_tenant(nil)
+          |> Ash.Query.set_context(%{
+            multitenancy: :bypass_all,
+            shared: %{multitenancy: :bypass_all}
+          })
+        else
+          Ash.Query.set_tenant(aggregate.query, aggregate.query.tenant || query.tenant)
+        end
+
+      case handle_multitenancy(aggregate_query) do
         {:ok, %{valid?: true} = query} ->
           {:cont, {:ok, Map.put(acc, key, %{aggregate | query: query})}}
 
