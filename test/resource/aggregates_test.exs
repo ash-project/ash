@@ -727,5 +727,284 @@ defmodule Ash.Test.Resource.AggregatesTest do
         |> Ash.read!(action: :read_bypass)
       end
     end
+
+    test "raises error when main resource uses context multitenancy with bypass aggregate" do
+      defmodule ContextPost do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        multitenancy do
+          strategy(:context)
+        end
+
+        attributes do
+          uuid_primary_key :id
+          attribute :title, :string, public?: true
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+
+          read :read_bypass do
+            multitenancy :bypass
+          end
+        end
+
+        relationships do
+          has_many :comments, MultitenantComment, destination_attribute: :post_id, public?: true
+        end
+
+        aggregates do
+          count :comment_count_bypass, :comments do
+            public?(true)
+            multitenancy :bypass
+          end
+        end
+      end
+
+      # Should raise error because ContextPost uses :context strategy
+      assert_raise Ash.Error.Invalid, ~r/uses `:context` multitenancy strategy/, fn ->
+        ContextPost
+        |> Ash.Query.load([:comment_count_bypass])
+        |> Ash.read(domain: Domain, action: :read_bypass)
+      end
+    end
+
+    test "works when main resource uses context multitenancy with normal aggregate (no bypass)" do
+      defmodule ContextPostNormal do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        multitenancy do
+          strategy(:context)
+        end
+
+        attributes do
+          uuid_primary_key :id
+          attribute :title, :string, public?: true
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+
+        relationships do
+          has_many :comments, MultitenantComment, destination_attribute: :post_id, public?: true
+        end
+
+        aggregates do
+          # No bypass - should work fine
+          count :comment_count_normal, :comments do
+            public?(true)
+          end
+        end
+      end
+
+      # Should work because aggregate doesn't use bypass
+      result =
+        ContextPostNormal
+        |> Ash.Query.load([:comment_count_normal])
+        |> Ash.read!(domain: Domain, tenant: "test_tenant")
+
+      assert is_list(result)
+    end
+
+    test "raises error when relationship path includes context multitenancy resource with bypass" do
+      defmodule ContextLike do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        multitenancy do
+          strategy(:context)
+        end
+
+        attributes do
+          uuid_primary_key :id
+          attribute :comment_id, :uuid, public?: true
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+      end
+
+      defmodule AttributeComment do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        multitenancy do
+          strategy(:attribute)
+          attribute(:tenant_id)
+        end
+
+        attributes do
+          uuid_primary_key :id
+          attribute :tenant_id, :string, public?: true
+          attribute :post_id, :uuid, public?: true
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+
+        relationships do
+          has_many :likes, ContextLike, destination_attribute: :comment_id, public?: true
+        end
+      end
+
+      defmodule AttributePost do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        multitenancy do
+          strategy(:attribute)
+          attribute(:tenant_id)
+        end
+
+        attributes do
+          uuid_primary_key :id
+          attribute :tenant_id, :string, public?: true
+          attribute :title, :string, public?: true
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+
+        relationships do
+          has_many :comments, AttributeComment, destination_attribute: :post_id, public?: true
+        end
+
+        aggregates do
+          # This should fail: path is [:comments, :likes] where likes uses :context
+          count :like_count_bypass, [:comments, :likes] do
+            public?(true)
+            multitenancy :bypass
+          end
+        end
+      end
+
+      # Should raise error because ContextLike (in path) uses :context strategy
+      assert_raise Ash.Error.Invalid,
+                   ~r/in relationship `likes`.*uses `:context` multitenancy strategy/,
+                   fn ->
+                     AttributePost
+                     |> Ash.Query.load([:like_count_bypass])
+                     |> Ash.read!(domain: Domain, tenant: "tenant1")
+                   end
+    end
+
+    test "works when bypass aggregate avoids context multitenancy resource in path" do
+      defmodule MixedContextLike do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        multitenancy do
+          strategy(:context)
+        end
+
+        attributes do
+          uuid_primary_key :id
+          attribute :comment_id, :uuid, public?: true
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+      end
+
+      defmodule MixedAttributeComment do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        multitenancy do
+          strategy(:attribute)
+          attribute(:tenant_id)
+        end
+
+        attributes do
+          uuid_primary_key :id
+          attribute :tenant_id, :string, public?: true
+          attribute :post_id, :uuid, public?: true
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+
+        relationships do
+          has_many :likes, MixedContextLike, destination_attribute: :comment_id, public?: true
+        end
+      end
+
+      defmodule MixedAttributePost do
+        @moduledoc false
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        multitenancy do
+          strategy(:attribute)
+          attribute(:tenant_id)
+        end
+
+        attributes do
+          uuid_primary_key :id
+          attribute :tenant_id, :string, public?: true
+          attribute :title, :string, public?: true
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
+        end
+
+        relationships do
+          has_many :comments, MixedAttributeComment,
+            destination_attribute: :post_id,
+            public?: true
+        end
+
+        aggregates do
+          # This should work: only uses [:comments] path, avoids :likes (which is context)
+          count :comment_count_bypass, :comments do
+            public?(true)
+            multitenancy :bypass
+          end
+
+          # This should work: normal aggregate without bypass can use context resources
+          count :like_count_normal, [:comments, :likes] do
+            public?(true)
+          end
+        end
+      end
+
+      # Create test data
+      post =
+        MixedAttributePost
+        |> Ash.Changeset.for_create(:create, %{title: "Test"}, tenant: "tenant1")
+        |> Ash.create!(domain: Domain)
+
+      _comment =
+        MixedAttributeComment
+        |> Ash.Changeset.for_create(:create, %{post_id: post.id}, tenant: "tenant1")
+        |> Ash.create!(domain: Domain)
+
+      # Should work: bypass aggregate only uses [:comments] path (all attribute strategy)
+      result =
+        MixedAttributePost
+        |> Ash.Query.filter(id == ^post.id)
+        |> Ash.Query.load([:comment_count_bypass, :like_count_normal])
+        |> Ash.read!(domain: Domain, tenant: "tenant1")
+
+      assert [loaded_post] = result
+      assert loaded_post.comment_count_bypass == 1
+      assert loaded_post.like_count_normal == 0
+    end
   end
 end

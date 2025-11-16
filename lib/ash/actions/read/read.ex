@@ -2785,8 +2785,38 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  # Validate context multitenancy and its relationships are not used with bypass
+  # Ref: https://github.com/ash-project/ash_postgres/pull/649#issuecomment-3536654583
   defp handle_aggregate_multitenancy(query) do
+    validate_context_strategy! = fn resource, relationship_name, aggregate_name ->
+      if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+        location = relationship_name && " in relationship `#{relationship_name}`"
+
+        raise Ash.Error.Query.InvalidQuery,
+          field: aggregate_name,
+          message: """
+          Aggregate `#{aggregate_name}` uses `multitenancy: :bypass` but resource \
+          `#{inspect(resource)}`#{location} uses `:context` multitenancy strategy. \
+          Multitenancy bypass only supports `:attribute` strategy.
+          """
+      end
+    end
+
     Enum.reduce_while(query.aggregates, {:ok, %{}}, fn {key, aggregate}, {:ok, acc} ->
+      if aggregate.multitenancy == :bypass do
+        # Check main resource
+        validate_context_strategy!.(aggregate.resource, nil, aggregate.name)
+
+        # Check each resource in the relationship path (support nested relationships)
+        _ =
+          aggregate.relationship_path
+          |> Enum.reduce(aggregate.resource, fn rel_name, current_resource ->
+            relationship = Ash.Resource.Info.relationship(current_resource, rel_name)
+            validate_context_strategy!.(relationship.destination, rel_name, aggregate.name)
+            relationship.destination
+          end)
+      end
+
       aggregate_query =
         if aggregate.multitenancy == :bypass do
           aggregate.query
