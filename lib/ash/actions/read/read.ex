@@ -2790,9 +2790,7 @@ defmodule Ash.Actions.Read do
       aggregate_query =
         if aggregate.multitenancy == :bypass do
           aggregate.query
-          |> Ash.Query.set_tenant(nil)
           |> Ash.Query.set_context(%{
-            multitenancy: :bypass_all,
             shared: %{multitenancy: :bypass_all}
           })
         else
