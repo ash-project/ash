@@ -1029,7 +1029,8 @@ defmodule Ash.Resource.Info do
           :destination,
           :manual,
           :sort,
-          :filter
+          :filter,
+          :read_action
         ]
 
         Map.take(relationship, comparison_keys) ==
