@@ -3752,7 +3752,7 @@ end
 | [`description`](#calculations-calculate-description){: #calculations-calculate-description } | `String.t` |  | An optional description for the calculation |
 | [`public?`](#calculations-calculate-public?){: #calculations-calculate-public? } | `boolean` | `false` | Whether or not the calculation will appear in public interfaces. |
 | [`sensitive?`](#calculations-calculate-sensitive?){: #calculations-calculate-sensitive? } | `boolean` | `false` | Whether or not references to the calculation will be considered sensitive. |
-| [`load`](#calculations-calculate-load){: #calculations-calculate-load } | `any` | `[]` | A load statement to be applied if the calculation is used. |
+| [`load`](#calculations-calculate-load){: #calculations-calculate-load } | `any` | `[]` | A load statement to be applied if the calculation is used. Only works with module-based or function-based calculations, not expression calculations. |
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |
 | [`sortable?`](#calculations-calculate-sortable?){: #calculations-calculate-sortable? } | `boolean` | `true` | Whether or not the calculation can be referenced in sorts. |

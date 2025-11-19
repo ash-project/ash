@@ -1664,6 +1664,7 @@ defmodule Ash.Resource.Dsl do
   @verifiers [
     Ash.Resource.Verifiers.ValidateRelationshipAttributesMatch,
     Ash.Resource.Verifiers.VerifyReservedCalculationArguments,
+    Ash.Resource.Verifiers.VerifyCalculations,
     Ash.Resource.Verifiers.VerifyIdentityFields,
     Ash.Resource.Verifiers.VerifyPrimaryReadActionHasNoArguments,
     Ash.Resource.Verifiers.VerifySelectedByDefault,

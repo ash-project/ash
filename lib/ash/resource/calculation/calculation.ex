@@ -72,7 +72,8 @@ defmodule Ash.Resource.Calculation do
     load: [
       type: :any,
       default: [],
-      doc: "A load statement to be applied if the calculation is used."
+      doc:
+        "A load statement to be applied if the calculation is used. Only works with module-based or function-based calculations, not expression calculations."
     ],
     allow_nil?: [
       type: :boolean,
@@ -188,6 +189,10 @@ defmodule Ash.Resource.Calculation do
   @callback calculate(records :: [Ash.Resource.record()], opts :: opts, context :: Context.t()) ::
               {:ok, [term]} | [term] | {:error, term} | :unknown
   @callback expression(opts :: opts, context :: Context.t()) :: any
+  @doc """
+  A load statement to be applied when the calculation is used.
+  Only works with module-based or function-based calculations, not expression calculations.
+  """
   @callback load(query :: Ash.Query.t(), opts :: opts, context :: Context.t()) ::
               atom | [atom] | Keyword.t()
   @callback strict_loads?() :: boolean()
