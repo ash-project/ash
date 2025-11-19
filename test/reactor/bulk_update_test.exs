@@ -9,12 +9,23 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
   require Ash.Query
   alias Ash.{Query, Test.Domain}
 
+  defmodule TestNotifier do
+    @moduledoc false
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(self(), {:notification, notification})
+      :ok
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
       domain: Domain,
-      authorizers: [Ash.Policy.Authorizer]
+      authorizers: [Ash.Policy.Authorizer],
+      notifiers: [TestNotifier]
 
     attributes do
       uuid_primary_key :id
@@ -62,8 +73,8 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
     input :posts_to_publish
 
     bulk_update :publish_posts, Post, :publish do
-      initial(input(:posts_to_publish))
-      return_errors?(true)
+      initial input(:posts_to_publish)
+      return_errors? true
       authorize? false
     end
   end
@@ -75,8 +86,8 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
     input :posts_to_publish
 
     bulk_update :publish_posts, Post, :publish do
-      initial(input(:posts_to_publish))
-      return_errors?(true)
+      initial input(:posts_to_publish)
+      return_errors? true
       authorize? true
     end
   end
@@ -91,7 +102,12 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
       |> Map.fetch!(:records)
 
     assert {:ok, _} =
-             Reactor.run(BulkUpdateReactor, %{posts_to_publish: posts}, %{}, async?: false)
+             Reactor.run(
+              BulkUpdateReactor,
+              %{posts_to_publish: posts},
+              %{},
+              async?: false
+            )
 
     updated_posts = Ash.read!(Post, action: :read, load: [:published?])
 
@@ -112,7 +128,12 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
       |> Query.filter(is_nil(published_at))
 
     assert {:ok, _} =
-             Reactor.run(BulkUpdateReactor, %{posts_to_publish: post_query}, %{}, async?: false)
+             Reactor.run(
+              BulkUpdateReactor,
+              %{posts_to_publish: post_query},
+              %{},
+              async?: false
+            )
 
     updated_posts = Ash.read!(Post, action: :read, load: [:published?])
 
@@ -130,10 +151,110 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
       |> Map.fetch!(:records)
 
     assert {:error, %{errors: [%{error: %{errors: [error]}}]}} =
-             Reactor.run(BulkUpdateForbiddenReactor, %{posts_to_publish: posts}, %{},
+             Reactor.run(
+              BulkUpdateForbiddenReactor,
+              %{posts_to_publish: posts},
+              %{},
                async?: false
              )
 
     assert is_struct(error, Ash.Error.Forbidden)
+  end
+
+  test "it can provide notification metadata with a static value" do
+    defmodule BulkUpdateWithNotificationMetadataReactor do
+      @moduledoc false
+      use Reactor, extensions: [Ash.Reactor]
+
+      input :posts_to_publish
+
+      bulk_update :publish_posts, Post, :publish do
+        initial input(:posts_to_publish)
+        notify? true
+        return_records? true
+        authorize? false
+        notification_metadata %{source: "reactor", operation: "bulk_update"}
+      end
+    end
+
+    posts =
+      [%{title: "Post 1"}, %{title: "Post 2"}]
+      |> Ash.bulk_create!(Post, :create, return_records?: true)
+      |> Map.fetch!(:records)
+
+    assert {:ok, %Ash.BulkResult{records: records}} =
+             Reactor.run(
+               BulkUpdateWithNotificationMetadataReactor,
+               %{posts_to_publish: posts},
+               %{},
+               async?: false
+             )
+
+    assert length(records) == 2
+
+    # Check that we received notifications with metadata
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      action: %{type: :update},
+                      metadata: %{source: "reactor", operation: "bulk_update"}
+                    }}
+
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      action: %{type: :update},
+                      metadata: %{source: "reactor", operation: "bulk_update"}
+                    }}
+  end
+
+  test "it can provide notification metadata from a template" do
+    defmodule BulkUpdateWithTemplateNotificationMetadataReactor do
+      @moduledoc false
+      use Reactor, extensions: [Ash.Reactor]
+
+      ash do
+        default_domain(Domain)
+      end
+
+      input :posts_to_publish
+      input :metadata
+
+      bulk_update :publish_posts, Post, :publish do
+        initial input(:posts_to_publish)
+        notify? true
+        return_records? true
+        authorize? false
+        notification_metadata input(:metadata)
+      end
+    end
+
+    posts =
+      [%{title: "Post 1"}, %{title: "Post 2"}]
+      |> Ash.bulk_create!(Post, :create, return_records?: true)
+      |> Map.fetch!(:records)
+
+    metadata = %{batch_id: "batch_789", operation_id: "op_xyz"}
+
+    assert {:ok, %Ash.BulkResult{records: records}} =
+             Reactor.run(
+               BulkUpdateWithTemplateNotificationMetadataReactor,
+               %{posts_to_publish: posts, metadata: metadata},
+               %{},
+               async?: false
+             )
+
+    assert length(records) == 2
+
+    # Check that we received notifications with the template metadata
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      action: %{type: :update},
+                      metadata: ^metadata
+                    }}
+
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      action: %{type: :update},
+                      metadata: ^metadata
+                    }}
   end
 end

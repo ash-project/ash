@@ -456,7 +456,8 @@ defmodule Ash.Actions.Helpers do
 
   def notify(other, _changeset, _opts), do: other
 
-  defp resource_notification(changeset, result, opts) do
+  @doc false
+  def resource_notification(changeset, result, opts) do
     # This gives notifications a view of what actually changed
     changeset =
       Enum.reduce(changeset.atomics, changeset, fn {key, value}, changeset ->
