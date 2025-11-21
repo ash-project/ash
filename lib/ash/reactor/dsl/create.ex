@@ -21,6 +21,7 @@ defmodule Ash.Reactor.Dsl.Create do
             inputs: [],
             load: nil,
             name: nil,
+            notification_metadata: nil,
             resource: nil,
             tenant: [],
             transform: nil,
@@ -47,6 +48,7 @@ defmodule Ash.Reactor.Dsl.Create do
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
           load: nil | Ash.Reactor.Dsl.ActionLoad.t(),
           name: atom,
+          notification_metadata: nil | Ash.Reactor.Dsl.NotificationMetadata.t(),
           resource: module,
           tenant: nil | Ash.Reactor.Dsl.Tenant.t(),
           type: :create,
@@ -90,10 +92,11 @@ defmodule Ash.Reactor.Dsl.Create do
         guards: [Reactor.Dsl.Guard.__entity__(), Reactor.Dsl.Where.__entity__()],
         inputs: [Ash.Reactor.Dsl.Inputs.__entity__()],
         load: [Ash.Reactor.Dsl.ActionLoad.__entity__()],
+        notification_metadata: [Ash.Reactor.Dsl.NotificationMetadata.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()]
       ],
-      singleton_entity_keys: [:actor, :context, :load, :tenant],
+      singleton_entity_keys: [:actor, :context, :load, :notification_metadata, :tenant],
       recursive_as: :steps,
       schema:
         [

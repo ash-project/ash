@@ -8,6 +8,16 @@ defmodule Ash.Test.ReactorCreateTest do
 
   alias Ash.Test.Domain
 
+  defmodule TestNotifier do
+    @moduledoc false
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(self(), {:notification, notification})
+      :ok
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
@@ -48,7 +58,10 @@ defmodule Ash.Test.ReactorCreateTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      domain: Domain,
+      notifiers: [TestNotifier]
 
     ets do
       private? true
@@ -91,17 +104,13 @@ defmodule Ash.Test.ReactorCreateTest do
   test "it can create a post" do
     defmodule SimpleCreatePostReactor do
       @moduledoc false
-      use Reactor, extensions: [Ash.Reactor]
-
-      ash do
-        default_domain(Domain)
-      end
+      use Ash.Reactor
 
       input :title
       input :sub_title
 
       create :create_post, Post, :create do
-        inputs(%{title: input(:title), sub_title: input(:sub_title)})
+        inputs %{title: input(:title), sub_title: input(:sub_title)}
       end
     end
 
@@ -116,17 +125,13 @@ defmodule Ash.Test.ReactorCreateTest do
   test "it defaults to the primary action when the action is not supplied" do
     defmodule InferredActionNameCreatePostReactor do
       @moduledoc false
-      use Reactor, extensions: [Ash.Reactor]
-
-      ash do
-        default_domain(Domain)
-      end
+      use Ash.Reactor
 
       input :title
       input :sub_title
 
       create :create_post, Post do
-        inputs(%{title: input(:title), sub_title: input(:sub_title)})
+        inputs %{title: input(:title), sub_title: input(:sub_title)}
       end
     end
 
@@ -140,18 +145,14 @@ defmodule Ash.Test.ReactorCreateTest do
   test "it merges multiple `inputs` entities together" do
     defmodule MergedInputsCreatePostReactor do
       @moduledoc false
-      use Reactor, extensions: [Ash.Reactor]
-
-      ash do
-        default_domain(Domain)
-      end
+      use Ash.Reactor
 
       input :title
       input :sub_title
 
       create :create_post, Post, :create do
-        inputs(%{title: input(:title)})
-        inputs(%{sub_title: input(:sub_title)})
+        inputs %{title: input(:title)}
+        inputs %{sub_title: input(:sub_title)}
       end
     end
 
@@ -168,11 +169,7 @@ defmodule Ash.Test.ReactorCreateTest do
   test "`inputs` entities can be transformed separately" do
     defmodule TransformedInputsCreatePostReactor do
       @moduledoc false
-      use Reactor, extensions: [Ash.Reactor]
-
-      ash do
-        default_domain(Domain)
-      end
+      use Ash.Reactor
 
       input :title
 
@@ -187,7 +184,10 @@ defmodule Ash.Test.ReactorCreateTest do
       end
     end
 
-    assert {:ok, post} = Reactor.run(TransformedInputsCreatePostReactor, %{title: "Title"})
+    assert {:ok, post} =
+             Reactor.run(TransformedInputsCreatePostReactor, %{
+               title: "Title"
+             })
 
     assert post.title == "TITLE"
     assert post.sub_title == "title"
@@ -196,23 +196,23 @@ defmodule Ash.Test.ReactorCreateTest do
   test "it can provide an actor" do
     defmodule CreateWithActorCreatePostReactor do
       @moduledoc false
-      use Reactor, extensions: [Ash.Reactor]
-
-      ash do
-        default_domain(Domain)
-      end
+      use Ash.Reactor
 
       input :author_name
       input :title
       input :sub_title
 
       create :create_author, Author, :create do
-        inputs(%{name: input(:author_name)})
+        inputs %{name: input(:author_name)}
       end
 
       create :create_post, Post, :with_actor_as_author do
-        inputs(%{title: input(:title), sub_title: input(:sub_title)})
-        actor(result(:create_author))
+        inputs %{
+          title: input(:title),
+          sub_title: input(:sub_title)
+        }
+
+        actor result(:create_author)
       end
     end
 
@@ -230,18 +230,14 @@ defmodule Ash.Test.ReactorCreateTest do
   test "it can provide a tenant" do
     defmodule TenantedCreateAuthorReactor do
       @moduledoc false
-      use Reactor, extensions: [Ash.Reactor]
-
-      ash do
-        default_domain(Domain)
-      end
+      use Ash.Reactor
 
       input :author_name
       input :organisation_name
 
       create :create_author, Author, :create do
-        inputs(%{name: input(:author_name)})
-        tenant(input(:organisation_name))
+        inputs %{name: input(:author_name)}
+        tenant input(:organisation_name)
       end
     end
 
@@ -260,17 +256,13 @@ defmodule Ash.Test.ReactorCreateTest do
       @moduledoc false
       use Ash.Reactor
 
-      ash do
-        default_domain(Domain)
-      end
-
       input :author_name
 
       create :create_author, Author, :create do
-        inputs(%{name: input(:author_name)})
+        inputs %{name: input(:author_name)}
 
         undo :always
-        undo_action(:undo_create)
+        undo_action :undo_create
       end
 
       step :fail do
@@ -284,8 +276,13 @@ defmodule Ash.Test.ReactorCreateTest do
       end
     end
 
-    UndoingCreateAuthorReactor
-    |> Reactor.run(%{author_name: "Marty McFly"}, %{}, async?: false)
+
+    Reactor.run(
+      UndoingCreateAuthorReactor,
+      %{author_name: "Marty McFly"},
+      %{},
+      async?: false
+    )
     |> Ash.Test.assert_has_error(fn
       %Reactor.Error.Invalid.RunStepError{error: %RuntimeError{message: "hell"}} ->
         true
@@ -302,18 +299,17 @@ defmodule Ash.Test.ReactorCreateTest do
       @moduledoc false
       use Ash.Reactor
 
-      ash do
-        default_domain(Domain)
-      end
-
       input :title
       input :sub_title
 
       create :create_post, Post, :create do
-        inputs(%{title: input(:title), sub_title: input(:sub_title)})
+        inputs %{
+          title: input(:title),
+          sub_title: input(:sub_title)
+        }
 
         undo :always
-        undo_action(:soft_delete)
+        undo_action :soft_delete
       end
 
       step :fail do
@@ -328,8 +324,12 @@ defmodule Ash.Test.ReactorCreateTest do
       end
     end
 
-    UndoingCreatePostWithUpdateReactor
-    |> Reactor.run(%{title: "Test Post", sub_title: "Test Sub"}, %{}, async?: false)
+    Reactor.run(
+      UndoingCreatePostWithUpdateReactor,
+      %{title: "Test Post", sub_title: "Test Sub"},
+      %{},
+      async?: false
+    )
     |> Ash.Test.assert_has_error(fn
       %Reactor.Error.Invalid.RunStepError{error: %RuntimeError{message: "hell"}} ->
         true
@@ -351,24 +351,116 @@ defmodule Ash.Test.ReactorCreateTest do
 
       step :create_changeset do
         run fn _ ->
-          changeset =
-            Post
-            |> Ash.Changeset.for_create(:create, %{title: "Foo", sub_title: "Bar"})
+          changeset = Ash.Changeset.for_create(Post, :create, %{
+            title: "Foo",
+            sub_title: "Bar"
+          })
 
           {:ok, changeset}
         end
       end
 
       create :create_post, Post do
-        initial(result(:create_changeset))
+        initial result(:create_changeset)
       end
 
       return :create_post
     end
 
-    assert {:ok, post} = Reactor.run(CreateFromChangesetReactor, %{}, %{}, async?: false)
+    assert {:ok, post} = Reactor.run(CreateFromChangesetReactor, %{})
 
     assert post.title == "Foo"
     assert post.sub_title == "Bar"
+  end
+
+  test "it can provide notification metadata" do
+    defmodule CreateWithNotificationMetadataReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :title
+      input :sub_title
+
+      create :create_post, Post, :create do
+        inputs %{title: input(:title), sub_title: input(:sub_title)}
+        notification_metadata value(%{source: "reactor", operation: "create"})
+      end
+    end
+
+    assert {:ok, post} =
+             Reactor.run(CreateWithNotificationMetadataReactor, %{
+               title: "Title",
+               sub_title: "Sub-title"
+             })
+
+    assert post.title == "Title"
+
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      metadata: %{source: "reactor", operation: "create"}
+                    }}
+  end
+
+  test "it can provide notification metadata from a template" do
+    defmodule CreateWithTemplateNotificationMetadataReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :title
+      input :metadata
+
+      create :create_post, Post, :create do
+        inputs %{title: input(:title)}
+        notification_metadata input(:metadata)
+      end
+    end
+
+    metadata = %{request_id: "req_123", user_id: "user_456"}
+
+    assert {:ok, post} =
+             Reactor.run(CreateWithTemplateNotificationMetadataReactor, %{
+               title: "Title",
+               metadata: metadata
+             })
+
+    assert post.title == "Title"
+
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      metadata: ^metadata
+                    }}
+  end
+
+  test "it can transform notification metadata" do
+    defmodule CreateWithTransformedNotificationMetadataReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :title
+      input :metadata
+
+      create :create_post, Post, :create do
+        inputs %{title: input(:title)}
+
+        notification_metadata input(:metadata) do
+          transform fn val ->
+            Map.put(val, :doubled, val.count * 2)
+          end
+        end
+      end
+    end
+
+    assert {:ok, post} =
+             Reactor.run(CreateWithTransformedNotificationMetadataReactor, %{
+               title: "Title",
+               metadata: %{count: 1}
+             })
+
+    assert post.title == "Title"
+
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      metadata: %{count: 1, doubled: 2}
+                    }}
   end
 end

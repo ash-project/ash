@@ -31,7 +31,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             load: nil,
             max_concurrency: 0,
             name: nil,
-            notification_metadata: %{},
+            notification_metadata: nil,
             notify?: false,
             read_action: nil,
             resource: nil,
@@ -76,7 +76,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
           load: nil | Ash.Reactor.Dsl.ActionLoad.t(),
           max_concurrency: non_neg_integer(),
           name: atom,
-          notification_metadata: map,
+          notification_metadata: nil | Ash.Reactor.Dsl.NotificationMetadata.t(),
           notify?: boolean,
           read_action: atom,
           resource: module,
@@ -138,10 +138,11 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
         context: [Ash.Reactor.Dsl.Context.__entity__()],
         guards: [Reactor.Dsl.Guard.__entity__(), Reactor.Dsl.Where.__entity__()],
         load: [Ash.Reactor.Dsl.ActionLoad.__entity__()],
+        notification_metadata: [Ash.Reactor.Dsl.NotificationMetadata.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()]
       ],
-      singleton_entity_keys: [:actor, :context, :load, :tenant],
+      singleton_entity_keys: [:actor, :context, :load, :notification_metadata, :tenant],
       recursive_as: :steps,
       schema:
         [
@@ -184,13 +185,6 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
               "If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously.",
             required: false,
             default: 0
-          ],
-          notification_metadata: [
-            type: {:or, [Reactor.Template.type(), :map]},
-            doc:
-              "Metadata to be merged into the metadata field for all notifications sent from this operation.",
-            required: false,
-            default: %{}
           ],
           notify?: [
             type: :boolean,

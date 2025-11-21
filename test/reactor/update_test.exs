@@ -8,9 +8,22 @@ defmodule Ash.Test.ReactorUpdateTest do
 
   alias Ash.Test.Domain
 
+  defmodule TestNotifier do
+    @moduledoc false
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(self(), {:notification, notification})
+      :ok
+    end
+  end
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      domain: Domain,
+      notifiers: [TestNotifier]
 
     ets do
       private? true
@@ -55,49 +68,45 @@ defmodule Ash.Test.ReactorUpdateTest do
   test "it can update a post" do
     defmodule SimpleUpdatePostReactor do
       @moduledoc false
-      use Reactor, extensions: [Ash.Reactor]
-
-      ash do
-        default_domain(Domain)
-      end
+      use Ash.Reactor
 
       input :post
 
       update :publish_post, Post, :update do
-        initial(input(:post))
-        inputs(%{published: value(true)})
+        initial input(:post)
+        inputs %{published: value(true)}
       end
     end
 
-    {:ok, %{published: false} = original_post} =
-      Post.create(%{title: "Title", sub_title: "Sub-title"})
+    original_post = Post.create!(%{title: "Title", sub_title: "Sub-title"})
+    assert original_post.published == false
 
     assert {:ok, post} =
-             Reactor.run(SimpleUpdatePostReactor, %{post: original_post}, %{}, async?: false)
+             Reactor.run(
+               SimpleUpdatePostReactor,
+               %{post: original_post},
+               %{},
+               async?: false
+             )
 
-    assert post.published
+    assert post.published == true
   end
 
   test "it defaults to the primary action when the action is not supplied" do
     defmodule InferredActionNameUpdatePostReactor do
       @moduledoc false
-      use Reactor, extensions: [Ash.Reactor]
-
-      ash do
-        default_domain(Domain)
-      end
+      use Ash.Reactor
 
       input :post
       input :new_title
 
       update :update_post, Post do
-        inputs(%{title: input(:new_title)})
-        initial(input(:post))
+        inputs %{title: input(:new_title)}
+        initial input(:post)
       end
     end
 
-    {:ok, original_post} =
-      Post.create(%{title: "Title", sub_title: "Sub-title"})
+    original_post = Post.create!(%{title: "Title", sub_title: "Sub-title"})
 
     assert {:ok, post} =
              Reactor.run(
@@ -115,28 +124,27 @@ defmodule Ash.Test.ReactorUpdateTest do
       @moduledoc false
       use Ash.Reactor, extensions: [Ash.Reactor]
 
-      ash do
-        default_domain(Domain)
-      end
-
       input :post
       input :new_title
       input :new_sub_title
 
       update :update_post, Post, :update do
-        initial(input(:post))
-        inputs(%{title: input(:new_title)})
-        inputs(%{sub_title: input(:new_sub_title)})
+        initial input(:post)
+        inputs %{title: input(:new_title)}
+        inputs %{sub_title: input(:new_sub_title)}
       end
     end
 
-    {:ok, original_post} =
-      Post.create(%{title: "Title", sub_title: "Sub-title"})
+    original_post = Post.create!(%{title: "Title", sub_title: "Sub-title"})
 
     assert {:ok, post} =
              Reactor.run(
                MergedInputsCreatePostReactor,
-               %{post: original_post, new_title: "New Title", new_sub_title: "New Sub-title"},
+               %{
+                  post: original_post,
+                  new_title: "New Title",
+                  new_sub_title: "New Sub-title"
+               },
                %{},
                async?: false
              )
@@ -150,16 +158,12 @@ defmodule Ash.Test.ReactorUpdateTest do
       @moduledoc false
       use Ash.Reactor
 
-      ash do
-        default_domain(Domain)
-      end
-
       input :post
       input :new_title
 
       update :update_post, Post, :update do
-        initial(input(:post))
-        inputs(%{title: input(:new_title)})
+        initial input(:post)
+        inputs %{title: input(:new_title)}
         undo :always
         undo_action(:undo_update_post)
       end
@@ -175,18 +179,136 @@ defmodule Ash.Test.ReactorUpdateTest do
 
     {:ok, post} = Post.create(%{title: "Title"})
 
-    assert {:error, _} =
+    Reactor.run(
+      UndoingUpdateReactor,
+      %{post: post, new_title: "New title"},
+      %{},
+      async?: false
+    )
+    |> Ash.Test.assert_has_error(fn
+      %Reactor.Error.Invalid.RunStepError{error: %RuntimeError{message: "hell"}} ->
+        true
+
+      _ ->
+        false
+    end)
+
+    post_run_post = Post.get!(post.id)
+    assert post_run_post.title == "Title"
+  end
+
+  test "it can provide notification metadata" do
+    defmodule UpdateWithNotificationMetadataReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :post
+      input :new_title
+
+      update :update_post, Post, :update do
+        initial input(:post)
+        inputs %{title: input(:new_title)}
+        notification_metadata value(%{source: "reactor", operation: "update"})
+      end
+    end
+
+    {:ok, original_post} = Post.create(%{title: "Title", sub_title: "Sub-title"})
+
+    assert {:ok, post} =
              Reactor.run(
-               UndoingUpdateReactor,
+               UpdateWithNotificationMetadataReactor,
+               %{post: original_post, new_title: "Updated Title"},
+               %{},
+               async?: false
+             )
+
+    assert post.title == "Updated Title"
+
+    # Check the update notification has metadata
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      action: %{type: :update},
+                      metadata: %{source: "reactor", operation: "update"}
+                    }}
+  end
+
+  test "it can provide notification metadata from a template" do
+    defmodule UpdateWithTemplateNotificationMetadataReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :post
+      input :new_title
+      input :metadata
+
+      update :update_post, Post, :update do
+        initial input(:post)
+        inputs %{title: input(:new_title)}
+        notification_metadata input(:metadata)
+      end
+    end
+
+    original_post = Post.create!(%{title: "Title", sub_title: "Sub-title"})
+    metadata = %{request_id: "req_789", user_id: "user_xyz"}
+
+    assert {:ok, post} =
+             Reactor.run(
+               UpdateWithTemplateNotificationMetadataReactor,
+               %{post: original_post, new_title: "Updated Title", metadata: metadata},
+               %{},
+               async?: false
+             )
+
+    assert post.title == "Updated Title"
+
+    # Check the update notification has metadata
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      action: %{type: :update},
+                      metadata: ^metadata
+                    }}
+  end
+
+  test "it can transform notification metadata" do
+    defmodule UpdateWithTransformedNotificationMetadataReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :post
+      input :new_title
+      input :metadata
+
+      update :update_post, Post, :update do
+        initial input(:post)
+        inputs %{title: input(:new_title)}
+
+        notification_metadata input(:metadata) do
+          transform &Map.put(&1, :next_version, &1.version + 1)
+        end
+      end
+    end
+
+    original_post = Post.create!(%{title: "Title", sub_title: "Sub-title"})
+
+    assert {:ok, post} =
+             Reactor.run(
+               UpdateWithTransformedNotificationMetadataReactor,
                %{
-                 post: post,
-                 new_title: "New title"
+                 post: original_post,
+                 new_title: "Updated Title",
+                 metadata: %{version: 1}
                },
                %{},
                async?: false
              )
 
-    post_run_post = Post.get!(post.id)
-    assert post_run_post.title == "Title"
+    assert post.title == "Updated Title"
+
+    # Check the update notification has transformed metadata
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      action: %{type: :update},
+                      metadata: %{version: 1, next_version: 2}
+                    }}
   end
 end

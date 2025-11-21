@@ -33,6 +33,7 @@ defmodule Ash.Reactor.DestroyStep do
       |> maybe_set_kw(:return_destroyed?, return_destroyed?)
       |> maybe_set_kw(:load, arguments[:load])
       |> maybe_set_kw(:context, arguments[:context])
+      |> maybe_set_kw(:notification_metadata, arguments[:notification_metadata])
 
     arguments[:initial]
     |> Changeset.for_destroy(options[:action], arguments[:input], changeset_options)

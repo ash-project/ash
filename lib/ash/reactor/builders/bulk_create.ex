@@ -10,27 +10,18 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkCreate do
   alias Reactor.{Argument, Builder}
   alias Spark.{Dsl.Transformer, Error.DslError}
   import Ash.Reactor.BuilderUtils
-  import Reactor.Template, only: :macros
 
   @doc false
   @impl true
   def build(bulk_create, reactor) do
     initial = %Argument{name: :initial, source: bulk_create.initial}
 
-    notification_metadata =
-      case bulk_create.notification_metadata do
-        template when is_template(template) ->
-          %Argument{name: :notification_metadata, source: template}
-
-        map when is_map(map) ->
-          Argument.from_value(:notification_metadata, map)
-      end
-
     arguments =
-      [initial, notification_metadata]
+      [initial]
       |> maybe_append(bulk_create.actor)
       |> maybe_append(bulk_create.tenant)
       |> maybe_append(bulk_create.load)
+      |> maybe_append(bulk_create.notification_metadata)
       |> maybe_append(bulk_create.context)
       |> Enum.concat(bulk_create.wait_for)
 
