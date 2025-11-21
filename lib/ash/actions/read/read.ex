@@ -2818,14 +2818,17 @@ defmodule Ash.Actions.Read do
       end
 
       aggregate_query =
-        if aggregate.multitenancy == :bypass do
-          aggregate.query
-          |> Ash.Query.set_context(%{
-            shared: %{multitenancy: :bypass_all}
-          })
-        else
-          Ash.Query.set_tenant(aggregate.query, aggregate.query.tenant || query.tenant)
-        end
+        aggregate.query
+        |> Ash.Query.set_tenant(aggregate.query.tenant || query.tenant)
+        |> then(fn agg_query ->
+          if aggregate.multitenancy == :bypass do
+            Ash.Query.set_context(agg_query, %{
+              shared: %{private: %{multitenancy: :bypass_all}}
+            })
+          else
+            agg_query
+          end
+        end)
 
       case handle_multitenancy(aggregate_query) do
         {:ok, %{valid?: true} = query} ->
@@ -4923,6 +4926,10 @@ defmodule Ash.Actions.Read do
   defp set_phase(query, phase \\ :preparing)
        when phase in ~w[preparing before_action after_action executing around_transaction]a,
        do: %{query | phase: phase}
+
+  defp get_shared_multitenancy(%{context: %{private: %{multitenancy: multitenancy}}}) do
+    multitenancy
+  end
 
   defp get_shared_multitenancy(%{context: %{multitenancy: multitenancy}}) do
     multitenancy

@@ -96,9 +96,9 @@ defmodule Ash.Actions.Aggregate do
               results =
                 Enum.reduce_while(
                   [
-                    {bypass_aggs, nil,
+                    {bypass_aggs, query.tenant || original_tenant,
                      Map.merge(query.context || %{}, %{
-                       shared: %{multitenancy: :bypass_all}
+                       shared: %{private: %{multitenancy: :bypass_all}}
                      })},
                     {tenant_aggs, query.tenant || original_tenant, query.context}
                   ],

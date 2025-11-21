@@ -244,7 +244,7 @@ defmodule Ash.Query.Aggregate do
         if opts.multitenancy == :bypass do
           query
           |> Ash.Query.set_context(%{
-            shared: %{multitenancy: :bypass_all}
+            shared: %{private: %{multitenancy: :bypass_all}}
           })
         else
           query
