@@ -141,9 +141,9 @@ defmodule Ash.Test.ReactorUpdateTest do
              Reactor.run(
                MergedInputsCreatePostReactor,
                %{
-                  post: original_post,
-                  new_title: "New Title",
-                  new_sub_title: "New Sub-title"
+                 post: original_post,
+                 new_title: "New Title",
+                 new_sub_title: "New Sub-title"
                },
                %{},
                async?: false

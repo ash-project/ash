@@ -276,7 +276,6 @@ defmodule Ash.Test.ReactorCreateTest do
       end
     end
 
-
     Reactor.run(
       UndoingCreateAuthorReactor,
       %{author_name: "Marty McFly"},
@@ -351,10 +350,11 @@ defmodule Ash.Test.ReactorCreateTest do
 
       step :create_changeset do
         run fn _ ->
-          changeset = Ash.Changeset.for_create(Post, :create, %{
-            title: "Foo",
-            sub_title: "Bar"
-          })
+          changeset =
+            Ash.Changeset.for_create(Post, :create, %{
+              title: "Foo",
+              sub_title: "Bar"
+            })
 
           {:ok, changeset}
         end

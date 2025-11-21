@@ -24,7 +24,8 @@ defmodule Ash.Reactor.Dsl.NotificationMetadata do
 
     %Spark.Dsl.Entity{
       name: :notification_metadata,
-      describe: "Specifies metadata to be merged into the metadata field for all notifications sent from this operation",
+      describe:
+        "Specifies metadata to be merged into the metadata field for all notifications sent from this operation",
       args: [:source],
       imports: [Reactor.Dsl.Argument],
       identifier: {:auto, :unique_integer},
