@@ -426,11 +426,11 @@ defmodule Ash.Actions.Update.Bulk do
               stream,
               action,
               input,
-              Keyword.merge(opts, [
+              Keyword.merge(opts,
                 notify?: opts[:notify?],
                 notification_metadata: opts[:notification_metadata],
                 return_notifications?: opts[:notify?]
-              ]),
+              ),
               metadata_key,
               ref_metadata_key,
               context_key,

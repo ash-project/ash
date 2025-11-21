@@ -60,11 +60,11 @@ defmodule Ash.Test.Reactor.BulkCreateTest do
 
     assert {:ok, _} =
              Reactor.run(
-              BulkCreateReactor,
-              %{post_attrs: post_attrs},
-              %{},
-              async?: false
-            )
+               BulkCreateReactor,
+               %{post_attrs: post_attrs},
+               %{},
+               async?: false
+             )
 
     created_posts =
       Post

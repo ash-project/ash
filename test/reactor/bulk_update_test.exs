@@ -103,11 +103,11 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
 
     assert {:ok, _} =
              Reactor.run(
-              BulkUpdateReactor,
-              %{posts_to_publish: posts},
-              %{},
-              async?: false
-            )
+               BulkUpdateReactor,
+               %{posts_to_publish: posts},
+               %{},
+               async?: false
+             )
 
     updated_posts = Ash.read!(Post, action: :read, load: [:published?])
 
@@ -129,11 +129,11 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
 
     assert {:ok, _} =
              Reactor.run(
-              BulkUpdateReactor,
-              %{posts_to_publish: post_query},
-              %{},
-              async?: false
-            )
+               BulkUpdateReactor,
+               %{posts_to_publish: post_query},
+               %{},
+               async?: false
+             )
 
     updated_posts = Ash.read!(Post, action: :read, load: [:published?])
 
@@ -152,9 +152,9 @@ defmodule Ash.Test.Reactor.BulkUpdateTest do
 
     assert {:error, %{errors: [%{error: %{errors: [error]}}]}} =
              Reactor.run(
-              BulkUpdateForbiddenReactor,
-              %{posts_to_publish: posts},
-              %{},
+               BulkUpdateForbiddenReactor,
+               %{posts_to_publish: posts},
+               %{},
                async?: false
              )
 
