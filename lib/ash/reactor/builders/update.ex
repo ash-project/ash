@@ -21,6 +21,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Update do
         |> maybe_append(update.tenant)
         |> maybe_append(update.load)
         |> maybe_append(update.context)
+        |> maybe_append(update.notification_metadata)
         |> Enum.concat(update.wait_for)
         |> Enum.concat([%Argument{name: :initial, source: update.initial}])
 

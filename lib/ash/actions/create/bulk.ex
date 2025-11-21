@@ -1538,15 +1538,7 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp notification(changeset, result, opts) do
-    %Ash.Notifier.Notification{
-      resource: changeset.resource,
-      domain: changeset.domain,
-      actor: opts[:actor],
-      action: changeset.action,
-      for: Ash.Resource.Info.notifiers(changeset.resource) ++ changeset.action.notifiers,
-      data: result,
-      changeset: changeset
-    }
+    Ash.Actions.Helpers.resource_notification(changeset, result, opts)
   end
 
   defp templated_opts({:templated, opts}, _actor, _tenant, _arguments, _context, _changeset),
