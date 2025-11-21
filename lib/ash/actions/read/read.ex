@@ -836,10 +836,10 @@ defmodule Ash.Actions.Read do
       end
     else
       {:ok, query} ->
-        {{:error, query}, query}
+        {run_after_transaction_hooks({:error, query}, query), query}
 
       {:error, error} ->
-        {{:error, error}, query}
+        {run_after_transaction_hooks({:error, error}, query), query}
     end
   end
 
