@@ -2788,57 +2788,67 @@ defmodule Ash.Actions.Read do
   # Validate context multitenancy and its relationships are not used with bypass
   # Ref: https://github.com/ash-project/ash_postgres/pull/649#issuecomment-3536654583
   defp handle_aggregate_multitenancy(query) do
-    validate_context_strategy! = fn resource, relationship_name, aggregate_name ->
+    validate_context_strategy = fn resource, relationship_name, aggregate_name ->
       if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
         location = relationship_name && " in relationship `#{relationship_name}`"
 
-        raise Ash.Error.Query.InvalidQuery,
-          field: aggregate_name,
-          message: """
-          Aggregate `#{aggregate_name}` uses `multitenancy: :bypass` but resource \
-          `#{inspect(resource)}`#{location} uses `:context` multitenancy strategy. \
-          Multitenancy bypass only supports `:attribute` strategy.
-          """
+        {:error,
+         Ash.Error.Query.InvalidQuery.exception(
+           field: aggregate_name,
+           message: """
+           Aggregate `#{aggregate_name}` uses `multitenancy: :bypass` but resource \
+           `#{inspect(resource)}`#{location} uses `:context` multitenancy strategy. \
+           Multitenancy bypass only supports `:attribute` strategy.
+           """
+         )}
+      else
+        :ok
       end
     end
 
     Enum.reduce_while(query.aggregates, {:ok, %{}}, fn {key, aggregate}, {:ok, acc} ->
-      if aggregate.multitenancy == :bypass do
-        # Check main resource
-        validate_context_strategy!.(aggregate.resource, nil, aggregate.name)
+      validation =
+        if aggregate.multitenancy == :bypass do
+          case validate_context_strategy.(aggregate.resource, nil, aggregate.name) do
+            :ok ->
+              Enum.reduce_while(aggregate.relationship_path, {:ok, aggregate.resource}, fn
+                rel_name, {:ok, current_resource} ->
+                  relationship = Ash.Resource.Info.relationship(current_resource, rel_name)
 
-        # Check each resource in the relationship path (support nested relationships)
-        _ =
-          aggregate.relationship_path
-          |> Enum.reduce(aggregate.resource, fn rel_name, current_resource ->
-            relationship = Ash.Resource.Info.relationship(current_resource, rel_name)
-            validate_context_strategy!.(relationship.destination, rel_name, aggregate.name)
-            relationship.destination
-          end)
-      end
+                  validate_context_strategy.(relationship.destination, rel_name, aggregate.name)
+                  |> case do
+                    :ok -> {:cont, {:ok, relationship.destination}}
+                    error -> {:halt, error}
+                  end
+              end)
+              |> then(fn
+                {:ok, _} -> :ok
+                error -> error
+              end)
+
+            error ->
+              error
+          end
+        else
+          :ok
+        end
 
       aggregate_query =
         aggregate.query
         |> Ash.Query.set_tenant(aggregate.query.tenant || query.tenant)
-        |> then(fn agg_query ->
-          if aggregate.multitenancy == :bypass do
-            Ash.Query.set_context(agg_query, %{
-              shared: %{private: %{multitenancy: :bypass_all}}
-            })
-          else
-            agg_query
-          end
-        end)
+        |> then(
+          &if(aggregate.multitenancy == :bypass,
+            do: Ash.Query.set_context(&1, %{shared: %{private: %{multitenancy: :bypass_all}}}),
+            else: &1
+          )
+        )
 
-      case handle_multitenancy(aggregate_query) do
-        {:ok, %{valid?: true} = query} ->
-          {:cont, {:ok, Map.put(acc, key, %{aggregate | query: query})}}
-
-        {:ok, query} ->
-          {:halt, {:error, Ash.Error.set_path(query.errors, aggregate.name)}}
-
-        {:error, error} ->
-          {:halt, {:error, Ash.Error.set_path(error, aggregate.name)}}
+      with :ok <- validation,
+           {:ok, %{valid?: true} = q} <- handle_multitenancy(aggregate_query) do
+        {:cont, {:ok, Map.put(acc, key, %{aggregate | query: q})}}
+      else
+        {:ok, q} -> {:halt, {:error, Ash.Error.set_path(q.errors, aggregate.name)}}
+        {:error, error} -> {:halt, {:error, Ash.Error.set_path(error, aggregate.name)}}
       end
     end)
     |> case do

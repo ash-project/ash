@@ -728,7 +728,7 @@ defmodule Ash.Test.Resource.AggregatesTest do
       end
     end
 
-    test "raises error when main resource uses context multitenancy with bypass aggregate" do
+    test "returns error when main resource uses context multitenancy with bypass aggregate" do
       defmodule ContextPost do
         @moduledoc false
         use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -763,12 +763,13 @@ defmodule Ash.Test.Resource.AggregatesTest do
         end
       end
 
-      # Should raise error because ContextPost uses :context strategy
-      assert_raise Ash.Error.Invalid, ~r/uses `:context` multitenancy strategy/, fn ->
-        ContextPost
-        |> Ash.Query.load([:comment_count_bypass])
-        |> Ash.read(domain: Domain, action: :read_bypass)
-      end
+      # Should return error because ContextPost uses :context strategy
+      assert {:error, error} =
+               ContextPost
+               |> Ash.Query.load([:comment_count_bypass])
+               |> Ash.read(domain: Domain, action: :read_bypass)
+
+      assert Exception.message(error) =~ "uses `:context` multitenancy strategy"
     end
 
     test "works when main resource uses context multitenancy with normal aggregate (no bypass)" do
@@ -811,7 +812,7 @@ defmodule Ash.Test.Resource.AggregatesTest do
       assert is_list(result)
     end
 
-    test "raises error when relationship path includes context multitenancy resource with bypass" do
+    test "returns error when relationship path includes context multitenancy resource with bypass" do
       defmodule ContextLike do
         @moduledoc false
         use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -889,14 +890,14 @@ defmodule Ash.Test.Resource.AggregatesTest do
         end
       end
 
-      # Should raise error because ContextLike (in path) uses :context strategy
-      assert_raise Ash.Error.Invalid,
-                   ~r/in relationship `likes`.*uses `:context` multitenancy strategy/,
-                   fn ->
-                     AttributePost
-                     |> Ash.Query.load([:like_count_bypass])
-                     |> Ash.read!(domain: Domain, tenant: "tenant1")
-                   end
+      # Should return error because ContextLike (in path) uses :context strategy
+      assert {:error, error} =
+               AttributePost
+               |> Ash.Query.load([:like_count_bypass])
+               |> Ash.read(domain: Domain, tenant: "tenant1")
+
+      assert Exception.message(error) =~ "in relationship `likes`"
+      assert Exception.message(error) =~ "uses `:context` multitenancy strategy"
     end
 
     test "works when bypass aggregate avoids context multitenancy resource in path" do
