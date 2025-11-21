@@ -13,7 +13,7 @@ defmodule Ash.Reactor.Dsl.NotificationMetadata do
 
   @type t :: %__MODULE__{
           __identifier__: any,
-          source: Template.t(),
+          source: Template.t() | map() | nil,
           transform: nil | (any -> any) | {module, keyword} | mfa,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }

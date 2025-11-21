@@ -21,7 +21,7 @@ defmodule Ash.Reactor.Dsl.Destroy do
             inputs: [],
             load: nil,
             name: nil,
-            notification_metadata: [],
+            notification_metadata: nil,
             resource: nil,
             return_destroyed?: false,
             tenant: [],
