@@ -2471,6 +2471,7 @@ defmodule Ash.Query do
                  authorize?: aggregate.authorize?,
                  sortable?: aggregate.sortable?,
                  sensitive?: aggregate.sensitive?,
+                 multitenancy: aggregate.multitenancy,
                  join_filters:
                    Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter}),
                  resource: aggregate.resource,
