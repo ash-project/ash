@@ -224,6 +224,13 @@ defmodule Ash.Actions.Action do
         context,
         run_opts
       )
+      |> case do
+        {:ok, _v} when is_nil(input.action.returns) ->
+          :ok
+
+        other ->
+          other
+      end
     else
       Ash.Resource.Actions.Implementation.run(module, input, run_opts, context)
     end
