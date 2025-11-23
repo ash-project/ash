@@ -144,9 +144,7 @@ defmodule Ash.Test.Resource.InfoTest do
     end
 
     calculations do
-      calculate :formatted_post_title, :string, expr("Post title: " <> post_title),
-        public?: true,
-        load: [:post_title]
+      calculate :formatted_post_title, :string, expr("Post title: " <> post_title), public?: true
     end
 
     relationships do

@@ -371,15 +371,12 @@ defmodule Ash.Test.CalculationTest do
       calculate :active, :boolean do
         public?(true)
         calculation(expr(is_active && user_is_active))
-        load([:user_is_active])
       end
 
       calculate :active_elixir, :boolean do
         calculation fn record, _ ->
           record.is_active && record.user_is_active
         end
-
-        load [:is_active, :user_is_active]
       end
 
       calculate :has_user, :boolean, RoleHasUser
@@ -783,7 +780,6 @@ defmodule Ash.Test.CalculationTest do
                 :string,
                 expr(^arg(:salutation) <> " " <> conditional_full_name) do
         argument(:salutation, :string, allow_nil?: false)
-        load([:conditional_full_name])
         public?(true)
       end
 
