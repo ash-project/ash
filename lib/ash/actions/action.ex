@@ -354,7 +354,7 @@ defmodule Ash.Actions.Action do
                   end
               end
             else
-              raise_invalid_generic_action_return!(input, result)
+              raise_invalid_generic_action_return!(input, {:ok, result})
             end
 
           {:ok, result, notifications} ->
