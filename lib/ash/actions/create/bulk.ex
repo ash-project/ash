@@ -62,7 +62,8 @@ defmodule Ash.Actions.Create.Bulk do
               %{
                 bulk_result
                 | notifications:
-                    bulk_result.notifications ++ Process.delete(:ash_notifications) || []
+                    (bulk_result.notifications || []) ++
+                      (Process.delete(:ash_notifications) || [])
               }
             else
               bulk_result
