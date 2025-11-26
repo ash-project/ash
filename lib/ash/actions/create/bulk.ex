@@ -1456,7 +1456,11 @@ defmodule Ash.Actions.Create.Bulk do
                ) do
             {:ok, result} ->
               if opts[:return_records?] || must_return_records_for_changes? do
-                [result]
+                [
+                  Ash.Resource.set_metadata(result, %{
+                    bulk_create_index: changeset.context.bulk_create.index
+                  })
+                ]
               else
                 []
               end
