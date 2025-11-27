@@ -2788,51 +2788,7 @@ defmodule Ash.Actions.Read do
   # Validate context multitenancy and its relationships are not used with bypass
   # Ref: https://github.com/ash-project/ash_postgres/pull/649#issuecomment-3536654583
   defp handle_aggregate_multitenancy(query) do
-    validate_context_strategy = fn resource, relationship_name, aggregate_name ->
-      if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
-        location = relationship_name && " in relationship `#{relationship_name}`"
-
-        {:error,
-         Ash.Error.Query.InvalidQuery.exception(
-           field: aggregate_name,
-           message: """
-           Aggregate `#{aggregate_name}` uses `multitenancy: :bypass` but resource \
-           `#{inspect(resource)}`#{location} uses `:context` multitenancy strategy. \
-           Multitenancy bypass only supports `:attribute` strategy.
-           """
-         )}
-      else
-        :ok
-      end
-    end
-
     Enum.reduce_while(query.aggregates, {:ok, %{}}, fn {key, aggregate}, {:ok, acc} ->
-      validation =
-        if aggregate.multitenancy == :bypass do
-          case validate_context_strategy.(aggregate.resource, nil, aggregate.name) do
-            :ok ->
-              Enum.reduce_while(aggregate.relationship_path, {:ok, aggregate.resource}, fn
-                rel_name, {:ok, current_resource} ->
-                  relationship = Ash.Resource.Info.relationship(current_resource, rel_name)
-
-                  validate_context_strategy.(relationship.destination, rel_name, aggregate.name)
-                  |> case do
-                    :ok -> {:cont, {:ok, relationship.destination}}
-                    error -> {:halt, error}
-                  end
-              end)
-              |> then(fn
-                {:ok, _} -> :ok
-                error -> error
-              end)
-
-            error ->
-              error
-          end
-        else
-          :ok
-        end
-
       aggregate_query =
         aggregate.query
         |> Ash.Query.set_tenant(aggregate.query.tenant || query.tenant)
@@ -2843,7 +2799,7 @@ defmodule Ash.Actions.Read do
           )
         )
 
-      with :ok <- validation,
+      with :ok <- validate_aggregate_multitenancy(aggregate),
            {:ok, %{valid?: true} = q} <- handle_multitenancy(aggregate_query) do
         {:cont, {:ok, Map.put(acc, key, %{aggregate | query: q})}}
       else
@@ -2854,6 +2810,48 @@ defmodule Ash.Actions.Read do
     |> case do
       {:ok, aggregates} -> {:ok, %{query | aggregates: aggregates}}
       {:error, error} -> {:error, error}
+    end
+  end
+
+  defp validate_aggregate_multitenancy(aggregate) do
+    if aggregate.multitenancy == :bypass do
+      with :ok <- validate_context_multitenancy_strategy(aggregate.resource, nil, aggregate.name) do
+        Enum.reduce_while(aggregate.relationship_path, {:ok, aggregate.resource}, fn
+          rel_name, {:ok, current_resource} ->
+            relationship = Ash.Resource.Info.relationship(current_resource, rel_name)
+
+            relationship.destination
+            |> validate_context_multitenancy_strategy(rel_name, aggregate.name)
+            |> case do
+              :ok -> {:cont, {:ok, relationship.destination}}
+              error -> {:halt, error}
+            end
+        end)
+        |> case do
+          {:ok, _} -> :ok
+          error -> error
+        end
+      end
+    else
+      :ok
+    end
+  end
+
+  defp validate_context_multitenancy_strategy(resource, relationship_name, aggregate_name) do
+    if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+      location = relationship_name && " in relationship `#{relationship_name}`"
+
+      {:error,
+       Ash.Error.Query.InvalidQuery.exception(
+         field: aggregate_name,
+         message: """
+         Aggregate `#{aggregate_name}` uses `multitenancy: :bypass` but resource \
+         `#{inspect(resource)}`#{location} uses `:context` multitenancy strategy. \
+         Multitenancy bypass only supports `:attribute` strategy.
+         """
+       )}
+    else
+      :ok
     end
   end
 
