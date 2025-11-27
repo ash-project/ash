@@ -1004,6 +1004,21 @@ defmodule Ash.Test.Actions.ReadTest do
 
       assert result.__metadata__.tenant == "dynamic-tenant"
     end
+
+    test "after_transaction hook runs when multitenancy check fails", %{tenant1: tenant1} do
+      TenantPost
+      |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"}, tenant: tenant1)
+      |> Ash.create!()
+
+      query =
+        TenantPost
+        |> Ash.Query.after_transaction(fn _query, {:error, %Ash.Error.Invalid.TenantRequired{}} ->
+          {:error, "Custom error from after_transaction"}
+        end)
+
+      assert {:error, error} = Ash.read(query)
+      assert Exception.message(error) =~ "Custom error from after_transaction"
+    end
   end
 
   describe "query validations" do
@@ -1340,6 +1355,39 @@ defmodule Ash.Test.Actions.ReadTest do
   end
 
   describe "transaction hooks" do
+    test "after_transaction hook error overrides success result" do
+      Author |> Ash.Changeset.for_create(:create, %{name: "Test"}) |> Ash.create!()
+
+      query =
+        Author
+        |> Ash.Query.filter(name == "Test")
+        |> Ash.Query.after_transaction(fn _query, {:ok, _results} ->
+          {:error, "Custom error from after_transaction hook"}
+        end)
+
+      assert_raise Ash.Error.Unknown, ~r/Custom error from after_transaction hook/, fn ->
+        Ash.read!(query, action: :in_transaction)
+      end
+    end
+
+    test "after_transaction hook error overrides forbidden error" do
+      Author |> Ash.Changeset.for_create(:create, %{name: "Test"}) |> Ash.create!()
+
+      query =
+        Author
+        |> Ash.Query.filter(name == "Test")
+        |> Ash.Query.after_action(fn _query, _results ->
+          {:error, Ash.Error.Forbidden.exception([])}
+        end)
+        |> Ash.Query.after_transaction(fn _query, {:error, %Ash.Error.Forbidden{}} ->
+          {:error, "Custom error from after_transaction hook"}
+        end)
+
+      assert_raise Ash.Error.Unknown, ~r/Custom error from after_transaction hook/, fn ->
+        Ash.read!(query, action: :in_transaction)
+      end
+    end
+
     test "before_transaction hook can modify query" do
       author1 = Author |> Ash.Changeset.for_create(:create, %{name: "Test"}) |> Ash.create!()
       _author2 = Author |> Ash.Changeset.for_create(:create, %{name: "Other"}) |> Ash.create!()

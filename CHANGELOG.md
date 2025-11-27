@@ -8,6 +8,43 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.10.0](https://github.com/ash-project/ash/compare/v3.9.0...v3.10.0) (2025-11-25)
+
+
+
+
+### Features:
+
+* allow update actions for undo in reactor create steps (#2387) by [@barnabasJ](https://github.com/barnabasJ) [(#2387)](https://github.com/ash-project/ash/pull/2387)
+
+* calculation verifier (#2439) by [@barnabasJ](https://github.com/barnabasJ) [(#2439)](https://github.com/ash-project/ash/pull/2439)
+
+* add verifier to warn if load is used with expr calc by [@barnabasJ](https://github.com/barnabasJ) [(#2439)](https://github.com/ash-project/ash/pull/2439)
+
+### Bug Fixes:
+
+* only return `:ok` from reactors when actions have no return type by [@zachdaniel](https://github.com/zachdaniel)
+
+* respect read-action in rel check (#2448) by [@barnabasJ](https://github.com/barnabasJ) [(#2448)](https://github.com/ash-project/ash/pull/2448)
+
+* handle soft destroy return type in managed relationships by [@zachdaniel](https://github.com/zachdaniel)
+
+* Update typespec for deprecated `can/3` on domain (#2443) by [@Munksgaard](https://github.com/Munksgaard) [(#2443)](https://github.com/ash-project/ash/pull/2443)
+
+* error on non existend action (#2435) by [@barnabasJ](https://github.com/barnabasJ) [(#2435)](https://github.com/ash-project/ash/pull/2435)
+
+* provide context-aware error messages for manage_relationship on_no_match errors (#2415) by [@barnabasJ](https://github.com/barnabasJ) [(#2415)](https://github.com/ash-project/ash/pull/2415)
+
+### Improvements:
+
+* don't squish code interface double newlines by [@zachdaniel](https://github.com/zachdaniel)
+
+* significantly optimize code interface generation by [@zachdaniel](https://github.com/zachdaniel)
+
+* Allow overriding Ash.Type.NewType cast_input_array/2 (#2438) by Christopher Bonhage [(#2438)](https://github.com/ash-project/ash/pull/2438)
+
+* use regexes again now that otp 28.1 is out by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.9.0](https://github.com/ash-project/ash/compare/v3.8.0...v3.9.0) (2025-11-09)
 
 

@@ -224,6 +224,13 @@ defmodule Ash.Actions.Action do
         context,
         run_opts
       )
+      |> case do
+        {:ok, _v} when is_nil(input.action.returns) ->
+          :ok
+
+        other ->
+          other
+      end
     else
       Ash.Resource.Actions.Implementation.run(module, input, run_opts, context)
     end
@@ -354,7 +361,7 @@ defmodule Ash.Actions.Action do
                   end
               end
             else
-              raise_invalid_generic_action_return!(input, result)
+              raise_invalid_generic_action_return!(input, {:ok, result})
             end
 
           {:ok, result, notifications} ->

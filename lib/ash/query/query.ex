@@ -19,7 +19,7 @@ defmodule Ash.Query do
   |> Ash.read!()
 
   MyApp.Author
-  |> Ash.Query.aggregate(:published_post_count, :posts, query: [filter: [published: true]])
+  |> Ash.Query.aggregate(:published_post_count, :count, :posts, query: [filter: [published: true]])
   |> Ash.Query.sort(published_post_count: :desc)
   |> Ash.Query.limit(10)
   |> Ash.read!()
@@ -4122,7 +4122,7 @@ defmodule Ash.Query do
   Ash.Query.sort(query, calc(count(friends), :desc))
 
   # Specify a type (required in some cases when we can't determine a type)
-  Ash.Query.sort(query, [{calc(fragment("some_sql(?)", field, type: :string), :desc}])
+  Ash.Query.sort(query, [{calc(fragment("some_sql(?)", field), type: :string), :desc}])
   ```
 
   ## Sort Strings

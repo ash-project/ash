@@ -649,75 +649,20 @@ defmodule Ash.CodeInterface do
 
         resolve_params_and_opts =
           quote do
-            {params, opts} =
-              Ash.CodeInterface.params_and_opts(
+            {params, opts, arg_params, filter_params, custom_input_errors} =
+              Ash.CodeInterface.resolve_params_and_opts(
                 params_or_opts,
                 opts,
-                fn opts ->
-                  default_options =
-                    case unquote(Macro.escape(interface.default_options)) do
-                      fun when is_function(fun, 0) -> fun.()
-                      static_options -> static_options
-                    end
-
-                  opts
-                  |> Ash.CodeInterface.merge_default_opts(default_options)
-                  |> unquote(interface_options).validate!()
-                  |> unquote(interface_options).to_options()
-                end
-              )
-
-            arg_params = unquote(arg_params)
-
-            params =
-              if is_list(params) do
-                Enum.map(params, fn item ->
-                  if is_map(item) do
-                    Map.merge(item, arg_params)
-                  else
-                    raise ArgumentError, """
-                    Expected `params` to be a map or a list of maps.
-                    Got:  #{inspect(params)}
-                    """
-                  end
-                end)
-              else
-                if is_map(params) do
-                  Map.merge(params, arg_params)
-                else
-                  raise ArgumentError, """
-                  Expected `params` to be a map or a list of maps.
-                  Got:  #{inspect(params)}
-                  """
-                end
-              end
-
-            case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
-                   if is_list(params) do
-                     Enum.any?(
-                       params,
-                       &(Map.has_key?(&1, input) || Map.has_key?(&1, to_string(input)))
-                     )
-                   else
-                     Map.has_key?(params, input) || Map.has_key?(params, to_string(input))
-                   end
-                 end) do
-              [] ->
-                :ok
-
-              inputs ->
-                raise ArgumentError,
-                      "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.name)}/#{unquote(Enum.count(interface.args || []) + 2)}"
-            end
-
-            {params, custom_input_errors} =
-              Ash.CodeInterface.handle_custom_inputs(
-                params,
+                unquote(Macro.escape(interface.default_options)),
+                unquote(interface_options),
+                unquote(arg_params),
+                unquote(interface.exclude_inputs || []),
+                unquote(resource),
+                unquote(interface.name),
+                unquote(Enum.count(interface.args || []) + 2),
                 unquote(custom_inputs),
-                unquote(resource)
+                unquote(filter_params)
               )
-
-            filter_params = unquote(filter_params)
           end
 
         {subject, subject_args, resolve_subject, act, act!} =
@@ -727,38 +672,15 @@ defmodule Ash.CodeInterface do
 
               resolve_subject =
                 quote do
-                  {input_opts, opts} =
-                    Keyword.split(opts, [
-                      :input,
-                      :actor,
-                      :tenant,
-                      :authorize?,
-                      :tracer,
-                      :scope,
-                      :private_arguments
-                    ])
-
-                  {input, input_opts} = Keyword.pop(input_opts, :input)
-
-                  input_opts = Keyword.put(input_opts, :domain, unquote(domain))
-
-                  case input do
-                    %Ash.ActionInput{resource: unquote(resource)} ->
-                      input
-
-                    %Ash.ActionInput{resource: other_resource} ->
-                      raise ArgumentError,
-                            "Action input resource #{inspect(other_resource)} does not match expected resource #{inspect(unquote(resource))}."
-
-                    input ->
-                      input
-                  end
-
-                  input =
-                    input
-                    |> Kernel.||(unquote(resource))
-                    |> Ash.ActionInput.for_action(unquote(action.name), params, input_opts)
-                    |> Ash.ActionInput.add_error(custom_input_errors)
+                  {input, input_opts, opts} =
+                    Ash.CodeInterface.resolve_action_subject(
+                      opts,
+                      params,
+                      unquote(domain),
+                      unquote(resource),
+                      unquote(action.name),
+                      custom_input_errors
+                    )
                 end
 
               act = quote do: Ash.run_action(input, opts)
@@ -769,117 +691,68 @@ defmodule Ash.CodeInterface do
             :read ->
               subject = quote do: query
 
-              resolve_subject =
-                quote do
-                  {query_opts, opts} =
-                    Keyword.split(opts, [
-                      :query,
-                      :actor,
-                      :tenant,
-                      :authorize?,
-                      :tracer,
-                      :context,
-                      :scope
-                    ])
+              filter_subject =
+                if filter_keys && !Enum.empty?(filter_keys) do
+                  quote do
+                    require Ash.Query
 
-                  {query, query_opts} = Keyword.pop(query_opts, :query)
-
-                  query_opts = Keyword.put(query_opts, :domain, unquote(domain))
-
-                  query =
-                    case query do
-                      %Ash.Query{resource: unquote(resource)} = query ->
-                        query
-
-                      %Ash.Query{resource: other_resource} ->
-                        raise ArgumentError,
-                              "Query resource #{inspect(other_resource)} does not match expected resource #{inspect(unquote(resource))}."
-
-                      unquote(resource) ->
-                        unquote(resource)
-                        |> Ash.Query.new()
-
-                      other_resource
-                      when is_atom(other_resource) and not is_nil(other_resource) ->
-                        raise ArgumentError,
-                              "Query resource #{inspect(other_resource)} does not match expected resource #{inspect(unquote(resource))}."
-
-                      query ->
-                        Ash.Query.build(unquote(resource), query || [])
-                    end
+                    query
+                    |> Ash.Query.for_read(unquote(action.name), params, query_opts)
+                    |> Ash.Query.do_filter(unquote(filter_params))
                     |> Ash.Query.add_error(custom_input_errors)
-
-                  query =
-                    if unquote(filter_keys) && !Enum.empty?(unquote(filter_keys)) do
-                      require Ash.Query
-
-                      query
-                      |> Ash.Query.for_read(unquote(action.name), params, query_opts)
-                      |> Ash.Query.do_filter(filter_params)
-                    else
-                      Ash.Query.for_read(query, unquote(action.name), params, query_opts)
-                    end
+                  end
+                else
+                  quote do
+                    query
+                    |> Ash.Query.for_read(unquote(action.name), params, query_opts)
                     |> Ash.Query.add_error(custom_input_errors)
+                  end
                 end
 
-              resolve_not_found_error? =
+              resolve_subject =
                 quote do
-                  {not_found_error?, opts} = Keyword.pop(opts, :not_found_error?)
+                  {query, query_opts, opts} =
+                    Ash.CodeInterface.resolve_read_subject(
+                      opts,
+                      unquote(domain),
+                      unquote(resource),
+                      custom_input_errors
+                    )
 
-                  not_found_error? =
-                    if not_found_error? != nil,
-                      do: not_found_error?,
-                      else: unquote(interface.not_found_error?)
+                  query =
+                    unquote(filter_subject)
                 end
 
               act =
                 if interface.get? do
                   quote do
-                    unquote(resolve_not_found_error?)
-
-                    Ash.read_one(query, Keyword.drop(opts, [:stream?, :stream_options]))
-                    |> case do
-                      {:ok, nil} when not_found_error? ->
-                        {:error,
-                         Ash.Error.to_error_class(
-                           Ash.Error.Query.NotFound.exception(resource: query.resource)
-                         )}
-
-                      result ->
-                        result
-                    end
+                    Ash.CodeInterface.read_get_act(
+                      query,
+                      unquote(interface.not_found_error?),
+                      opts
+                    )
                   end
                 else
-                  quote do: Ash.read(query, Keyword.drop(opts, [:stream?, :stream_options]))
+                  quote do
+                    Ash.CodeInterface.read_list_act(
+                      query,
+                      opts
+                    )
+                  end
                 end
 
               act! =
                 if interface.get? do
                   quote do
-                    unquote(resolve_not_found_error?)
-
-                    Ash.read_one!(query, Keyword.drop(opts, [:stream?, :stream_options]))
-                    |> case do
-                      nil when not_found_error? ->
-                        raise Ash.Error.to_error_class(
-                                Ash.Error.Query.NotFound.exception(resource: query.resource)
-                              )
-
-                      result ->
-                        result
-                    end
+                    Ash.CodeInterface.read_get_act!(
+                      query,
+                      unquote(interface.not_found_error?),
+                      opts
+                    )
                   end
                 else
                   quote do
-                    if opts[:stream?] do
-                      opts =
-                        Keyword.merge(opts, opts[:stream_options] || [])
-                        |> Keyword.drop([:stream?, :stream_options])
-
-                      Ash.stream!(query, Keyword.drop(opts, [:stream?, :stream_options]))
-                    else
-                      Ash.read!(query, Keyword.drop(opts, [:stream?, :stream_options]))
-                    end
+                    Ash.CodeInterface.read_list_act!(query, opts)
                   end
                 end
 
@@ -890,105 +763,39 @@ defmodule Ash.CodeInterface do
 
               resolve_subject =
                 quote do
-                  {changeset, opts} = Keyword.pop(opts, :changeset)
-
-                  {changeset_opts, opts} =
-                    Keyword.split(opts, [
-                      :actor,
-                      :tenant,
-                      :scope,
-                      :authorize?,
-                      :tracer,
-                      :context,
-                      :skip_unknown_inputs,
-                      :private_arguments
-                    ])
-
-                  changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
-
-                  changeset =
-                    if is_map(params) do
-                      changeset
-                      |> Kernel.||(unquote(resource))
-                      |> case do
-                        %Ash.Changeset{resource: unquote(resource)} ->
-                          changeset
-
-                        %Ash.Changeset{resource: other_resource} ->
-                          raise ArgumentError,
-                                "Changeset #{inspect(changeset)} does not match expected resource #{inspect(unquote(resource))}."
-
-                        other_resource
-                        when is_atom(other_resource) and other_resource != unquote(resource) ->
-                          raise ArgumentError,
-                                "Resource #{inspect(other_resource)} does not match expected resource #{inspect(unquote(resource))}."
-
-                        changeset ->
-                          changeset
-                      end
-                      |> Ash.Changeset.new()
-                      |> Ash.Changeset.add_error(custom_input_errors)
-                      |> Ash.Changeset.for_create(unquote(action.name), params, changeset_opts)
-                    else
-                      {:bulk, params}
-                    end
+                  {changeset, changeset_opts, opts} =
+                    Ash.CodeInterface.resolve_create_subject(
+                      opts,
+                      params,
+                      custom_input_errors,
+                      unquote(domain),
+                      unquote(resource),
+                      unquote(action.name)
+                    )
                 end
 
               act =
                 quote do
-                  case changeset do
-                    {:bulk, inputs} ->
-                      if Enum.any?(custom_input_errors) do
-                        %Ash.BulkResult{
-                          errors: [Ash.Error.to_error_class(custom_input_errors)],
-                          error_count: 1
-                        }
-                      else
-                        bulk_opts =
-                          opts
-                          |> Keyword.delete(:bulk_options)
-                          |> Keyword.put(:notify?, true)
-                          |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
-                          |> Enum.concat(changeset_opts)
-
-                        Ash.bulk_create(
-                          inputs,
-                          unquote(resource),
-                          unquote(action.name),
-                          bulk_opts
-                        )
-                      end
-
-                    changeset ->
-                      Ash.create(changeset, Keyword.delete(opts, :bulk_options))
-                  end
+                  Ash.CodeInterface.create_act(
+                    changeset,
+                    custom_input_errors,
+                    opts,
+                    changeset_opts,
+                    unquote(resource),
+                    unquote(action.name)
+                  )
                 end
 
               act! =
                 quote do
-                  case changeset do
-                    {:bulk, inputs} ->
-                      if Enum.any?(custom_input_errors) do
-                        raise Ash.Error.to_error_class(custom_input_errors)
-                      else
-                        bulk_opts =
-                          opts
-                          |> Keyword.delete(:bulk_options)
-                          |> Keyword.put(:notify?, true)
-                          |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
-                          |> Enum.concat(changeset_opts)
-
-                        Ash.bulk_create!(
-                          inputs,
-                          unquote(resource),
-                          unquote(action.name),
-                          bulk_opts
-                        )
-                      end
-
-                    changeset ->
-                      Ash.create!(changeset, Keyword.delete(opts, :bulk_options))
-                  end
+                  Ash.CodeInterface.create_act!(
+                    changeset,
+                    custom_input_errors,
+                    opts,
+                    changeset_opts,
+                    unquote(resource),
+                    unquote(action.name)
+                  )
                 end
 
               {subject, [], resolve_subject, act, act!}
@@ -1006,259 +813,58 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 if Enum.empty?(filter_keys) and interface.require_reference? do
                   quote do
-                    {changeset_opts, opts} =
-                      Keyword.split(opts, [
-                        :actor,
-                        :tenant,
-                        :scope,
-                        :authorize?,
-                        :tracer,
-                        :context,
-                        :skip_unknown_inputs,
-                        :private_arguments
-                      ])
-
-                    changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
-
-                    changeset =
-                      record
-                      |> case do
-                        %Ash.Changeset{resource: unquote(resource)} ->
-                          record
-                          |> Ash.Changeset.filter(filter_params)
-                          |> Ash.Changeset.add_error(custom_input_errors)
-                          |> Ash.Changeset.for_update(
-                            unquote(action.name),
-                            params,
-                            changeset_opts
-                          )
-
-                        %Ash.Changeset{resource: other_resource} ->
-                          raise ArgumentError,
-                                "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
-
-                        %struct{} = record when struct == unquote(resource) ->
-                          record
-                          |> Ash.Changeset.new()
-                          |> Ash.Changeset.filter(filter_params)
-                          |> Ash.Changeset.add_error(custom_input_errors)
-                          |> Ash.Changeset.for_update(
-                            unquote(action.name),
-                            params,
-                            changeset_opts
-                          )
-
-                        %Ash.Query{} = query ->
-                          {:atomic, :query, query}
-
-                        %other_resource{} when other_resource != unquote(resource) ->
-                          raise ArgumentError,
-                                "Record #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
-
-                        [{_key, _val} | _] = id ->
-                          {:atomic, :id, id}
-
-                        list when is_list(list) ->
-                          {:atomic, :stream, list}
-
-                        other ->
-                          {:atomic, :id, other}
-                      end
+                    {changeset, changeset_opts, opts} =
+                      Ash.CodeInterface.resolve_update_subject_with_record(
+                        opts,
+                        params,
+                        unquote(domain),
+                        unquote(resource),
+                        unquote(action.name),
+                        record,
+                        unquote(filter_params),
+                        custom_input_errors
+                      )
                   end
                 else
                   quote do
-                    {changeset_opts, opts} =
-                      Keyword.split(opts, [
-                        :actor,
-                        :tenant,
-                        :authorize?,
-                        :scope,
-                        :tracer,
-                        :context,
-                        :skip_unknown_inputs,
-                        :private_arguments
-                      ])
-
-                    changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
-
-                    changeset =
-                      {:atomic, :query, Ash.Query.do_filter(unquote(resource), filter_params)}
+                    {changeset, changeset_opts, opts} =
+                      Ash.CodeInterface.resolve_update_subject_without_record(
+                        opts,
+                        unquote(domain),
+                        unquote(resource),
+                        unquote(filter_params)
+                      )
                   end
                 end
 
               act =
                 quote do
-                  case changeset do
-                    {:atomic, method, id} ->
-                      if Enum.any?(custom_input_errors) do
-                        %Ash.BulkResult{
-                          errors: [Ash.Error.to_error_class(custom_input_errors)],
-                          error_count: 1
-                        }
-                      else
-                        bulk_opts =
-                          opts
-                          |> Keyword.drop([:bulk_options, :atomic_upgrade?])
-                          |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
-                          |> Enum.concat(changeset_opts)
-                          |> Keyword.put(:resource, unquote(resource))
-                          |> then(fn bulk_opts ->
-                            if method == :id || unquote(interface.get?) do
-                              authorize_with =
-                                if Ash.DataLayer.data_layer_can?(__MODULE__, :expr_error) do
-                                  :error
-                                else
-                                  :filter
-                                end
-
-                              bulk_opts
-                              |> Keyword.put(:return_records?, true)
-                              |> Keyword.put(:return_errors?, true)
-                              |> Keyword.put_new(:authorize_with, authorize_with)
-                              |> Keyword.put(:notify?, true)
-                            else
-                              bulk_opts
-                            end
-                          end)
-                          |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
-
-                        bulk_opts =
-                          if method in [:stream, :query] do
-                            Keyword.put(bulk_opts, :filter, filter_params)
-                          else
-                            bulk_opts
-                          end
-
-                        case Ash.CodeInterface.bulk_query(unquote(resource), method, id) do
-                          {:ok, query} ->
-                            query
-                            |> Ash.bulk_update(unquote(action.name), params, bulk_opts)
-                            |> case do
-                              %Ash.BulkResult{} = result
-                              when method in [:stream, :query] and not unquote(interface.get?) ->
-                                result
-
-                              %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
-                              when unquote(interface.get?) ->
-                                {:error,
-                                 Ash.Error.Invalid.MultipleResults.exception(
-                                   count: Enum.count(records),
-                                   query: query
-                                 )}
-
-                              %Ash.BulkResult{status: :success, records: [record]} = result ->
-                                if opts[:return_notifications?] do
-                                  {:ok, record, result.notifications}
-                                else
-                                  {:ok, record}
-                                end
-
-                              %Ash.BulkResult{status: :success, records: []} = result ->
-                                {:error,
-                                 Ash.Error.to_error_class(
-                                   Ash.Error.Query.NotFound.exception(
-                                     resource: unquote(resource),
-                                     primary_key: id
-                                   )
-                                 )}
-
-                              %Ash.BulkResult{status: :error, errors: errors} ->
-                                {:error, Ash.Error.to_error_class(errors)}
-                            end
-
-                          {:error, error} ->
-                            {:error, Ash.Error.to_error_class(error)}
-                        end
-                      end
-
-                    changeset ->
-                      Ash.update(changeset, Keyword.delete(opts, :bulk_options))
-                  end
+                  Ash.CodeInterface.update_act(
+                    changeset,
+                    custom_input_errors,
+                    params,
+                    opts,
+                    changeset_opts,
+                    unquote(filter_params),
+                    unquote(resource),
+                    unquote(action.name),
+                    unquote(interface.get?)
+                  )
                 end
 
               act! =
                 quote do
-                  case changeset do
-                    {:atomic, method, id} ->
-                      if Enum.any?(custom_input_errors) do
-                        raise Ash.Error.to_error_class(custom_input_errors)
-                      else
-                        bulk_opts =
-                          opts
-                          |> Keyword.drop([:bulk_options, :atomic_upgrade?])
-                          |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
-                          |> Enum.concat(changeset_opts)
-                          |> Keyword.put(:resource, unquote(resource))
-                          |> then(fn bulk_opts ->
-                            if method == :id || unquote(interface.get?) do
-                              authorize_with =
-                                if Ash.DataLayer.data_layer_can?(__MODULE__, :expr_error) do
-                                  :error
-                                else
-                                  :filter
-                                end
-
-                              bulk_opts
-                              |> Keyword.put(:return_records?, true)
-                              |> Keyword.put(:return_errors?, true)
-                              |> Keyword.put(:allow_stream_with, :full_read)
-                              |> Keyword.put_new(:authorize_with, authorize_with)
-                              |> Keyword.put(:notify?, true)
-                            else
-                              bulk_opts
-                            end
-                          end)
-                          |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
-
-                        bulk_opts =
-                          if method in [:stream] do
-                            Keyword.put(bulk_opts, :filter, filter_params)
-                          else
-                            bulk_opts
-                          end
-
-                        case Ash.CodeInterface.bulk_query(unquote(resource), method, id) do
-                          {:ok, query} ->
-                            query
-                            |> Ash.bulk_update!(unquote(action.name), params, bulk_opts)
-                            |> case do
-                              %Ash.BulkResult{} = result
-                              when method in [:stream, :query] and not unquote(interface.get?) ->
-                                result
-
-                              %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
-                              when unquote(interface.get?) ->
-                                raise Ash.Error.to_error_class(
-                                        Ash.Error.Invalid.MultipleResults.exception(
-                                          count: Enum.count(records),
-                                          query: query
-                                        )
-                                      )
-
-                              %Ash.BulkResult{status: :success, records: [record]} = result ->
-                                if opts[:return_notifications?] do
-                                  {record, result.notifications}
-                                else
-                                  record
-                                end
-
-                              %Ash.BulkResult{status: :success, records: []} = result ->
-                                raise Ash.Error.to_error_class(
-                                        Ash.Error.Query.NotFound.exception(
-                                          resource: unquote(resource),
-                                          primary_key: id
-                                        )
-                                      )
-                            end
-
-                          {:error, error} ->
-                            raise Ash.Error.to_error_class(error)
-                        end
-                      end
-
-                    changeset ->
-                      Ash.update!(changeset, Keyword.delete(opts, :bulk_options))
-                  end
+                  Ash.CodeInterface.update_act!(
+                    changeset,
+                    custom_input_errors,
+                    params,
+                    opts,
+                    changeset_opts,
+                    unquote(filter_params),
+                    unquote(resource),
+                    unquote(action.name),
+                    unquote(interface.get?)
+                  )
                 end
 
               {subject, subject_args, resolve_subject, act, act!}
@@ -1276,315 +882,58 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 if interface.require_reference? do
                   quote do
-                    {changeset_opts, opts} =
-                      Keyword.split(opts, [
-                        :actor,
-                        :tenant,
-                        :scope,
-                        :authorize?,
-                        :tracer,
-                        :context,
-                        :skip_unknown_inputs,
-                        :private_arguments
-                      ])
-
-                    changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
-
-                    changeset =
-                      record
-                      |> case do
-                        %Ash.Changeset{resource: unquote(resource)} ->
-                          record
-                          |> Ash.Changeset.filter(filter_params)
-                          |> Ash.Changeset.add_error(custom_input_errors)
-                          |> Ash.Changeset.for_destroy(
-                            unquote(action.name),
-                            params,
-                            changeset_opts
-                          )
-
-                        %Ash.Changeset{resource: other_resource} ->
-                          raise ArgumentError,
-                                "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
-
-                        %struct{} = record when struct == unquote(resource) ->
-                          record
-                          |> Ash.Changeset.new()
-                          |> Ash.Changeset.filter(filter_params)
-                          |> Ash.Changeset.add_error(custom_input_errors)
-                          |> Ash.Changeset.for_destroy(
-                            unquote(action.name),
-                            params,
-                            changeset_opts
-                          )
-
-                        %Ash.Query{} = query ->
-                          {:atomic, :query, query}
-
-                        %other_resource{} when other_resource != unquote(resource) ->
-                          raise ArgumentError,
-                                "Record #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
-
-                        [{_key, _val} | _] = id ->
-                          {:atomic, :id, id}
-
-                        list when is_list(list) ->
-                          {:atomic, :stream, list}
-
-                        other ->
-                          {:atomic, :id, other}
-                      end
+                    {changeset, changeset_opts, opts} =
+                      Ash.CodeInterface.resolve_destroy_subject_with_record(
+                        opts,
+                        params,
+                        unquote(domain),
+                        unquote(resource),
+                        unquote(action.name),
+                        record,
+                        unquote(filter_params),
+                        custom_input_errors
+                      )
                   end
                 else
                   quote do
-                    {changeset_opts, opts} =
-                      Keyword.split(opts, [
-                        :actor,
-                        :tenant,
-                        :scope,
-                        :authorize?,
-                        :tracer,
-                        :context,
-                        :skip_unknown_inputs,
-                        :private_arguments
-                      ])
-
-                    changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
-
-                    changeset =
-                      {:atomic, :query, Ash.Query.do_filter(unquote(resource), filter_params)}
+                    {changeset, changeset_opts, opts} =
+                      Ash.CodeInterface.resolve_destroy_subject_without_record(
+                        opts,
+                        unquote(domain),
+                        unquote(resource),
+                        unquote(filter_params)
+                      )
                   end
                 end
 
               act =
                 quote do
-                  case changeset do
-                    {:atomic, method, id} ->
-                      if Enum.any?(custom_input_errors) do
-                        %Ash.BulkResult{
-                          errors: [Ash.Error.to_error_class(custom_input_errors)],
-                          error_count: 1
-                        }
-                      else
-                        bulk_opts =
-                          opts
-                          |> Keyword.drop([:bulk_options, :return_destroyed?])
-                          |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
-                          |> Enum.concat(changeset_opts)
-                          |> Keyword.put(:resource, unquote(resource))
-                          |> then(fn bulk_opts ->
-                            if method == :id || unquote(interface.get?) do
-                              authorize_with =
-                                if Ash.DataLayer.data_layer_can?(__MODULE__, :expr_error) do
-                                  :error
-                                else
-                                  :filter
-                                end
-
-                              bulk_opts
-                              |> Keyword.put(:return_records?, true)
-                              |> Keyword.put(:return_errors?, true)
-                              |> Keyword.put(:allow_stream_with, :full_read)
-                              |> Keyword.put_new(:authorize_with, authorize_with)
-                              |> Keyword.put(:notify?, true)
-                            else
-                              Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
-                            end
-                          end)
-                          |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
-
-                        bulk_opts =
-                          if method in [:stream, :query] do
-                            Keyword.put(bulk_opts, :filter, filter_params)
-                          else
-                            bulk_opts
-                          end
-
-                        case Ash.CodeInterface.bulk_query(unquote(resource), method, id) do
-                          {:ok, query} ->
-                            query
-                            |> Ash.bulk_destroy(unquote(action.name), params, bulk_opts)
-                            |> case do
-                              %Ash.BulkResult{} = result
-                              when method in [:stream, :query] and not unquote(interface.get?) ->
-                                result
-
-                              %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
-                              when unquote(interface.get?) ->
-                                {:error,
-                                 Ash.Error.Invalid.MultipleResults.exception(
-                                   count: Enum.count(records),
-                                   query: query
-                                 )}
-
-                              %Ash.BulkResult{status: :success, records: [record]} = result ->
-                                if opts[:return_destroyed?] do
-                                  if opts[:return_notifications?] do
-                                    {:ok, record, result.notifications}
-                                  else
-                                    {:ok, record}
-                                  end
-                                else
-                                  if opts[:return_notifications?] do
-                                    {:ok, result.notifications}
-                                  else
-                                    :ok
-                                  end
-                                end
-
-                              %Ash.BulkResult{status: :success, records: empty} = result
-                              when empty in [[], nil] and
-                                     (unquote(interface.get?) or method == :id) ->
-                                {:error,
-                                 Ash.Error.to_error_class(
-                                   Ash.Error.Query.NotFound.exception(
-                                     resource: unquote(resource),
-                                     primary_key: id
-                                   )
-                                 )}
-
-                              %Ash.BulkResult{status: :success, records: empty} = result
-                              when empty in [[], nil] ->
-                                if opts[:return_destroyed?] do
-                                  {:error,
-                                   Ash.Error.to_error_class(
-                                     Ash.Error.Query.NotFound.exception(
-                                       resource: unquote(resource),
-                                       primary_key: id
-                                     )
-                                   )}
-                                else
-                                  if opts[:return_notifications?] do
-                                    {:ok, result.notifications}
-                                  else
-                                    :ok
-                                  end
-                                end
-
-                              %Ash.BulkResult{status: :error, errors: errors} ->
-                                {:error, Ash.Error.to_error_class(errors)}
-                            end
-
-                          {:error, error} ->
-                            {:error, Ash.Error.to_error_class(error)}
-                        end
-                      end
-
-                    changeset ->
-                      Ash.destroy(changeset, Keyword.delete(opts, :bulk_options))
-                  end
+                  Ash.CodeInterface.destroy_act(
+                    changeset,
+                    custom_input_errors,
+                    params,
+                    opts,
+                    changeset_opts,
+                    unquote(filter_params),
+                    unquote(resource),
+                    unquote(action.name),
+                    unquote(interface.get?)
+                  )
                 end
 
               act! =
                 quote do
-                  case changeset do
-                    {:atomic, method, id} ->
-                      if Enum.any?(custom_input_errors) do
-                        raise Ash.Error.to_error_class(custom_input_errors)
-                      else
-                        bulk_opts =
-                          opts
-                          |> Keyword.drop([:bulk_options, :return_destroyed?])
-                          |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
-                          |> Enum.concat(changeset_opts)
-                          |> Keyword.put(:resource, unquote(resource))
-                          |> then(fn bulk_opts ->
-                            if method == :id || unquote(interface.get?) do
-                              authorize_with =
-                                if Ash.DataLayer.data_layer_can?(__MODULE__, :expr_error) do
-                                  :error
-                                else
-                                  :filter
-                                end
-
-                              bulk_opts
-                              |> Keyword.put(:return_records?, true)
-                              |> Keyword.put(:return_errors?, true)
-                              |> Keyword.put(:allow_stream_with, :full_read)
-                              |> Keyword.put_new(:authorize_with, authorize_with)
-                              |> Keyword.put(:notify?, true)
-                            else
-                              Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
-                            end
-                          end)
-                          |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
-
-                        bulk_opts =
-                          if method in [:stream, :query] do
-                            Keyword.put(bulk_opts, :filter, filter_params)
-                          else
-                            bulk_opts
-                          end
-
-                        case Ash.CodeInterface.bulk_query(unquote(resource), method, id) do
-                          {:ok, query} ->
-                            query
-                            |> Ash.bulk_destroy!(unquote(action.name), params, bulk_opts)
-                            |> case do
-                              %Ash.BulkResult{} = result
-                              when method in [:stream, :query] and not unquote(interface.get?) ->
-                                result
-
-                              %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
-                              when unquote(interface.get?) ->
-                                raise Ash.Error.to_error_class(
-                                        Ash.Error.Invalid.MultipleResults.exception(
-                                          count: Enum.count(records),
-                                          query: query
-                                        )
-                                      )
-
-                              %Ash.BulkResult{status: :success, records: [record]} = result ->
-                                if opts[:return_destroyed?] do
-                                  if opts[:return_notifications?] do
-                                    {record, result.notifications}
-                                  else
-                                    record
-                                  end
-                                else
-                                  if opts[:return_notifications?] do
-                                    result.notifications
-                                  else
-                                    :ok
-                                  end
-                                end
-
-                              %Ash.BulkResult{status: :success, records: empty} = result
-                              when empty in [[], nil] and
-                                     (unquote(interface.get?) or method == :id) ->
-                                raise Ash.Error.to_error_class(
-                                        Ash.Error.Query.NotFound.exception(
-                                          resource: unquote(resource),
-                                          primary_key: id
-                                        )
-                                      )
-
-                              %Ash.BulkResult{status: :success, records: empty} = result
-                              when empty in [[], nil] ->
-                                if opts[:return_destroyed?] do
-                                  raise Ash.Error.to_error_class(
-                                          Ash.Error.Query.NotFound.exception(
-                                            resource: unquote(resource),
-                                            primary_key: id
-                                          )
-                                        )
-                                else
-                                  if opts[:return_notifications?] do
-                                    {:ok, result.notifications}
-                                  else
-                                    :ok
-                                  end
-                                end
-                            end
-
-                          {:error, error} ->
-                            raise Ash.Error.to_error_class(error)
-                        end
-                      end
-
-                    changeset ->
-                      Ash.destroy!(changeset, Keyword.delete(opts, :bulk_options))
-                  end
+                  Ash.CodeInterface.destroy_act!(
+                    changeset,
+                    custom_input_errors,
+                    params,
+                    opts,
+                    changeset_opts,
+                    unquote(filter_params),
+                    unquote(resource),
+                    unquote(action.name),
+                    unquote(interface.get?)
+                  )
                 end
 
               {subject, subject_args, resolve_subject, act, act!}
@@ -1642,17 +991,14 @@ defmodule Ash.CodeInterface do
           end
 
         @dialyzer {:nowarn_function, {interface.name, length(common_args) + 2}}
-        @doc """
-             #{action.description || "Calls the #{action.name} action on #{inspect(resource)}."}
-
-             #{Ash.CodeInterface.describe_action(resource, action, interface.args, interface.exclude_inputs, interface.custom_inputs)}
-
-             ## Options
-
-             #{interface_options.docs()}
-             """
-             |> Ash.CodeInterface.trim_double_newlines()
-
+        @doc Ash.CodeInterface.docs(
+               resource,
+               action,
+               interface.args,
+               interface.exclude_inputs,
+               interface.custom_inputs,
+               interface_options
+             )
         @doc spark_opts: [
                {first_opts_location, interface_options.schema()},
                {first_opts_location + 1, interface_options.schema()}
@@ -1672,19 +1018,15 @@ defmodule Ash.CodeInterface do
 
         # sobelow_skip ["DOS.BinToAtom"]
         @dialyzer {:nowarn_function, {:"#{interface.name}!", length(common_args) + 2}}
-        @doc """
-             #{action.description || "Calls the #{action.name} action on #{inspect(resource)}."}
-
-             Raises any errors instead of returning them
-
-             #{Ash.CodeInterface.describe_action(resource, action, interface.args, interface.exclude_inputs, interface.custom_inputs)}
-
-             ## Options
-
-             #{interface_options.docs()}
-             """
-             |> Ash.CodeInterface.trim_double_newlines()
-
+        @doc Ash.CodeInterface.docs(
+               resource,
+               action,
+               interface.args,
+               interface.exclude_inputs,
+               interface.custom_inputs,
+               interface_options,
+               true
+             )
         @doc spark_opts: [
                {first_opts_location, interface_options.schema()},
                {first_opts_location + 1, interface_options.schema()}
@@ -1721,14 +1063,7 @@ defmodule Ash.CodeInterface do
                  {first_opts_location, interface_options.schema()},
                  {first_opts_location + 1, interface_options.schema()}
                ]
-          @doc """
-               Returns the #{subject_name} corresponding to the action.
-
-               ## Options
-
-               #{Spark.Options.docs(subject_opts)}
-               """
-               |> Ash.CodeInterface.trim_double_newlines()
+          @doc Ash.CodeInterface.docs_subject(subject_name, subject_opts)
           @doc spark_opts: [
                  {first_opts_location, subject_opts},
                  {first_opts_location + 1, subject_opts}
@@ -1745,16 +1080,7 @@ defmodule Ash.CodeInterface do
         end
 
         # sobelow_skip ["DOS.BinToAtom"]
-        @doc """
-             Runs authorization checks for `#{inspect(resource)}.#{action.name}`
-
-             See `Ash.can/3` for more information
-
-             ## Options
-
-             #{Ash.Resource.Interface.CanOpts.docs()}
-             """
-             |> Ash.CodeInterface.trim_double_newlines()
+        @doc Ash.CodeInterface.docs_can(resource, action)
         @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 3}}
         @doc spark_opts: [
                {first_opts_location + 1, Ash.Resource.Interface.CanOpts.schema()},
@@ -1766,65 +1092,30 @@ defmodule Ash.CodeInterface do
               params_or_opts \\ %{},
               opts \\ []
             ) do
-          {params, opts} =
-            Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
-              opts
-              |> Ash.Resource.Interface.CanOpts.validate!()
-              |> unquote(interface_options).to_options()
-              |> Keyword.put(:actor, actor)
-            end)
-
-          filter_params = unquote(filter_params)
-          arg_params = unquote(arg_params)
-
-          params =
-            if is_list(params),
-              do: Enum.map(params, &Map.merge(&1, arg_params)),
-              else: Map.merge(params, arg_params)
-
-          case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
-                 Map.has_key?(params, input) || Map.has_key?(params, to_string(input))
-               end) do
-            [] ->
-              :ok
-
-            inputs ->
-              raise ArgumentError,
-                    "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.name)}/#{unquote(Enum.count(interface.args || []) + 2)}"
-          end
-
-          {params, custom_input_errors} =
-            Ash.CodeInterface.handle_custom_inputs(
-              params,
+          {params, opts, custom_input_errors} =
+            Ash.CodeInterface.can_opts(
+              params_or_opts,
+              opts,
+              unquote(arg_params),
+              unquote(resource),
+              unquote(interface.name),
+              unquote(interface.exclude_inputs),
+              unquote(Enum.count(interface.args || []) + 2),
               unquote(custom_inputs),
-              unquote(resource)
+              unquote(interface_options),
+              actor
             )
 
           unquote(resolve_subject)
 
-          case unquote(subject) do
-            %struct{} when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] ->
-              Ash.can(unquote(subject), actor, opts)
-
-            {:atomic, _, %Ash.Query{} = query} = subj ->
-              Ash.CodeInterface.atomic_can(
-                query,
-                unquote(action.name),
-                actor,
-                opts,
-                params,
-                false
-              )
-
-            {:atomic, _, input} ->
-              raise "Ash.can_#{unquote(interface.name)} does not support #{inspect(input)} as input."
-
-            {:bulk, input} ->
-              raise "Ash.can_#{unquote(interface.name)} does not support #{inspect(input)} as input."
-
-            other ->
-              raise "Ash.can_#{unquote(interface.name)} does not support #{inspect(other)} as input."
-          end
+          Ash.CodeInterface.can(
+            params,
+            opts,
+            actor,
+            unquote(subject),
+            unquote(action.name),
+            unquote(interface.name)
+          )
         end
 
         # sobelow_skip ["DOS.BinToAtom"]
@@ -1833,81 +1124,37 @@ defmodule Ash.CodeInterface do
                {first_opts_location + 1, Ash.Resource.Interface.CanQuestionMarkOpts.schema()},
                {first_opts_location + 2, Ash.Resource.Interface.CanQuestionMarkOpts.schema()}
              ]
-        @doc """
-             Runs authorization checks for `#{inspect(resource)}.#{action.name}`, returning a boolean.
-
-             See `Ash.can?/3` for more information
-
-             ## Options
-
-             #{Ash.Resource.Interface.CanQuestionMarkOpts.docs()}
-             """
-             |> Ash.CodeInterface.trim_double_newlines()
+        @doc Ash.CodeInterface.docs_can?(resource, action)
         def unquote(:"can_#{interface.name}?")(
               actor,
               unquote_splicing(common_args),
               params_or_opts \\ %{},
               opts \\ []
             ) do
-          {params, opts} =
-            Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
-              opts
-              |> Ash.Resource.Interface.CanOpts.validate!()
-              |> unquote(interface_options).to_options()
-              |> Keyword.put(:actor, actor)
-            end)
-
-          filter_params = unquote(filter_params)
-          arg_params = unquote(arg_params)
-
-          params =
-            if is_list(params),
-              do: Enum.map(params, &Map.merge(&1, arg_params)),
-              else: Map.merge(params, arg_params)
-
-          case Enum.filter(unquote(interface.exclude_inputs || []), fn input ->
-                 Map.has_key?(params, input) || Map.has_key?(params, to_string(input))
-               end) do
-            [] ->
-              :ok
-
-            inputs ->
-              raise ArgumentError,
-                    "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(unquote(resource))}.#{unquote(interface.name)}/#{unquote(Enum.count(interface.args || []) + 2)}"
-          end
-
-          {params, custom_input_errors} =
-            Ash.CodeInterface.handle_custom_inputs(
-              params,
+          {params, opts, custom_input_errors} =
+            Ash.CodeInterface.can_opts(
+              params_or_opts,
+              opts,
+              unquote(arg_params),
+              unquote(resource),
+              unquote(interface.name),
+              unquote(interface.exclude_inputs),
+              unquote(Enum.count(interface.args || []) + 2),
               unquote(custom_inputs),
-              unquote(resource)
+              unquote(interface_options),
+              actor
             )
 
           unquote(resolve_subject)
 
-          case unquote(subject) do
-            %struct{} when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] ->
-              Ash.can?(unquote(subject), actor, opts)
-
-            {:atomic, _, %Ash.Query{} = query} = subj ->
-              Ash.CodeInterface.atomic_can(
-                query,
-                unquote(action.name),
-                actor,
-                opts,
-                params,
-                true
-              )
-
-            {:atomic, _, input} = subj ->
-              raise "Ash.can_#{unquote(interface.name)}? does not support #{inspect(input)} as input."
-
-            {:bulk, input} ->
-              raise "Ash.can_#{unquote(interface.name)}? does not support #{inspect(input)} as input."
-
-            other ->
-              raise "Ash.can_#{unquote(interface.name)}? does not support #{inspect(other)} as input."
-          end
+          Ash.CodeInterface.can?(
+            params,
+            opts,
+            actor,
+            unquote(subject),
+            unquote(action.name),
+            unquote(interface.name)
+          )
         end
       end
     end
@@ -2301,8 +1548,9 @@ defmodule Ash.CodeInterface do
 
   @doc false
   def trim_double_newlines(str) do
+    # this actualy trims *triple* newlines
     str
-    |> String.replace(~r/\n{2,}/, "\n")
+    |> String.replace(~r/\n{3,}/, "\n\n")
     |> String.trim_trailing()
   end
 
@@ -2323,6 +1571,1177 @@ defmodule Ash.CodeInterface do
           {:error, error} ->
             {:error, error}
         end
+    end
+  end
+
+  @doc false
+  def merge_params(params, arg_params) do
+    if is_list(params) do
+      Enum.map(params, fn item ->
+        if is_map(item) do
+          Map.merge(item, arg_params)
+        else
+          raise ArgumentError, """
+          Expected `params` to be a map or a list of maps.
+          Got:  #{inspect(params)}
+          """
+        end
+      end)
+    else
+      if is_map(params) do
+        Map.merge(params, arg_params)
+      else
+        raise ArgumentError, """
+        Expected `params` to be a map or a list of maps.
+        Got:  #{inspect(params)}
+        """
+      end
+    end
+  end
+
+  def resolve_params_and_opts(
+        params_or_opts,
+        opts,
+        default_options,
+        interface_options,
+        arg_params,
+        exclude_inputs,
+        resource,
+        interface_name,
+        arity,
+        custom_inputs,
+        filter_params
+      ) do
+    {params, opts} =
+      Ash.CodeInterface.params_and_opts(
+        params_or_opts,
+        opts,
+        fn opts ->
+          default_options =
+            case default_options do
+              fun when is_function(fun, 0) -> fun.()
+              static_options -> static_options
+            end
+
+          opts
+          |> Ash.CodeInterface.merge_default_opts(default_options)
+          |> interface_options.validate!()
+          |> interface_options.to_options()
+        end
+      )
+
+    params = Ash.CodeInterface.merge_params(params, arg_params)
+
+    case Enum.filter(exclude_inputs, fn input ->
+           if is_list(params) do
+             Enum.any?(
+               params,
+               &(Map.has_key?(&1, input) || Map.has_key?(&1, to_string(input)))
+             )
+           else
+             Map.has_key?(params, input) || Map.has_key?(params, to_string(input))
+           end
+         end) do
+      [] ->
+        :ok
+
+      inputs ->
+        raise ArgumentError,
+              "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(resource)}.#{interface_name}/#{arity}"
+    end
+
+    {params, custom_input_errors} =
+      Ash.CodeInterface.handle_custom_inputs(
+        params,
+        custom_inputs,
+        resource
+      )
+
+    {params, opts, arg_params, filter_params, custom_input_errors}
+  end
+
+  def resolve_action_subject(opts, params, domain, resource, action_name, custom_input_errors) do
+    {input_opts, opts} =
+      Keyword.split(opts, [
+        :input,
+        :actor,
+        :tenant,
+        :authorize?,
+        :tracer,
+        :scope,
+        :private_arguments
+      ])
+
+    {input, input_opts} = Keyword.pop(input_opts, :input)
+
+    input_opts = Keyword.put(input_opts, :domain, domain)
+
+    case input do
+      %Ash.ActionInput{resource: ^resource} ->
+        input
+
+      %Ash.ActionInput{resource: other_resource} ->
+        raise ArgumentError,
+              "Action input resource #{inspect(other_resource)} does not match expected resource #{inspect(resource)}."
+
+      input ->
+        input
+    end
+
+    input =
+      input
+      |> Kernel.||(resource)
+      |> Ash.ActionInput.for_action(action_name, params, input_opts)
+      |> Ash.ActionInput.add_error(custom_input_errors)
+
+    {input, input_opts, opts}
+  end
+
+  def resolve_read_subject(opts, domain, resource, custom_input_errors) do
+    {query_opts, opts} =
+      Keyword.split(opts, [
+        :query,
+        :actor,
+        :tenant,
+        :authorize?,
+        :tracer,
+        :context,
+        :scope
+      ])
+
+    {query, query_opts} = Keyword.pop(query_opts, :query)
+
+    query_opts = Keyword.put(query_opts, :domain, domain)
+
+    query =
+      case query do
+        %Ash.Query{resource: ^resource} = query ->
+          query
+
+        %Ash.Query{resource: other_resource} ->
+          raise ArgumentError,
+                "Query resource #{inspect(other_resource)} does not match expected resource #{inspect(resource)}."
+
+        ^resource ->
+          Ash.Query.new(resource)
+
+        other_resource
+        when is_atom(other_resource) and not is_nil(other_resource) ->
+          raise ArgumentError,
+                "Query resource #{inspect(other_resource)} does not match expected resource #{inspect(resource)}."
+
+        query ->
+          Ash.Query.build(resource, query || [])
+      end
+      |> Ash.Query.add_error(custom_input_errors)
+
+    {query, query_opts, opts}
+  end
+
+  defp resolve_not_found_error(opts, interface_not_found_error?) do
+    {not_found_error?, opts} = Keyword.pop(opts, :not_found_error?)
+
+    not_found_error? =
+      if not_found_error? != nil,
+        do: not_found_error?,
+        else: interface_not_found_error?
+
+    {not_found_error?, opts}
+  end
+
+  @doc false
+  def read_get_act(query, not_found_error?, opts) do
+    {not_found_error?, opts} =
+      resolve_not_found_error(
+        opts,
+        not_found_error?
+      )
+
+    query
+    |> Ash.read_one(Keyword.drop(opts, [:stream?, :stream_options]))
+    |> case do
+      {:ok, nil} when not_found_error? ->
+        {:error,
+         Ash.Error.to_error_class(Ash.Error.Query.NotFound.exception(resource: query.resource))}
+
+      result ->
+        result
+    end
+  end
+
+  @doc false
+  def read_get_act!(query, not_found_error?, opts) do
+    {not_found_error?, opts} =
+      resolve_not_found_error(
+        opts,
+        not_found_error?
+      )
+
+    query
+    |> Ash.read_one!(Keyword.drop(opts, [:stream?, :stream_options]))
+    |> case do
+      nil when not_found_error? ->
+        raise Ash.Error.to_error_class(
+                Ash.Error.Query.NotFound.exception(resource: query.resource)
+              )
+
+      result ->
+        result
+    end
+  end
+
+  @doc false
+  def read_list_act(query, opts) do
+    if opts[:stream?],
+      do:
+        raise(
+          ArgumentError,
+          "Streaming is not supported unless using the raising version of the code interface function."
+        )
+
+    Ash.read(query, Keyword.drop(opts, [:stream?, :stream_options]))
+  end
+
+  @doc false
+  def read_list_act!(query, opts) do
+    if opts[:stream?] do
+      opts =
+        Keyword.merge(opts, opts[:stream_options] || [])
+        |> Keyword.drop([:stream?, :stream_options])
+
+      Ash.stream!(query, Keyword.drop(opts, [:stream?, :stream_options]))
+    else
+      Ash.read!(query, Keyword.drop(opts, [:stream?, :stream_options]))
+    end
+  end
+
+  def resolve_create_subject(opts, params, custom_input_errors, domain, resource, action_name) do
+    {changeset, opts} = Keyword.pop(opts, :changeset)
+
+    {changeset_opts, opts} =
+      Keyword.split(opts, [
+        :actor,
+        :tenant,
+        :scope,
+        :authorize?,
+        :tracer,
+        :context,
+        :skip_unknown_inputs,
+        :private_arguments
+      ])
+
+    changeset_opts = Keyword.put(changeset_opts, :domain, domain)
+
+    changeset =
+      if is_map(params) do
+        changeset
+        |> Kernel.||(resource)
+        |> case do
+          %Ash.Changeset{resource: ^resource} ->
+            changeset
+
+          %Ash.Changeset{} ->
+            raise ArgumentError,
+                  "Changeset #{inspect(changeset)} does not match expected resource #{inspect(resource)}."
+
+          other_resource
+          when is_atom(other_resource) and other_resource != resource ->
+            raise ArgumentError,
+                  "Resource #{inspect(other_resource)} does not match expected resource #{inspect(resource)}."
+
+          changeset ->
+            changeset
+        end
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.add_error(custom_input_errors)
+        |> Ash.Changeset.for_create(action_name, params, changeset_opts)
+      else
+        {:bulk, params}
+      end
+
+    {changeset, changeset_opts, opts}
+  end
+
+  @doc false
+  def create_act(changeset, custom_input_errors, opts, changeset_opts, resource, action_name) do
+    case changeset do
+      {:bulk, inputs} ->
+        if Enum.any?(custom_input_errors) do
+          %Ash.BulkResult{
+            errors: [Ash.Error.to_error_class(custom_input_errors)],
+            error_count: 1
+          }
+        else
+          bulk_opts =
+            opts
+            |> Keyword.delete(:bulk_options)
+            |> Keyword.put(:notify?, true)
+            |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+            |> Enum.concat(changeset_opts)
+
+          Ash.bulk_create(
+            inputs,
+            resource,
+            action_name,
+            bulk_opts
+          )
+        end
+
+      changeset ->
+        Ash.create(changeset, Keyword.delete(opts, :bulk_options))
+    end
+  end
+
+  @doc false
+  def create_act!(changeset, custom_input_errors, opts, changeset_opts, resource, action_name) do
+    case changeset do
+      {:bulk, inputs} ->
+        if Enum.any?(custom_input_errors) do
+          raise Ash.Error.to_error_class(custom_input_errors)
+        else
+          bulk_opts =
+            opts
+            |> Keyword.delete(:bulk_options)
+            |> Keyword.put(:notify?, true)
+            |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+            |> Enum.concat(changeset_opts)
+
+          Ash.bulk_create!(
+            inputs,
+            resource,
+            action_name,
+            bulk_opts
+          )
+        end
+
+      changeset ->
+        Ash.create!(changeset, Keyword.delete(opts, :bulk_options))
+    end
+  end
+
+  @doc false
+  def resolve_update_subject_without_record(
+        opts,
+        domain,
+        resource,
+        filter_params
+      ) do
+    {changeset_opts, opts} =
+      Keyword.split(opts, [
+        :actor,
+        :tenant,
+        :authorize?,
+        :scope,
+        :tracer,
+        :context,
+        :skip_unknown_inputs,
+        :private_arguments
+      ])
+
+    changeset_opts = Keyword.put(changeset_opts, :domain, domain)
+
+    changeset =
+      {:atomic, :query, Ash.Query.do_filter(resource, filter_params)}
+
+    {changeset, changeset_opts, opts}
+  end
+
+  @doc false
+  def resolve_update_subject_with_record(
+        opts,
+        params,
+        domain,
+        resource,
+        action_name,
+        record,
+        filter_params,
+        custom_input_errors
+      ) do
+    {changeset_opts, opts} =
+      Keyword.split(opts, [
+        :actor,
+        :tenant,
+        :scope,
+        :authorize?,
+        :tracer,
+        :context,
+        :skip_unknown_inputs,
+        :private_arguments
+      ])
+
+    changeset_opts = Keyword.put(changeset_opts, :domain, domain)
+
+    changeset =
+      record
+      |> case do
+        %Ash.Changeset{resource: ^resource} ->
+          record
+          |> Ash.Changeset.filter(filter_params)
+          |> Ash.Changeset.add_error(custom_input_errors)
+          |> Ash.Changeset.for_update(
+            action_name,
+            params,
+            changeset_opts
+          )
+
+        %Ash.Changeset{} ->
+          raise ArgumentError,
+                "Changeset #{inspect(record)} does not match expected resource #{inspect(resource)}."
+
+        %struct{} = record when struct == resource ->
+          record
+          |> Ash.Changeset.new()
+          |> Ash.Changeset.filter(filter_params)
+          |> Ash.Changeset.add_error(custom_input_errors)
+          |> Ash.Changeset.for_update(
+            action_name,
+            params,
+            changeset_opts
+          )
+
+        %Ash.Query{} = query ->
+          {:atomic, :query, query}
+
+        %other_resource{} when other_resource != resource ->
+          raise ArgumentError,
+                "Record #{inspect(record)} does not match expected resource #{inspect(resource)}."
+
+        [{_key, _val} | _] = id ->
+          {:atomic, :id, id}
+
+        list when is_list(list) ->
+          {:atomic, :stream, list}
+
+        other ->
+          {:atomic, :id, other}
+      end
+
+    {changeset, changeset_opts, opts}
+  end
+
+  @doc false
+  def update_act(
+        changeset,
+        custom_input_errors,
+        params,
+        opts,
+        changeset_opts,
+        filter_params,
+        resource,
+        action_name,
+        interface_get?
+      ) do
+    case changeset do
+      {:atomic, method, id} ->
+        if Enum.any?(custom_input_errors) do
+          %Ash.BulkResult{
+            errors: [Ash.Error.to_error_class(custom_input_errors)],
+            error_count: 1
+          }
+        else
+          bulk_opts =
+            opts
+            |> Keyword.drop([:bulk_options, :atomic_upgrade?])
+            |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+            |> Enum.concat(changeset_opts)
+            |> Keyword.put(:resource, resource)
+            |> then(fn bulk_opts ->
+              if method == :id || interface_get? do
+                authorize_with =
+                  if Ash.DataLayer.data_layer_can?(resource, :expr_error) do
+                    :error
+                  else
+                    :filter
+                  end
+
+                bulk_opts
+                |> Keyword.put(:return_records?, true)
+                |> Keyword.put(:return_errors?, true)
+                |> Keyword.put_new(:authorize_with, authorize_with)
+                |> Keyword.put(:notify?, true)
+              else
+                bulk_opts
+              end
+            end)
+            |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
+
+          bulk_opts =
+            if method in [:stream, :query] do
+              Keyword.put(bulk_opts, :filter, filter_params)
+            else
+              bulk_opts
+            end
+
+          case Ash.CodeInterface.bulk_query(resource, method, id) do
+            {:ok, query} ->
+              query
+              |> Ash.bulk_update(action_name, params, bulk_opts)
+              |> case do
+                %Ash.BulkResult{} = result
+                when method in [:stream, :query] and not interface_get? ->
+                  result
+
+                %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
+                when interface_get? ->
+                  {:error,
+                   Ash.Error.Invalid.MultipleResults.exception(
+                     count: Enum.count(records),
+                     query: query
+                   )}
+
+                %Ash.BulkResult{status: :success, records: [record]} = result ->
+                  if opts[:return_notifications?] do
+                    {:ok, record, result.notifications}
+                  else
+                    {:ok, record}
+                  end
+
+                %Ash.BulkResult{status: :success, records: []} ->
+                  {:error,
+                   Ash.Error.to_error_class(
+                     Ash.Error.Query.NotFound.exception(
+                       resource: resource,
+                       primary_key: id
+                     )
+                   )}
+
+                %Ash.BulkResult{status: :error, errors: errors} ->
+                  {:error, Ash.Error.to_error_class(errors)}
+              end
+
+            {:error, error} ->
+              {:error, Ash.Error.to_error_class(error)}
+          end
+        end
+
+      changeset ->
+        Ash.update(changeset, Keyword.delete(opts, :bulk_options))
+    end
+  end
+
+  @doc false
+  def update_act!(
+        changeset,
+        custom_input_errors,
+        params,
+        opts,
+        changeset_opts,
+        filter_params,
+        resource,
+        action_name,
+        interface_get?
+      ) do
+    case changeset do
+      {:atomic, method, id} ->
+        if Enum.any?(custom_input_errors) do
+          raise Ash.Error.to_error_class(custom_input_errors)
+        else
+          bulk_opts =
+            opts
+            |> Keyword.drop([:bulk_options, :atomic_upgrade?])
+            |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+            |> Enum.concat(changeset_opts)
+            |> Keyword.put(:resource, resource)
+            |> then(fn bulk_opts ->
+              if method == :id || interface_get? do
+                authorize_with =
+                  if Ash.DataLayer.data_layer_can?(resource, :expr_error) do
+                    :error
+                  else
+                    :filter
+                  end
+
+                bulk_opts
+                |> Keyword.put(:return_records?, true)
+                |> Keyword.put(:return_errors?, true)
+                |> Keyword.put(:allow_stream_with, :full_read)
+                |> Keyword.put_new(:authorize_with, authorize_with)
+                |> Keyword.put(:notify?, true)
+              else
+                bulk_opts
+              end
+            end)
+            |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
+
+          bulk_opts =
+            if method in [:stream] do
+              Keyword.put(bulk_opts, :filter, filter_params)
+            else
+              bulk_opts
+            end
+
+          case Ash.CodeInterface.bulk_query(resource, method, id) do
+            {:ok, query} ->
+              query
+              |> Ash.bulk_update!(action_name, params, bulk_opts)
+              |> case do
+                %Ash.BulkResult{} = result
+                when method in [:stream, :query] and not interface_get? ->
+                  result
+
+                %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
+                when interface_get? ->
+                  raise Ash.Error.to_error_class(
+                          Ash.Error.Invalid.MultipleResults.exception(
+                            count: Enum.count(records),
+                            query: query
+                          )
+                        )
+
+                %Ash.BulkResult{status: :success, records: [record]} = result ->
+                  if opts[:return_notifications?] do
+                    {record, result.notifications}
+                  else
+                    record
+                  end
+
+                %Ash.BulkResult{status: :success, records: []} ->
+                  raise Ash.Error.to_error_class(
+                          Ash.Error.Query.NotFound.exception(
+                            resource: resource,
+                            primary_key: id
+                          )
+                        )
+              end
+
+            {:error, error} ->
+              raise Ash.Error.to_error_class(error)
+          end
+        end
+
+      changeset ->
+        Ash.update!(changeset, Keyword.delete(opts, :bulk_options))
+    end
+  end
+
+  @doc false
+  def resolve_destroy_subject_with_record(
+        opts,
+        params,
+        domain,
+        resource,
+        action_name,
+        record,
+        filter_params,
+        custom_input_errors
+      ) do
+    {changeset_opts, opts} =
+      Keyword.split(opts, [
+        :actor,
+        :tenant,
+        :scope,
+        :authorize?,
+        :tracer,
+        :context,
+        :skip_unknown_inputs,
+        :private_arguments
+      ])
+
+    changeset_opts = Keyword.put(changeset_opts, :domain, domain)
+
+    changeset =
+      record
+      |> case do
+        %Ash.Changeset{resource: ^resource} ->
+          record
+          |> Ash.Changeset.filter(filter_params)
+          |> Ash.Changeset.add_error(custom_input_errors)
+          |> Ash.Changeset.for_destroy(
+            action_name,
+            params,
+            changeset_opts
+          )
+
+        %Ash.Changeset{} ->
+          raise ArgumentError,
+                "Changeset #{inspect(record)} does not match expected resource #{inspect(resource)}."
+
+        %struct{} = record when struct == resource ->
+          record
+          |> Ash.Changeset.new()
+          |> Ash.Changeset.filter(filter_params)
+          |> Ash.Changeset.add_error(custom_input_errors)
+          |> Ash.Changeset.for_destroy(
+            action_name,
+            params,
+            changeset_opts
+          )
+
+        %Ash.Query{} = query ->
+          {:atomic, :query, query}
+
+        %other_resource{} when other_resource != resource ->
+          raise ArgumentError,
+                "Record #{inspect(record)} does not match expected resource #{inspect(resource)}."
+
+        [{_key, _val} | _] = id ->
+          {:atomic, :id, id}
+
+        list when is_list(list) ->
+          {:atomic, :stream, list}
+
+        other ->
+          {:atomic, :id, other}
+      end
+
+    {changeset, changeset_opts, opts}
+  end
+
+  @doc false
+  def resolve_destroy_subject_without_record(
+        opts,
+        domain,
+        resource,
+        filter_params
+      ) do
+    {changeset_opts, opts} =
+      Keyword.split(opts, [
+        :actor,
+        :tenant,
+        :scope,
+        :authorize?,
+        :tracer,
+        :context,
+        :skip_unknown_inputs,
+        :private_arguments
+      ])
+
+    changeset_opts = Keyword.put(changeset_opts, :domain, domain)
+
+    changeset =
+      {:atomic, :query, Ash.Query.do_filter(resource, filter_params)}
+
+    {changeset, changeset_opts, opts}
+  end
+
+  @doc false
+  def destroy_act(
+        changeset,
+        custom_input_errors,
+        params,
+        opts,
+        changeset_opts,
+        filter_params,
+        resource,
+        action_name,
+        interface_get?
+      ) do
+    case changeset do
+      {:atomic, method, id} ->
+        if Enum.any?(custom_input_errors) do
+          %Ash.BulkResult{
+            errors: [Ash.Error.to_error_class(custom_input_errors)],
+            error_count: 1
+          }
+        else
+          bulk_opts =
+            opts
+            |> Keyword.drop([:bulk_options, :return_destroyed?])
+            |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+            |> Enum.concat(changeset_opts)
+            |> Keyword.put(:resource, resource)
+            |> then(fn bulk_opts ->
+              if method == :id || interface_get? do
+                authorize_with =
+                  if Ash.DataLayer.data_layer_can?(resource, :expr_error) do
+                    :error
+                  else
+                    :filter
+                  end
+
+                bulk_opts
+                |> Keyword.put(:return_records?, true)
+                |> Keyword.put(:return_errors?, true)
+                |> Keyword.put(:allow_stream_with, :full_read)
+                |> Keyword.put_new(:authorize_with, authorize_with)
+                |> Keyword.put(:notify?, true)
+              else
+                Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
+              end
+            end)
+            |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
+
+          bulk_opts =
+            if method in [:stream, :query] do
+              Keyword.put(bulk_opts, :filter, filter_params)
+            else
+              bulk_opts
+            end
+
+          case Ash.CodeInterface.bulk_query(resource, method, id) do
+            {:ok, query} ->
+              query
+              |> Ash.bulk_destroy(action_name, params, bulk_opts)
+              |> case do
+                %Ash.BulkResult{} = result
+                when method in [:stream, :query] and not interface_get? ->
+                  result
+
+                %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
+                when interface_get? ->
+                  {:error,
+                   Ash.Error.Invalid.MultipleResults.exception(
+                     count: Enum.count(records),
+                     query: query
+                   )}
+
+                %Ash.BulkResult{status: :success, records: [record]} = result ->
+                  if opts[:return_destroyed?] do
+                    if opts[:return_notifications?] do
+                      {:ok, record, result.notifications}
+                    else
+                      {:ok, record}
+                    end
+                  else
+                    if opts[:return_notifications?] do
+                      {:ok, result.notifications}
+                    else
+                      :ok
+                    end
+                  end
+
+                %Ash.BulkResult{status: :success, records: empty}
+                when empty in [[], nil] and
+                       (interface_get? or method == :id) ->
+                  {:error,
+                   Ash.Error.to_error_class(
+                     Ash.Error.Query.NotFound.exception(
+                       resource: resource,
+                       primary_key: id
+                     )
+                   )}
+
+                %Ash.BulkResult{status: :success, records: empty} = result
+                when empty in [[], nil] ->
+                  if opts[:return_destroyed?] do
+                    {:error,
+                     Ash.Error.to_error_class(
+                       Ash.Error.Query.NotFound.exception(
+                         resource: resource,
+                         primary_key: id
+                       )
+                     )}
+                  else
+                    if opts[:return_notifications?] do
+                      {:ok, result.notifications}
+                    else
+                      :ok
+                    end
+                  end
+
+                %Ash.BulkResult{status: :error, errors: errors} ->
+                  {:error, Ash.Error.to_error_class(errors)}
+              end
+
+            {:error, error} ->
+              {:error, Ash.Error.to_error_class(error)}
+          end
+        end
+
+      changeset ->
+        Ash.destroy(changeset, Keyword.delete(opts, :bulk_options))
+    end
+  end
+
+  @doc false
+  def destroy_act!(
+        changeset,
+        custom_input_errors,
+        params,
+        opts,
+        changeset_opts,
+        filter_params,
+        resource,
+        action_name,
+        interface_get?
+      ) do
+    case changeset do
+      {:atomic, method, id} ->
+        if Enum.any?(custom_input_errors) do
+          raise Ash.Error.to_error_class(custom_input_errors)
+        else
+          bulk_opts =
+            opts
+            |> Keyword.drop([:bulk_options, :return_destroyed?])
+            |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+            |> Enum.concat(changeset_opts)
+            |> Keyword.put(:resource, resource)
+            |> then(fn bulk_opts ->
+              if method == :id || interface_get? do
+                authorize_with =
+                  if Ash.DataLayer.data_layer_can?(resource, :expr_error) do
+                    :error
+                  else
+                    :filter
+                  end
+
+                bulk_opts
+                |> Keyword.put(:return_records?, true)
+                |> Keyword.put(:return_errors?, true)
+                |> Keyword.put(:allow_stream_with, :full_read)
+                |> Keyword.put_new(:authorize_with, authorize_with)
+                |> Keyword.put(:notify?, true)
+              else
+                Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
+              end
+            end)
+            |> Keyword.put_new(:strategy, [:atomic, :stream, :atomic_batches])
+
+          bulk_opts =
+            if method in [:stream, :query] do
+              Keyword.put(bulk_opts, :filter, filter_params)
+            else
+              bulk_opts
+            end
+
+          case Ash.CodeInterface.bulk_query(resource, method, id) do
+            {:ok, query} ->
+              query
+              |> Ash.bulk_destroy!(action_name, params, bulk_opts)
+              |> case do
+                %Ash.BulkResult{} = result
+                when method in [:stream, :query] and not interface_get? ->
+                  result
+
+                %Ash.BulkResult{status: :success, records: [_, _ | _] = records}
+                when interface_get? ->
+                  raise Ash.Error.to_error_class(
+                          Ash.Error.Invalid.MultipleResults.exception(
+                            count: Enum.count(records),
+                            query: query
+                          )
+                        )
+
+                %Ash.BulkResult{status: :success, records: [record]} = result ->
+                  if opts[:return_destroyed?] do
+                    if opts[:return_notifications?] do
+                      {record, result.notifications}
+                    else
+                      record
+                    end
+                  else
+                    if opts[:return_notifications?] do
+                      result.notifications
+                    else
+                      :ok
+                    end
+                  end
+
+                %Ash.BulkResult{status: :success, records: empty}
+                when empty in [[], nil] and
+                       (interface_get? or method == :id) ->
+                  raise Ash.Error.to_error_class(
+                          Ash.Error.Query.NotFound.exception(
+                            resource: resource,
+                            primary_key: id
+                          )
+                        )
+
+                %Ash.BulkResult{status: :success, records: empty} = result
+                when empty in [[], nil] ->
+                  if opts[:return_destroyed?] do
+                    raise Ash.Error.to_error_class(
+                            Ash.Error.Query.NotFound.exception(
+                              resource: resource,
+                              primary_key: id
+                            )
+                          )
+                  else
+                    if opts[:return_notifications?] do
+                      {:ok, result.notifications}
+                    else
+                      :ok
+                    end
+                  end
+              end
+
+            {:error, error} ->
+              raise Ash.Error.to_error_class(error)
+          end
+        end
+
+      changeset ->
+        Ash.destroy!(changeset, Keyword.delete(opts, :bulk_options))
+    end
+  end
+
+  @doc false
+  def docs(
+        resource,
+        action,
+        args,
+        exclude_inputs,
+        custom_inputs,
+        interface_options,
+        raises? \\ false
+      ) do
+    """
+    #{action.description || "Calls the #{action.name} action on #{inspect(resource)}."}
+
+    #{if raises?, do: "Raises any errors instead of returning them"}
+
+    #{describe_action(resource, action, args, exclude_inputs, custom_inputs)}
+
+    ## Options
+
+    #{interface_options.docs()}
+    """
+    |> trim_double_newlines()
+  end
+
+  @doc false
+  def docs_subject(subject_name, subject_opts) do
+    """
+    Returns the #{subject_name} corresponding to the action.
+
+    ## Options
+
+    #{Spark.Options.docs(subject_opts)}
+    """
+    |> trim_double_newlines()
+  end
+
+  @can_opts Ash.Resource.Interface.CanOpts.docs()
+
+  @doc false
+  def docs_can(resource, action) do
+    """
+    Runs authorization checks for `#{inspect(resource)}.#{action.name}`
+
+    See `Ash.can/3` for more information
+
+    ## Options
+
+    #{@can_opts}
+    """
+    |> trim_double_newlines()
+  end
+
+  @doc false
+  def docs_can?(resource, action) do
+    """
+    Runs authorization checks for `#{inspect(resource)}.#{action.name}`, returning a boolean.
+
+    See `Ash.can?/3` for more information
+
+    ## Options
+
+    #{@can_opts}
+    """
+    |> trim_double_newlines()
+  end
+
+  @doc false
+  def can_opts(
+        params_or_opts,
+        opts,
+        arg_params,
+        resource,
+        interface_name,
+        exclude_inputs,
+        arity,
+        custom_inputs,
+        interface_options,
+        actor
+      ) do
+    {params, opts} =
+      Ash.CodeInterface.params_and_opts(params_or_opts, opts, fn opts ->
+        opts
+        |> Ash.Resource.Interface.CanOpts.validate!()
+        |> interface_options.to_options()
+        |> Keyword.put(:actor, actor)
+      end)
+
+    params =
+      if is_list(params),
+        do: Enum.map(params, &Map.merge(&1, arg_params)),
+        else: Map.merge(params, arg_params)
+
+    case Enum.filter(exclude_inputs, fn input ->
+           Map.has_key?(params, input) || Map.has_key?(params, to_string(input))
+         end) do
+      [] ->
+        :ok
+
+      inputs ->
+        raise ArgumentError,
+              "Input(s) `#{Enum.join(inputs, ", ")}` not accepted by #{inspect(resource)}.#{interface_name}/#{arity}"
+    end
+
+    {params, custom_input_errors} =
+      Ash.CodeInterface.handle_custom_inputs(
+        params,
+        custom_inputs,
+        resource
+      )
+
+    {params, opts, custom_input_errors}
+  end
+
+  @doc false
+  def can(
+        params,
+        opts,
+        actor,
+        subject,
+        action_name,
+        interface_name
+      ) do
+    case subject do
+      %struct{} when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] ->
+        Ash.can(subject, actor, opts)
+
+      {:atomic, _, %Ash.Query{} = query} ->
+        Ash.CodeInterface.atomic_can(
+          query,
+          action_name,
+          actor,
+          opts,
+          params,
+          false
+        )
+
+      {:atomic, _, input} ->
+        raise "Ash.can_#{interface_name} does not support #{inspect(input)} as input."
+
+      {:bulk, input} ->
+        raise "Ash.can_#{interface_name} does not support #{inspect(input)} as input."
+
+      other ->
+        raise "Ash.can_#{interface_name} does not support #{inspect(other)} as input."
+    end
+  end
+
+  def can?(
+        params,
+        opts,
+        actor,
+        subject,
+        action_name,
+        interface_name
+      ) do
+    case subject do
+      %struct{} when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] ->
+        Ash.can?(subject, actor, opts)
+
+      {:atomic, _, %Ash.Query{} = query} ->
+        Ash.CodeInterface.atomic_can(
+          query,
+          action_name,
+          actor,
+          opts,
+          params,
+          true
+        )
+
+      {:atomic, _, input} ->
+        raise "Ash.can_#{interface_name}? does not support #{inspect(input)} as input."
+
+      {:bulk, input} ->
+        raise "Ash.can_#{interface_name}? does not support #{inspect(input)} as input."
+
+      other ->
+        raise "Ash.can_#{interface_name}? does not support #{inspect(other)} as input."
     end
   end
 end
