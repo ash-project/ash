@@ -426,7 +426,11 @@ defmodule Ash.Actions.Update.Bulk do
               stream,
               action,
               input,
-              Keyword.merge(opts, notify?: opts[:notify?], return_notifications?: opts[:notify?]),
+              Keyword.merge(opts,
+                notify?: opts[:notify?],
+                notification_metadata: opts[:notification_metadata],
+                return_notifications?: opts[:notify?]
+              ),
               metadata_key,
               ref_metadata_key,
               context_key,
@@ -1331,6 +1335,7 @@ defmodule Ash.Actions.Update.Bulk do
             filter: opts[:filter],
             return_notifications?: opts[:return_notifications?],
             notify?: opts[:notify?],
+            notification_metadata: opts[:notification_metadata],
             return_records?: opts[:return_records?],
             allow_stream_with: opts[:allow_stream_with],
             read_action: read_action,
@@ -3100,15 +3105,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp notification(changeset, result, opts) do
-    %Ash.Notifier.Notification{
-      resource: changeset.resource,
-      domain: changeset.domain,
-      actor: opts[:actor],
-      for: Ash.Resource.Info.notifiers(changeset.resource) ++ changeset.action.notifiers,
-      action: changeset.action,
-      data: result,
-      changeset: changeset
-    }
+    Ash.Actions.Helpers.resource_notification(changeset, result, opts)
   end
 
   def run_action_changes(
