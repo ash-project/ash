@@ -239,7 +239,6 @@ defmodule Ash.Query.Aggregate do
           build_opts -> build_query(target_resource, resource, build_opts)
         end
 
-      # Set bypass context IMMEDIATELY if multitenancy bypass is requested
       query =
         if opts.multitenancy == :bypass do
           query
