@@ -81,9 +81,6 @@ defmodule Ash.Actions.Aggregate do
                                     metadata do
             Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-            # Preserve the original tenant from opts before handle_multitenancy might clear it
-            original_tenant = opts[:tenant] || query.tenant
-
             with {:ok, query} <- Ash.Actions.Read.handle_multitenancy(query),
                  {:ok, %{valid?: true} = query} <-
                    authorize_query(query, opts, agg_authorize?),
@@ -96,11 +93,11 @@ defmodule Ash.Actions.Aggregate do
               results =
                 Enum.reduce_while(
                   [
-                    {bypass_aggs, query.tenant || original_tenant,
+                    {bypass_aggs, query.tenant,
                      Map.merge(query.context || %{}, %{
                        shared: %{private: %{multitenancy: :bypass_all}}
                      })},
-                    {tenant_aggs, query.tenant || original_tenant, query.context}
+                    {tenant_aggs, query.tenant, query.context}
                   ],
                   {:ok, %{}},
                   fn
