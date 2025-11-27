@@ -2785,21 +2785,11 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  # Validate context multitenancy and its relationships are not used with bypass
-  # Ref: https://github.com/ash-project/ash_postgres/pull/649#issuecomment-3536654583
   defp handle_aggregate_multitenancy(query) do
     Enum.reduce_while(query.aggregates, {:ok, %{}}, fn {key, aggregate}, {:ok, acc} ->
-      aggregate_query =
-        aggregate.query
-        |> Ash.Query.set_tenant(aggregate.query.tenant || query.tenant)
-        |> then(
-          &if(aggregate.multitenancy == :bypass,
-            do: Ash.Query.set_context(&1, %{shared: %{private: %{multitenancy: :bypass_all}}}),
-            else: &1
-          )
-        )
-
-      with :ok <- validate_aggregate_multitenancy(aggregate),
+      with aggregate_query <-
+             apply_aggregate_tenant(aggregate.query, query.tenant, aggregate.multitenancy),
+           :ok <- validate_aggregate_multitenancy(aggregate),
            {:ok, %{valid?: true} = q} <- handle_multitenancy(aggregate_query) do
         {:cont, {:ok, Map.put(acc, key, %{aggregate | query: q})}}
       else
@@ -2811,6 +2801,16 @@ defmodule Ash.Actions.Read do
       {:ok, aggregates} -> {:ok, %{query | aggregates: aggregates}}
       {:error, error} -> {:error, error}
     end
+  end
+
+  defp apply_aggregate_tenant(aggregate_query, fallback_tenant, :bypass) do
+    aggregate_query
+    |> Ash.Query.set_tenant(aggregate_query.tenant || fallback_tenant)
+    |> Ash.Query.set_context(%{shared: %{private: %{multitenancy: :bypass_all}}})
+  end
+
+  defp apply_aggregate_tenant(aggregate_query, fallback_tenant, _multitenancy) do
+    Ash.Query.set_tenant(aggregate_query, aggregate_query.tenant || fallback_tenant)
   end
 
   defp validate_aggregate_multitenancy(aggregate) do
@@ -2837,6 +2837,8 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  # Validate context multitenancy and its relationships are not used with bypass
+  # Ref: https://github.com/ash-project/ash_postgres/pull/649#issuecomment-3536654583
   defp validate_context_multitenancy_strategy(resource, relationship_name, aggregate_name) do
     if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
       location = relationship_name && " in relationship `#{relationship_name}`"
