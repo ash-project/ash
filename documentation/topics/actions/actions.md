@@ -93,7 +93,7 @@ actions do
 end
 ```
 
-This is extremely simple example
+This is a simple example, but module attributes become particularly useful when you have many actions that share overlapping sets of accepted attributes. You can compose them using list concatenation (`++`), making it easy to define a base set of attributes and extend it for specific actions without repetition.
 
 ## Context
 
