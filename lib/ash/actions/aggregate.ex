@@ -84,29 +84,59 @@ defmodule Ash.Actions.Aggregate do
             with {:ok, query} <- Ash.Actions.Read.handle_multitenancy(query),
                  {:ok, %{valid?: true} = query} <-
                    authorize_query(query, opts, agg_authorize?),
-                 {:ok, aggregates} <- validate_aggregates(query, aggregates, opts),
-                 {:ok, data_layer_query} <-
-                   Ash.Query.data_layer_query(%Ash.Query{
-                     action: Ash.Resource.Info.action(query.resource, read_action),
-                     resource: query.resource,
-                     limit: query.limit,
-                     offset: query.offset,
-                     distinct: query.distinct,
-                     distinct_sort: query.distinct_sort,
-                     sort: query.sort,
-                     domain: query.domain,
-                     tenant: query.tenant,
-                     filter: query.filter,
-                     to_tenant: query.to_tenant,
-                     context: query.context
-                   }),
-                 {:ok, result} <-
-                   Ash.DataLayer.run_aggregate_query(
-                     data_layer_query,
-                     aggregates,
-                     query.resource
-                   ) do
-              {:cont, {:ok, Map.merge(acc, result)}}
+                 {:ok, aggregates} <- validate_aggregates(query, aggregates, opts) do
+              # Group aggregates by bypass vs tenant-specific
+              {bypass_aggs, tenant_aggs} =
+                Enum.split_with(aggregates, &(&1.multitenancy == :bypass))
+
+              # Run both groups and merge results
+              results =
+                Enum.reduce_while(
+                  [
+                    {bypass_aggs, query.tenant,
+                     Map.merge(query.context || %{}, %{
+                       shared: %{private: %{multitenancy: :bypass_all}}
+                     })},
+                    {tenant_aggs, query.tenant, query.context}
+                  ],
+                  {:ok, %{}},
+                  fn
+                    {[], _tenant, _context}, acc ->
+                      {:cont, acc}
+
+                    {aggs, tenant, context}, {:ok, results_acc} ->
+                      with {:ok, data_layer_query} <-
+                             Ash.Query.data_layer_query(%Ash.Query{
+                               action: Ash.Resource.Info.action(query.resource, read_action),
+                               resource: query.resource,
+                               limit: query.limit,
+                               offset: query.offset,
+                               distinct: query.distinct,
+                               distinct_sort: query.distinct_sort,
+                               sort: query.sort,
+                               domain: query.domain,
+                               tenant: tenant,
+                               filter: query.filter,
+                               to_tenant: tenant,
+                               context: context
+                             }),
+                           {:ok, group_results} <-
+                             Ash.DataLayer.run_aggregate_query(
+                               data_layer_query,
+                               aggs,
+                               query.resource
+                             ) do
+                        {:cont, {:ok, Map.merge(results_acc, group_results)}}
+                      else
+                        {:error, error} -> {:halt, {:error, error}}
+                      end
+                  end
+                )
+
+              case results do
+                {:ok, merged} -> {:cont, {:ok, Map.merge(acc, merged)}}
+                {:error, error} -> {:halt, {:error, error}}
+              end
             else
               {:ok, %Ash.Query{} = query} ->
                 {:halt, {:error, Ash.Error.to_error_class(query)}}
