@@ -4708,6 +4708,8 @@ defmodule Ash.Filter do
 
   defp add_to_ref_path(other, _), do: other
 
+  defp parse_and_join([], _op, _context), do: {:ok, true}
+
   defp parse_and_join([statement | statements], op, context) do
     case parse_expression(statement, context) do
       {:ok, nested_expression} ->

@@ -1213,4 +1213,40 @@ defmodule Ash.Test.Filter.FilterTest do
              |> Ash.Query.filter_input(%{embedded_bio: %{at_path: [:title], eq: "Dr."}})
              |> Ash.read!()
   end
+
+  describe "empty filter lists" do
+    setup do
+      post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title1", contents: "contents1", points: 1})
+        |> Ash.create!()
+        |> strip_metadata()
+
+      post2 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title2", contents: "contents2", points: 2})
+        |> Ash.create!()
+        |> strip_metadata()
+
+      %{post1: post1, post2: post2}
+    end
+
+    test "filtering with an empty 'or' list does not crash", %{post1: post1, post2: post2} do
+      query =
+        Post
+        |> Ash.Query.filter(or: [])
+        |> Ash.read!()
+
+      assert [post1, post2] = query
+    end
+
+    test "filtering with an empty 'and' list does not crash", %{post1: post1, post2: post2} do
+      query =
+        Post
+        |> Ash.Query.filter(and: [])
+        |> Ash.read!()
+
+      assert [post1, post2] = query
+    end
+  end
 end
