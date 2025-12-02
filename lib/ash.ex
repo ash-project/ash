@@ -2463,7 +2463,7 @@ defmodule Ash do
   def load(%Ash.Query{}, _query, _opts) do
     raise ArgumentError,
       message: """
-      Ash.load expects a resource, not an Ash.Query. You probably want to
+      Ash.load expects a record or records, not an Ash.Query. You probably want to
       load it in the query directly instead:
 
       MyResource
