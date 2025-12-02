@@ -2466,7 +2466,7 @@ defmodule Ash do
       Ash.load expects a record or records, not an Ash.Query. You probably want to
       load it in the query directly instead:
 
-      MyResource
+      query
       |> Ash.Query.for_read(:read, load: :the_field_that_you_want_to_load)
 
       See: https://hexdocs.pm/ash/Ash.Query.html#load/3
