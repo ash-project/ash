@@ -2460,6 +2460,19 @@ defmodule Ash do
     load(values, query, Keyword.put(opts, :resource, resource))
   end
 
+  def load(%Ash.Query{}, _query, _opts) do
+    raise ArgumentError,
+      message: """
+      Ash.load expects a record or records, not an Ash.Query. You probably want to
+      load it in the query directly instead:
+
+      query
+      |> Ash.Query.for_read(:read, load: :the_field_that_you_want_to_load)
+
+      See: https://hexdocs.pm/ash/Ash.Query.html#load/3
+      """
+  end
+
   def load(%struct{results: results} = page, query, opts)
       when struct in [Ash.Page.Offset, Ash.Page.Keyset] do
     Ash.Helpers.expect_options!(opts)
