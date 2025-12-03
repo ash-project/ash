@@ -169,9 +169,7 @@ defmodule Ash.Test.Actions.CalculationsReferenceAggregatesTest do
     calculations do
       calculate :combined_metric,
                 :integer,
-                expr(sum_of_category_a_values + count_of_category_b) do
-        load([:sum_of_category_a_values, :count_of_category_b])
-      end
+                expr(sum_of_category_a_values + count_of_category_b)
     end
 
     relationships do

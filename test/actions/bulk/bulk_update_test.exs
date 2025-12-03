@@ -1747,7 +1747,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                )
 
       assert is_list(notifications)
-      assert length(notifications) > 0
+      refute Enum.empty?(notifications)
     end
   end
 end

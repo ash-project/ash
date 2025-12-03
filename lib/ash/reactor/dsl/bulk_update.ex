@@ -235,6 +235,13 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             required: false,
             default: 0
           ],
+          notification_metadata: [
+            type: {:or, [Reactor.Template.type(), :map]},
+            doc:
+              "Metadata to be merged into the metadata field for all notifications sent from this operation.",
+            required: false,
+            default: %{}
+          ],
           notify?: [
             type: :boolean,
             doc:

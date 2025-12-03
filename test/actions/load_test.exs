@@ -1298,6 +1298,14 @@ defmodule Ash.Test.Actions.LoadTest do
       assert author.latest_post.id == post2.id
     end
 
+    test "it throws an error when passing it an Ash.Query" do
+      assert_raise ArgumentError, ~r/Ash.load expects a record/, fn ->
+        Post
+        |> Ash.Query.for_read(:read)
+        |> Ash.load!(:latest_post)
+      end
+    end
+
     test "loading belongs_to on resource without primary key returns correct result" do
       author =
         Author

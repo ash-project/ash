@@ -692,13 +692,26 @@ defmodule Ash.Actions.Read do
                      parent_stack: parent_stack_from_context(query.context),
                      source_context: query.context
                    ),
+                 filter <-
+                   add_calc_context_to_filter(
+                     query.filter,
+                     opts[:actor],
+                     opts[:authorize?],
+                     query.tenant,
+                     opts[:tracer],
+                     query.domain,
+                     query.resource,
+                     expand?: true,
+                     parent_stack: parent_stack_from_context(query.context),
+                     source_context: query.context
+                   ),
                  {:ok, relationship_path_filters} <-
                    Ash.Filter.relationship_filters(
                      query.domain,
                      pre_authorization_query,
                      opts[:actor],
                      query.tenant,
-                     agg_refs(query, data_layer_calculations ++ [{nil, query.filter}]),
+                     agg_refs(query, data_layer_calculations ++ [{nil, filter}]),
                      opts[:authorize?]
                    ),
                  data_layer_calculations <-
@@ -836,10 +849,10 @@ defmodule Ash.Actions.Read do
       end
     else
       {:ok, query} ->
-        {{:error, query}, query}
+        {run_after_transaction_hooks({:error, query}, query), query}
 
       {:error, error} ->
-        {{:error, error}, query}
+        {run_after_transaction_hooks({:error, error}, query), query}
     end
   end
 
@@ -948,13 +961,26 @@ defmodule Ash.Actions.Read do
              parent_stack: parent_stack_from_context(query.context),
              source_context: query.context
            ),
+         filter <-
+           add_calc_context_to_filter(
+             query.filter,
+             opts[:actor],
+             opts[:authorize?],
+             query.tenant,
+             opts[:tracer],
+             query.domain,
+             query.resource,
+             expand?: true,
+             parent_stack: parent_stack_from_context(query.context),
+             source_context: query.context
+           ),
          {:ok, relationship_path_filters} <-
            Ash.Filter.relationship_filters(
              query.domain,
              pre_authorization_query,
              opts[:actor],
              query.tenant,
-             agg_refs(query, data_layer_calculations ++ [{nil, query.filter}]),
+             agg_refs(query, data_layer_calculations ++ [{nil, filter}]),
              opts[:authorize?]
            ),
          data_layer_calculations <-

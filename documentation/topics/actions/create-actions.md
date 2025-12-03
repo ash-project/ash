@@ -63,14 +63,16 @@ Returning a stream allows you to work with a bulk action as an Elixir Stream. Fo
 ```elixir
 input_stream()
 |> Ash.bulk_create(Resource, :action, return_stream?: true, return_records?: true)
-|> Stream.map(fn {:ok, result} ->
+|> Stream.map(fn 
+  {:ok, result} ->
   # process results
   {:error, error} ->
   # process errors
 end)
-|> Enum.reduce(%{}, fn {:ok, result}, acc ->
+|> Enum.reduce(%{}, fn 
+   {:ok, result}, acc ->
    # process results
-   {:error, error} ->
+   {:error, error}, acc ->
    # process errors
 end)
 ```

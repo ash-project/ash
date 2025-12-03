@@ -137,7 +137,7 @@
         ## Warnings
         #
         {Credo.Check.Warning.BoolOperationOnSameValues, []},
-        {Credo.Check.Warning.ExpensiveEmptyEnumCheck, []},
+        {Credo.Check.Warning.ExpensiveEmptyEnumCheck, [files: %{excluded: ["test/**/*_test.exs"]}]},
         {Credo.Check.Warning.IExPry, []},
         {Credo.Check.Warning.IoInspect, []},
         {Credo.Check.Warning.LazyLogging, false},
@@ -145,6 +145,7 @@
         {Credo.Check.Warning.OperationOnSameValues, []},
         {Credo.Check.Warning.OperationWithConstantResult, []},
         {Credo.Check.Warning.RaiseInsideRescue, []},
+        {Credo.Check.Warning.StructFieldAmount, false},
         {Credo.Check.Warning.UnusedEnumOperation, []},
         {Credo.Check.Warning.UnusedFileOperation, []},
         {Credo.Check.Warning.UnusedKeywordOperation, []},
