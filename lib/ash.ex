@@ -2227,10 +2227,7 @@ defmodule Ash do
     {:error, "Cannot seek to a specific page with keyset based pagination"}
   end
 
-  def page(
-        %Ash.Page.Keyset{results: results, rerun: {query, opts}} = page,
-        :next
-      ) do
+  def page(%Ash.Page.Keyset{results: results, rerun: {query, opts}}, :next) do
     last_keyset =
       results
       |> :lists.last()
@@ -2242,19 +2239,13 @@ defmodule Ash do
       |> Keyword.delete(:before)
       |> Keyword.put(:after, last_keyset)
 
-    query =
-      Ash.Query.page(query, new_page_opts)
-
-    case read(query, opts) do
-      {:ok, %{results: []}} ->
-        {:ok, %{page | more?: false}}
-
-      other ->
-        other
+    case Ash.Query.page(query, new_page_opts) |> read(opts) do
+      {:ok, %{results: []} = page} -> {:ok, page}
+      other -> other
     end
   end
 
-  def page(%Ash.Page.Keyset{results: results, rerun: {query, opts}} = page, :prev) do
+  def page(%Ash.Page.Keyset{results: results, rerun: {query, opts}}, :prev) do
     first_keyset =
       results
       |> List.first()
@@ -2266,14 +2257,9 @@ defmodule Ash do
       |> Keyword.put(:before, first_keyset)
       |> Keyword.delete(:after)
 
-    query = Ash.Query.page(query, new_page_opts)
-
-    case read(query, opts) do
-      {:ok, %{results: []}} ->
-        {:ok, page}
-
-      other ->
-        other
+    case Ash.Query.page(query, new_page_opts) |> read(opts) do
+      {:ok, %{results: []} = page} -> {:ok, page}
+      other -> other
     end
   end
 
