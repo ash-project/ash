@@ -305,15 +305,19 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
 
   defp validate_entity_input_names(_entity, _action, _dsl_state), do: :ok
 
-  defp maybe_accept_inputs(input_names, action) when length(action.accepts) > 0,
+  defp maybe_accept_inputs(input_names, action) when action.accepts == [], do: input_names
+
+  defp maybe_accept_inputs(input_names, action) when is_list(action.accepts),
     do: Enum.filter(input_names, &(&1 in action.accepts))
 
-  defp maybe_accept_inputs(input_names, _), do: input_names
+  defp maybe_accept_inputs(input_names, _action), do: input_names
 
-  defp maybe_reject_inputs(input_names, action) when length(action.rejects) > 0,
+  defp maybe_reject_inputs(input_names, action) when action.rejects == [], do: input_names
+
+  defp maybe_reject_inputs(input_names, action) when is_list(action.rejects),
     do: Enum.filter(input_names, &(&1 in action.rejects))
 
-  defp maybe_reject_inputs(input_names, _), do: input_names
+  defp maybe_reject_inputs(input_names, _action), do: input_names
 
   defp get_entity_resource_action(entity, dsl_state) when is_nil(entity.action) do
     entity.resource
