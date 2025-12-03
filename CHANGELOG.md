@@ -8,6 +8,19 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.10.1](https://github.com/ash-project/ash/compare/v3.10.0...v3.10.1) (2025-12-03)
+
+
+
+
+### Bug Fixes:
+
+* run after_transaction hook in all read failure cases (#2455) by [@barnabasJ](https://github.com/barnabasJ) [(#2455)](https://github.com/ash-project/ash/pull/2455)
+
+### Improvements:
+
+* raise better error when passing Ash.Query to Ash.load (#2459) by StephanH90 [(#2459)](https://github.com/ash-project/ash/pull/2459)
+
 ## [v3.10.0](https://github.com/ash-project/ash/compare/v3.9.0...v3.10.0) (2025-11-25)
 
 
