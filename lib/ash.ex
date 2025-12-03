@@ -2245,7 +2245,7 @@ defmodule Ash do
     end
   end
 
-  def page(%Ash.Page.Keyset{results: results, rerun: {query, opts}} = page, :prev) do
+  def page(%Ash.Page.Keyset{results: results, rerun: {query, opts}}, :prev) do
     first_keyset =
       results
       |> List.first()
