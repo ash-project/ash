@@ -410,7 +410,7 @@ defmodule Ash.Policy.FilterCheck do
   end
 
   def is_filter_check?(module) do
-    :erlang.function_exported(module, :filter, 1)
+    :erlang.function_exported(module, :filter, 3)
   end
 
   @doc false
