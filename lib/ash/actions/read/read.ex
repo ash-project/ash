@@ -2813,22 +2813,73 @@ defmodule Ash.Actions.Read do
 
   defp handle_aggregate_multitenancy(query) do
     Enum.reduce_while(query.aggregates, {:ok, %{}}, fn {key, aggregate}, {:ok, acc} ->
-      case handle_multitenancy(
-             Ash.Query.set_tenant(aggregate.query, aggregate.query.tenant || query.tenant)
-           ) do
-        {:ok, %{valid?: true} = query} ->
-          {:cont, {:ok, Map.put(acc, key, %{aggregate | query: query})}}
-
-        {:ok, query} ->
-          {:halt, {:error, Ash.Error.set_path(query.errors, aggregate.name)}}
-
-        {:error, error} ->
-          {:halt, {:error, Ash.Error.set_path(error, aggregate.name)}}
+      with aggregate_query <-
+             apply_aggregate_tenant(aggregate.query, query.tenant, aggregate.multitenancy),
+           :ok <- validate_aggregate_multitenancy(aggregate),
+           {:ok, %{valid?: true} = q} <- handle_multitenancy(aggregate_query) do
+        {:cont, {:ok, Map.put(acc, key, %{aggregate | query: q})}}
+      else
+        {:ok, q} -> {:halt, {:error, Ash.Error.set_path(q.errors, aggregate.name)}}
+        {:error, error} -> {:halt, {:error, Ash.Error.set_path(error, aggregate.name)}}
       end
     end)
     |> case do
       {:ok, aggregates} -> {:ok, %{query | aggregates: aggregates}}
       {:error, error} -> {:error, error}
+    end
+  end
+
+  defp apply_aggregate_tenant(aggregate_query, fallback_tenant, :bypass) do
+    aggregate_query
+    |> Ash.Query.set_tenant(aggregate_query.tenant || fallback_tenant)
+    |> Ash.Query.set_context(%{shared: %{private: %{multitenancy: :bypass_all}}})
+  end
+
+  defp apply_aggregate_tenant(aggregate_query, fallback_tenant, _multitenancy) do
+    Ash.Query.set_tenant(aggregate_query, aggregate_query.tenant || fallback_tenant)
+  end
+
+  defp validate_aggregate_multitenancy(aggregate) do
+    if aggregate.multitenancy == :bypass do
+      with :ok <- validate_context_multitenancy_strategy(aggregate.resource, nil, aggregate.name) do
+        Enum.reduce_while(aggregate.relationship_path, {:ok, aggregate.resource}, fn
+          rel_name, {:ok, current_resource} ->
+            relationship = Ash.Resource.Info.relationship(current_resource, rel_name)
+
+            relationship.destination
+            |> validate_context_multitenancy_strategy(rel_name, aggregate.name)
+            |> case do
+              :ok -> {:cont, {:ok, relationship.destination}}
+              error -> {:halt, error}
+            end
+        end)
+        |> case do
+          {:ok, _} -> :ok
+          error -> error
+        end
+      end
+    else
+      :ok
+    end
+  end
+
+  # Validate context multitenancy and its relationships are not used with bypass
+  # Ref: https://github.com/ash-project/ash_postgres/pull/649#issuecomment-3536654583
+  defp validate_context_multitenancy_strategy(resource, relationship_name, aggregate_name) do
+    if Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+      location = relationship_name && " in relationship `#{relationship_name}`"
+
+      {:error,
+       Ash.Error.Query.InvalidQuery.exception(
+         field: aggregate_name,
+         message: """
+         Aggregate `#{aggregate_name}` uses `multitenancy: :bypass` but resource \
+         `#{inspect(resource)}`#{location} uses `:context` multitenancy strategy. \
+         Multitenancy bypass only supports `:attribute` strategy.
+         """
+       )}
+    else
+      :ok
     end
   end
 
@@ -4911,6 +4962,10 @@ defmodule Ash.Actions.Read do
   defp set_phase(query, phase \\ :preparing)
        when phase in ~w[preparing before_action after_action executing around_transaction]a,
        do: %{query | phase: phase}
+
+  defp get_shared_multitenancy(%{context: %{private: %{multitenancy: multitenancy}}}) do
+    multitenancy
+  end
 
   defp get_shared_multitenancy(%{context: %{multitenancy: multitenancy}}) do
     multitenancy
