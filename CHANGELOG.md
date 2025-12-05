@@ -8,6 +8,31 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.11.0](https://github.com/ash-project/ash/compare/v3.10.1...v3.11.0) (2025-12-05)
+
+
+
+
+### Features:
+
+* aggregates: add multitenancy bypass option for aggregates (#2427) by [@shahryarjb](https://github.com/shahryarjb) [(#2427)](https://github.com/ash-project/ash/pull/2427)
+
+* aggregates: add multitenancy bypass option for aggregates by [@shahryarjb](https://github.com/shahryarjb) [(#2427)](https://github.com/ash-project/ash/pull/2427)
+
+### Bug Fixes:
+
+* Update `is_filter_check?(module)` to check for arity 3 (#2466) by A.S. Zwaan [(#2466)](https://github.com/ash-project/ash/pull/2466)
+
+* Ash.Reactor notification_metadata for bulk_create and bulk_update (#2449) by Christopher Bonhage [(#2449)](https://github.com/ash-project/ash/pull/2449)
+
+* keyset pagination now returns empty page at the end (#2464) by [@rapidfsub](https://github.com/rapidfsub) [(#2464)](https://github.com/ash-project/ash/pull/2464)
+
+* run after_transaction hook in all read failure cases (#2455) by Barnabas Jovanovics [(#2455)](https://github.com/ash-project/ash/pull/2455)
+
+### Improvements:
+
+* raise better error when passing Ash.Query to Ash.load (#2459) by StephanH90 [(#2459)](https://github.com/ash-project/ash/pull/2459)
+
 ## [v3.10.1](https://github.com/ash-project/ash/compare/v3.10.0...v3.10.1) (2025-12-03)
 
 
