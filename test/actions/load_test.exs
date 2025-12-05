@@ -1299,7 +1299,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     test "it throws an error when passing it an Ash.Query" do
-      assert_raise ArgumentError, ~r/Ash.load expects a record/, fn ->
+      assert_raise ArgumentError, ~r/Ash.load expects a record or records/, fn ->
         Post
         |> Ash.Query.for_read(:read)
         |> Ash.load!(:latest_post)

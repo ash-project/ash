@@ -1301,8 +1301,41 @@ defmodule Ash.ActionInput do
                  ) do
             input
           else
+            {:error, error} when is_binary(error) ->
+              add_error(input, validation.message || error)
+
+            {:error, error} when is_exception(error) ->
+              if validation.message do
+                error = Ash.Error.override_validation_message(error, validation.message)
+                add_error(input, error)
+              else
+                add_error(input, error)
+              end
+
+            {:error, errors} when is_list(errors) ->
+              if validation.message do
+                errors =
+                  Enum.map(errors, fn error ->
+                    Ash.Error.override_validation_message(error, validation.message)
+                  end)
+
+                add_error(input, errors)
+              else
+                add_error(input, errors)
+              end
+
             {:error, error} ->
+              error =
+                if Keyword.keyword?(error) do
+                  Keyword.put(error, :message, validation.message || error[:message])
+                else
+                  validation.message || error
+                end
+
               add_error(input, error)
+
+            _ when validation.message ->
+              add_error(input, validation.message)
 
             :error ->
               add_error(input, validation.module.describe(validation.opts))
