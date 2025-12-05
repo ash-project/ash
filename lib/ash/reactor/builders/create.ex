@@ -34,6 +34,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
         |> maybe_append(create.tenant)
         |> maybe_append(create.load)
         |> maybe_append(create.context)
+        |> maybe_append(create.notification_metadata)
         |> Enum.concat(create.wait_for)
         |> Enum.concat([initial])
 

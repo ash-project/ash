@@ -670,6 +670,7 @@ Caveats/differences from `Ash.bulk_create/4`:
  * [guard](#reactor-bulk_create-guard)
  * [where](#reactor-bulk_create-where)
  * [load](#reactor-bulk_create-load)
+ * [notification_metadata](#reactor-bulk_create-notification_metadata)
  * [tenant](#reactor-bulk_create-tenant)
  * [wait_for](#reactor-bulk_create-wait_for)
 
@@ -917,6 +918,37 @@ Allows the addition of an Ash load statement to the action
 
 Target: `Ash.Reactor.Dsl.ActionLoad`
 
+### reactor.bulk_create.notification_metadata
+```elixir
+notification_metadata source
+```
+
+
+Specifies metadata to be merged into the metadata field for all notifications sent from this operation
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-bulk_create-notification_metadata-source){: #reactor-bulk_create-notification_metadata-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map \| nil` |  | What to use as the source of the notification metadata. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_create-notification_metadata-transform){: #reactor-bulk_create-notification_metadata-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the notification metadata before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.NotificationMetadata`
+
 ### reactor.bulk_create.tenant
 ```elixir
 tenant source
@@ -1030,6 +1062,7 @@ Caveats/differences from `Ash.bulk_update/4`:
  * [guard](#reactor-bulk_update-guard)
  * [where](#reactor-bulk_update-where)
  * [inputs](#reactor-bulk_update-inputs)
+ * [notification_metadata](#reactor-bulk_update-notification_metadata)
  * [tenant](#reactor-bulk_update-tenant)
  * [wait_for](#reactor-bulk_update-wait_for)
 
@@ -1298,6 +1331,37 @@ inputs(author: result(:get_user))
 
 Target: `Ash.Reactor.Dsl.Inputs`
 
+### reactor.bulk_update.notification_metadata
+```elixir
+notification_metadata source
+```
+
+
+Specifies metadata to be merged into the metadata field for all notifications sent from this operation
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-bulk_update-notification_metadata-source){: #reactor-bulk_update-notification_metadata-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map \| nil` |  | What to use as the source of the notification metadata. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_update-notification_metadata-transform){: #reactor-bulk_update-notification_metadata-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the notification metadata before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.NotificationMetadata`
+
 ### reactor.bulk_update.tenant
 ```elixir
 tenant source
@@ -1554,6 +1618,7 @@ Declares a step that will call a create action on a resource.
  * [where](#reactor-create-where)
  * [inputs](#reactor-create-inputs)
  * [load](#reactor-create-load)
+ * [notification_metadata](#reactor-create-notification_metadata)
  * [tenant](#reactor-create-tenant)
  * [wait_for](#reactor-create-wait_for)
 
@@ -1830,6 +1895,37 @@ Allows the addition of an Ash load statement to the action
 
 Target: `Ash.Reactor.Dsl.ActionLoad`
 
+### reactor.create.notification_metadata
+```elixir
+notification_metadata source
+```
+
+
+Specifies metadata to be merged into the metadata field for all notifications sent from this operation
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-create-notification_metadata-source){: #reactor-create-notification_metadata-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map \| nil` |  | What to use as the source of the notification metadata. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-create-notification_metadata-transform){: #reactor-create-notification_metadata-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the notification metadata before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.NotificationMetadata`
+
 ### reactor.create.tenant
 ```elixir
 tenant source
@@ -1934,6 +2030,7 @@ Declares a step that will call a destroy action on a resource.
  * [where](#reactor-destroy-where)
  * [inputs](#reactor-destroy-inputs)
  * [load](#reactor-destroy-load)
+ * [notification_metadata](#reactor-destroy-notification_metadata)
  * [tenant](#reactor-destroy-tenant)
  * [wait_for](#reactor-destroy-wait_for)
 
@@ -2205,6 +2302,37 @@ Allows the addition of an Ash load statement to the action
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.ActionLoad`
+
+### reactor.destroy.notification_metadata
+```elixir
+notification_metadata source
+```
+
+
+Specifies metadata to be merged into the metadata field for all notifications sent from this operation
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-destroy-notification_metadata-source){: #reactor-destroy-notification_metadata-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map \| nil` |  | What to use as the source of the notification metadata. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-destroy-notification_metadata-transform){: #reactor-destroy-notification_metadata-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the notification metadata before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.NotificationMetadata`
 
 ### reactor.destroy.tenant
 ```elixir
@@ -3487,6 +3615,7 @@ Declares a step that will call an update action on a resource.
  * [where](#reactor-update-where)
  * [inputs](#reactor-update-inputs)
  * [load](#reactor-update-load)
+ * [notification_metadata](#reactor-update-notification_metadata)
  * [tenant](#reactor-update-tenant)
  * [wait_for](#reactor-update-wait_for)
 
@@ -3760,6 +3889,37 @@ Allows the addition of an Ash load statement to the action
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.ActionLoad`
+
+### reactor.update.notification_metadata
+```elixir
+notification_metadata source
+```
+
+
+Specifies metadata to be merged into the metadata field for all notifications sent from this operation
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-update-notification_metadata-source){: #reactor-update-notification_metadata-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map \| nil` |  | What to use as the source of the notification metadata. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-update-notification_metadata-transform){: #reactor-update-notification_metadata-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the notification metadata before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.NotificationMetadata`
 
 ### reactor.update.tenant
 ```elixir

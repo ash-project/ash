@@ -211,6 +211,7 @@ spark_locals_without_parens = [
   not_found_error?: 1,
   not_found_message: 1,
   notification_metadata: 1,
+  notification_metadata: 2,
   notifiers: 1,
   notify?: 1,
   offset?: 1,
