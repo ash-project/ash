@@ -90,6 +90,21 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule AtomicWithAfterTransaction do
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.after_transaction(changeset, fn _changeset, {:ok, result} ->
+        send(self(), {:after_transaction_called, result.id})
+        {:ok, result}
+      end)
+    end
+
+    def atomic(changeset, opts, context) do
+      {:ok, change(changeset, opts, context)}
+    end
+  end
+
   defmodule AtomicallyRequireActor do
     use Ash.Resource.Change
 
@@ -345,6 +360,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
       update :update_with_filter do
         change filter(expr(title == "foo"))
+      end
+
+      update :update_with_atomic_after_transaction do
+        change AtomicWithAfterTransaction
       end
     end
 
@@ -1748,6 +1767,26 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
       assert is_list(notifications)
       refute Enum.empty?(notifications)
+    end
+  end
+
+  describe "atomic changes with after_transaction hooks" do
+    test "after_transaction hooks cannot be added in atomic changes" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "test"})
+        |> Ash.create!()
+
+      # Attempting to use an atomic change that adds an after_transaction hook
+      # currently fails with an error.
+      assert_raise Ash.Error.Invalid, ~r/Cannot add after_transaction hooks/, fn ->
+        Post
+        |> Ash.Query.filter(id == ^post.id)
+        |> Ash.bulk_update!(:update_with_atomic_after_transaction, %{},
+          return_records?: true,
+          strategy: :atomic
+        )
+      end
     end
   end
 end
