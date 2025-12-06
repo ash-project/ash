@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.11.1](https://github.com/ash-project/ash/compare/v3.11.0...v3.11.1) (2025-12-06)
+
+
+
+
+### Bug Fixes:
+
+* handle has_one that return multiple records w/ no_attributes? by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.11.0](https://github.com/ash-project/ash/compare/v3.10.1...v3.11.0) (2025-12-05)
 
 
