@@ -1086,7 +1086,34 @@ defmodule Ash.Actions.Read.Relationships do
          _related_query
        ) do
     Enum.map(records, fn record ->
-      Map.put(record, relationship.name, related_records)
+      case relationship.cardinality do
+        :many ->
+          Map.put(record, relationship.name, related_records)
+
+        :one ->
+          related_record =
+            case related_records do
+              [related_record] ->
+                related_record
+
+              [] ->
+                nil
+
+              [related_record | _] ->
+                # 4.0
+                Logger.warning("""
+                Got more than one result while loading relationship `#{inspect(relationship.source)}.#{relationship.name}`.
+
+                In the future this will be an error. If you have a `has_one` relationship that could produce multiple
+                related records, you must specify `from_many? true` on the relationship, *or* specify a `sort` (which
+                implicitly sets `from_many?` to `true`.
+                """)
+
+                related_record
+            end
+
+          Map.put(record, relationship.name, related_record)
+      end
     end)
   end
 

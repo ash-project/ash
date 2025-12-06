@@ -66,6 +66,6 @@ defmodule Ash.Test.ContextMultitenancyTest do
       |> Ash.create!(tenant: "tenant_1000", load: :tenant_resource)
 
     refute is_list(related.tenant_resource)
-    assert tenant_resource == related.tenant_resource
+    assert tenant_resource.id == related.tenant_resource.id
   end
 end
