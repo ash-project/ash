@@ -69,7 +69,7 @@ defmodule Ash.Resource.Calculation.Expression do
               {:cont, {:ok, [value | values]}}
 
             :unknown ->
-              {:halt, :unknown}
+              {:cont, {:ok, [nil | values]}}
 
             {:error, error} ->
               {:halt, {:error, error}}
