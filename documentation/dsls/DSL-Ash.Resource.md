@@ -2875,6 +2875,7 @@ end
 | [`sortable?`](#aggregates-count-sortable?){: #aggregates-count-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-count-sensitive?){: #aggregates-count-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-count-authorize?){: #aggregates-count-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
+| [`multitenancy`](#aggregates-count-multitenancy){: #aggregates-count-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.count.join_filter
@@ -2963,6 +2964,7 @@ exists :has_ticket, :assigned_tickets
 | [`sortable?`](#aggregates-exists-sortable?){: #aggregates-exists-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-exists-sensitive?){: #aggregates-exists-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-exists-authorize?){: #aggregates-exists-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
+| [`multitenancy`](#aggregates-exists-multitenancy){: #aggregates-exists-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.exists.join_filter
@@ -3058,6 +3060,7 @@ end
 | [`sortable?`](#aggregates-first-sortable?){: #aggregates-first-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-first-sensitive?){: #aggregates-first-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-first-authorize?){: #aggregates-first-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
+| [`multitenancy`](#aggregates-first-multitenancy){: #aggregates-first-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.first.join_filter
@@ -3149,6 +3152,7 @@ end
 | [`sortable?`](#aggregates-sum-sortable?){: #aggregates-sum-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-sum-sensitive?){: #aggregates-sum-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-sum-authorize?){: #aggregates-sum-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
+| [`multitenancy`](#aggregates-sum-multitenancy){: #aggregates-sum-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.sum.join_filter
@@ -3244,6 +3248,7 @@ end
 | [`sortable?`](#aggregates-list-sortable?){: #aggregates-list-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-list-sensitive?){: #aggregates-list-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-list-authorize?){: #aggregates-list-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
+| [`multitenancy`](#aggregates-list-multitenancy){: #aggregates-list-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.list.join_filter
@@ -3335,6 +3340,7 @@ end
 | [`sortable?`](#aggregates-max-sortable?){: #aggregates-max-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-max-sensitive?){: #aggregates-max-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-max-authorize?){: #aggregates-max-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
+| [`multitenancy`](#aggregates-max-multitenancy){: #aggregates-max-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.max.join_filter
@@ -3426,6 +3432,7 @@ end
 | [`sortable?`](#aggregates-min-sortable?){: #aggregates-min-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-min-sensitive?){: #aggregates-min-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-min-authorize?){: #aggregates-min-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
+| [`multitenancy`](#aggregates-min-multitenancy){: #aggregates-min-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.min.join_filter
@@ -3517,6 +3524,7 @@ end
 | [`sortable?`](#aggregates-avg-sortable?){: #aggregates-avg-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-avg-sensitive?){: #aggregates-avg-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-avg-authorize?){: #aggregates-avg-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
+| [`multitenancy`](#aggregates-avg-multitenancy){: #aggregates-avg-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.avg.join_filter
@@ -3613,6 +3621,7 @@ end
 | [`sortable?`](#aggregates-custom-sortable?){: #aggregates-custom-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-custom-sensitive?){: #aggregates-custom-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-custom-authorize?){: #aggregates-custom-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
+| [`multitenancy`](#aggregates-custom-multitenancy){: #aggregates-custom-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.custom.join_filter
