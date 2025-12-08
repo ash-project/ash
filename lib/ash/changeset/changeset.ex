@@ -112,7 +112,7 @@ defmodule Ash.Changeset do
         if context == %{} do
           empty()
         else
-          concat("context: ", to_doc(context, opts))
+          concat("context: ", to_doc(Ash.Helpers.redact(context), opts))
         end
 
       tenant =
