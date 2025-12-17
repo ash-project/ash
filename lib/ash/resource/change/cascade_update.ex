@@ -238,16 +238,28 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         )
 
       :error ->
+        read_action_name =
+          opts.read_action || opts.relationship.read_action || opts.action.atomic_upgrade_with
+
+        load_query =
+          if read_action_name do
+            opts.relationship.destination
+            |> Ash.Query.for_read(read_action_name)
+            |> Ash.Query.set_context(%{
+              cascade_update: true,
+              accessing_from: %{source: relationship.source, name: relationship.name}
+            })
+          else
+            Ash.Query.set_context(relationship.destination, %{
+              cascade_update: true,
+              accessing_from: %{source: relationship.source, name: relationship.name}
+            })
+          end
+
         data
         |> List.wrap()
         |> Ash.load!(
-          [
-            {relationship.name,
-             Ash.Query.set_context(relationship.destination, %{
-               cascade_update: true,
-               accessing_from: %{source: relationship.source, name: relationship.name}
-             })}
-          ],
+          [{relationship.name, load_query}],
           tenant: tenant
         )
         |> Enum.flat_map(fn record ->
