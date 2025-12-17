@@ -13,6 +13,7 @@ defmodule Ash.Resource.Actions.Destroy do
     :soft?,
     :description,
     :error_handler,
+    :multitenancy,
     manual: nil,
     require_atomic?: Application.compile_env(:ash, :require_atomic_by_default?, true),
     skip_unknown_inputs: [],
@@ -39,6 +40,7 @@ defmodule Ash.Resource.Actions.Destroy do
           type: :destroy,
           name: atom,
           manual: module | nil,
+          multitenancy: atom,
           action_select: list(atom) | nil,
           notifiers: list(module),
           arguments: list(Ash.Resource.Actions.Argument.t()),
@@ -73,6 +75,13 @@ defmodule Ash.Resource.Actions.Destroy do
                      {Ash.Resource.ManualDestroy.Function, 2}},
                   doc: """
                   Override the update behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
+                  """
+                ],
+                multitenancy: [
+                  type: {:in, [:enforce, :allow_global, :bypass, :bypass_all]},
+                  default: :enforce,
+                  doc: """
+                  This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources.
                   """
                 ],
                 require_atomic?: [
