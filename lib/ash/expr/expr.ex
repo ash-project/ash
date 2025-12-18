@@ -511,6 +511,21 @@ defmodule Ash.Expr do
     end
   end
 
+  def walk_template(%Ash.Query.Calculation{opts: opts} = calc, mapper) do
+    case mapper.(calc) do
+      ^calc ->
+        new_opts =
+          Keyword.update(opts, :expr, nil, fn expr ->
+            walk_template(expr, mapper)
+          end)
+
+        %{calc | opts: new_opts}
+
+      other ->
+        walk_template(other, mapper)
+    end
+  end
+
   def walk_template(filter, mapper) when is_map(filter) do
     if Map.has_key?(filter, :__struct__) do
       filter

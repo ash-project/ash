@@ -172,4 +172,37 @@ defmodule Ash.Test.ExprTest do
       end
     end
   end
+
+  describe "walk_template" do
+    test "walks into Ash.Query.Calculation structs to resolve arg references" do
+      # This test verifies that walk_template enters Calculation structs.
+      # Without the fix, Calculation structs are treated as opaque and returned unchanged,
+      # leaving {:_arg, :q} unresolved (which becomes NULL in SQL).
+
+      calc = calc(fragment("similarity(id, ?)", ^arg(:q)), type: :float)
+
+      assert %Ash.Query.Call{name: :fragment, args: ["similarity(id, ?)", {:_arg, :q}]} =
+               calc.opts[:expr]
+
+      # Use the same mapper pattern that fill_template uses for {:_arg, field}
+      args = %{q: "test_value"}
+
+      mapper = fn
+        {:_arg, field} ->
+          case Map.fetch(args, field) do
+            :error -> Map.get(args, to_string(field))
+            {:ok, value} -> value
+          end
+
+        other ->
+          other
+      end
+
+      filled_calc = Ash.Expr.walk_template(calc, mapper)
+
+      # The arg reference should now be resolved to the actual value
+      assert %Ash.Query.Call{name: :fragment, args: ["similarity(id, ?)", "test_value"]} =
+               filled_calc.opts[:expr]
+    end
+  end
 end
