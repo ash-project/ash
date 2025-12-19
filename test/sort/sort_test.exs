@@ -109,6 +109,56 @@ defmodule Ash.Test.Sort.SortTest do
     end
   end
 
+  defmodule NoSortDataLayer do
+    use Spark.Dsl.Extension, sections: []
+
+    @behaviour Ash.DataLayer
+
+    @impl true
+    def can?(_, :read), do: true
+    def can?(_, :sort), do: false
+    def can?(_, {:sort, _}), do: false
+    def can?(_, _), do: false
+
+    @impl true
+    def resource_to_query(resource, _), do: %{resource: resource}
+
+    @impl true
+    def run_query(_, _), do: {:ok, []}
+  end
+
+  defmodule NoSortAuthor do
+    use Ash.Resource, data_layer: NoSortDataLayer, domain: Ash.Test.Domain
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+      attribute :secret_name, :string, public?: true, sortable?: false
+    end
+
+    actions do
+      defaults [:read]
+    end
+  end
+
+  defmodule NoSortPost do
+    use Ash.Resource, data_layer: NoSortDataLayer, domain: Ash.Test.Domain
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, public?: true
+    end
+
+    relationships do
+      belongs_to :author, NoSortAuthor, public?: true
+      belongs_to :private_author, NoSortAuthor, public?: true, sortable?: false
+    end
+
+    actions do
+      defaults [:read]
+    end
+  end
+
   describe "sort input" do
     test "simple string sort parses properly" do
       assert %{sort: [title: :asc, contents: :desc]} =
@@ -220,6 +270,31 @@ defmodule Ash.Test.Sort.SortTest do
       author_ids = Post |> Ash.Query.sort(sort) |> Ash.read!() |> Enum.map(& &1.author_id)
       assert Enum.sort([author.id, author2.id]) == author_ids
       # TODO: Write assertion here
+    end
+
+    test "returns UnsortableField error when data layer cannot sort field type" do
+      assert {:error, %Ash.Error.Query.UnsortableField{field: :name}} =
+               Ash.Sort.parse_input(NoSortAuthor, "name")
+    end
+
+    test "returns UnsortableField error for field with sortable?: false" do
+      assert {:error, %Ash.Error.Query.UnsortableField{field: :secret_name}} =
+               Ash.Sort.parse_input(NoSortAuthor, "secret_name")
+    end
+
+    test "returns UnsortableField error for relationship field with unsortable type" do
+      assert {:error, %Ash.Error.Query.UnsortableField{field: :name}} =
+               Ash.Sort.parse_input(NoSortPost, "author.name")
+    end
+
+    test "returns UnsortableField error for relationship field with sortable?: false" do
+      assert {:error, %Ash.Error.Query.UnsortableField{field: :secret_name}} =
+               Ash.Sort.parse_input(NoSortPost, "author.secret_name")
+    end
+
+    test "returns UnsortableField error for relationship with sortable?: false" do
+      assert {:error, %Ash.Error.Query.UnsortableField{field: :private_author}} =
+               Ash.Sort.parse_input(NoSortPost, "private_author.name")
     end
   end
 end

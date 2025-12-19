@@ -259,7 +259,7 @@ defmodule Ash.Sort do
                     %{name: name} -> {:ok, name}
                   end
                 else
-                  {:error, UnsortableField.exception(name: field.name, resource: resource)}
+                  {:error, UnsortableField.exception(field: field.name, resource: resource)}
                 end
 
               {:error, error} ->
@@ -491,18 +491,18 @@ defmodule Ash.Sort do
         if do_type_sortable?(resource, type, constraints) do
           {:ok, Enum.reverse(acc), field, type, constraints}
         else
-          {:error, UnsortableField.exception(name: field.name, resource: resource)}
+          {:error, UnsortableField.exception(field: field.name, resource: resource)}
         end
 
       {:ok, %{name: name}} ->
-        {:error, UnsortableField.exception(name: name, resource: resource)}
+        {:error, UnsortableField.exception(field: name, resource: resource)}
     end
   end
 
   defp related_field(resource, [first | rest], field, only_public?, input, acc) do
     case do_get_relationship(resource, first, only_public?) do
       %{sortable?: false, name: name} ->
-        {:error, UnsortableField.exception(name: name, resource: resource)}
+        {:error, UnsortableField.exception(field: name, resource: resource)}
 
       %{sortable?: true, destination: destination, name: name} ->
         related_field(destination, rest, field, only_public?, input, [name | acc])
