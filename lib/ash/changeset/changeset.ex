@@ -1512,15 +1512,18 @@ defmodule Ash.Changeset do
   # to a `where` condition, the opposite is desired. The end result is kinda
   # ugly because it can end up reading like "not is not equal to" but
   # ultimately produces the correct results.
-  @spec atomic_condition([{module(), keyword()}], Ash.Changeset.t(), map()) ::
+  @spec atomic_condition([{module(), keyword()}], Ash.Changeset.t(), map() | struct()) ::
           {:atomic, Ash.Expr.t() | boolean()} | {:not_atomic, String.t()}
   def atomic_condition(where, changeset, context) do
+    # Handle both map and struct contexts (e.g., Ash.Resource.Change.Context)
+    context_map = if is_struct(context), do: Map.from_struct(context), else: context
+
     Enum.reduce_while(where, {:atomic, true}, fn {module, validation_opts},
                                                  {:atomic, condition_expr} ->
       case module.atomic(
              changeset,
              validation_opts,
-             struct(Ash.Resource.Validation.Context, context)
+             struct(Ash.Resource.Validation.Context, context_map)
            ) do
         :ok ->
           {:cont, {:atomic, condition_expr}}
