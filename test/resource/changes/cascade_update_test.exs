@@ -78,10 +78,26 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
                  action: :no_notification_update
                )
       end
+
+      update :update_tags_with_read_action do
+        require_atomic? false
+
+        change cascade_update(:tags,
+                 read_action: :custom_read,
+                 copy_inputs: [:name]
+               )
+      end
     end
 
     relationships do
       has_many :posts, Test.Post, public?: true
+
+      many_to_many :tags, Test.Tag do
+        through Test.AuthorTag
+        source_attribute_on_join_resource :author_id
+        destination_attribute_on_join_resource :tag_id
+        public? true
+      end
     end
 
     code_interface do
@@ -89,6 +105,7 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
       define :update
       define :update_with_atomic_upgrade
       define :no_notification_update
+      define :update_tags_with_read_action
       define :read
     end
   end
@@ -224,6 +241,65 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
     end
   end
 
+  defmodule Tag do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+
+      read :custom_read do
+        prepare fn query, _ ->
+          Agent.update(
+            Test.Agent,
+            &%{&1 | custom_read_used: true}
+          )
+
+          query
+        end
+      end
+
+      update :update do
+        primary? true
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    code_interface do
+      define :create
+      define :read
+    end
+  end
+
+  defmodule AuthorTag do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    relationships do
+      belongs_to :author, Test.Author, public?: true, attribute_writable?: true
+      belongs_to :tag, Test.Tag, public?: true, attribute_writable?: true
+    end
+
+    code_interface do
+      define :create
+      define :read
+    end
+  end
+
   setup do
     {:ok, pid} =
       start_supervised(
@@ -347,5 +423,26 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
     assert ^name = a.name
     assert ^name = p.name
     assert ^name = p2.name
+  end
+
+  test "uses read_action option in fallback path for many_to_many relationships" do
+    author = Author.create!(%{})
+    tag1 = Tag.create!(%{})
+    tag2 = Tag.create!(%{})
+
+    AuthorTag.create!(%{author_id: author.id, tag_id: tag1.id})
+    AuthorTag.create!(%{author_id: author.id, tag_id: tag2.id})
+
+    name = "Ash Framework"
+
+    Author.update_tags_with_read_action!(author, %{name: name})
+
+    assert Agent.get(Test.Agent, & &1.custom_read_used) == true
+
+    t1 = Ash.get!(Tag, tag1.id)
+    t2 = Ash.get!(Tag, tag2.id)
+
+    assert ^name = t1.name
+    assert ^name = t2.name
   end
 end
