@@ -242,7 +242,7 @@ defmodule ActionInvocationTest do
     end
 
     test "does not allow a user to update someone elses tweet" do
-      [user, user2] = generate_many(user(), 2)
+      [user, user2] = generate_many(user(admin?: false), 2)
       tweet = Domain.create_tweet!("Hello world!", actor: user)
 
       refute Domain.can_update_tweet?(user2, tweet, "Goodbye world!")
