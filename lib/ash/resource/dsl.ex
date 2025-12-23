@@ -772,8 +772,12 @@ defmodule Ash.Resource.Dsl do
       ],
       default_accept: [
         type: {:or, [{:list, :atom}, {:literal, :*}]},
-        doc:
-          "A default value for the `accept` option for each action. Use `:*` to accept all public attributes."
+        default: [],
+        doc: """
+        A default value for the `accept` option for each action. Use `:*` to accept all public attributes.
+
+        Ash >= 3.0 defaults to no attributes accepted. In prior versions of Ash all public, writable attributes were accepted by default.
+        """
       ]
     ],
     examples: [
