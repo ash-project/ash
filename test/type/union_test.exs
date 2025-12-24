@@ -80,6 +80,89 @@ defmodule Ash.Test.Filter.UnionTest do
       ]
   end
 
+    defmodule DefaultedType do
+    @moduledoc "A type with a default constraint"
+    use Ash.Type
+
+    @constraints [
+      defaulted: [
+        type: :integer,
+        default: 9001
+      ]
+    ]
+
+    @impl true
+    def storage_type(_), do: :binary
+
+    @impl true
+    def constraints, do: @constraints
+
+    @impl true
+    def cast_input(value, _), do: {:ok, value}
+
+    @impl true
+    def cast_stored(value, _), do: {:ok, value}
+
+    @impl true
+    def matches_type?(_, _), do: true
+
+    @impl true
+    def dump_to_native(value, _), do: {:ok, value}
+  end
+
+  defmodule RequiredType do
+    @moduledoc "A type with two required constraints and an `init` to check that constraint :first <= 100"
+    use Ash.Type
+
+    @constraints [
+      first: [
+        type: :integer,
+        required: true
+      ],
+      second: [
+        type: :integer,
+        required: true
+      ]
+    ]
+
+    @impl true
+    def init(constraints) do
+      if Keyword.has_key?(constraints, :first) and constraints[:first] > 100 do
+        {:error, [message: "first is too high!"]}
+      else
+        {:ok, constraints}
+      end
+    end
+
+    @impl true
+    def storage_type(_), do: :binary
+
+    @impl true
+    def constraints, do: @constraints
+
+    @impl true
+    def cast_input(value, _), do: {:ok, value}
+
+    @impl true
+    def cast_stored(value, _), do: {:ok, value}
+
+    @impl true
+    def matches_type?(_, _), do: true
+
+    @impl true
+    def dump_to_native(value, _), do: {:ok, value}
+  end
+
+  defmodule RequiredNewType do
+    @moduledoc "A NewType created from RequiredType, filling in the required constraints"
+    use Ash.Type.NewType,
+      subtype_of: RequiredType,
+      constraints: [
+        first: 1,
+        second: 2
+      ]
+  end
+
   defmodule Example do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
@@ -204,6 +287,49 @@ defmodule Ash.Test.Filter.UnionTest do
               tag: :type,
               tag_value: :baz
             ]
+          ]
+        ]
+    end
+  end
+
+  defmodule DefaultedTypeExample do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :untagged, :union,
+        public?: true,
+        constraints: [
+          types: [
+            foo: [type: DefaultedType]
+          ]
+        ]
+    end
+  end
+
+  defmodule RequiredNewTypeExample do
+    use Ash.Resource, data_layer: :embedded
+
+    actions do
+      defaults [:read, :create, :destroy, :update]
+      default_accept [:untagged]
+
+      create :argument do
+        argument :untagged_arg, :union,
+          public?: true,
+          constraints: [
+            types: [
+              single: [type: RequiredNewType]
+            ]
+          ]
+      end
+    end
+
+    attributes do
+      attribute :untagged, :union,
+        public?: true,
+        constraints: [
+          types: [
+            single: [type: RequiredNewType]
           ]
         ]
     end
@@ -574,5 +700,62 @@ defmodule Ash.Test.Filter.UnionTest do
                thing: %Ash.Union{type: :string, value: single_value}
              })
              |> Ash.update()
+  end
+
+  test "it initializes an untagged union attribute's constraints with default values applied" do
+    assert 9001 =
+      DefaultedTypeExample
+      |> Ash.Resource.Info.attribute(:untagged)
+      |> Map.get(:constraints)
+      |> Keyword.get(:types)
+      |> Keyword.get(:foo)
+      |> Keyword.get(:constraints)
+      |> Keyword.get(:defaulted)
+  end
+
+  test "it handles NewTypes with required constraints in their parent type" do
+    assert {:ok, %RequiredNewTypeExample{untagged: %Ash.Union{type: :single, value: 1}}} =
+             RequiredNewTypeExample
+             |> Ash.Changeset.for_create(:create, %{untagged: 1})
+             |> Ash.create()
+
+    assert %{untagged_arg: %Ash.Union{value: 1, type: :single}} =
+             RequiredNewTypeExample
+             |> Ash.Changeset.for_create(:argument, %{untagged_arg: 1})
+             |> Map.get(:arguments)
+  end
+
+  test "it fails when attempting to define a resource using a union with invalid constraints" do
+    assert_raise Spark.Error.DslError, ~r/required :second option not found/, fn ->
+      defmodule FailingExample do
+        use Ash.Resource, data_layer: :embedded
+
+        attributes do
+          attribute :untagged, :union,
+            public?: true,
+            constraints: [
+              types: [
+                single: [type: RequiredType, constraints: [first: 1]]
+              ]
+            ]
+        end
+      end
+    end
+
+    assert_raise Spark.Error.DslError, ~r/message: "first is too high!"/, fn ->
+      defmodule FailingExample do
+        use Ash.Resource, data_layer: :embedded
+
+        attributes do
+          attribute :untagged, :union,
+            public?: true,
+            constraints: [
+              types: [
+                single: [type: RequiredType, constraints: [first: 101, second: 2]]
+              ]
+            ]
+        end
+      end
+    end
   end
 end
