@@ -34,13 +34,89 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
   end
 
-  defmodule User do
+  defmodule OrgUser do
     @moduledoc false
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    relationships do
+      belongs_to(:user, Ash.Test.Filter.FilterInteractionTest.User, public?: true)
+      belongs_to(:organization, Ash.Test.Filter.FilterInteractionTest.Organization, public?: true)
+    end
+  end
+
+  defmodule Organization do
+    @moduledoc false
+
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute(:name, :string, public?: true)
+    end
+
+    policies do
+      policy actor_absent() do
+        forbid_if always()
+        access_type :strict
+      end
+
+      policy action_type(:read) do
+        authorize_if relates_to_actor_via(:users)
+      end
+    end
+
+    relationships do
+      many_to_many :users, Ash.Test.Filter.FilterInteractionTest.User,
+        public?: true,
+        through: Ash.Test.Filter.FilterInteractionTest.OrgUser
+
+      has_many :posts, Ash.Test.Filter.FilterInteractionTest.Post, public?: true
+    end
+  end
+
+  defmodule User do
+    @moduledoc false
+
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    policies do
+      policy actor_absent() do
+        forbid_if always()
+        access_type :strict
+      end
+
+      policy action_type(:read) do
+        authorize_if expr(id == ^actor(:id))
+      end
     end
 
     attributes do
@@ -61,6 +137,10 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       )
 
       has_one(:profile, Profile, public?: true, destination_attribute: :user_id)
+
+      many_to_many :organizations, Ash.Test.Filter.FilterInteractionTest.Organization,
+        public?: true,
+        through: Ash.Test.Filter.FilterInteractionTest.OrgUser
     end
   end
 
@@ -94,7 +174,11 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
+
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Mnesia,
+      authorizers: [Ash.Policy.Authorizer]
 
     actions do
       default_accept :*
@@ -108,12 +192,26 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       attribute(:points, :integer, public?: true)
     end
 
+    policies do
+      policy actor_absent() do
+        forbid_if always()
+        access_type :strict
+      end
+
+      policy action_type(:read) do
+        authorize_if relates_to_actor_via(:author)
+        authorize_if relates_to_actor_via([:organization, :users])
+      end
+    end
+
     relationships do
       belongs_to(:author, User,
         public?: true,
         destination_attribute: :id,
         source_attribute: :author_id
       )
+
+      belongs_to(:organization, Organization, public?: true)
 
       many_to_many(:related_posts, __MODULE__,
         public?: true,
@@ -145,86 +243,132 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     post =
       Post
       |> Ash.Changeset.for_create(:create, %{title: "best"})
-      |> Ash.create!()
+      |> Ash.create!(authorize?: false)
       |> strip_metadata()
 
-    assert [^post] = strip_metadata(Ash.read!(Post))
+    assert [^post] = strip_metadata(Ash.read!(Post, authorize?: false))
 
-    post |> Ash.Changeset.for_update(:update, %{title: "worst"}) |> Ash.update!()
+    post |> Ash.Changeset.for_update(:update, %{title: "worst"}) |> Ash.update!(authorize?: false)
 
     new_post = %{post | title: "worst"}
 
-    assert [^new_post] = strip_metadata(Ash.read!(Post))
+    assert [^new_post] = strip_metadata(Ash.read!(Post, authorize?: false))
 
-    Ash.destroy!(post)
+    Ash.destroy!(post, authorize?: false)
 
-    assert [] = Ash.read!(Post)
+    assert [] = Ash.read!(Post, authorize?: false)
   end
 
   describe "cross data layer filtering" do
+    test "authorization across data layers with relates_to_actor_via" do
+      author =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "best author"})
+        |> Ash.create!(authorize?: false)
+
+      user =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "worst author"})
+        |> Ash.create!(authorize?: false)
+
+      orhanization =
+        Organization
+        |> Ash.Changeset.for_create(:create, %{name: "org 1"}, authorize?: false)
+        |> Ash.Changeset.manage_relationship(:users, [author, user], type: :append_and_remove)
+        |> Ash.create!()
+
+      organization_id = orhanization.id
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "best"}, authorize?: false)
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.manage_relationship(:organization, orhanization,
+          type: :append_and_remove
+        )
+        |> Ash.create!()
+
+      post_id = post.id
+
+      assert [%{id: ^post_id}] =
+               Post
+               |> Ash.Query.filter(id: post.id)
+               |> Ash.read!(actor: author)
+
+      assert [%{id: ^organization_id}] =
+               Organization
+               |> Ash.Query.filter(id: orhanization.id)
+               |> Ash.read!(actor: user)
+
+      assert [%{id: ^post_id}] =
+               Post
+               |> Ash.Query.filter(id: post.id)
+               |> Ash.read!(actor: author)
+    end
+
     test "it properly filters with a simple filter" do
       author =
         User
         |> Ash.Changeset.for_create(:create, %{name: "best author"})
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "best"})
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       post1_id = post1.id
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "worst"})
-      |> Ash.create!()
+      |> Ash.create!(authorize?: false)
 
       query =
         Post
         |> Ash.Query.filter(author.name == "best author")
 
-      assert [%{id: ^post1_id}] = Ash.read!(query)
+      assert [%{id: ^post1_id}] = Ash.read!(query, authorize?: false)
     end
 
     test "it properly filters with a simple filter and multiple matches" do
       author =
         User
         |> Ash.Changeset.for_create(:create, %{name: "best author"})
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       author2 =
         User
         |> Ash.Changeset.for_create(:create, %{name: "best author"})
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       author3 =
         User
         |> Ash.Changeset.for_create(:create, %{name: "worst author"})
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "best"})
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       post2 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "best"})
         |> Ash.Changeset.manage_relationship(:author, author2, type: :append_and_remove)
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "best"})
       |> Ash.Changeset.manage_relationship(:author, author3, type: :append_and_remove)
-      |> Ash.create!()
+      |> Ash.create!(authorize?: false)
 
       query =
         Post
         |> Ash.Query.filter(author.name == "best author")
 
-      assert query |> Ash.read!() |> Enum.map(& &1.id) |> Enum.sort() ==
+      assert query |> Ash.read!(authorize?: false) |> Enum.map(& &1.id) |> Enum.sort() ==
                Enum.sort([post1.id, post2.id])
     end
 
@@ -232,17 +376,17 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       post2 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "two"})
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "three"})
-      |> Ash.create!()
+      |> Ash.create!(authorize?: false)
 
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "one"})
         |> Ash.Changeset.manage_relationship(:related_posts, [post2], type: :append_and_remove)
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       query =
         Post
@@ -250,19 +394,19 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       post1_id = post1.id
 
-      assert [%{id: ^post1_id}] = Ash.read!(query)
+      assert [%{id: ^post1_id}] = Ash.read!(query, authorize?: false)
     end
 
     test "parallelizable filter with filtered loads" do
       post2 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "two"})
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       post3 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "three"})
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       post1 =
         Post
@@ -270,10 +414,10 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
         |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
           type: :append_and_remove
         )
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       post2
-      |> Ash.load!(:related_posts)
+      |> Ash.load!(:related_posts, authorize?: false)
 
       posts_query =
         Post
@@ -288,19 +432,20 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       post3_id = post3.id
 
-      assert [%{id: ^post1_id, related_posts: [%{id: ^post3_id}]}] = Ash.read!(query)
+      assert [%{id: ^post1_id, related_posts: [%{id: ^post3_id}]}] =
+               Ash.read!(query, authorize?: false)
     end
 
     test "exists/2 in the same data layer" do
       post2 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "two"})
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       post3 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "three"})
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       post1 =
         Post
@@ -308,12 +453,12 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
         |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
           type: :append_and_remove
         )
-        |> Ash.create!()
+        |> Ash.create!(authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "four"})
       |> Ash.Changeset.manage_relationship(:related_posts, [post3], type: :append_and_remove)
-      |> Ash.create!()
+      |> Ash.create!(authorize?: false)
 
       query =
         Post
@@ -321,36 +466,36 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       post1_id = post1.id
 
-      assert [%{id: ^post1_id}] = Ash.read!(query)
+      assert [%{id: ^post1_id}] = Ash.read!(query, authorize?: false)
     end
 
     test "exists/2 across data layers" do
       author =
         User
-        |> Ash.Changeset.for_create(:create, %{name: "best author"})
+        |> Ash.Changeset.for_create(:create, %{name: "best author"}, authorize?: false)
         |> Ash.create!()
 
       author2 =
         User
-        |> Ash.Changeset.for_create(:create, %{name: "worst author"})
+        |> Ash.Changeset.for_create(:create, %{name: "worst author"}, authorize?: false)
         |> Ash.create!()
 
       post1 =
         Post
-        |> Ash.Changeset.for_create(:create, %{title: "best"})
+        |> Ash.Changeset.for_create(:create, %{title: "best"}, authorize?: false)
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Ash.create!()
 
       post1_id = post1.id
 
       Post
-      |> Ash.Changeset.for_create(:create, %{title: "worst"})
+      |> Ash.Changeset.for_create(:create, %{title: "worst"}, authorize?: false)
       |> Ash.Changeset.manage_relationship(:author, author2, type: :append_and_remove)
       |> Ash.create!()
 
       query = Ash.Query.filter(Post, exists(author, contains(name, "best")))
 
-      assert [%{id: ^post1_id}] = Ash.read!(query)
+      assert [%{id: ^post1_id}] = Ash.read!(query, authorize?: false)
     end
   end
 end

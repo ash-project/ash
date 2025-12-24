@@ -1818,7 +1818,7 @@ defmodule Ash.Filter do
           |> Map.put(:domain, domain)
           |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-        case Ash.Actions.Read.unpaginated_read(query, relationship.read_action) do
+        case Ash.Actions.Read.unpaginated_read(query, relationship.read_action, authorize?: false) do
           {:ok, data} ->
             records_to_expression(data, relationship, at_path)
 
@@ -2080,7 +2080,7 @@ defmodule Ash.Filter do
        ) do
     query = Ash.Query.set_tenant(query, tenant)
 
-    case Ash.Actions.Read.unpaginated_read(query) do
+    case Ash.Actions.Read.unpaginated_read(query, query.action, authorize?: false) do
       {:ok, data} ->
         records_to_expression(
           data,
