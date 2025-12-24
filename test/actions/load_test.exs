@@ -394,6 +394,24 @@ defmodule Ash.Test.Actions.LoadTest do
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
       )
+
+      # For testing join_relationship limit inheritance
+      has_many :post_categories, Ash.Test.Actions.LoadTest.PostCategory do
+        destination_attribute :post_id
+      end
+
+      has_many :top_post_categories, Ash.Test.Actions.LoadTest.PostCategory do
+        destination_attribute :post_id
+        sort priority: :desc
+        limit 3
+      end
+
+      many_to_many :top_categories, Ash.Test.Actions.LoadTest.Category do
+        through Ash.Test.Actions.LoadTest.PostCategory
+        join_relationship :top_post_categories
+        source_attribute_on_join_resource :post_id
+        destination_attribute_on_join_resource :category_id
+      end
     end
   end
 
@@ -408,6 +426,10 @@ defmodule Ash.Test.Actions.LoadTest do
     actions do
       default_accept :*
       defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      attribute(:priority, :integer, public?: true)
     end
 
     relationships do
@@ -2171,5 +2193,50 @@ defmodule Ash.Test.Actions.LoadTest do
       |> Ash.create!()
 
     assert record.id == record.id_calc
+  end
+
+  describe "many_to_many with join_relationship" do
+    test "many_to_many inherits sort and limit from join_relationship" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
+        |> Ash.create!()
+
+      # Create 5 categories with different priorities
+      for {name, priority} <- [{"D", 70}, {"C", 80}, {"B", 90}, {"E", 60}, {"A", 100}] do
+        category =
+          Category
+          |> Ash.Changeset.for_create(:create, %{name: name})
+          |> Ash.create!()
+
+        PostCategory
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          category_id: category.id,
+          priority: priority
+        })
+        |> Ash.create!()
+      end
+
+      # Loading all categories (unlimited) should return all 5
+      post_with_all = Ash.load!(post, :categories)
+      assert length(post_with_all.categories) == 5
+
+      # Loading top_post_categories (limited has_many) should return only 3
+      post_with_top_join = Ash.load!(post, :top_post_categories)
+      assert length(post_with_top_join.top_post_categories) == 3
+
+      # And they should be sorted by priority desc (100, 90, 80)
+      priorities = Enum.map(post_with_top_join.top_post_categories, & &1.priority)
+      assert priorities == [100, 90, 80]
+
+      # Loading top_categories (via top_post_categories with limit 3) should return only 3
+      post_with_top = Ash.load!(post, :top_categories)
+      assert length(post_with_top.top_categories) == 3
+
+      # The top 3 categories should be A, B, C (priorities 100, 90, 80)
+      top_category_names = post_with_top.top_categories |> Enum.map(& &1.name) |> Enum.sort()
+      assert top_category_names == ["A", "B", "C"]
+    end
   end
 end
