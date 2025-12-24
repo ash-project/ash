@@ -1167,6 +1167,7 @@ defmodule Ash.Filter do
       |> Enum.map(& &1.attribute)
     end)
     |> Enum.concat(aggregates)
+    |> Enum.filter(& &1.authorize?)
     |> Enum.reduce_while({:ok, path_filters}, fn aggregate, {:ok, filters} ->
       if Map.get(aggregate, :related?, true) do
         aggregate.relationship_path
