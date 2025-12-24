@@ -1132,7 +1132,7 @@ defmodule Ash.Expr do
                  [return_type | return_acc]}
 
               return_type ->
-                {[match_types | match_acc], [match_types | cast_acc], [return_type | return_acc]}
+                {[match_types | match_acc], [nil | cast_acc], [return_type | return_acc]}
             end
           end)
           |> then(fn {m, c, r} -> {Enum.reverse(m), Enum.reverse(c), Enum.reverse(r)} end)
@@ -1140,10 +1140,11 @@ defmodule Ash.Expr do
         # Put overloads first so they have priority over built-in types like :same
         types = Enum.concat(more_match_types, types)
 
-        # For built-in types, cast_as_types == match_types (old behavior)
-        # For overloads, cast_as_types may differ from match_types (new format)
-        builtin_cast_as_types = Enum.drop(types, length(overload_cast_as_types))
-        cast_as_types_list = Enum.concat(overload_cast_as_types, builtin_cast_as_types)
+        cast_as_types_list =
+          Enum.concat(
+            overload_cast_as_types,
+            Stream.duplicate(nil, length(types))
+          )
 
         returns = Enum.concat(overload_returns, returns)
 
