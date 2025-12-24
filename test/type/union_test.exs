@@ -80,7 +80,7 @@ defmodule Ash.Test.Filter.UnionTest do
       ]
   end
 
-    defmodule DefaultedType do
+  defmodule DefaultedType do
     @moduledoc "A type with a default constraint"
     use Ash.Type
 
@@ -704,13 +704,13 @@ defmodule Ash.Test.Filter.UnionTest do
 
   test "it initializes an untagged union attribute's constraints with default values applied" do
     assert 9001 =
-      DefaultedTypeExample
-      |> Ash.Resource.Info.attribute(:untagged)
-      |> Map.get(:constraints)
-      |> Keyword.get(:types)
-      |> Keyword.get(:foo)
-      |> Keyword.get(:constraints)
-      |> Keyword.get(:defaulted)
+             DefaultedTypeExample
+             |> Ash.Resource.Info.attribute(:untagged)
+             |> Map.get(:constraints)
+             |> Keyword.get(:types)
+             |> Keyword.get(:foo)
+             |> Keyword.get(:constraints)
+             |> Keyword.get(:defaulted)
   end
 
   test "it handles NewTypes with required constraints in their parent type" do
