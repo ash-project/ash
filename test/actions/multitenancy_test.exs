@@ -78,6 +78,14 @@ defmodule Ash.Actions.MultitenancyTest do
       read :bypass_all do
         multitenancy(:bypass_all)
       end
+
+      destroy :destroy_bypass do
+        multitenancy(:bypass)
+      end
+
+      destroy :destroy_allow_global do
+        multitenancy(:allow_global)
+      end
     end
 
     attributes do
@@ -198,6 +206,14 @@ defmodule Ash.Actions.MultitenancyTest do
 
       read :bypass_tenant do
         multitenancy(:bypass)
+      end
+
+      destroy :destroy_bypass do
+        multitenancy(:bypass)
+      end
+
+      destroy :destroy_allow_global do
+        multitenancy(:allow_global)
       end
     end
 
@@ -773,6 +789,182 @@ defmodule Ash.Actions.MultitenancyTest do
 
       converted_tenant = apply(m, f, [thing.tenant_id | a])
       assert converted_tenant == tenant
+    end
+  end
+
+  describe "destroy multitenancy bypass" do
+    setup do
+      %{tenant1: Ash.UUID.generate(), tenant2: Ash.UUID.generate()}
+    end
+
+    test "destroy with :bypass multitenancy can delete records without tenant", %{
+      tenant1: tenant1,
+      tenant2: tenant2
+    } do
+      user1 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "User1"}, tenant: tenant1)
+        |> Ash.create!()
+
+      _user2 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "User2"}, tenant: tenant2)
+        |> Ash.create!()
+
+      assert length(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!()) == 1
+      assert length(User |> Ash.Query.set_tenant(tenant2) |> Ash.read!()) == 1
+
+      user1
+      |> Ash.Changeset.for_destroy(:destroy_bypass)
+      |> Ash.destroy!()
+
+      assert Enum.empty?(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!())
+      assert length(User |> Ash.Query.set_tenant(tenant2) |> Ash.read!()) == 1
+    end
+
+    test "destroy with :bypass multitenancy ignores tenant even if set", %{
+      tenant1: tenant1,
+      tenant2: tenant2
+    } do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "Test"}, tenant: tenant1)
+        |> Ash.create!()
+
+      assert length(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!()) == 1
+
+      user
+      |> Ash.Changeset.for_destroy(:destroy_bypass, %{}, tenant: tenant2)
+      |> Ash.destroy!()
+
+      assert Enum.empty?(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!())
+    end
+
+    test "destroy with :allow_global works with tenant", %{tenant1: tenant1} do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "Test"}, tenant: tenant1)
+        |> Ash.create!()
+
+      assert length(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!()) == 1
+
+      user
+      |> Ash.Changeset.for_destroy(:destroy_allow_global, %{}, tenant: tenant1)
+      |> Ash.destroy!()
+
+      assert Enum.empty?(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!())
+    end
+
+    test "destroy with :allow_global works without tenant (uses record metadata)", %{
+      tenant1: tenant1
+    } do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "Test"}, tenant: tenant1)
+        |> Ash.create!()
+
+      assert length(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!()) == 1
+
+      user
+      |> Ash.Changeset.for_destroy(:destroy_allow_global)
+      |> Ash.destroy!()
+
+      assert Enum.empty?(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!())
+    end
+
+    test "destroy with :enforce (default) requires tenant", %{tenant1: tenant1} do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "Test"}, tenant: tenant1)
+        |> Ash.create!()
+
+      assert length(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!()) == 1
+
+      assert_raise Ash.Error.Invalid, ~r/require a tenant to be specified/, fn ->
+        user
+        |> Map.update!(:__metadata__, &Map.delete(&1, :tenant))
+        |> Ash.Changeset.for_destroy(:destroy)
+        |> Ash.destroy!()
+      end
+    end
+
+    test "destroy with :bypass works for context multitenancy strategy", %{
+      tenant1: tenant1
+    } do
+      comment =
+        Comment
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+        |> Ash.create!()
+
+      assert length(Comment |> Ash.Query.set_tenant(tenant1) |> Ash.read!()) == 1
+
+      comment
+      |> Ash.Changeset.for_destroy(:destroy_bypass)
+      |> Ash.destroy!()
+
+      assert Enum.empty?(Comment |> Ash.Query.set_tenant(tenant1) |> Ash.read!())
+    end
+
+    test "destroy with :allow_global works for context multitenancy", %{tenant1: tenant1} do
+      comment =
+        Comment
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+        |> Ash.create!()
+
+      assert length(Comment |> Ash.Query.set_tenant(tenant1) |> Ash.read!()) == 1
+
+      comment
+      |> Ash.Changeset.for_destroy(:destroy_allow_global, %{}, tenant: tenant1)
+      |> Ash.destroy!()
+
+      assert Enum.empty?(Comment |> Ash.Query.set_tenant(tenant1) |> Ash.read!())
+    end
+
+    test "destroy with :bypass on attribute strategy deletes from any tenant", %{
+      tenant1: tenant1,
+      tenant2: tenant2
+    } do
+      _user1 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "T1 User"}, tenant: tenant1)
+        |> Ash.create!()
+
+      user2 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "T2 User"}, tenant: tenant2)
+        |> Ash.create!()
+
+      assert 1 ==
+               User
+               |> Ash.Query.for_read(:bypass_tenant)
+               |> Ash.Query.filter(org_id == ^tenant1)
+               |> Ash.read!()
+               |> length()
+
+      assert 1 ==
+               User
+               |> Ash.Query.for_read(:bypass_tenant)
+               |> Ash.Query.filter(org_id == ^tenant2)
+               |> Ash.read!()
+               |> length()
+
+      user2
+      |> Ash.Changeset.for_destroy(:destroy_bypass, %{}, tenant: tenant1)
+      |> Ash.destroy!()
+
+      assert 1 ==
+               User
+               |> Ash.Query.for_read(:bypass_tenant)
+               |> Ash.Query.filter(org_id == ^tenant1)
+               |> Ash.read!()
+               |> length()
+
+      assert 0 ==
+               User
+               |> Ash.Query.for_read(:bypass_tenant)
+               |> Ash.Query.filter(org_id == ^tenant2)
+               |> Ash.read!()
+               |> length()
     end
   end
 end

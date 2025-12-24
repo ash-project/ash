@@ -116,7 +116,7 @@ defmodule Ash.Actions.Destroy do
         changeset
       end
 
-    with %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset),
+    with %{valid?: true} = changeset <- handle_multitenancy(changeset, action),
          %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
          %{valid?: true} = changeset <- authorize(changeset, opts),
          %{valid?: true} = changeset <-
@@ -303,13 +303,41 @@ defmodule Ash.Actions.Destroy do
   defp set_tenant(changeset) do
     changeset =
       case changeset.data do
-        %{__metadata__: %{tenant: tenant}} ->
-          Ash.Changeset.set_tenant(changeset, tenant)
-
-        _ ->
-          changeset
+        %{__metadata__: %{tenant: tenant}} -> Ash.Changeset.set_tenant(changeset, tenant)
+        _ -> changeset
       end
 
+    if get_multitenancy_from_context(changeset) in [:bypass, :bypass_all] do
+      changeset
+    else
+      case validate_multitenancy(changeset) do
+        :ok -> handle_attribute_multitenancy(changeset)
+        {:error, error} -> Ash.Changeset.add_error(changeset, error)
+      end
+    end
+  end
+
+  defp handle_multitenancy(changeset, action) do
+    case Map.get(action, :multitenancy) || :enforce do
+      :enforce ->
+        changeset = handle_attribute_multitenancy(changeset)
+
+        case validate_multitenancy(changeset) do
+          :ok -> changeset
+          {:error, error} -> Ash.Changeset.add_error(changeset, error)
+        end
+
+      :allow_global ->
+        handle_attribute_multitenancy(changeset)
+
+      _ ->
+        Ash.Changeset.set_context(changeset, %{
+          shared: %{private: %{multitenancy: :bypass_all}}
+        })
+    end
+  end
+
+  defp handle_attribute_multitenancy(changeset) do
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
       attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
@@ -319,17 +347,27 @@ defmodule Ash.Actions.Destroy do
 
       Ash.Changeset.filter(changeset, [{attribute, attribute_value}])
     else
-      if is_nil(Ash.Resource.Info.multitenancy_strategy(changeset.resource)) ||
-           Ash.Resource.Info.multitenancy_global?(changeset.resource) || changeset.tenant do
-        changeset
-      else
-        Ash.Changeset.add_error(
-          changeset,
-          Ash.Error.Invalid.TenantRequired.exception(resource: changeset.resource)
-        )
-      end
+      changeset
     end
   end
+
+  defp validate_multitenancy(changeset) do
+    if Ash.Resource.Info.multitenancy_strategy(changeset.resource) &&
+         not Ash.Resource.Info.multitenancy_global?(changeset.resource) &&
+         is_nil(changeset.tenant) do
+      {:error, "#{inspect(changeset.resource)} changesets require a tenant to be specified"}
+    else
+      :ok
+    end
+  end
+
+  defp get_multitenancy_from_context(%{
+         context: %{shared: %{private: %{multitenancy: multitenancy}}}
+       }) do
+    multitenancy
+  end
+
+  defp get_multitenancy_from_context(_), do: nil
 
   defp validate_manual_action_return_result!({:ok, %resource{}} = result, resource, _) do
     result
