@@ -8,6 +8,37 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.11.2](https://github.com/ash-project/ash/compare/v3.11.1...v3.11.2) (2025-12-24)
+
+
+
+
+### Bug Fixes:
+
+* don't run authorization in cross-datalayer filters by [@zachdaniel](https://github.com/zachdaniel)
+
+* dont validate constraints in union_types (#2469) by zackattackz [(#2469)](https://github.com/ash-project/ash/pull/2469)
+
+* Ensure that calculations used in preparations have access to argument values (#2480) by sevenseacat [(#2480)](https://github.com/ash-project/ash/pull/2480)
+
+* many-to-many relationships should inherit the sort/limit from their join relationship (#2486) by sevenseacat [(#2486)](https://github.com/ash-project/ash/pull/2486)
+
+* correct UnsortableField exception key from name: to field: (#2482) by [@rauann](https://github.com/rauann) [(#2482)](https://github.com/ash-project/ash/pull/2482)
+
+* handle struct context in atomic_condition (#2483) by MaamonSakar [(#2483)](https://github.com/ash-project/ash/pull/2483)
+
+* link text in multitenancy documentation (#2484) by Pascal736 [(#2484)](https://github.com/ash-project/ash/pull/2484)
+
+* respect `read_action` option in cascade_update/cascade_destroy fallback path (#2474) by [@beam-bots](https://github.com/beam-bots) [(#2474)](https://github.com/ash-project/ash/pull/2474)
+
+* don't let unknown values short-circuit expression calculations by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* destroy: Add multitenancy bypass options to destroy actions (#2477) by [@shahryarjb](https://github.com/shahryarjb) [(#2477)](https://github.com/ash-project/ash/pull/2477)
+
+* support operator overloads returning casting overrides by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.11.1](https://github.com/ash-project/ash/compare/v3.11.0...v3.11.1) (2025-12-06)
 
 
