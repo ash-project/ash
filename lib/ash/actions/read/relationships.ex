@@ -651,6 +651,15 @@ defmodule Ash.Actions.Read.Relationships do
             related_query.domain
           )
       )
+      |> Ash.Query.sort(join_relationship.sort)
+      |> Ash.Query.set_context(join_relationship.context)
+      |> then(fn q ->
+        if join_relationship.limit do
+          Ash.Query.limit(q, join_relationship.limit)
+        else
+          q
+        end
+      end)
 
     parent_stack = [
       query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
