@@ -61,7 +61,7 @@ MyApp.Blog.create_post!("new post", scope: scope)
 
 ```
 
-See the Guide [guide](https://hexdocs.pm/ash/Ash.Scope.html).
+See the Scope [guide](https://hexdocs.pm/ash/Ash.Scope.html).
 
 ## Attribute Multitenancy
 
