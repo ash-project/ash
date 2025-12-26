@@ -271,19 +271,19 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
         |> Ash.Changeset.for_create(:create, %{name: "worst author"})
         |> Ash.create!(authorize?: false)
 
-      orhanization =
+      organization =
         Organization
         |> Ash.Changeset.for_create(:create, %{name: "org 1"}, authorize?: false)
         |> Ash.Changeset.manage_relationship(:users, [author, user], type: :append_and_remove)
         |> Ash.create!()
 
-      organization_id = orhanization.id
+      organization_id = organization.id
 
       post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "best"}, authorize?: false)
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
-        |> Ash.Changeset.manage_relationship(:organization, orhanization,
+        |> Ash.Changeset.manage_relationship(:organization, organization,
           type: :append_and_remove
         )
         |> Ash.create!()
@@ -297,13 +297,14 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       assert [%{id: ^organization_id}] =
                Organization
-               |> Ash.Query.filter(id: orhanization.id)
+               |> Ash.Query.filter(id: organization.id)
                |> Ash.read!(actor: user)
 
       assert [%{id: ^post_id}] =
                Post
                |> Ash.Query.filter(id: post.id)
-               |> Ash.read!(actor: user)
+               |> Ash.Query.for_read(:read, %{}, actor: user)
+               |> Ash.read!()
     end
 
     test "it properly filters with a simple filter" do

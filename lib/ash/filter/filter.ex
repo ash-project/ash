@@ -1802,25 +1802,23 @@ defmodule Ash.Filter do
        ) do
     case shortest_path_to_changed_data_layer(resource, at_path ++ path) do
       {:ok, shortest_path} ->
-        related = Ash.Resource.Info.related(resource, shortest_path)
+        relationship = Ash.Resource.Info.relationship(resource, shortest_path)
+        related = relationship.destination
 
-        # We should do these asynchronously in parallel
-        # We used to, but this was changed to happen synchronously as part
-        # of an architecture simplification (removal of Ash.Engine)
-        {relationship, context, _action} =
-          last_relationship_context_and_action(resource, at_path ++ path)
+        expr =
+          move_to_relationship_path(expr, Enum.drop(at_path ++ path, Enum.count(shortest_path)))
 
         query =
           related
           |> Ash.Query.do_filter(expr)
-          |> Ash.Query.set_context(context)
+          |> Ash.Query.set_context(relationship.context)
           |> Ash.Query.set_tenant(tenant)
           |> Map.put(:domain, domain)
           |> Ash.Query.set_context(%{private: %{internal?: true}})
 
         case Ash.Actions.Read.unpaginated_read(query, relationship.read_action, authorize?: false) do
           {:ok, data} ->
-            records_to_expression(data, relationship, at_path)
+            records_to_expression(data, relationship, :lists.droplast(shortest_path))
 
           {:error, error} ->
             {:error, error}
@@ -1856,22 +1854,6 @@ defmodule Ash.Filter do
   end
 
   defp do_run_other_data_layer_filters(other, _domain, _resource, _data), do: {:ok, other}
-
-  defp last_relationship_context_and_action(resource, [name]) do
-    relationship = Ash.Resource.Info.relationship(resource, name)
-
-    {relationship, relationship.context,
-     relationship.read_action ||
-       Ash.Resource.Info.primary_action!(relationship.destination, :read)}
-  end
-
-  defp last_relationship_context_and_action(resource, path) do
-    second_to_last = Ash.Resource.Info.related(resource, :lists.droplast(path))
-
-    relationship = Ash.Resource.Info.relationship(second_to_last, List.last(path))
-
-    {relationship, relationship.context, relationship.read_action}
-  end
 
   defp split_expression_by_relationship_path(%{expression: expression}, path) do
     split_expression_by_relationship_path(expression, path)
@@ -2026,7 +2008,8 @@ defmodule Ash.Filter do
       |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
       |> Ash.Query.sort(relationship.sort, prepend?: true)
       |> Ash.Query.set_context(relationship.context)
-      |> Ash.Actions.Read.unpaginated_read()
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+      |> Ash.Actions.Read.unpaginated_read(relationship.read_action, authorize?: false)
       |> case do
         {:ok, results} ->
           relationship.through
@@ -2067,7 +2050,7 @@ defmodule Ash.Filter do
     |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
     |> Ash.Query.sort(relationship.sort, prepend?: true)
     |> Ash.Query.set_context(relationship.context)
-    |> Ash.Query.set_context(%{private: %{internal?: true}})
+    |> Ash.Query.set_context(%{private: %{internal?: true, authorize?: false}})
     |> filter_related_in(relationship, :lists.droplast(path), domain, tenant)
   end
 
