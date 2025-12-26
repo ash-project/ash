@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.11.3](https://github.com/ash-project/ash/compare/v3.11.2...v3.11.3) (2025-12-26)
+
+
+
+
+### Bug Fixes:
+
+* only apply overload typing when there is only one option by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.11.2](https://github.com/ash-project/ash/compare/v3.11.1...v3.11.2) (2025-12-24)
 
 
