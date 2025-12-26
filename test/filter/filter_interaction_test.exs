@@ -303,7 +303,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       assert [%{id: ^post_id}] =
                Post
                |> Ash.Query.filter(id: post.id)
-               |> Ash.read!(actor: author)
+               |> Ash.read!(actor: user)
     end
 
     test "it properly filters with a simple filter" do
