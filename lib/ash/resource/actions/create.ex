@@ -9,6 +9,7 @@ defmodule Ash.Resource.Actions.Create do
     :primary?,
     :description,
     :error_handler,
+    :multitenancy,
     accept: nil,
     require_attributes: [],
     allow_nil_input: [],
@@ -41,6 +42,7 @@ defmodule Ash.Resource.Actions.Create do
           allow_nil_input: list(atom),
           action_select: list(atom) | nil,
           manual: module | nil,
+          multitenancy: atom,
           upsert?: boolean,
           skip_unknown_inputs: list(atom | String.t()),
           return_skipped_upsert?: boolean(),
@@ -111,6 +113,13 @@ defmodule Ash.Resource.Actions.Create do
                   type: :boolean,
                   doc:
                     "Returns the record that would have been upserted against but was skipped due to a filter or no fields being changed. How this works depends on the data layer. Keep in mind that read policies *are not applied* to the read of the record in question."
+                ],
+                multitenancy: [
+                  type: {:in, [:enforce, :allow_global, :bypass, :bypass_all]},
+                  default: :enforce,
+                  doc: """
+                  This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources.
+                  """
                 ]
               ]
               |> Spark.Options.merge(

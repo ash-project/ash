@@ -99,6 +99,24 @@ defmodule Ash.Actions.Create.Bulk do
         opts
       )
 
+    case validate_multitenancy(resource, action, opts) do
+      {:error, error} ->
+        %Ash.BulkResult{
+          status: :error,
+          error_count: 1,
+          errors: [
+            Ash.Error.to_error_class(error)
+          ]
+        }
+
+      :ok ->
+        do_run_cont(domain, resource, action, inputs, opts)
+    end
+  end
+
+  defp do_run_cont(domain, resource, action, inputs, opts) do
+    upsert? = opts[:upsert?] || action.upsert?
+
     manual_action_can_bulk? =
       case action.manual do
         {mod, _opts} ->
@@ -734,10 +752,22 @@ defmodule Ash.Actions.Create.Bulk do
     )
     |> set_lazy_non_matching_defaults()
     |> set_lazy_matching_defaults(lazy_matching_default_values)
-    |> set_tenant()
+    |> set_tenant(action)
   end
 
-  defp set_tenant(changeset) do
+  defp set_tenant(changeset, action) do
+    case Map.get(action, :multitenancy) || :enforce do
+      mode when mode in [:enforce, :allow_global] ->
+        handle_attribute_multitenancy(changeset)
+
+      _ ->
+        Ash.Changeset.set_context(changeset, %{
+          shared: %{private: %{multitenancy: :bypass_all}}
+        })
+    end
+  end
+
+  defp handle_attribute_multitenancy(changeset) do
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
       attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
@@ -746,15 +776,18 @@ defmodule Ash.Actions.Create.Bulk do
 
       Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
     else
-      if is_nil(Ash.Resource.Info.multitenancy_strategy(changeset.resource)) ||
-           Ash.Resource.Info.multitenancy_global?(changeset.resource) || changeset.tenant do
-        changeset
-      else
-        Ash.Changeset.add_error(
-          changeset,
-          Ash.Error.Invalid.TenantRequired.exception(resource: changeset.resource)
-        )
-      end
+      changeset
+    end
+  end
+
+  defp validate_multitenancy(resource, action, opts) do
+    if Ash.Resource.Info.multitenancy_strategy(resource) &&
+         !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] &&
+         Map.get(action, :multitenancy) not in [:bypass, :bypass_all] &&
+         get_in(opts, [:context, :shared, :private, :multitenancy]) not in [:bypass, :bypass_all] do
+      {:error, Ash.Error.Invalid.TenantRequired.exception(resource: resource)}
+    else
+      :ok
     end
   end
 

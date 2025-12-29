@@ -79,6 +79,14 @@ defmodule Ash.Actions.MultitenancyTest do
         multitenancy(:bypass_all)
       end
 
+      create :create_bypass do
+        multitenancy(:bypass)
+      end
+
+      create :create_allow_global do
+        multitenancy(:allow_global)
+      end
+
       destroy :destroy_bypass do
         multitenancy(:bypass)
       end
@@ -214,6 +222,14 @@ defmodule Ash.Actions.MultitenancyTest do
 
       read :bypass_tenant do
         multitenancy(:bypass)
+      end
+
+      create :create_bypass do
+        multitenancy(:bypass)
+      end
+
+      create :create_allow_global do
+        multitenancy(:allow_global)
       end
 
       destroy :destroy_bypass do
@@ -1163,6 +1179,106 @@ defmodule Ash.Actions.MultitenancyTest do
                |> Ash.read!()
 
       assert fetched.name == "Updated T2 User"
+    end
+  end
+
+  describe "create multitenancy bypass" do
+    setup do
+      %{tenant1: Ash.UUID.generate(), tenant2: Ash.UUID.generate()}
+    end
+
+    test "create with :bypass multitenancy can create records without tenant" do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create_bypass, %{name: "Test"})
+        |> Ash.create!()
+
+      assert user.name == "Test"
+      assert is_nil(user.org_id)
+    end
+
+    test "create with :bypass multitenancy ignores tenant even if set", %{
+      tenant1: tenant1,
+      tenant2: tenant2
+    } do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create_bypass, %{name: "Test"}, tenant: tenant1)
+        |> Ash.create!()
+
+      assert user.name == "Test"
+      assert is_nil(user.org_id)
+
+      assert Enum.empty?(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!())
+      assert Enum.empty?(User |> Ash.Query.set_tenant(tenant2) |> Ash.read!())
+
+      assert [fetched] =
+               User
+               |> Ash.Query.for_read(:bypass_tenant)
+               |> Ash.read!()
+
+      assert fetched.id == user.id
+    end
+
+    test "create with :allow_global works with tenant", %{tenant1: tenant1} do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create_allow_global, %{name: "Test"}, tenant: tenant1)
+        |> Ash.create!()
+
+      assert user.name == "Test"
+      assert user.org_id == tenant1
+
+      assert [fetched] = User |> Ash.Query.set_tenant(tenant1) |> Ash.read!()
+      assert fetched.id == user.id
+    end
+
+    test "create with :allow_global works without tenant" do
+      user =
+        User
+        |> Ash.Changeset.for_create(:create_allow_global, %{name: "Test"})
+        |> Ash.create!()
+
+      assert user.name == "Test"
+      assert is_nil(user.org_id)
+    end
+
+    test "create with :enforce (default) requires tenant" do
+      assert_raise Ash.Error.Invalid, ~r/require a tenant to be specified/, fn ->
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "Test"})
+        |> Ash.create!()
+      end
+    end
+
+    test "create with :bypass works for context multitenancy strategy" do
+      comment =
+        Comment
+        |> Ash.Changeset.for_create(:create_bypass, %{name: "Test"})
+        |> Ash.create!()
+
+      assert comment.name == "Test"
+    end
+
+    test "create with :allow_global works for context multitenancy", %{tenant1: tenant1} do
+      comment =
+        Comment
+        |> Ash.Changeset.for_create(:create_allow_global, %{name: "Test"}, tenant: tenant1)
+        |> Ash.create!()
+
+      assert comment.name == "Test"
+
+      assert [fetched] = Comment |> Ash.Query.set_tenant(tenant1) |> Ash.read!()
+      assert fetched.id == comment.id
+    end
+
+    test "create with :allow_global works without tenant for context multitenancy" do
+      comment =
+        Comment
+        |> Ash.Changeset.for_create(:create_allow_global, %{name: "Test"})
+        |> Ash.create!()
+
+      assert comment.name == "Test"
     end
   end
 end
