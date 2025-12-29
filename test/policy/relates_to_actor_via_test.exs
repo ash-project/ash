@@ -9,7 +9,10 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
   alias Ash.Test.Domain, as: Domain
 
   defmodule Actor do
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     actions do
       default_accept :*
@@ -22,6 +25,12 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
     attributes do
       uuid_primary_key :id
+    end
+
+    policies do
+      policy action(:read) do
+        authorize_if relates_to_actor_via(:company, field: :company)
+      end
     end
 
     calculations do
@@ -41,6 +50,19 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
     relationships do
       belongs_to :user, Ash.Test.Policy.RelatesToActorViaTest.User, public?: true
       belongs_to :role, Ash.Test.Policy.RelatesToActorViaTest.Role, public?: true
+      belongs_to :company, Ash.Test.Policy.RelatesToActorViaTest.Company, public?: true
+    end
+  end
+
+  defmodule Company do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    actions do
+      defaults [:create, :read]
+    end
+
+    attributes do
+      uuid_primary_key :id
     end
   end
 
@@ -197,6 +219,44 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
         |> Ash.load!(:type)
 
       assert {:ok, _} = Ash.get(Account, account.id, actor: actor)
+    end
+
+    test "relates_to_actor_via does not require load" do
+      # the company our Actor belongs to
+      %{id: company_id} = company = Ash.create!(Company)
+      other_company = Ash.create!(Company)
+
+      actor =
+        Actor
+        |> Ash.Changeset.for_create(:create)
+        |> Ash.Changeset.manage_relationship(:company, company, type: :append)
+        |> Ash.create!(authorize?: false)
+
+      same_company_actor =
+        Actor
+        |> Ash.Changeset.for_create(:create)
+        |> Ash.Changeset.manage_relationship(:company, company, type: :append)
+        |> Ash.create!(authorize?: false)
+
+      other_actor =
+        Actor
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.Changeset.manage_relationship(:company, other_company, type: :append)
+        |> Ash.create!(authorize?: false)
+
+      # same company, our actor should be authorzied to read
+      assert {:ok, %Actor{}} = Ash.get(Actor, %{id: same_company_actor.id}, actor: actor)
+
+      # read actor without loading company
+      assert actor =
+               %Actor{company: %Ash.NotLoaded{}, company_id: ^company_id} =
+               Ash.get!(Actor, %{id: actor.id}, authorize?: false)
+
+      # same company, our actor should be authorzied to read
+      assert {:ok, %Actor{}} = Ash.get(Actor, %{id: same_company_actor.id}, actor: actor)
+
+      # different company, our actor should be forbidden to read
+      assert {:error, %Ash.Error.Invalid{}} = Ash.get(Actor, %{id: other_actor.id}, actor: actor)
     end
 
     test "relates_to_actor_via with has_many" do
