@@ -110,229 +110,225 @@ defmodule Ash.Actions.Create.Bulk do
         }
 
       :ok ->
-        do_run_cont(domain, resource, action, inputs, opts)
-    end
-  end
+        manual_action_can_bulk? =
+          case action.manual do
+            {mod, _opts} ->
+              function_exported?(mod, :bulk_create, 3)
 
-  defp do_run_cont(domain, resource, action, inputs, opts) do
-    upsert? = opts[:upsert?] || action.upsert?
-
-    manual_action_can_bulk? =
-      case action.manual do
-        {mod, _opts} ->
-          function_exported?(mod, :bulk_create, 3)
-
-        _ ->
-          false
-      end
-
-    base_changeset = base_changeset(resource, domain, opts, action)
-
-    data_layer_can_bulk? =
-      if Ash.DataLayer.data_layer_can?(resource, :bulk_create) do
-        # If upserting with return_skipped_upsert? and data layer can't handle it in bulk, fall back to single inserts
-        !upsert? || !base_changeset.context[:private][:return_skipped_upsert?] ||
-          Ash.DataLayer.data_layer_can?(resource, :bulk_upsert_return_skipped)
-      else
-        false
-      end
-
-    batch_size =
-      cond do
-        action.manual != nil and manual_action_can_bulk? -> opts[:batch_size] || 100
-        action.manual == nil and data_layer_can_bulk? -> opts[:batch_size] || 100
-        true -> 1
-      end
-
-    all_changes =
-      pre_template_all_changes(
-        action,
-        resource,
-        action.type,
-        base_changeset,
-        opts[:actor],
-        base_changeset.to_tenant
-      )
-
-    argument_names = Enum.map(action.arguments, & &1.name)
-
-    belongs_to_attrs =
-      resource
-      |> Ash.Resource.Info.relationships()
-      |> Enum.filter(&(&1.type == :belongs_to))
-      |> Enum.map(& &1.source_attribute)
-
-    attrs_to_require =
-      resource
-      |> Ash.Resource.Info.attributes()
-      |> Enum.reject(&(&1.allow_nil? || &1.generated? || &1.name in belongs_to_attrs))
-
-    action_select =
-      if Ash.DataLayer.data_layer_can?(resource, :action_select) do
-        Enum.uniq(
-          Enum.concat(
-            Ash.Resource.Info.action_select(
-              resource,
-              action
-            ),
-            List.wrap(
-              opts[:select] ||
-                MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(resource))
-            )
-          )
-        )
-      else
-        MapSet.to_list(Ash.Resource.Info.attribute_names(resource))
-      end
-
-    ref = make_ref()
-
-    changeset_stream =
-      inputs
-      |> Stream.with_index()
-      |> Stream.chunk_every(batch_size)
-      |> map_batches(
-        resource,
-        opts,
-        ref,
-        fn batch ->
-          try do
-            batch
-            |> Enum.map(
-              &setup_changeset(
-                &1,
-                action,
-                opts,
-                lazy_matching_default_values(resource),
-                base_changeset,
-                argument_names
-              )
-            )
-            |> handle_batch(
-              domain,
-              resource,
-              action,
-              all_changes,
-              data_layer_can_bulk?,
-              opts,
-              ref,
-              attrs_to_require,
-              action_select
-            )
-          after
-            if opts[:notify?] && !opts[:return_notifications?] do
-              Process.put(
-                {:bulk_notifications, ref},
-                Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
-              )
-            end
+            _ ->
+              false
           end
-        end
-      )
 
-    if opts[:return_stream?] do
-      Stream.concat(changeset_stream)
-    else
-      try do
-        records =
-          if opts[:return_records?] do
-            Enum.to_list(Stream.concat(changeset_stream))
+        base_changeset = base_changeset(resource, domain, opts, action)
+
+        data_layer_can_bulk? =
+          if Ash.DataLayer.data_layer_can?(resource, :bulk_create) do
+            # If upserting with return_skipped_upsert? and data layer can't handle it in bulk, fall back to single inserts
+            !upsert? || !base_changeset.context[:private][:return_skipped_upsert?] ||
+              Ash.DataLayer.data_layer_can?(resource, :bulk_upsert_return_skipped)
           else
-            Stream.run(changeset_stream)
-            nil
+            false
           end
 
-        notifications =
-          if opts[:notify?] do
-            Process.delete({:bulk_notifications, ref}) || []
-          else
-            []
-          end
-
-        # Unless return_notifications? is true, we always want to end up with nil.
-        notifications =
+        batch_size =
           cond do
-            Enum.empty?(notifications) ->
-              if opts[:return_notifications?], do: [], else: nil
+            action.manual != nil and manual_action_can_bulk? -> opts[:batch_size] || 100
+            action.manual == nil and data_layer_can_bulk? -> opts[:batch_size] || 100
+            true -> 1
+          end
 
-            opts[:return_notifications?] ->
-              notifications
+        all_changes =
+          pre_template_all_changes(
+            action,
+            resource,
+            action.type,
+            base_changeset,
+            opts[:actor],
+            base_changeset.to_tenant
+          )
 
-            true ->
-              notifications =
-                if opts[:notify?] do
-                  Ash.Notifier.notify(notifications)
-                else
-                  notifications
-                end
+        argument_names = Enum.map(action.arguments, & &1.name)
 
-              if Process.get(:ash_started_transaction?) do
-                Process.put(
-                  :ash_notifications,
-                  Process.get(:ash_notifications, []) ++ notifications
+        belongs_to_attrs =
+          resource
+          |> Ash.Resource.Info.relationships()
+          |> Enum.filter(&(&1.type == :belongs_to))
+          |> Enum.map(& &1.source_attribute)
+
+        attrs_to_require =
+          resource
+          |> Ash.Resource.Info.attributes()
+          |> Enum.reject(&(&1.allow_nil? || &1.generated? || &1.name in belongs_to_attrs))
+
+        action_select =
+          if Ash.DataLayer.data_layer_can?(resource, :action_select) do
+            Enum.uniq(
+              Enum.concat(
+                Ash.Resource.Info.action_select(
+                  resource,
+                  action
+                ),
+                List.wrap(
+                  opts[:select] ||
+                    MapSet.to_list(
+                      Ash.Resource.Info.selected_by_default_attribute_names(resource)
+                    )
                 )
+              )
+            )
+          else
+            MapSet.to_list(Ash.Resource.Info.attribute_names(resource))
+          end
+
+        ref = make_ref()
+
+        changeset_stream =
+          inputs
+          |> Stream.with_index()
+          |> Stream.chunk_every(batch_size)
+          |> map_batches(
+            resource,
+            opts,
+            ref,
+            fn batch ->
+              try do
+                batch
+                |> Enum.map(
+                  &setup_changeset(
+                    &1,
+                    action,
+                    opts,
+                    lazy_matching_default_values(resource),
+                    base_changeset,
+                    argument_names
+                  )
+                )
+                |> handle_batch(
+                  domain,
+                  resource,
+                  action,
+                  all_changes,
+                  data_layer_can_bulk?,
+                  opts,
+                  ref,
+                  attrs_to_require,
+                  action_select
+                )
+              after
+                if opts[:notify?] && !opts[:return_notifications?] do
+                  Process.put(
+                    {:bulk_notifications, ref},
+                    Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
+                  )
+                end
+              end
+            end
+          )
+
+        if opts[:return_stream?] do
+          Stream.concat(changeset_stream)
+        else
+          try do
+            records =
+              if opts[:return_records?] do
+                Enum.to_list(Stream.concat(changeset_stream))
+              else
+                Stream.run(changeset_stream)
+                nil
               end
 
-              nil
-          end
+            notifications =
+              if opts[:notify?] do
+                Process.delete({:bulk_notifications, ref}) || []
+              else
+                []
+              end
 
-        {errors, error_count} = Process.get({:bulk_errors, ref}) || {[], 0}
+            # Unless return_notifications? is true, we always want to end up with nil.
+            notifications =
+              cond do
+                Enum.empty?(notifications) ->
+                  if opts[:return_notifications?], do: [], else: nil
 
-        errors =
-          if opts[:return_errors?] do
-            Enum.map(errors, fn error ->
-              Ash.Error.to_ash_error(error, [],
-                bread_crumbs: [
-                  "Exception raised in bulk create: #{inspect(resource)}.#{action.name}"
-                ]
-              )
-            end)
-          else
-            nil
-          end
+                opts[:return_notifications?] ->
+                  notifications
 
-        bulk_result = %Ash.BulkResult{
-          records: records,
-          errors: errors,
-          notifications: notifications,
-          error_count: error_count
-        }
+                true ->
+                  notifications =
+                    if opts[:notify?] do
+                      Ash.Notifier.notify(notifications)
+                    else
+                      notifications
+                    end
 
-        case bulk_result do
-          %{records: _, error_count: 0} ->
-            %{bulk_result | status: :success}
+                  if Process.get(:ash_started_transaction?) do
+                    Process.put(
+                      :ash_notifications,
+                      Process.get(:ash_notifications, []) ++ notifications
+                    )
+                  end
 
-          %{records: [], error_count: _} ->
-            %{bulk_result | status: :error}
+                  nil
+              end
 
-          _ ->
-            if Process.get({:any_success?, ref}) do
-              %{bulk_result | status: :partial_success}
-            else
-              %{bulk_result | status: :error}
+            {errors, error_count} = Process.get({:bulk_errors, ref}) || {[], 0}
+
+            errors =
+              if opts[:return_errors?] do
+                Enum.map(errors, fn error ->
+                  Ash.Error.to_ash_error(error, [],
+                    bread_crumbs: [
+                      "Exception raised in bulk create: #{inspect(resource)}.#{action.name}"
+                    ]
+                  )
+                end)
+              else
+                nil
+              end
+
+            bulk_result = %Ash.BulkResult{
+              records: records,
+              errors: errors,
+              notifications: notifications,
+              error_count: error_count
+            }
+
+            case bulk_result do
+              %{records: _, error_count: 0} ->
+                %{bulk_result | status: :success}
+
+              %{records: [], error_count: _} ->
+                %{bulk_result | status: :error}
+
+              _ ->
+                if Process.get({:any_success?, ref}) do
+                  %{bulk_result | status: :partial_success}
+                else
+                  %{bulk_result | status: :error}
+                end
             end
+          catch
+            {:error, error, batch_number} ->
+              status =
+                if batch_number > 1 do
+                  :partial_success
+                else
+                  :error
+                end
+
+              result = %Ash.BulkResult{
+                status: status,
+                notifications: Process.delete({:bulk_notifications, ref})
+              }
+
+              {error_count, errors} = errors(result, error, opts)
+
+              %{result | errors: errors, error_count: error_count}
+          after
+            Process.delete({:bulk_errors, ref})
+            Process.delete({:bulk_notifications, ref})
+          end
         end
-      catch
-        {:error, error, batch_number} ->
-          status =
-            if batch_number > 1 do
-              :partial_success
-            else
-              :error
-            end
-
-          result = %Ash.BulkResult{
-            status: status,
-            notifications: Process.delete({:bulk_notifications, ref})
-          }
-
-          {error_count, errors} = errors(result, error, opts)
-
-          %{result | errors: errors, error_count: error_count}
-      after
-        Process.delete({:bulk_errors, ref})
-        Process.delete({:bulk_notifications, ref})
-      end
     end
   rescue
     e ->
