@@ -1281,4 +1281,296 @@ defmodule Ash.Actions.MultitenancyTest do
       assert comment.name == "Test"
     end
   end
+
+  describe "bulk create multitenancy bypass" do
+    setup do
+      %{tenant1: Ash.UUID.generate(), tenant2: Ash.UUID.generate()}
+    end
+
+    test "bulk_create with :bypass multitenancy can create records without tenant" do
+      result =
+        Ash.bulk_create(
+          [%{name: "Test1"}, %{name: "Test2"}],
+          User,
+          :create_bypass,
+          return_records?: true,
+          return_errors?: true
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 2
+      assert Enum.all?(result.records, &is_nil(&1.org_id))
+    end
+
+    test "bulk_create with :bypass multitenancy ignores tenant even if set", %{tenant1: tenant1} do
+      result =
+        Ash.bulk_create(
+          [%{name: "Test1"}, %{name: "Test2"}],
+          User,
+          :create_bypass,
+          tenant: tenant1,
+          return_records?: true,
+          return_errors?: true
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 2
+      assert Enum.all?(result.records, &is_nil(&1.org_id))
+
+      # Records should not be found with tenant filter
+      assert Enum.empty?(User |> Ash.Query.set_tenant(tenant1) |> Ash.read!())
+
+      # Records should be found with bypass read
+      assert length(User |> Ash.Query.for_read(:bypass_tenant) |> Ash.read!()) == 2
+    end
+
+    test "bulk_create with :allow_global works with tenant", %{tenant1: tenant1} do
+      result =
+        Ash.bulk_create(
+          [%{name: "Test1"}, %{name: "Test2"}],
+          User,
+          :create_allow_global,
+          tenant: tenant1,
+          return_records?: true,
+          return_errors?: true
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 2
+      assert Enum.all?(result.records, &(&1.org_id == tenant1))
+    end
+
+    test "bulk_create with :allow_global works without tenant" do
+      result =
+        Ash.bulk_create(
+          [%{name: "Test1"}, %{name: "Test2"}],
+          User,
+          :create_allow_global,
+          return_records?: true,
+          return_errors?: true
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 2
+      assert Enum.all?(result.records, &is_nil(&1.org_id))
+    end
+
+    test "bulk_create with :enforce (default) requires tenant" do
+      result =
+        Ash.bulk_create(
+          [%{name: "Test1"}, %{name: "Test2"}],
+          User,
+          :create,
+          return_records?: true,
+          return_errors?: true
+        )
+
+      assert result.status == :error
+      assert result.error_count == 1
+    end
+
+    test "bulk_create with :bypass works for context multitenancy strategy" do
+      result =
+        Ash.bulk_create(
+          [%{name: "Test1"}, %{name: "Test2"}],
+          Comment,
+          :create_bypass,
+          return_records?: true,
+          return_errors?: true
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 2
+    end
+  end
+
+  describe "bulk update multitenancy bypass" do
+    setup do
+      tenant1 = Ash.UUID.generate()
+      tenant2 = Ash.UUID.generate()
+
+      user1 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "User1"}, tenant: tenant1)
+        |> Ash.create!()
+
+      user2 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "User2"}, tenant: tenant2)
+        |> Ash.create!()
+
+      %{tenant1: tenant1, tenant2: tenant2, user1: user1, user2: user2}
+    end
+
+    test "bulk_update with :bypass can update records across tenants without tenant", %{
+      user1: user1,
+      user2: user2
+    } do
+      result =
+        User
+        |> Ash.Query.for_read(:bypass_tenant)
+        |> Ash.Query.filter(id in [^user1.id, ^user2.id])
+        |> Ash.bulk_update(:update_bypass, %{name: "Updated"},
+          return_records?: true,
+          return_errors?: true,
+          strategy: [:atomic, :stream]
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 2
+      assert Enum.all?(result.records, &(&1.name == "Updated"))
+    end
+
+    test "bulk_update with :bypass ignores tenant even if set", %{
+      tenant1: tenant1,
+      user1: user1,
+      user2: user2
+    } do
+      result =
+        User
+        |> Ash.Query.for_read(:bypass_tenant)
+        |> Ash.Query.filter(id in [^user1.id, ^user2.id])
+        |> Ash.bulk_update(:update_bypass, %{name: "Updated"},
+          tenant: tenant1,
+          return_records?: true,
+          return_errors?: true,
+          strategy: [:atomic, :stream]
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 2
+    end
+
+    test "bulk_update with :allow_global works with tenant", %{tenant1: tenant1, user1: user1} do
+      result =
+        User
+        |> Ash.Query.set_tenant(tenant1)
+        |> Ash.Query.filter(id == ^user1.id)
+        |> Ash.bulk_update(:update_allow_global, %{name: "Updated"},
+          tenant: tenant1,
+          return_records?: true,
+          return_errors?: true,
+          strategy: [:atomic, :stream]
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 1
+      assert hd(result.records).name == "Updated"
+    end
+
+    test "bulk_update with :allow_global works without tenant using bypass read", %{
+      user1: user1,
+      user2: user2
+    } do
+      result =
+        User
+        |> Ash.Query.for_read(:bypass_tenant)
+        |> Ash.Query.filter(id in [^user1.id, ^user2.id])
+        |> Ash.bulk_update(:update_allow_global, %{name: "Updated"},
+          return_records?: true,
+          return_errors?: true,
+          strategy: [:atomic, :stream]
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 2
+    end
+  end
+
+  describe "bulk destroy multitenancy bypass" do
+    setup do
+      tenant1 = Ash.UUID.generate()
+      tenant2 = Ash.UUID.generate()
+
+      user1 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "User1"}, tenant: tenant1)
+        |> Ash.create!()
+
+      user2 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "User2"}, tenant: tenant2)
+        |> Ash.create!()
+
+      %{tenant1: tenant1, tenant2: tenant2, user1: user1, user2: user2}
+    end
+
+    test "bulk_destroy with :bypass can delete records across tenants without tenant", %{
+      user1: user1,
+      user2: user2
+    } do
+      result =
+        User
+        |> Ash.Query.for_read(:bypass_tenant)
+        |> Ash.Query.filter(id in [^user1.id, ^user2.id])
+        |> Ash.bulk_destroy(:destroy_bypass, %{},
+          return_errors?: true,
+          strategy: [:atomic, :stream]
+        )
+
+      assert result.status == :success
+
+      # Verify records are deleted
+      assert Enum.empty?(User |> Ash.Query.for_read(:bypass_tenant) |> Ash.read!())
+    end
+
+    test "bulk_destroy with :bypass ignores tenant even if set", %{
+      tenant1: tenant1,
+      user1: user1,
+      user2: user2
+    } do
+      result =
+        User
+        |> Ash.Query.for_read(:bypass_tenant)
+        |> Ash.Query.filter(id in [^user1.id, ^user2.id])
+        |> Ash.bulk_destroy(:destroy_bypass, %{},
+          tenant: tenant1,
+          return_errors?: true,
+          strategy: [:atomic, :stream]
+        )
+
+      assert result.status == :success
+
+      # Both records deleted even though tenant1 was set
+      assert Enum.empty?(User |> Ash.Query.for_read(:bypass_tenant) |> Ash.read!())
+    end
+
+    test "bulk_destroy with :allow_global works with tenant", %{tenant1: tenant1, user1: user1} do
+      result =
+        User
+        |> Ash.Query.set_tenant(tenant1)
+        |> Ash.Query.filter(id == ^user1.id)
+        |> Ash.bulk_destroy(:destroy_allow_global, %{},
+          tenant: tenant1,
+          return_errors?: true,
+          strategy: [:atomic, :stream]
+        )
+
+      assert result.status == :success
+
+      # user1 deleted, user2 still exists
+      remaining = User |> Ash.Query.for_read(:bypass_tenant) |> Ash.read!()
+      assert length(remaining) == 1
+      refute hd(remaining).id == user1.id
+    end
+
+    test "bulk_destroy with :allow_global works without tenant using bypass read", %{
+      user1: user1,
+      user2: user2
+    } do
+      result =
+        User
+        |> Ash.Query.for_read(:bypass_tenant)
+        |> Ash.Query.filter(id in [^user1.id, ^user2.id])
+        |> Ash.bulk_destroy(:destroy_allow_global, %{},
+          return_errors?: true,
+          strategy: [:atomic, :stream]
+        )
+
+      assert result.status == :success
+
+      # All records deleted
+      assert Enum.empty?(User |> Ash.Query.for_read(:bypass_tenant) |> Ash.read!())
+    end
+  end
 end
