@@ -12,6 +12,7 @@ defmodule Ash.Resource.Actions.Update do
     :primary?,
     :description,
     :error_handler,
+    :multitenancy,
     accept: nil,
     require_attributes: [],
     allow_nil_input: [],
@@ -40,6 +41,7 @@ defmodule Ash.Resource.Actions.Update do
           type: :update,
           name: atom,
           manual: module | nil,
+          multitenancy: atom,
           skip_unknown_inputs: list(atom | String.t()),
           atomic_upgrade?: boolean(),
           action_select: list(atom) | nil,
@@ -90,6 +92,13 @@ defmodule Ash.Resource.Actions.Update do
                   type: {:or, [:atom, nil]},
                   doc: """
                   Configure the read action used when performing atomic upgrades. Defaults to the primary read action.
+                  """
+                ],
+                multitenancy: [
+                  type: {:in, [:enforce, :allow_global, :bypass, :bypass_all]},
+                  default: :enforce,
+                  doc: """
+                  This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources.
                   """
                 ]
               ]
