@@ -30,11 +30,12 @@ defmodule Ash.Query.Operator.DistinctFrom do
   def evaluate_nil_inputs?, do: true
 
   @impl Ash.Filter.Predicate
-  def simplify(%__MODULE__{left: left, right: right} = op) do
+  def simplify(%__MODULE__{left: left, right: right}) do
     if Ash.Expr.can_return_nil?(left) || Ash.Expr.can_return_nil?(right) do
-      op
+      nil
     else
-      %Ash.Query.Operator.NotEqual{left: left, right: right}
+      {:ok, simplified} = Ash.Query.Operator.new(Ash.Query.Operator.NotEq, left, right)
+      simplified
     end
   end
 

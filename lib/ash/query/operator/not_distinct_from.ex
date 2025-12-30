@@ -17,9 +17,6 @@ defmodule Ash.Query.Operator.NotDistinctFrom do
     predicate?: true,
     types: [:same, :any]
 
-  alias Ash.Query.Not
-  alias Ash.Query.Operator.DistinctFrom
-
   @impl Ash.Query.Operator
   def evaluate(%{left: nil, right: nil}), do: {:known, true}
   def evaluate(%{left: nil, right: _}), do: {:known, false}
@@ -33,11 +30,12 @@ defmodule Ash.Query.Operator.NotDistinctFrom do
   def evaluate_nil_inputs?, do: true
 
   @impl Ash.Filter.Predicate
-  def simplify(%__MODULE__{left: left, right: right} = op) do
+  def simplify(%__MODULE__{left: left, right: right}) do
     if Ash.Expr.can_return_nil?(left) || Ash.Expr.can_return_nil?(right) do
-      op
+      nil
     else
-      %Ash.Query.Operator.Equal{left: left, right: right}
+      {:ok, simplified} = Ash.Query.Operator.new(Ash.Query.Operator.Eq, left, right)
+      simplified
     end
   end
 
