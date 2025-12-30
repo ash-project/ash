@@ -51,12 +51,14 @@ defmodule Ash.Filter do
   }
 
   alias Ash.Query.Operator.{
+    DistinctFrom,
     Eq,
     GreaterThan,
     GreaterThanOrEqual,
     In,
     LessThan,
     LessThanOrEqual,
+    NotDistinctFrom,
     NotEq
   }
 
@@ -107,7 +109,9 @@ defmodule Ash.Filter do
                LessThan,
                GreaterThan,
                LessThanOrEqual,
-               GreaterThanOrEqual
+               GreaterThanOrEqual,
+               DistinctFrom,
+               NotDistinctFrom
              ] ++ Ash.Query.Operator.Basic.operator_modules()
 
   @builtins @functions ++ @operators

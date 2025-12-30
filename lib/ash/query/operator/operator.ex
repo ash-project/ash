@@ -380,7 +380,9 @@ defmodule Ash.Query.Operator do
       Ash.Query.Operator.IsNil,
       Ash.Query.Operator.LessThanOrEqual,
       Ash.Query.Operator.LessThan,
-      Ash.Query.Operator.NotEq
+      Ash.Query.Operator.NotEq,
+      Ash.Query.Operator.DistinctFrom,
+      Ash.Query.Operator.NotDistinctFrom
     ] ++ Ash.Query.Operator.Basic.operator_modules()
   end
 
