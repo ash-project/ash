@@ -223,9 +223,11 @@ defmodule Ash.Expr do
 
       {:_actor, field} when is_atom(field) or is_binary(field) ->
         Map.get(opts[:actor] || %{}, field)
+        |> raise_if_not_loaded!(opts[:actor], List.wrap(field))
 
       {:_actor, path} when is_list(path) ->
         get_path(opts[:actor] || %{}, path)
+        |> raise_if_not_loaded!(opts[:actor], path)
 
       :_tenant ->
         opts[:tenant]
@@ -291,6 +293,8 @@ defmodule Ash.Expr do
   end
 
   @doc false
+  def get_path(%Ash.NotLoaded{} = not_loaded, _), do: not_loaded
+
   def get_path(map, [key]) when is_map(map) do
     Map.get(map, key)
   end
@@ -300,6 +304,18 @@ defmodule Ash.Expr do
   end
 
   def get_path(_, _), do: nil
+
+  defp raise_if_not_loaded!(%Ash.NotLoaded{}, actor, path) do
+    raise ArgumentError, """
+    Actor field is not loaded: #{inspect(path)}
+
+    Actor: #{inspect(actor)}
+
+    Ensure the field is loaded on the actor before using it in a filter template.
+    """
+  end
+
+  defp raise_if_not_loaded!(value, _actor, _path), do: value
 
   @doc false
   def template_references_actor?(template) do

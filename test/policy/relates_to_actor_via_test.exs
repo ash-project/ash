@@ -252,11 +252,14 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
                %Actor{company: %Ash.NotLoaded{}, company_id: ^company_id} =
                Ash.get!(Actor, %{id: actor.id}, authorize?: false)
 
-      # same company, our actor should be authorzied to read
-      assert {:ok, %Actor{}} = Ash.get(Actor, %{id: same_company_actor.id}, actor: actor)
+      assert_raise Ash.Error.Unknown, ~r"Actor field is not loaded: \[:company, :id\]", fn ->
+        Ash.get(Actor, %{id: same_company_actor.id}, actor: actor)
+      end
 
-      # different company, our actor should be forbidden to read
-      assert {:error, %Ash.Error.Invalid{}} = Ash.get(Actor, %{id: other_actor.id}, actor: actor)
+      assert_raise Ash.Error.Unknown, ~r"Actor field is not loaded: \[:company, :id\]", fn ->
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Ash.get(Actor, %{id: other_actor.id}, actor: actor)
+      end
     end
 
     test "relates_to_actor_via with has_many" do
