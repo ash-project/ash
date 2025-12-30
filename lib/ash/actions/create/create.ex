@@ -23,6 +23,15 @@ defmodule Ash.Actions.Create do
          action_type: :create
        )}
     else
+      changeset =
+        if Map.get(action, :multitenancy) in [:bypass, :bypass_all] do
+          Ash.Changeset.set_context(changeset, %{
+            shared: %{private: %{multitenancy: :bypass_all}}
+          })
+        else
+          changeset
+        end
+
       {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
       changeset = Helpers.apply_opts_load(changeset, opts)
 
@@ -141,7 +150,8 @@ defmodule Ash.Actions.Create do
         }
       })
 
-    with %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
+    with %{valid?: true} = changeset <- handle_multitenancy(changeset, action),
+         %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
          %{valid?: true} = changeset <- check_upsert_support(changeset, opts),
          %{valid?: true} = changeset <- authorize(changeset, opts),
          {:ok, result, instructions} <- commit(changeset, domain, opts) do
@@ -605,6 +615,41 @@ defmodule Ash.Actions.Create do
           changeset
       end
 
+    if get_multitenancy_from_context(changeset) in [:bypass, :bypass_all, :allow_global] do
+      changeset
+    else
+      case validate_multitenancy(changeset) do
+        :ok -> handle_attribute_multitenancy(changeset)
+        {:error, error} -> Ash.Changeset.add_error(changeset, error)
+      end
+    end
+  end
+
+  defp handle_multitenancy(changeset, action) do
+    case Map.get(action, :multitenancy) || :enforce do
+      :enforce ->
+        changeset = handle_attribute_multitenancy(changeset)
+
+        case validate_multitenancy(changeset) do
+          :ok -> changeset
+          {:error, error} -> Ash.Changeset.add_error(changeset, error)
+        end
+
+      :allow_global ->
+        changeset
+        |> handle_attribute_multitenancy()
+        |> Ash.Changeset.set_context(%{
+          shared: %{private: %{multitenancy: :allow_global}}
+        })
+
+      _ ->
+        Ash.Changeset.set_context(changeset, %{
+          shared: %{private: %{multitenancy: :bypass_all}}
+        })
+    end
+  end
+
+  defp handle_attribute_multitenancy(changeset) do
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
       attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
@@ -613,17 +658,27 @@ defmodule Ash.Actions.Create do
 
       Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
     else
-      if is_nil(Ash.Resource.Info.multitenancy_strategy(changeset.resource)) ||
-           Ash.Resource.Info.multitenancy_global?(changeset.resource) || changeset.tenant do
-        changeset
-      else
-        Ash.Changeset.add_error(
-          changeset,
-          Ash.Error.Invalid.TenantRequired.exception(resource: changeset.resource)
-        )
-      end
+      changeset
     end
   end
+
+  defp validate_multitenancy(changeset) do
+    if Ash.Resource.Info.multitenancy_strategy(changeset.resource) &&
+         not Ash.Resource.Info.multitenancy_global?(changeset.resource) &&
+         is_nil(changeset.tenant) do
+      {:error, "#{inspect(changeset.resource)} changesets require a tenant to be specified"}
+    else
+      :ok
+    end
+  end
+
+  defp get_multitenancy_from_context(%{
+         context: %{shared: %{private: %{multitenancy: multitenancy}}}
+       }) do
+    multitenancy
+  end
+
+  defp get_multitenancy_from_context(_), do: nil
 
   defp check_upsert_support(changeset, opts) do
     if opts[:upsert?] && !Ash.DataLayer.data_layer_can?(changeset.resource, :upsert) do

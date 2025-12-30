@@ -973,8 +973,12 @@ defmodule Ash.Actions.Destroy.Bulk do
   defp validate_multitenancy(resource, action, opts) do
     if Ash.Resource.Info.multitenancy_strategy(resource) &&
          !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] &&
-         Map.get(action, :multitenancy) not in [:bypass, :bypass_all] &&
-         get_in(opts, [:context, :shared, :private, :multitenancy]) not in [:bypass, :bypass_all] do
+         Map.get(action, :multitenancy) not in [:bypass, :bypass_all, :allow_global] &&
+         get_in(opts, [:context, :shared, :private, :multitenancy]) not in [
+           :bypass,
+           :bypass_all,
+           :allow_global
+         ] do
       {:error, Ash.Error.Invalid.TenantRequired.exception(resource: resource)}
     else
       :ok
