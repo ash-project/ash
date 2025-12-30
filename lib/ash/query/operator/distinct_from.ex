@@ -18,12 +18,8 @@ defmodule Ash.Query.Operator.DistinctFrom do
     types: [:same, :any]
 
   @impl Ash.Query.Operator
-  def evaluate(%{left: nil, right: nil}), do: {:known, false}
-  def evaluate(%{left: nil, right: _}), do: {:known, true}
-  def evaluate(%{left: _, right: nil}), do: {:known, true}
-
   def evaluate(%{left: left, right: right}) do
-    {:known, not Comp.equal?(left, right)}
+    {:known, Comp.not_equal?(left, right)}
   end
 
   @impl Ash.Query.Operator
