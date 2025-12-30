@@ -58,9 +58,17 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
         case Ash.Resource.Info.relationship(actor.__struct__, actor_field) do
           %{type: :belongs_to, source_attribute: source_attr, destination_attribute: dest_attr}
           when dest_attr == pkey_field ->
-            # For belongs_to, use the source_attribute directly, but validate it's loaded
-            validate_actor_field_loaded!(actor, [source_attr])
-            source_attr
+            # For belongs_to, prefer the source_attribute, but fall back to relationship path
+            case Map.get(actor, source_attr) do
+              %Ash.NotLoaded{} ->
+                # Source attribute not loaded, try the relationship path
+                # Hint towards loading the source_attribute as the more optimal choice
+                validate_actor_field_loaded!(actor, [actor_field, pkey_field], source_attr)
+                [actor_field, pkey_field]
+
+              _ ->
+                source_attr
+            end
 
           rel when not is_nil(rel) ->
             # Other relationship types - need to traverse the relationship
@@ -80,15 +88,22 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
     end
   end
 
-  defp validate_actor_field_loaded!(actor, path) do
+  defp validate_actor_field_loaded!(actor, path, optimal_field \\ nil) do
     case actor_get_path(actor, path) do
       %Ash.NotLoaded{} ->
+        hint =
+          if optimal_field do
+            "\n\nHint: Loading `#{inspect(optimal_field)}` is more optimal than loading the full relationship."
+          else
+            ""
+          end
+
         raise ArgumentError, """
         Actor field is not loaded: #{inspect(path)}
 
         Actor: #{inspect(actor)}
 
-        Ensure the field is loaded on the actor before using it in a `relates_to_actor_via` check.
+        Ensure the field is loaded on the actor before using it in a `relates_to_actor_via` check.#{hint}
         """
 
       _ ->
@@ -99,7 +114,10 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
   defp actor_get_path(nil, _), do: nil
   defp actor_get_path(%Ash.NotLoaded{} = not_loaded, _), do: not_loaded
   defp actor_get_path(map, [key]) when is_map(map), do: Map.get(map, key)
-  defp actor_get_path(map, [key | rest]) when is_map(map), do: actor_get_path(Map.get(map, key), rest)
+
+  defp actor_get_path(map, [key | rest]) when is_map(map),
+    do: actor_get_path(Map.get(map, key), rest)
+
   defp actor_get_path(_, _), do: nil
 
   @impl true

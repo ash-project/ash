@@ -259,11 +259,24 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
                Ash.get(Actor, %{id: other_actor.id}, actor: actor)
 
-      # But if source_attribute is NotLoaded, it should raise
-      actor_with_unloaded_company_id = Map.put(actor, :company_id, %Ash.NotLoaded{field: :company_id})
+      # If source_attribute is NotLoaded but relationship is loaded, it should fall back to relationship
+      actor_with_loaded_company = Ash.load!(actor, :company)
 
-      assert_raise Ash.Error.Unknown, ~r"Actor field is not loaded: \[:company_id\]", fn ->
-        Ash.get(Actor, %{id: same_company_actor.id}, actor: actor_with_unloaded_company_id)
+      actor_with_unloaded_company_id =
+        Map.put(actor_with_loaded_company, :company_id, %Ash.NotLoaded{field: :company_id})
+
+      assert {:ok, %Actor{}} =
+               Ash.get(Actor, %{id: same_company_actor.id}, actor: actor_with_unloaded_company_id)
+
+      # But if both source_attribute and relationship are NotLoaded, it should raise
+      # with a hint to load the source_attribute as the more optimal choice
+      actor_with_both_unloaded =
+        actor
+        |> Map.put(:company_id, %Ash.NotLoaded{field: :company_id})
+        |> Map.put(:company, %Ash.NotLoaded{field: :company})
+
+      assert_raise Ash.Error.Unknown, ~r"Loading `:company_id` is more optimal", fn ->
+        Ash.get(Actor, %{id: same_company_actor.id}, actor: actor_with_both_unloaded)
       end
     end
 
