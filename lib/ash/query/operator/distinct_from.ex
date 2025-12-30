@@ -18,22 +18,21 @@ defmodule Ash.Query.Operator.DistinctFrom do
     types: [:same, :any]
 
   @impl Ash.Query.Operator
+  def new(left, right) do
+    if Ash.Expr.can_return_nil?(left) || Ash.Expr.can_return_nil?(right) do
+      {:ok, struct(__MODULE__, left: left, right: right)}
+    else
+      Ash.Query.Operator.new(Ash.Query.Operator.NotEq, left, right)
+    end
+  end
+
+  @impl Ash.Query.Operator
   def evaluate(%{left: left, right: right}) do
     {:known, Comp.not_equal?(left, right)}
   end
 
   @impl Ash.Query.Operator
   def evaluate_nil_inputs?, do: true
-
-  @impl Ash.Filter.Predicate
-  def simplify(%__MODULE__{left: left, right: right}) do
-    if Ash.Expr.can_return_nil?(left) || Ash.Expr.can_return_nil?(right) do
-      nil
-    else
-      {:ok, simplified} = Ash.Query.Operator.new(Ash.Query.Operator.NotEq, left, right)
-      simplified
-    end
-  end
 
   def can_return_nil?(_), do: false
 end
