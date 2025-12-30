@@ -221,7 +221,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
       assert {:ok, _} = Ash.get(Account, account.id, actor: actor)
     end
 
-    test "relates_to_actor_via does not require load" do
+    test "relates_to_actor_via does not require relationship load for belongs_to" do
       # the company our Actor belongs to
       %{id: company_id} = company = Ash.create!(Company)
       other_company = Ash.create!(Company)
@@ -244,21 +244,26 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
         |> Ash.Changeset.manage_relationship(:company, other_company, type: :append)
         |> Ash.create!(authorize?: false)
 
-      # same company, our actor should be authorzied to read
+      # same company, our actor should be authorized to read
       assert {:ok, %Actor{}} = Ash.get(Actor, %{id: same_company_actor.id}, actor: actor)
 
-      # read actor without loading company
+      # read actor without loading company - for belongs_to, we use company_id directly
       assert actor =
                %Actor{company: %Ash.NotLoaded{}, company_id: ^company_id} =
                Ash.get!(Actor, %{id: actor.id}, authorize?: false)
 
-      assert_raise Ash.Error.Unknown, ~r"Actor field is not loaded: \[:company, :id\]", fn ->
-        Ash.get(Actor, %{id: same_company_actor.id}, actor: actor)
-      end
+      # Should still work because belongs_to uses source_attribute (company_id) directly
+      assert {:ok, %Actor{}} = Ash.get(Actor, %{id: same_company_actor.id}, actor: actor)
 
-      assert_raise Ash.Error.Unknown, ~r"Actor field is not loaded: \[:company, :id\]", fn ->
-        assert {:error, %Ash.Error.Invalid{}} =
-                 Ash.get(Actor, %{id: other_actor.id}, actor: actor)
+      # Different company should not be found (filtered out by policy)
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(Actor, %{id: other_actor.id}, actor: actor)
+
+      # But if source_attribute is NotLoaded, it should raise
+      actor_with_unloaded_company_id = Map.put(actor, :company_id, %Ash.NotLoaded{field: :company_id})
+
+      assert_raise Ash.Error.Unknown, ~r"Actor field is not loaded: \[:company_id\]", fn ->
+        Ash.get(Actor, %{id: same_company_actor.id}, actor: actor_with_unloaded_company_id)
       end
     end
 

@@ -13,7 +13,7 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
   end
 
   @impl true
-  def filter(_actor, context, opts) do
+  def filter(actor, context, opts) do
     opts = Keyword.update!(opts, :relationship_path, &List.wrap/1)
     actor_field = Keyword.get(opts, :field)
     {last_relationship, to_many?} = relationship_info(context.resource, opts[:relationship_path])
@@ -26,12 +26,14 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
       expr(
         exists(
           ^opts[:relationship_path],
-          ^Enum.map(pkey, &{&1, {:_actor, actor_path(&1, actor_field)}})
+          ^Enum.map(pkey, fn pkey_field ->
+            {pkey_field, {:_actor, resolve_actor_path(actor, actor_field, pkey_field)}}
+          end)
         )
       )
     else
       Enum.reduce(pkey, nil, fn pkey_field, expr ->
-        actor_path = actor_path(pkey_field, actor_field)
+        actor_path = resolve_actor_path(actor, actor_field, pkey_field)
 
         if expr do
           expr(^expr and ^ref(opts[:relationship_path], pkey_field) == ^actor(actor_path))
@@ -42,8 +44,63 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
     end
   end
 
-  defp actor_path(pkey_field, actor_field) when is_nil(actor_field), do: pkey_field
-  defp actor_path(pkey_field, actor_field), do: [actor_field, pkey_field]
+  defp resolve_actor_path(actor, nil, pkey_field) do
+    validate_actor_field_loaded!(actor, [pkey_field])
+    pkey_field
+  end
+
+  defp resolve_actor_path(actor, actor_field, pkey_field) do
+    cond do
+      is_nil(actor) ->
+        [actor_field, pkey_field]
+
+      is_struct(actor) and Ash.Resource.Info.resource?(actor.__struct__) ->
+        case Ash.Resource.Info.relationship(actor.__struct__, actor_field) do
+          %{type: :belongs_to, source_attribute: source_attr, destination_attribute: dest_attr}
+          when dest_attr == pkey_field ->
+            # For belongs_to, use the source_attribute directly, but validate it's loaded
+            validate_actor_field_loaded!(actor, [source_attr])
+            source_attr
+
+          rel when not is_nil(rel) ->
+            # Other relationship types - need to traverse the relationship
+            validate_actor_field_loaded!(actor, [actor_field, pkey_field])
+            [actor_field, pkey_field]
+
+          nil ->
+            # No relationship found, might be a direct field access
+            validate_actor_field_loaded!(actor, [actor_field, pkey_field])
+            [actor_field, pkey_field]
+        end
+
+      true ->
+        # Not an Ash resource, validate and use path
+        validate_actor_field_loaded!(actor, [actor_field, pkey_field])
+        [actor_field, pkey_field]
+    end
+  end
+
+  defp validate_actor_field_loaded!(actor, path) do
+    case actor_get_path(actor, path) do
+      %Ash.NotLoaded{} ->
+        raise ArgumentError, """
+        Actor field is not loaded: #{inspect(path)}
+
+        Actor: #{inspect(actor)}
+
+        Ensure the field is loaded on the actor before using it in a `relates_to_actor_via` check.
+        """
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp actor_get_path(nil, _), do: nil
+  defp actor_get_path(%Ash.NotLoaded{} = not_loaded, _), do: not_loaded
+  defp actor_get_path(map, [key]) when is_map(map), do: Map.get(map, key)
+  defp actor_get_path(map, [key | rest]) when is_map(map), do: actor_get_path(Map.get(map, key), rest)
+  defp actor_get_path(_, _), do: nil
 
   @impl true
   def reject(actor, context, opts) do
