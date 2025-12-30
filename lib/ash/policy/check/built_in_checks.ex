@@ -197,6 +197,16 @@ defmodule Ash.Policy.Check.Builtins do
   2. Managing relationships
   3. Aggregating data
   4. Filtering on relationships
+
+  For example, for a `User` that has `has_many` `Profiles`:
+
+  ```elixir
+  # profile.ex
+  policy action(:read) do
+    # authorizes Ash.load(user, :profiles), etc
+    authorize_if accessing_from(User, :profiles)
+  end
+  ```
   """
   @spec accessing_from(Ash.Resource.t(), atom) :: Ash.Policy.Check.ref()
   def accessing_from(resource, relationship) do
