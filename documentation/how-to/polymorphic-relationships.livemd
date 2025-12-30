@@ -220,7 +220,7 @@ end
 
 ## Defining the calculation
 
-Next, we'll define a calculation resolves to the specific type of any given account.
+Next, we'll define a calculation that resolves to the specific type of any given account.
 
 ```elixir
 defmodule GetAccountImplementation do
