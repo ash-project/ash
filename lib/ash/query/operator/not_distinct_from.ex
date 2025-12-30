@@ -6,8 +6,10 @@ defmodule Ash.Query.Operator.NotDistinctFrom do
   @moduledoc """
   left is_not_distinct_from right
 
-  PostgreSQL's IS NOT DISTINCT FROM operator (NULL-safe equality).
-  In comparison, simplifies to `not(left is_distinct_from right)`
+  SQL's IS NOT DISTINCT FROM operator (NULL-safe equality).
+  Unlike `==`, this operator treats NULL as equal to NULL.
+
+  When both sides cannot return NULL, this simplifies to `==` for better performance.
   """
   use Ash.Query.Operator,
     operator: :is_not_distinct_from,
@@ -31,8 +33,12 @@ defmodule Ash.Query.Operator.NotDistinctFrom do
   def evaluate_nil_inputs?, do: true
 
   @impl Ash.Filter.Predicate
-  def simplify(%__MODULE__{left: left, right: right}) do
-    %Not{expression: %DistinctFrom{left: left, right: right}}
+  def simplify(%__MODULE__{left: left, right: right} = op) do
+    if Ash.Expr.can_return_nil?(left) || Ash.Expr.can_return_nil?(right) do
+      op
+    else
+      %Ash.Query.Operator.Equal{left: left, right: right}
+    end
   end
 
   def can_return_nil?(_), do: false

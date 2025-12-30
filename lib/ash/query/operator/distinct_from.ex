@@ -6,13 +6,10 @@ defmodule Ash.Query.Operator.DistinctFrom do
   @moduledoc """
   left is_distinct_from right
 
-  PostgreSQL's IS DISTINCT FROM operator.
-  Unlike `!=`, this operator treats NULL as a comparable value:
-  - NULL IS DISTINCT FROM NULL -> false
-  - NULL IS DISTINCT FROM value -> true
-  - value IS DISTINCT FROM NULL -> true
-  - value IS DISTINCT FROM value -> false (if equal)
-  - value IS DISTINCT FROM other_value -> true (if not equal)
+  SQL's IS DISTINCT FROM operator.
+  Unlike `!=`, this operator treats NULL as a comparable value.
+
+  When both sides cannot return NULL, this simplifies to `!=` for better performance.
   """
   use Ash.Query.Operator,
     operator: :is_distinct_from,
@@ -31,6 +28,15 @@ defmodule Ash.Query.Operator.DistinctFrom do
 
   @impl Ash.Query.Operator
   def evaluate_nil_inputs?, do: true
+
+  @impl Ash.Filter.Predicate
+  def simplify(%__MODULE__{left: left, right: right} = op) do
+    if Ash.Expr.can_return_nil?(left) || Ash.Expr.can_return_nil?(right) do
+      op
+    else
+      %Ash.Query.Operator.NotEqual{left: left, right: right}
+    end
+  end
 
   def can_return_nil?(_), do: false
 end
