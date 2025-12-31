@@ -32,7 +32,9 @@ defmodule Ash.Filter do
     Has,
     If,
     Intersects,
+    IsDistinctFrom,
     IsNil,
+    IsNotDistinctFrom,
     Lazy,
     Length,
     Minus,
@@ -51,14 +53,12 @@ defmodule Ash.Filter do
   }
 
   alias Ash.Query.Operator.{
-    DistinctFrom,
     Eq,
     GreaterThan,
     GreaterThanOrEqual,
     In,
     LessThan,
     LessThanOrEqual,
-    NotDistinctFrom,
     NotEq
   }
 
@@ -78,7 +78,9 @@ defmodule Ash.Filter do
     FromNow,
     GetPath,
     Has,
+    IsDistinctFrom,
     IsNil,
+    IsNotDistinctFrom,
     If,
     Intersects,
     Lazy,
@@ -109,9 +111,7 @@ defmodule Ash.Filter do
                LessThan,
                GreaterThan,
                LessThanOrEqual,
-               GreaterThanOrEqual,
-               DistinctFrom,
-               NotDistinctFrom
+               GreaterThanOrEqual
              ] ++ Ash.Query.Operator.Basic.operator_modules()
 
   @builtins @functions ++ @operators

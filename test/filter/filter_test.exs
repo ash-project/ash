@@ -1298,7 +1298,7 @@ defmodule Ash.Test.Filter.FilterTest do
       assert hd(results).id == post1.id
     end
 
-    test "is_distinct_from evaluates to !=" do
+    test "is_distinct_from with literals is eagerly evaluated" do
       assert Image
              |> Ash.Query.filter(is_distinct_from("jpg", "png"))
              |> inspect() =~
@@ -1315,7 +1315,7 @@ defmodule Ash.Test.Filter.FilterTest do
                ~S(filter: #Ash.Filter<false>)
     end
 
-    test "is_not_distinct_from evaluates to ==" do
+    test "is_not_distinct_from with literals is eagerly evaluated" do
       assert Image
              |> Ash.Query.filter(is_not_distinct_from("jpg", "png"))
              |> inspect() =~
