@@ -19,6 +19,7 @@ defmodule Ash.Test.Filter.FilterTest do
     attributes do
       uuid_primary_key :id
       attribute :meta, :map, allow_nil?: false, default: %{}, public?: true
+      attribute :format, :string, allow_nil?: false, default: "jpg", public?: true
     end
 
     actions do
@@ -1212,5 +1213,123 @@ defmodule Ash.Test.Filter.FilterTest do
              Profile
              |> Ash.Query.filter_input(%{embedded_bio: %{at_path: [:title], eq: "Dr."}})
              |> Ash.read!()
+  end
+
+  describe "is_distinct_from/2 and is_not_distinct_from/2" do
+    test "is_distinct_from with nil values" do
+      _post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: nil})
+        |> Ash.create!()
+
+      post2 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post2", category: "tech"})
+        |> Ash.create!()
+
+      # NULL IS DISTINCT FROM NULL -> false, so this should only return post2
+      results =
+        Post
+        |> Ash.Query.filter(is_distinct_from(category, nil))
+        |> Ash.read!()
+
+      assert length(results) == 1
+      assert hd(results).id == post2.id
+    end
+
+    test "is_not_distinct_from with nil values" do
+      post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: nil})
+        |> Ash.create!()
+
+      _post2 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post2", category: "tech"})
+        |> Ash.create!()
+
+      # NULL IS NOT DISTINCT FROM NULL -> true, so this should only return post1
+      results =
+        Post
+        |> Ash.Query.filter(is_not_distinct_from(category, nil))
+        |> Ash.read!()
+
+      assert length(results) == 1
+      assert hd(results).id == post1.id
+    end
+
+    test "is_distinct_from with non-nil values" do
+      _post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: "tech"})
+        |> Ash.create!()
+
+      post2 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post2", category: "news"})
+        |> Ash.create!()
+
+      results =
+        Post
+        |> Ash.Query.filter(is_distinct_from(category, "tech"))
+        |> Ash.read!()
+
+      assert length(results) == 1
+      assert hd(results).id == post2.id
+    end
+
+    test "is_not_distinct_from with non-nil values" do
+      post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: "tech"})
+        |> Ash.create!()
+
+      _post2 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post2", category: "news"})
+        |> Ash.create!()
+
+      results =
+        Post
+        |> Ash.Query.filter(is_not_distinct_from(category, "tech"))
+        |> Ash.read!()
+
+      assert length(results) == 1
+      assert hd(results).id == post1.id
+    end
+
+    test "is_distinct_from with literals is eagerly evaluated" do
+      assert Image
+             |> Ash.Query.filter(is_distinct_from("jpg", "png"))
+             |> inspect() =~
+               ~S(filter: #Ash.Filter<true>)
+
+      assert Image
+             |> Ash.Query.filter(is_distinct_from("jpg", nil))
+             |> inspect() =~
+               ~S(filter: #Ash.Filter<true>)
+
+      assert Image
+             |> Ash.Query.filter(is_distinct_from("jpg", "jpg"))
+             |> inspect() =~
+               ~S(filter: #Ash.Filter<false>)
+    end
+
+    test "is_not_distinct_from with literals is eagerly evaluated" do
+      assert Image
+             |> Ash.Query.filter(is_not_distinct_from("jpg", "png"))
+             |> inspect() =~
+               ~S(filter: #Ash.Filter<false>)
+
+      assert Image
+             |> Ash.Query.filter(is_not_distinct_from("jpg", nil))
+             |> inspect() =~
+               ~S(filter: #Ash.Filter<false>)
+
+      assert Image
+             |> Ash.Query.filter(is_not_distinct_from("jpg", "jpg"))
+             |> inspect() =~
+               ~S(filter: #Ash.Filter<true>)
+    end
   end
 end
