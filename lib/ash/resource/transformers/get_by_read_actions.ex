@@ -63,7 +63,8 @@ defmodule Ash.Resource.Transformers.GetByReadActions do
             [
               Transformer.build_entity!(Resource.Dsl, [:actions, :read], :argument,
                 name: field,
-                type: type
+                type: type,
+                allow_nil?: false
               )
               | action.arguments
             ]
