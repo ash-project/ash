@@ -892,6 +892,10 @@ defmodule Ash do
       doc:
         "A value that implements the `Ash.Scope.ToOpts` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
     ],
+    context: [
+      type: :map,
+      doc: "Context to set on the query/changeset/action_input being authorized"
+    ],
     run_queries?: [
       type: :boolean,
       doc: "Whether or not to run queries. If set to `true`, `:maybe` will not be returned.",
