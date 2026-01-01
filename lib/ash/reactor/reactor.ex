@@ -26,6 +26,7 @@ defmodule Ash.Reactor do
           Ash.Reactor.Dsl.Action.t()
           | Ash.Reactor.Dsl.AshStep.t()
           | Ash.Reactor.Dsl.BulkCreate.t()
+          | Ash.Reactor.Dsl.BulkDestroy.t()
           | Ash.Reactor.Dsl.BulkUpdate.t()
           | Ash.Reactor.Dsl.Create.t()
           | Ash.Reactor.Dsl.Destroy.t()
@@ -42,6 +43,7 @@ defmodule Ash.Reactor do
         Ash.Reactor.Dsl.Action,
         Ash.Reactor.Dsl.AshStep,
         Ash.Reactor.Dsl.BulkCreate,
+        Ash.Reactor.Dsl.BulkDestroy,
         Ash.Reactor.Dsl.BulkUpdate,
         Ash.Reactor.Dsl.Change,
         Ash.Reactor.Dsl.Create,
