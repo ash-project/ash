@@ -86,6 +86,12 @@ defmodule Ash.Query.Operator do
           nil
 
         _types ->
+          mod =
+            case mod do
+              {_, mod} -> mod
+              mod -> mod
+            end
+
           if function_exported?(mod, :evaluate_operator, 1) do
             case mod.evaluate_operator(op) do
               {:known, value} ->
