@@ -228,6 +228,9 @@ defmodule Ash.Actions.Action do
         {:ok, _v} when is_nil(input.action.returns) ->
           :ok
 
+        {:error, %{splode: Reactor.Error, errors: errors}} ->
+          {:error, errors}
+
         other ->
           other
       end
