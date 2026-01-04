@@ -51,7 +51,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             type: :bulk_create,
             undo_action: nil,
             undo: :never,
-            upsert_fields: [],
+            upsert_fields: nil,
             upsert_identity: nil,
             upsert?: false,
             wait_for: [],
@@ -95,7 +95,8 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
           type: :bulk_create,
           undo_action: nil,
           undo: :never,
-          upsert_fields: [],
+          upsert_fields:
+            nil | :replace_all | {:replace, [atom]} | {:replace_all_except, [atom]} | [atom],
           upsert_identity: nil,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
@@ -278,7 +279,14 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             default: :batch
           ],
           upsert_fields: [
-            type: {:wrap_list, :atom},
+            type:
+              {:or,
+               [
+                 {:literal, :replace_all},
+                 {:tuple, [{:literal, :replace}, {:wrap_list, :atom}]},
+                 {:tuple, [{:literal, :replace_all_except}, {:wrap_list, :atom}]},
+                 {:wrap_list, :atom}
+               ]},
             doc: "The fields to upsert. If not set, the action's `upsert_fields` is used.",
             required: false
           ],
