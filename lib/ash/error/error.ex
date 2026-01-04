@@ -13,6 +13,7 @@ defmodule Ash.Error do
       framework: Ash.Error.Framework,
       unknown: Ash.Error.Unknown
     ],
+    merge_with: [Reactor.Error],
     unknown_error: Ash.Error.Unknown.UnknownError
 
   @type error_keyword_option ::
