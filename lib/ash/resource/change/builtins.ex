@@ -134,7 +134,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   If a zero argument function is provided, it is called to determine the value.
 
-  Use `arg(:argument_name)` to use the value of the given argument. If the argument is not supplied then nothing happens.
+  Use `arg(:argument_name)` to use the value of the given argument.
 
   ## Options
 
@@ -181,7 +181,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   If a zero argument function is provided, it is called to determine the value.
 
-  Use `arg(:argument_name)` to use the value of the given argument. If the argument is not supplied then nothing happens.
+  Use `arg(:argument_name)` to use the value of the given argument.
 
   ## Examples
 
