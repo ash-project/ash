@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: MIT
 
-alias Ash.Test.AggregationCheckTest, as: ThisTest
 alias Ash.Changeset
+alias Ash.Test.AggregationCheckTest, as: ThisTest
 
 defmodule ThisTest.Domain do
   use Ash.Domain
