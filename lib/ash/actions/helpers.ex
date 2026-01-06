@@ -19,7 +19,11 @@ defmodule Ash.Actions.Helpers do
   def split_and_run_simple(batch, action, opts, changes, all_changes, context_key, callback) do
     {batch, must_be_simple} =
       Enum.reduce(batch, {[], []}, fn changeset, {batch, must_be_simple} ->
-        if changeset.around_transaction in [[], nil] and changeset.after_transaction in [[], nil] and
+        # Note: We don't check after_transaction here because bulk operations
+        # handle after_transaction hooks in process_results via run_after_transactions.
+        # Only around_transaction and around_action require the simple path since
+        # they need to wrap the entire operation.
+        if changeset.around_transaction in [[], nil] and
              changeset.around_action in [[], nil] do
           changeset =
             if changeset.valid? do
@@ -1104,5 +1108,34 @@ defmodule Ash.Actions.Helpers do
     else
       :ok
     end
+  end
+
+  @doc """
+  Splits a list of changesets into valid and invalid ones.
+
+  Returns a tuple where the first element contains valid changesets and the second
+  contains error tuples for invalid changesets in the form `{:error, error, changeset}`.
+
+  If `stop_on_error?` is true and `return_stream?` is false, throws on the first
+  invalid changeset encountered.
+  """
+  @spec split_valid_invalid_changesets([Ash.Changeset.t()], Keyword.t()) ::
+          {[Ash.Changeset.t()], [{:error, Ash.Error.t(), Ash.Changeset.t()}]}
+  def split_valid_invalid_changesets(changesets, _opts) do
+    changesets
+    |> Enum.reduce({[], []}, fn
+      %{valid?: false} = changeset, {batch_acc, results_acc} ->
+        # in case of stop_on_error? we need to throw from here
+        # and stop processing further changesets
+        error = Ash.Error.to_error_class(changeset.errors, changeset: changeset)
+
+        {batch_acc, [{:error, error, changeset} | results_acc]}
+
+      changeset, {batch_acc, results_acc} ->
+        {[changeset | batch_acc], results_acc}
+    end)
+    |> then(fn {batch, invalid_changeset_errors} ->
+      {Enum.reverse(batch), Enum.reverse(invalid_changeset_errors)}
+    end)
   end
 end
