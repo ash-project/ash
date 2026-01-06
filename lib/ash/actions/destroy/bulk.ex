@@ -6,6 +6,8 @@ defmodule Ash.Actions.Destroy.Bulk do
   @moduledoc false
   require Ash.Query
 
+  alias Ash.Actions.Helpers
+
   @spec run(Ash.Domain.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
           Ash.BulkResult.t()
 
@@ -75,7 +77,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       if query.__validated_for_action__ do
         {query, opts}
       else
-        {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
+        {query, opts} = Helpers.set_context_and_get_opts(domain, query, opts)
 
         query =
           Ash.Query.for_read(
@@ -231,9 +233,9 @@ defmodule Ash.Actions.Destroy.Bulk do
 
       atomic_changeset ->
         {atomic_changeset, opts} =
-          Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
+          Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
 
-        atomic_changeset = Ash.Actions.Helpers.apply_opts_load(atomic_changeset, opts)
+        atomic_changeset = Helpers.apply_opts_load(atomic_changeset, opts)
 
         atomic_changeset = %{atomic_changeset | domain: domain}
 
@@ -321,7 +323,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                   if opts[:notify?] do
                     remaining_notifications = Ash.Notifier.notify(notifications)
 
-                    Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
+                    Helpers.warn_missed!(atomic_changeset.resource, action, %{
                       resource_notifications: remaining_notifications
                     })
 
@@ -446,7 +448,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                             List.wrap(Process.delete(:ash_notifications))
                         )
 
-                      Ash.Actions.Helpers.warn_missed!(resource, action, %{
+                      Helpers.warn_missed!(resource, action, %{
                         resource_notifications: remaining_notifications
                       })
                     else
@@ -570,7 +572,12 @@ defmodule Ash.Actions.Destroy.Bulk do
         action_select
       )
 
-    with :ok <- validate_multitenancy(atomic_changeset.resource, atomic_changeset.action, opts),
+    with :ok <-
+           Helpers.validate_bulk_multitenancy(
+             atomic_changeset.resource,
+             atomic_changeset.action,
+             opts
+           ),
          {:ok, query} <-
            authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
@@ -594,7 +601,7 @@ defmodule Ash.Actions.Destroy.Bulk do
              atomic_changeset,
              destroy_query_opts
            )
-           |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, nil) do
+           |> Helpers.rollback_if_in_transaction(query.resource, nil) do
         :ok ->
           %Ash.BulkResult{
             status: :success
@@ -852,14 +859,14 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp do_run(domain, stream, action, input, opts, not_atomic_reason) do
     resource = opts[:resource]
-    opts = Ash.Actions.Helpers.set_opts(opts, domain)
+    opts = Helpers.set_opts(opts, domain)
 
     read_action = Ash.Actions.Update.Bulk.get_read_action(resource, action, opts)
 
     {context_cs, opts} =
-      Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
+      Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
-    case validate_multitenancy(resource, action, opts) do
+    case Helpers.validate_bulk_multitenancy(resource, action, opts) do
       {:error, error} ->
         %Ash.BulkResult{
           status: :error,
@@ -967,21 +974,6 @@ defmodule Ash.Actions.Destroy.Bulk do
               }
             end
         end
-    end
-  end
-
-  defp validate_multitenancy(resource, action, opts) do
-    if Ash.Resource.Info.multitenancy_strategy(resource) &&
-         !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] &&
-         Map.get(action, :multitenancy) not in [:bypass, :bypass_all, :allow_global] &&
-         get_in(opts, [:context, :shared, :private, :multitenancy]) not in [
-           :bypass,
-           :bypass_all,
-           :allow_global
-         ] do
-      {:error, Ash.Error.Invalid.TenantRequired.exception(resource: resource)}
-    else
-      :ok
     end
   end
 
@@ -1258,7 +1250,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     |> Ash.Changeset.new()
     |> Ash.Changeset.filter(opts[:filter])
     |> Map.put(:domain, domain)
-    |> Ash.Actions.Helpers.add_context(opts)
+    |> Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
     |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
@@ -1454,7 +1446,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       end
 
     {batch, must_be_simple_results} =
-      Ash.Actions.Helpers.split_and_run_simple(
+      Helpers.split_and_run_simple(
         batch,
         action,
         opts,
@@ -1583,7 +1575,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           remaining_notifications = Ash.Notifier.notify(notifications)
           Process.delete(:ash_notifications) || []
 
-          Ash.Actions.Helpers.warn_missed!(resource, action, %{
+          Helpers.warn_missed!(resource, action, %{
             resource_notifications: remaining_notifications
           })
 
@@ -1948,7 +1940,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           Ash.Changeset.run_before_actions(changeset)
 
         if !changeset.valid? && opts[:rollback_on_error?] do
-          Ash.Actions.Helpers.rollback_if_in_transaction(
+          Helpers.rollback_if_in_transaction(
             {:error, changeset.errors},
             resource,
             nil
@@ -2050,7 +2042,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                     )
                   ]
                 end
-                |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                |> Helpers.rollback_if_in_transaction(resource, nil)
                 |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
                   mod,
                   :bulk_destroy,
@@ -2066,7 +2058,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 result =
                   resource
                   |> Ash.DataLayer.destroy(changeset)
-                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                  |> Helpers.rollback_if_in_transaction(resource, nil)
 
                 case result do
                   :ok ->
@@ -2136,7 +2128,7 @@ defmodule Ash.Actions.Destroy.Bulk do
        ) do
     Enum.flat_map(batch_results, fn result ->
       changeset =
-        Ash.Actions.Helpers.lookup_changeset(
+        Helpers.lookup_changeset(
           result,
           changesets_by_ref,
           changesets_by_index,
@@ -2205,7 +2197,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     )
     |> Enum.flat_map(fn result ->
       changeset =
-        Ash.Actions.Helpers.lookup_changeset(
+        Helpers.lookup_changeset(
           result,
           changesets_by_ref,
           changesets_by_index,
@@ -2280,7 +2272,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]
         )
-        |> Ash.Actions.Helpers.select(changeset)
+        |> Helpers.select(changeset)
 
       other ->
         other
@@ -2288,6 +2280,6 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp notification(changeset, result, opts) do
-    Ash.Actions.Helpers.resource_notification(changeset, result, opts)
+    Helpers.resource_notification(changeset, result, opts)
   end
 end
