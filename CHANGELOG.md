@@ -8,6 +8,43 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.12.0](https://github.com/ash-project/ash/compare/v3.11.3...v3.12.0) (2026-01-06)
+
+
+
+
+### Features:
+
+* add is_distinct_from and is_not_distinct_from functions (#2497) by [@jechol](https://github.com/jechol) [(#2497)](https://github.com/ash-project/ash/pull/2497)
+
+* add is_distinct_from and is_not_distinct_from operators by [@jechol](https://github.com/jechol) [(#2497)](https://github.com/ash-project/ash/pull/2497)
+
+### Bug Fixes:
+
+* revert inadvertant changes to accept dsl option by [@zachdaniel](https://github.com/zachdaniel)
+
+* merge errors with `Reactor.Error` by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle new operator_overloads format in operator evaluation by [@zachdaniel](https://github.com/zachdaniel)
+
+* set `allow_nil?: false` for get_by_read_actions arguments by [@zachdaniel](https://github.com/zachdaniel)
+
+* move optimization logic from simplify to new for is_distinct_from operators by [@jechol](https://github.com/jechol) [(#2497)](https://github.com/ash-project/ash/pull/2497)
+
+* raise an informative error when actor fields used in filters are not loaded by [@zachdaniel](https://github.com/zachdaniel)
+
+* properly handle exists across data layers by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* optimize is_distinct_from operators when NULL is impossible by [@jechol](https://github.com/jechol) [(#2497)](https://github.com/ash-project/ash/pull/2497)
+
+* create: Add multitenancy bypass options to create actions (#2495) by [@shahryarjb](https://github.com/shahryarjb) [(#2495)](https://github.com/ash-project/ash/pull/2495)
+
+* Support :allow_global in bulk multitenancy actions by [@shahryarjb](https://github.com/shahryarjb) [(#2495)](https://github.com/ash-project/ash/pull/2495)
+
+* update: Add multitenancy bypass options to update actions (#2494) by [@shahryarjb](https://github.com/shahryarjb) [(#2494)](https://github.com/ash-project/ash/pull/2494)
+
 ## [v3.11.3](https://github.com/ash-project/ash/compare/v3.11.2...v3.11.3) (2025-12-26)
 
 
