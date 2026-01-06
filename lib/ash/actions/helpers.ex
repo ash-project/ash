@@ -1090,7 +1090,7 @@ defmodule Ash.Actions.Helpers do
   and context overrides. Returns `:ok` or an error with `TenantRequired` exception.
   """
   @spec validate_bulk_multitenancy(Ash.Resource.t(), Ash.Resource.Actions.action(), keyword()) ::
-          :ok | {:error, Ash.Error.Invalid.TenantRequired.t()}
+          :ok | {:error, Exception.t()}
   def validate_bulk_multitenancy(resource, action, opts) do
     if Ash.Resource.Info.multitenancy_strategy(resource) &&
          !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] &&
