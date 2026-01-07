@@ -99,7 +99,7 @@ defmodule Ash.Actions.Create.Bulk do
         opts
       )
 
-    case validate_multitenancy(resource, action, opts) do
+    case Ash.Actions.Helpers.validate_bulk_multitenancy(resource, action, opts) do
       {:error, error} ->
         %Ash.BulkResult{
           status: :error,
@@ -398,7 +398,7 @@ defmodule Ash.Actions.Create.Bulk do
   defp base_changeset(resource, domain, opts, action) do
     upsert_condition =
       case opts[:upsert_condition] do
-        nil -> action && action.upsert_condition
+        nil -> action.upsert_condition
         other -> other
       end
 
@@ -416,7 +416,7 @@ defmodule Ash.Actions.Create.Bulk do
           ),
         upsert_condition: upsert_condition,
         return_skipped_upsert?:
-          opts[:return_skipped_upsert?] || (action && action.return_skipped_upsert?) || false
+          opts[:return_skipped_upsert?] || action.return_skipped_upsert? || false
       }
     })
     |> Ash.Actions.Helpers.add_context(opts)
@@ -774,21 +774,6 @@ defmodule Ash.Actions.Create.Bulk do
       Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
     else
       changeset
-    end
-  end
-
-  defp validate_multitenancy(resource, action, opts) do
-    if Ash.Resource.Info.multitenancy_strategy(resource) &&
-         !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] &&
-         Map.get(action, :multitenancy) not in [:bypass, :bypass_all, :allow_global] &&
-         get_in(opts, [:context, :shared, :private, :multitenancy]) not in [
-           :bypass,
-           :bypass_all,
-           :allow_global
-         ] do
-      {:error, Ash.Error.Invalid.TenantRequired.exception(resource: resource)}
-    else
-      :ok
     end
   end
 
@@ -1282,12 +1267,12 @@ defmodule Ash.Actions.Create.Bulk do
                         ),
                       upsert_condition:
                         case opts[:upsert_condition] do
-                          nil -> action && action.upsert_condition
+                          nil -> action.upsert_condition
                           other -> other
                         end,
                       return_skipped_upsert?:
                         case opts[:return_skipped_upsert?] do
-                          nil -> action && action.return_skipped_upsert?
+                          nil -> action.return_skipped_upsert?
                           other -> other
                         end,
                       tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)

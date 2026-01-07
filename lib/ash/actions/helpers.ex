@@ -1049,4 +1049,60 @@ defmodule Ash.Actions.Helpers do
       Ash.Resource.put_metadata(result, ref_key, ref)
     end
   end
+
+  @doc """
+  Extracts multitenancy mode from changeset/query context.
+
+  Returns the multitenancy setting (`:bypass`, `:bypass_all`, `:allow_global`)
+  from the shared private context, or `nil` if not set.
+  """
+  @spec get_multitenancy_from_context(Ash.Changeset.t() | Ash.Query.t() | map()) ::
+          :bypass | :bypass_all | :allow_global | nil
+  def get_multitenancy_from_context(%{
+        context: %{shared: %{private: %{multitenancy: multitenancy}}}
+      }) do
+    multitenancy
+  end
+
+  def get_multitenancy_from_context(_), do: nil
+
+  @doc """
+  Validates that a changeset has a tenant when required by the resource.
+
+  Returns `:ok` if tenant is present or not required, otherwise returns
+  an error tuple with a descriptive message.
+  """
+  @spec validate_changeset_multitenancy(Ash.Changeset.t()) :: :ok | {:error, String.t()}
+  def validate_changeset_multitenancy(changeset) do
+    if Ash.Resource.Info.multitenancy_strategy(changeset.resource) &&
+         not Ash.Resource.Info.multitenancy_global?(changeset.resource) &&
+         is_nil(changeset.tenant) do
+      {:error, "#{inspect(changeset.resource)} changesets require a tenant to be specified"}
+    else
+      :ok
+    end
+  end
+
+  @doc """
+  Validates multitenancy requirements for bulk operations.
+
+  Checks if tenant is required based on resource configuration, action settings,
+  and context overrides. Returns `:ok` or an error with `TenantRequired` exception.
+  """
+  @spec validate_bulk_multitenancy(Ash.Resource.t(), Ash.Resource.Actions.action(), keyword()) ::
+          :ok | {:error, Exception.t()}
+  def validate_bulk_multitenancy(resource, action, opts) do
+    if Ash.Resource.Info.multitenancy_strategy(resource) &&
+         !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] &&
+         Map.get(action, :multitenancy) not in [:bypass, :bypass_all, :allow_global] &&
+         get_in(opts, [:context, :shared, :private, :multitenancy]) not in [
+           :bypass,
+           :bypass_all,
+           :allow_global
+         ] do
+      {:error, Ash.Error.Invalid.TenantRequired.exception(resource: resource)}
+    else
+      :ok
+    end
+  end
 end

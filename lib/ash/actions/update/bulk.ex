@@ -599,7 +599,12 @@ defmodule Ash.Actions.Update.Bulk do
         action_select
       )
 
-    with :ok <- validate_multitenancy(atomic_changeset.resource, atomic_changeset.action, opts),
+    with :ok <-
+           Ash.Actions.Helpers.validate_bulk_multitenancy(
+             atomic_changeset.resource,
+             atomic_changeset.action,
+             opts
+           ),
          {:ok, query} <-
            authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
@@ -955,21 +960,6 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp validate_multitenancy(resource, action, opts) do
-    if Ash.Resource.Info.multitenancy_strategy(resource) &&
-         !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] &&
-         Map.get(action, :multitenancy) not in [:bypass, :bypass_all, :allow_global] &&
-         get_in(opts, [:context, :shared, :private, :multitenancy]) not in [
-           :bypass,
-           :bypass_all,
-           :allow_global
-         ] do
-      {:error, Ash.Error.Invalid.TenantRequired.exception(resource: resource)}
-    else
-      :ok
-    end
-  end
-
   defp sort_atomic_changes(atomic_changeset) do
     primary_key = Ash.Resource.Info.primary_key(atomic_changeset.resource)
 
@@ -1161,7 +1151,7 @@ defmodule Ash.Actions.Update.Bulk do
     {context_cs, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
-    case validate_multitenancy(resource, action, opts) do
+    case Ash.Actions.Helpers.validate_bulk_multitenancy(resource, action, opts) do
       {:error, error} ->
         %Ash.BulkResult{
           status: :error,

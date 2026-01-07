@@ -615,10 +615,10 @@ defmodule Ash.Actions.Create do
           changeset
       end
 
-    if get_multitenancy_from_context(changeset) in [:bypass, :bypass_all, :allow_global] do
+    if Helpers.get_multitenancy_from_context(changeset) in [:bypass, :bypass_all, :allow_global] do
       changeset
     else
-      case validate_multitenancy(changeset) do
+      case Helpers.validate_changeset_multitenancy(changeset) do
         :ok -> handle_attribute_multitenancy(changeset)
         {:error, error} -> Ash.Changeset.add_error(changeset, error)
       end
@@ -630,7 +630,7 @@ defmodule Ash.Actions.Create do
       :enforce ->
         changeset = handle_attribute_multitenancy(changeset)
 
-        case validate_multitenancy(changeset) do
+        case Helpers.validate_changeset_multitenancy(changeset) do
           :ok -> changeset
           {:error, error} -> Ash.Changeset.add_error(changeset, error)
         end
@@ -661,24 +661,6 @@ defmodule Ash.Actions.Create do
       changeset
     end
   end
-
-  defp validate_multitenancy(changeset) do
-    if Ash.Resource.Info.multitenancy_strategy(changeset.resource) &&
-         not Ash.Resource.Info.multitenancy_global?(changeset.resource) &&
-         is_nil(changeset.tenant) do
-      {:error, "#{inspect(changeset.resource)} changesets require a tenant to be specified"}
-    else
-      :ok
-    end
-  end
-
-  defp get_multitenancy_from_context(%{
-         context: %{shared: %{private: %{multitenancy: multitenancy}}}
-       }) do
-    multitenancy
-  end
-
-  defp get_multitenancy_from_context(_), do: nil
 
   defp check_upsert_support(changeset, opts) do
     if opts[:upsert?] && !Ash.DataLayer.data_layer_can?(changeset.resource, :upsert) do
