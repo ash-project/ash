@@ -1337,24 +1337,13 @@ defmodule Ash.Actions.Update.Bulk do
               Process.put({:any_success?, ref}, status != :error)
               store_notification(ref, notifications, opts)
 
-              cond do
-                errors && errors != [] ->
-                  if opts[:stop_on_error?] && !opts[:return_stream?] do
-                    throw({:error, Ash.Error.to_error_class(hd(errors))})
-                  end
-
-                  Enum.map(errors, &{:error, &1})
-
-                error_count > 0 ->
-                  if opts[:stop_on_error?] && !opts[:return_stream?] do
-                    throw({:error, Ash.Error.to_error_class(:transaction_error)})
-                  end
-
-                  # No error details but we have a count - create placeholder tuples
-                  for _ <- 1..error_count, do: {:error, :transaction_error}
-
-                true ->
-                  []
+              if errors && errors != [] do
+                Ash.Actions.Helpers.Bulk.maybe_stop_on_error(hd(errors), opts)
+                Enum.map(errors, &{:error, &1})
+              else
+                Ash.Actions.Helpers.Bulk.maybe_stop_on_error(:transaction_error, opts)
+                # No error details but we have a count - create placeholder tuples
+                for _ <- 1..error_count, do: {:error, :transaction_error}
               end
           end
         end)
