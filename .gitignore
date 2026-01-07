@@ -43,4 +43,7 @@ shell.nix
 .elixir-tools
 
 # Personal notes and planning documents
-# notes/
+notes/
+
+# Scratch files
+test/scratch_test.exs

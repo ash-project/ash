@@ -22,4 +22,28 @@ defmodule Ash.BulkResult do
     :notifications,
     error_count: 0
   ]
+
+  @doc """
+  Recalculates the status of a bulk result based on its records and error_count.
+
+  - `:success` - when there are no errors (error_count == 0)
+  - `:error` - when there are only errors (records is empty or nil, error_count > 0)
+  - `:partial_success` - when there are both successful records and errors
+  """
+  @spec recalculate_status(t()) :: t()
+  def recalculate_status(%__MODULE__{error_count: 0} = result) do
+    %{result | status: :success}
+  end
+
+  def recalculate_status(%__MODULE__{records: records, error_count: error_count} = result)
+      when is_list(records) and records != [] and error_count > 0 do
+    %{result | status: :partial_success}
+  end
+
+  def recalculate_status(%__MODULE__{error_count: error_count} = result)
+      when error_count > 0 do
+    %{result | status: :error}
+  end
+
+  def recalculate_status(result), do: result
 end

@@ -62,7 +62,7 @@ defmodule Ash.Actions.Update do
                     "#{inspect(changeset.resource)}.atomic_upgrade_with is set to #{atomic_upgrade_with}, which is not a valid action"
         end
 
-      dirty_hooks = changeset.dirty_hooks -- [:after_action]
+      dirty_hooks = changeset.dirty_hooks -- [:after_action, :after_transaction]
 
       {fully_atomic_changeset, params} =
         cond do
@@ -80,7 +80,7 @@ defmodule Ash.Actions.Update do
 
           !Enum.empty?(dirty_hooks) ->
             {{:not_atomic,
-              "cannot atomically run a changeset with hooks in any phase other than `after_action`, got hooks in phases #{inspect(dirty_hooks)}"},
+              "cannot atomically run a changeset with hooks in any phase other than `after_action` or `after_transaction`, got hooks in phases #{inspect(dirty_hooks)}"},
              nil}
 
           !atomic_upgrade_read ->
@@ -119,13 +119,25 @@ defmodule Ash.Actions.Update do
               )
               |> then(fn
                 %Ash.Changeset{} = atomic_changeset ->
-                  Enum.reduce(
-                    changeset.atomic_after_action,
-                    atomic_changeset,
-                    fn after_action, atomic_changeset ->
-                      Ash.Changeset.after_action(atomic_changeset, after_action)
-                    end
-                  )
+                  atomic_changeset
+                  |> then(fn atomic_changeset ->
+                    Enum.reduce(
+                      changeset.atomic_after_action,
+                      atomic_changeset,
+                      fn after_action, atomic_changeset ->
+                        Ash.Changeset.after_action(atomic_changeset, after_action)
+                      end
+                    )
+                  end)
+                  |> then(fn atomic_changeset ->
+                    Enum.reduce(
+                      changeset.atomic_after_transaction,
+                      atomic_changeset,
+                      fn after_transaction, atomic_changeset ->
+                        Ash.Changeset.after_transaction(atomic_changeset, after_transaction)
+                      end
+                    )
+                  end)
 
                 other ->
                   other

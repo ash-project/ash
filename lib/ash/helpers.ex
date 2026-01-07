@@ -682,4 +682,16 @@ defmodule Ash.Helpers do
     Jason
     # end
   end
+
+  @doc """
+  Wraps a term in an ok tuple. Useful for piping.
+  """
+  @spec ok(term()) :: {:ok, term()}
+  def ok(term), do: {:ok, term}
+
+  @doc """
+  Wraps a term in an error tuple. Useful for piping.
+  """
+  @spec error(term()) :: {:error, term()}
+  def error(term), do: {:error, term}
 end
