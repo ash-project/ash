@@ -676,6 +676,7 @@ defmodule Ash.Changeset do
   - `select/3` for controlling which attributes are returned
   - `loading?/2` for checking if something is being loaded
   - `Ash.Query.load/2` for loading in queries
+  - `Ash.ActionInput.load/2` for loading in generic actions
   """
   @spec load(t(), term()) :: t()
   def load(changeset, load) do
