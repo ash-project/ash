@@ -370,6 +370,12 @@ defmodule Ash.Test.Actions.LoadTest do
         manual(PostsInSameCategory)
       end
 
+      has_many :posts_in_same_category_with_parent, __MODULE__ do
+        public?(true)
+        manual(PostsInSameCategory)
+        filter(expr(parent(category) == category))
+      end
+
       has_many :ratings, Ash.Test.Actions.LoadTest.Rating do
         public?(true)
         domain(Ash.Test.Actions.LoadTest.Domain2)
@@ -609,6 +615,26 @@ defmodule Ash.Test.Actions.LoadTest do
                post1
                |> Ash.load!(:posts_in_same_category)
                |> Map.get(:posts_in_same_category)
+    end
+
+    @tag :manual_parent_filter
+    test "manual relationships with parent() filter can be loaded without crashing" do
+      # Regression test: Loading a manual relationship with parent() filter
+      # should not crash with KeyError about __lateral_join_source__.
+      # The fix ensures manual relationships short-circuit lateral_join? check.
+      post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: "elixir"})
+        |> Ash.create!()
+
+      _post2 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post2", category: "elixir"})
+        |> Ash.create!()
+
+      # This should not raise KeyError - just verify it completes without crashing
+      loaded = Ash.load!(post1, :posts_in_same_category_with_parent)
+      assert is_list(loaded.posts_in_same_category_with_parent)
     end
 
     test "parent references work with no_attributes? true" do

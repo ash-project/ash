@@ -1503,6 +1503,11 @@ defmodule Ash.Actions.Read.Relationships do
         Map.get(relationship, :from_many?) ->
           true
 
+        Map.get(relationship, :manual) ->
+          # Manual relationships handle their own data fetching and return a map,
+          # not records with __lateral_join_source__ fields
+          false
+
         limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
           is_nil(relationship.sort) && relationship.cardinality != :many ->
           has_parent_expr?(relationship, query.context, query.domain)
