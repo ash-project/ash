@@ -13,6 +13,8 @@ defmodule Ash.Test.Support.PolicyComplex.Domain do
     resource(Ash.Test.Support.PolicyComplex.Post)
     resource(Ash.Test.Support.PolicyComplex.Comment)
     resource(Ash.Test.Support.PolicyComplex.Bio)
+    resource(Ash.Test.Support.PolicyComplex.Team)
+    resource(Ash.Test.Support.PolicyComplex.Membership)
   end
 
   policies do

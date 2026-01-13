@@ -929,7 +929,11 @@ defmodule Ash.Actions.ManagedRelationships do
                   )
                   |> Ash.Query.filter(^keys)
                   |> sort_and_filter(relationship)
-                  |> Ash.Query.set_context(relationship.context)
+                  |> Ash.Query.set_context(
+                    Map.merge(relationship.context || %{}, %{
+                      accessing_from: %{source: relationship.source, name: relationship.name}
+                    })
+                  )
                   |> Ash.Query.limit(1)
                   |> Ash.read_one()
                 end

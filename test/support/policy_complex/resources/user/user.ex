@@ -11,6 +11,8 @@ defmodule Ash.Test.Support.PolicyComplex.User do
       Ash.Policy.Authorizer
     ]
 
+  alias Ash.Test.Support.PolicyComplex.{Membership, Team}
+
   policies do
     # For testing we need to be able to read/create/update users
     policy action_type(:read) do
@@ -72,6 +74,17 @@ defmodule Ash.Test.Support.PolicyComplex.User do
       change set_attribute(:private_email, arg(:email))
     end
 
+    create :with_teams do
+      accept [:name]
+
+      argument :teams, {:array, :uuid} do
+        allow_nil? false
+        constraints min_length: 1
+      end
+
+      change manage_relationship(:teams, :teams, type: :append_and_remove)
+    end
+
     update :add_friend do
       accept []
 
@@ -123,6 +136,12 @@ defmodule Ash.Test.Support.PolicyComplex.User do
 
     has_one :bio, Ash.Test.Support.PolicyComplex.Bio do
       public?(true)
+    end
+
+    has_many :memberships, Membership
+
+    many_to_many :teams, Team do
+      through Membership
     end
   end
 end
