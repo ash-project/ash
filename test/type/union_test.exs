@@ -727,7 +727,7 @@ defmodule Ash.Test.Filter.UnionTest do
 
   test "it fails when attempting to define a resource using a union with invalid constraints" do
     assert_raise Spark.Error.DslError, ~r/required :second option not found/, fn ->
-      defmodule FailingExample do
+      defmodule FailingExampleMissingSecond do
         use Ash.Resource, data_layer: :embedded
 
         attributes do
@@ -743,7 +743,7 @@ defmodule Ash.Test.Filter.UnionTest do
     end
 
     assert_raise Spark.Error.DslError, ~r/message: "first is too high!"/, fn ->
-      defmodule FailingExample do
+      defmodule FailingExampleFirstTooHigh do
         use Ash.Resource, data_layer: :embedded
 
         attributes do
