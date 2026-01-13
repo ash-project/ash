@@ -167,7 +167,7 @@ defmodule Ash.Type do
       doc: "Enforces a minimum length on the value"
     ],
     match: [
-      type: :regex,
+      type: :regex_as_mfa,
       doc: "Enforces that the string matches a passed in regex"
     ],
     trim?: [type: :boolean, doc: "Trims the value.", default: true],

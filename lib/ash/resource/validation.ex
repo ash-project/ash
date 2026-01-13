@@ -207,6 +207,17 @@ defmodule Ash.Resource.Validation do
 
   @doc false
   def transform(%{validation: {module, opts}} = validation) do
+    opts =
+      Enum.map(opts, fn
+        {key, %Regex{} = value} when module == Ash.Resource.Validation.Match ->
+          source = Regex.source(value)
+          opts = Regex.opts(value)
+          {key, {Spark.Regex, :cache, [source, opts]}}
+
+        {key, value} ->
+          {key, value}
+      end)
+
     {:ok,
      %{
        validation
