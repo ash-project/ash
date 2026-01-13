@@ -996,6 +996,384 @@ Target: `Ash.Reactor.Dsl.BulkCreate`
 
 
 
+### reactor.bulk_destroy
+```elixir
+bulk_destroy name, resource, action \\ nil
+```
+
+
+Declares a step which will call a destroy action on a resource with a collection of inputs.
+
+> ### Check the docs! {: .warning}
+>
+> Make sure to thoroughly read and understand the documentation in `Ash.bulk_destroy/4` before using.  Read each option and note the default values.  By default, bulk destroys don't return records or errors, and don't emit notifications.
+
+Caveats/differences from `Ash.bulk_destroy/4`:
+
+1. `max_concurrency` specifies the number of tasks that Ash will start to process batches, and has no effect on Reactor concurrency targets.  It's could be possible to create a very large number of processes if a number of steps are running bulk actions with a high degree of concurrency.
+2. Setting `notify?` to `true` will cause both `notify?` and `return_notifications?` to be set to true in the underlying call to `Ash.bulk_destroy/4`. Notifications will then be managed by the `Ash.Reactor.Notifications` Reactor middleware.
+3. If you specify an undo action it must be a generic action which takes the bulk result as it's only argument.
+
+> #### Undo behaviour {: .tip}
+>
+> This step has three different modes of undo.
+>
+> * `never` - The result of the action is never undone.  This is the default.
+> * `always` - The `undo_action` will always be called.
+> * `outside_transaction` - The `undo_action` will not be called when running inside a `transaction` block, but will be otherwise.
+
+
+
+### Nested DSLs
+ * [actor](#reactor-bulk_destroy-actor)
+ * [context](#reactor-bulk_destroy-context)
+ * [guard](#reactor-bulk_destroy-guard)
+ * [where](#reactor-bulk_destroy-where)
+ * [inputs](#reactor-bulk_destroy-inputs)
+ * [tenant](#reactor-bulk_destroy-tenant)
+ * [wait_for](#reactor-bulk_destroy-wait_for)
+
+
+### Examples
+```
+bulk_destroy :destroy_posts, MyApp.Post, :destroy do
+  initial input(:posts),
+  actor result(:get_user)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-bulk_destroy-name){: #reactor-bulk_destroy-name .spark-required} | `atom` |  | A unique name for the step. |
+| [`resource`](#reactor-bulk_destroy-resource){: #reactor-bulk_destroy-resource .spark-required} | `module` |  | The resource to call the action on. |
+| [`action`](#reactor-bulk_destroy-action){: #reactor-bulk_destroy-action } | `atom` |  | The name of the action to call on the resource. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`initial`](#reactor-bulk_destroy-initial){: #reactor-bulk_destroy-initial .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | A query or collection of records to destroy. If a query is provided, records matching the query will be destroyed. If a collection is provided, it must implement the `Enumerable` protocol. |
+| [`allow_stream_with`](#reactor-bulk_destroy-allow_stream_with){: #reactor-bulk_destroy-allow_stream_with } | `:keyset \| :offset \| :full_read` | `:keyset` | The 'worst' strategy allowed to be used to fetch records if the :stream strategy is chosen. See the `Ash.stream!/2` docs for more. |
+| [`authorize_changeset_with`](#reactor-bulk_destroy-authorize_changeset_with){: #reactor-bulk_destroy-authorize_changeset_with } | `:filter \| :error` | `:filter` | If set to `:error`, instead of filtering unauthorized changes, unauthorized changes will raise an appropriate forbidden error |
+| [`authorize_query_with`](#reactor-bulk_destroy-authorize_query_with){: #reactor-bulk_destroy-authorize_query_with } | `:filter \| :error` | `:filter` | If set to `:error`, instead of filtering unauthorized query results, unauthorized query results will raise an appropriate forbidden error |
+| [`authorize_query?`](#reactor-bulk_destroy-authorize_query?){: #reactor-bulk_destroy-authorize_query? } | `boolean` | `true` | If a query is given, determines whether or not authorization is run on that query. |
+| [`batch_size`](#reactor-bulk_destroy-batch_size){: #reactor-bulk_destroy-batch_size } | `nil \| pos_integer` |  | The number of records to include in each batch. Defaults to the `default_limit` or `max_page_size` of the action, or 100. |
+| [`filter`](#reactor-bulk_destroy-filter){: #reactor-bulk_destroy-filter } | `map \| keyword` |  | A filter to apply to records. This is also applied to a stream of inputs. |
+| [`lock`](#reactor-bulk_destroy-lock){: #reactor-bulk_destroy-lock } | `any` |  | A lock statement to add onto the query. |
+| [`max_concurrency`](#reactor-bulk_destroy-max_concurrency){: #reactor-bulk_destroy-max_concurrency } | `non_neg_integer` | `0` | If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously. |
+| [`notification_metadata`](#reactor-bulk_destroy-notification_metadata){: #reactor-bulk_destroy-notification_metadata } | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` | `%{}` | Metadata to be merged into the metadata field for all notifications sent from this operation. |
+| [`notify?`](#reactor-bulk_destroy-notify?){: #reactor-bulk_destroy-notify? } | `boolean` | `false` | Whether or not to generate any notifications. This may be intensive for large bulk actions. |
+| [`page`](#reactor-bulk_destroy-page){: #reactor-bulk_destroy-page } | `keyword` | `[]` | Pagination options, see `Ash.read/2` for more. |
+| [`read_action`](#reactor-bulk_destroy-read_action){: #reactor-bulk_destroy-read_action } | `atom` |  | The action to use when building the read query. |
+| [`return_errors?`](#reactor-bulk_destroy-return_errors?){: #reactor-bulk_destroy-return_errors? } | `boolean` | `true` | Whether or not to return all of the errors that occur. Defaults to false to account for large destroys. |
+| [`return_records?`](#reactor-bulk_destroy-return_records?){: #reactor-bulk_destroy-return_records? } | `boolean` | `false` | Whether or not to return all of the records that were destroyed. Defaults to false to account for large destroys. |
+| [`return_stream?`](#reactor-bulk_destroy-return_stream?){: #reactor-bulk_destroy-return_stream? } | `boolean` | `false` | If set to `true`, instead of an `Ash.BulkResult`, a mixed stream is returned. |
+| [`rollback_on_error?`](#reactor-bulk_destroy-rollback_on_error?){: #reactor-bulk_destroy-rollback_on_error? } | `boolean` | `true` | Whether or not to rollback the transaction on error, if the resource is in a transaction. |
+| [`select`](#reactor-bulk_destroy-select){: #reactor-bulk_destroy-select } | `atom \| list(atom)` |  | A select statement to apply to records. Ignored if `return_records?` is not `true`. |
+| [`skip_unknown_inputs`](#reactor-bulk_destroy-skip_unknown_inputs){: #reactor-bulk_destroy-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` |  | A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys. |
+| [`sorted?`](#reactor-bulk_destroy-sorted?){: #reactor-bulk_destroy-sorted? } | `boolean` | `false` | Whether or not to sort results by their input position, in cases where `return_records?` is set to `true`. |
+| [`stop_on_error?`](#reactor-bulk_destroy-stop_on_error?){: #reactor-bulk_destroy-stop_on_error? } | `boolean` | `true` | If `true`, the first encountered error will stop the action and be returned. Otherwise, errors will be skipped. |
+| [`strategy`](#reactor-bulk_destroy-strategy){: #reactor-bulk_destroy-strategy } | `list(:atomic \| :atomic_batches \| :stream)` | `[:atomic]` | The strategy or strategies to enable. `:stream` is used in all cases if the data layer does not support atomics. |
+| [`stream_batch_size`](#reactor-bulk_destroy-stream_batch_size){: #reactor-bulk_destroy-stream_batch_size } | `pos_integer` |  | Batch size to use if provided a query and the query must be streamed. |
+| [`stream_with`](#reactor-bulk_destroy-stream_with){: #reactor-bulk_destroy-stream_with } | `:keyset \| :offset \| :full_read` |  | The specific strategy to use to fetch records. See `Ash.stream!/2` docs for more. |
+| [`success_state`](#reactor-bulk_destroy-success_state){: #reactor-bulk_destroy-success_state } | `:success \| :partial_success` | `:success` | Bulk results can be entirely or partially successful. Chooses the `Ash.BulkResult` state to consider the step a success. |
+| [`timeout`](#reactor-bulk_destroy-timeout){: #reactor-bulk_destroy-timeout } | `timeout` |  | If none is provided, the timeout configured on the domain is used (which defaults to `30_000`). |
+| [`transaction`](#reactor-bulk_destroy-transaction){: #reactor-bulk_destroy-transaction } | `:all \| :batch \| false` | `:batch` | Whether or not to wrap the entire execution in a transaction, each batch, or not at all. |
+| [`domain`](#reactor-bulk_destroy-domain){: #reactor-bulk_destroy-domain } | `module` |  | The Domain to use when calling the action.  Defaults to the Domain set on the resource or in the `ash` section. |
+| [`async?`](#reactor-bulk_destroy-async?){: #reactor-bulk_destroy-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`authorize?`](#reactor-bulk_destroy-authorize?){: #reactor-bulk_destroy-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
+| [`description`](#reactor-bulk_destroy-description){: #reactor-bulk_destroy-description } | `String.t` |  | A description for the step |
+| [`undo_action`](#reactor-bulk_destroy-undo_action){: #reactor-bulk_destroy-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
+| [`undo`](#reactor-bulk_destroy-undo){: #reactor-bulk_destroy-undo } | `:always \| :never \| :outside_transaction` | `:never` | How to handle undoing this action |
+
+
+### reactor.bulk_destroy.actor
+```elixir
+actor source
+```
+
+
+Specifies the action actor
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-bulk_destroy-actor-source){: #reactor-bulk_destroy-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_destroy-actor-transform){: #reactor-bulk_destroy-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Actor`
+
+### reactor.bulk_destroy.context
+```elixir
+context context
+```
+
+
+A map to be merged into the action's context
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`context`](#reactor-bulk_destroy-context-context){: #reactor-bulk_destroy-context-context } | `nil \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value \| map` |  | A map to be merged into the action's context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_destroy-context-transform){: #reactor-bulk_destroy-context-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the context before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Context`
+
+### reactor.bulk_destroy.guard
+```elixir
+guard fun
+```
+
+
+Provides a flexible method for conditionally executing a step, or replacing it's result.
+
+Expects a two arity function which takes the step's arguments and context and returns one of the following:
+
+- `:cont` - the guard has passed.
+- `{:halt, result}` - the guard has failed - instead of executing the step use the provided result.
+
+
+
+
+### Examples
+```
+step :read_file_via_cache do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  guard fn %{path: path}, %{cache: cache} ->
+    case Cache.get(cache, path) do
+      {:ok, content} -> {:halt, {:ok, content}}
+      _ -> :cont
+    end
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`fun`](#reactor-bulk_destroy-guard-fun){: #reactor-bulk_destroy-guard-fun .spark-required} | `(any, any -> any) \| mfa` |  | The guard function. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-bulk_destroy-guard-description){: #reactor-bulk_destroy-guard-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Guard`
+
+### reactor.bulk_destroy.where
+```elixir
+where predicate
+```
+
+
+Only execute the surrounding step if the predicate function returns true.
+
+This is a simple version of `guard` which provides more flexibility at the cost of complexity.
+
+
+
+
+### Examples
+```
+step :read_file do
+  argument :path, input(:path)
+  run &File.read(&1.path)
+  where &File.exists?(&1.path)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`predicate`](#reactor-bulk_destroy-where-predicate){: #reactor-bulk_destroy-where-predicate .spark-required} | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide a function which takes the step arguments and optionally the context and returns a boolean value. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-bulk_destroy-where-description){: #reactor-bulk_destroy-where-description } | `String.t` |  | An optional description of the guard. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Where`
+
+### reactor.bulk_destroy.inputs
+```elixir
+inputs template
+```
+
+
+Specify the inputs for an action
+
+
+
+### Examples
+```
+inputs %{
+  author: result(:get_user),
+  title: input(:title),
+  body: input(:body)
+}
+
+```
+
+```
+inputs(author: result(:get_user))
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`template`](#reactor-bulk_destroy-inputs-template){: #reactor-bulk_destroy-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_destroy-inputs-transform){: #reactor-bulk_destroy-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Inputs`
+
+### reactor.bulk_destroy.tenant
+```elixir
+tenant source
+```
+
+
+Specifies the action tenant
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-bulk_destroy-tenant-source){: #reactor-bulk_destroy-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_destroy-tenant-transform){: #reactor-bulk_destroy-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Tenant`
+
+### reactor.bulk_destroy.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-bulk_destroy-wait_for-names){: #reactor-bulk_destroy-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#reactor-bulk_destroy-wait_for-description){: #reactor-bulk_destroy-wait_for-description } | `String.t` |  | An optional description. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.BulkDestroy`
+
+
+
 ### reactor.bulk_update
 ```elixir
 bulk_update name, resource, action \\ nil
