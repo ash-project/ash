@@ -13,6 +13,7 @@ defmodule Ash.Actions.Action do
 
   def run(domain, input, opts) do
     {input, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, input, opts)
+    input = Ash.Actions.Helpers.apply_opts_load(input, opts)
 
     if input.valid? do
       run_with_lifecycle(domain, input, opts)
@@ -60,13 +61,25 @@ defmodule Ash.Actions.Action do
       Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :action],
                                 metadata do
         # Run around_transaction hooks if any exist, or proceed directly
-        Ash.ActionInput.run_around_transaction_hooks(input, fn input ->
-          if input.action.transaction? do
-            run_with_transaction(domain, input, module, run_opts, context, opts)
-          else
-            run_without_transaction(domain, input, module, run_opts, context, opts)
-          end
-        end)
+        result =
+          Ash.ActionInput.run_around_transaction_hooks(input, fn input ->
+            if input.action.transaction? do
+              run_with_transaction(domain, input, module, run_opts, context, opts)
+            else
+              run_without_transaction(domain, input, module, run_opts, context, opts)
+            end
+          end)
+
+        with {:ok, result, _} <-
+               Ash.Actions.Helpers.load(result, input, domain,
+                 actor: opts[:actor],
+                 reuse_values?: true,
+                 action: Ash.Resource.Info.primary_action(input.resource, :read) || input.action,
+                 authorize?: opts[:authorize?],
+                 tracer: opts[:tracer]
+               ) do
+          {:ok, result}
+        end
       end
     end
   end

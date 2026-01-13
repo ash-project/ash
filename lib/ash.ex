@@ -852,6 +852,10 @@ defmodule Ash do
       type: {:wrap_list, {:or, [:atom, :string]}},
       doc:
         "A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys."
+    ],
+    load: [
+      type: :any,
+      doc: "A load statement to apply on the resulting records after the action is invoked."
     ]
   ]
 

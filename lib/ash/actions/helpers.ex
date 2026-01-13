@@ -732,6 +732,14 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
+  def apply_opts_load(%Ash.ActionInput{} = input, opts) do
+    if opts[:load] do
+      Ash.ActionInput.load(input, opts[:load])
+    else
+      input
+    end
+  end
+
   def load({:ok, result, instructions}, changeset, domain, opts) do
     if changeset.load in [nil, []] do
       {:ok, result, instructions}

@@ -32,7 +32,8 @@ defmodule Ash.ActionInput do
     after_action: [],
     before_transaction: [],
     after_transaction: [],
-    around_transaction: []
+    around_transaction: [],
+    load: []
   ]
 
   @typedoc """
@@ -105,7 +106,8 @@ defmodule Ash.ActionInput do
           after_action: [after_action_fun],
           before_transaction: [before_transaction_fun],
           after_transaction: [after_transaction_fun],
-          around_transaction: [around_transaction_fun]
+          around_transaction: [around_transaction_fun],
+          load: keyword(keyword)
         }
 
   @doc """
@@ -177,6 +179,10 @@ defmodule Ash.ActionInput do
       type: :map,
       default: %{},
       doc: "A list of private arguments to be set before the action is invoked."
+    ],
+    load: [
+      type: :any,
+      doc: "A load statement to apply on the resulting records after the action is invoked."
     ]
   ]
 
@@ -251,6 +257,7 @@ defmodule Ash.ActionInput do
       |> set_defaults()
       |> require_arguments()
       |> run_preparations_and_validations(opts)
+      |> load(opts[:load])
     else
       {:error, reason} -> raise Ash.Error.to_error_class(reason)
     end
@@ -339,6 +346,86 @@ defmodule Ash.ActionInput do
   @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(input, tenant) do
     %{input | tenant: tenant, to_tenant: Ash.ToTenant.to_tenant(tenant, input.resource)}
+  end
+
+  @doc """
+  Calls the provided load statement on the result of the action at the very end of the action.
+
+  This effectively will call `Ash.load/3` on the result of the action after all hooks,
+  and assumes the result of the action will be compatible with said load call.
+
+  ## Examples
+
+      # Load a single relationship
+      iex> input = Ash.ActionInput.for_action(MyApp.Post, :publish, %{})
+      iex> input = Ash.ActionInput.load(input, :comments)
+      iex> input.load
+      [:comments]
+
+      # Load multiple relationships
+      iex> input = Ash.ActionInput.for_action(user, :deactivate, %{reason: "user request"})
+      iex> input = Ash.ActionInput.load(input, [:posts, :profile])
+      iex> input.load
+      [:posts, :profile]
+
+      # Load nested relationships
+      iex> input = Ash.ActionInput.for_action(MyApp.Comment, :approve, %{approved_by: "admin"})
+      iex> input = Ash.ActionInput.load(input, [post: [:author, :comments]])
+      iex> input.load
+      [[post: [:author, :comments]]]
+
+      # Chain multiple load calls (they accumulate)
+      iex> input = Ash.ActionInput.for_action(post, :archive, %{})
+      iex> input = input
+      ...> |> Ash.ActionInput.load(:author)
+      ...> |> Ash.ActionInput.load(:comments)
+      iex> input.load
+      [:author, :comments]
+
+  ## See also
+
+  - `loading?/2` for checking if something is being loaded
+  - `Ash.Changeset.load/2` for loading in changesets
+  - `Ash.Query.load/2` for loading in queries
+  """
+  @spec load(t(), term()) :: t()
+  def load(input, load) do
+    query =
+      input.resource
+      |> Ash.Query.new()
+      |> Map.put(:errors, [])
+      |> Ash.Query.load(input.load)
+      |> Ash.Query.load(load)
+
+    input = %{
+      input
+      | load: Enum.concat(input.load || [], List.wrap(load))
+    }
+
+    Enum.reduce(query.errors, input, &add_error(&2, &1))
+  end
+
+  @doc """
+  Returns true if the field/relationship or path to field/relationship is being loaded at the very end of the action.
+
+  Note that this is only in regards to the `:load` option (See `load/2`). This function does not indicate anything about the loading behavior of the action's run function.
+
+  It accepts an atom or a list of atoms, which is treated for as a "path", i.e:
+
+      Resource |> Ash.ActionInput.load(friends: [enemies: [:score]]) |> Ash.ActionInput.loading?([:friends, :enemies, :score])
+      iex> true
+
+      Resource |> Ash.ActionInput.load(friends: [enemies: [:score]]) |> Ash.ActionInput.loading?([:friends, :score])
+      iex> false
+
+      Resource |> Ash.ActionInput.load(friends: [enemies: [:score]]) |> Ash.ActionInput.loading?(:friends)
+      iex> true
+  """
+  def loading?(input, path) do
+    input.resource
+    |> Ash.Query.new()
+    |> Ash.Query.load(input.load)
+    |> Ash.Query.loading?(path)
   end
 
   defp require_arguments(input) do

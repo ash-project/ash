@@ -18,6 +18,34 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
   end
 
+  defmodule Author do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Test.Authorizer]
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+    end
+
+    relationships do
+      has_many :posts, Ash.Test.Actions.GenericActionsTest.Post,
+        destination_attribute: :author_id,
+        public?: true
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -190,6 +218,20 @@ defmodule Ash.Test.Actions.GenericActionsTest do
           {:ok, "Final result: #{input.arguments.text}"}
         end
       end
+
+      action :return_post_with_author, :struct do
+        run fn input, _ ->
+          author = Ash.create!(Author, %{name: "Author"})
+          post = Ash.create!(__MODULE__, %{title: "Post1", author_id: author.id})
+          {:ok, post}
+        end
+      end
+
+      action :errors_out, :struct do
+        run fn input, _ ->
+          {:error, %Ash.Error.Unknown{}}
+        end
+      end
     end
 
     attributes do
@@ -241,6 +283,10 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     policies do
       policy action(:hello) do
         authorize_if PassingFredOrGeorge
+      end
+
+      policy action(:create) do
+        authorize_if always()
       end
 
       policy action(:hello_with_default) do
@@ -305,6 +351,20 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
       policy action(:without_transaction) do
         authorize_if always()
+      end
+
+      policy action(:return_post_with_author) do
+        authorize_if always()
+      end
+
+      policy action(:errors_out) do
+        authorize_if always()
+      end
+    end
+
+    relationships do
+      belongs_to :author, Author do
+        public?(true)
       end
     end
   end
@@ -1075,6 +1135,82 @@ defmodule Ash.Test.Actions.GenericActionsTest do
         |> Ash.run_action!()
 
       assert result == :ok
+    end
+  end
+
+  describe "load option on generic actions" do
+    test "it loads related attributes via for_action" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:return_post_with_author, %{}, load: [:author])
+        |> Ash.run_action!()
+
+      assert result.author.name == "Author"
+    end
+
+    test "it loads related attributes via load" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:return_post_with_author, %{})
+        |> Ash.ActionInput.load([:author])
+        |> Ash.run_action!()
+
+      assert result.author.name == "Author"
+    end
+
+    test "it loads related attributes via run_action" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:return_post_with_author, %{})
+        |> Ash.run_action!(load: [:author])
+
+      assert result.author.name == "Author"
+    end
+
+    test "it adds errors to action input" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:return_post_with_author, %{})
+        |> Ash.ActionInput.load([:unreal])
+
+      assert [%Ash.Error.Query.InvalidLoad{load: :unreal}] = result.errors
+    end
+
+    test "it passes errors through when erroring action is called" do
+      assert_raise Ash.Error.Unknown, fn ->
+        Post
+        |> Ash.ActionInput.for_action(:errors_out, %{})
+        |> Ash.run_action!(load: [:author])
+      end
+    end
+  end
+
+  describe "loading?" do
+    test "it detects a simple load" do
+      assert Post
+             |> Ash.ActionInput.for_action(:do_nothing, %{})
+             |> Ash.ActionInput.load(:author)
+             |> Ash.ActionInput.loading?(:author)
+
+      assert not (Post
+                  |> Ash.ActionInput.for_action(:do_nothing, %{})
+                  |> Ash.ActionInput.loading?(:author))
+    end
+
+    test "it detects a nested load" do
+      load =
+        Post
+        |> Ash.ActionInput.for_action(:do_nothing, %{})
+        |> Ash.ActionInput.load(author: [:posts])
+
+      assert Ash.ActionInput.loading?(load, [:author, :posts])
+
+      no_nested_load =
+        Post
+        |> Ash.ActionInput.for_action(:do_nothing, %{})
+        |> Ash.ActionInput.load(:author)
+
+      assert not Ash.ActionInput.loading?(no_nested_load, [:author, :posts])
     end
   end
 end
