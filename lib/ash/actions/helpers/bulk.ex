@@ -5,6 +5,26 @@
 defmodule Ash.Actions.Helpers.Bulk do
   @moduledoc false
 
+  @typedoc """
+  Tagged result tuple carrying a record/error with its associated changeset.
+
+  Used throughout bulk operations to maintain changeset context for hook execution.
+  """
+  @type tagged_result ::
+          {:ok, Ash.Resource.record(), Ash.Changeset.t()}
+          | {:error, term(), Ash.Changeset.t()}
+
+  @typedoc """
+  Extended tagged result that includes hook completion markers.
+
+  The `_hooks_done` variants indicate after_transaction hooks have already run,
+  preventing double execution during result processing.
+  """
+  @type tagged_result_with_hooks ::
+          tagged_result()
+          | {:ok_hooks_done, Ash.Resource.record(), Ash.Changeset.t()}
+          | {:error_hooks_done, term(), Ash.Changeset.t()}
+
   @doc """
   Conditionally rolls back transaction for bulk operations.
 
