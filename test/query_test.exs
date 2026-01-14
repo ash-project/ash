@@ -66,6 +66,22 @@ defmodule Ash.Test.QueryTest do
       assert inspect(Ash.Query.new(User)) == "#Ash.Query<resource: Ash.Test.QueryTest.User>"
       assert inspect(Ash.Query.for_read(User, :by_id, %{id: "foobar"})) =~ "action: :by_id"
     end
+
+    test "empty map context is omitted" do
+      query = Ash.Query.new(User) |> Ash.Query.set_context(%{})
+
+      assert inspect(query) == "#Ash.Query<resource: Ash.Test.QueryTest.User>"
+    end
+
+    test "nonempty map context is redacted" do
+      query = Ash.Query.new(User) |> Ash.Query.set_context(%{secret: "value"})
+
+      # We show that there is a context present but redact its contents as it might be sensitive.
+      # During development the context can be inspected either by inspecting it directly or by
+      # enabling :show_sensitive? in the dev config.
+      assert inspect(query) ==
+               "#Ash.Query<resource: Ash.Test.QueryTest.User, context: \"**redacted**\">"
+    end
   end
 
   describe "read argument validation" do
