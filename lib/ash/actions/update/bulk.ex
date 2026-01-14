@@ -2970,7 +2970,6 @@ defmodule Ash.Actions.Update.Bulk do
           |> List.wrap()
       end
 
-    # Combine loaded records with errors
     loaded_records ++ errors
   end
 

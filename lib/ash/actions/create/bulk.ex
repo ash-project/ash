@@ -1690,7 +1690,6 @@ defmodule Ash.Actions.Create.Bulk do
           []
         end
 
-      # Combine loaded records with errors
       loaded_records ++ errors
     end)
   end
