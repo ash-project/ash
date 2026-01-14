@@ -41,9 +41,3 @@ shell.nix
 
 .vscode
 .elixir-tools
-
-# Personal notes and planning documents
-notes/
-
-# Scratch files
-test/scratch_test.exs
