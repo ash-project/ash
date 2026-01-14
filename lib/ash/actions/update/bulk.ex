@@ -905,7 +905,6 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  # Helper for notification dispatch (extracted from inline code for reuse)
   defp handle_atomic_notifications(bulk_result, resource, action, notify?, opts) do
     if opts[:return_notifications?] do
       bulk_result
@@ -1459,12 +1458,10 @@ defmodule Ash.Actions.Update.Bulk do
       Stream.concat(changeset_stream)
     else
       try do
-        # Collect all results (records and {:error, error} tuples)
-        all_results = Enum.to_list(Stream.concat(changeset_stream))
-
-        # Separate records from error tuples
         {records, error_tuples} =
-          Enum.split_with(all_results, fn
+          changeset_stream
+          |> Stream.concat()
+          |> Enum.split_with(fn
             {:error, _} -> false
             _ -> true
           end)
@@ -2466,6 +2463,20 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp sort(result, _metadata_key, _opts), do: result
 
+  @spec run_batch(
+          resource :: Ash.Resource.t(),
+          batch :: [Ash.Changeset.t()],
+          action :: Ash.Resource.Actions.action(),
+          opts :: keyword(),
+          must_return_records? :: boolean(),
+          must_return_records_for_changes? :: boolean(),
+          domain :: Ash.Domain.t(),
+          ref :: reference(),
+          metadata_key :: atom(),
+          ref_metadata_key :: atom(),
+          context_key :: atom(),
+          action_select :: [atom()] | nil
+        ) :: [Ash.Actions.Helpers.Bulk.tagged_result()]
   defp run_batch(
          resource,
          batch,
@@ -2757,9 +2768,13 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
+  @spec run_after_action_hooks(
+          batch_results :: [Ash.Actions.Helpers.Bulk.tagged_result()],
+          opts :: keyword(),
+          domain :: Ash.Domain.t(),
+          ref :: reference()
+        ) :: [Ash.Actions.Helpers.Bulk.tagged_result()]
   defp run_after_action_hooks(batch_results, opts, domain, ref) do
-    # batch_results is now list of {:ok, result, changeset} | {:error, error, changeset}
-    # Changeset is already embedded in tuples from run_batch
     Enum.flat_map(batch_results, fn
       {:ok, result, changeset} ->
         case manage_relationships(result, domain, changeset,
@@ -2806,6 +2821,16 @@ defmodule Ash.Actions.Update.Bulk do
     end)
   end
 
+  @spec process_results(
+          tagged_results :: [Ash.Actions.Helpers.Bulk.tagged_result_with_hooks()],
+          opts :: keyword(),
+          ref :: reference(),
+          context_key :: atom(),
+          metadata_key :: atom(),
+          resource :: Ash.Resource.t(),
+          domain :: Ash.Domain.t(),
+          base_changeset :: Ash.Changeset.t()
+        ) :: [Ash.Resource.record() | {:error, term()}]
   defp process_results(
          tagged_results,
          opts,
@@ -2816,12 +2841,6 @@ defmodule Ash.Actions.Update.Bulk do
          domain,
          base_changeset
        ) do
-    # tagged_results is now list of {:ok, result, changeset} | {:error, error, changeset}
-    # Also handles {:ok_hooks_done, result, changeset} | {:error_hooks_done, error, changeset}
-    # where after_transaction hooks have already been run
-    # run_bulk_after_changes has already been called in do_handle_batch (inside transaction)
-    #
-    # Returns a list of records and {:error, error} tuples
     results =
       Enum.flat_map(tagged_results, fn
         {:ok, result, changeset} ->
@@ -2992,6 +3011,21 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
+  @doc """
+  Runs bulk after_batch changes on a list of tagged results.
+
+  Called within transaction to execute batch change callbacks.
+  """
+  @spec run_bulk_after_changes(
+          changes :: map(),
+          all_changes :: [{map(), non_neg_integer()}],
+          results :: [Ash.Actions.Helpers.Bulk.tagged_result()],
+          changesets :: [Ash.Changeset.t()],
+          opts :: keyword(),
+          ref :: reference(),
+          resource :: Ash.Resource.t(),
+          metadata_key :: atom()
+        ) :: [Ash.Actions.Helpers.Bulk.tagged_result()]
   def run_bulk_after_changes(
         changes,
         all_changes,

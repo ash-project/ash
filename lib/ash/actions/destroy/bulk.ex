@@ -1933,6 +1933,16 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp sort(result, _), do: result
 
+  @spec run_batch(
+          resource :: Ash.Resource.t(),
+          batch :: [Ash.Changeset.t()],
+          action :: Ash.Resource.Actions.action(),
+          opts :: keyword(),
+          must_return_records? :: boolean(),
+          must_return_records_for_changes? :: boolean(),
+          domain :: Ash.Domain.t(),
+          ref :: reference()
+        ) :: [Ash.Actions.Helpers.Bulk.tagged_result()]
   defp run_batch(
          resource,
          batch,
@@ -2168,9 +2178,13 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
+  @spec run_after_action_hooks(
+          batch_results :: [Ash.Actions.Helpers.Bulk.tagged_result()],
+          opts :: keyword(),
+          domain :: Ash.Domain.t(),
+          ref :: reference()
+        ) :: [Ash.Actions.Helpers.Bulk.tagged_result()]
   defp run_after_action_hooks(batch_results, opts, domain, ref) do
-    # batch_results is now list of {:ok, result, changeset} | {:error, error, changeset}
-    # Changeset is already embedded in tuples from run_batch
     Enum.flat_map(batch_results, fn
       {:ok, result, changeset} ->
         case manage_relationships(result, domain, changeset,
@@ -2208,6 +2222,14 @@ defmodule Ash.Actions.Destroy.Bulk do
     end)
   end
 
+  @spec process_results(
+          tagged_results :: [Ash.Actions.Helpers.Bulk.tagged_result_with_hooks()],
+          opts :: keyword(),
+          ref :: reference(),
+          domain :: Ash.Domain.t(),
+          resource :: Ash.Resource.t(),
+          base_changeset :: Ash.Changeset.t()
+        ) :: [Ash.Resource.record() | {:error, term()}]
   defp process_results(
          tagged_results,
          opts,
@@ -2216,10 +2238,6 @@ defmodule Ash.Actions.Destroy.Bulk do
          resource,
          base_changeset
        ) do
-    # tagged_results is now list of {:ok, result, changeset} | {:error, error, changeset}
-    # Also handles {:ok_hooks_done, result, changeset} | {:error_hooks_done, error, changeset}
-    # where after_transaction hooks have already been run
-    # run_bulk_after_changes has already been called in do_handle_batch (inside transaction)
     results =
       Enum.flat_map(tagged_results, fn
         {:ok, result, changeset} ->

@@ -1071,6 +1071,19 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp sort(result, _), do: result
 
+  @spec run_batch(
+          resource :: Ash.Resource.t(),
+          batch :: [Ash.Changeset.t()],
+          action :: Ash.Resource.Actions.action(),
+          opts :: keyword(),
+          must_return_records? :: boolean(),
+          must_return_records_for_changes? :: boolean(),
+          data_layer_can_bulk? :: boolean(),
+          domain :: Ash.Domain.t(),
+          ref :: reference(),
+          attrs_to_require :: [atom()],
+          action_select :: [atom()] | nil
+        ) :: [Ash.Actions.Helpers.Bulk.tagged_result()]
   defp run_batch(
          resource,
          batch,
@@ -1452,14 +1465,18 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
+  @spec run_after_action_hooks(
+          batch_results :: [Ash.Actions.Helpers.Bulk.tagged_result()],
+          opts :: keyword(),
+          domain :: Ash.Domain.t(),
+          ref :: reference()
+        ) :: [Ash.Actions.Helpers.Bulk.tagged_result()]
   defp run_after_action_hooks(
          batch_results,
          opts,
          domain,
          ref
        ) do
-    # Returns list of {:ok, result, changeset} | {:error, error, changeset}
-    # so that process_results can call after_transaction on both successes and failures
     Enum.flat_map(batch_results, fn
       {:ok, result, changeset} ->
         case manage_relationships(result, domain, changeset,
@@ -1497,6 +1514,14 @@ defmodule Ash.Actions.Create.Bulk do
     end)
   end
 
+  @spec process_results(
+          batch :: [Ash.Actions.Helpers.Bulk.tagged_result_with_hooks()],
+          opts :: keyword(),
+          ref :: reference(),
+          domain :: Ash.Domain.t(),
+          resource :: Ash.Resource.t(),
+          action :: Ash.Resource.Actions.action()
+        ) :: [Ash.Resource.record() | {:error, term()}]
   defp process_results(
          batch,
          opts,
@@ -1505,11 +1530,6 @@ defmodule Ash.Actions.Create.Bulk do
          resource,
          action
        ) do
-    # batch is now list of {:ok, result, changeset} | {:error, error, changeset}
-    # Also handles {:ok_hooks_done, result, changeset} | {:error_hooks_done, error, changeset}
-    # where after_transaction hooks have already been run
-    #
-    # Returns a list of records and {:error, error} tuples
     Enum.flat_map(batch, fn
       {:ok, result, changeset} ->
         if opts[:notify?] || opts[:return_notifications?] do
