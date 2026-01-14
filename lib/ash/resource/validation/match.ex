@@ -17,7 +17,7 @@ defmodule Ash.Resource.Validation.Match do
       hide: true
     ],
     match: [
-      type: :regex,
+      type: :regex_as_mfa,
       required: true,
       doc: "The value that the attribute should match against"
     ],
