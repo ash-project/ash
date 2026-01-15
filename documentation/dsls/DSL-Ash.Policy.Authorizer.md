@@ -110,11 +110,11 @@ want to add an `authorize_if always()` at the bottom of your policy, like so:
 
 ```elixir
 policy action_type(:read) do
-forbid_if not_logged_in()
-forbid_if user_is_denylisted()
-forbid_if user_is_in_denylisted_group()
+  forbid_if not_logged_in()
+  forbid_if user_is_denylisted()
+  forbid_if user_is_in_denylisted_group()
 
-authorize_if always()
+  authorize_if always()
 end
 ```
 
@@ -122,7 +122,7 @@ If the policy should always run, use the `always()` check, like so:
 
 ```elixir
 policy always() do
-...
+  ...
 end
 ```
 
@@ -336,13 +336,13 @@ The following are equivalent:
 
 ```elixir
 policy_group condition1 do
-policy condition2 do
-...
-end
+  policy condition2 do
+    ...
+  end
 
-policy condition3 do
-...
-end
+  policy condition3 do
+    ...
+  end
 end
 ```
 
@@ -350,11 +350,11 @@ and
 
 ```elixir
 policy [condition1, condition2] do
-...
+  ...
 end
 
 policy [condition1, condition3] do
-...
+  ...
 end
 ```
 
@@ -392,11 +392,11 @@ want to add an `authorize_if always()` at the bottom of your policy, like so:
 
 ```elixir
 policy action_type(:read) do
-forbid_if not_logged_in()
-forbid_if user_is_denylisted()
-forbid_if user_is_in_denylisted_group()
+  forbid_if not_logged_in()
+  forbid_if user_is_denylisted()
+  forbid_if user_is_in_denylisted_group()
 
-authorize_if always()
+  authorize_if always()
 end
 ```
 
@@ -404,7 +404,7 @@ If the policy should always run, use the `always()` check, like so:
 
 ```elixir
 policy always() do
-...
+  ...
 end
 ```
 
@@ -823,9 +823,9 @@ all access explicitly, i.e
 
 ```elixir
 policies do
-policy always() do
-authorize_if always()
-end
+  policy always() do
+    authorize_if always()
+  end
 end
 ```
 

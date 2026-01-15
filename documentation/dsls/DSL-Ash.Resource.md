@@ -1194,6 +1194,7 @@ change {MyCustomChange, :foo}
 | [`description`](#actions-create-change-description){: #actions-create-change-description } | `String.t` |  | An optional description for the change |
 | [`where`](#actions-create-change-where){: #actions-create-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#actions-create-change-always_atomic?){: #actions-create-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
+| [`before`](#actions-create-change-before){: #actions-create-change-before } | `:transaction \| :action` |  | Whether the change should be run in a `before_transaction` or `before_action` hook, instead of being run immediately. |
 
 
 
@@ -1736,6 +1737,7 @@ change {MyCustomChange, :foo}
 | [`description`](#actions-update-change-description){: #actions-update-change-description } | `String.t` |  | An optional description for the change |
 | [`where`](#actions-update-change-where){: #actions-update-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#actions-update-change-always_atomic?){: #actions-update-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
+| [`before`](#actions-update-change-before){: #actions-update-change-before } | `:transaction \| :action` |  | Whether the change should be run in a `before_transaction` or `before_action` hook, instead of being run immediately. |
 
 
 
@@ -1983,6 +1985,7 @@ change {MyCustomChange, :foo}
 | [`description`](#actions-destroy-change-description){: #actions-destroy-change-description } | `String.t` |  | An optional description for the change |
 | [`where`](#actions-destroy-change-where){: #actions-destroy-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#actions-destroy-change-always_atomic?){: #actions-destroy-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
+| [`before`](#actions-destroy-change-before){: #actions-destroy-change-before } | `:transaction \| :action` |  | Whether the change should be run in a `before_transaction` or `before_action` hook, instead of being run immediately. |
 
 
 
@@ -2631,6 +2634,7 @@ change {MyCustomChange, :foo}
 | [`description`](#changes-change-description){: #changes-change-description } | `String.t` |  | An optional description for the change |
 | [`where`](#changes-change-where){: #changes-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#changes-change-always_atomic?){: #changes-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
+| [`before`](#changes-change-before){: #changes-change-before } | `:transaction \| :action` |  | Whether the change should be run in a `before_transaction` or `before_action` hook, instead of being run immediately. |
 
 
 
