@@ -632,7 +632,7 @@ defmodule Ash.Actions.Update.Bulk do
       )
 
     with :ok <-
-           Ash.Actions.Helpers.Bulk.validate_bulk_multitenancy(
+           Ash.Actions.Helpers.Bulk.validate_multitenancy(
              atomic_changeset.resource,
              atomic_changeset.action,
              opts
@@ -1129,7 +1129,7 @@ defmodule Ash.Actions.Update.Bulk do
     {context_cs, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
-    case Ash.Actions.Helpers.Bulk.validate_bulk_multitenancy(resource, action, opts) do
+    case Ash.Actions.Helpers.Bulk.validate_multitenancy(resource, action, opts) do
       {:error, error} ->
         %Ash.BulkResult{
           status: :error,

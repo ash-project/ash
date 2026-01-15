@@ -105,7 +105,7 @@ defmodule Ash.Actions.Create.Bulk do
         opts
       )
 
-    case Ash.Actions.Helpers.Bulk.validate_bulk_multitenancy(resource, action, opts) do
+    case Ash.Actions.Helpers.Bulk.validate_multitenancy(resource, action, opts) do
       {:error, error} ->
         %Ash.BulkResult{
           status: :error,

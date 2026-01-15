@@ -87,32 +87,32 @@ defmodule Ash.Actions.Helpers.Bulk do
 
   Uses pattern matching to extract index/ref from changeset context.
   """
-  def put_bulk_metadata(result, %{context: %{bulk_create: %{index: index, ref: ref}}}) do
+  def put_metadata(result, %{context: %{bulk_create: %{index: index, ref: ref}}}) do
     result
     |> Ash.Resource.put_metadata(:bulk_create_index, index)
     |> maybe_put_ref_metadata(ref, :bulk_action_ref)
   end
 
-  def put_bulk_metadata(result, %{context: %{bulk_destroy: %{index: index, ref: ref}}}) do
+  def put_metadata(result, %{context: %{bulk_destroy: %{index: index, ref: ref}}}) do
     result
     |> Ash.Resource.put_metadata(:bulk_destroy_index, index)
     |> maybe_put_ref_metadata(ref, :bulk_action_ref)
   end
 
-  def put_bulk_metadata(result, %{context: %{bulk_update: %{index: index, ref: ref}}}) do
+  def put_metadata(result, %{context: %{bulk_update: %{index: index, ref: ref}}}) do
     result
     |> Ash.Resource.put_metadata(:bulk_update_index, index)
     |> maybe_put_ref_metadata(ref, :bulk_action_ref)
   end
 
-  def put_bulk_metadata(result, _changeset), do: result
+  def put_metadata(result, _changeset), do: result
 
   @doc """
   Sets bulk operation metadata with explicit values (for batch operations).
 
   Used when index/ref are already extracted as separate variables.
   """
-  def put_bulk_metadata(result, index, ref, index_key) when is_integer(index) do
+  def put_metadata(result, index, ref, index_key) when is_integer(index) do
     result
     |> Ash.Resource.put_metadata(index_key, index)
     |> maybe_put_ref_metadata(ref, :bulk_action_ref)
@@ -132,9 +132,9 @@ defmodule Ash.Actions.Helpers.Bulk do
   Checks if tenant is required based on resource configuration, action settings,
   and context overrides. Returns `:ok` or an error with `TenantRequired` exception.
   """
-  @spec validate_bulk_multitenancy(Ash.Resource.t(), Ash.Resource.Actions.action(), keyword()) ::
+  @spec validate_multitenancy(Ash.Resource.t(), Ash.Resource.Actions.action(), keyword()) ::
           :ok | {:error, Exception.t()}
-  def validate_bulk_multitenancy(resource, action, opts) do
+  def validate_multitenancy(resource, action, opts) do
     if Ash.Resource.Info.multitenancy_strategy(resource) &&
          !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] &&
          Map.get(action, :multitenancy) not in [:bypass, :bypass_all, :allow_global] &&
