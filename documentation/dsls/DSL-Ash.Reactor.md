@@ -717,7 +717,7 @@ end
 | [`success_state`](#reactor-bulk_create-success_state){: #reactor-bulk_create-success_state } | `:success \| :partial_success` | `:success` | Bulk results can be entirely or partially successful. Chooses the `Ash.BulkResult` state to consider the step a success. |
 | [`timeout`](#reactor-bulk_create-timeout){: #reactor-bulk_create-timeout } | `timeout` |  | If none is provided, the timeout configured on the domain is used (which defaults to `30_000`). |
 | [`transaction`](#reactor-bulk_create-transaction){: #reactor-bulk_create-transaction } | `:all \| :batch \| false` | `:batch` | Whether or not to wrap the entire execution in a transaction, each batch, or not at all. |
-| [`upsert_fields`](#reactor-bulk_create-upsert_fields){: #reactor-bulk_create-upsert_fields } | `atom \| list(atom)` |  | The fields to upsert. If not set, the action's `upsert_fields` is used. |
+| [`upsert_fields`](#reactor-bulk_create-upsert_fields){: #reactor-bulk_create-upsert_fields } | `:replace_all \| {:replace, atom \| list(atom)} \| {:replace_all_except, atom \| list(atom)} \| atom \| list(atom)` |  | The fields to upsert. If not set, the action's `upsert_fields` is used. |
 | [`upsert_identity`](#reactor-bulk_create-upsert_identity){: #reactor-bulk_create-upsert_identity } | `atom` |  | The identity to use for the upsert |
 | [`upsert?`](#reactor-bulk_create-upsert?){: #reactor-bulk_create-upsert? } | `boolean` | `false` | Whether or not this action should be executed as an upsert. |
 | [`domain`](#reactor-bulk_create-domain){: #reactor-bulk_create-domain } | `module` |  | The Domain to use when calling the action.  Defaults to the Domain set on the resource or in the `ash` section. |

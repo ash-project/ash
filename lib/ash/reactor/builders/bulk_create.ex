@@ -60,8 +60,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkCreate do
         :timeout,
         :transaction,
         :upsert_fields,
-        :upsert_fields,
-        :upsert_identity,
         :upsert_identity,
         :upsert?,
         :undo_action,
@@ -96,7 +94,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkCreate do
            verify_action_type(dsl_state, bulk_create.resource, action, :create, action_error_path),
          :ok <- verify_undo(dsl_state, bulk_create),
          :ok <- maybe_verify_undo_action(dsl_state, bulk_create),
-         :ok <- maybe_verify_upsert_fields(dsl_state, bulk_create, action, action_error_path),
          :ok <- verify_select(dsl_state, bulk_create),
          :ok <- verify_rollback_on_error(dsl_state, bulk_create),
          :ok <- verify_sorted(dsl_state, bulk_create) do
@@ -157,20 +154,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkCreate do
          path: [:bulk_create, bulk_create.name, :select],
          message: "Setting `select` has no effect when `return_records?` is not `true`."
        )}
-
-  defp maybe_verify_upsert_fields(dsl_state, bulk_create, action, error_path)
-       when bulk_create.upsert? == true and bulk_create.upsert_fields == [] and
-              action.upsert_fields == [],
-       do:
-         {:error,
-          DslError.exception(
-            module: Transformer.get_persisted(dsl_state, :module),
-            path: error_path,
-            message:
-              "Expected `upsert_fields` to be set on either the bulk create step or the underlying action."
-          )}
-
-  defp maybe_verify_upsert_fields(_dsl_state, _bulk_create, _action, _error_path), do: :ok
 
   defp verify_undo(dsl_state, bulk_create)
        when bulk_create.undo != :never and bulk_create.return_stream? == true,
