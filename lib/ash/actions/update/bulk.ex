@@ -632,7 +632,7 @@ defmodule Ash.Actions.Update.Bulk do
       )
 
     with :ok <-
-           Ash.Actions.Helpers.validate_bulk_multitenancy(
+           Ash.Actions.Helpers.Bulk.validate_bulk_multitenancy(
              atomic_changeset.resource,
              atomic_changeset.action,
              opts
@@ -1129,7 +1129,7 @@ defmodule Ash.Actions.Update.Bulk do
     {context_cs, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
-    case Ash.Actions.Helpers.validate_bulk_multitenancy(resource, action, opts) do
+    case Ash.Actions.Helpers.Bulk.validate_bulk_multitenancy(resource, action, opts) do
       {:error, error} ->
         %Ash.BulkResult{
           status: :error,
@@ -2563,7 +2563,7 @@ defmodule Ash.Actions.Update.Bulk do
     # Invalid changesets become {:error, error, changeset} tuples
     # after_transaction hooks for these will run later in process_results
     {batch, invalid_changeset_errors} =
-      Ash.Actions.Helpers.split_valid_invalid_changesets(batch, opts)
+      Ash.Actions.Helpers.Bulk.split_valid_invalid_changesets(batch, opts)
 
     # Build index maps from valid changesets only
     {changesets_by_ref, changesets_by_index} = index_changesets(batch, context_key)
@@ -2736,7 +2736,7 @@ defmodule Ash.Actions.Update.Bulk do
           # Data layer path - needs changeset lookup
           result when is_struct(result) ->
             changeset =
-              Ash.Actions.Helpers.lookup_changeset(
+              Ash.Actions.Helpers.Bulk.lookup_changeset(
                 result,
                 changesets_by_ref,
                 changesets_by_index,

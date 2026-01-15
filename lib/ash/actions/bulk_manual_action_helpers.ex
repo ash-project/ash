@@ -103,7 +103,7 @@ defmodule Ash.Actions.BulkManualActionHelpers do
   end
 
   defp lookup_changeset(result, changesets_by_ref, changesets_by_index, index_key) do
-    Ash.Actions.Helpers.lookup_changeset(
+    Ash.Actions.Helpers.Bulk.lookup_changeset(
       result,
       changesets_by_ref,
       changesets_by_index,

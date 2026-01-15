@@ -105,7 +105,7 @@ defmodule Ash.Actions.Create.Bulk do
         opts
       )
 
-    case Ash.Actions.Helpers.validate_bulk_multitenancy(resource, action, opts) do
+    case Ash.Actions.Helpers.Bulk.validate_bulk_multitenancy(resource, action, opts) do
       {:error, error} ->
         %Ash.BulkResult{
           status: :error,
@@ -1146,7 +1146,7 @@ defmodule Ash.Actions.Create.Bulk do
         %Ash.Changeset{} = changeset -> changeset
       end
     end)
-    |> Ash.Actions.Helpers.split_valid_invalid_changesets(opts)
+    |> Ash.Actions.Helpers.Bulk.split_valid_invalid_changesets(opts)
     |> case do
       {[], invalid_changeset_errors} ->
         invalid_changeset_errors
@@ -1431,7 +1431,7 @@ defmodule Ash.Actions.Create.Bulk do
           # Data layer path - needs changeset lookup
           result when is_struct(result) ->
             changeset =
-              Ash.Actions.Helpers.lookup_changeset(
+              Ash.Actions.Helpers.Bulk.lookup_changeset(
                 result,
                 changesets_by_ref,
                 changesets_by_index,

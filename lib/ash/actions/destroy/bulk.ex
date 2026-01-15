@@ -2000,7 +2000,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     # Invalid changesets become {:error, error, changeset} tuples
     # after_transaction hooks for these will run later in process_results
     {batch, invalid_changeset_errors} =
-      Ash.Actions.Helpers.split_valid_invalid_changesets(batch, opts)
+      Ash.Actions.Helpers.Bulk.split_valid_invalid_changesets(batch, opts)
 
     # Build index maps from valid changesets only
     {changesets_by_ref, changesets_by_index} = index_changesets(batch)
@@ -2146,7 +2146,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           # Data layer path - needs changeset lookup
           result when is_struct(result) ->
             changeset =
-              Ash.Actions.Helpers.lookup_changeset(
+              Ash.Actions.Helpers.Bulk.lookup_changeset(
                 result,
                 changesets_by_ref,
                 changesets_by_index,
