@@ -699,7 +699,7 @@ defmodule Ash.Expr do
     raise ArgumentError, """
     Usage of `ref/1` and `ref/2` must now be pinned, got: #{Macro.to_string(expr)}.
 
-    For example: `^ref(#{Macro.to_string(remove_pin(field))}})`
+    For example: `^ref(#{Macro.to_string(remove_pin(field))})`
     """
   end
 
