@@ -12,6 +12,17 @@ defmodule Ash.MixProject do
 
   @version "3.12.0"
 
+  @extensions [
+    Ash.Resource.Dsl,
+    Ash.Domain.Dsl,
+    Ash.TypedStruct.Dsl,
+    Ash.DataLayer.Ets,
+    Ash.DataLayer.Mnesia,
+    Ash.Notifier.PubSub,
+    Ash.Policy.Authorizer,
+    Ash.Reactor
+  ]
+
   def project do
     [
       app: :ash,
@@ -192,7 +203,7 @@ defmodule Ash.MixProject do
           """
         end
       end,
-      redirects: %{"contributing-to-ash" => "contributing"},
+      redirects: Spark.Docs.redirects_for(@extensions, %{"contributing-to-ash" => "contributing"}),
       groups_for_modules: [
         "Core API": [
           Ash,
@@ -381,7 +392,7 @@ defmodule Ash.MixProject do
     [
       {:usage_rules, "~> 0.1", only: [:dev]},
       # DSLs
-      {:spark, "~> 2.3 and >= 2.3.14"},
+      {:spark, "~> 2.4", override: true},
       # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.7"},
       # Used by the ETS data layer
@@ -440,10 +451,8 @@ defmodule Ash.MixProject do
         "spark.replace_doc_links"
       ],
       format: "format --migrate",
-      "spark.formatter":
-        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.TypedStruct.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
-      "spark.cheat_sheets":
-        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.TypedStruct.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
+      "spark.formatter": "spark.formatter --extensions #{Enum.join(@extensions, ",")}",
+      "spark.cheat_sheets": "spark.cheat_sheets --extensions #{Enum.join(@extensions, ",")}"
     ]
   end
 end
