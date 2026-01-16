@@ -1573,7 +1573,7 @@ defmodule Ash.DataLayer.Ets do
             if Ash.Resource.get_metadata(result, :upsert_skipped) do
               {:cont, {:ok, results}}
             else
-              result = Ash.Actions.Helpers.put_bulk_metadata(result, changeset)
+              result = Ash.Actions.Helpers.Bulk.put_metadata(result, changeset)
 
               {:cont, {:ok, [result | results]}}
             end
@@ -1690,7 +1690,7 @@ defmodule Ash.DataLayer.Ets do
                 case cast_record(record, resource) do
                   {:ok, casted} ->
                     casted =
-                      Ash.Actions.Helpers.put_bulk_metadata(
+                      Ash.Actions.Helpers.Bulk.put_metadata(
                         casted,
                         index,
                         ref,
@@ -1787,7 +1787,7 @@ defmodule Ash.DataLayer.Ets do
                   {:cont, :ok}
 
                 {:ok, results} ->
-                  result = Ash.Actions.Helpers.put_bulk_metadata(result, result_changeset)
+                  result = Ash.Actions.Helpers.Bulk.put_metadata(result, result_changeset)
 
                   {:cont, {:ok, [result | results]}}
               end
@@ -1889,7 +1889,7 @@ defmodule Ash.DataLayer.Ets do
 
           case update(query.resource, result_changeset, nil, true) do
             {:ok, result} ->
-              result = Ash.Actions.Helpers.put_bulk_metadata(result, result_changeset)
+              result = Ash.Actions.Helpers.Bulk.put_metadata(result, result_changeset)
 
               case acc do
                 :ok ->

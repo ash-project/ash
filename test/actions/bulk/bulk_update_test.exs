@@ -346,6 +346,18 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       update :update_with_filter do
         change filter(expr(title == "foo"))
       end
+
+      update :update_fails_on_title2 do
+        require_atomic? false
+
+        change fn changeset, _context ->
+          if changeset.data.title == "title2" do
+            Ash.Changeset.add_error(changeset, "title2 is not allowed")
+          else
+            changeset
+          end
+        end
+      end
     end
 
     identities do
@@ -1418,6 +1430,34 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                return_errors?: true,
                authorize?: false
              )
+  end
+
+  test "stop_on_error? stops processing on invalid changesets" do
+    # Create 3 records - the middle one (title2) will fail the action's change
+    result =
+      Ash.bulk_create!(
+        [%{title: "title1"}, %{title: "title2"}, %{title: "title3"}],
+        Post,
+        :create,
+        return_stream?: true,
+        return_records?: true,
+        authorize?: false
+      )
+      |> Stream.map(fn {:ok, result} -> result end)
+      |> Ash.bulk_update(:update_fails_on_title2, %{title2: "updated"},
+        resource: Post,
+        strategy: :stream,
+        return_notifications?: true,
+        return_errors?: true,
+        return_records?: true,
+        authorize?: false
+      )
+
+    # With stop_on_error?: true (default from config), should stop on first error
+    # No records should be updated, no notifications, 1 error
+    assert result.records == []
+    assert result.notifications == nil
+    assert result.error_count == 1
   end
 
   describe "load" do

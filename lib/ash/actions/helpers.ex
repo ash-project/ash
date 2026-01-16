@@ -19,7 +19,11 @@ defmodule Ash.Actions.Helpers do
   def split_and_run_simple(batch, action, opts, changes, all_changes, context_key, callback) do
     {batch, must_be_simple} =
       Enum.reduce(batch, {[], []}, fn changeset, {batch, must_be_simple} ->
-        if changeset.around_transaction in [[], nil] and changeset.after_transaction in [[], nil] and
+        # Note: We don't check after_transaction here because bulk operations
+        # handle after_transaction hooks in process_results via run_after_transactions.
+        # Only around_transaction and around_action require the simple path since
+        # they need to wrap the entire operation.
+        if changeset.around_transaction in [[], nil] and
              changeset.around_action in [[], nil] do
           changeset =
             if changeset.valid? do
@@ -990,75 +994,6 @@ defmodule Ash.Actions.Helpers do
   end
 
   @doc """
-  Looks up changeset for a result, with backwards compatibility for legacy data layers.
-
-  First tries ref metadata (new), falls back to index->ref lookup (legacy).
-  """
-  def lookup_changeset(result, changesets_by_ref, changesets_by_index, opts) do
-    index_key = opts[:index_key]
-    ref_key = opts[:ref_key] || :bulk_action_ref
-
-    result.__metadata__
-    |> get_ref_from_metadata(ref_key, index_key, changesets_by_index)
-    |> then(&changesets_by_ref[&1])
-  end
-
-  defp get_ref_from_metadata(metadata, ref_key, index_key, changesets_by_index) do
-    with nil <- metadata[ref_key],
-         index when not is_nil(index) <- metadata[index_key],
-         ref when not is_nil(ref) <- changesets_by_index[index] do
-      ref
-    else
-      ref when not is_nil(ref) -> ref
-      _ -> nil
-    end
-  end
-
-  @doc """
-  Sets bulk operation metadata on a result record from a changeset.
-
-  Uses pattern matching to extract index/ref from changeset context.
-  """
-  def put_bulk_metadata(result, %{context: %{bulk_create: %{index: index, ref: ref}}}) do
-    result
-    |> Ash.Resource.put_metadata(:bulk_create_index, index)
-    |> maybe_put_ref_metadata(ref, :bulk_action_ref)
-  end
-
-  def put_bulk_metadata(result, %{context: %{bulk_destroy: %{index: index, ref: ref}}}) do
-    result
-    |> Ash.Resource.put_metadata(:bulk_destroy_index, index)
-    |> maybe_put_ref_metadata(ref, :bulk_action_ref)
-  end
-
-  def put_bulk_metadata(result, %{context: %{bulk_update: %{index: index, ref: ref}}}) do
-    result
-    |> Ash.Resource.put_metadata(:bulk_update_index, index)
-    |> maybe_put_ref_metadata(ref, :bulk_action_ref)
-  end
-
-  def put_bulk_metadata(result, _changeset), do: result
-
-  @doc """
-  Sets bulk operation metadata with explicit values (for batch operations).
-
-  Used when index/ref are already extracted as separate variables.
-  """
-  def put_bulk_metadata(result, index, ref, index_key) when is_integer(index) do
-    result
-    |> Ash.Resource.put_metadata(index_key, index)
-    |> maybe_put_ref_metadata(ref, :bulk_action_ref)
-  end
-
-  defp maybe_put_ref_metadata(result, ref, ref_key) do
-    if Application.get_env(:ash, :test_bulk_index_only, false) do
-      result
-    else
-      Ash.Resource.put_metadata(result, ref_key, ref)
-    end
-  end
-
-  @doc """
   Extracts multitenancy mode from changeset/query context.
 
   Returns the multitenancy setting (`:bypass`, `:bypass_all`, `:allow_global`)
@@ -1086,29 +1021,6 @@ defmodule Ash.Actions.Helpers do
          not Ash.Resource.Info.multitenancy_global?(changeset.resource) &&
          is_nil(changeset.tenant) do
       {:error, "#{inspect(changeset.resource)} changesets require a tenant to be specified"}
-    else
-      :ok
-    end
-  end
-
-  @doc """
-  Validates multitenancy requirements for bulk operations.
-
-  Checks if tenant is required based on resource configuration, action settings,
-  and context overrides. Returns `:ok` or an error with `TenantRequired` exception.
-  """
-  @spec validate_bulk_multitenancy(Ash.Resource.t(), Ash.Resource.Actions.action(), keyword()) ::
-          :ok | {:error, Exception.t()}
-  def validate_bulk_multitenancy(resource, action, opts) do
-    if Ash.Resource.Info.multitenancy_strategy(resource) &&
-         !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] &&
-         Map.get(action, :multitenancy) not in [:bypass, :bypass_all, :allow_global] &&
-         get_in(opts, [:context, :shared, :private, :multitenancy]) not in [
-           :bypass,
-           :bypass_all,
-           :allow_global
-         ] do
-      {:error, Ash.Error.Invalid.TenantRequired.exception(resource: resource)}
     else
       :ok
     end
