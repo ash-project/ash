@@ -3194,6 +3194,24 @@ defmodule Ash.Actions.Update.Bulk do
                       }
                     )
                   )
+                  |> case do
+                    :ok ->
+                      matches
+
+                    callback_results ->
+                      callback_results
+                      |> Enum.zip(matches)
+                      |> Enum.map(fn
+                        {{:ok, result}, {:ok, _old_result, changeset}} ->
+                          {:ok, result, changeset}
+
+                        {{:error, error}, {:ok, _old_result, changeset}} ->
+                          {:error, error, changeset}
+
+                        {notification, _} ->
+                          notification
+                      end)
+                  end
                 else
                   matches
                 end
