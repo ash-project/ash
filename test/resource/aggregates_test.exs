@@ -117,7 +117,7 @@ defmodule Ash.Test.Resource.AggregatesTest do
              ] = Ash.Resource.Info.aggregates(Post)
     end
 
-    test "aggregates field should be calculation or attribute on the resource" do
+    test "aggregate field must be an attribute, calculation, or aggregate (not a relationship)" do
       output =
         ExUnit.CaptureIO.capture_io(:stderr, fn ->
           defposts do
@@ -134,6 +134,76 @@ defmodule Ash.Test.Resource.AggregatesTest do
         end)
 
       assert String.contains?(output, "likes") or String.contains?(output, "field")
+    end
+
+    test "aggregate field can reference another aggregate" do
+      defmodule AggOfAggLike do
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        attributes do
+          uuid_primary_key :id
+          attribute :comment_id, :uuid
+        end
+
+        actions do
+          defaults [:read]
+        end
+      end
+
+      defmodule AggOfAggComment do
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+        attributes do
+          uuid_primary_key :id
+          attribute :post_id, :uuid
+        end
+
+        actions do
+          defaults [:read]
+        end
+
+        relationships do
+          has_many :likes, AggOfAggLike, destination_attribute: :comment_id
+        end
+
+        aggregates do
+          count :like_count, :likes
+        end
+      end
+
+      stderr =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          defmodule AggOfAggPost do
+            use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            relationships do
+              has_many :comments, AggOfAggComment, destination_attribute: :post_id
+            end
+
+            aggregates do
+              sum :total_likes, :comments, :like_count
+            end
+          end
+
+          assert {:ok, Ash.Type.Integer} ==
+                   Ash.Resource.Info.aggregate_type(AggOfAggPost, :total_likes)
+
+          query = Ash.Query.load(AggOfAggPost, :total_likes)
+          assert query.aggregates[:total_likes].type == Ash.Type.Integer
+        end)
+
+      # Check specifically for errors related to this aggregate - other tests running
+      # concurrently may emit DslErrors to stderr that get captured here
+      refute stderr =~
+               "Aggregate field must be an attribute, calculation, or aggregate. Got: :like_count"
     end
   end
 
