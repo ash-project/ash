@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.13.1](https://github.com/ash-project/ash/compare/v3.13.0...v3.13.1) (2026-01-16)
+
+
+
+
+### Improvements:
+
+* support `from` and `to` options in `changing` validation by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.13.0](https://github.com/ash-project/ash/compare/v3.12.0...v3.13.0) (2026-01-16)
 
 
