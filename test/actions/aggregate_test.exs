@@ -535,5 +535,12 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       assert post.sum_of_doubled_thing3 == 36
     end
+
+    test "Info.aggregate_type returns correct type for aggregate referencing a calculation" do
+      # sum_of_doubled_thing3 references the doubled_thing3 calculation on Comment.
+      # Previously this returned {:ok, nil} because attribute/2 was used instead of field/2.
+      assert {:ok, Ash.Type.Integer} =
+               Ash.Resource.Info.aggregate_type(Post, :sum_of_doubled_thing3)
+    end
   end
 end

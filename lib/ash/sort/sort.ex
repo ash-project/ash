@@ -432,7 +432,7 @@ defmodule Ash.Sort do
     attribute =
       if aggregate.field do
         related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
-        Ash.Resource.Info.attribute(related, aggregate.field)
+        Ash.Resource.Info.field(related, aggregate.field)
       end
 
     attribute_type =
