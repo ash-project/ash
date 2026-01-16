@@ -882,6 +882,50 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     test "it does not require setting optional inputs" do
       assert {:ok, "Marty"} = EchoResource.echo2("Marty")
     end
+
+    defmodule FailingReactor do
+      @moduledoc false
+      use Reactor
+
+      input :input
+
+      step :fail do
+        argument :input, input(:input)
+
+        run fn _ ->
+          {:error, "reactor step failed"}
+        end
+      end
+    end
+
+    defmodule FailingReactorResource do
+      @moduledoc false
+      use Ash.Resource, domain: Domain
+
+      actions do
+        action :fail, :string do
+          argument :input, :string, allow_nil?: false
+
+          run FailingReactor
+        end
+      end
+
+      code_interface do
+        define :fail, args: [:input]
+      end
+    end
+
+    test "reactor errors are unwrapped and not nested redundantly" do
+      assert {:error, error} = FailingReactorResource.fail("test")
+
+      # Verify erros are wrapped in Ash.Error.Invalid
+      assert %Ash.Error.Invalid{errors: errors} = error
+
+      # Verify Reactor.Error.Invalid wrapper is unwrapped (no redundant nesting)
+      refute Enum.any?(errors, fn e ->
+               match?(%Reactor.Error.Invalid{errors: _}, e)
+             end)
+    end
   end
 
   describe "transaction hooks in generic actions" do
