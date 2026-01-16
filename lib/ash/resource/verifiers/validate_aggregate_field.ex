@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: MIT
 
-defmodule Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation do
+defmodule Ash.Resource.Verifiers.ValidateAggregateField do
   @moduledoc """
-  Ensures that the field at the end of the path is an attribute or calculation.
+  Ensures that the aggregate field references an attribute, calculation, or aggregate (not a relationship).
   """
   use Spark.Dsl.Verifier
 
@@ -33,12 +33,13 @@ defmodule Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation do
           destination ->
             attribute = Ash.Resource.Info.attribute(destination, field)
             calculation = Ash.Resource.Info.calculation(destination, field)
+            aggregate = Ash.Resource.Info.aggregate(destination, field)
 
-            if !attribute and !calculation do
+            if !attribute and !calculation and !aggregate do
               raise Spark.Error.DslError,
                 module: Spark.Dsl.Verifier.get_persisted(dsl, :module),
                 message:
-                  "All aggregates fields must be attributes or calculations. Got: #{inspect(field)}",
+                  "Aggregate field must be an attribute, calculation, or aggregate. Got: #{inspect(field)}",
                 path: [:aggregates, field]
             end
         end
