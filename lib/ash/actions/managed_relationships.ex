@@ -56,7 +56,7 @@ defmodule Ash.Actions.ManagedRelationships do
                  domain: domain
                ) do
             {:ok, loaded} -> {:cont, {:ok, loaded}}
-            {:error, error} -> {:halt, {:error, error}}
+            {:error, error} -> {:halt, {:error, add_bread_crumb(error, relationship, :load)}}
           end
       end
     end)
@@ -264,9 +264,11 @@ defmodule Ash.Actions.ManagedRelationships do
 
                             {:error, error} ->
                               {:halt,
-                               {Ash.Changeset.add_error(changeset, error, [
-                                  opts[:meta][:id] || relationship.name
-                                ]), instructions}}
+                               {Ash.Changeset.add_error(
+                                  changeset,
+                                  add_bread_crumb(error, relationship, :lookup),
+                                  [opts[:meta][:id] || relationship.name]
+                                ), instructions}}
                           end
                       end
                     end
@@ -314,7 +316,7 @@ defmodule Ash.Actions.ManagedRelationships do
             end
 
           {:error, error} ->
-            {:halt, {:error, error}}
+            {:halt, {:error, add_bread_crumb(error, relationship, :load)}}
         end
     end)
     |> validate_required_belongs_to(false)
@@ -429,9 +431,13 @@ defmodule Ash.Actions.ManagedRelationships do
             changeset =
               changeset
               |> Ash.Changeset.add_error(
-                NotFound.exception(
-                  primary_key: input,
-                  resource: relationship.destination
+                add_bread_crumb(
+                  NotFound.exception(
+                    primary_key: input,
+                    resource: relationship.destination
+                  ),
+                  relationship,
+                  :create
                 ),
                 [opts[:meta][:id] || relationship.name]
               )
@@ -444,9 +450,13 @@ defmodule Ash.Actions.ManagedRelationships do
             changeset =
               changeset
               |> Ash.Changeset.add_error(
-                InvalidRelationship.exception(
-                  relationship: relationship.name,
-                  message: "changes would create a new related record"
+                add_bread_crumb(
+                  InvalidRelationship.exception(
+                    relationship: relationship.name,
+                    message: "changes would create a new related record"
+                  ),
+                  relationship,
+                  :create
                 )
               )
               |> Ash.Changeset.put_context(:private, %{
@@ -536,8 +546,11 @@ defmodule Ash.Actions.ManagedRelationships do
         )
 
         {:halt,
-         {Ash.Changeset.add_error(changeset, error, [opts[:meta][:id] || relationship.name]),
-          instructions}}
+         {Ash.Changeset.add_error(
+            changeset,
+            add_bread_crumb(error, relationship, :create),
+            [opts[:meta][:id] || relationship.name]
+          ), instructions}}
     end
   end
 
@@ -672,7 +685,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   {:cont, {:ok, new_value, notifications ++ all_notifications}}
 
                 {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-                  {:halt, {:error, error}}
+                  {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
 
                 {:error, error} ->
                   {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
@@ -703,7 +716,7 @@ defmodule Ash.Actions.ManagedRelationships do
         end
 
       {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-        {:error, error}
+        {:error, add_bread_crumb(error, relationship, :manage)}
 
       {:error, error} ->
         {:error, set_error_path(error, relationship, 0, opts)}
@@ -774,7 +787,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 {:cont, {:ok, new_value, notifications ++ all_notifications}}
 
               {:error, error} ->
-                {:halt, {:error, error}}
+                {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
             end
           end
         )
@@ -784,19 +797,19 @@ defmodule Ash.Actions.ManagedRelationships do
              all_notifications}
 
           {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-            {:error, error}
+            {:error, add_bread_crumb(error, relationship, :manage)}
 
           {:error, error} ->
             {:error, set_error_path(error, relationship, 0, opts)}
         end
 
       {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-        {:error, error}
+        {:error, add_bread_crumb(error, relationship, :manage)}
 
       {:error, error} ->
         {:error,
          Ash.Error.set_path(
-           error,
+           add_bread_crumb(error, relationship, :manage),
            opts[:error_path] || [opts[:meta][:id] || relationship.name]
          )}
     end
@@ -806,6 +819,8 @@ defmodule Ash.Actions.ManagedRelationships do
   end
 
   defp set_error_path(error, relationship, input_index, opts) do
+    error = add_bread_crumb(error, relationship, :manage)
+
     case Keyword.fetch(opts[:meta] || [], :inputs_was_list?) do
       {:ok, false} ->
         Ash.Error.set_path(
@@ -972,7 +987,7 @@ defmodule Ash.Actions.ManagedRelationships do
                     )
 
                   {:error, error} ->
-                    {:error, error}
+                    {:error, add_bread_crumb(error, relationship, :lookup)}
                 end
 
               {:error, _error} ->
@@ -1034,7 +1049,7 @@ defmodule Ash.Actions.ManagedRelationships do
                       opts[:debug?]
                     )
 
-                    {:error, error}
+                    {:error, add_bread_crumb(error, relationship, :update)}
                 end
 
               _ ->
@@ -1137,7 +1152,7 @@ defmodule Ash.Actions.ManagedRelationships do
                     {:ok, new_value, update_notifications ++ notifications}
 
                   {:error, error} ->
-                    {:error, error}
+                    {:error, add_bread_crumb(error, relationship, :update)}
                 end
             end
 
@@ -1150,7 +1165,7 @@ defmodule Ash.Actions.ManagedRelationships do
               opts[:debug?]
             )
 
-            {:error, error}
+            {:error, add_bread_crumb(error, relationship, :create)}
         end
 
       type when type in [:has_many, :has_one] ->
@@ -1209,7 +1224,7 @@ defmodule Ash.Actions.ManagedRelationships do
               opts[:debug?]
             )
 
-            {:error, error}
+            {:error, add_bread_crumb(error, relationship, :update)}
         end
 
       :belongs_to ->
@@ -1224,15 +1239,23 @@ defmodule Ash.Actions.ManagedRelationships do
         if opts[:on_lookup] != :ignore ||
              opts[:on_match] not in [:ignore, :error, :no_match, :missing] do
           {:error,
-           NotFound.exception(
-             primary_key: input,
-             resource: relationship.destination
+           add_bread_crumb(
+             NotFound.exception(
+               primary_key: input,
+               resource: relationship.destination
+             ),
+             relationship,
+             :create
            )}
         else
           {:error,
-           InvalidRelationship.exception(
-             relationship: relationship.name,
-             message: "changes would create a new related record"
+           add_bread_crumb(
+             InvalidRelationship.exception(
+               relationship: relationship.name,
+               message: "changes would create a new related record"
+             ),
+             relationship,
+             :create
            )}
         end
 
@@ -1302,7 +1325,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   opts[:debug?]
                 )
 
-                {:error, error}
+                {:error, add_bread_crumb(error, relationship, :create)}
             end
 
           created ->
@@ -1410,7 +1433,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   opts[:debug?]
                 )
 
-                {:error, error}
+                {:error, add_bread_crumb(error, relationship, :create)}
             end
 
           {:error, error} ->
@@ -1422,7 +1445,7 @@ defmodule Ash.Actions.ManagedRelationships do
               opts[:debug?]
             )
 
-            {:error, error}
+            {:error, add_bread_crumb(error, relationship, :create)}
         end
 
       ignore when ignore in [:ignore, :match] ->
@@ -1448,9 +1471,13 @@ defmodule Ash.Actions.ManagedRelationships do
 
       :error ->
         {:error,
-         InvalidRelationship.exception(
-           relationship: relationship.name,
-           message: "changes would update a record"
+         add_bread_crumb(
+           InvalidRelationship.exception(
+             relationship: relationship.name,
+             message: "changes would update a record"
+           ),
+           relationship,
+           :update
          )}
 
       :ignore ->
@@ -1474,7 +1501,7 @@ defmodule Ash.Actions.ManagedRelationships do
             {:ok, current_value, notifications}
 
           {:error, error} ->
-            {:error, error}
+            {:error, add_bread_crumb(error, relationship, :destroy)}
         end
 
       {:unrelate, action_name} ->
@@ -1499,7 +1526,7 @@ defmodule Ash.Actions.ManagedRelationships do
             {:ok, new_value, notifications}
 
           {:error, error} ->
-            {:error, error}
+            {:error, add_bread_crumb(error, relationship, :unrelate)}
         end
 
       {:update, action_name} ->
@@ -1551,7 +1578,7 @@ defmodule Ash.Actions.ManagedRelationships do
               opts[:debug?]
             )
 
-            {:error, error}
+            {:error, add_bread_crumb(error, relationship, :update)}
         end
 
       {:update, action_name, join_action_name, params} ->
@@ -1677,7 +1704,7 @@ defmodule Ash.Actions.ManagedRelationships do
                       opts[:debug?]
                     )
 
-                    {:error, error}
+                    {:error, add_bread_crumb(error, relationship, :update)}
                 end
 
               {:error, error} ->
@@ -1689,7 +1716,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   opts[:debug?]
                 )
 
-                {:error, error}
+                {:error, add_bread_crumb(error, relationship, :lookup)}
             end
 
           {:error, error} ->
@@ -1701,7 +1728,7 @@ defmodule Ash.Actions.ManagedRelationships do
               opts[:debug?]
             )
 
-            {:error, error}
+            {:error, add_bread_crumb(error, relationship, :update)}
         end
     end
   end
@@ -1922,7 +1949,7 @@ defmodule Ash.Actions.ManagedRelationships do
                       opts[:debug?]
                     )
 
-                    {:halt, {:error, error}}
+                    {:halt, {:error, add_bread_crumb(error, relationship, :destroy)}}
                 end
 
               {:error, error} ->
@@ -1934,7 +1961,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   opts[:debug?]
                 )
 
-                {:halt, {:error, error}}
+                {:halt, {:error, add_bread_crumb(error, relationship, :lookup)}}
             end
 
           {:destroy, action_name} ->
@@ -1984,15 +2011,19 @@ defmodule Ash.Actions.ManagedRelationships do
                   opts[:debug?]
                 )
 
-                {:halt, {:error, error}}
+                {:halt, {:error, add_bread_crumb(error, relationship, :destroy)}}
             end
 
           :error ->
             {:halt,
              {:error,
-              InvalidRelationship.exception(
-                relationship: relationship.name,
-                message: "changes would destroy a record"
+              add_bread_crumb(
+                InvalidRelationship.exception(
+                  relationship: relationship.name,
+                  message: "changes would destroy a record"
+                ),
+                relationship,
+                :destroy
               )}}
 
           {:unrelate, action_name} ->
@@ -2010,7 +2041,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 {:cont, {:ok, current_value, notifications}}
 
               {:error, error} ->
-                {:halt, {:error, error}}
+                {:halt, {:error, add_bread_crumb(error, relationship, :unrelate)}}
             end
         end
       end
@@ -2058,7 +2089,7 @@ defmodule Ash.Actions.ManagedRelationships do
       {:error, error} ->
         debug_log(relationship.name, changeset, :destroy, {:error, error}, debug?)
 
-        {:halt, {:error, error}}
+        {:halt, {:error, add_bread_crumb(error, relationship, :destroy)}}
     end
   end
 
@@ -2137,12 +2168,12 @@ defmodule Ash.Actions.ManagedRelationships do
               opts[:debug?]
             )
 
-            {:error, error}
+            {:error, add_bread_crumb(error, relationship, :unrelate)}
         end
 
       {:error, error} ->
         debug_log(relationship.name, changeset, :read, {:error, error}, opts[:debug?])
-        {:error, error}
+        {:error, add_bread_crumb(error, relationship, :lookup)}
     end
   end
 
@@ -2188,7 +2219,7 @@ defmodule Ash.Actions.ManagedRelationships do
           opts[:debug?]
         )
 
-        {:error, error}
+        {:error, add_bread_crumb(error, relationship, :unrelate)}
     end
   end
 
@@ -2277,12 +2308,12 @@ defmodule Ash.Actions.ManagedRelationships do
               opts[:debug?]
             )
 
-            {:error, error}
+            {:error, add_bread_crumb(error, relationship, :destroy)}
         end
 
       {:error, error} ->
         debug_log(relationship.name, changeset, :read, {:error, error}, opts[:debug?])
-        {:error, error}
+        {:error, add_bread_crumb(error, relationship, :lookup)}
     end
   end
 
@@ -2325,8 +2356,16 @@ defmodule Ash.Actions.ManagedRelationships do
       {:error, error} ->
         debug_log(relationship.name, changeset, :destroy, {:error, error}, opts[:debug?])
 
-        {:error, error}
+        {:error, add_bread_crumb(error, relationship, :destroy)}
     end
+  end
+
+  defp add_bread_crumb(error, relationship, action) do
+    Ash.Error.to_ash_error(error, nil,
+      bread_crumbs: [
+        "Managed relationship #{action}: #{inspect(relationship.source)}.#{relationship.name}"
+      ]
+    )
   end
 
   defp debug_log(relationship_name, changeset, action, response, debug?) do
