@@ -49,6 +49,10 @@ defmodule Ash.Test.Resource.Validation.ChangingTest do
       default_accept :*
       defaults [:read, create: :*, update: :*]
 
+      create :create_order_from_one do
+        validate changing(:order, from: 1)
+      end
+
       update :ensure_order_changing do
         require_atomic? false
         validate changing(:order)
@@ -61,6 +65,26 @@ defmodule Ash.Test.Resource.Validation.ChangingTest do
 
       update :ensure_comments_changing do
         validate changing(:comments)
+      end
+
+      update :ensure_order_to_two do
+        require_atomic? false
+        validate changing(:order, to: 2)
+      end
+
+      update :ensure_order_from_one do
+        require_atomic? false
+        validate changing(:order, from: 1)
+      end
+
+      update :ensure_order_from_one_to_two do
+        require_atomic? false
+        validate changing(:order, from: 1, to: 2)
+      end
+
+      update :ensure_order_from_nil_to_one do
+        require_atomic? false
+        validate changing(:order, from: nil, to: 1)
       end
     end
 
@@ -174,6 +198,53 @@ defmodule Ash.Test.Resource.Validation.ChangingTest do
       # Should succeed when changing from nil to a value
       post
       |> assert_valid_updates(:ensure_order_changing, %{order: 42})
+    end
+
+    test "respects to option" do
+      post = Ash.create!(Post, %{title: "foo", order: 1})
+
+      assert_valid_updates(post, :ensure_order_to_two, %{order: 2})
+
+      assert_invalid_updates(post, :ensure_order_to_two, %{order: 3})
+    end
+
+    test "respects from option on update" do
+      post = Ash.create!(Post, %{title: "foo", order: 1})
+
+      assert_valid_updates(post, :ensure_order_from_one, %{order: 2})
+
+      post =
+        post
+        |> Ash.Changeset.for_update(:update, %{order: 3})
+        |> Ash.update!()
+
+      assert_invalid_updates(post, :ensure_order_from_one, %{order: 4})
+    end
+
+    test "respects from option on create" do
+      assert_raise Ash.Error.Invalid, ~r/must be changing/, fn ->
+        Post
+        |> Ash.Changeset.for_create(:create_order_from_one, %{title: "foo", order: 1})
+        |> Ash.create!()
+      end
+    end
+
+    test "respects from and to options together" do
+      post = Ash.create!(Post, %{title: "foo", order: 1})
+
+      assert_valid_updates(post, :ensure_order_from_one_to_two, %{order: 2})
+
+      assert_invalid_updates(post, :ensure_order_from_one_to_two, %{order: 3})
+    end
+
+    test "handles nil values in from/to options" do
+      post = Ash.create!(Post, %{title: "foo"})
+
+      assert is_nil(post.order)
+
+      assert_valid_updates(post, :ensure_order_from_nil_to_one, %{order: 1})
+
+      assert_invalid_updates(post, :ensure_order_from_nil_to_one, %{order: 2})
     end
 
     test "absent validation with changing condition fails when setting nil field" do
