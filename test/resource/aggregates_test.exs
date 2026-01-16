@@ -180,6 +180,10 @@ defmodule Ash.Test.Resource.AggregatesTest do
               uuid_primary_key :id
             end
 
+            actions do
+              defaults [:read]
+            end
+
             relationships do
               has_many :comments, AggOfAggComment, destination_attribute: :post_id
             end
@@ -188,6 +192,12 @@ defmodule Ash.Test.Resource.AggregatesTest do
               sum :total_likes, :comments, :like_count
             end
           end
+
+          assert {:ok, Ash.Type.Integer} ==
+                   Ash.Resource.Info.aggregate_type(AggOfAggPost, :total_likes)
+
+          query = Ash.Query.load(AggOfAggPost, :total_likes)
+          assert query.aggregates[:total_likes].type == Ash.Type.Integer
         end)
 
       refute stderr =~ "DslError", "Verifier should allow aggregates as fields, got: #{stderr}"

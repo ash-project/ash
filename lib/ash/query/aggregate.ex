@@ -355,11 +355,11 @@ defmodule Ash.Query.Aggregate do
 
                   field when is_atom(field) ->
                     case Ash.Resource.Info.field(related, field) do
-                      %{type: type, constraints: constraints} ->
-                        {field, type, constraints}
-
                       %Ash.Resource.Aggregate{} = aggregate ->
                         {:ok, type, constraints} = aggregate_type(related, aggregate)
+                        {field, type, constraints}
+
+                      %{type: type, constraints: constraints} ->
                         {field, type, constraints}
 
                       _ ->
@@ -696,23 +696,28 @@ defmodule Ash.Query.Aggregate do
     end
   end
 
-  defp aggregate_type(resource, aggregate) do
-    attribute =
+  @doc false
+  def aggregate_type(resource, aggregate) do
+    {field_type, field_constraints} =
       if aggregate.field do
         related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
-        Ash.Resource.Info.attribute(related, aggregate.field)
+
+        case Ash.Resource.Info.field(related, aggregate.field) do
+          %Ash.Resource.Aggregate{} = nested_agg ->
+            # Recursively resolve the type of the nested aggregate
+            {:ok, type, constraints} = aggregate_type(related, nested_agg)
+            {type, constraints}
+
+          %{type: type, constraints: constraints} ->
+            {type, constraints}
+
+          _ ->
+            {nil, nil}
+        end
+      else
+        {nil, nil}
       end
 
-    attribute_type =
-      if attribute do
-        attribute.type
-      end
-
-    attribute_constraints =
-      if attribute do
-        attribute.constraints
-      end
-
-    Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type, attribute_constraints)
+    kind_to_type(aggregate.kind, field_type, field_constraints)
   end
 end
