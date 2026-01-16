@@ -429,23 +429,7 @@ defmodule Ash.Sort do
   end
 
   defp get_type(resource, %Ash.Resource.Aggregate{} = aggregate) do
-    attribute =
-      if aggregate.field do
-        related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
-        Ash.Resource.Info.field(related, aggregate.field)
-      end
-
-    attribute_type =
-      if attribute do
-        attribute.type
-      end
-
-    attribute_constraints =
-      if attribute do
-        attribute.constraints
-      end
-
-    case Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type, attribute_constraints) do
+    case Ash.Query.Aggregate.aggregate_type(resource, aggregate) do
       {:ok, type, constraints} ->
         {type, constraints}
 
