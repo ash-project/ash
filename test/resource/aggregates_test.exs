@@ -200,7 +200,10 @@ defmodule Ash.Test.Resource.AggregatesTest do
           assert query.aggregates[:total_likes].type == Ash.Type.Integer
         end)
 
-      refute stderr =~ "DslError", "Verifier should allow aggregates as fields, got: #{stderr}"
+      # Check specifically for errors related to this aggregate - other tests running
+      # concurrently may emit DslErrors to stderr that get captured here
+      refute stderr =~
+               "Aggregate field must be an attribute, calculation, or aggregate. Got: :like_count"
     end
   end
 
