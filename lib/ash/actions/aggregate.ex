@@ -93,18 +93,18 @@ defmodule Ash.Actions.Aggregate do
               results =
                 Enum.reduce_while(
                   [
-                    {bypass_aggs, query.tenant,
+                    {bypass_aggs,
                      Map.merge(query.context || %{}, %{
                        shared: %{private: %{multitenancy: :bypass_all}}
                      })},
-                    {tenant_aggs, query.tenant, query.context}
+                    {tenant_aggs, query.context}
                   ],
                   {:ok, %{}},
                   fn
-                    {[], _tenant, _context}, acc ->
+                    {[], _context}, acc ->
                       {:cont, acc}
 
-                    {aggs, tenant, context}, {:ok, results_acc} ->
+                    {aggs, context}, {:ok, results_acc} ->
                       with {:ok, data_layer_query} <-
                              Ash.Query.data_layer_query(%Ash.Query{
                                action: Ash.Resource.Info.action(query.resource, read_action),
@@ -115,9 +115,9 @@ defmodule Ash.Actions.Aggregate do
                                distinct_sort: query.distinct_sort,
                                sort: query.sort,
                                domain: query.domain,
-                               tenant: tenant,
+                               tenant: query.tenant,
                                filter: query.filter,
-                               to_tenant: tenant,
+                               to_tenant: query.to_tenant,
                                context: context
                              }),
                            {:ok, group_results} <-

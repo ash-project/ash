@@ -74,6 +74,28 @@ defmodule Ash.Test.Actions.AggregateTest do
     end
   end
 
+  defmodule Tenant do
+    @doc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :create, :update, :destroy]
+    end
+
+    attributes do
+      uuid_primary_key :id, writable?: true
+    end
+
+    defimpl Ash.ToTenant do
+      def to_tenant(tenant, _resource), do: tenant.id
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -251,6 +273,33 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       assert %{count: 2} =
                Ash.aggregate!(Post, {:count, :count}, tenant: "foo", authorize?: false)
+
+      assert %{count: 3} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
+    end
+
+    test "honors tenant as struct" do
+      tenant_foo = Ash.create!(Tenant, %{})
+      tenant_bar = Ash.create!(Tenant, %{})
+
+      assert %{count: 0} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "title"}, tenant: tenant_foo)
+      |> Ash.create!(authorize?: false)
+
+      assert %{count: 1} =
+               Ash.aggregate!(Post, {:count, :count}, tenant: tenant_foo, authorize?: false)
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "title"}, tenant: tenant_foo)
+      |> Ash.create!(authorize?: false)
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "title"}, tenant: tenant_bar)
+      |> Ash.create!(authorize?: false)
+
+      assert %{count: 2} =
+               Ash.aggregate!(Post, {:count, :count}, tenant: tenant_foo, authorize?: false)
 
       assert %{count: 3} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
     end
