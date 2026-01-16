@@ -8,6 +8,41 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.13.0](https://github.com/ash-project/ash/compare/v3.12.0...v3.13.0) (2026-01-16)
+
+
+
+
+### Features:
+
+* Add `bulk_destroy` step to `AshReactor`. (#2500) by wjrtz [(#2500)](https://github.com/ash-project/ash/pull/2500)
+
+* add load and loading? functions to ActionInput (#2511) by zackattackz [(#2511)](https://github.com/ash-project/ash/pull/2511)
+
+### Bug Fixes:
+
+* unwrap reactor errors (#2507) by katipber [(#2507)](https://github.com/ash-project/ash/pull/2507)
+
+* transform after_batch results in bulk actions for partial change matches by [@zachdaniel](https://github.com/zachdaniel)
+
+* aggregate type resolution when aggregate references a calculation (#2519) by sevenseacat [(#2519)](https://github.com/ash-project/ash/pull/2519)
+
+* AshReactor: inconsistencies between bulk_create step and Ash.bulk_create (#2518) by wjrtz [(#2518)](https://github.com/ash-project/ash/pull/2518)
+
+* remove typo in `ref` error message (#2520) by diogomrts [(#2520)](https://github.com/ash-project/ash/pull/2520)
+
+* prevent lateral join handling for manual relationships (#2515) by [@barnabasJ](https://github.com/barnabasJ) [(#2515)](https://github.com/ash-project/ash/pull/2515)
+
+* Remove redundant action nil guards in create/bulk.ex by [@shahryarjb](https://github.com/shahryarjb) [(#2509)](https://github.com/ash-project/ash/pull/2509)
+
+### Improvements:
+
+* Upgrade Splode to 0.3.0 for stacktrace filtering by [@zachdaniel](https://github.com/zachdaniel)
+
+### Performance Improvements:
+
+* Re-enables regex as mfa to improve regex speed (#2516) by sezaru [(#2516)](https://github.com/ash-project/ash/pull/2516)
+
 ## [v3.12.0](https://github.com/ash-project/ash/compare/v3.11.3...v3.12.0) (2026-01-06)
 
 
