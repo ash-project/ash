@@ -14,6 +14,7 @@ defmodule Ash.Error do
       unknown: Ash.Error.Unknown
     ],
     merge_with: [Reactor.Error],
+    filter_stacktraces: ["Ash.", "Splode."],
     unknown_error: Ash.Error.Unknown.UnknownError
 
   @type error_keyword_option ::
