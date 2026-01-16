@@ -730,7 +730,7 @@ defmodule Ash.Test.Actions.CreateTest do
       })
       |> Ash.create!()
 
-      assert_raise Ash.Error.Invalid, ~r/Stale/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/stale/, fn ->
         Post
         |> Ash.Changeset.new()
         |> Ash.Changeset.change_attributes(%{

@@ -3278,9 +3278,6 @@ defmodule Ash.Actions.Update.Bulk do
     |> Enum.concat(errors)
   end
 
-  defp handle_after_batch_results(:ok, matches, _ref, _resource, _options),
-    do: matches
-
   defp handle_after_batch_results(results, _matches, ref, resource, opts) do
     results
     |> Enum.flat_map(fn
