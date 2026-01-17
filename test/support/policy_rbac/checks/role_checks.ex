@@ -6,7 +6,6 @@ defmodule Ash.Test.Support.PolicyRbac.Checks.RoleChecks do
   @moduledoc false
 
   use Ash.Policy.Check
-  require Ash.Query
 
   # Description of role hierarchy/permissions granted
   @role_inheritance [:admin, :member, :viewer]

@@ -6,8 +6,6 @@ defmodule Ash.Test.Type.AtomTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  require Ash.Query
-
   defmodule TestResource do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain

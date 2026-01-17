@@ -10,7 +10,6 @@ defmodule Ash.Reactor.Dsl.ActionLoad do
   defstruct __identifier__: nil, source: nil, transform: nil, __spark_metadata__: nil
 
   alias Reactor.Template
-  require Template
 
   @type t :: %__MODULE__{
           __identifier__: any,

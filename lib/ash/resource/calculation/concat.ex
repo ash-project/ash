@@ -5,7 +5,6 @@
 defmodule Ash.Resource.Calculation.Concat do
   @moduledoc false
   use Ash.Resource.Calculation
-  require Ash.Query
 
   @impl Ash.Resource.Calculation
   def init(opts) do

@@ -6,8 +6,6 @@ defmodule Ash.Test.Type.IntegerTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  require Ash.Query
-
   describe "atomic validation" do
     test "valid value" do
       {:atomic, expr} = Ash.Type.Integer.cast_atomic(1, min: 0, max: 2)

@@ -8,8 +8,6 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
 
   alias Ash.Changeset
 
-  require Ash.Query
-
   defmodule Increasing do
     use Ash.Resource.Validation
 

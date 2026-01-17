@@ -6,7 +6,6 @@ defmodule Ash.Test.Filter.SimplificationTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  require Ash.Query
   require Ash.Test.Helpers
 
   alias Ash.Test.Domain, as: Domain

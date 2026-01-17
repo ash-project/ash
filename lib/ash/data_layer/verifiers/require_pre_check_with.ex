@@ -10,8 +10,6 @@ defmodule Ash.DataLayer.Verifiers.RequirePreCheckWith do
 
   alias Spark.Dsl.Verifier
 
-  require Logger
-
   @impl true
   def verify(dsl) do
     resource = Verifier.get_persisted(dsl, :module)

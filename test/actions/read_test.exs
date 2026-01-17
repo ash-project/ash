@@ -11,7 +11,6 @@ defmodule Ash.Test.Actions.ReadTest do
   require Ash.Query
 
   alias Ash.Test.Domain, as: Domain
-  require Ash.Flags
 
   defmodule PostPreparation do
     @moduledoc false

@@ -10,7 +10,6 @@ defmodule Ash.Actions.Read do
   alias Ash.Filter
 
   require Logger
-  require Ash.Flags
   require Ash.Query
   import Ash.Expr
   require Ash.Tracer

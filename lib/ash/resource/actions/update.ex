@@ -5,8 +5,6 @@
 defmodule Ash.Resource.Actions.Update do
   @moduledoc "Represents a update action on a resource."
 
-  require Ash.Flags
-
   defstruct [
     :name,
     :primary?,

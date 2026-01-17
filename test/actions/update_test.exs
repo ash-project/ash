@@ -4,7 +4,6 @@
 
 defmodule Ash.Test.Actions.UpdateTest do
   @moduledoc false
-  require Ash.Flags
   use ExUnit.Case, async: false
 
   import Ash.Test

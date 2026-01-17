@@ -7,8 +7,6 @@ defmodule Ash.Mix.Tasks.Helpers do
   Helpers for Ash Mix tasks.
   """
 
-  require Logger
-
   @doc """
   Gets all extensions in use by the current project's domains and resources
   """

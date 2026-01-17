@@ -8,7 +8,6 @@ defmodule Ash.Actions.Update do
   alias Ash.Actions.Helpers
 
   require Ash.Tracer
-  require Logger
   import Ash.Expr
 
   @spec run(Ash.Domain.t(), Ash.Resource.record(), Ash.Resource.Actions.action(), Keyword.t()) ::

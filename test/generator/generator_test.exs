@@ -7,7 +7,6 @@ defmodule Ash.Test.GeneratorTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
   import Ash.Seed
-  require Ash.Query
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do

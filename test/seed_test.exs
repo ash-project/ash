@@ -7,7 +7,6 @@ defmodule Ash.Test.SeedTest do
   use ExUnit.Case, async: true
 
   import Ash.Seed
-  require Ash.Query
   alias Ash.Test.Domain, as: Domain
 
   defmodule Tenant do

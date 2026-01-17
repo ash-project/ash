@@ -6,8 +6,6 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  require Ash.Query
-
   defmodule Post do
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,

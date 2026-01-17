@@ -5,8 +5,6 @@
 defmodule Ash.Resource.Actions.Destroy do
   @moduledoc "Represents a destroy action on a resource."
 
-  require Ash.Flags
-
   defstruct [
     :name,
     :primary?,

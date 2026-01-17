@@ -8,7 +8,6 @@ defmodule Ash.Actions.Create do
   alias Ash.Actions.Helpers
 
   require Ash.Tracer
-  require Logger
 
   @spec run(Ash.Domain.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}

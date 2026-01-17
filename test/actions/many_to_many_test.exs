@@ -6,8 +6,6 @@ defmodule Ash.Test.Actions.ManyToManyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  require Ash.Query
-
   alias Ash.Test.Domain, as: Domain
 
   defmodule OtherDomain do
