@@ -45,7 +45,6 @@ defmodule Ash.Policy.Authorizer do
         }
 
   require Ash.Expr
-  require Ash.Sort
 
   alias Ash.Policy.{Checker, Policy}
 

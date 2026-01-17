@@ -6,7 +6,6 @@ defmodule Ash.Test.Type.DecimalTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  require Ash.Query
   require Ash.Expr
 
   defmodule Balance do

@@ -6,8 +6,6 @@ defmodule Ash.Test.Sort.DistinctTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  require Ash.Query
-
   alias Ash.Test.Domain, as: Domain
 
   defmodule Post do

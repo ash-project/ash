@@ -37,8 +37,6 @@ defmodule Ash.Query.Aggregate do
 
   alias Ash.Error.Query.{NoReadAction, NoSuchRelationship}
 
-  require Ash.Query
-
   @doc false
   def kinds, do: @kinds
 

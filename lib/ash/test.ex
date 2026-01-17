@@ -7,8 +7,6 @@ defmodule Ash.Test do
   Testing helpers for Ash.
   """
 
-  require ExUnit.Assertions
-
   @doc """
   Assert that the given changeset, query, or action input has a matching error.
 

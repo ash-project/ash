@@ -11,7 +11,6 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
   alias Ash.Changeset.ManagedRelationshipHelpers
   alias Spark.Dsl.Entity
   alias Spark.Dsl.Verifier
-  require Logger
 
   @impl true
   def verify(dsl_state) do

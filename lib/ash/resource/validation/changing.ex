@@ -197,12 +197,12 @@ defmodule Ash.Resource.Validation.Changing do
       {{:ok, from}, :error} ->
         match_from = ref_matches_value(field, from)
 
-        expr(not ^match_from)
+        expr(not (^match_from))
 
       {:error, {:ok, to}} ->
         match_to = atomic_ref_matches_value(field, to)
 
-        expr(not ^match_to)
+        expr(not (^match_to))
 
       {:error, :error} ->
         expr(

@@ -7,7 +7,6 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
   use ExUnit.Case, async: false
 
   import ExUnit.CaptureLog
-  require Ash.Query
   alias Ash.Test.Domain, as: Domain
 
   defmodule Author do

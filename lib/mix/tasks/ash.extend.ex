@@ -33,7 +33,6 @@ if Code.ensure_loaded?(Igniter) do
     ```
     """
     @shortdoc "Adds an extension or extensions to the given domain/resource"
-    require Igniter.Code.Common
     use Igniter.Mix.Task
 
     @impl Igniter.Mix.Task

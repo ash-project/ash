@@ -13,7 +13,6 @@ defmodule Ash.ActionInput do
 
   alias Ash.Error.Action.InvalidArgument
 
-  require Ash.Flags
   require Ash.Tracer
 
   defstruct [

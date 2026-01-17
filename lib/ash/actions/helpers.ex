@@ -5,7 +5,6 @@
 defmodule Ash.Actions.Helpers do
   @moduledoc false
   require Logger
-  require Ash.Flags
 
   @keep_read_action_loads_when_loading? Application.compile_env(
                                           :ash,

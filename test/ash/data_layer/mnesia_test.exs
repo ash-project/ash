@@ -5,7 +5,6 @@
 defmodule Ash.DataLayer.MnesiaTest do
   use ExUnit.Case, async: false
 
-  require IEx
   alias Ash.DataLayer.Mnesia, as: MnesiaDataLayer
   alias Ash.Test.Domain, as: Domain
 
