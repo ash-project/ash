@@ -1,0 +1,6 @@
+Fix misleading error message for duplicate use Ash.Domain (#1537)
+
+- Error now correctly points to the second 'use Ash.Domain' line instead of defmodule
+- Error message clearly indicates which line had the first call
+- Applied same fix to Ash.Domain.Interface for consistency
+- Added test to verify error points to correct line
