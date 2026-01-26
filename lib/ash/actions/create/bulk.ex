@@ -332,11 +332,12 @@ defmodule Ash.Actions.Create.Bulk do
                 notifications: Process.delete({:bulk_notifications, ref})
               }
 
-              {error_count, errors} = errors(result, error, opts)
+              {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
 
               %{result | errors: errors, error_count: error_count}
           after
             Process.delete({:bulk_notifications, ref})
+            Process.delete({:any_success?, ref})
           end
         end
     end
@@ -546,7 +547,7 @@ defmodule Ash.Actions.Create.Bulk do
             {:ok, result, notifications} ->
               Process.put({:any_success?, ref}, true)
 
-              store_notification(ref, notifications, opts)
+              Ash.Actions.Helpers.Bulk.store_notification(ref, notifications, opts)
 
               [
                 Ash.Resource.set_metadata(result, %{
@@ -660,11 +661,35 @@ defmodule Ash.Actions.Create.Bulk do
             end)
 
           {:error, error} ->
-            error
-            |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-            |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
-            |> Ash.Helpers.error()
-            |> List.wrap()
+            # Convert batch changesets to error tuples for after_transaction processing
+            error_tagged_results =
+              Enum.map(batch, fn changeset ->
+                {:error, error, changeset}
+              end)
+
+            all_tagged_results = invalid_changeset_results ++ error_tagged_results
+
+            process_results(
+              all_tagged_results,
+              opts,
+              ref,
+              domain,
+              resource,
+              action
+            )
+            |> Stream.concat(must_be_simple_results)
+            |> then(fn stream ->
+              if opts[:return_stream?] do
+                stream
+                |> Stream.map(fn
+                  {:error, _} = err -> err
+                  record -> {:ok, record}
+                end)
+                |> Stream.concat(notification_stream(ref))
+              else
+                stream
+              end
+            end)
         end
       after
         if notify? do
@@ -896,7 +921,7 @@ defmodule Ash.Actions.Create.Bulk do
         {:ok, {result, notifications, any_success?}} ->
           Process.put({:any_success?, ref}, any_success?)
 
-          store_notification(ref, notifications, opts)
+          Ash.Actions.Helpers.Bulk.store_notification(ref, notifications, opts)
 
           # result already contains records and {:error, error} tuples inline
           result
@@ -958,50 +983,6 @@ defmodule Ash.Actions.Create.Bulk do
   defp default(%{default: {mod, func, args}}), do: apply(mod, func, args)
   defp default(%{default: function}) when is_function(function, 0), do: function.()
   defp default(%{default: value}), do: value
-
-  defp errors(result, invalid, opts) when is_list(invalid) do
-    Enum.reduce(invalid, {result.error_count, result.errors}, fn invalid, {error_count, errors} ->
-      errors(%{result | error_count: error_count, errors: errors}, invalid, opts)
-    end)
-  end
-
-  defp errors(result, nil, _opts) do
-    {result.error_count + 1, []}
-  end
-
-  defp errors(result, {:error, error}, opts) do
-    if opts[:return_errors?] do
-      {result.error_count + 1, [error | result.errors || []]}
-    else
-      {result.error_count + 1, []}
-    end
-  end
-
-  defp errors(result, invalid, opts) do
-    if Enumerable.impl_for(invalid) do
-      invalid = Enum.to_list(invalid)
-      errors(result, invalid, opts)
-    else
-      errors(result, {:error, invalid}, opts)
-    end
-  end
-
-  defp store_notification(_ref, empty, _opts) when empty in [[], nil], do: :ok
-
-  defp store_notification(ref, notification, opts) do
-    if opts[:notify?] || opts[:return_notifications?] do
-      notifications = Process.get({:bulk_notifications, ref}) || []
-
-      new_notifications =
-        if is_list(notification) do
-          notification ++ notifications
-        else
-          [notification | notifications]
-        end
-
-      Process.put({:bulk_notifications, ref}, new_notifications)
-    end
-  end
 
   defp authorize(batch, opts) do
     if opts[:authorize?] do
@@ -1114,7 +1095,8 @@ defmodule Ash.Actions.Create.Bulk do
           |> Ash.Changeset.hydrate_atomic_refs(opts[:actor])
           |> Ash.Changeset.apply_atomic_constraints(opts[:actor])
 
-        new_notifications = store_notification(ref, new_notifications, opts)
+        new_notifications =
+          Ash.Actions.Helpers.Bulk.store_notification(ref, new_notifications, opts)
 
         {changeset, manage_notifications} =
           if changeset.valid? do
@@ -1138,7 +1120,7 @@ defmodule Ash.Actions.Create.Bulk do
             {changeset, []}
           end
 
-        store_notification(ref, manage_notifications, opts)
+        Ash.Actions.Helpers.Bulk.store_notification(ref, manage_notifications, opts)
 
         changeset
       else
@@ -1257,7 +1239,7 @@ defmodule Ash.Actions.Create.Bulk do
                     |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
                       changeset,
                       :bulk_create,
-                      &store_notification/3,
+                      &Ash.Actions.Helpers.Bulk.store_notification/3,
                       ref,
                       opts
                     )
@@ -1267,7 +1249,7 @@ defmodule Ash.Actions.Create.Bulk do
                 |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
                   mod,
                   :bulk_create,
-                  &store_notification/3,
+                  &Ash.Actions.Helpers.Bulk.store_notification/3,
                   ref,
                   opts,
                   batch,
@@ -1485,7 +1467,7 @@ defmodule Ash.Actions.Create.Bulk do
                authorize?: opts[:authorize?]
              ) do
           {:ok, result, %{notifications: new_notifications, new_changeset: changeset}} ->
-            store_notification(ref, new_notifications, opts)
+            Ash.Actions.Helpers.Bulk.store_notification(ref, new_notifications, opts)
 
             case Ash.Changeset.run_after_actions(result, changeset, []) do
               {:error, error} ->
@@ -1501,7 +1483,7 @@ defmodule Ash.Actions.Create.Bulk do
                 [{:error, error, changeset}]
 
               {:ok, result, changeset, %{notifications: more_new_notifications}} ->
-                store_notification(ref, more_new_notifications, opts)
+                Ash.Actions.Helpers.Bulk.store_notification(ref, more_new_notifications, opts)
                 [{:ok, result, changeset}]
             end
 
@@ -1533,7 +1515,11 @@ defmodule Ash.Actions.Create.Bulk do
     Enum.flat_map(batch, fn
       {:ok, result, changeset} ->
         if opts[:notify?] || opts[:return_notifications?] do
-          store_notification(ref, notification(changeset, result, opts), opts)
+          Ash.Actions.Helpers.Bulk.store_notification(
+            ref,
+            notification(changeset, result, opts),
+            opts
+          )
         end
 
         try do
@@ -1571,7 +1557,11 @@ defmodule Ash.Actions.Create.Bulk do
         Process.put({:any_success?, ref}, true)
 
         if opts[:notify?] || opts[:return_notifications?] do
-          store_notification(ref, notification(changeset, result, opts), opts)
+          Ash.Actions.Helpers.Bulk.store_notification(
+            ref,
+            notification(changeset, result, opts),
+            opts
+          )
         end
 
         if opts[:return_records?] do
@@ -1592,7 +1582,11 @@ defmodule Ash.Actions.Create.Bulk do
               Process.put({:any_success?, ref}, true)
 
               if opts[:notify?] || opts[:return_notifications?] do
-                store_notification(ref, notification(changeset, result, opts), opts)
+                Ash.Actions.Helpers.Bulk.store_notification(
+                  ref,
+                  notification(changeset, result, opts),
+                  opts
+                )
               end
 
               if opts[:return_records?] do
