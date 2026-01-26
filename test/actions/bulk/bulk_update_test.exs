@@ -1700,6 +1700,28 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                after: ^keyset
              } = tag.related_tags
     end
+
+    test "load results are present on notifications" do
+      related_post = Ash.create!(Post, %{title: "Related"})
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Title"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [related_post],
+          type: :append_and_remove
+        )
+        |> Ash.create!()
+
+      Ash.bulk_update!([post], :update, %{title2: "updated value"},
+        resource: Post,
+        notify?: true,
+        authorize?: false,
+        load: [:related_posts]
+      )
+
+      assert_received {:notification, %{data: %{related_posts: [post]}, action: %{type: :update}}}
+      assert post.id == related_post.id
+    end
   end
 
   describe "embedded attribute update" do

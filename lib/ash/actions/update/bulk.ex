@@ -2841,37 +2841,32 @@ defmodule Ash.Actions.Update.Bulk do
          domain,
          base_changeset
        ) do
-    results =
-      Enum.flat_map(tagged_results, fn
-        {:ok, result, changeset} ->
-          if opts[:notify?] || opts[:return_notifications?] do
-            store_notification(ref, notification(changeset, result, opts), opts)
-          end
+    process_result_any_success = fn result, changeset ->
+      Process.put({:any_success?, ref}, true)
 
+      metadata = %{tagged_result_changeset: changeset}
+      result = Ash.Resource.set_metadata(result, metadata)
+
+      if index = changeset.context[context_key][:index] do
+        Ash.Resource.put_metadata(result, metadata_key, index)
+      else
+        result
+      end
+    end
+
+    results =
+      Enum.map(tagged_results, fn
+        {:ok, result, changeset} ->
           try do
             case Ash.Changeset.run_after_transactions({:ok, result}, changeset) do
               {:ok, result} ->
-                Process.put({:any_success?, ref}, true)
-
-                if opts[:return_records?] do
-                  metadata =
-                    if index = changeset.context[context_key][:index] do
-                      %{metadata_key => index}
-                    else
-                      %{}
-                    end
-
-                  [Ash.Resource.set_metadata(result, metadata)]
-                else
-                  []
-                end
+                process_result_any_success.(result, changeset)
 
               {:error, error} ->
                 error
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
                 |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
                 |> Ash.Helpers.error()
-                |> List.wrap()
             end
           rescue
             e ->
@@ -2879,7 +2874,6 @@ defmodule Ash.Actions.Update.Bulk do
               |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
               |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
               |> Ash.Helpers.error()
-              |> List.wrap()
           end
 
         {:error, error, changeset} ->
@@ -2887,31 +2881,13 @@ defmodule Ash.Actions.Update.Bulk do
             case Ash.Changeset.run_after_transactions({:error, error}, changeset) do
               {:ok, result} ->
                 # after_transaction converted error to success
-                Process.put({:any_success?, ref}, true)
-
-                if opts[:notify?] || opts[:return_notifications?] do
-                  store_notification(ref, notification(changeset, result, opts), opts)
-                end
-
-                if opts[:return_records?] do
-                  metadata =
-                    if index = changeset.context[context_key][:index] do
-                      %{metadata_key => index}
-                    else
-                      %{}
-                    end
-
-                  [Ash.Resource.set_metadata(result, metadata)]
-                else
-                  []
-                end
+                process_result_any_success.(result, changeset)
 
               {:error, error} ->
                 error
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
                 |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
                 |> Ash.Helpers.error()
-                |> List.wrap()
             end
           rescue
             e ->
@@ -2919,33 +2895,15 @@ defmodule Ash.Actions.Update.Bulk do
               |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
               |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
               |> Ash.Helpers.error()
-              |> List.wrap()
           end
 
         {:ok_hooks_done, result, changeset} ->
           # after_transaction hooks already ran and converted error to success
-          Process.put({:any_success?, ref}, true)
-
-          if opts[:notify?] || opts[:return_notifications?] do
-            store_notification(ref, notification(changeset, result, opts), opts)
-          end
-
-          if opts[:return_records?] do
-            metadata =
-              if index = changeset.context[context_key][:index] do
-                %{metadata_key => index}
-              else
-                %{}
-              end
-
-            [Ash.Resource.set_metadata(result, metadata)]
-          else
-            []
-          end
+          process_result_any_success.(result, changeset)
 
         {:error_hooks_done, error, _changeset} ->
           # maybe_rollback and maybe_stop_on_error already called when tag was created
-          [{:error, error}]
+          {:error, error}
       end)
 
     # Separate records from error tuples before loading
@@ -2960,7 +2918,24 @@ defmodule Ash.Actions.Update.Bulk do
       |> load_data(domain, resource, base_changeset, opts)
       |> case do
         {:ok, records} ->
-          Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])
+          Enum.flat_map(records, fn record ->
+            if opts[:notify?] || opts[:return_notifications?] do
+              changeset = record.__metadata__.tagged_result_changeset
+
+              # TODO: Should we still call this even if record.__metadata__[:private][:missing_from_data_layer] ??
+              # Prior behavior would have, but IDK if it's correct
+              store_notification(ref, notification(changeset, record, opts), opts)
+            end
+
+            record = Map.update!(record, :__metadata__, &Map.delete(&1, :tagged_result_changeset))
+
+            if not opts[:return_records?] ||
+                 record.__metadata__[:private][:missing_from_data_layer] do
+              []
+            else
+              [record]
+            end
+          end)
 
         {:error, error} ->
           error

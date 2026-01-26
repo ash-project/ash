@@ -118,6 +118,10 @@ defmodule Ash.Test.NotifierTest do
         require_atomic? false
       end
 
+      update :update_and_load_comments do
+        change load(:comments)
+      end
+
       destroy :destroy do
         primary? true
         notifiers([Notifier2])
@@ -224,12 +228,38 @@ defmodule Ash.Test.NotifierTest do
     assert_receive {:notification, %Ash.Notifier.Notification{data: %Comment{name: "auto"}}}
   end
 
-  test "the `load/1` change puts the loaded data into the notification" do
+  test "the `load/1` change puts the loaded data into the notification for creates" do
     Post
     |> Ash.Changeset.for_create(:create_with_comment, %{name: "foobar"})
     |> Ash.create!()
 
-    assert_receive {:notification, %Ash.Notifier.Notification{data: %Post{comments: [_]}}}
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      data: %Post{comments: [_]},
+                      action: %{type: :create}
+                    }}
+  end
+
+  test "the `load/1` change puts the loaded data into the notification for updates" do
+    comment =
+      Comment
+      |> Ash.Changeset.for_create(:create, %{name: "barfoo"})
+      |> Ash.create!()
+
+    Post
+    |> Ash.Changeset.for_create(:create, %{name: "foobar"})
+    |> Ash.Changeset.manage_relationship(:comments, [comment], type: :append_and_remove)
+    |> Ash.create!()
+    |> Ash.Changeset.for_update(:update_and_load_comments, %{name: "bazbar"})
+    |> Ash.update!()
+
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      data: %Post{comments: [received_comment]},
+                      action: %{type: :update}
+                    }}
+
+    assert comment.id == received_comment.id
   end
 
   test "notifications use the data before its limited by a select statement" do
