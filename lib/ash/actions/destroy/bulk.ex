@@ -352,32 +352,55 @@ defmodule Ash.Actions.Destroy.Bulk do
             {tagged_results, notifications} ->
               ref = make_ref()
 
-              # For atomic, disable stop_on_error? since there are no batches to stop between
-              atomic_opts = Keyword.put(opts, :stop_on_error?, false)
+              try do
+                processed =
+                  tagged_results
+                  |> process_results(
+                    opts,
+                    ref,
+                    atomic_changeset.domain,
+                    atomic_changeset.resource,
+                    atomic_changeset
+                  )
+                  |> Enum.to_list()
 
-              processed =
-                tagged_results
-                |> process_results(
-                  atomic_opts,
-                  ref,
-                  atomic_changeset.domain,
-                  atomic_changeset.resource,
-                  atomic_changeset
+                any_success? = Process.get({:any_success?, ref}, false)
+
+                # Merge notifications from do_atomic_destroy with those from process_results
+                all_notifications =
+                  notifications ++ (Process.delete({:bulk_notifications, ref}) || [])
+
+                Ash.Actions.BulkManualActionHelpers.build_bulk_result(
+                  processed,
+                  any_success?,
+                  all_notifications,
+                  opts
                 )
-                |> Enum.to_list()
+              catch
+                {:error, error} ->
+                  status =
+                    if Process.get({:any_success?, ref}) do
+                      :partial_success
+                    else
+                      :error
+                    end
 
-              any_success? = Process.get({:any_success?, ref}, false)
+                  all_notifications =
+                    notifications ++ (Process.delete({:bulk_notifications, ref}) || [])
 
-              # Merge notifications from do_atomic_destroy with those from process_results
-              all_notifications =
-                notifications ++ (Process.delete({:bulk_notifications, ref}) || [])
+                  result = %Ash.BulkResult{
+                    status: status,
+                    records: [],
+                    notifications: all_notifications
+                  }
 
-              Ash.Actions.BulkManualActionHelpers.build_bulk_result(
-                processed,
-                any_success?,
-                all_notifications,
-                opts
-              )
+                  {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
+
+                  # Clean up process dictionary
+                  Process.delete({:any_success?, ref})
+
+                  %{result | errors: errors, error_count: error_count}
+              end
           end
           |> handle_atomic_notifications(atomic_changeset.resource, action, notify?, opts)
         after
@@ -606,7 +629,12 @@ defmodule Ash.Actions.Destroy.Bulk do
         action_select
       )
 
-    with :ok <- validate_multitenancy(atomic_changeset.resource, atomic_changeset.action, opts),
+    with :ok <-
+           Ash.Actions.Helpers.Bulk.validate_multitenancy(
+             atomic_changeset.resource,
+             atomic_changeset.action,
+             opts
+           ),
          {:ok, query} <-
            authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
@@ -625,12 +653,15 @@ defmodule Ash.Actions.Destroy.Bulk do
            ),
          {:ok, query} <- Ash.Actions.Read.handle_multitenancy(query),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
-      case Ash.DataLayer.destroy_query(
-             data_layer_query,
-             atomic_changeset,
-             destroy_query_opts
-           )
-           |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, nil) do
+      destroy_result =
+        Ash.DataLayer.destroy_query(
+          data_layer_query,
+          atomic_changeset,
+          destroy_query_opts
+        )
+        |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, nil)
+
+      case destroy_result do
         :ok ->
           # No records returned from data layer, just success
           {:ok, [], []}
@@ -822,7 +853,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     {context_cs, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
-    case validate_multitenancy(resource, action, opts) do
+    case Ash.Actions.Helpers.Bulk.validate_multitenancy(resource, action, opts) do
       {:error, error} ->
         %Ash.BulkResult{
           status: :error,
@@ -952,21 +983,6 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp validate_multitenancy(resource, action, opts) do
-    if Ash.Resource.Info.multitenancy_strategy(resource) &&
-         !Ash.Resource.Info.multitenancy_global?(resource) && !opts[:tenant] &&
-         Map.get(action, :multitenancy) not in [:bypass, :bypass_all, :allow_global] &&
-         get_in(opts, [:context, :shared, :private, :multitenancy]) not in [
-           :bypass,
-           :bypass_all,
-           :allow_global
-         ] do
-      {:error, Ash.Error.Invalid.TenantRequired.exception(resource: resource)}
-    else
-      :ok
-    end
-  end
-
   defp do_atomic_batches(atomic_changeset, domain, stream, action, input, opts) do
     batch_size = opts[:batch_size] || 100
     resource = opts[:resource]
@@ -1021,7 +1037,9 @@ defmodule Ash.Actions.Destroy.Bulk do
             read_action: read_action,
             return_records?: return_records?,
             allow_stream_with: opts[:allow_stream_with],
-            strategy: [:atomic]
+            strategy: [:atomic],
+            transaction: opts[:transaction] || true,
+            rollback_on_error?: opts[:rollback_on_error?]
           )
           |> case do
             %Ash.BulkResult{
@@ -1030,9 +1048,9 @@ defmodule Ash.Actions.Destroy.Bulk do
               notifications: notifications,
               status: status
             } ->
-              Process.put({:any_success?, ref}, status != :error)
+              Ash.Actions.Helpers.Bulk.set_success(ref, status)
 
-              store_notification(ref, notifications, opts)
+              Ash.Actions.Helpers.Bulk.store_notification(ref, notifications, opts)
               List.wrap(records)
 
             %Ash.BulkResult{
@@ -1041,8 +1059,9 @@ defmodule Ash.Actions.Destroy.Bulk do
               error_count: error_count,
               status: status
             } ->
-              Process.put({:any_success?, ref}, status != :error)
-              store_notification(ref, notifications, opts)
+              Ash.Actions.Helpers.Bulk.set_success(ref, status)
+
+              Ash.Actions.Helpers.Bulk.store_notification(ref, notifications, opts)
 
               if errors && errors != [] do
                 Ash.Actions.Helpers.Bulk.maybe_stop_on_error(hd(errors), opts)
@@ -1222,11 +1241,12 @@ defmodule Ash.Actions.Destroy.Bulk do
             notifications: Process.delete({:bulk_notifications, ref})
           }
 
-          {error_count, errors} = errors(result, error, opts)
+          {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
 
           %{result | errors: errors, error_count: error_count}
       after
         Process.delete({:bulk_notifications, ref})
+        Process.delete({:any_success?, ref})
       end
     end
   end
@@ -1464,12 +1484,12 @@ defmodule Ash.Actions.Destroy.Bulk do
               ]
 
             {:ok, notifications} ->
-              store_notification(ref, notifications, opts)
+              Ash.Actions.Helpers.Bulk.store_notification(ref, notifications, opts)
 
               []
 
             {:ok, result, notifications} ->
-              store_notification(ref, notifications, opts)
+              Ash.Actions.Helpers.Bulk.store_notification(ref, notifications, opts)
 
               [
                 Ash.Resource.set_metadata(result, %{
@@ -1546,7 +1566,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               )
 
             notifications = Process.get({:bulk_notifications, tmp_ref}) || []
-            store_notification(ref, notifications, opts)
+            Ash.Actions.Helpers.Bulk.store_notification(ref, notifications, opts)
 
             result
           end,
@@ -1591,11 +1611,35 @@ defmodule Ash.Actions.Destroy.Bulk do
             end)
 
           {:error, error} ->
-            error
-            |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-            |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
-            |> Ash.Helpers.error()
-            |> List.wrap()
+            # Convert batch changesets to error tuples for after_transaction processing
+            error_tagged_results =
+              Enum.map(batch, fn changeset ->
+                {:error, error, changeset}
+              end)
+
+            all_tagged_results = invalid_changeset_results ++ error_tagged_results
+
+            process_results(
+              all_tagged_results,
+              opts,
+              ref,
+              domain,
+              resource,
+              base_changeset
+            )
+            |> Stream.concat(must_be_simple_results)
+            |> then(fn stream ->
+              if opts[:return_stream?] do
+                stream
+                |> Stream.map(fn
+                  {:error, _} = error_tuple -> error_tuple
+                  record -> {:ok, record}
+                end)
+                |> Stream.concat(notification_stream(ref))
+              else
+                stream
+              end
+            end)
         end
       after
         if notify? do
@@ -1795,7 +1839,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
         {:ok, {result, notifications, any_success?}} ->
           Process.put({:any_success?, ref}, any_success?)
-          store_notification(ref, notifications, opts)
+          Ash.Actions.Helpers.Bulk.store_notification(ref, notifications, opts)
           # result already contains records and {:error, _} tuples inline
           List.wrap(result)
 
@@ -1821,50 +1865,6 @@ defmodule Ash.Actions.Destroy.Bulk do
         Map.put(by_index, index, ref)
       }
     end)
-  end
-
-  defp errors(result, invalid, opts) when is_list(invalid) do
-    Enum.reduce(invalid, {result.error_count, result.errors}, fn invalid, {error_count, errors} ->
-      errors(%{result | error_count: error_count, errors: errors}, invalid, opts)
-    end)
-  end
-
-  defp errors(result, nil, _opts) do
-    {result.error_count + 1, []}
-  end
-
-  defp errors(result, {:error, error}, opts) do
-    if opts[:return_errors?] do
-      {result.error_count + 1, [error | List.wrap(result.errors)]}
-    else
-      {result.error_count + 1, []}
-    end
-  end
-
-  defp errors(result, invalid, opts) do
-    if Enumerable.impl_for(invalid) do
-      invalid = Enum.to_list(invalid)
-      errors(result, invalid, opts)
-    else
-      errors(result, {:error, invalid}, opts)
-    end
-  end
-
-  defp store_notification(_ref, empty, _opts) when empty in [[], nil], do: :ok
-
-  defp store_notification(ref, notification, opts) do
-    if opts[:notify?] || opts[:return_notifications?] do
-      notifications = Process.get({:bulk_notifications, ref}) || []
-
-      new_notifications =
-        if is_list(notification) do
-          notification ++ List.wrap(notifications)
-        else
-          [notification | List.wrap(notifications)]
-        end
-
-      Process.put({:bulk_notifications, ref}, new_notifications)
-    end
   end
 
   defp authorize(batch, opts) do
@@ -1967,7 +1967,8 @@ defmodule Ash.Actions.Destroy.Bulk do
             )
           end
 
-          new_notifications = store_notification(ref, new_notifications, opts)
+          new_notifications =
+            Ash.Actions.Helpers.Bulk.store_notification(ref, new_notifications, opts)
 
           {changeset, manage_notifications} =
             if changeset.valid? do
@@ -1988,7 +1989,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               {changeset, []}
             end
 
-          store_notification(ref, manage_notifications, opts)
+          Ash.Actions.Helpers.Bulk.store_notification(ref, manage_notifications, opts)
 
           changeset
         else
@@ -2061,7 +2062,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                     |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
                       changeset,
                       :bulk_destroy,
-                      &store_notification/3,
+                      &Ash.Actions.Helpers.Bulk.store_notification/3,
                       ref,
                       opts
                     )
@@ -2071,7 +2072,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 |> Ash.Actions.BulkManualActionHelpers.process_bulk_results(
                   mod,
                   :bulk_destroy,
-                  &store_notification/3,
+                  &Ash.Actions.Helpers.Bulk.store_notification/3,
                   ref,
                   opts,
                   batch,
@@ -2192,7 +2193,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                authorize?: opts[:authorize?]
              ) do
           {:ok, result, %{notifications: new_notifications, new_changeset: changeset}} ->
-            store_notification(ref, new_notifications, opts)
+            Ash.Actions.Helpers.Bulk.store_notification(ref, new_notifications, opts)
 
             case Ash.Changeset.run_after_actions(result, changeset, []) do
               {:error, error} ->
@@ -2208,7 +2209,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 [{:error, error, changeset}]
 
               {:ok, result, changeset, %{notifications: more_new_notifications}} ->
-                store_notification(ref, more_new_notifications, opts)
+                Ash.Actions.Helpers.Bulk.store_notification(ref, more_new_notifications, opts)
                 [{:ok, result, changeset}]
             end
 
@@ -2242,7 +2243,11 @@ defmodule Ash.Actions.Destroy.Bulk do
       Enum.flat_map(tagged_results, fn
         {:ok, result, changeset} ->
           if opts[:notify?] || opts[:return_notifications?] do
-            store_notification(ref, notification(changeset, result, opts), opts)
+            Ash.Actions.Helpers.Bulk.store_notification(
+              ref,
+              notification(changeset, result, opts),
+              opts
+            )
           end
 
           try do
@@ -2287,7 +2292,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                 Process.put({:any_success?, ref}, true)
 
                 if opts[:notify?] || opts[:return_notifications?] do
-                  store_notification(ref, notification(changeset, result, opts), opts)
+                  Ash.Actions.Helpers.Bulk.store_notification(
+                    ref,
+                    notification(changeset, result, opts),
+                    opts
+                  )
                 end
 
                 if opts[:return_records?] do
@@ -2324,7 +2333,11 @@ defmodule Ash.Actions.Destroy.Bulk do
           Process.put({:any_success?, ref}, true)
 
           if opts[:notify?] || opts[:return_notifications?] do
-            store_notification(ref, notification(changeset, result, opts), opts)
+            Ash.Actions.Helpers.Bulk.store_notification(
+              ref,
+              notification(changeset, result, opts),
+              opts
+            )
           end
 
           if opts[:return_records?] do
