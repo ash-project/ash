@@ -53,12 +53,12 @@ defmodule Ash.Test.BulkAfterTransaction do
       changeset
       |> Ash.Changeset.after_transaction(fn _changeset, {:ok, result} ->
         order = :erlang.unique_integer([:monotonic])
-        send(self(), {:hook_1_executed, result.id, order})
+        send(self(), {:after_transaction_hook_1_executed, result.id, order})
         {:ok, result}
       end)
       |> Ash.Changeset.after_transaction(fn _changeset, {:ok, result} ->
         order = :erlang.unique_integer([:monotonic])
-        send(self(), {:hook_2_executed, result.id, order})
+        send(self(), {:after_transaction_hook_2_executed, result.id, order})
         {:ok, result}
       end)
     end
@@ -153,7 +153,7 @@ defmodule Ash.Test.BulkAfterTransaction do
     def change(changeset, _opts, _context) do
       Ash.Changeset.after_transaction(changeset, fn _changeset, {:ok, result} ->
         if String.contains?(result.title || "", "fail") do
-          send(self(), {:before_exception_raise, result.id})
+          send(self(), {:after_transaction_before_exception_raise, result.id})
           raise "Hook intentionally raised exception"
         else
           send(self(), {:after_transaction_success, result.id})
@@ -177,10 +177,10 @@ defmodule Ash.Test.BulkAfterTransaction do
       Ash.Changeset.after_transaction(changeset, fn
         _changeset, {:ok, result} ->
           if String.contains?(result.title || "", "stop_here") do
-            send(self(), {:hook_error_for_stop_on_error, result.id})
+            send(self(), {:after_transaction_error_for_stop_on_error, result.id})
             {:error, "Hook error to trigger stop"}
           else
-            send(self(), {:hook_success_for_stop_on_error, result.id})
+            send(self(), {:after_transaction_success_for_stop_on_error, result.id})
             {:ok, result}
           end
 
@@ -285,14 +285,16 @@ defmodule Ash.Test.BulkAfterTransaction do
           {:ok, result}
 
         changeset, {:error, _original_error} ->
-          send(self(), {:after_action_failed_converted_to_success})
+          send(self(), {:after_transaction_converted_error_to_success})
 
-          {:ok,
-           %{
-             changeset.data
-             | id: Ash.UUID.generate(),
-               title: "recovered_from_after_action_failure"
-           }}
+          case changeset.data do
+            %Ash.Changeset.OriginalDataNotAvailable{} ->
+              {:ok, struct(changeset.resource, title: "recovered_from_after_action_failure")}
+
+            data ->
+              {:ok,
+               %{data | id: Ash.UUID.generate(), title: "recovered_from_after_action_failure"}}
+          end
       end)
     end
 
