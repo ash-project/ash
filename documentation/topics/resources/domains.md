@@ -14,6 +14,23 @@ Domains serve three primary purposes:
 
 If you are familiar with a [Phoenix Context](https://hexdocs.pm/phoenix/contexts.html), you can think of a domain as the Ash equivalent.
 
+## Application Configuration (`:ash_domains`)
+
+Ash expects you to list your domain modules in your application config:
+
+```elixir
+config :my_app, :ash_domains, [MyApp.Tweets, MyApp.Billing]
+```
+
+This configuration is used for:
+
+- Mix tasks and tooling that need to load all domains (e.g. diagrams, livebooks, policy charts)
+- Compile-time validation that domains and resources are registered (the warnings shown by `use Ash.Domain` and `use Ash.Resource`)
+
+If you see warnings about missing domains or resources, it usually means this list is incomplete.
+You can add your domain modules here to resolve those warnings, or disable the validations if you
+prefer to manage it manually.
+
 ## Grouping Resources
 
 In an `Ash.Domain`, you will typically see something like this:

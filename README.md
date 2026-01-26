@@ -104,6 +104,7 @@ bar to find relevant reference information. Place the text `dsl` before your sea
 - [Reactor](documentation/topics/advanced/reactor.md)
 - [Combination Queries](documentation/topics/advanced/combination-queries.md)
 - [Timeouts](documentation/topics/advanced/timeouts.md)
+- [Manual Installation](documentation/topics/advanced/manual-installation.md)
 - [Writing Extensions](documentation/topics/advanced/writing-extensions.md)
 
 ---
