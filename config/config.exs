@@ -57,7 +57,6 @@ config :ash, :compatible_foreign_key_types, [
 
 if config_env() == :test do
   config :elixir, :time_zone_database, Tz.TimeZoneDatabase
-  config :ash, :disable_async?, true
 
   config :ash, Ash.Type.UUIDv7, match_v4_uuids?: true
 end
