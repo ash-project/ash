@@ -227,8 +227,8 @@ defmodule Ash.Actions.Action do
         |> Map.new()
 
       arguments =
-        Enum.reduce(module.reactor().inputs, input.arguments, fn input, arguments ->
-          Map.put_new(arguments, input, nil)
+        Enum.reduce(module.reactor().inputs, input.arguments, fn reactor_input, arguments ->
+          Map.put_new(arguments, reactor_input.name, nil)
         end)
 
       Reactor.run(
