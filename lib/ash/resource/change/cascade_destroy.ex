@@ -283,7 +283,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
   defp destroy_related([], _, _, _), do: :ok
 
-  defp destroy_related(data, opts, %{tenant: tenant} = context, changeset) do
+  defp destroy_related(data, opts, context, changeset) do
     action = opts.action
     relationship = opts.relationship
 
@@ -346,7 +346,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
           |> List.wrap()
           |> Ash.load!(
             [{relationship.name, load_query}],
-            tenant: tenant
+            Ash.Context.to_opts(context)
           )
           |> Enum.flat_map(fn record ->
             record

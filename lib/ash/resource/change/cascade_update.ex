@@ -188,7 +188,7 @@ defmodule Ash.Resource.Change.CascadeUpdate do
 
   defp update_related(_, [], _, _), do: :ok
 
-  defp update_related(changeset, data, opts, %{tenant: tenant} = context) do
+  defp update_related(changeset, data, opts, context) do
     action = opts.action
     relationship = opts.relationship
     copies = opts.copy_inputs
@@ -260,7 +260,7 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         |> List.wrap()
         |> Ash.load!(
           [{relationship.name, load_query}],
-          tenant: tenant
+          Ash.Context.to_opts(context)
         )
         |> Enum.flat_map(fn record ->
           record
