@@ -49,7 +49,7 @@ Update `.formatter.exs`:
 
 ## Skip protocol consolidation
 To avoid warnings about protocol consolidation when recompiling in dev, we
-set protocolc onsolidation to happen only in non-dev environments.
+set protocol consolidation to happen only in non-dev environments.
 
 ## Setup The Formatter
 Configure the DSL auto-formatter. This tells the formatter to remove excess parentheses
@@ -153,3 +153,19 @@ Update `config/config.exs`:
     formatter: [
 ...
 ```
+
+## Register Your Domains
+Ash relies on your application's `:ash_domains` configuration to find domain modules for
+mix tasks (diagrams, livebooks, policy charts) and to validate that domains/resources are
+registered at compile time.
+
+Add your domain modules to `config/config.exs`:
+
+```elixir
+config :my_app, :ash_domains, [
+  MyApp.Accounts,
+  MyApp.Helpdesk
+]
+```
+
+For more detail, see the [Domains guide](/documentation/topics/resources/domains.md#application-configuration-ash_domains).
