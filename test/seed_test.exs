@@ -51,6 +51,38 @@ defmodule Ash.Test.SeedTest do
       uuid_primary_key :id
       attribute :name, :string, public?: true, allow_nil?: false
     end
+
+    relationships do
+      has_one :context_profile, Ash.Test.SeedTest.ContextProfile, public?: true
+    end
+  end
+
+  defmodule ContextProfile do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    multitenancy do
+      strategy :context
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :image_url, :string, public?: true, allow_nil?: false
+    end
+
+    relationships do
+      belongs_to :context_user, Ash.Test.SeedTest.ContextUser, public?: true
+    end
   end
 
   defmodule AttributeUser do
@@ -361,6 +393,24 @@ defmodule Ash.Test.SeedTest do
 
       assert {:error, %{errors: [%Ash.Error.Query.NotFound{}]}} =
                Ash.get(ContextUser, user_id, tenant: "random")
+    end
+
+    test "context multitenancy creates related resources" do
+      tenant = seed!(%Tenant{name: "Tenant"})
+      tenant_id = tenant.id
+
+      user =
+        seed!(
+          ContextUser,
+          %{name: "User", context_profile: %{image_url: "example.com/profile.png"}},
+          tenant: tenant_id
+        )
+
+      user_id = user.id
+
+      assert {:ok,
+              %ContextUser{id: ^user_id, context_profile: %{image_url: "example.com/profile.png"}}} =
+               Ash.get(ContextUser, user_id, tenant: tenant_id, load: :context_profile)
     end
 
     test "attribute multitenancy works" do
