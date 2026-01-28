@@ -150,6 +150,76 @@ defmodule Ash.Actions.Helpers.Bulk do
   end
 
   @doc """
+  Marks that at least one record succeeded in a bulk operation.
+
+  Only sets to true, never overwrites true with false.
+  This ensures partial_success status when some batches succeed and others fail.
+  """
+  @spec set_success(reference(), atom()) :: :ok
+  def set_success(ref, status) when status != :error do
+    Process.put({:any_success?, ref}, true)
+    :ok
+  end
+
+  def set_success(_ref, :error), do: :ok
+
+  @doc """
+  Stores notification in process dictionary for bulk operations.
+  """
+  @spec store_notification(reference(), list() | term() | nil, Keyword.t()) :: :ok
+  def store_notification(_ref, empty, _opts) when empty in [[], nil], do: :ok
+
+  def store_notification(ref, notification, opts) do
+    if opts[:notify?] || opts[:return_notifications?] do
+      notifications = Process.get({:bulk_notifications, ref}) || []
+
+      new_notifications =
+        if is_list(notification) do
+          notification ++ notifications
+        else
+          [notification | notifications]
+        end
+
+      Process.put({:bulk_notifications, ref}, new_notifications)
+    end
+
+    :ok
+  end
+
+  @doc """
+  Accumulates errors for bulk operation results.
+
+  Returns `{error_count, errors}` tuple.
+  """
+  @spec errors(Ash.BulkResult.t(), term(), Keyword.t()) :: {non_neg_integer(), list()}
+  def errors(result, invalid, opts) when is_list(invalid) do
+    Enum.reduce(invalid, {result.error_count, result.errors}, fn invalid, {error_count, errors} ->
+      errors(%{result | error_count: error_count, errors: errors}, invalid, opts)
+    end)
+  end
+
+  def errors(result, nil, _opts) do
+    {result.error_count + 1, []}
+  end
+
+  def errors(result, {:error, error}, opts) do
+    if opts[:return_errors?] do
+      {result.error_count + 1, [error | List.wrap(result.errors)]}
+    else
+      {result.error_count + 1, []}
+    end
+  end
+
+  def errors(result, invalid, opts) do
+    if Enumerable.impl_for(invalid) do
+      invalid = Enum.to_list(invalid)
+      errors(result, invalid, opts)
+    else
+      errors(result, {:error, invalid}, opts)
+    end
+  end
+
+  @doc """
   Splits a list of changesets into valid and invalid ones.
 
   Returns a tuple where the first element contains valid changesets and the second
