@@ -55,7 +55,7 @@ if Code.ensure_loaded?(Igniter) do
 
     @skip_protocol_consolidation """
     To avoid warnings about protocol consolidation when recompiling in dev, we
-    set protocolc onsolidation to happen only in non-dev environments.
+    set protocol consolidation to happen only in non-dev environments.
     """
 
     @dependency_setup """
@@ -71,6 +71,23 @@ if Code.ensure_loaded?(Igniter) do
     @setup_backwards_compatibility """
     Configure backwards compatibility settings. See the [backwards compatibility guide](https://hexdocs.pm/ash/backwards-compatibility-config.html)
     for an explanation of each of the configurations.
+    """
+
+    @register_domains """
+    Ash relies on your application's `:ash_domains` configuration to find domain modules for
+    mix tasks (diagrams, livebooks, policy charts) and to validate that domains/resources are
+    registered at compile time.
+
+    Add your domain modules to `config/config.exs`:
+
+    ```elixir
+    config :my_app, :ash_domains, [
+      MyApp.Accounts,
+      MyApp.Helpdesk
+    ]
+    ```
+
+    For more detail, see the [Domains guide](/documentation/topics/resources/domains.md#application-configuration-ash_domains).
     """
 
     @impl Igniter.Mix.Task
@@ -220,6 +237,9 @@ if Code.ensure_loaded?(Igniter) do
           end)
         end
       )
+      |> Igniter.Scribe.section("Register Your Domains", @register_domains, fn igniter ->
+        igniter
+      end)
       |> then(fn igniter ->
         if igniter.args.options[:example] do
           generate_example(igniter, igniter.args.argv_flags)
