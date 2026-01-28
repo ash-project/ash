@@ -40,7 +40,7 @@ defmodule Ash.Resource.Verifiers.VerifyGenericActionReactorInputs do
   defp verify_reactor_action(action, module, dsl) do
     reactor = module.reactor()
 
-    required_inputs = MapSet.new(reactor.inputs)
+    required_inputs = MapSet.new(reactor.inputs, & &1.name)
     provided_arguments = MapSet.new(action.arguments, & &1.name)
 
     required_inputs
