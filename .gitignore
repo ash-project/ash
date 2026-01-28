@@ -41,3 +41,4 @@ shell.nix
 
 .vscode
 .elixir-tools
+.claude
