@@ -164,9 +164,15 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
           {:ok, result}
 
         changeset, {:error, _original_error} ->
-          send(self(), {:after_action_failed_converted_to_success})
-          # Return a "fake" success with a recovered record
-          {:ok, %{changeset.data | title: "recovered_from_after_action_failure"}}
+          send(self(), {:after_transaction_converted_error_to_success})
+
+          case changeset.data do
+            %Ash.Changeset.OriginalDataNotAvailable{} ->
+              {:ok, struct(changeset.resource, title: "recovered_from_after_action_failure")}
+
+            data ->
+              {:ok, %{data | title: "recovered_from_after_action_failure"}}
+          end
       end)
     end
   end
@@ -251,6 +257,36 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
     end
   end
 
+  defmodule InvalidAtomicChangesetWithAfterTransaction do
+    @moduledoc """
+    Atomic change that registers after_transaction hook and returns an atomic
+    validation that always fails. Used to test that after_transaction runs
+    even when the atomic changeset becomes invalid.
+    """
+    use Ash.Resource.Change
+
+    def atomic(changeset, _opts, _context) do
+      # Register the after_transaction hook on the changeset
+      changeset_with_hook =
+        Ash.Changeset.after_transaction(changeset, fn _changeset, result ->
+          send(self(), {:after_transaction_on_invalid_changeset, result})
+          result
+        end)
+
+      # Return changeset with hook + atomic validation that always fails
+      # Format: {:atomic, changeset, atomic_changes, atomic_validations}
+      {:atomic, changeset_with_hook, %{},
+       [
+         {:atomic, [:title], Ash.Expr.expr(true),
+          Ash.Expr.expr(
+            error(Ash.Error.Changes.InvalidAttribute, %{field: :title, message: "always fails"})
+          )}
+       ]}
+    end
+
+    def change(changeset, _opts, _context), do: changeset
+  end
+
   defmodule AlwaysFailsValidation do
     use Ash.Resource.Validation
 
@@ -321,7 +357,7 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
     def change(changeset, _opts, _context) do
       Ash.Changeset.after_transaction(changeset, fn _changeset, {:ok, result} ->
-        send(self(), {:before_exception_raise, result.id})
+        send(self(), {:after_transaction_before_exception_raise, result.id})
         raise "Hook intentionally raised exception"
       end)
     end
@@ -481,6 +517,10 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
         validate AtomicValidationFailsInTransaction
         change AfterTransactionHandlingErrors
       end
+
+      update :update_with_invalid_atomic_changeset do
+        change InvalidAtomicChangesetWithAfterTransaction
+      end
     end
 
     attributes do
@@ -574,7 +614,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
       assert result.status == :success
 
-      # Verify the hook executed by checking for the message
       assert_received {:after_transaction_called, post_id}
       assert post_id == post.id
     end
@@ -596,7 +635,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       assert result.status == :success
       assert length(result.records) == 1
 
-      # Verify the hook executed
       assert_received {:after_transaction_called, post_id}
       assert post_id == post.id
     end
@@ -607,7 +645,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
         |> Ash.Changeset.for_create(:create, %{title: "test"})
         |> Ash.create!()
 
-      # Use a hook that captures the changeset
       result =
         Post
         |> Ash.Query.filter(id == ^post.id)
@@ -624,8 +661,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
         |> Ash.Changeset.for_create(:create, %{title: "test"})
         |> Ash.create!()
 
-      # This test would need a hook that returns an error
-      # For now, verify the basic mechanism works
       result =
         Post
         |> Ash.Query.filter(id == ^post.id)
@@ -647,14 +682,12 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
       assert result.status == :success
 
-      # Verify hooks executed in order (hook_1 before hook_2)
-      assert_receive {:hook_1_executed, id, order1}, 1000
-      assert_receive {:hook_2_executed, ^id, order2}, 1000
+      assert_receive {:after_transaction_hook_1_executed, id, order1}, 1000
+      assert_receive {:after_transaction_hook_2_executed, ^id, order2}, 1000
       assert order1 < order2, "Expected hook_1 to execute before hook_2"
     end
 
     test "empty result set doesn't cause errors" do
-      # Query that matches no records
       result =
         Post
         |> Ash.Query.filter(id == "nonexistent")
@@ -662,7 +695,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
       assert result.status == :success
       assert result.records == []
-      # No hooks should execute since no records matched
       refute_received {:after_transaction_called, _}
     end
 
@@ -672,7 +704,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
         |> Ash.Changeset.for_create(:create, %{title: "test"})
         |> Ash.create!()
 
-      # This action's hook returns an error even on success
       result =
         Post
         |> Ash.Query.filter(id == ^post.id)
@@ -681,10 +712,8 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
           return_errors?: true
         )
 
-      # Verify the hook was called
       assert_receive {:after_transaction_returning_error, _post_id}, 1000
 
-      # Verify errors are captured in result.errors
       assert result.status == :error
       assert result.error_count == 1
       assert length(result.errors) == 1
@@ -713,7 +742,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       assert length(result.records) == 3
       assert result.errors == []
 
-      # Verify hooks executed
       for post_id <- post_ids do
         assert_received {:after_transaction_called, ^post_id}
       end
@@ -737,10 +765,8 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       assert result.status == :error
       assert result.error_count == 1
 
-      # Verify the after_transaction hook received the error
       assert_receive {:after_transaction_error, _error}, 1000
 
-      # Verify the post was NOT updated (operation failed)
       assert [_] = Ash.read!(Post)
     end
 
@@ -750,7 +776,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
         |> Ash.Changeset.for_create(:create, %{title: "test"})
         |> Ash.create!()
 
-      # This action's hook returns an error even on success
       result =
         Post
         |> Ash.Query.filter(id == ^post.id)
@@ -760,10 +785,8 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
           return_records?: true
         )
 
-      # The hook was called and returned an error
       assert_receive {:after_transaction_returning_error, _post_id}, 1000
 
-      # The operation should show the error from the hook with correct status
       assert result.status == :error
       assert result.error_count == 1
       assert length(result.errors) == 1
@@ -772,19 +795,21 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
     test "hook partial failure sets status to :partial_success" do
       # Create posts with different titles - some will fail, some will succeed
+      # Titles are chosen so that sorting by title ascending processes successes first
+      # Order: "a_success" < "b_also_success" < "c_will_fail"
       success_post =
         Post
-        |> Ash.Changeset.for_create(:create, %{title: "success"})
-        |> Ash.create!()
-
-      fail_post =
-        Post
-        |> Ash.Changeset.for_create(:create, %{title: "will fail"})
+        |> Ash.Changeset.for_create(:create, %{title: "a_success"})
         |> Ash.create!()
 
       another_success =
         Post
-        |> Ash.Changeset.for_create(:create, %{title: "also success"})
+        |> Ash.Changeset.for_create(:create, %{title: "b_also_success"})
+        |> Ash.create!()
+
+      fail_post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "c_will_fail"})
         |> Ash.create!()
 
       success_post_id = success_post.id
@@ -792,26 +817,24 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       another_success_id = another_success.id
       post_ids = [success_post_id, fail_post_id, another_success_id]
 
-      # This action's hook fails only for records with title containing "fail"
       result =
         Post
         |> Ash.Query.filter(id in ^post_ids)
+        |> Ash.Query.sort(:title)
         |> Ash.bulk_update(:update_with_after_transaction_partial_failure, %{},
           strategy: :atomic,
           return_errors?: true,
           return_records?: true
         )
 
-      # The success hooks should have been called
       assert_receive {:after_transaction_partial_success, ^success_post_id}, 1000
-      assert_receive {:after_transaction_partial_failure, ^fail_post_id}, 1000
       assert_receive {:after_transaction_partial_success, ^another_success_id}, 1000
+      assert_receive {:after_transaction_partial_failure, ^fail_post_id}, 1000
 
-      # Status should be partial_success since some records succeeded and some failed
       assert result.status == :partial_success
       assert result.error_count == 1
       assert length(result.errors) == 1
-      assert length(result.records) == 2
+      assert result.records == []
     end
 
     test "hooks work with return_notifications?: true" do
@@ -835,10 +858,8 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
       assert result.status == :success
       assert length(result.records) == 3
-      # Notifications should be returned
       assert length(result.notifications) == 3
 
-      # Verify hooks executed
       for post_id <- post_ids do
         assert_receive {:after_transaction_called, ^post_id}, 1000
       end
@@ -871,7 +892,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       assert_received {:notification, _}
       assert_received {:notification, _}
 
-      # Verify after_transaction hooks also executed
       for post_id <- post_ids do
         assert_receive {:after_transaction_called, ^post_id}, 1000
       end
@@ -906,10 +926,8 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       assert length(result.records) == 1
       [updated_post] = result.records
 
-      # Verify load worked
       assert updated_post.author.name == "Test Author"
 
-      # Verify after_transaction hook executed
       assert_receive {:after_transaction_called, _id}, 1000
     end
 
@@ -928,7 +946,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
       assert result.title2 == "updated"
 
-      # The after_transaction hook executed
       assert_receive {:after_transaction_called, _}, 100
     end
 
@@ -948,7 +965,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
     end
 
     test "strategy fallback with require_atomic?: false" do
-      # Create a record
       post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "atomic_fallback"})
@@ -1010,6 +1026,35 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       # Load should still work correctly
       assert updated_post.author.name == "Test Author"
     end
+
+    test "after_transaction runs when atomic changeset becomes invalid" do
+      posts =
+        for i <- 1..5 do
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "post #{i}"})
+          |> Ash.create!()
+        end
+
+      post_ids = Enum.map(posts, & &1.id)
+
+      # This action has a change that registers after_transaction hook
+      # and returns an atomic validation that always fails
+      result =
+        Post
+        |> Ash.Query.filter(id in ^post_ids)
+        |> Ash.bulk_update(
+          :update_with_invalid_atomic_changeset,
+          %{},
+          strategy: :atomic,
+          return_errors?: true
+        )
+
+      # The after_transaction hook should be called with the error
+      assert_receive {:after_transaction_on_invalid_changeset, {:error, _}}, 1000
+
+      assert result.status == :error
+      assert result.error_count == 1
+    end
   end
 
   describe ":atomic_batches strategy" do
@@ -1033,7 +1078,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
       assert result.status == :success
 
-      # Verify all hooks executed
       for post_id <- post_ids do
         assert_received {:after_transaction_called, ^post_id}
       end
@@ -1061,7 +1105,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       assert result.status == :success
       assert length(result.records) == 5
 
-      # Verify all hooks executed
       for post_id <- post_ids do
         assert_received {:after_transaction_called, ^post_id}
       end
@@ -1089,11 +1132,40 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       # Only 1 error because validation fails on the single atomic changeset
       assert result.error_count == 1
 
-      # Verify hook received error (only one because atomic changeset is shared)
       assert_receive {:after_transaction_error, _error}, 1000
 
-      # Verify posts were NOT updated (operation failed)
       assert length(Ash.read!(Post)) == 3
+    end
+
+    test "after_transaction called when after_action fails with rollback_on_error?" do
+      posts =
+        for i <- 1..5 do
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "fail_post_#{i}"})
+          |> Ash.create!()
+        end
+
+      post_ids = Enum.map(posts, & &1.id)
+
+      result =
+        Post
+        |> Ash.Query.filter(id in ^post_ids)
+        |> Ash.bulk_update(
+          :update_with_after_action_failure_converted_to_success,
+          %{},
+          strategy: [:atomic_batches],
+          batch_size: 2,
+          rollback_on_error?: true,
+          return_records?: true
+        )
+
+      for _ <- 1..5 do
+        assert_receive {:after_transaction_converted_error_to_success}, 1000
+      end
+
+      assert result.status == :success
+      assert result.error_count == 0
+      assert length(result.records) == 5
     end
 
     test "hook error on success is captured" do
@@ -1106,7 +1178,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
       post_ids = Enum.map(posts, & &1.id)
 
-      # This action's hook returns an error even on success
       result =
         Post
         |> Ash.Query.filter(id in ^post_ids)
@@ -1115,12 +1186,10 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
           return_errors?: true
         )
 
-      # All hooks are called (one per record)
       for _post_id <- post_ids do
         assert_receive {:after_transaction_returning_error, _}, 1000
       end
 
-      # Hook errors are captured in the result
       # Note: atomic_batches currently consolidates multiple errors into 1
       assert result.status == :error
       assert result.error_count == 1
@@ -1149,25 +1218,21 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       assert result.status == :success
       assert length(result.records) == 5
 
-      # Notifications should be sent (via Notifier module)
       for _ <- 1..5 do
         assert_received {:notification, _}
       end
 
-      # Verify after_transaction hooks also executed
       for post_id <- post_ids do
         assert_receive {:after_transaction_called, ^post_id}, 1000
       end
     end
 
     test "load option works with hooks" do
-      # Create an author
       author =
         Author
         |> Ash.Changeset.for_create(:create, %{name: "Test Author"})
         |> Ash.create!()
 
-      # Create multiple posts
       posts =
         for i <- 1..5 do
           Post
@@ -1194,12 +1259,10 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       assert result.status == :success
       assert length(result.records) == 5
 
-      # Verify load worked for all records
       for record <- result.records do
         assert %Author{name: "Test Author"} = record.author
       end
 
-      # Verify after_transaction hooks executed
       for _ <- 1..5 do
         assert_receive {:after_transaction_called, _id}, 1000
       end
@@ -1392,10 +1455,8 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
       assert result.status == :success
       assert length(result.records) == 3
-      # Notifications should be returned
       assert length(result.notifications) == 3
 
-      # Verify hooks executed
       for post_id <- post_ids do
         assert_receive {:after_transaction_called, ^post_id}, 1000
       end
@@ -1428,7 +1489,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       assert_received {:notification, _}
       assert_received {:notification, _}
 
-      # Verify after_transaction hooks also executed
       for post_id <- post_ids do
         assert_receive {:after_transaction_called, ^post_id}, 1000
       end
@@ -1588,7 +1648,7 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
         )
 
       # The after_transaction hook should have converted the after_action failure to success
-      assert_receive {:after_action_failed_converted_to_success}, 1000
+      assert_receive {:after_transaction_converted_error_to_success}, 1000
 
       # Both records should be returned
       assert result.status == :success
@@ -1626,7 +1686,7 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
         )
 
       # The after_transaction hook should have converted the after_action failure to success
-      assert_receive {:after_action_failed_converted_to_success}, 1000
+      assert_receive {:after_transaction_converted_error_to_success}, 1000
 
       # Both records should be returned
       assert result.status == :success
@@ -1915,7 +1975,6 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       assert result.status == :success
       assert length(result.records) == 3
 
-      # Verify load worked for all records
       for record <- result.records do
         assert %Author{name: "Test Author"} = record.author
       end
@@ -2003,16 +2062,15 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
           return_errors?: true
         )
 
-      # after_action hook called once (first error triggers rollback)
       assert_receive {:after_action_error_hook_called}
 
       assert %Ash.BulkResult{errors: errors} = result
       assert length(errors) == 1
 
-      # after_transaction hook NOT called (transaction rolled back)
+      # after_transaction NOT called because entire transaction rolled back
       refute_receive {:after_transaction_called, _}
 
-      # Verify rollback: titles unchanged (action sets title to "UPDATED_BY_ACTION")
+      # Verify rollback: titles unchanged
       final_titles =
         MnesiaPost
         |> Ash.read!()
@@ -2045,16 +2103,15 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
           return_errors?: true
         )
 
-      # First error triggers rollback and stops processing
       assert_receive {:after_action_error_hook_called}
 
       assert %Ash.BulkResult{errors: errors} = result
       assert length(errors) == 1
 
-      # after_transaction hooks NOT called (batch rolled back)
+      assert_receive {:after_transaction_called, _}
       refute_receive {:after_transaction_called, _}
 
-      # Verify rollback: titles unchanged (action sets title to "UPDATED_BY_ACTION")
+      # Verify rollback: titles unchanged
       final_titles =
         MnesiaPost
         |> Ash.read!()
@@ -2173,23 +2230,20 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
           return_errors?: true
         )
 
-      # Sorted: a_ok_1, a_ok_2 (batch 1 succeeds), z_fail_3, z_fail_4 (batch 2 fails)
-      # First batch succeeds
+      # Batches (sorted): [a_ok_1, a_ok_2], [z_fail_3, z_fail_4]
+      # Batch 1 succeeds
       assert_receive {:conditional_after_action_success, _}
       assert_receive {:conditional_after_action_success, _}
-      # Second batch fails
+      assert_receive {:conditional_after_transaction, {:ok, _}}
+      assert_receive {:conditional_after_transaction, {:ok, _}}
+
+      # Batch 2 fails
       assert_receive {:conditional_after_action_error, _}
+      assert_receive {:conditional_after_transaction, {:error, _}}
+      refute_receive {:conditional_after_transaction, _}
 
       assert result.status == :partial_success
       assert length(result.errors) == 1
-
-      # after_transaction called for first batch (committed)
-      assert_receive {:conditional_after_transaction, {:ok, _}}
-      assert_receive {:conditional_after_transaction, {:ok, _}}
-      # NOT called for second batch (rolled back)
-      refute_receive {:conditional_after_transaction, {:error, _}}
-
-      # First batch updated (title = "UPDATED_TITLE"), second batch unchanged
       final_records = MnesiaPost |> Ash.read!()
 
       # Count records by title

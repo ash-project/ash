@@ -524,8 +524,8 @@ defmodule Ash.Test.Actions.BulkCreateAfterTransactionTest do
 
       assert result.status == :success
 
-      assert_receive {:hook_1_executed, id, order1}, 1000
-      assert_receive {:hook_2_executed, ^id, order2}, 1000
+      assert_receive {:after_transaction_hook_1_executed, id, order1}, 1000
+      assert_receive {:after_transaction_hook_2_executed, ^id, order2}, 1000
       assert order1 < order2, "Expected hook_1 to execute before hook_2"
     end
 
@@ -686,7 +686,7 @@ defmodule Ash.Test.Actions.BulkCreateAfterTransactionTest do
           authorize?: false
         )
 
-      assert_receive {:after_action_failed_converted_to_success}, 1000
+      assert_receive {:after_transaction_converted_error_to_success}, 1000
 
       assert result.status == :success
       assert result.error_count == 0
@@ -775,7 +775,7 @@ defmodule Ash.Test.Actions.BulkCreateAfterTransactionTest do
           return_records?: true
         )
 
-      assert_receive {:before_exception_raise, _}
+      assert_receive {:after_transaction_before_exception_raise, _}
 
       assert result.status == :error
       assert result.error_count == 1
@@ -795,7 +795,7 @@ defmodule Ash.Test.Actions.BulkCreateAfterTransactionTest do
           return_records?: true
         )
 
-      for _ <- 1..3, do: assert_receive({:before_exception_raise, _})
+      for _ <- 1..3, do: assert_receive({:after_transaction_before_exception_raise, _})
 
       assert result.status == :error
       assert result.error_count == 3
@@ -821,8 +821,8 @@ defmodule Ash.Test.Actions.BulkCreateAfterTransactionTest do
         )
 
       for _ <- 1..3, do: assert_receive({:after_transaction_success, _})
-      assert_receive {:before_exception_raise, _}
-      refute_receive {:before_exception_raise, _}, 100
+      assert_receive {:after_transaction_before_exception_raise, _}
+      refute_receive {:after_transaction_before_exception_raise, _}, 100
 
       assert result.status == :partial_success
       assert result.error_count == 1
@@ -995,7 +995,7 @@ defmodule Ash.Test.Actions.BulkCreateAfterTransactionTest do
           authorize?: false
         )
 
-      assert_receive {:after_action_failed_converted_to_success}, 1000
+      assert_receive {:after_transaction_converted_error_to_success}, 1000
 
       assert result.status == :success
       assert result.error_count == 0
@@ -1742,7 +1742,9 @@ defmodule Ash.Test.Actions.BulkCreateAfterTransactionTest do
       assert %Ash.BulkResult{errors: errors} = result
       assert length(errors) == 1
 
-      # after_transaction hooks NOT called (batch rolled back)
+      # after_transaction hooks ARE called with error (consistent with bulk_update/destroy)
+      # Only one is called before stop_on_error? throws
+      assert_receive {:after_transaction_called, {:error, _}}
       refute_receive {:after_transaction_called, _}
 
       # Verify rollback: no records created
@@ -1805,8 +1807,11 @@ defmodule Ash.Test.Actions.BulkCreateAfterTransactionTest do
       # after_transaction called for first batch (committed)
       assert_receive {:conditional_after_transaction, {:ok, _}}
       assert_receive {:conditional_after_transaction, {:ok, _}}
-      # NOT called for second batch (rolled back)
-      refute_receive {:conditional_after_transaction, {:error, _}}
+
+      # after_transaction IS called for second batch with error (consistent with bulk_update/destroy)
+      # Only one is called before stop_on_error? throws
+      assert_receive {:conditional_after_transaction, {:error, _}}
+      refute_receive {:conditional_after_transaction, _}
 
       # First batch created (2 records), second batch rolled back (0 additional records)
       created_records = MnesiaPost |> Ash.read!()

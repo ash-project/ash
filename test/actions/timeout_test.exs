@@ -42,6 +42,12 @@ defmodule Ash.Test.Actions.TimeoutTest do
     end
   end
 
+  setup do
+    old_value = Application.get_env(:ash, :disable_async?)
+    Application.put_env(:ash, :disable_async?, false)
+    on_exit(fn -> Application.put_env(:ash, :disable_async?, old_value) end)
+  end
+
   describe "simple timeout" do
     test "a timeout error is raised" do
       assert_raise Ash.Error.Invalid,

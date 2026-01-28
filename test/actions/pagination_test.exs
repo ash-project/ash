@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Actions.PaginationTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use Mimic
 
   require Ash.Query
