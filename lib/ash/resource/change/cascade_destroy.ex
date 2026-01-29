@@ -346,7 +346,8 @@ defmodule Ash.Resource.Change.CascadeDestroy do
           |> List.wrap()
           |> Ash.load!(
             [{relationship.name, load_query}],
-            Ash.Context.to_opts(context)
+            scope: context,
+            authorize?: false
           )
           |> Enum.flat_map(fn record ->
             record
