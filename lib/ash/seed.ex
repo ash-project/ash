@@ -399,7 +399,7 @@ defmodule Ash.Seed do
           name: name
         } ->
           Ash.Changeset.around_action(changeset, fn changeset, callback ->
-            related = seed!(destination, value)
+            related = seed!(destination, value, tenant: changeset.tenant)
 
             changeset
             |> Ash.Changeset.force_change_attribute(
@@ -423,7 +423,7 @@ defmodule Ash.Seed do
           destination: destination,
           name: name
         } ->
-          Ash.Changeset.after_action(changeset, fn _changeset, result ->
+          Ash.Changeset.after_action(changeset, fn changeset, result ->
             related =
               value
               |> List.wrap()
@@ -432,7 +432,8 @@ defmodule Ash.Seed do
                   &1,
                   destination,
                   Map.get(result, source_attribute),
-                  destination_attribute
+                  destination_attribute,
+                  changeset.tenant
                 )
               )
 
@@ -446,14 +447,15 @@ defmodule Ash.Seed do
           destination: destination,
           name: name
         } ->
-          Ash.Changeset.after_action(changeset, fn _changeset, result ->
+          Ash.Changeset.after_action(changeset, fn changeset, result ->
             if value do
               related =
                 update_or_seed!(
                   value,
                   destination,
                   Map.get(result, source_attribute),
-                  destination_attribute
+                  destination_attribute,
+                  changeset.tenant
                 )
 
               {:ok, Map.put(result, name, related)}
@@ -473,8 +475,8 @@ defmodule Ash.Seed do
           through: through,
           name: name
         } ->
-          Ash.Changeset.after_action(changeset, fn _changeset, result ->
-            related = seed!(destination, List.wrap(value))
+          Ash.Changeset.after_action(changeset, fn changeset, result ->
+            related = seed!(destination, List.wrap(value), tenant: changeset.tenant)
 
             through =
               Enum.map(related, fn related ->
@@ -482,7 +484,7 @@ defmodule Ash.Seed do
                   source_attribute_on_join_resource => Map.get(result, source_attribute),
                   destination_attribute_on_join_resource =>
                     Map.get(related, destination_attribute)
-                })
+                }, tenant: changeset.tenant)
               end)
 
             {:ok, Map.merge(result, %{name => related, join_relationship => through})}
@@ -495,7 +497,8 @@ defmodule Ash.Seed do
          %resource{__meta__: %{state: :loaded}} = record,
          resource,
          field_value,
-         field
+         field,
+         tenant
        ) do
     record = seed!(record)
 
@@ -503,6 +506,7 @@ defmodule Ash.Seed do
       record
       |> Ash.Changeset.new()
       |> Ash.Changeset.force_change_attribute(field, field_value)
+      |> Ash.Changeset.set_tenant(tenant)
       |> Ash.Changeset.set_action_select()
 
     case Ash.DataLayer.update(resource, changeset) do
@@ -514,10 +518,11 @@ defmodule Ash.Seed do
     end
   end
 
-  defp update_or_seed!(input, resource, field_value, field) do
+  defp update_or_seed!(input, resource, field_value, field, tenant) do
     seed!(
       resource,
-      Map.put(input, field, field_value)
+      Map.put(input, field, field_value),
+      tenant: tenant
     )
   end
 
