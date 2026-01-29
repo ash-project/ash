@@ -8,6 +8,39 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.13.2](https://github.com/ash-project/ash/compare/v3.13.1...v3.13.2) (2026-01-29)
+
+
+
+
+### Bug Fixes:
+
+* Pass tenant information in Ash.Seed functions by [@zachdaniel](https://github.com/zachdaniel)
+
+* add missing "Register Your Domains" section to ash.install scribe (#2535) by [@beam-bots](https://github.com/beam-bots) [(#2535)](https://github.com/ash-project/ash/pull/2535)
+
+* update verifier for Reactor 1.0 input struct changes (#2531) by [@beam-bots](https://github.com/beam-bots) [(#2531)](https://github.com/ash-project/ash/pull/2531)
+
+* ensure after_transaction hooks are called (#2532) by [@barnabasJ](https://github.com/barnabasJ) [(#2532)](https://github.com/ash-project/ash/pull/2532)
+
+* ensure after_transaction hooks run on bulk_create batch errors by [@barnabasJ](https://github.com/barnabasJ) [(#2532)](https://github.com/ash-project/ash/pull/2532)
+
+* ensure after_transaction hooks run on bulk_update batch errors by [@barnabasJ](https://github.com/barnabasJ) [(#2532)](https://github.com/ash-project/ash/pull/2532)
+
+* ensure after_transaction hooks run on bulk_destroy batch errors by [@barnabasJ](https://github.com/barnabasJ) [(#2532)](https://github.com/ash-project/ash/pull/2532)
+
+* enable async for timeout test to restore timeout enforcement by [@barnabasJ](https://github.com/barnabasJ) [(#2532)](https://github.com/ash-project/ash/pull/2532)
+
+* aggregates to_tenant support (#2487) by Marc Planelles [(#2487)](https://github.com/ash-project/ash/pull/2487)
+
+* Allow aggregates to reference other aggregates (#2523) by sevenseacat [(#2523)](https://github.com/ash-project/ash/pull/2523)
+
+* Resolve correct type for aggregates of aggregates by sevenseacat [(#2523)](https://github.com/ash-project/ash/pull/2523)
+
+### Improvements:
+
+* support `parent` exprs in relationships for all data layers by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.13.1](https://github.com/ash-project/ash/compare/v3.13.0...v3.13.1) (2026-01-16)
 
 
