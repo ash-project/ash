@@ -480,11 +480,13 @@ defmodule Ash.Seed do
 
             through =
               Enum.map(related, fn related ->
-                seed!(through, %{
-                  source_attribute_on_join_resource => Map.get(result, source_attribute),
-                  destination_attribute_on_join_resource =>
-                    Map.get(related, destination_attribute)
-                }, tenant: changeset.tenant)
+                seed!(
+                  through,
+                  %{
+                    source_attribute_on_join_resource => Map.get(result, source_attribute),
+                    destination_attribute_on_join_resource =>
+                      Map.get(related, destination_attribute)
+                  }, tenant: changeset.tenant)
               end)
 
             {:ok, Map.merge(result, %{name => related, join_relationship => through})}
