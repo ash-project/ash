@@ -537,7 +537,7 @@ defmodule Ash.Actions.Read.Relationships do
 
   defp do_fetch_related_records(
          query,
-         _records,
+         records,
          %{no_attributes?: true} = relationship,
          related_query,
          last?
@@ -546,28 +546,51 @@ defmodule Ash.Actions.Read.Relationships do
       query.resource | Ash.Actions.Read.parent_stack_from_context(query.context)
     ]
 
+    # Check if we need per-record iteration (parent expressions without lateral join support)
+    has_parent_expr? = has_parent_expr?(relationship, query.context, query.domain)
+
+    resources =
+      [relationship.source, Map.get(relationship, :through), relationship.destination]
+      |> Enum.reject(&is_nil/1)
+
+    can_lateral_join? =
+      Ash.DataLayer.data_layer_can?(relationship.source, {:lateral_join, resources})
+
+    needs_per_record_iteration? = has_parent_expr? && !can_lateral_join?
+
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
       last?,
       fn ->
         result =
-          related_query
-          |> select_destination_attribute(relationship)
-          |> Ash.Query.set_context(%{
-            accessing_from: %{source: relationship.source, name: relationship.name},
-            parent_stack: parent_stack
-          })
-          |> then(fn query ->
-            if relationship.cardinality == :one && Map.get(relationship, :from_many?) do
-              Ash.Query.limit(query, 1)
-            else
+          if needs_per_record_iteration? do
+            # Iterate per-record, resolving parent expressions for each
+            do_per_record_no_attributes_load(
+              records,
+              relationship,
+              related_query,
+              parent_stack,
               query
-            end
-          end)
-          |> Ash.Actions.Read.unpaginated_read(nil,
-            authorize_with: relationship.authorize_read_with
-          )
+            )
+          else
+            related_query
+            |> select_destination_attribute(relationship)
+            |> Ash.Query.set_context(%{
+              accessing_from: %{source: relationship.source, name: relationship.name},
+              parent_stack: parent_stack
+            })
+            |> then(fn query ->
+              if relationship.cardinality == :one && Map.get(relationship, :from_many?) do
+                Ash.Query.limit(query, 1)
+              else
+                query
+              end
+            end)
+            |> Ash.Actions.Read.unpaginated_read(nil,
+              authorize_with: relationship.authorize_read_with
+            )
+          end
 
         {relationship, related_query, result}
       end
@@ -779,6 +802,72 @@ defmodule Ash.Actions.Read.Relationships do
         {relationship, related_query, result}
       end
     )
+  end
+
+  defp do_per_record_no_attributes_load(
+         records,
+         relationship,
+         related_query,
+         parent_stack,
+         _source_query
+       ) do
+    primary_key = Ash.Resource.Info.primary_key(relationship.source)
+
+    records
+    |> Enum.reduce_while({:ok, []}, fn record, {:ok, acc} ->
+      # Resolve parent expressions using this record's values
+      resolved_filter =
+        if related_query.filter do
+          resolve_parent_in_filter(related_query.filter, record, relationship.source)
+        else
+          nil
+        end
+
+      per_record_query =
+        related_query
+        |> Map.put(:filter, resolved_filter)
+        |> select_destination_attribute(relationship)
+        |> Ash.Query.set_context(%{
+          accessing_from: %{source: relationship.source, name: relationship.name},
+          parent_stack: parent_stack
+        })
+        |> then(fn query ->
+          if relationship.cardinality == :one && Map.get(relationship, :from_many?) do
+            Ash.Query.limit(query, 1)
+          else
+            query
+          end
+        end)
+
+      case Ash.Actions.Read.unpaginated_read(per_record_query, nil,
+             authorize_with: relationship.authorize_read_with
+           ) do
+        {:ok, results} ->
+          # Tag results with the source record's primary key
+          tagged_results =
+            Enum.map(results, fn result ->
+              Map.put(result, :__lateral_join_source__, Map.take(record, primary_key))
+            end)
+
+          {:cont, {:ok, tagged_results ++ acc}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  defp resolve_parent_in_filter(filter, parent_record, source_resource) do
+    Ash.Filter.map(filter, fn
+      %Ash.Query.Parent{expr: expr} ->
+        case Ash.Expr.eval(expr, record: parent_record, resource: source_resource) do
+          {:ok, value} -> value
+          _ -> nil
+        end
+
+      other ->
+        other
+    end)
   end
 
   defp regroup_manual_results(records, %{cardinality: :many}) do
@@ -1094,36 +1183,49 @@ defmodule Ash.Actions.Read.Relationships do
          related_records,
          _related_query
        ) do
-    Enum.map(records, fn record ->
-      case relationship.cardinality do
-        :many ->
-          Map.put(record, relationship.name, related_records)
-
-        :one ->
-          related_record =
-            case related_records do
-              [related_record] ->
-                related_record
-
-              [] ->
-                nil
-
-              [related_record | _] ->
-                # 4.0
-                Logger.warning("""
-                Got more than one result while loading relationship `#{inspect(relationship.source)}.#{relationship.name}`.
-
-                In the future this will be an error. If you have a `has_one` relationship that could produce multiple
-                related records, you must specify `from_many? true` on the relationship, *or* specify a `sort` (which
-                implicitly sets `from_many?` to `true`.
-                """)
-
-                related_record
-            end
-
-          Map.put(record, relationship.name, related_record)
+    # Check if related records have __lateral_join_source__ (from per-record iteration)
+    has_lateral_join_source? =
+      case related_records do
+        [first | _] -> Map.has_key?(first, :__lateral_join_source__)
+        _ -> false
       end
-    end)
+
+    if has_lateral_join_source? do
+      # Use lateral join attachment logic
+      attach_lateral_join_related_records(records, relationship, related_records)
+    else
+      # Original behavior: assign all related records to all source records
+      Enum.map(records, fn record ->
+        case relationship.cardinality do
+          :many ->
+            Map.put(record, relationship.name, related_records)
+
+          :one ->
+            related_record =
+              case related_records do
+                [related_record] ->
+                  related_record
+
+                [] ->
+                  nil
+
+                [related_record | _] ->
+                  # 4.0
+                  Logger.warning("""
+                  Got more than one result while loading relationship `#{inspect(relationship.source)}.#{relationship.name}`.
+
+                  In the future this will be an error. If you have a `has_one` relationship that could produce multiple
+                  related records, you must specify `from_many? true` on the relationship, *or* specify a `sort` (which
+                  implicitly sets `from_many?` to `true`.
+                  """)
+
+                  related_record
+              end
+
+            Map.put(record, relationship.name, related_record)
+        end
+      end)
+    end
   end
 
   defp do_attach_related_records(records, relationship, related_records, related_query) do
