@@ -1183,10 +1183,12 @@ defmodule Ash.Actions.Read.Relationships do
          related_records,
          _related_query
        ) do
-    # Check if related records have __lateral_join_source__ (from per-record iteration)
+    # Check if related records have __lateral_join_source__ SET (not just the key existing)
+    # All Ash resource structs have the __lateral_join_source__ key defined,
+    # but the value is nil unless it was actually set by a lateral join operation
     has_lateral_join_source? =
       case related_records do
-        [first | _] -> Map.has_key?(first, :__lateral_join_source__)
+        [first | _] -> not is_nil(first.__lateral_join_source__)
         _ -> false
       end
 
