@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: MIT
 
-defmodule Ash.Test.BulkAfterTransaction do
+defmodule Ash.Test.BulkTestChanges do
   @moduledoc """
-  Shared change modules, validations, and notifiers for bulk after_transaction tests.
+  Shared change modules, validations, and notifiers for bulk operation tests.
 
   These modules are used by:
+  - test/actions/bulk/bulk_create_test.exs
+  - test/actions/bulk/bulk_update_test.exs
+  - test/actions/bulk/bulk_destroy_test.exs
   - test/actions/bulk/bulk_create_after_transaction_test.exs
   - test/actions/bulk/bulk_update_after_transaction_test.exs
   - test/actions/bulk/bulk_destroy_after_transaction_test.exs
