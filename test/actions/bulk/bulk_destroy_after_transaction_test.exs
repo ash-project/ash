@@ -27,21 +27,21 @@ defmodule Ash.Test.Actions.BulkDestroyAfterTransactionTest do
   alias Ash.Test.Domain, as: Domain
 
   # Shared change modules (alphabetically ordered)
-  alias Ash.Test.BulkAfterTransaction.AfterActionFailsWithAfterTransaction
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionChange
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionConvertsErrorToSuccess
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionFailsForSomeRecords
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionHandlingErrors
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionModifiesError
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionRaisesException
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionReturnsError
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionWithStopOnError
-  alias Ash.Test.BulkAfterTransaction.ConditionalAfterActionErrorWithAfterTransaction
-  alias Ash.Test.BulkAfterTransaction.ManualAfterTransactionChange
-  alias Ash.Test.BulkAfterTransaction.ManualAfterTransactionConvertsErrorChange
-  alias Ash.Test.BulkAfterTransaction.MnesiaAfterTransactionChange
-  alias Ash.Test.BulkAfterTransaction.MultipleAfterTransactionHooks
-  alias Ash.Test.BulkAfterTransaction.Notifier
+  alias Ash.Test.BulkTestChanges.AfterActionFailsWithAfterTransaction
+  alias Ash.Test.BulkTestChanges.AfterTransactionChange
+  alias Ash.Test.BulkTestChanges.AfterTransactionConvertsErrorToSuccess
+  alias Ash.Test.BulkTestChanges.AfterTransactionFailsForSomeRecords
+  alias Ash.Test.BulkTestChanges.AfterTransactionHandlingErrors
+  alias Ash.Test.BulkTestChanges.AfterTransactionModifiesError
+  alias Ash.Test.BulkTestChanges.AfterTransactionRaisesException
+  alias Ash.Test.BulkTestChanges.AfterTransactionReturnsError
+  alias Ash.Test.BulkTestChanges.AfterTransactionWithStopOnError
+  alias Ash.Test.BulkTestChanges.ConditionalAfterActionErrorWithAfterTransaction
+  alias Ash.Test.BulkTestChanges.ManualAfterTransactionChange
+  alias Ash.Test.BulkTestChanges.ManualAfterTransactionConvertsErrorChange
+  alias Ash.Test.BulkTestChanges.MnesiaAfterTransactionChange
+  alias Ash.Test.BulkTestChanges.MultipleAfterTransactionHooks
+  alias Ash.Test.BulkTestChanges.Notifier
 
   defmodule ConditionalValidation do
     @moduledoc """
@@ -347,8 +347,8 @@ defmodule Ash.Test.Actions.BulkDestroyAfterTransactionTest do
       notifiers: [Notifier]
 
     alias Ash.Test.Actions.BulkDestroyAfterTransactionTest.ConditionalManualDestroy
-    alias Ash.Test.BulkAfterTransaction.ManualAfterTransactionChange
-    alias Ash.Test.BulkAfterTransaction.ManualAfterTransactionConvertsErrorChange
+    alias Ash.Test.BulkTestChanges.ManualAfterTransactionChange
+    alias Ash.Test.BulkTestChanges.ManualAfterTransactionConvertsErrorChange
 
     ets do
       private? true
@@ -1212,9 +1212,9 @@ defmodule Ash.Test.Actions.BulkDestroyAfterTransactionTest do
 
     test "hook error on success is captured" do
       posts =
-        for i <- 1..3 do
+        for title <- ["a_ok_1", "b_ok_2", "c_ok_3", "d_fail", "e_ok_5"] do
           Post
-          |> Ash.Changeset.for_create(:create, %{title: "post #{i}"})
+          |> Ash.Changeset.for_create(:create, %{title: title})
           |> Ash.create!()
         end
 
@@ -1223,17 +1223,19 @@ defmodule Ash.Test.Actions.BulkDestroyAfterTransactionTest do
       result =
         Post
         |> Ash.Query.filter(id in ^post_ids)
-        |> Ash.bulk_destroy(:destroy_with_atomic_after_transaction_returns_error, %{},
+        |> Ash.Query.sort(:title)
+        |> Ash.bulk_destroy(:destroy_with_after_transaction_partial_failure, %{},
           strategy: [:atomic_batches],
+          batch_size: 2,
           return_errors?: true
         )
 
-      for _post_id <- post_ids do
-        assert_receive {:after_transaction_returning_error, _}, 1000
-      end
+      assert_receive {:after_transaction_partial_success, _}, 1000
+      assert_receive {:after_transaction_partial_success, _}, 1000
+      assert_receive {:after_transaction_partial_success, _}, 1000
+      assert_receive {:after_transaction_partial_failure, _}, 1000
 
-      # Note: atomic_batches currently consolidates multiple errors into 1
-      assert result.status == :error
+      assert result.status == :partial_success
       assert result.error_count == 1
     end
   end

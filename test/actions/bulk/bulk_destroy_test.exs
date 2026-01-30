@@ -9,6 +9,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   import ExUnit.CaptureLog
 
   require Ash.Query
+  alias Ash.Test.BulkTestChanges.ConditionalAfterActionErrorWithAfterTransaction
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -204,6 +205,10 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       end
 
       destroy :forbidden_destroy do
+      end
+
+      destroy :destroy_with_conditional_after_action_error do
+        change ConditionalAfterActionErrorWithAfterTransaction
       end
 
       destroy :destroy_with_nested_bulk_create do
@@ -971,6 +976,368 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                  authorize?: false,
                  strategy: [:stream]
                )
+    end
+  end
+
+  describe "notifications contain loaded data" do
+    setup do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "Test Author"})
+        |> Ash.create!()
+
+      {:ok, %{author: author}}
+    end
+
+    defp flush_notifications do
+      receive do
+        {:notification, _} -> flush_notifications()
+      after
+        0 -> :ok
+      end
+    end
+
+    defp create_posts_with_author(author, count \\ 5) do
+      posts =
+        for i <- 1..count do
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: "Post #{i}"})
+          |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+          |> Ash.create!()
+        end
+
+      flush_notifications()
+      posts
+    end
+
+    test "strategy [:stream], transaction: :batch, notify?: true", %{author: author} do
+      posts = create_posts_with_author(author)
+
+      assert %Ash.BulkResult{} =
+               Ash.bulk_destroy!(posts, :destroy, %{},
+                 strategy: [:stream],
+                 transaction: :batch,
+                 batch_size: 2,
+                 notify?: true,
+                 return_records?: true,
+                 authorize?: false,
+                 load: [:author]
+               )
+
+      for _ <- 1..5 do
+        assert_received {:notification, notification}
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+    end
+
+    test "strategy [:stream], transaction: :batch, return_notifications?: true", %{author: author} do
+      posts = create_posts_with_author(author)
+
+      result =
+        Ash.bulk_destroy!(posts, :destroy, %{},
+          strategy: [:stream],
+          transaction: :batch,
+          batch_size: 2,
+          return_notifications?: true,
+          return_records?: true,
+          authorize?: false,
+          load: [:author]
+        )
+
+      assert length(result.notifications) == 5
+
+      for notification <- result.notifications do
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+    end
+
+    test "strategy [:atomic], transaction: :batch, notify?: true", %{author: author} do
+      posts = create_posts_with_author(author)
+      post_ids = Enum.map(posts, & &1.id)
+
+      assert %Ash.BulkResult{} =
+               Post
+               |> Ash.Query.filter(id in ^post_ids)
+               |> Ash.bulk_destroy!(:destroy, %{},
+                 strategy: [:atomic],
+                 transaction: :batch,
+                 batch_size: 2,
+                 notify?: true,
+                 return_records?: true,
+                 authorize?: false,
+                 load: [:author]
+               )
+
+      for _ <- 1..5 do
+        assert_received {:notification, notification}
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+    end
+
+    test "strategy [:atomic], transaction: :batch, return_notifications?: true", %{author: author} do
+      posts = create_posts_with_author(author)
+      post_ids = Enum.map(posts, & &1.id)
+
+      result =
+        Post
+        |> Ash.Query.filter(id in ^post_ids)
+        |> Ash.bulk_destroy!(:destroy, %{},
+          strategy: [:atomic],
+          transaction: :batch,
+          batch_size: 2,
+          return_notifications?: true,
+          return_records?: true,
+          authorize?: false,
+          load: [:author]
+        )
+
+      assert length(result.notifications) == 5
+
+      for notification <- result.notifications do
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+    end
+
+    test "strategy [:atomic_batches], transaction: :batch, notify?: true", %{author: author} do
+      posts = create_posts_with_author(author)
+
+      assert %Ash.BulkResult{} =
+               Ash.bulk_destroy!(posts, :destroy, %{},
+                 strategy: [:atomic_batches],
+                 transaction: :batch,
+                 batch_size: 2,
+                 notify?: true,
+                 return_records?: true,
+                 authorize?: false,
+                 load: [:author]
+               )
+
+      for _ <- 1..5 do
+        assert_received {:notification, notification}
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+    end
+
+    test "strategy [:atomic_batches], transaction: :batch, return_notifications?: true", %{
+      author: author
+    } do
+      posts = create_posts_with_author(author)
+
+      result =
+        Ash.bulk_destroy!(posts, :destroy, %{},
+          strategy: [:atomic_batches],
+          transaction: :batch,
+          batch_size: 2,
+          return_notifications?: true,
+          return_records?: true,
+          authorize?: false,
+          load: [:author]
+        )
+
+      assert length(result.notifications) == 5
+
+      for notification <- result.notifications do
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+    end
+
+    test "return_records?: false with notify?: true still loads notification data", %{
+      author: author
+    } do
+      posts = create_posts_with_author(author)
+
+      assert %Ash.BulkResult{records: nil} =
+               Ash.bulk_destroy!(posts, :destroy, %{},
+                 strategy: [:stream],
+                 batch_size: 2,
+                 notify?: true,
+                 return_records?: false,
+                 authorize?: false,
+                 load: [:author]
+               )
+
+      for _ <- 1..5 do
+        assert_received {:notification, notification}
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+    end
+
+    test "return_records?: false with return_notifications?: true still loads notification data",
+         %{author: author} do
+      posts = create_posts_with_author(author)
+
+      result =
+        Ash.bulk_destroy!(posts, :destroy, %{},
+          strategy: [:stream],
+          batch_size: 2,
+          return_notifications?: true,
+          return_records?: false,
+          authorize?: false,
+          load: [:author]
+        )
+
+      assert result.records == nil
+      assert length(result.notifications) == 5
+
+      for notification <- result.notifications do
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+    end
+
+    defp create_posts_for_partial_success_destroy(author) do
+      posts =
+        for title <- ["ok_1", "ok_2", "ok_3", "fail_4", "ok_5"] do
+          Post
+          |> Ash.Changeset.for_create(:create, %{title: title})
+          |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+          |> Ash.create!()
+        end
+
+      flush_notifications()
+      posts
+    end
+
+    test "partial success with after_action failure and notify?: true", %{author: author} do
+      posts = create_posts_for_partial_success_destroy(author)
+
+      result =
+        Ash.bulk_destroy(posts, :destroy_with_conditional_after_action_error, %{},
+          strategy: [:stream],
+          batch_size: 2,
+          notify?: true,
+          return_errors?: true,
+          authorize?: false,
+          load: [:author]
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+
+      for _ <- 1..3 do
+        assert_received {:notification, notification}
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+
+      refute_received {:notification, _}
+    end
+
+    test "partial success with after_action failure and return_notifications?: true", %{
+      author: author
+    } do
+      posts = create_posts_for_partial_success_destroy(author)
+
+      result =
+        Ash.bulk_destroy(posts, :destroy_with_conditional_after_action_error, %{},
+          strategy: [:stream],
+          batch_size: 2,
+          return_notifications?: true,
+          return_errors?: true,
+          authorize?: false,
+          load: [:author]
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+      assert length(result.notifications) == 3
+
+      for notification <- result.notifications do
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+    end
+
+    test "partial success with strategy [:atomic] and notify?: true", %{author: author} do
+      posts = create_posts_for_partial_success_destroy(author)
+      post_ids = Enum.map(posts, & &1.id)
+
+      result =
+        Post
+        |> Ash.Query.filter(id in ^post_ids)
+        |> Ash.bulk_destroy(:destroy_with_conditional_after_action_error, %{},
+          strategy: [:atomic],
+          batch_size: 2,
+          notify?: true,
+          return_errors?: true,
+          authorize?: false,
+          load: [:author]
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+
+      refute_received {:notification, _}
+    end
+
+    test "partial success with strategy [:atomic] and return_notifications?: true", %{
+      author: author
+    } do
+      posts = create_posts_for_partial_success_destroy(author)
+      post_ids = Enum.map(posts, & &1.id)
+
+      result =
+        Post
+        |> Ash.Query.filter(id in ^post_ids)
+        |> Ash.bulk_destroy(:destroy_with_conditional_after_action_error, %{},
+          strategy: [:atomic],
+          batch_size: 2,
+          return_notifications?: true,
+          return_errors?: true,
+          authorize?: false,
+          load: [:author]
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+
+      assert result.notifications == []
+    end
+
+    test "partial success with strategy [:atomic_batches] and notify?: true", %{author: author} do
+      posts = create_posts_for_partial_success_destroy(author)
+
+      result =
+        Ash.bulk_destroy(posts, :destroy_with_conditional_after_action_error, %{},
+          strategy: [:atomic_batches],
+          batch_size: 2,
+          notify?: true,
+          return_errors?: true,
+          authorize?: false,
+          load: [:author]
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+
+      for _ <- 1..2 do
+        assert_received {:notification, notification}
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+
+      refute_received {:notification, _}
+    end
+
+    test "partial success with strategy [:atomic_batches] and return_notifications?: true", %{
+      author: author
+    } do
+      posts = create_posts_for_partial_success_destroy(author)
+
+      result =
+        Ash.bulk_destroy(posts, :destroy_with_conditional_after_action_error, %{},
+          strategy: [:atomic_batches],
+          batch_size: 2,
+          return_notifications?: true,
+          return_errors?: true,
+          authorize?: false,
+          load: [:author]
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+
+      assert length(result.notifications) == 2
+
+      for notification <- result.notifications do
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
     end
   end
 end
