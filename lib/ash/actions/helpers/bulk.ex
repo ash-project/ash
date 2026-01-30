@@ -5,6 +5,8 @@
 defmodule Ash.Actions.Helpers.Bulk do
   @moduledoc false
 
+  require Logger
+
   @typedoc """
   Tagged result tuple carrying a record/error with its associated changeset.
 
@@ -247,4 +249,90 @@ defmodule Ash.Actions.Helpers.Bulk do
       {Enum.reverse(batch), Enum.reverse(invalid_changeset_errors)}
     end)
   end
+
+  @doc """
+  Checks if notifications need to be tracked for this bulk operation.
+  """
+  @spec need_notifications?(Keyword.t()) :: boolean()
+  def need_notifications?(opts) do
+    opts[:notify?] || opts[:return_notifications?]
+  end
+
+  @typedoc """
+  Map correlating changeset references to their changesets.
+
+  Built during result processing to enable matching loaded records back to
+  their original changesets via the `bulk_changeset_id` metadata.
+  """
+  @type changeset_by_id :: %{reference() => Ash.Changeset.t()}
+
+  @typedoc """
+  Function that creates a notification from a changeset and loaded record.
+  """
+  @type notification_fn ::
+          (Ash.Changeset.t(), Ash.Resource.record(), Keyword.t() ->
+             Ash.Notifier.Notification.t())
+
+  @doc """
+  Stores notifications for loaded records by matching via changeset_id in metadata.
+
+  Uses a unique reference (changeset_id) to correlate loaded records back to their
+  original changesets, which works for all resources including those without primary keys.
+
+  Buffers notifications in the process dictionary via `store_notification/3`.
+  """
+  @spec store_notifications_for_loaded_records(
+          loaded_records :: [Ash.Resource.record()],
+          changeset_by_id(),
+          bulk_ref :: reference(),
+          notification_fn(),
+          opts :: Keyword.t()
+        ) :: :ok
+  def store_notifications_for_loaded_records(
+        loaded_records,
+        changeset_by_id,
+        ref,
+        notification_fn,
+        opts
+      ) do
+    if need_notifications?(opts) do
+      Enum.each(loaded_records, fn loaded ->
+        changeset_id = loaded.__metadata__[:bulk_changeset_id]
+
+        case Map.fetch(changeset_by_id, changeset_id) do
+          {:ok, changeset} ->
+            store_notification(ref, notification_fn.(changeset, loaded, opts), opts)
+
+          :error ->
+            Logger.warning("""
+            Bulk operation: Could not find changeset for loaded record.
+            bulk_changeset_id: #{inspect(changeset_id)}
+            This may indicate a bug in bulk operation result processing.
+            """)
+        end
+      end)
+    end
+
+    :ok
+  end
+
+  @doc """
+  Removes internal bulk_changeset_id metadata from records before returning.
+
+  The bulk_changeset_id is an internal implementation detail used for matching
+  loaded records back to their changesets. It should not be exposed to users.
+  """
+  @spec clean_changeset_id_metadata(list()) :: list()
+  def clean_changeset_id_metadata(records) when is_list(records) do
+    Enum.map(records, &clean_changeset_id_metadata/1)
+  end
+
+  def clean_changeset_id_metadata(record) when is_struct(record) do
+    case record.__metadata__[:bulk_changeset_id] do
+      nil -> record
+      _id -> Map.update!(record, :__metadata__, &Map.delete(&1, :bulk_changeset_id))
+    end
+  end
+
+  def clean_changeset_id_metadata(other), do: other
 end
