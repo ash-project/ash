@@ -215,7 +215,8 @@ defmodule Ash.Actions.Destroy.Bulk do
                 input,
                 Keyword.merge(opts,
                   resource: query.resource,
-                  input_was_stream?: false
+                  input_was_stream?: false,
+                  query_sort: query.sort
                 ),
                 reason
               )
@@ -1016,6 +1017,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         |> Ash.Query.set_context(%{private: %{internal?: true}})
         |> Ash.Query.filter(^pkeys)
         |> Ash.Query.select([])
+        |> Ash.Query.sort(opts[:query_sort] || [])
         |> then(fn query ->
           run(
             domain,
@@ -1039,7 +1041,8 @@ defmodule Ash.Actions.Destroy.Bulk do
             allow_stream_with: opts[:allow_stream_with],
             strategy: [:atomic],
             transaction: opts[:transaction] || true,
-            rollback_on_error?: opts[:rollback_on_error?]
+            rollback_on_error?: opts[:rollback_on_error?],
+            stop_on_error?: opts[:stop_on_error?]
           )
           |> case do
             %Ash.BulkResult{

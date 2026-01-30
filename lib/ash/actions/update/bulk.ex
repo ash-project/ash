@@ -197,6 +197,7 @@ defmodule Ash.Actions.Update.Bulk do
                   [
                     resource: query.resource,
                     input_was_stream?: false,
+                    query_sort: query.sort,
                     context:
                       opts[:atomic_changeset] &&
                         Map.delete(opts[:atomic_changeset].context, :private)
@@ -1313,6 +1314,7 @@ defmodule Ash.Actions.Update.Bulk do
         |> Ash.Query.filter(^pkeys)
         |> Ash.Query.filter(^atomic_changeset.filter)
         |> Ash.Query.select([])
+        |> Ash.Query.sort(opts[:query_sort] || [])
         |> then(fn query ->
           run(domain, query, action.name, input,
             actor: opts[:actor],
@@ -1335,7 +1337,8 @@ defmodule Ash.Actions.Update.Bulk do
             read_action: read_action,
             strategy: [:atomic],
             transaction: opts[:transaction] || true,
-            rollback_on_error?: opts[:rollback_on_error?]
+            rollback_on_error?: opts[:rollback_on_error?],
+            stop_on_error?: opts[:stop_on_error?]
           )
           |> case do
             %Ash.BulkResult{
