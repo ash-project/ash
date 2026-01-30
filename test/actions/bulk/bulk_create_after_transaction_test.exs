@@ -25,17 +25,17 @@ defmodule Ash.Test.Actions.BulkCreateAfterTransactionTest do
   alias Ash.Test.Domain, as: Domain
 
   # Shared change modules (alphabetically ordered)
-  alias Ash.Test.BulkAfterTransaction.AfterActionFailsWithAfterTransaction
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionChange
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionConvertsErrorToSuccess
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionFailsForSomeRecords
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionHandlingErrors
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionRaisesException
-  alias Ash.Test.BulkAfterTransaction.ConditionalAfterActionErrorWithAfterTransaction
-  alias Ash.Test.BulkAfterTransaction.ManualAfterTransactionChange
-  alias Ash.Test.BulkAfterTransaction.MnesiaAfterTransactionChange
-  alias Ash.Test.BulkAfterTransaction.MultipleAfterTransactionHooks
-  alias Ash.Test.BulkAfterTransaction.Notifier
+  alias Ash.Test.BulkTestChanges.AfterActionFailsWithAfterTransaction
+  alias Ash.Test.BulkTestChanges.AfterTransactionChange
+  alias Ash.Test.BulkTestChanges.AfterTransactionConvertsErrorToSuccess
+  alias Ash.Test.BulkTestChanges.AfterTransactionFailsForSomeRecords
+  alias Ash.Test.BulkTestChanges.AfterTransactionHandlingErrors
+  alias Ash.Test.BulkTestChanges.AfterTransactionRaisesException
+  alias Ash.Test.BulkTestChanges.ConditionalAfterActionErrorWithAfterTransaction
+  alias Ash.Test.BulkTestChanges.ManualAfterTransactionChange
+  alias Ash.Test.BulkTestChanges.MnesiaAfterTransactionChange
+  alias Ash.Test.BulkTestChanges.MultipleAfterTransactionHooks
+  alias Ash.Test.BulkTestChanges.Notifier
 
   # ===========================================================================
   # CREATE-SPECIFIC MODULES (not shared)
@@ -353,8 +353,8 @@ defmodule Ash.Test.Actions.BulkCreateAfterTransactionTest do
     alias Ash.Test.Actions.BulkCreateAfterTransactionTest.ManualCreateConditionalFail
     alias Ash.Test.Actions.BulkCreateAfterTransactionTest.ManualCreateSimple
     alias Ash.Test.Actions.BulkCreateAfterTransactionTest.Org
-    alias Ash.Test.BulkAfterTransaction.AfterTransactionConvertsErrorToSuccess
-    alias Ash.Test.BulkAfterTransaction.ManualAfterTransactionChange
+    alias Ash.Test.BulkTestChanges.AfterTransactionConvertsErrorToSuccess
+    alias Ash.Test.BulkTestChanges.ManualAfterTransactionChange
 
     ets do
       private? true

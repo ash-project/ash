@@ -9,6 +9,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   import Ash.Expr
   import ExUnit.CaptureLog
 
+  alias Ash.Test.BulkTestChanges.ConditionalAfterActionErrorWithAfterTransaction
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -305,6 +306,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
       create :create_message do
         change ChangeMessage
+      end
+
+      create :create_with_conditional_after_action_error do
+        accept [:title, :author_id]
+        change ConditionalAfterActionErrorWithAfterTransaction
       end
 
       create :create_with_nested_bulk_update do
@@ -1844,5 +1850,238 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                      return_errors?: true
                    )
                  end
+  end
+
+  describe "notifications contain loaded data" do
+    setup do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "Test Author"})
+        |> Ash.create!()
+
+      {:ok, %{org: org, author: author}}
+    end
+
+    defp post_inputs(author, count \\ 5) do
+      for i <- 1..count, do: %{title: "Post #{i}", author_id: author.id}
+    end
+
+    test "transaction: :batch with notify?: true", %{org: org, author: author} do
+      log =
+        capture_log(fn ->
+          assert %Ash.BulkResult{} =
+                   Ash.bulk_create!(
+                     post_inputs(author),
+                     Post,
+                     :create,
+                     batch_size: 2,
+                     transaction: :batch,
+                     notify?: true,
+                     return_records?: true,
+                     authorize?: false,
+                     tenant: org.id,
+                     load: [:author]
+                   )
+
+          for _ <- 1..5 do
+            assert_received {:notification, notification}
+            assert %Author{name: "Test Author"} = notification.data.author
+          end
+        end)
+
+      refute log =~ "Could not find changeset for loaded record"
+    end
+
+    test "transaction: :batch with return_notifications?: true", %{org: org, author: author} do
+      {result, log} =
+        with_log(fn ->
+          Ash.bulk_create!(
+            post_inputs(author),
+            Post,
+            :create,
+            batch_size: 2,
+            transaction: :batch,
+            return_notifications?: true,
+            return_records?: true,
+            authorize?: false,
+            tenant: org.id,
+            load: [:author]
+          )
+        end)
+
+      assert length(result.notifications) == 5
+
+      for notification <- result.notifications do
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+
+      refute log =~ "Could not find changeset for loaded record"
+    end
+
+    test "return_records?: false with notify?: true still loads notification data", %{
+      org: org,
+      author: author
+    } do
+      log =
+        capture_log(fn ->
+          assert %Ash.BulkResult{records: nil} =
+                   Ash.bulk_create!(
+                     post_inputs(author),
+                     Post,
+                     :create,
+                     batch_size: 2,
+                     notify?: true,
+                     return_records?: false,
+                     authorize?: false,
+                     tenant: org.id,
+                     load: [:author]
+                   )
+
+          for _ <- 1..5 do
+            assert_received {:notification, notification}
+            assert %Author{name: "Test Author"} = notification.data.author
+          end
+        end)
+
+      refute log =~ "Could not find changeset for loaded record"
+    end
+
+    test "return_records?: false with return_notifications?: true still loads notification data",
+         %{org: org, author: author} do
+      {result, log} =
+        with_log(fn ->
+          Ash.bulk_create!(
+            post_inputs(author),
+            Post,
+            :create,
+            batch_size: 2,
+            return_notifications?: true,
+            return_records?: false,
+            authorize?: false,
+            tenant: org.id,
+            load: [:author]
+          )
+        end)
+
+      assert result.records == nil
+      assert length(result.notifications) == 5
+
+      for notification <- result.notifications do
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+
+      refute log =~ "Could not find changeset for loaded record"
+    end
+
+    test "partial success with after_action failure and notify?: true", %{
+      org: org,
+      author: author
+    } do
+      {result, log} =
+        with_log(fn ->
+          Ash.bulk_create(
+            [
+              %{title: "ok_1", author_id: author.id},
+              %{title: "ok_2", author_id: author.id},
+              %{title: "ok_3", author_id: author.id},
+              %{title: "fail_4", author_id: author.id},
+              %{title: "ok_5", author_id: author.id}
+            ],
+            Post,
+            :create_with_conditional_after_action_error,
+            batch_size: 2,
+            notify?: true,
+            return_errors?: true,
+            authorize?: false,
+            tenant: org.id,
+            load: [:author]
+          )
+        end)
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+
+      for _ <- 1..2 do
+        assert_received {:notification, notification}
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+
+      refute_received {:notification, _}
+      refute log =~ "Could not find changeset for loaded record"
+    end
+
+    test "partial success with after_action failure and return_notifications?: true", %{
+      org: org,
+      author: author
+    } do
+      {result, log} =
+        with_log(fn ->
+          Ash.bulk_create(
+            [
+              %{title: "ok_1", author_id: author.id},
+              %{title: "ok_2", author_id: author.id},
+              %{title: "ok_3", author_id: author.id},
+              %{title: "fail_4", author_id: author.id},
+              %{title: "ok_5", author_id: author.id}
+            ],
+            Post,
+            :create_with_conditional_after_action_error,
+            batch_size: 2,
+            return_notifications?: true,
+            return_errors?: true,
+            authorize?: false,
+            tenant: org.id,
+            load: [:author]
+          )
+        end)
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+
+      assert length(result.notifications) == 2
+
+      for notification <- result.notifications do
+        assert %Author{name: "Test Author"} = notification.data.author
+      end
+
+      refute log =~ "Could not find changeset for loaded record"
+    end
+  end
+
+  describe "changeset_id metadata cleanup" do
+    setup do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
+      {:ok, %{org: org}}
+    end
+
+    test "bulk_changeset_id is removed from returned records", %{org: org} do
+      result =
+        Ash.bulk_create!(
+          [%{title: "Clean 1"}, %{title: "Clean 2"}, %{title: "Clean 3"}],
+          Post,
+          :create,
+          return_records?: true,
+          return_notifications?: true,
+          authorize?: false,
+          tenant: org.id
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 3
+
+      for record <- result.records do
+        refute Map.has_key?(record.__metadata__, :bulk_changeset_id)
+        assert Map.has_key?(record.__metadata__, :bulk_create_index)
+      end
+    end
   end
 end

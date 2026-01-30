@@ -26,16 +26,16 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
   alias Ash.Test.Domain, as: Domain
 
   # Shared change modules (alphabetically ordered)
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionChange
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionHandlingErrors
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionModifiesError
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionReturnsError
-  alias Ash.Test.BulkAfterTransaction.AfterTransactionWithStopOnError
-  alias Ash.Test.BulkAfterTransaction.ManualAfterTransactionChange
-  alias Ash.Test.BulkAfterTransaction.ManualAfterTransactionConvertsErrorChange
-  alias Ash.Test.BulkAfterTransaction.MnesiaAfterTransactionChange
-  alias Ash.Test.BulkAfterTransaction.MultipleAfterTransactionHooks
-  alias Ash.Test.BulkAfterTransaction.Notifier
+  alias Ash.Test.BulkTestChanges.AfterTransactionChange
+  alias Ash.Test.BulkTestChanges.AfterTransactionHandlingErrors
+  alias Ash.Test.BulkTestChanges.AfterTransactionModifiesError
+  alias Ash.Test.BulkTestChanges.AfterTransactionReturnsError
+  alias Ash.Test.BulkTestChanges.AfterTransactionWithStopOnError
+  alias Ash.Test.BulkTestChanges.ManualAfterTransactionChange
+  alias Ash.Test.BulkTestChanges.ManualAfterTransactionConvertsErrorChange
+  alias Ash.Test.BulkTestChanges.MnesiaAfterTransactionChange
+  alias Ash.Test.BulkTestChanges.MultipleAfterTransactionHooks
+  alias Ash.Test.BulkTestChanges.Notifier
 
   # ===========================================================================
   # UPDATE-SPECIFIC MODULES
@@ -1170,9 +1170,9 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
     test "hook error on success is captured" do
       posts =
-        for i <- 1..3 do
+        for title <- ["a_ok_1", "b_ok_2", "c_ok_3", "d_fail", "e_ok_5"] do
           Post
-          |> Ash.Changeset.for_create(:create, %{title: "post #{i}"})
+          |> Ash.Changeset.for_create(:create, %{title: title})
           |> Ash.create!()
         end
 
@@ -1181,17 +1181,19 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
       result =
         Post
         |> Ash.Query.filter(id in ^post_ids)
-        |> Ash.bulk_update(:update_with_atomic_after_transaction_returns_error, %{},
+        |> Ash.Query.sort(:title)
+        |> Ash.bulk_update(:update_with_after_transaction_partial_failure, %{},
           strategy: [:atomic_batches],
+          batch_size: 2,
           return_errors?: true
         )
 
-      for _post_id <- post_ids do
-        assert_receive {:after_transaction_returning_error, _}, 1000
-      end
+      assert_receive {:after_transaction_partial_success, _}, 1000
+      assert_receive {:after_transaction_partial_success, _}, 1000
+      assert_receive {:after_transaction_partial_success, _}, 1000
+      assert_receive {:after_transaction_partial_failure, _}, 1000
 
-      # Note: atomic_batches currently consolidates multiple errors into 1
-      assert result.status == :error
+      assert result.status == :partial_success
       assert result.error_count == 1
     end
 
@@ -1409,28 +1411,30 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
     test "hook can return error even when DB operation succeeds" do
       posts =
-        for i <- 1..3 do
+        for title <- ["a_ok_1", "b_ok_2", "c_ok_3", "d_fail", "e_ok_5"] do
           Post
-          |> Ash.Changeset.for_create(:create, %{title: "post #{i}"})
+          |> Ash.Changeset.for_create(:create, %{title: title})
           |> Ash.create!()
         end
 
       post_ids = Enum.map(posts, & &1.id)
 
-      # This action's hook returns an error even on success
       result =
         Post
         |> Ash.Query.filter(id in ^post_ids)
-        |> Ash.bulk_update(:update_with_atomic_after_transaction_returns_error, %{},
+        |> Ash.Query.sort(:title)
+        |> Ash.bulk_update(:update_with_after_transaction_partial_failure, %{},
           strategy: :stream,
+          batch_size: 2,
           return_errors?: true
         )
 
-      # Stream strategy stops on first error (default stop_on_error?: true)
-      assert_receive {:after_transaction_returning_error, _}, 1000
+      assert_receive {:after_transaction_partial_success, _}, 1000
+      assert_receive {:after_transaction_partial_success, _}, 1000
+      assert_receive {:after_transaction_partial_success, _}, 1000
+      assert_receive {:after_transaction_partial_failure, _}, 1000
 
-      # Hook error is captured in the result
-      assert result.status == :error
+      assert result.status == :partial_success
       assert result.error_count == 1
     end
 
@@ -2384,8 +2388,8 @@ defmodule Ash.Test.Actions.BulkUpdateAfterTransactionTest do
 
     alias Ash.Test.Actions.BulkUpdateAfterTransactionTest.ManualUpdateFails
     alias Ash.Test.Actions.BulkUpdateAfterTransactionTest.ManualUpdateSimple
-    alias Ash.Test.BulkAfterTransaction.ManualAfterTransactionChange
-    alias Ash.Test.BulkAfterTransaction.ManualAfterTransactionConvertsErrorChange
+    alias Ash.Test.BulkTestChanges.ManualAfterTransactionChange
+    alias Ash.Test.BulkTestChanges.ManualAfterTransactionConvertsErrorChange
 
     ets do
       private? true
