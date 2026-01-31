@@ -39,7 +39,7 @@ defmodule Ash.Resource.ManualRelationship do
               opts :: Keyword.t(),
               context :: Context.t()
             ) ::
-              {:ok, map} | {:error, term}
+              {:ok, [term] | map} | {:error, term}
 
   defmacro __using__(_) do
     quote do
