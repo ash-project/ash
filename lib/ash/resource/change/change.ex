@@ -176,6 +176,52 @@ defmodule Ash.Resource.Change do
             ) ::
               boolean
 
+  @doc """
+  The atomic version of a change. This is called instead of `c:change/3` when running
+  atomically. Atomic changes are expressed as maps of attribute names to expressions
+  that will be evaluated in the data layer.
+
+  ## Return Values
+
+  - `{:atomic, atomics}` - A map of attribute names to expressions for updating existing records.
+    Used during the UPDATE phase (for updates or the ON CONFLICT clause of upserts).
+    The expression can reference existing values using `atomic_ref(:field)`.
+
+  - `{:atomic_set, atomics}` - A map of attribute names to expressions for creating records.
+    Used during the INSERT phase of create actions. Cannot use `atomic_ref/1` since there
+    is no existing row to reference. For update actions, behaves the same as `{:atomic, ...}`.
+
+  - A list containing both `{:atomic, ...}` and `{:atomic_set, ...}` tuples when you need
+    to set values for both the INSERT and UPDATE phases (useful for upserts).
+
+  - `{:ok, changeset}` - Return a modified changeset (the change was applied in-memory).
+
+  - `{:not_atomic, reason}` - Indicates the change cannot run atomically.
+
+  - `:ok` - No changes needed.
+
+  - `{:error, term}` - An error occurred.
+
+  ## Examples
+
+      # Simple atomic update (increment counter)
+      def atomic(_changeset, _opts, _context) do
+        {:atomic, %{counter: expr(counter + 1)}}
+      end
+
+      # Atomic set for creates (set timestamp)
+      def atomic(_changeset, _opts, _context) do
+        {:atomic_set, %{created_at: expr(now())}}
+      end
+
+      # Both insert and update values (for upserts)
+      def atomic(_changeset, _opts, _context) do
+        [
+          {:atomic_set, %{created_at: expr(now())}},
+          {:atomic, %{updated_at: expr(now())}}
+        ]
+      end
+  """
   @callback atomic(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: Context.t()) ::
               {:ok, Ash.Changeset.t()}
               | {:atomic, %{optional(atom()) => Ash.Expr.t() | {:atomic, Ash.Expr.t()}}}

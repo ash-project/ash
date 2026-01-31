@@ -26,6 +26,26 @@ Ticket
 
 For a full list of all of the available options for configuring create actions, see [the Ash.Resource.Dsl documentation](dsl-ash-resource.html#actions-create).
 
+## Atomics on Create
+
+You can use `atomic_set/3` to set attribute values using database expressions during create actions. This is useful for values that should be computed by the database rather than in application code, such as timestamps or UUIDs.
+
+```elixir
+create :create do
+  accept [:title]
+  change atomic_set(:created_at, expr(now()))
+  change atomic_set(:uuid, expr(fragment("gen_random_uuid()")))
+end
+```
+
+> ### Using `atomic_ref/1` in creates {: .info}
+>
+> You can use `atomic_ref/1` in create actions. It returns `nil` or the latest value that the attribute
+> is being changed to. Note that `atomic_set` cannot reference related fields, use `exists` with relationships,
+> or reference aggregates that involve relationships, since these require a persisted record.
+
+For update actions, `atomic_set/3` behaves identically to `atomic_update/3`.
+
 See the [Code Interface guide](documentation/topics/resources/code-interfaces.md) for creating an interface to call the action more elegantly, like so:
 
 ```elixir
@@ -204,9 +224,14 @@ Now, when we perform this upsert, there are three possible outcomes:
 
 
 
-### Atomic Updates
+### Atomic Updates and Atomic Sets
 
-Upserts support atomic updates. These atomic updates _do not apply to the data being created_. They are only applied in the case of an update. For example:
+Upserts support both `atomic_update/3` and `atomic_set/3`. The key difference is when each applies:
+
+- **`atomic_update/3`** - Only applies during the UPDATE phase (when the record already exists). Does not affect the INSERT.
+- **`atomic_set/3`** - Applies during the INSERT phase (when creating). For upserts, if you want the value set for both cases, you can use both together.
+
+For example:
 
 ```elixir
 create :create_game do
@@ -219,6 +244,22 @@ end
 ```
 
 This will result in creating a game with a score of 0, and if the game already exists, it will increment the score by 1.
+
+If you want database-generated values for both insert and update:
+
+```elixir
+create :upsert_with_timestamps do
+  accept [:identifier]
+  upsert? true
+  upsert_identity :identifier
+  # Set created_at only on insert
+  change atomic_set(:created_at, expr(now()))
+  # Update updated_at on both insert and update
+  change set_attribute(:updated_at, &DateTime.utc_now/0)
+  # Or use atomic_update for update-only behavior
+  change atomic_update(:access_count, expr(access_count + 1))
+end
+```
 
 For information on options configured in the action, see `d:Ash.Resource.Dsl.actions.create`.
 For information on options when calling the action, see `Ash.create/2`.

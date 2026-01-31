@@ -144,6 +144,55 @@ defmodule MyApp.Changes.Slugify do
 end
 ```
 
+### Return Values
+
+The `atomic/3` callback supports several return values:
+
+- `{:atomic, atomics}` - A map of attribute names to expressions for updating existing records. Used during the UPDATE phase (for updates or the ON CONFLICT clause of upserts). Can use `atomic_ref(:field)` to reference current values.
+
+- `{:atomic_set, atomics}` - A map of attribute names to expressions for creating records. Used during the INSERT phase of create actions. Cannot use `atomic_ref/1` since there is no existing row.
+
+- A list containing both `{:atomic, ...}` and `{:atomic_set, ...}` tuples when you need to set values for both phases (useful for upserts).
+
+- `{:ok, changeset}` - Return a modified changeset (the change was applied in-memory).
+
+- `{:not_atomic, reason}` - Indicates the change cannot run atomically.
+
+- `:ok` - No changes needed.
+
+#### Example: Handling both creates and updates
+
+```elixir
+@impl true
+def atomic(changeset, opts, context) do
+  case changeset.action.type do
+    :create ->
+      # For creates, set initial value
+      {:atomic_set, %{opts[:attribute] => expr(now())}}
+
+    :update ->
+      # For updates, use atomic_ref to reference current value
+      {:atomic, %{opts[:attribute] => expr(^atomic_ref(opts[:attribute]) + 1)}}
+  end
+end
+```
+
+#### Example: Upserts with different insert/update behavior
+
+```elixir
+@impl true
+def atomic(_changeset, opts, _context) do
+  [
+    # Set created_at only on insert
+    {:atomic_set, %{created_at: expr(now())}},
+    # Increment counter on update (ON CONFLICT)
+    {:atomic, %{opts[:counter] => expr(^atomic_ref(opts[:counter]) + 1)}}
+  ]
+end
+```
+
+### Other patterns
+
 In some cases, changes operate only on arguments or context, or otherwise can do their work regardless of atomicity. In these cases, you can make your atomic callback call the `change/3` function
 
 ```elixir

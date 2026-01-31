@@ -47,6 +47,13 @@ end
 
 Changing attributes in this way makes them safer to use in concurrent environments, and is typically more performant than doing it manually in memory.
 
+> ### `atomic_set/3` vs `atomic_update/3` {: .info}
+>
+> For update actions, `atomic_set/3` is equivalent to `atomic_update/3`. The `atomic_set/3` function
+> exists to provide a unified interface that works for both create and update actions. If you're writing
+> a change that should work for both action types, use `atomic_set/3`. See the
+> [Create Actions guide](documentation/topics/actions/create-actions.md#atomics-on-create) for more details.
+
 > ### Atomics are not stored with other changes {: .warning}
 >
 > While we recommend using atomics wherever possible, it is important to note that they are stored in their own map in the changeset,

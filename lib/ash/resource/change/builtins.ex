@@ -169,6 +169,8 @@ defmodule Ash.Resource.Change.Builtins do
 
   For updating existing records, use `atomic_update/3` instead.
 
+  When used on update actions, this behaves the same as `atomic_update/3`.
+
   ## Options
 
   * `:cast_atomic?` - set to `false` to ignore atomic type casting logic. Defaults to `true`.
@@ -180,6 +182,24 @@ defmodule Ash.Resource.Change.Builtins do
 
       # Use a database function
       change atomic_set(:uuid, expr(fragment("gen_random_uuid()")))
+
+  ## Custom Changes
+
+  To implement similar behavior in a custom change, return `{:atomic_set, atomics}`
+  from the `c:Ash.Resource.Change.atomic/3` callback:
+
+      def atomic(_changeset, _opts, _context) do
+        {:atomic_set, %{created_at: expr(now())}}
+      end
+
+  For upserts where you need both insert and update values, return a list:
+
+      def atomic(_changeset, _opts, _context) do
+        [
+          {:atomic_set, %{created_at: expr(now())}},
+          {:atomic, %{updated_at: expr(now())}}
+        ]
+      end
   """
   @spec atomic_set(attribute :: atom, expr :: Ash.Expr.t(), opts :: Keyword.t()) ::
           Ash.Resource.Change.ref()
@@ -194,7 +214,12 @@ defmodule Ash.Resource.Change.Builtins do
   This is used to update values during the UPDATE phase (for updates or the ON CONFLICT
   clause of upserts). The expression can use `atomic_ref/1` to reference existing values.
 
-  For setting values during create, use `atomic_set/3` instead.
+  For setting values during create (INSERT phase), use `atomic_set/3` instead.
+
+  > #### Cannot be used on create actions {: .warning}
+  >
+  > `atomic_update/3` cannot be used on create actions because there is no existing row
+  > to update. Use `atomic_set/3` for creates.
 
   ## Options
 
@@ -207,6 +232,15 @@ defmodule Ash.Resource.Change.Builtins do
 
       # Update timestamp on modification
       change atomic_update(:updated_at, expr(now()))
+
+  ## Custom Changes
+
+  To implement similar behavior in a custom change, return `{:atomic, atomics}`
+  from the `c:Ash.Resource.Change.atomic/3` callback:
+
+      def atomic(_changeset, _opts, _context) do
+        {:atomic, %{view_count: expr(view_count + 1)}}
+      end
   """
   @spec atomic_update(attribute :: atom, expr :: Ash.Expr.t(), opts :: Keyword.t()) ::
           Ash.Resource.Change.ref()

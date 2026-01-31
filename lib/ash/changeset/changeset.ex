@@ -73,6 +73,7 @@ defmodule Ash.Changeset do
     added_filter: nil,
     action_failed?: false,
     atomics: [],
+    create_atomics: [],
     atomic_validations: [],
     after_action: [],
     after_transaction: [],
@@ -1223,51 +1224,68 @@ defmodule Ash.Changeset do
     with {:ok, change_opts} <- module.init(change_opts),
          {:atomic, condition} <-
            atomic_condition(where, changeset, context),
-         {{:atomic, modified_changeset?, new_changeset, atomic_changes, validations}, condition} <-
+         {{:atomic, modified_changeset?, new_changeset, atomic_changes, validations,
+           create_atomics}, condition} <-
            {atomic_with_changeset(
               module.atomic(changeset, change_opts, struct(Ash.Resource.Change.Context, context)),
               changeset
             ), condition} do
       case condition do
         true ->
-          {:atomic, apply_atomic_update(new_changeset, atomic_changes)}
+          new_changeset = apply_atomic_update(new_changeset, atomic_changes)
+
+          new_changeset =
+            if changeset.action_type == :create do
+              apply_atomic_create(new_changeset, create_atomics)
+            else
+              apply_atomic_update(new_changeset, create_atomics)
+            end
+
+          {:atomic, new_changeset}
 
         false ->
           {:atomic, changeset}
 
         condition ->
-          if modified_changeset? do
-            {:not_atomic,
-             "change `#{inspect(module)}` modified the changeset, but had a condition that could not be checked without running the action"}
-          else
-            atomic_changes =
-              Map.new(atomic_changes, fn
-                {key, {:atomic, value}} ->
-                  new_value =
-                    expr(
-                      if ^condition do
-                        ^value
-                      else
-                        ^atomic_ref(key)
-                      end
-                    )
+          cond do
+            modified_changeset? ->
+              {:not_atomic,
+               "change `#{inspect(module)}` modified the changeset, but had a condition that could not be checked without running the action"}
 
-                  {key, {:atomic, new_value}}
+            changeset.action_type == :create and create_atomics != %{} ->
+              # For creates, we can't use atomic_ref as a fallback for dynamic conditions
+              {:not_atomic,
+               "change `#{inspect(module)}` sets atomic values on create, but had a condition that could not be checked without running the action"}
 
-                {key, value} ->
-                  new_value =
-                    expr(
-                      if ^condition do
-                        ^value
-                      else
-                        ^atomic_ref(key)
-                      end
-                    )
+            true ->
+              atomic_changes =
+                Map.new(atomic_changes, fn
+                  {key, {:atomic, value}} ->
+                    new_value =
+                      expr(
+                        if ^condition do
+                          ^value
+                        else
+                          ^atomic_ref(key)
+                        end
+                      )
 
-                  {key, new_value}
-              end)
+                    {key, {:atomic, new_value}}
 
-            {:atomic, apply_atomic_update(new_changeset, atomic_changes)}
+                  {key, value} ->
+                    new_value =
+                      expr(
+                        if ^condition do
+                          ^value
+                        else
+                          ^atomic_ref(key)
+                        end
+                      )
+
+                    {key, new_value}
+                end)
+
+              {:atomic, apply_atomic_update(new_changeset, atomic_changes)}
           end
       end
       |> case do
@@ -1383,23 +1401,118 @@ defmodule Ash.Changeset do
     end
   end
 
+  defp apply_atomic_create(changeset, atomics) when is_list(atomics) or is_map(atomics) do
+    Enum.reduce(atomics, changeset, fn {key, value}, changeset ->
+      apply_atomic_create(changeset, key, value)
+    end)
+  end
+
+  defp apply_atomic_create(changeset, key, {:atomic, value}) do
+    value =
+      Ash.Expr.walk_template(value, fn
+        {:_atomic_ref, field} ->
+          atomic_ref(changeset, field)
+
+        other ->
+          other
+      end)
+
+    %{
+      changeset
+      | create_atomics: Keyword.put(changeset.create_atomics, key, value),
+        no_atomic_constraints: [key | changeset.no_atomic_constraints]
+    }
+  end
+
+  defp apply_atomic_create(changeset, key, value) do
+    attribute = Ash.Resource.Info.attribute(changeset.resource, key)
+
+    value =
+      Ash.Expr.walk_template(value, fn
+        {:_atomic_ref, field} ->
+          atomic_ref(changeset, field)
+
+        other ->
+          other
+      end)
+
+    case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
+      {:atomic, value} ->
+        value =
+          if attribute.primary_key? do
+            value
+          else
+            set_error_field(value, attribute.name)
+          end
+
+        %{changeset | create_atomics: Keyword.put(changeset.create_atomics, attribute.name, value)}
+
+      {:not_atomic, message} ->
+        {:not_atomic,
+         "Cannot atomically set #{inspect(changeset.resource)}.#{attribute.name}: #{message}"}
+
+      {:ok, value} ->
+        allow_nil? =
+          attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
+
+        if is_nil(value) and !allow_nil? do
+          add_required_attribute_error(
+            %{changeset | create_atomics: Keyword.delete(changeset.create_atomics, attribute.name)},
+            attribute
+          )
+        else
+          %{
+            changeset
+            | attributes: Map.put(changeset.attributes, attribute.name, value),
+              create_atomics: Keyword.delete(changeset.create_atomics, attribute.name)
+          }
+          |> store_casted_attribute(attribute.name, value, true)
+        end
+
+      {:error, error} ->
+        {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+    end
+  end
+
+  # Handle list of {:atomic, ...} and {:atomic_set, ...} tuples
+  defp atomic_with_changeset(list, changeset) when is_list(list) do
+    Enum.reduce(list, {:atomic, false, changeset, %{}, [], %{}}, fn
+      {:atomic, atomics}, {:atomic, modified?, cs, acc_atomics, validations, create_atomics} ->
+        {:atomic, modified?, cs, Map.merge(acc_atomics, to_map(atomics)), validations,
+         create_atomics}
+
+      {:atomic_set, atomics}, {:atomic, modified?, cs, acc_atomics, validations, create_atomics} ->
+        {:atomic, modified?, cs, acc_atomics, validations,
+         Map.merge(create_atomics, to_map(atomics))}
+
+      other, _acc ->
+        other
+    end)
+  end
+
   defp atomic_with_changeset({:atomic, changeset, atomics, validations}, _changeset),
-    do: {:atomic, true, changeset, atomics, validations}
+    do: {:atomic, true, changeset, atomics, validations, %{}}
 
   defp atomic_with_changeset({:atomic, %Ash.Changeset{} = changeset, atomics}, _changeset),
-    do: {:atomic, true, changeset, atomics, []}
+    do: {:atomic, true, changeset, atomics, [], %{}}
 
   defp atomic_with_changeset({:atomic, atomics, validations}, changeset),
-    do: {:atomic, false, changeset, atomics, validations}
+    do: {:atomic, false, changeset, atomics, validations, %{}}
 
   defp atomic_with_changeset({:atomic, atomics}, changeset),
-    do: {:atomic, false, changeset, atomics, []}
+    do: {:atomic, false, changeset, atomics, [], %{}}
+
+  defp atomic_with_changeset({:atomic_set, atomics}, changeset),
+    do: {:atomic, false, changeset, %{}, [], atomics}
 
   defp atomic_with_changeset({:ok, changeset}, _) do
-    {:atomic, true, changeset, %{}, []}
+    {:atomic, true, changeset, %{}, [], %{}}
   end
 
   defp atomic_with_changeset(other, _), do: other
+
+  defp to_map(map) when is_map(map), do: map
+  defp to_map(list) when is_list(list), do: Map.new(list)
 
   defp validate_atomically(changeset, condition_expr, error_expr) do
     condition_expr =
@@ -1490,16 +1603,23 @@ defmodule Ash.Changeset do
         Ash.Expr.expr(type(^atomic, ^attribute.type, ^attribute.constraints))
 
       :error ->
-        case Map.fetch(changeset.attributes, field) do
-          {:ok, new_value} ->
+        case Keyword.fetch(changeset.create_atomics, field) do
+          {:ok, atomic} ->
             attribute = Ash.Resource.Info.attribute(changeset.resource, field)
-            Ash.Expr.expr(type(^new_value, ^attribute.type, ^attribute.constraints))
+            Ash.Expr.expr(type(^atomic, ^attribute.type, ^attribute.constraints))
 
           :error ->
-            if changeset.action.type == :create and changeset.context[:private][:upsert?] do
-              expr(upsert_conflict(^field))
-            else
-              expr(^ref(field))
+            case Map.fetch(changeset.attributes, field) do
+              {:ok, new_value} ->
+                attribute = Ash.Resource.Info.attribute(changeset.resource, field)
+                Ash.Expr.expr(type(^new_value, ^attribute.type, ^attribute.constraints))
+
+              :error ->
+                if changeset.action.type == :create and changeset.context[:private][:upsert?] do
+                  expr(upsert_conflict(^field))
+                else
+                  expr(^ref(field))
+                end
             end
         end
     end
@@ -2346,6 +2466,243 @@ defmodule Ash.Changeset do
               Ash.Error.Unknown.UnknownError.exception(
                 error:
                   "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
+              )
+            )
+        end
+    end
+  end
+
+  @doc """
+  Adds an atomic set to the changeset for the create phase.
+
+  Unlike `atomic_update/3`, this is for setting values during the INSERT phase of create
+  actions, not for updating existing values. You can use `atomic_ref/1` in create actions -
+  it returns `nil` or the latest value that the attribute is being changed to.
+
+  When used on update actions, this behaves the same as `atomic_update/3`.
+
+  ## Examples
+
+      # Set timestamp at database level during create
+      iex> changeset = Ash.Changeset.for_create(post, :create)
+      iex> changeset = Ash.Changeset.atomic_set(changeset, :created_at, expr(now()))
+
+      # Use a database function for UUID
+      iex> changeset = Ash.Changeset.atomic_set(changeset, :uuid, expr(fragment("gen_random_uuid()")))
+
+  ## See also
+
+  - `atomic_update/3` for updating existing records
+  """
+  @spec atomic_set(t(), map() | Keyword.t()) :: t()
+  def atomic_set(changeset, atomics) when is_list(atomics) or is_map(atomics) do
+    Enum.reduce(atomics, changeset, fn {key, value}, changeset ->
+      atomic_set(changeset, key, value)
+    end)
+  end
+
+  @spec atomic_set(t(), atom(), {:atomic, Ash.Expr.t()} | Ash.Expr.t()) :: t()
+  def atomic_set(changeset, key, value, opts \\ [])
+
+  def atomic_set(%{action_type: :update} = changeset, key, value, opts) do
+    atomic_update(changeset, key, value, opts)
+  end
+
+  def atomic_set(changeset, key, {:atomic, value}, _opts) do
+    %{
+      changeset
+      | create_atomics: Keyword.put(changeset.create_atomics, key, value),
+        no_atomic_constraints: [key | changeset.no_atomic_constraints]
+    }
+  end
+
+  def atomic_set(changeset, key, value, opts) do
+    try do
+      do_atomic_set(changeset, key, value, opts)
+    catch
+      {:atomic_set_validation_error, changeset, message} ->
+        add_error(
+          changeset,
+          Ash.Error.Unknown.UnknownError.exception(error: message)
+        )
+    end
+  end
+
+  # Validates that an atomic_set expression doesn't reference related data
+  # (which isn't available during INSERT)
+  defp validate_atomic_set_expr(resource, expr) do
+    # Check for exists with relationships first (before list_refs expands the paths)
+    check_for_exists_with_relationships(expr)
+
+    # Check for refs with relationship paths
+    # Note: list_refs expands relationship paths from exists, so we need to check exists first
+    refs = Ash.Filter.list_refs(expr)
+
+    Enum.each(refs, fn ref ->
+      if ref.relationship_path != [] do
+        throw({:invalid, "atomic_set cannot reference related fields"})
+      end
+
+      case ref.attribute do
+        %Ash.Query.Aggregate{relationship_path: path} when path != [] ->
+          throw({:invalid, "atomic_set cannot reference related aggregates"})
+
+        %Ash.Query.Aggregate{name: name} ->
+          # Check if this is an aggregate that references relationships
+          case Ash.Resource.Info.aggregate(resource, name) do
+            %{relationship_path: path} when path != [] ->
+              throw({:invalid, "atomic_set cannot reference related aggregates"})
+
+            _ ->
+              :ok
+          end
+
+        name when is_atom(name) ->
+          # Check if this is an aggregate that references relationships
+          case Ash.Resource.Info.aggregate(resource, name) do
+            %{relationship_path: path} when path != [] ->
+              throw({:invalid, "atomic_set cannot reference related aggregates"})
+
+            _ ->
+              :ok
+          end
+
+        _ ->
+          :ok
+      end
+    end)
+
+    :ok
+  catch
+    {:invalid, message} ->
+      {:error, message}
+  end
+
+  defp check_for_exists_with_relationships(%Ash.Query.Exists{path: path}) when path != [] do
+    throw({:invalid, "atomic_set cannot use exists with relationships"})
+  end
+
+  defp check_for_exists_with_relationships(%Ash.Query.Exists{at_path: path}) when path != [] do
+    throw({:invalid, "atomic_set cannot use exists with relationships"})
+  end
+
+  defp check_for_exists_with_relationships(%Ash.Query.Exists{expr: expr}) do
+    check_for_exists_with_relationships(expr)
+  end
+
+  defp check_for_exists_with_relationships(%{left: left, right: right}) do
+    check_for_exists_with_relationships(left)
+    check_for_exists_with_relationships(right)
+  end
+
+  defp check_for_exists_with_relationships(%{arguments: args}) when is_list(args) do
+    Enum.each(args, &check_for_exists_with_relationships/1)
+  end
+
+  defp check_for_exists_with_relationships(%Ash.Query.Call{args: args}) do
+    Enum.each(args, &check_for_exists_with_relationships/1)
+  end
+
+  defp check_for_exists_with_relationships(%Ash.Query.Not{expression: expr}) do
+    check_for_exists_with_relationships(expr)
+  end
+
+  defp check_for_exists_with_relationships(%Ash.Query.BooleanExpression{left: left, right: right}) do
+    check_for_exists_with_relationships(left)
+    check_for_exists_with_relationships(right)
+  end
+
+  defp check_for_exists_with_relationships(list) when is_list(list) do
+    Enum.each(list, &check_for_exists_with_relationships/1)
+  end
+
+  defp check_for_exists_with_relationships(_), do: :ok
+
+  defp do_atomic_set(changeset, key, value, opts) do
+    attribute =
+      Ash.Resource.Info.attribute(changeset.resource, key) ||
+        raise "Unknown attribute `#{inspect(changeset.resource)}.#{inspect(key)}`"
+
+    # Validate that the expression doesn't reference related data (which isn't available during INSERT)
+    case validate_atomic_set_expr(changeset.resource, value) do
+      :ok ->
+        :ok
+
+      {:error, message} ->
+        throw({:atomic_set_validation_error, changeset, message})
+    end
+
+    # For creates, resolve atomic_ref to the current attribute value or nil
+    value =
+      Ash.Expr.walk_template(value, fn
+        {:_atomic_ref, field} ->
+          case Keyword.fetch(changeset.create_atomics, field) do
+            {:ok, atomic} ->
+              ref_attribute = Ash.Resource.Info.attribute(changeset.resource, field)
+              Ash.Expr.expr(type(^atomic, ^ref_attribute.type, ^ref_attribute.constraints))
+
+            :error ->
+              case Map.fetch(changeset.attributes, field) do
+                {:ok, new_value} ->
+                  ref_attribute = Ash.Resource.Info.attribute(changeset.resource, field)
+                  Ash.Expr.expr(type(^new_value, ^ref_attribute.type, ^ref_attribute.constraints))
+
+                :error ->
+                  nil
+              end
+          end
+
+        other ->
+          other
+      end)
+
+    case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
+      {:atomic, value} ->
+        value =
+          if attribute.primary_key? do
+            value
+          else
+            set_error_field(value, attribute.name)
+          end
+
+        %{changeset | create_atomics: Keyword.put(changeset.create_atomics, attribute.name, value)}
+
+      {:ok, value} ->
+        allow_nil? =
+          if is_nil(changeset.action) do
+            true
+          else
+            attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
+          end
+
+        if is_nil(value) and !allow_nil? do
+          add_required_attribute_error(changeset, attribute)
+        else
+          %{
+            changeset
+            | attributes: Map.put(changeset.attributes, attribute.name, value),
+              create_atomics: Keyword.delete(changeset.create_atomics, attribute.name)
+          }
+          |> store_casted_attribute(attribute.name, value, true)
+        end
+
+      {:error, error} ->
+        add_invalid_errors(value, :attribute, changeset, attribute, error)
+
+      {:not_atomic, message} ->
+        cond do
+          opts[:fallback_to_no_cast?] ->
+            atomic_set(changeset, key, {:atomic, value})
+
+          Keyword.get(opts, :return_not_atomic?, false) ->
+            {:not_atomic, message}
+
+          true ->
+            add_error(
+              changeset,
+              Ash.Error.Unknown.UnknownError.exception(
+                error:
+                  "Cannot atomically set #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
               )
             )
         end

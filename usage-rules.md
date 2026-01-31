@@ -485,6 +485,80 @@ end
 change {MyApp.Changes.ProcessOrder, []}
 ```
 
+### Atomic Changes
+
+Atomic changes execute directly in the database as part of the update query, without requiring the record to be loaded first. This provides better performance and correct behavior under concurrent updates.
+
+**Why atomic matters:**
+- Avoids race conditions (e.g., incrementing a counter)
+- Better performance (no round-trip to load the record)
+- Required for bulk operations to work efficiently
+
+**Built-in atomic changes:**
+```elixir
+# Increment a counter atomically
+change atomic_update(:view_count, expr(view_count + 1))
+
+# Set a value using an expression
+change set_attribute(:updated_at, expr(now()))
+```
+
+**Making custom changes atomic:**
+Implement the `atomic/3` callback to support atomic execution:
+
+```elixir
+defmodule MyApp.Changes.IncrementVersion do
+  use Ash.Resource.Change
+
+  @impl true
+  def change(changeset, _opts, _context) do
+    # Fallback for non-atomic execution
+    current = Ash.Changeset.get_attribute(changeset, :version) || 0
+    Ash.Changeset.change_attribute(changeset, :version, current + 1)
+  end
+
+  @impl true
+  def atomic(_changeset, _opts, _context) do
+    # Atomic implementation - runs in the database
+    {:atomic, %{version: expr(coalesce(version, 0) + 1)}}
+  end
+end
+```
+
+### Using `require_atomic? false`
+
+By default, update and destroy actions require all changes and validations to support atomic execution. If they don't, the action will raise an error.
+
+**IMPORTANT:** When you see `require_atomic? false` on an action, carefully consider whether it is truly necessary. This option should be used sparingly.
+
+**When `require_atomic? false` is needed:**
+- The action has `before_action` or `around_action` hooks that need to read or modify the record
+- A change reads the current record state (e.g., `Ash.Changeset.get_data/2`) and cannot be rewritten atomically
+- Complex validations that cannot be expressed as database expressions
+
+**When `require_atomic? false` is NOT needed:**
+- Simple attribute transformations (these can usually be made atomic)
+- Setting timestamps or default values (use `expr(now())` instead)
+- Incrementing counters (use `atomic_update/2`)
+- After-action hooks (these don't prevent atomic execution)
+- After-transaction hooks (these don't prevent atomic execution)
+
+```elixir
+actions do
+  update :update do
+    # AVOID unless truly necessary
+    require_atomic? false
+  end
+
+  update :increment_views do
+    # GOOD - fully atomic, no need to disable
+    change atomic_update(:view_count, expr(view_count + 1))
+  end
+end
+```
+
+If you find yourself adding `require_atomic? false`, first check if your changes and validations can be rewritten with `atomic/3` callbacks. Only disable atomic requirements when the action genuinely needs to read or manipulate the record in hooks.
+
 ## Custom Modules vs. Anonymous Functions
 
 Prefer to put code in its own module and refer to that in changes, preparations, validations etc.
