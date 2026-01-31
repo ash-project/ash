@@ -78,6 +78,7 @@ defmodule Ash.DataLayer do
           | {:combine, combination_type}
           | {:atomic, :update}
           | {:atomic, :upsert}
+          | {:atomic, :create}
           | {:exists, :unrelated}
           | {:lateral_join, list(Ash.Resource.t())}
           | {:join, Ash.Resource.t()}

@@ -163,11 +163,50 @@ defmodule Ash.Resource.Change.Builtins do
   end
 
   @doc """
-  Updates an attribute using an expression. See `Ash.Changeset.atomic_update/3` for more.
+  Sets an attribute using an expression evaluated in the data layer during create.
 
-  Options:
+  The expression cannot use `atomic_ref/1` since there is no existing row to reference.
+
+  For updating existing records, use `atomic_update/3` instead.
+
+  ## Options
 
   * `:cast_atomic?` - set to `false` to ignore atomic type casting logic. Defaults to `true`.
+
+  ## Examples
+
+      # Set timestamp at database level during create
+      change atomic_set(:created_at, expr(now()))
+
+      # Use a database function
+      change atomic_set(:uuid, expr(fragment("gen_random_uuid()")))
+  """
+  @spec atomic_set(attribute :: atom, expr :: Ash.Expr.t(), opts :: Keyword.t()) ::
+          Ash.Resource.Change.ref()
+  def atomic_set(attribute, expr, opts \\ []) do
+    {Ash.Resource.Change.AtomicSet,
+     attribute: attribute, expr: expr, cast_atomic?: Keyword.get(opts, :cast_atomic?, true)}
+  end
+
+  @doc """
+  Updates an attribute using an expression evaluated at the database level.
+
+  This is used to update values during the UPDATE phase (for updates or the ON CONFLICT
+  clause of upserts). The expression can use `atomic_ref/1` to reference existing values.
+
+  For setting values during create, use `atomic_set/3` instead.
+
+  ## Options
+
+  * `:cast_atomic?` - set to `false` to ignore atomic type casting logic. Defaults to `true`.
+
+  ## Examples
+
+      # Increment counter during update
+      change atomic_update(:view_count, expr(view_count + 1))
+
+      # Update timestamp on modification
+      change atomic_update(:updated_at, expr(now()))
   """
   @spec atomic_update(attribute :: atom, expr :: Ash.Expr.t(), opts :: Keyword.t()) ::
           Ash.Resource.Change.ref()

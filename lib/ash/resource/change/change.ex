@@ -190,6 +190,11 @@ defmodule Ash.Resource.Change do
                    {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.t(),
                     error_expr :: Ash.Expr.t()}
                  )}
+              | {:atomic_set, %{optional(atom()) => Ash.Expr.t() | {:atomic, Ash.Expr.t()}}}
+              | list(
+                  {:atomic, %{optional(atom()) => Ash.Expr.t() | {:atomic, Ash.Expr.t()}}}
+                  | {:atomic_set, %{optional(atom()) => Ash.Expr.t() | {:atomic, Ash.Expr.t()}}}
+                )
               | {:not_atomic, String.t()}
               | :ok
               | {:error, term()}

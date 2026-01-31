@@ -262,6 +262,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:sort, _}), do: true
   def can?(_, {:atomic, :update}), do: true
   def can?(_, {:atomic, :upsert}), do: true
+  def can?(_, {:atomic, :create}), do: true
   def can?(_, _), do: false
 
   @doc false
@@ -1635,6 +1636,7 @@ defmodule Ash.DataLayer.Ets do
          {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          _ <- if(!from_bulk_create?, do: log_create(resource, changeset)),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+         {:ok, record} <- apply_atomics(changeset, resource, record),
          record <- unload_relationships(resource, record),
          {:ok, record} <- put_or_insert_new(table, {pkey, record}, resource) do
       {:ok, set_loaded(record)}
@@ -1642,6 +1644,19 @@ defmodule Ash.DataLayer.Ets do
       {:error, error} -> {:error, error}
     end
   end
+
+  defp apply_atomics(%{create_atomics: create_atomics} = changeset, resource, record)
+       when create_atomics != [] do
+    case make_atomics(create_atomics, resource, changeset.domain, record) do
+      {:ok, atomic_values} ->
+        {:ok, struct(record, atomic_values)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp apply_atomics(_changeset, _resource, record), do: {:ok, record}
 
   defp set_loaded(%resource{} = record) do
     %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}
