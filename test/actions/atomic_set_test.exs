@@ -301,7 +301,7 @@ defmodule Ash.Test.Actions.AtomicSetTest do
 
       assert changeset.valid? == false
       assert [error] = changeset.errors
-      assert error.message =~ "atomic_set cannot reference related fields"
+      assert error.error =~ "atomic_set cannot reference related fields"
     end
 
     test "atomic_set rejects exists with relationships" do
@@ -321,7 +321,7 @@ defmodule Ash.Test.Actions.AtomicSetTest do
 
       assert changeset.valid? == false
       assert [error] = changeset.errors
-      assert error.message =~ "atomic_set cannot use exists with relationships"
+      assert error.error =~ "atomic_set cannot use exists with relationships"
     end
 
     test "atomic_set rejects related aggregates" do
@@ -332,7 +332,7 @@ defmodule Ash.Test.Actions.AtomicSetTest do
 
       assert changeset.valid? == false
       assert [error] = changeset.errors
-      assert error.message =~ "atomic_set cannot reference related aggregates"
+      assert error.error =~ "atomic_set cannot reference related aggregates"
     end
   end
 end

@@ -4,11 +4,21 @@
 
 defmodule Ash.Resource.Change.AtomicSet do
   @moduledoc """
-  A change that sets an attribute using an expression during the create phase.
+  A change that sets an attribute using an expression evaluated in the data layer during create.
 
-  Unlike `Ash.Resource.Change.Atomic`, this is for setting values during INSERT,
-  not for updating existing values. The expression cannot reference existing
-  database values via `atomic_ref/1`.
+  This is used by the `atomic_set/3` builtin change. Unlike `Ash.Resource.Change.Atomic`
+  (used by `atomic_update/3`), this is for setting values during the INSERT phase of create
+  actions, not for updating existing values.
+
+  The expression cannot reference existing database values via `atomic_ref/1` since there
+  is no existing row during creates.
+
+  When used on update actions, behaves the same as `atomic_update/3`.
+
+  ## Return Value
+
+  The `atomic/3` callback returns `{:atomic_set, atomics}` which tells Ash to apply
+  these values during the INSERT phase (stored in `changeset.create_atomics`).
   """
   use Ash.Resource.Change
 
