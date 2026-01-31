@@ -14,85 +14,112 @@ defmodule Ash.Actions.Create do
           | {:ok, Ash.Resource.record()}
           | {:error, term}
   def run(domain, changeset, action, opts) do
-    if changeset.atomics != [] &&
-         !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :upsert}) do
-      {:error,
-       Ash.Error.Invalid.AtomicsNotSupported.exception(
-         resource: changeset.resource,
-         action_type: :create
-       )}
-    else
-      changeset =
-        if Map.get(action, :multitenancy) in [:bypass, :bypass_all] do
-          Ash.Changeset.set_context(changeset, %{
-            shared: %{private: %{multitenancy: :bypass_all}}
-          })
-        else
-          changeset
-        end
+    is_upsert? = changeset.context[:private][:upsert?]
 
-      {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
-      changeset = Helpers.apply_opts_load(changeset, opts)
+    create_atomics_unsupported? =
+      changeset.create_atomics != [] &&
+        !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :create})
 
-      Ash.Tracer.span :action,
-                      fn ->
-                        Ash.Domain.Info.span_name(
-                          domain,
-                          changeset.resource,
-                          action.name
-                        )
-                      end,
-                      opts[:tracer] do
-        metadata = fn ->
-          %{
-            domain: domain,
-            resource: changeset.resource,
-            resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            action: action.name,
-            authorize?: opts[:authorize?]
-          }
-        end
+    atomics_unsupported? =
+      changeset.atomics != [] &&
+        if is_upsert?,
+          do: !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :upsert}),
+          else: true
 
-        Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
+    cond do
+      create_atomics_unsupported? ->
+        {:error,
+         Ash.Error.Invalid.AtomicsNotSupported.exception(
+           resource: changeset.resource,
+           action_type: :create
+         )}
 
-        Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :create],
-                                  metadata do
-          case do_run(domain, changeset, action, opts) do
-            {:error, error} ->
-              error =
-                Ash.Error.to_error_class(
-                  error,
-                  bread_crumbs:
-                    "Error returned from: #{inspect(changeset.resource)}.#{action.name}"
-                )
+      atomics_unsupported? and not is_upsert? ->
+        {:error,
+         Ash.Error.Changes.InvalidChanges.exception(
+           message:
+             "atomic_update cannot be used on create actions. Use atomic_set for setting values during create."
+         )}
 
-              if opts[:tracer] do
-                stacktrace =
-                  case error do
-                    %{stacktrace: %{stacktrace: stacktrace}} ->
-                      stacktrace || []
+      atomics_unsupported? ->
+        {:error,
+         Ash.Error.Invalid.AtomicsNotSupported.exception(
+           resource: changeset.resource,
+           action_type: :create
+         )}
 
-                    _ ->
-                      {:current_stacktrace, stacktrace} =
-                        Process.info(self(), :current_stacktrace)
+      true ->
+        changeset =
+          if Map.get(action, :multitenancy) in [:bypass, :bypass_all] do
+            Ash.Changeset.set_context(changeset, %{
+              shared: %{private: %{multitenancy: :bypass_all}}
+            })
+          else
+            changeset
+          end
 
-                      stacktrace
-                  end
+        {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
+        changeset = Helpers.apply_opts_load(changeset, opts)
 
-                Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
-                  stacktrace: stacktrace
-                )
-              end
+        Ash.Tracer.span :action,
+                        fn ->
+                          Ash.Domain.Info.span_name(
+                            domain,
+                            changeset.resource,
+                            action.name
+                          )
+                        end,
+                        opts[:tracer] do
+          metadata = fn ->
+            %{
+              domain: domain,
+              resource: changeset.resource,
+              resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+              actor: opts[:actor],
+              tenant: opts[:tenant],
+              action: action.name,
+              authorize?: opts[:authorize?]
+            }
+          end
 
-              {:error, error}
+          Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-            other ->
-              other
+          Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :create],
+                                    metadata do
+            case do_run(domain, changeset, action, opts) do
+              {:error, error} ->
+                error =
+                  Ash.Error.to_error_class(
+                    error,
+                    bread_crumbs:
+                      "Error returned from: #{inspect(changeset.resource)}.#{action.name}"
+                  )
+
+                if opts[:tracer] do
+                  stacktrace =
+                    case error do
+                      %{stacktrace: %{stacktrace: stacktrace}} ->
+                        stacktrace || []
+
+                      _ ->
+                        {:current_stacktrace, stacktrace} =
+                          Process.info(self(), :current_stacktrace)
+
+                        stacktrace
+                    end
+
+                  Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
+                    stacktrace: stacktrace
+                  )
+                end
+
+                {:error, error}
+
+              other ->
+                other
+            end
           end
         end
-      end
     end
   rescue
     e ->
@@ -281,14 +308,27 @@ defmodule Ash.Actions.Create do
 
     changeset = set_tenant(changeset)
 
+    is_upsert? = changeset.context[:private][:upsert?]
+
     can_atomic_create? =
+      Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :create})
+
+    can_atomic_upsert? =
       Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :upsert})
 
     result =
       changeset
       |> Ash.Changeset.with_hooks(
         fn
-          %{atomics: atomics} when atomics != [] and not can_atomic_create? ->
+          %{create_atomics: create_atomics}
+          when create_atomics != [] and not can_atomic_create? ->
+            {:error,
+             Ash.Error.Invalid.AtomicsNotSupported.exception(
+               resource: changeset.resource,
+               action_type: :create
+             )}
+
+          %{atomics: atomics} when atomics != [] and is_upsert? and not can_atomic_upsert? ->
             {:error,
              Ash.Error.Invalid.AtomicsNotSupported.exception(
                resource: changeset.resource,

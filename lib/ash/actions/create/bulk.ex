@@ -1164,7 +1164,7 @@ defmodule Ash.Actions.Create.Bulk do
         {changesets_by_ref, changesets_by_index} = index_changesets(batch)
 
         batch
-        |> Enum.group_by(&{&1.atomics, &1.filter})
+        |> Enum.group_by(&{&1.atomics, &1.create_atomics, &1.filter})
         |> Enum.flat_map(fn {_atomics, batch} ->
           result =
             case action.manual do

@@ -142,6 +142,9 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, {:filter_expr, _}), do: true
   def can?(_, :nested_expressions), do: true
   def can?(_, {:sort, _}), do: true
+  def can?(_, {:atomic, :update}), do: true
+  def can?(_, {:atomic, :upsert}), do: true
+  def can?(_, {:atomic, :create}), do: true
 
   def can?(_, _), do: false
 
@@ -430,42 +433,66 @@ defmodule Ash.DataLayer.Mnesia do
   @doc false
   @impl true
   def create(resource, changeset, opts \\ []) do
-    {:ok, record} = Ash.Changeset.apply_attributes(changeset)
+    with {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+         {:ok, record} <- apply_create_atomics(changeset, resource, record) do
+      pkey =
+        resource
+        |> Ash.Resource.Info.primary_key()
+        |> Enum.map(fn attr ->
+          Map.get(record, attr)
+        end)
 
-    pkey =
       resource
-      |> Ash.Resource.Info.primary_key()
-      |> Enum.map(fn attr ->
-        Map.get(record, attr)
-      end)
+      |> Ash.Resource.Info.attributes()
+      |> Map.new(&{&1.name, Map.get(record, &1.name)})
+      |> Ash.DataLayer.Ets.dump_to_native(Ash.Resource.Info.attributes(resource))
+      |> case do
+        {:ok, values} ->
+          case do_write(
+                 Ash.DataLayer.Mnesia.Info.table(resource),
+                 pkey,
+                 values,
+                 Keyword.get(opts, :with_transaction, true)
+               ) do
+            # If with_transaction is false, we are in a transaction and will only return :ok
+            :ok ->
+              {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
 
-    resource
-    |> Ash.Resource.Info.attributes()
-    |> Map.new(&{&1.name, Map.get(record, &1.name)})
-    |> Ash.DataLayer.Ets.dump_to_native(Ash.Resource.Info.attributes(resource))
-    |> case do
-      {:ok, values} ->
-        case do_write(
-               Ash.DataLayer.Mnesia.Info.table(resource),
-               pkey,
-               values,
-               Keyword.get(opts, :with_transaction, true)
-             ) do
-          # If with_transaction is false, we are in a transaction and will only return :ok
-          :ok ->
-            {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+            {:atomic, _} ->
+              {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
 
-          {:atomic, _} ->
-            {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
+            {:aborted, error} ->
+              {:error, error}
+          end
 
-          {:aborted, error} ->
-            {:error, error}
-        end
-
-      {:error, error} ->
-        {:error, error}
+        {:error, error} ->
+          {:error, error}
+      end
     end
   end
+
+  defp apply_create_atomics(%{create_atomics: create_atomics} = changeset, resource, record)
+       when create_atomics != [] do
+    Enum.reduce_while(create_atomics, {:ok, record}, fn {key, expr}, {:ok, acc} ->
+      case Ash.Expr.eval(expr,
+             resource: resource,
+             record: acc,
+             domain: changeset.domain,
+             unknown_on_unknown_refs?: true
+           ) do
+        {:ok, value} ->
+          {:cont, {:ok, Map.put(acc, key, value)}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+
+        :unknown ->
+          {:halt, {:error, "Could not evaluate expression #{inspect(expr)}"}}
+      end
+    end)
+  end
+
+  defp apply_create_atomics(_changeset, _resource, record), do: {:ok, record}
 
   # This allows for writing to Mnesia without a transaction in case one was
   # started elsewhere. This was explicitly created for `bulk_create/3`.
