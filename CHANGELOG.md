@@ -8,6 +8,31 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.14.0](https://github.com/ash-project/ash/compare/v3.13.2...v3.14.0) (2026-02-01)
+
+
+
+
+### Features:
+
+* support `create_atomics` and `atomic_set` for create atomics by [@zachdaniel](https://github.com/zachdaniel)
+
+### Bug Fixes:
+
+* include loaded data in bulk notifications (#2539) by [@barnabasJ](https://github.com/barnabasJ) [(#2539)](https://github.com/ash-project/ash/pull/2539)
+
+* ensure bulk create notifications contain loaded data by [@barnabasJ](https://github.com/barnabasJ) [(#2539)](https://github.com/ash-project/ash/pull/2539)
+
+* check __lateral_join_source__ value, not just key existence by [@barnabasJ](https://github.com/barnabasJ) [(#2539)](https://github.com/ash-project/ash/pull/2539)
+
+* preserve query sort and propagate stop_on_error in atomic_batches by [@barnabasJ](https://github.com/barnabasJ) [(#2539)](https://github.com/ash-project/ash/pull/2539)
+
+* ensure bulk update/destroy notifications contain loaded data by [@barnabasJ](https://github.com/barnabasJ) [(#2539)](https://github.com/ash-project/ash/pull/2539)
+
+### Improvements:
+
+* make ignored managed relationships not break atomicity by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.13.2](https://github.com/ash-project/ash/compare/v3.13.1...v3.13.2) (2026-01-29)
 
 
