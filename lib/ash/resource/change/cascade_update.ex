@@ -214,7 +214,7 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         return_notifications?: opts.return_notifications?
       )
 
-    context =
+    action_context =
       Map.merge(relationship.context || %{}, %{
         cascade_update: true,
         accessing_from: %{source: relationship.source, name: relationship.name}
@@ -224,8 +224,8 @@ defmodule Ash.Resource.Change.CascadeUpdate do
       Keyword.update(
         context_opts,
         :context,
-        context,
-        &Map.merge(&1, context)
+        action_context,
+        &Map.merge(&1, action_context)
       )
 
     case related_query(data, opts, context_opts) do
@@ -274,8 +274,8 @@ defmodule Ash.Resource.Change.CascadeUpdate do
           Keyword.update(
             context_opts,
             :context,
-            context,
-            &Map.merge(&1, context)
+            action_context,
+            &Map.merge(&1, action_context)
           )
         )
     end
