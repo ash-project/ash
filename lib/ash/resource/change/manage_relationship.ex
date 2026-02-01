@@ -35,6 +35,10 @@ defmodule Ash.Resource.Change.ManageRelationship do
     end
   end
 
+  def atomic(changeset, opts, context) do
+    {:ok, change(changeset, opts, context)}
+  end
+
   defp from_structs(argument_value, destination) when is_list(argument_value) do
     Enum.map(argument_value, &from_structs(&1, destination))
   end
