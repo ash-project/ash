@@ -42,6 +42,13 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
           action.changes
           |> Enum.concat(Ash.Resource.Info.changes(dsl, action.type))
           |> Enum.concat(Ash.Resource.Info.validations(dsl, action.type))
+          |> Enum.reject(fn
+            %{change: {Ash.Resource.Change.ManageRelationship, opts}} ->
+              opts[:ignore?]
+
+            _ ->
+              false
+          end)
           |> Enum.map(fn
             %{change: {module, _}} ->
               module
