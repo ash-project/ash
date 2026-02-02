@@ -1445,7 +1445,10 @@ defmodule Ash.Changeset do
             set_error_field(value, attribute.name)
           end
 
-        %{changeset | create_atomics: Keyword.put(changeset.create_atomics, attribute.name, value)}
+        %{
+          changeset
+          | create_atomics: Keyword.put(changeset.create_atomics, attribute.name, value)
+        }
 
       {:not_atomic, message} ->
         {:not_atomic,
@@ -1457,7 +1460,10 @@ defmodule Ash.Changeset do
 
         if is_nil(value) and !allow_nil? do
           add_required_attribute_error(
-            %{changeset | create_atomics: Keyword.delete(changeset.create_atomics, attribute.name)},
+            %{
+              changeset
+              | create_atomics: Keyword.delete(changeset.create_atomics, attribute.name)
+            },
             attribute
           )
         else
@@ -1481,7 +1487,8 @@ defmodule Ash.Changeset do
         {:atomic, modified?, cs, Map.merge(acc_atomics, to_map(atomics)), validations,
          create_atomics}
 
-      {:atomic_set, atomics}, {:atomic, modified?, cs, acc_atomics, validations, create_atomics} ->
+      {:atomic_set, atomics},
+      {:atomic, modified?, cs, acc_atomics, validations, create_atomics} ->
         {:atomic, modified?, cs, acc_atomics, validations,
          Map.merge(create_atomics, to_map(atomics))}
 
@@ -2665,7 +2672,10 @@ defmodule Ash.Changeset do
             set_error_field(value, attribute.name)
           end
 
-        %{changeset | create_atomics: Keyword.put(changeset.create_atomics, attribute.name, value)}
+        %{
+          changeset
+          | create_atomics: Keyword.put(changeset.create_atomics, attribute.name, value)
+        }
 
       {:ok, value} ->
         allow_nil? =
