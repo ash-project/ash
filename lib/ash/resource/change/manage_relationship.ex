@@ -36,7 +36,12 @@ defmodule Ash.Resource.Change.ManageRelationship do
   end
 
   def atomic(changeset, opts, context) do
-    {:ok, change(changeset, opts, context)}
+    if opts[:opts][:ignore?] do
+      {:ok, change(changeset, opts, context)}
+    else
+      {:not_atomic,
+       "manage_relationship changes require the non-atomic path to execute relationship management"}
+    end
   end
 
   defp from_structs(argument_value, destination) when is_list(argument_value) do
