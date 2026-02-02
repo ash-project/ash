@@ -101,8 +101,8 @@ jobs:
     # Only run this job when we're on the main branch, not for PRs
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - uses: erlef/mix-dependency-submission@e3e07c533ea58301b54024fbf9663e1a167840a3 # v1.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: erlef/mix-dependency-submission@fa3e8f349d00a32bf14eec1c7577d6564abe08d2 # v1.3.1
     permissions:
       # Give the default GITHUB_TOKEN write permission to call the dependencies API
       contents: write
@@ -110,7 +110,7 @@ jobs:
     name: audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Update Elixir version in .tool-versions
         if: inputs.elixir-version != 'default'
         run: |
@@ -144,7 +144,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.community-files }}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Check community files placement and content
         run: |
           EXIT_CODE=0
@@ -240,7 +240,7 @@ jobs:
     name: MIX_ENV=test mix.compile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Update Elixir version in .tool-versions
         if: inputs.elixir-version != 'default'
         run: |
@@ -280,7 +280,7 @@ jobs:
       - build-test
       - spark-cheat-sheets
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-docs@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: dev
@@ -311,7 +311,7 @@ jobs:
     needs: build-test
     if: ${{inputs.conventional-commit}}
     steps:
-      - uses: actions/checkout@v6.0.1
+      - uses: actions/checkout@v6.0.2
       - uses: team-alembic/staple-actions/actions/conventional-commit@main
         with:
           mix-env: test
@@ -322,7 +322,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-format@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
@@ -333,7 +333,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         if: ${{inputs.spark-formatter}}
         with:
@@ -346,7 +346,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         if: ${{inputs.spark-cheat-sheets}}
         with:
@@ -363,7 +363,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         if: ${{inputs.sobelow}}
         with:
@@ -375,7 +375,7 @@ jobs:
     needs: build-test
     if: ${{inputs.doctor}}
     steps:
-      - uses: actions/checkout@v6.0.1
+      - uses: actions/checkout@v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-doctor@main
         with:
           mix-env: test
@@ -386,7 +386,7 @@ jobs:
     permissions:
       security-events: write
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-credo@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
@@ -406,7 +406,7 @@ jobs:
       - build-test
     if: ${{inputs.codegen}}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
@@ -417,7 +417,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
@@ -433,9 +433,9 @@ jobs:
     steps:
       - name: Dependabot metadata
         id: dependabot-metadata
-        uses: dependabot/fetch-metadata@08eff52bf64351f401fb50d4972fa95b9f2c2d1b # v2.4.0
+        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2.5.0
         if: github.event.pull_request.user.login == 'dependabot[bot]'
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
@@ -477,7 +477,7 @@ jobs:
         ports:
           - 3306:3306
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         if: ${{inputs.postgres && inputs.ash_postgres}}
         with:
@@ -567,7 +567,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-dialyzer@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: dev
@@ -577,7 +577,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{inputs.reuse}}
     steps:
-      - uses: actions/checkout@v6.0.1
+      - uses: actions/checkout@v6.0.2
       - name: REUSE compliance check
         uses: fsfe/reuse-action@v6
 
@@ -587,7 +587,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-compile@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: dev
@@ -659,7 +659,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Extract crate information
         shell: bash
@@ -723,7 +723,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Release
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         if: ${{inputs.rustler-precompiled-module}}
         with:
