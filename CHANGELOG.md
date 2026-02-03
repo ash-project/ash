@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.14.1](https://github.com/ash-project/ash/compare/v3.14.0...v3.14.1) (2026-02-03)
+
+
+
+
+### Bug Fixes:
+
+* make manage_relationship return {:not_atomic} for non-ignored relationships (#2544) by [@barnabasJ](https://github.com/barnabasJ) [(#2544)](https://github.com/ash-project/ash/pull/2544)
+
 ## [v3.14.0](https://github.com/ash-project/ash/compare/v3.13.2...v3.14.0) (2026-02-01)
 
 
