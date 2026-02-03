@@ -8,9 +8,22 @@ defmodule Ash.Test.ReactorDestroyTest do
 
   alias Ash.Test.Domain
 
+  defmodule TestNotifier do
+    @moduledoc false
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(self(), {:notification, notification})
+      :ok
+    end
+  end
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      domain: Domain,
+      notifiers: [TestNotifier]
 
     ets do
       private? true
@@ -54,48 +67,48 @@ defmodule Ash.Test.ReactorDestroyTest do
   test "it can destroy a post" do
     defmodule SimpleDestroyPostReactor do
       @moduledoc false
-      use Reactor, extensions: [Ash.Reactor]
-
-      ash do
-        default_domain(Domain)
-      end
+      use Ash.Reactor
 
       input :post
 
       destroy :delete_post, Post, :destroy do
-        initial(input(:post))
+        initial input(:post)
       end
     end
 
-    {:ok, original_post} =
-      Post.create(%{title: "Title", sub_title: "Sub-title"})
+    original_post = Post.create!(%{title: "Title", sub_title: "Sub-title"})
 
     assert {:ok, :ok} =
-             Reactor.run(SimpleDestroyPostReactor, %{post: original_post}, %{}, async?: false)
+             Reactor.run(
+               SimpleDestroyPostReactor,
+               %{post: original_post},
+               %{},
+               async?: false
+             )
   end
 
   test "it can destroy and return a post" do
     defmodule ReturningDestroyPostReactor do
       @moduledoc false
-      use Reactor, extensions: [Ash.Reactor]
-
-      ash do
-        default_domain(Domain)
-      end
+      use Ash.Reactor
 
       input :post
 
       destroy :delete_post, Post, :destroy do
-        initial(input(:post))
-        return_destroyed?(true)
+        initial input(:post)
+        return_destroyed? true
       end
     end
 
-    {:ok, original_post} =
-      Post.create(%{title: "Title", sub_title: "Sub-title"})
+    original_post = Post.create!(%{title: "Title", sub_title: "Sub-title"})
 
     assert {:ok, post} =
-             Reactor.run(ReturningDestroyPostReactor, %{post: original_post}, %{}, async?: false)
+             Reactor.run(
+               ReturningDestroyPostReactor,
+               %{post: original_post},
+               %{},
+               async?: false
+             )
 
     assert original_post.__struct__ == post.__struct__
     assert original_post.id == post.id
@@ -107,17 +120,13 @@ defmodule Ash.Test.ReactorDestroyTest do
       @moduledoc false
       use Ash.Reactor
 
-      ash do
-        default_domain(Domain)
-      end
-
       input :post
 
       destroy :delete_post, Post, :destroy do
-        initial(input(:post))
+        initial input(:post)
 
         undo :always
-        undo_action(:undo_destroy)
+        undo_action :undo_destroy
       end
 
       step :fail do
@@ -129,7 +138,7 @@ defmodule Ash.Test.ReactorDestroyTest do
       end
     end
 
-    {:ok, post} = Post.create(%{title: "Title"})
+    post = Post.create!(%{title: "Title"})
 
     assert {:error, _} =
              Reactor.run(
@@ -140,5 +149,113 @@ defmodule Ash.Test.ReactorDestroyTest do
              )
 
     assert Post.get(post.id)
+  end
+
+  test "it can provide notification metadata" do
+    defmodule DestroyWithNotificationMetadataReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :post
+
+      destroy :delete_post, Post, :destroy do
+        initial input(:post)
+        return_destroyed? true
+        notification_metadata value(%{source: "reactor", operation: "destroy"})
+      end
+    end
+
+    original_post = Post.create!(%{title: "Title", sub_title: "Sub-title"})
+
+    assert {:ok, post} =
+             Reactor.run(
+               DestroyWithNotificationMetadataReactor,
+               %{post: original_post},
+               %{},
+               async?: false
+             )
+
+    assert post.__meta__.state == :deleted
+
+    # Check the destroy notification has metadata
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      action: %{type: :destroy},
+                      metadata: %{source: "reactor", operation: "destroy"}
+                    }}
+  end
+
+  test "it can provide notification metadata from a template" do
+    defmodule DestroyWithTemplateNotificationMetadataReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :post
+      input :metadata
+
+      destroy :delete_post, Post, :destroy do
+        initial input(:post)
+        return_destroyed? true
+        notification_metadata input(:metadata)
+      end
+    end
+
+    original_post = Post.create!(%{title: "Title", sub_title: "Sub-title"})
+    metadata = %{reason: "cleanup", batch_id: "batch_999"}
+
+    assert {:ok, post} =
+             Reactor.run(
+               DestroyWithTemplateNotificationMetadataReactor,
+               %{post: original_post, metadata: metadata},
+               %{},
+               async?: false
+             )
+
+    assert post.__meta__.state == :deleted
+
+    # Check the destroy notification has metadata
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      action: %{type: :destroy},
+                      metadata: ^metadata
+                    }}
+  end
+
+  test "it can transform notification metadata" do
+    defmodule DestroyWithTransformedNotificationMetadataReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :post
+      input :metadata_input
+
+      destroy :delete_post, Post, :destroy do
+        initial input(:post)
+        return_destroyed? true
+
+        notification_metadata input(:metadata_input) do
+          transform &Map.put(&1, :total_operations, &1.deleted_count + 10)
+        end
+      end
+    end
+
+    original_post = Post.create!(%{title: "Title", sub_title: "Sub-title"})
+
+    assert {:ok, post} =
+             Reactor.run(
+               DestroyWithTransformedNotificationMetadataReactor,
+               %{post: original_post, metadata_input: %{deleted_count: 1}},
+               %{},
+               async?: false
+             )
+
+    assert post.__meta__.state == :deleted
+
+    # Check the destroy notification has transformed metadata
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      action: %{type: :destroy},
+                      metadata: %{deleted_count: 1, total_operations: 11}
+                    }}
   end
 end
