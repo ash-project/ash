@@ -60,6 +60,27 @@ defmodule Ash.Test.Actions.HasManyTest do
     end
   end
 
+  defmodule MeowCommentListRelationship do
+    use Ash.Resource.ManualRelationship
+
+    require Ash.Query
+
+    def load(records, _opts, %{query: query, actor: actor, authorize?: authorize?}) do
+      # Same as MeowCommentRelationship, but use the list form return value
+      post_ids = Enum.map(records, & &1.id)
+
+      grouped_comments =
+        query
+        |> Ash.Query.filter(post_id in ^post_ids)
+        |> Ash.Query.filter(content == "meow")
+        |> Ash.read!(actor: actor, authorize?: authorize?)
+        |> Enum.group_by(& &1.post_id)
+
+      # Need to use Ash.CiString.value here since comment's post_id is defined as a uuid
+      Enum.map(records, &Map.get(grouped_comments, Ash.CiString.value(&1.id)))
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -107,6 +128,10 @@ defmodule Ash.Test.Actions.HasManyTest do
 
       has_many :meow_comments, Comment do
         manual MeowCommentRelationship
+      end
+
+      has_many :meow_list_comments, Comment do
+        manual MeowCommentListRelationship
       end
     end
   end
@@ -298,6 +323,41 @@ defmodule Ash.Test.Actions.HasManyTest do
           |> Ash.Query.limit(1)
       )
     end
+  end
+
+  test "manual relationships can return a list" do
+    post1 =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        title: "fiz"
+      })
+      |> Ash.create!()
+
+    post2 =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        title: "buz"
+      })
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:add_comment, %{
+        comment: %{content: "meow"}
+      })
+      |> Ash.update!()
+      |> Ash.Changeset.for_update(:add_comment, %{
+        comment: %{content: "bar"}
+      })
+      |> Ash.update!()
+      |> Ash.Changeset.for_update(:add_comment, %{
+        comment: %{content: "meow"}
+      })
+      |> Ash.update!()
+
+    [post1, post2] =
+      [post1, post2]
+      |> Ash.load!(:meow_list_comments)
+
+    assert length(post1.meow_list_comments) == 0
+    assert length(post2.meow_list_comments) == 2
   end
 
   test "expr within relationship - 2" do
