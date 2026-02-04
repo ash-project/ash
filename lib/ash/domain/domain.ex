@@ -51,7 +51,6 @@ defmodule Ash.Domain do
   @impl Spark.Dsl
   def handle_opts(opts) do
     quote do
-      # Check if `use Ash.Domain` has already been called
       if Module.get_attribute(__MODULE__, :__ash_domain_used__) do
         first_line = Module.get_attribute(__MODULE__, :__ash_domain_used__)
 
