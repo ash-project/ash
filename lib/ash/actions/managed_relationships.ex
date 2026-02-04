@@ -1065,7 +1065,16 @@ defmodule Ash.Actions.ManagedRelationships do
     if Ash.Actions.Read.Relationships.do_has_parent_expr?(relationship.filter) do
       query
     else
-      Ash.Query.do_filter(query, relationship.filter, parent_stack: relationship.source)
+      filter =
+        Ash.Expr.fill_template(
+          relationship.filter,
+          actor: query.context[:private][:actor],
+          tenant: query.to_tenant,
+          args: %{},
+          context: query.context
+        )
+
+      Ash.Query.do_filter(query, filter, parent_stack: relationship.source)
     end
     |> Ash.Query.sort(relationship.sort, prepend?: true)
   end
