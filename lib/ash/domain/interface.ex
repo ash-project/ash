@@ -6,32 +6,6 @@ defmodule Ash.Domain.Interface do
   @moduledoc false
 
   defmacro __using__(_) do
-    env = __CALLER__
-
-    # Check if `use Ash.Domain.Interface` was called directly (not through `use Ash.Domain`)
-    # The `__ash_domain_interface_used__` attribute tracks direct calls to `use Ash.Domain.Interface`
-    ash_interface_already_using =
-      Module.get_attribute(env.module, :__ash_domain_interface_used__) || false
-
-    if ash_interface_already_using do
-      first_line = ash_interface_already_using
-
-      raise CompileError,
-        file: env.file,
-        line: env.line,
-        description: """
-        `use Ash.Domain.Interface` can only be called once per module.
-
-        It was already called on line #{first_line}.
-        Remove the duplicate `use Ash.Domain.Interface` invocation.
-        """
-    end
-
-    # Mark that `use Ash.Domain.Interface` has been called (for direct calls only)
-    # Note: `use Ash.Domain` sets `__ash_domain_used__` in handle_opts, which is checked earlier
-    Module.register_attribute(env.module, :__ash_domain_interface_used__, [])
-    Module.put_attribute(env.module, :__ash_domain_interface_used__, env.line)
-
     quote bind_quoted: [], generated: true do
       @spec can?(
               query_or_changeset_or_action ::
