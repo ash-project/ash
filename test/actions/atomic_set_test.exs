@@ -146,12 +146,55 @@ defmodule Ash.Test.Actions.AtomicSetTest do
     end
   end
 
+  defmodule RequiredPost do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, update: :*]
+
+      create :create_with_required_atomic_set do
+        accept [:title]
+        change atomic_set(:required_counter, expr(7))
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :required_counter, :integer do
+        public?(true)
+        allow_nil? false
+      end
+    end
+
+    code_interface do
+      define :create_with_required_atomic_set, args: [:title]
+    end
+  end
+
   describe "atomic_set/3 in actions" do
     test "atomic_set sets value during create" do
       {:ok, post} = Post.create_with_atomic_set("Test Post")
 
       assert post.title == "Test Post"
       assert post.counter == 10
+    end
+
+    test "atomic_set satisfies required attribute on create" do
+      {:ok, post} = RequiredPost.create_with_required_atomic_set("Test Post")
+
+      assert post.title == "Test Post"
+      assert post.required_counter == 7
     end
 
     test "atomic_set with now() sets timestamp" do
