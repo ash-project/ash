@@ -436,8 +436,23 @@ defmodule Ash.EmbeddableType do
             {:fetch, :error} ->
               {:cont, {:ok, struct}}
 
-            other ->
-              {:halt, other}
+            :error ->
+              {:halt, {:error, field: attr.name}}
+
+            {:error, keyword} ->
+              errors =
+                keyword
+                |> List.wrap()
+                |> Ash.Helpers.flatten_preserving_keywords()
+                |> Enum.map(fn
+                  string when is_binary(string) ->
+                    [message: string, field: attr.name]
+
+                  vars ->
+                    Keyword.put(vars, :field, attr.name)
+                end)
+
+              {:halt, {:error, errors}}
           end
         end)
         |> case do
@@ -510,7 +525,22 @@ defmodule Ash.EmbeddableType do
                      Map.get(attribute, :constraints) || []
                    ) do
                 :error ->
-                  {:halt, :error}
+                  {:halt, {:error, field: attribute.name}}
+
+                {:error, keyword} ->
+                  errors =
+                    keyword
+                    |> List.wrap()
+                    |> Ash.Helpers.flatten_preserving_keywords()
+                    |> Enum.map(fn
+                      string when is_binary(string) ->
+                        [message: string, field: attribute.name]
+
+                      vars ->
+                        Keyword.put(vars, :field, attribute.name)
+                    end)
+
+                  {:halt, {:error, errors}}
 
                 {:ok, nil} when unquote(!opts[:embed_nil_values?]) ->
                   {:cont, {:ok, acc}}

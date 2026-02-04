@@ -1919,11 +1919,27 @@ defmodule Ash.Type do
           {:ok, nil}
         else
           term
+          |> Enum.with_index()
           |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
             case Ash.Type.dump_to_native(__MODULE__, item, single_constraints) do
               :error ->
-                {:halt, :error}
+                {:halt, {:error, index: index}}
+
+              {:error, keyword} ->
+                errors =
+                  keyword
+                  |> List.wrap()
+                  |> Ash.Helpers.flatten_preserving_keywords()
+                  |> Enum.map(fn
+                    string when is_binary(string) ->
+                      [message: string, index: index]
+
+                    vars ->
+                      Keyword.put(vars, :index, index)
+                  end)
+
+                {:halt, {:error, errors}}
 
               {:ok, value} ->
                 {:cont, {:ok, [value | dumped]}}
@@ -1938,11 +1954,27 @@ defmodule Ash.Type do
           {:ok, nil}
         else
           term
+          |> Enum.with_index()
           |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
             case Ash.Type.dump_to_embedded(__MODULE__, item, single_constraints) do
               :error ->
-                {:halt, :error}
+                {:halt, {:error, index: index}}
+
+              {:error, keyword} ->
+                errors =
+                  keyword
+                  |> List.wrap()
+                  |> Ash.Helpers.flatten_preserving_keywords()
+                  |> Enum.map(fn
+                    string when is_binary(string) ->
+                      [message: string, index: index]
+
+                    vars ->
+                      Keyword.put(vars, :index, index)
+                  end)
+
+                {:halt, {:error, errors}}
 
               {:ok, value} ->
                 {:cont, {:ok, [value | dumped]}}
