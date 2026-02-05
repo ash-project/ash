@@ -16,11 +16,12 @@ defmodule Ash.Resource.Calculation do
             description: nil,
             filterable?: true,
             sortable?: true,
+            sensitive?: false,
+            multitenancy: nil,
             load: [],
             name: nil,
             public?: false,
             async?: false,
-            sensitive?: false,
             type: nil,
             __spark_metadata__: nil
 
@@ -91,6 +92,16 @@ defmodule Ash.Resource.Calculation do
       doc: """
       Whether or not the calculation can be referenced in sorts.
       """
+    ],
+    multitenancy: [
+      type: {:in, [:enforce, :allow_global, :bypass, :bypass_all]},
+      doc: """
+      Configures multitenancy behavior for the calculation.
+      `:enforce` requires a tenant to be set (the default behavior),
+      `:allow_global` allows using this calculation both with and without a tenant,
+      `:bypass` completely ignores the tenant even if it's set,
+      `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for nested resources.
+      """
     ]
   ]
 
@@ -136,6 +147,8 @@ defmodule Ash.Resource.Calculation do
           filterable?: boolean,
           load: keyword,
           sortable?: boolean,
+          sensitive?: boolean,
+          multitenancy: nil | :enforce | :allow_global | :bypass | :bypass_all,
           name: atom(),
           public?: boolean,
           type: nil | Ash.Type.t(),
