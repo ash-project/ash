@@ -6,21 +6,6 @@ defmodule Ash.Domain.Interface do
   @moduledoc false
 
   defmacro __using__(_) do
-    env = __CALLER__
-
-    ash_domain_already_using =
-      Module.get_attribute(env.module, :__ash_domain_used__) || false
-
-    if ash_domain_already_using do
-      raise CompileError,
-        file: env.file,
-        line: env.line,
-        description: "use Ash.Domain can be called only one time in module "
-    end
-
-    Module.register_attribute(env.module, :__ash_domain_used__, [])
-    Module.put_attribute(env.module, :__ash_domain_used__, env.line)
-
     quote bind_quoted: [], generated: true do
       @spec can?(
               query_or_changeset_or_action ::

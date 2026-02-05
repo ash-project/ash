@@ -40,9 +40,11 @@ defmodule Ash.Test.Resource.DomainTest do
       flunk("expected CompileError on the second `use Ash.Domain`")
     rescue
       e in CompileError ->
-        assert e.line == 1
+        # Error should point to line 3 (the second `use Ash.Domain` invocation)
+        assert e.line == 3
         assert String.contains?(e.description, "use Ash.Domain")
-        assert String.contains?(e.description, "only one")
+        assert String.contains?(e.description, "can only be called once")
+        assert String.contains?(e.description, "Remove the duplicate")
     end
   end
 
