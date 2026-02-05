@@ -1092,7 +1092,7 @@ defmodule Ash.Actions.Create.Bulk do
              ) do
         changeset =
           changeset
-          |> Ash.Changeset.hydrate_atomic_refs(opts[:actor])
+          |> Ash.Changeset.handle_allow_nil_atomics(opts[:actor])
           |> Ash.Changeset.apply_atomic_constraints(opts[:actor])
 
         new_notifications =

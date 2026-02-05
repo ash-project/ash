@@ -1592,6 +1592,7 @@ defmodule Ash.DataLayer.Ets do
         Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
           with {:ok, pkey} <- get_valid_pkey(resource, changeset),
                {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+               {:ok, record} <- apply_atomics(changeset, resource, record),
                record <- unload_relationships(resource, record) do
             {:cont,
              {:ok,

@@ -2719,8 +2719,32 @@ defmodule Ash.Changeset do
 
   @doc false
   def handle_allow_nil_atomics(changeset, actor) do
-    changeset.atomics
-    |> Enum.reduce(changeset, fn {key, value}, changeset ->
+    changeset
+    |> handle_allow_nil_for_atomics(:atomics)
+    |> handle_allow_nil_for_atomics(:create_atomics)
+    |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
+    |> then(fn
+      {:not_atomic, value} ->
+        {:not_atomic, value}
+
+      %Ash.Changeset{} = changeset ->
+        if changeset.action.type == :update do
+          attributes =
+            changeset.attributes
+            |> Map.keys()
+            |> Enum.reject(&Ash.Resource.Info.attribute(changeset.resource, &1).allow_nil?)
+
+          require_values(changeset, :update, false, attributes)
+        else
+          changeset
+        end
+    end)
+  end
+
+  defp handle_allow_nil_for_atomics(changeset, atomics_key) do
+    atomics = Map.get(changeset, atomics_key)
+
+    Enum.reduce(atomics, changeset, fn {key, value}, changeset ->
       attribute = Ash.Resource.Info.attribute(changeset.resource, key)
 
       if attribute.primary_key? do
@@ -2757,26 +2781,9 @@ defmodule Ash.Changeset do
             Ash.Changeset.add_error(changeset, error)
 
           value ->
-            %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+            Map.update!(changeset, atomics_key, &Keyword.put(&1, key, value))
         end
       end
-    end)
-    |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
-    |> then(fn
-      {:not_atomic, value} ->
-        {:not_atomic, value}
-
-      %Ash.Changeset{} = changeset ->
-        if changeset.action.type == :update do
-          attributes =
-            changeset.attributes
-            |> Map.keys()
-            |> Enum.reject(&Ash.Resource.Info.attribute(changeset.resource, &1).allow_nil?)
-
-          require_values(changeset, :update, false, attributes)
-        else
-          changeset
-        end
     end)
   end
 
@@ -4361,26 +4368,30 @@ defmodule Ash.Changeset do
       end
     end)
     |> Enum.reduce(changeset, fn required_attribute, changeset ->
-      if changing_attribute?(changeset, required_attribute.name) do
-        if is_nil(get_attribute(changeset, required_attribute.name)) do
-          if required_attribute.name in changeset.invalid_keys do
-            changeset
-          else
-            add_required_attribute_error(changeset, required_attribute)
-          end
-        else
-          changeset
-        end
+      if Keyword.has_key?(changeset.create_atomics, required_attribute.name) do
+        changeset
       else
-        if is_nil(required_attribute.default) ||
-             required_attribute.name in changeset.action.require_attributes do
-          if required_attribute.name in changeset.invalid_keys do
-            changeset
+        if changing_attribute?(changeset, required_attribute.name) do
+          if is_nil(get_attribute(changeset, required_attribute.name)) do
+            if required_attribute.name in changeset.invalid_keys do
+              changeset
+            else
+              add_required_attribute_error(changeset, required_attribute)
+            end
           else
-            add_required_attribute_error(changeset, required_attribute)
+            changeset
           end
         else
-          changeset
+          if is_nil(required_attribute.default) ||
+               required_attribute.name in changeset.action.require_attributes do
+            if required_attribute.name in changeset.invalid_keys do
+              changeset
+            else
+              add_required_attribute_error(changeset, required_attribute)
+            end
+          else
+            changeset
+          end
         end
       end
     end)
@@ -6294,7 +6305,8 @@ defmodule Ash.Changeset do
   @spec changing_attribute?(t(), atom) :: boolean
   def changing_attribute?(changeset, attribute) do
     Map.has_key?(changeset.attributes, attribute) ||
-      Keyword.has_key?(changeset.atomics, attribute)
+      Keyword.has_key?(changeset.atomics, attribute) ||
+      Keyword.has_key?(changeset.create_atomics, attribute)
   end
 
   @doc "Returns true if a relationship exists in the changes"
