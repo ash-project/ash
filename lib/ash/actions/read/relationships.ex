@@ -505,6 +505,11 @@ defmodule Ash.Actions.Read.Relationships do
             tenant: related_query.tenant
           })
           |> case do
+            {:ok, result} -> {:ok, result}
+            {:error, error} -> {:error, error}
+            result when is_list(result) -> {:ok, result}
+          end
+          |> case do
             {:ok, result_records} ->
               result_records
               |> normalize_manual_results(records, relationship)
