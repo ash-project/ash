@@ -21,15 +21,9 @@ SPDX-License-Identifier: MIT
 
 * properly handle allow_nil? in expressions for atomic_set on create actions by [@zachdaniel](https://github.com/zachdaniel)
 
-* Fix/1537 improve domain error message (#2545) by TravelCurry02 [(#2545)](https://github.com/ash-project/ash/pull/2545)
-
 * improve error reporting for duplicate use of Ash.Domain by TravelCurry02 [(#2545)](https://github.com/ash-project/ash/pull/2545)
 
 * resolve ^actor() template in manage_relationship filters (#2548) by [@shahryarjb](https://github.com/shahryarjb) [(#2548)](https://github.com/ash-project/ash/pull/2548)
-
-### Improvements:
-
-* manual load can return list without :ok by zackattackz [(#2550)](https://github.com/ash-project/ash/pull/2550)
 
 ## [v3.14.1](https://github.com/ash-project/ash/compare/v3.14.0...v3.14.1) (2026-02-03)
 
