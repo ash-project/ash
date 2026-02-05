@@ -346,85 +346,121 @@ defmodule Ash.Actions.Read.Relationships do
   defp with_lateral_join_query(related_query, source_query, relationship, records) do
     if lateral_join?(related_query, source_query, relationship, records) do
       lateral_join_source_path =
-        if relationship.type == :many_to_many do
-          join_relationship =
-            Ash.Resource.Info.relationship(source_query.resource, relationship.join_relationship)
+        cond do
+          is_list(Map.get(relationship, :through)) ->
+            through_path = Map.get(relationship, :through)
+            expanded_relationships = expand_through_path(relationship.source, through_path)
 
-          through_query =
-            relationship.through
-            |> Ash.Query.do_filter(join_relationship.filter)
-            |> Ash.Query.set_context(%{
-              accessing_from: %{source: relationship.source, name: relationship.join_relationship},
-              shared: source_query.context[:shared] || %{}
-            })
-            |> Ash.Query.for_read(
-              join_relationship.read_action ||
-                Ash.Resource.Info.primary_action!(relationship.through, :read).name,
-              %{},
-              authorize?: source_query.context[:private][:authorize?],
-              actor: source_query.context[:private][:actor],
-              tenant: source_query.tenant,
-              tracer: source_query.context[:private][:tracer],
-              domain: join_relationship.domain || related_query.domain
-            )
-            |> Ash.Query.select([
-              relationship.source_attribute_on_join_resource,
-              relationship.destination_attribute_on_join_resource
-            ])
-            |> hydrate_refs(source_query.context[:private][:actor], relationship.source)
+            {path, _} =
+              Enum.reduce(expanded_relationships, {[], relationship.source}, fn relationship,
+                                                                                {acc,
+                                                                                 current_resource} ->
+                entry_query =
+                  if acc == [] do
+                    clear_lateral_join_source(source_query)
+                  else
+                    current_resource
+                    |> Ash.Query.new()
+                    |> clear_lateral_join_source()
+                  end
 
-          if source_query.context[:private][:authorize?] do
-            case Ash.can(
-                   through_query,
-                   source_query.context[:private][:actor],
-                   return_forbidden_error?: true,
-                   pre_flight?: false,
-                   alter_source?: true,
-                   run_queries?: false,
-                   base_query: through_query
-                 ) do
-              {:ok, true} ->
-                {:ok,
-                 [
-                   {clear_lateral_join_source(source_query), relationship.source_attribute,
-                    relationship.source_attribute_on_join_resource, relationship},
-                   {clear_lateral_join_source(through_query),
-                    relationship.destination_attribute_on_join_resource,
-                    relationship.destination_attribute, join_relationship}
-                 ]}
+                %{
+                  source_attribute: source_attribute,
+                  destination_attribute: destination_attribute
+                } = relationship
 
-              {:ok, true, authorized_through_query} ->
-                {:ok,
-                 [
-                   {clear_lateral_join_source(source_query), relationship.source_attribute,
-                    relationship.source_attribute_on_join_resource, relationship},
-                   {clear_lateral_join_source(authorized_through_query),
-                    relationship.destination_attribute_on_join_resource,
-                    relationship.destination_attribute, join_relationship}
-                 ]}
+                entry = {entry_query, source_attribute, destination_attribute, relationship}
+                {acc ++ [entry], relationship.destination}
+              end)
 
-              {:ok, false, error} ->
-                {:error, Ash.Error.set_path(error, join_relationship.name)}
+            {:ok, path}
 
-              {:error, error} ->
-                {:error, Ash.Error.set_path(error, join_relationship.name)}
+          relationship.type == :many_to_many ->
+            join_relationship =
+              Ash.Resource.Info.relationship(
+                source_query.resource,
+                relationship.join_relationship
+              )
+
+            through_query =
+              relationship.through
+              |> Ash.Query.do_filter(join_relationship.filter)
+              |> Ash.Query.set_context(%{
+                accessing_from: %{
+                  source: relationship.source,
+                  name: relationship.join_relationship
+                },
+                shared: source_query.context[:shared] || %{}
+              })
+              |> Ash.Query.for_read(
+                join_relationship.read_action ||
+                  Ash.Resource.Info.primary_action!(relationship.through, :read).name,
+                %{},
+                authorize?: source_query.context[:private][:authorize?],
+                actor: source_query.context[:private][:actor],
+                tenant: source_query.tenant,
+                tracer: source_query.context[:private][:tracer],
+                domain: join_relationship.domain || related_query.domain
+              )
+              |> Ash.Query.select([
+                relationship.source_attribute_on_join_resource,
+                relationship.destination_attribute_on_join_resource
+              ])
+              |> hydrate_refs(source_query.context[:private][:actor], relationship.source)
+
+            if source_query.context[:private][:authorize?] do
+              case Ash.can(
+                     through_query,
+                     source_query.context[:private][:actor],
+                     return_forbidden_error?: true,
+                     pre_flight?: false,
+                     alter_source?: true,
+                     run_queries?: false,
+                     base_query: through_query
+                   ) do
+                {:ok, true} ->
+                  {:ok,
+                   [
+                     {clear_lateral_join_source(source_query), relationship.source_attribute,
+                      relationship.source_attribute_on_join_resource, relationship},
+                     {clear_lateral_join_source(through_query),
+                      relationship.destination_attribute_on_join_resource,
+                      relationship.destination_attribute, join_relationship}
+                   ]}
+
+                {:ok, true, authorized_through_query} ->
+                  {:ok,
+                   [
+                     {clear_lateral_join_source(source_query), relationship.source_attribute,
+                      relationship.source_attribute_on_join_resource, relationship},
+                     {clear_lateral_join_source(authorized_through_query),
+                      relationship.destination_attribute_on_join_resource,
+                      relationship.destination_attribute, join_relationship}
+                   ]}
+
+                {:ok, false, error} ->
+                  {:error, Ash.Error.set_path(error, join_relationship.name)}
+
+                {:error, error} ->
+                  {:error, Ash.Error.set_path(error, join_relationship.name)}
+              end
+            else
+              {:ok,
+               [
+                 {clear_lateral_join_source(source_query), relationship.source_attribute,
+                  relationship.source_attribute_on_join_resource, relationship},
+                 {clear_lateral_join_source(through_query),
+                  relationship.destination_attribute_on_join_resource,
+                  relationship.destination_attribute, join_relationship}
+               ]}
             end
-          else
+
+          true ->
             {:ok,
              [
                {clear_lateral_join_source(source_query), relationship.source_attribute,
-                relationship.source_attribute_on_join_resource, relationship},
-               {clear_lateral_join_source(through_query),
-                relationship.destination_attribute_on_join_resource,
-                relationship.destination_attribute, join_relationship}
+                relationship.destination_attribute, relationship}
              ]}
-          end
-        else
-          {:ok,
-           [
-             {clear_lateral_join_source(source_query), relationship.source_attribute,
-              relationship.destination_attribute, relationship}
-           ]}
         end
 
       case lateral_join_source_path do
@@ -549,8 +585,21 @@ defmodule Ash.Actions.Read.Relationships do
     # Check if we need per-record iteration (parent expressions without lateral join support)
     has_parent_expr? = has_parent_expr?(relationship, query.context, query.domain)
 
+    through_resources =
+      case Map.get(relationship, :through) do
+        nil ->
+          []
+
+        through when is_list(through) ->
+          expanded = expand_through_path(relationship.source, through)
+          Enum.map(expanded, & &1.destination)
+
+        through ->
+          [through]
+      end
+
     resources =
-      [relationship.source, Map.get(relationship, :through), relationship.destination]
+      ([relationship.source] ++ through_resources ++ [relationship.destination])
       |> Enum.reject(&is_nil/1)
 
     can_lateral_join? =
@@ -1582,7 +1631,17 @@ defmodule Ash.Actions.Read.Relationships do
       {offset, limit} = offset_and_limit(query)
 
       resources =
-        [relationship.source, Map.get(relationship, :through), relationship.destination]
+        relationship
+        |> Map.get(:through)
+        |> case do
+          through when is_list(through) ->
+            expanded = expand_through_path(relationship.source, through)
+            through_resources = Enum.map(expanded, & &1.destination)
+            [relationship.source] ++ through_resources ++ [relationship.destination]
+
+          through ->
+            [relationship.source, through, relationship.destination]
+        end
         |> Enum.reject(&is_nil/1)
 
       has_distinct? = query.distinct not in [[], nil]
@@ -1623,7 +1682,10 @@ defmodule Ash.Actions.Read.Relationships do
         has_parent_expr?(relationship, query.context, query.domain) ->
           true
 
-        relationship.type == :many_to_many &&
+        is_list(Map.get(relationship, :through)) ->
+          true
+
+        relationship.type == :many_to_many && !is_list(relationship.through) &&
             Ash.DataLayer.prefer_lateral_join_for_many_to_many?(
               Ash.DataLayer.data_layer(relationship.source)
             ) ->
@@ -1635,6 +1697,26 @@ defmodule Ash.Actions.Read.Relationships do
         true ->
           false
       end
+    end
+  end
+
+  defp expand_through_path(resource, path) do
+    expand_through_path(resource, path, [])
+  end
+
+  defp expand_through_path(_resource, [], acc), do: Enum.reverse(acc)
+
+  defp expand_through_path(resource, [name | rest], acc) do
+    rel = Ash.Resource.Info.relationship(resource, name)
+
+    case Map.get(rel, :through) do
+      through when is_list(through) ->
+        nested_rels = expand_through_path(resource, through, [])
+        destination = List.last(nested_rels).destination
+        expand_through_path(destination, rest, Enum.reverse(nested_rels) ++ acc)
+
+      _ ->
+        expand_through_path(rel.destination, rest, [rel | acc])
     end
   end
 
