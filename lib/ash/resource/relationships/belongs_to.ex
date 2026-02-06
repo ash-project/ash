@@ -28,6 +28,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :description,
     :attribute_writable?,
     :attribute_public?,
+    :through,
     filters: [],
     filterable?: true,
     sortable?: true,
@@ -64,6 +65,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           description: String.t(),
           sort: Keyword.t() | nil,
           default_sort: Keyword.t() | nil,
+          through: list(atom) | nil,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
@@ -76,6 +78,13 @@ defmodule Ash.Resource.Relationships.BelongsTo do
 
   @opt_schema Spark.Options.merge(
                 [
+                  through: [
+                    type: {:wrap_list, :atom},
+                    doc: """
+                    A list of relationship names to traverse. The result will be the record
+                    reachable by following the relationships in order.
+                    """
+                  ],
                   primary_key?: [
                     type: :boolean,
                     default: false,
