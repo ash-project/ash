@@ -1004,7 +1004,7 @@ defmodule Ash.Generator do
   def mixed_map(map, keys) do
     map = to_generators(map)
     {optional, required} = Map.split(map, keys)
-    do_mixed_map({StreamData.fixed_map(required), StreamData.optional_map(optional)})
+    do_mixed_map({required, optional})
   end
 
   defp do_changeset_or_query(resource, resource_or_record, action, input, changeset_options) do
