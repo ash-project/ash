@@ -722,6 +722,13 @@ defmodule Ash.Actions.MultitenancyTest do
       assert 0 = Ash.count!(Comment, tenant: tenant1)
     end
 
+    test "an aggregate can be used with a scope that provides a tenant", %{
+      tenant1: tenant1
+    } do
+      scope = %{tenant: tenant1}
+      assert 0 = Ash.count!(Comment, scope: scope)
+    end
+
     test "an aggregate cannot be used without tenant specified", %{
       tenant1: tenant1
     } do

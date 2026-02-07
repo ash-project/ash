@@ -547,7 +547,13 @@ defmodule Ash.Query.Aggregate do
     {left, right} = Keyword.split(opts, opt_keys())
 
     right =
-      Keyword.put(right, :tenant, left[:tenant])
+      case Keyword.fetch(left, :tenant) do
+        {:ok, value} ->
+          Keyword.put(right, :tenant, value)
+
+        :error ->
+          right
+      end
 
     right =
       case Keyword.fetch(left, :authorize?) do
