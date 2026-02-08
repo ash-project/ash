@@ -81,7 +81,10 @@ defmodule Ash.Test.Resource.UnrelatedExistsTest do
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     ets do
       private? true
@@ -93,10 +96,79 @@ defmodule Ash.Test.Resource.UnrelatedExistsTest do
       attribute :age, :integer, public?: true
       attribute :email, :string, public?: true
       attribute :role, :atom, default: :user, public?: true
+      attribute :secret, :integer, public?: true
     end
 
     actions do
       defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    policies do
+      policy always() do
+        authorize_if always()
+      end
+    end
+
+    field_policies do
+      field_policy :* do
+        authorize_if always()
+      end
+
+      field_policy :name do
+        authorize_if action([:create, :read])
+      end
+
+      field_policy :secret do
+        authorize_if actor_attribute_equals(:role, :admin)
+        authorize_if action([:create])
+      end
+    end
+
+    relationships do
+      has_many :user_votes, Ash.Test.Resource.UnrelatedExistsTest.UserVote do
+        public? true
+      end
+    end
+  end
+
+  defmodule UserVote do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :score, :integer, public?: true
+    end
+
+    actions do
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    policies do
+      policy always() do
+        authorize_if always()
+      end
+    end
+
+    field_policies do
+      field_policy :* do
+        authorize_if always()
+      end
+
+      field_policy :score do
+        authorize_if actor_attribute_equals(:role, :admin)
+      end
+    end
+
+    relationships do
+      belongs_to :user, User, primary_key?: true, allow_nil?: false, public?: true
     end
   end
 
@@ -212,9 +284,14 @@ defmodule Ash.Test.Resource.UnrelatedExistsTest do
 
   describe "unrelated exists with filter_input" do
     setup do
-      admin = Ash.create!(User, %{name: "Admin", email: "admin@example.com", role: :admin})
-      user1 = Ash.create!(User, %{name: "User1", email: "user1@example.com", role: :user})
-      user2 = Ash.create!(User, %{name: "User2", email: "user2@example.com", role: :user})
+      admin =
+        Ash.create!(User, %{name: "Admin", email: "admin@example.com", role: :admin, secret: 40})
+
+      user1 =
+        Ash.create!(User, %{name: "User1", email: "user1@example.com", role: :user, secret: 25})
+
+      user2 =
+        Ash.create!(User, %{name: "User2", email: "user2@example.com", role: :user, secret: 30})
 
       Ash.create!(Profile, %{
         name: "Admin",
@@ -348,6 +425,61 @@ defmodule Ash.Test.Resource.UnrelatedExistsTest do
         |> Ash.read!(actor: user1, authorize?: true)
 
       assert length(users) == 3
+    end
+
+    test "filter_input with unrelated exists respects field level authorization", %{
+      admin: admin,
+      user1: user1
+    } do
+      user1_users =
+        User
+        |> Ash.Query.filter_input(expr(exists(Profile, age == parent(secret))))
+        |> Ash.read!(actor: user1, authorize?: true)
+
+      assert user1_users == []
+
+      admin_users =
+        User
+        |> Ash.Query.filter_input(expr(exists(Profile, age == parent(secret))))
+        |> Ash.read!(actor: admin, authorize?: true)
+
+      assert length(admin_users) == 3
+    end
+
+    test "filter_input with nested unrelated exists respects field level authorization", %{
+      admin: admin,
+      user1: user1
+    } do
+      UserVote
+      |> Ash.create!(%{user_id: user1.id, score: 2})
+
+      user1_users =
+        User
+        |> Ash.Query.filter_input(
+          expr(
+            exists(
+              user_votes,
+              score > 1 and exists(UserVote, score > 1)
+            )
+          )
+        )
+        |> Ash.read!(actor: user1, authorize?: true)
+
+      assert user1_users == []
+
+      admin_users =
+        User
+        |> Ash.Query.filter_input(
+          expr(
+            exists(
+              user_votes,
+              score > 1 and exists(UserVote, score > 1)
+            )
+          )
+        )
+        |> Ash.read!(actor: admin, authorize?: true)
+
+      assert length(admin_users) == 1
     end
   end
 
