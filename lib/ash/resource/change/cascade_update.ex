@@ -260,8 +260,7 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         |> List.wrap()
         |> Ash.load!(
           [{relationship.name, load_query}],
-          scope: context,
-          authorize?: false
+          scope: context
         )
         |> Enum.flat_map(fn record ->
           record
