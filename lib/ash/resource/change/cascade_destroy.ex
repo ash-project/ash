@@ -283,7 +283,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
   defp destroy_related([], _, _, _), do: :ok
 
-  defp destroy_related(data, opts, %{tenant: tenant} = context, changeset) do
+  defp destroy_related(data, opts, context, changeset) do
     action = opts.action
     relationship = opts.relationship
 
@@ -296,7 +296,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         return_notifications?: opts.return_notifications?
       )
 
-    context =
+    action_context =
       Map.merge(relationship.context || %{}, %{
         cascade_destroy: true,
         accessing_from: %{source: relationship.source, name: relationship.name}
@@ -306,8 +306,8 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       Keyword.update(
         context_opts,
         :context,
-        context,
-        &Map.merge(&1, context)
+        action_context,
+        &Map.merge(&1, action_context)
       )
 
     case related_query(data, opts, context_opts) do
@@ -346,7 +346,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
           |> List.wrap()
           |> Ash.load!(
             [{relationship.name, load_query}],
-            tenant: tenant
+            scope: context
           )
           |> Enum.flat_map(fn record ->
             record
@@ -359,8 +359,8 @@ defmodule Ash.Resource.Change.CascadeDestroy do
             Keyword.update(
               context_opts,
               :context,
-              context,
-              &Map.merge(&1, context)
+              action_context,
+              &Map.merge(&1, action_context)
             )
           )
         end
