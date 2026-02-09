@@ -103,6 +103,10 @@ Finally, if you want to install Ash manually, step by step, follow the [manual i
 > If you have trouble compiling `picosat_elixir`, then alter your `mix.exs` file to replace `{:picosat_elixir, "~> 0.2"}` with `{:simple_sat, "~> 0.1"}` to use a simpler (but mildly slower) solver. You can always switch back to `picosat_elixir` later once you're done with the tutorial.
 > Then, run `mix deps.get && mix deps.compile ash --force`
 
+> ### Install aborted (e.g. Postgres not running)? {: .warning}
+>
+> If the installer stops because it couldn't connect to Postgres (or for another reason), fix the issue first—for example, start Postgres. Then run **`mix setup`** to finish setup. That command installs dependencies, compiles assets (CSS, JS, Tailwind), runs Ecto migrations, and other one-time setup. If you skip it, the app may run but assets will be missing and you may see confusing JS or Tailwind errors.
+
 ### Building your first Ash Domain
 
 The basic building blocks of an Ash application are Ash resources. They are tied together by a domain module, which will allow you to interact with those resources.

@@ -6,6 +6,8 @@
 Mimic.copy(Ash.Reactor.Notifications)
 Mimic.copy(Ash.DataLayer)
 Mimic.copy(Ash.ProcessHelpers)
+#addition to assist with testing the install task
+Mimic.copy(Ash.Mix.Tasks.Install.PostgresCheck)
 
 Code.compiler_options(ignore_module_conflict: true)
 
