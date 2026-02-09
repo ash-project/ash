@@ -1923,26 +1923,11 @@ defmodule Ash.Type do
           |> Enum.reverse()
           |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
             case Ash.Type.dump_to_native(__MODULE__, item, single_constraints) do
-              :error ->
-                {:halt, {:error, index: index}}
-
-              {:error, keyword} ->
-                errors =
-                  keyword
-                  |> List.wrap()
-                  |> Ash.Helpers.flatten_preserving_keywords()
-                  |> Enum.map(fn
-                    string when is_binary(string) ->
-                      [message: string, index: index]
-
-                    vars ->
-                      Keyword.put(vars, :index, index)
-                  end)
-
-                {:halt, {:error, errors}}
-
               {:ok, value} ->
                 {:cont, {:ok, [value | dumped]}}
+
+              error ->
+                {:halt, Ash.Helpers.error_with_context(error, index: index)}
             end
           end)
         end
@@ -1958,26 +1943,11 @@ defmodule Ash.Type do
           |> Enum.reverse()
           |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
             case Ash.Type.dump_to_embedded(__MODULE__, item, single_constraints) do
-              :error ->
-                {:halt, {:error, index: index}}
-
-              {:error, keyword} ->
-                errors =
-                  keyword
-                  |> List.wrap()
-                  |> Ash.Helpers.flatten_preserving_keywords()
-                  |> Enum.map(fn
-                    string when is_binary(string) ->
-                      [message: string, index: index]
-
-                    vars ->
-                      Keyword.put(vars, :index, index)
-                  end)
-
-                {:halt, {:error, errors}}
-
               {:ok, value} ->
                 {:cont, {:ok, [value | dumped]}}
+
+              error ->
+                {:halt, Ash.Helpers.error_with_context(error, index: index)}
             end
           end)
         end

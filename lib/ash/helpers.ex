@@ -26,6 +26,24 @@ defmodule Ash.Helpers do
 
   def try_compile(_), do: :ok
 
+  def error_with_context(:error, context), do: {:error, context}
+
+  def error_with_context({:error, details}, context) do
+    errors =
+      details
+      |> List.wrap()
+      |> flatten_preserving_keywords()
+      |> Enum.map(fn
+        string when is_binary(string) ->
+          [message: string] ++ context
+
+        vars ->
+          Keyword.merge(vars, context)
+      end)
+
+    {:error, errors}
+  end
+
   def flatten_preserving_keywords(list) do
     if Keyword.keyword?(list) do
       [list]
