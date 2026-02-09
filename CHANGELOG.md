@@ -8,6 +8,35 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.16.0](https://github.com/ash-project/ash/compare/v3.15.0...v3.16.0) (2026-02-09)
+
+
+
+
+### Features:
+
+* calculations: Add multitenancy bypass options to calculations (#2552) by [@shahryarjb](https://github.com/shahryarjb) [(#2552)](https://github.com/ash-project/ash/pull/2552)
+
+### Bug Fixes:
+
+* handle unrelated exists in authorizer ref replacement (#2556) by zackattackz [(#2556)](https://github.com/ash-project/ash/pull/2556)
+
+* pass full context to `Ash.load!` in cascade changes (#2537) by [@beam-bots](https://github.com/beam-bots) [(#2537)](https://github.com/ash-project/ash/pull/2537)
+
+* pass full context to `Ash.load!` in cascade changes by [@beam-bots](https://github.com/beam-bots) [(#2537)](https://github.com/ash-project/ash/pull/2537)
+
+* use scope option instead of to_opts for Ash.load! in cascade changes by [@beam-bots](https://github.com/beam-bots) [(#2537)](https://github.com/ash-project/ash/pull/2537)
+
+* avoid shadowing context variable in cascade changes by [@beam-bots](https://github.com/beam-bots) [(#2537)](https://github.com/ash-project/ash/pull/2537)
+
+* remove `authorize?: false` from cascade `Ash.load!` calls by [@beam-bots](https://github.com/beam-bots) [(#2537)](https://github.com/ash-project/ash/pull/2537)
+
+* ensure tenant is not overridden in aggregates by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure that `change` is properly simulated when `batch_change` defined by [@zachdaniel](https://github.com/zachdaniel)
+
+* remove incorrect stream calls (#2554) by Jesse Williams [(#2554)](https://github.com/ash-project/ash/pull/2554)
+
 ## [v3.15.0](https://github.com/ash-project/ash/compare/v3.14.1...v3.15.0) (2026-02-05)
 
 
