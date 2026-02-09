@@ -19,16 +19,22 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
       |> Ash.Resource.Info.attributes()
       |> Enum.map(& &1.name)
 
-    dsl
-    |> Ash.Resource.Info.relationships()
-    |> Enum.reject(fn relationship ->
-      Map.get(relationship, :manual) || Map.get(relationship, :no_attributes?)
-    end)
-    |> Enum.filter(& &1.validate_destination_attribute?)
+    relationships =
+      dsl
+      |> Ash.Resource.Info.relationships()
+      |> Enum.filter(&(&1.validate_destination_attribute? && !Map.get(&1, :no_attributes?)))
+
+    {manual_relationships, other_relationships} =
+      Enum.split_with(relationships, &Map.get(&1, :manual))
+
+    other_relationships
     |> Enum.each(&validate_relationship(&1, attribute_names, module))
+
+    manual_relationships
+    |> Enum.each(&validate_source_attribute(&1, attribute_names, module))
   end
 
-  defp validate_relationship(relationship, attribute_names, module) do
+  defp validate_source_attribute(relationship, attribute_names, module) do
     location = Entity.anno(relationship)
 
     if relationship.source_attribute not in attribute_names do
@@ -37,8 +43,13 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
         location: location,
         path: [:relationships, relationship.name],
         message:
-          "Relationship `#{relationship.name}` expects source attribute `#{relationship.source_attribute}` to be defined"
+          "Relationship `#{relationship.name}` expects source attribute `#{relationship.source_attribute}` to be defined. Either define it or set source_attribute to another attribute."
     end
+  end
+
+  defp validate_relationship(relationship, attribute_names, module) do
+    validate_source_attribute(relationship, attribute_names, module)
+    location = Entity.anno(relationship)
 
     if Code.ensure_loaded?(relationship.destination) do
       if relationship.type == :many_to_many do
