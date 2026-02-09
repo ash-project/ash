@@ -273,6 +273,12 @@ defmodule Ash.Test.CodeInterfaceTest do
                   end)
                 end,
                 load: [:first_name, :last_name]
+
+      calculate :full_name_is, :boolean do
+        argument :required_name, :string, allow_nil?: false
+
+        calculation expr(full_name == ^arg(:required_name))
+      end
     end
 
     attributes do
@@ -412,6 +418,47 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert {:ok, true} == User.can_get_by_id(nil, "some uuid")
       assert User.can_read_users?(nil)
       assert User.can_get_by_id?(nil, "some uuid")
+    end
+
+    test "can filter on calculations" do
+      require Ash.Query
+      user = User.create!("bob", %{last_name: "rob"}, load: :full_name)
+
+      # Can load the calculation
+      assert %User{full_name_is: true} =
+               Ash.load!(user, full_name_is: %{required_name: "bob rob"})
+
+      # Can filter on calculation using Ash.Query.filter macro
+      assert [%User{first_name: "bob", last_name: "rob"}] =
+               User
+               |> Ash.Query.filter(full_name_is(required_name: "bob rob"))
+               |> Ash.read!()
+
+      # Negative test: returns empty list when required name doesn't match
+      assert [] =
+               User
+               |> Ash.Query.filter(full_name_is(required_name: "rob bob"))
+               |> Ash.read!()
+
+      # Can filter using Ash.Query filter keyword
+      assert [%User{first_name: "bob", last_name: "rob"}] =
+               User
+               |> Ash.Query.filter(full_name_is: [required_name: "bob rob"])
+               |> Ash.read!()
+
+      # Negative test
+      assert [] =
+               User
+               |> Ash.Query.filter(full_name_is: [required_name: "rob bob"])
+               |> Ash.read!()
+
+      # Can filter on code interface
+      assert [%User{first_name: "bob", last_name: "rob"}] =
+               User.read_users!(query: [filter: [full_name_is: [required_name: "bob rob"]]])
+
+      # Negative test
+      assert [] =
+               User.read_users!(query: [filter: [full_name_is: [required_name: "rob bob"]]])
     end
   end
 
