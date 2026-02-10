@@ -148,4 +148,9 @@ defmodule Ash.Resource.Relationships.SharedOptions do
      A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. Setting this will automatically set `no_attributes?` to `true`.
      """}
   end
+
+  def manual_implies_no_attributes(relationship) do
+    relationship
+    |> Map.put(:no_attributes?, relationship.no_attributes? || not is_nil(relationship.manual))
+  end
 end

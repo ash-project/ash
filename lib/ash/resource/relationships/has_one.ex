@@ -100,6 +100,6 @@ defmodule Ash.Resource.Relationships.HasOne do
      relationship
      |> Ash.Resource.Actions.Read.concat_filters()
      |> Map.put(:from_many?, relationship.from_many? || not is_nil(relationship.sort))
-     |> Ash.Resource.Relationships.SharedTransformers.manual_implies_no_attributes()}
+     |> manual_implies_no_attributes()}
   end
 end

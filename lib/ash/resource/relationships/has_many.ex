@@ -96,6 +96,6 @@ defmodule Ash.Resource.Relationships.HasMany do
     {:ok,
      relationship
      |> Ash.Resource.Actions.Read.concat_filters()
-     |> Ash.Resource.Relationships.SharedTransformers.manual_implies_no_attributes()}
+     |> manual_implies_no_attributes()}
   end
 end
