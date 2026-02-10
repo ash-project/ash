@@ -1499,14 +1499,11 @@ defmodule Ash.Actions.Read do
         []
       else
         case Ash.Resource.Info.relationship(query.resource, name) do
+          %{manual: {module, opts}} ->
+            module.select(opts)
+
           %{no_attributes?: true} ->
             []
-
-          %{manual: {module, opts}, source_attribute: source_attribute} ->
-            fields =
-              module.select(opts)
-
-            [source_attribute | fields]
 
           %{source_attribute: source_attribute} ->
             [source_attribute]

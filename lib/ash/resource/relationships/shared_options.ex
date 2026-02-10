@@ -145,7 +145,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
        {:spark_function_behaviour, Ash.Resource.ManualRelationship,
         {Ash.Resource.ManualRelationship.Function, 2}},
      doc: """
-     A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context.
+     A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. Setting this will automatically set `no_attributes?` to `true`.
      """}
   end
 end

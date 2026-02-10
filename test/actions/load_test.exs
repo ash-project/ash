@@ -582,6 +582,62 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
+  defmodule PostSecretRelationship do
+    @moduledoc false
+    use Ash.Resource.ManualRelationship
+
+    require Ash.Query
+
+    @impl true
+    def load(records, _opts, _context) do
+      posts_with_secrets =
+        Post
+        |> Ash.Query.for_read(:all_access)
+        |> Ash.Query.filter(
+          exists(Ash.Test.Actions.LoadTest.PostSecret, contains(parent(secret), secret))
+        )
+        |> Ash.read!()
+
+      Enum.map(records, fn record ->
+        Enum.filter(posts_with_secrets, fn post ->
+          String.contains?(
+            post.secret,
+            record.secret
+          )
+        end)
+      end)
+    end
+  end
+
+  defmodule PostSecret do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      defaults([:read, create: :*])
+    end
+
+    attributes do
+      attribute :secret, :string do
+        public? true
+        primary_key? true
+        allow_nil? false
+      end
+    end
+
+    relationships do
+      has_many :posts_with_secret, Post do
+        manual PostSecretRelationship
+      end
+    end
+  end
+
   describe "loads" do
     setup do
       start_supervised(
@@ -1377,6 +1433,31 @@ defmodule Ash.Test.Actions.LoadTest do
 
       assert Ash.load!(event_log, :author).author.id == author.id
       assert Ash.load!(event_log2, :author).author.id == author2.id
+    end
+
+    test "it allows loading manual relationships with non :id pkey, regardless of source_attribute" do
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post1", secret: "50"})
+      |> Ash.create!(authorize?: false)
+
+      post2 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post2", secret: "42"})
+        |> Ash.create!(authorize?: false)
+
+      post3 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post3", secret: "4"})
+        |> Ash.create!(authorize?: false)
+
+      post_secret1 =
+        PostSecret
+        |> Ash.Changeset.for_create(:create, %{secret: "4"})
+        |> Ash.create!()
+        |> Ash.load!([:posts_with_secret])
+
+      assert Enum.sort(Enum.map(post_secret1.posts_with_secret, & &1.secret)) ==
+               Enum.sort([post2.secret, post3.secret])
     end
   end
 
