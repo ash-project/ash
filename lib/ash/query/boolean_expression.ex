@@ -33,9 +33,8 @@ defmodule Ash.Query.BooleanExpression do
   # statements are contradictions. However, that would likely confuse users. For example:
   # `Ash.Query.filter(Resource, x == 1 and x in [2, 3])` becomes `#Ash.Query<filter: false>`
   # We may want to go down this route some day, but for now we simply use this to combine
-  # statements where possible, which helps with authorization logic that leverages the query
-  # For example, `x in [1, 2] or x == 3` becomes `x in [1, 2, 3]`, and `x in [1, 2, 3] and x != 1`
-  # becomes `x in [2, 3]`
+  # statements where possible, which helps with authorization logic that leverages the query.
+  # For example, `x in [1, 2, 3] and x != 1` becomes `x in [2, 3]`
   def optimized_new(_, nil, nil), do: false
   def optimized_new(:and, false, _), do: false
   def optimized_new(:and, _, false), do: false
@@ -95,18 +94,6 @@ defmodule Ash.Query.BooleanExpression do
   end
 
   def optimized_new(
-        :or,
-        %Eq{left: left, right: value} = left_op,
-        %In{left: left, right: %MapSet{} = mapset} = right
-      ) do
-    if can_optimize?(value) do
-      %{right | right: MapSet.put(mapset, value)}
-    else
-      do_new(:or, left_op, right)
-    end
-  end
-
-  def optimized_new(
         :and,
         %Eq{left: left, right: value} = left_expr,
         %In{left: left, right: %MapSet{} = mapset} = right
@@ -143,18 +130,6 @@ defmodule Ash.Query.BooleanExpression do
   end
 
   def optimized_new(
-        :or,
-        %Eq{left: left, right: left_value} = left_expr,
-        %Eq{left: left, right: right_value} = right_expr
-      ) do
-    if can_optimize?(left_value) && can_optimize?(right_value) do
-      %In{left: left, right: MapSet.new([left_value, right_value])}
-    else
-      do_new(:or, left_expr, right_expr)
-    end
-  end
-
-  def optimized_new(
         :and,
         %Eq{left: left, right: left_value} = left_expr,
         %Eq{left: left, right: right_value} = right_expr
@@ -179,14 +154,6 @@ defmodule Ash.Query.BooleanExpression do
   end
 
   def optimized_new(
-        :or,
-        %In{left: left, right: %MapSet{} = left_values},
-        %In{left: left, right: %MapSet{} = right_values} = right_expr
-      ) do
-    %{right_expr | right: MapSet.union(left_values, right_values)}
-  end
-
-  def optimized_new(
         :and,
         %In{left: left, right: left_values} = left_expr,
         %In{left: left, right: right_values} = right_expr
@@ -201,41 +168,6 @@ defmodule Ash.Query.BooleanExpression do
       end
     else
       do_new(:and, left_expr, right_expr)
-    end
-  end
-
-  def optimized_new(
-        :or,
-        %__MODULE__{op: :or, left: left, right: right} = left_expr,
-        right_expr
-      ) do
-    case right_expr do
-      %In{} = in_op ->
-        with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, in_op), true, false)},
-             {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, in_op), true, false)} do
-          do_new(:or, left_expr, in_op)
-        else
-          {:left, _} ->
-            %{left_expr | left: optimized_new(:or, left, in_op)}
-
-          {:right, _} ->
-            %{left_expr | right: optimized_new(:or, right, in_op)}
-        end
-
-      %Eq{} = eq_op ->
-        with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, eq_op), true, false)},
-             {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, eq_op), true, false)} do
-          do_new(:or, left_expr, eq_op)
-        else
-          {:left, _} ->
-            %{left_expr | left: optimized_new(:or, left, eq_op)}
-
-          {:right, _} ->
-            %{left_expr | right: optimized_new(:or, right, eq_op)}
-        end
-
-      _ ->
-        do_new(:or, left_expr, right_expr)
     end
   end
 

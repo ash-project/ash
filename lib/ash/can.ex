@@ -878,15 +878,14 @@ defmodule Ash.Can do
           data = List.wrap(opts[:data])
 
           pkey = Ash.Resource.Info.primary_key(query.resource)
-          pkey_values = Enum.map(data, &Map.take(&1, pkey))
 
-          if Enum.any?(pkey_values, fn pkey_value ->
-               pkey_value |> Map.values() |> Enum.any?(&is_nil/1)
+          if Enum.any?(data, fn record ->
+               pkey |> Enum.map(&Map.get(record, &1)) |> Enum.any?(&is_nil/1)
              end) do
             {:ok, :maybe}
           else
             query
-            |> Ash.Query.do_filter(or: pkey_values)
+            |> Ash.Query.do_filter(Ash.pkey_filter(data, pkey))
             |> Ash.Query.select([])
             |> Ash.Query.set_tenant(tenant)
             |> Ash.Actions.Read.add_calc_context_to_query(

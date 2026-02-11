@@ -1700,18 +1700,12 @@ defmodule Ash.Actions.Read do
        """}
     else
       filter =
-        initial_data
-        |> List.wrap()
-        |> Enum.map(&Map.take(&1, primary_key))
-        |> case do
+        case List.wrap(initial_data) do
           [] ->
             false
 
-          [single] ->
-            [single]
-
-          multiple ->
-            [or: multiple]
+          records ->
+            Ash.pkey_filter(records, primary_key)
         end
 
       with %{valid?: true} = query <-
