@@ -847,7 +847,7 @@ defmodule Ash.DataLayer do
     if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :run_aggregate_query, 3) do
       data_layer.run_aggregate_query(query, aggregates, resource)
     else
-      {:error, "Aggregate queries not supported"}
+      {:error, "Aggregate queries not supported by #{inspect(data_layer)}"}
     end
   end
 
