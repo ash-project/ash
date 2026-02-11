@@ -48,8 +48,37 @@ defmodule Ash.Test.Actions.HasManyTest do
 
     require Ash.Query
 
-    def load(records, _opts, %{query: query, actor: actor, authorize?: authorize?}) do
+    def select(opts) do
+      if opts[:select_likes?] do
+        [:likes]
+      else
+        []
+      end
+    end
+
+    def load(records, opts, %{
+          query: query,
+          actor: actor,
+          authorize?: authorize?,
+          relationship: relationship
+        }) do
       post_ids = Enum.map(records, & &1.id)
+
+      case relationship.name do
+        :meow_comments ->
+          assert opts[:select_likes?] == true
+
+        :meow_comments_no_likes ->
+          assert !opts[:select_likes?]
+      end
+
+      Enum.each(records, fn record ->
+        if opts[:select_likes?] do
+          assert is_nil(record.likes) or is_integer(record.likes)
+        else
+          assert not is_nil(record.likes) and not is_integer(record.likes)
+        end
+      end)
 
       {:ok,
        query
@@ -116,6 +145,8 @@ defmodule Ash.Test.Actions.HasManyTest do
       attribute :title, :string, public?: true
       attribute :tenant_id, :string, public?: true
 
+      attribute :likes, :integer, public?: true
+
       create_timestamp :inserted_at, public?: true
     end
 
@@ -127,7 +158,11 @@ defmodule Ash.Test.Actions.HasManyTest do
       end
 
       has_many :meow_comments, Comment do
-        manual MeowCommentRelationship
+        manual({MeowCommentRelationship, [select_likes?: true]})
+      end
+
+      has_many :meow_comments_no_likes, Comment do
+        manual({MeowCommentRelationship, [select_likes?: false]})
       end
 
       has_many :meow_list_comments, Comment do
@@ -265,7 +300,8 @@ defmodule Ash.Test.Actions.HasManyTest do
     post =
       Post
       |> Ash.Changeset.for_create(:create, %{
-        title: "buz"
+        title: "buz",
+        likes: 1337
       })
       |> Ash.create!()
 
@@ -274,8 +310,9 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.Changeset.for_update(:add_comment, %{
         comment: %{content: "meow"}
       })
+      |> Ash.Changeset.deselect(:likes)
       |> Ash.update!()
-      |> Ash.load!(:meow_comments)
+      |> Ash.load!([:meow_comments])
 
     assert length(post.meow_comments) == 1
 
@@ -305,6 +342,14 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.load!(:meow_comments)
 
     assert length(post.meow_comments) == 1
+
+    post
+    |> Ash.Changeset.for_update(:add_comment, %{
+      comment: %{content: "meow"}
+    })
+    |> Ash.Changeset.deselect(:likes)
+    |> Ash.update!()
+    |> Ash.load!([:meow_comments_no_likes])
   end
 
   test "raise on an invalid manual relationship query" do
