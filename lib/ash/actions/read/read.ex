@@ -4866,34 +4866,33 @@ defmodule Ash.Actions.Read do
     |> Enum.reduce_while(
       {:ok, filter_expr},
       fn path, {:ok, filter} ->
-        last_relationship =
-          Enum.reduce(path, nil, fn
-            relationship, nil ->
-              Ash.Resource.Info.relationship(resource, relationship)
+        expanded_with_paths = expand_path_with_through(resource, path)
 
-            relationship, acc ->
-              Ash.Resource.Info.relationship(acc.destination, relationship)
-          end)
+        case Enum.reduce_while(expanded_with_paths, {:ok, filter}, fn {relationship, filter_path},
+                                                                      {:ok, acc_filter} ->
+               read_action =
+                 relationship.read_action ||
+                   Ash.Resource.Info.primary_action!(relationship.destination, :read).name
 
-        read_action =
-          last_relationship.read_action ||
-            Ash.Resource.Info.primary_action!(last_relationship.destination, :read).name
+               case Map.get(
+                      path_filters,
+                      {relationship.source, relationship.name, read_action}
+                    ) do
+                 nil ->
+                   {:cont, {:ok, acc_filter}}
 
-        case Map.get(
-               path_filters,
-               {last_relationship.source, last_relationship.name, read_action}
-             ) do
-          nil ->
-            {:cont, {:ok, filter}}
-
-          %Ash.Filter{expression: authorization_filter} ->
-            {:cont,
-             {:ok,
-              Ash.Query.BooleanExpression.optimized_new(
-                :and,
-                filter_expr,
-                Ash.Filter.move_to_relationship_path(authorization_filter, path)
-              )}}
+                 %Ash.Filter{expression: authorization_filter} ->
+                   {:cont,
+                    {:ok,
+                     Ash.Query.BooleanExpression.optimized_new(
+                       :and,
+                       acc_filter,
+                       Ash.Filter.move_to_relationship_path(authorization_filter, filter_path)
+                     )}}
+               end
+             end) do
+          {:ok, result} -> {:cont, {:ok, result}}
+          {:error, error} -> {:halt, {:error, error}}
         end
       end
     )
@@ -4964,6 +4963,35 @@ defmodule Ash.Actions.Read do
 
       other ->
         other
+    end
+  end
+
+  defp expand_path_with_through(resource, path) do
+    expand_path_with_through(resource, path, [], [])
+  end
+
+  defp expand_path_with_through(_resource, [], _current_path, acc), do: Enum.reverse(acc)
+
+  defp expand_path_with_through(resource, [name | rest], current_path, acc) do
+    relationship = Ash.Resource.Info.relationship(resource, name)
+
+    case Map.get(relationship, :through) do
+      through when is_list(through) ->
+        nested = expand_path_with_through(resource, through, current_path, [])
+        expanded_path = current_path ++ through
+        {last_relationship, _} = List.last(nested)
+
+        expand_path_with_through(
+          last_relationship.destination,
+          rest,
+          expanded_path,
+          Enum.reverse(nested) ++ acc
+        )
+
+      _ ->
+        filter_path = current_path ++ [name]
+        new_acc = [{relationship, filter_path} | acc]
+        expand_path_with_through(relationship.destination, rest, filter_path, new_acc)
     end
   end
 

@@ -1044,17 +1044,23 @@ defmodule Ash.Filter do
       paths_with_refs
       |> Enum.map(&elem(&1, 0))
       |> Enum.reduce_while({:ok, filters}, fn path, {:ok, filters} ->
-        last_relationship = last_relationship(query.resource, path)
+        expanded_relationships = expand_through_path(query.resource, path)
 
-        add_authorization_path_filter(
-          filters,
-          last_relationship,
-          domain,
-          query,
-          actor,
-          tenant,
-          refs
-        )
+        case Enum.reduce_while(expanded_relationships, {:ok, filters}, fn relationship,
+                                                                          {:ok, filters} ->
+               add_authorization_path_filter(
+                 filters,
+                 relationship,
+                 domain,
+                 query,
+                 actor,
+                 tenant,
+                 refs
+               )
+             end) do
+          {:ok, filters} -> {:cont, {:ok, filters}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
       end)
       |> add_aggregate_path_authorization(
         domain,
@@ -5040,6 +5046,26 @@ defmodule Ash.Filter do
         _ ->
           false
       end)
+    end
+  end
+
+  defp expand_through_path(resource, path) do
+    expand_through_path(resource, path, [])
+  end
+
+  defp expand_through_path(_resource, [], acc), do: Enum.reverse(acc)
+
+  defp expand_through_path(resource, [name | rest], acc) do
+    rel = Ash.Resource.Info.relationship(resource, name)
+
+    case Map.get(rel, :through) do
+      through when is_list(through) ->
+        nested_rels = expand_through_path(resource, through, [])
+        destination = List.last(nested_rels).destination
+        expand_through_path(destination, rest, Enum.reverse(nested_rels) ++ acc)
+
+      _ ->
+        expand_through_path(rel.destination, rest, [rel | acc])
     end
   end
 
