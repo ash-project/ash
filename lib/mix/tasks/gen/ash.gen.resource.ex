@@ -211,6 +211,10 @@ if Code.ensure_loaded?(Igniter) do
       Regex.match?(~r/^[a-zA-Z][a-zA-Z0-9_]*[!?]?$/, name)
     end
 
+    defp valid_relationship_type(type) do
+      type in ["has_one", "has_many", "many_to_many", "belongs_to"]
+    end
+
     defp attribute_modifier_string(modifiers) do
       modifiers
       |> Enum.uniq()
@@ -463,6 +467,10 @@ if Code.ensure_loaded?(Igniter) do
             )
 
           [type, name, destination | modifiers] ->
+            if !valid_relationship_type(type) do
+              raise "Invalid relationship type provided: #{type}"
+            end
+
             if !valid_attribute_name?(name) do
               raise "Invalid relationship name provided: #{name}"
             end
