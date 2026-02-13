@@ -41,8 +41,7 @@ jobs:
               org: "ash-project",
               name: "ash_sqlite",
               migrate: true,
-
-              generate_migrations: true,
+              generate_migrations: true
             },
             { org: "ash-project", name: "ash_paper_trail" },
             { org: "team-alembic", name: "ash_authentication" },
