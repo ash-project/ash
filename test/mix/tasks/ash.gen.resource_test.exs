@@ -333,6 +333,19 @@ defmodule Mix.Tasks.Ash.Gen.ResourceTest do
       end
       """)
     end
+
+    test "rejects invalid relationship type" do
+      assert_raise RuntimeError, fn ->
+        test_project()
+        |> Igniter.compose_task("ash.gen.resource", [
+          "MyApp.Blog.Post",
+          "--relationship",
+          # belongs-to is not valid
+          "belongs-to:author:MyApp.Accounts.User,has_many:comments:MyApp.Blog.Comment"
+        ])
+        |> refute_creates("lib/my_app/blog/post.ex")
+      end
+    end
   end
 
   describe "default actions" do
