@@ -211,7 +211,7 @@ if Code.ensure_loaded?(Igniter) do
       Regex.match?(~r/^[a-zA-Z][a-zA-Z0-9_]*[!?]?$/, name)
     end
 
-    defp valid_relationship_type(type) do
+    defp valid_relationship_type?(type) do
       type in ["has_one", "has_many", "many_to_many", "belongs_to"]
     end
 
@@ -467,7 +467,7 @@ if Code.ensure_loaded?(Igniter) do
             )
 
           [type, name, destination | modifiers] ->
-            if !valid_relationship_type(type) do
+            if !valid_relationship_type?(type) do
               raise "Invalid relationship type provided: #{type}"
             end
 
