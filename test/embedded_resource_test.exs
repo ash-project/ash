@@ -728,4 +728,144 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
 
     assert List.first(notifications).changeset.context[:changed?] == false
   end
+
+  describe "error messages include field context" do
+    defmodule FailingType do
+      @moduledoc false
+      use Ash.Type
+
+      def storage_type(_), do: :string
+
+      def cast_input(value, _) when is_binary(value), do: {:ok, value}
+      def cast_input(_, _), do: :error
+
+      def cast_stored("fail_bare", _), do: :error
+      def cast_stored("fail_message", _), do: {:error, "custom error message"}
+      def cast_stored("fail_keyword", _), do: {:error, message: "keyword error", custom: :data}
+      def cast_stored(value, _) when is_binary(value), do: {:ok, value}
+      def cast_stored(nil, _), do: {:ok, nil}
+      def cast_stored(_, _), do: :error
+
+      def dump_to_native("fail_bare", _), do: :error
+      def dump_to_native("fail_message", _), do: {:error, "dump error message"}
+
+      def dump_to_native("fail_keyword", _),
+        do: {:error, message: "dump keyword error", custom: :data}
+
+      def dump_to_native(nil, _), do: {:ok, nil}
+      def dump_to_native(value, _) when is_binary(value), do: {:ok, value}
+      def dump_to_native(_, _), do: :error
+    end
+
+    defmodule EmbeddedWithFailingType do
+      @moduledoc false
+      use Ash.Resource, data_layer: :embedded
+
+      attributes do
+        attribute :name, :string, public?: true
+        attribute :failing_field, FailingType, public?: true
+      end
+    end
+
+    test "cast_stored error includes field name for bare :error" do
+      stored = %{"name" => "test", "failing_field" => "fail_bare"}
+
+      assert {:error, error} = Ash.Type.cast_stored(EmbeddedWithFailingType, stored, [])
+      assert error[:field] == :failing_field
+    end
+
+    test "cast_stored error includes field name for string error message" do
+      stored = %{"name" => "test", "failing_field" => "fail_message"}
+
+      assert {:error, [error]} = Ash.Type.cast_stored(EmbeddedWithFailingType, stored, [])
+      assert error[:field] == :failing_field
+      assert error[:message] == "custom error message"
+    end
+
+    test "cast_stored error includes field name for keyword error" do
+      stored = %{"name" => "test", "failing_field" => "fail_keyword"}
+
+      assert {:error, [error]} = Ash.Type.cast_stored(EmbeddedWithFailingType, stored, [])
+      assert error[:field] == :failing_field
+      assert error[:message] == "keyword error"
+      assert error[:custom] == :data
+    end
+
+    test "dump_to_native error includes field name for bare :error" do
+      value = %EmbeddedWithFailingType{name: "test", failing_field: "fail_bare"}
+
+      assert {:error, error} = Ash.Type.dump_to_native(EmbeddedWithFailingType, value, [])
+      assert error[:field] == :failing_field
+    end
+
+    test "dump_to_native error includes field name for string error message" do
+      value = %EmbeddedWithFailingType{name: "test", failing_field: "fail_message"}
+
+      assert {:error, [error]} = Ash.Type.dump_to_native(EmbeddedWithFailingType, value, [])
+      assert error[:field] == :failing_field
+      assert error[:message] == "dump error message"
+    end
+
+    test "dump_to_native error includes field name for keyword error" do
+      value = %EmbeddedWithFailingType{name: "test", failing_field: "fail_keyword"}
+
+      assert {:error, [error]} = Ash.Type.dump_to_native(EmbeddedWithFailingType, value, [])
+      assert error[:field] == :failing_field
+      assert error[:message] == "dump keyword error"
+      assert error[:custom] == :data
+    end
+
+    test "array dump_to_native error includes index for bare :error" do
+      values = [
+        %EmbeddedWithFailingType{name: "ok", failing_field: "valid"},
+        %EmbeddedWithFailingType{name: "fail", failing_field: "fail_bare"}
+      ]
+
+      assert {:error, [error]} =
+               Ash.Type.dump_to_native({:array, EmbeddedWithFailingType}, values, [])
+
+      assert error[:index] == 1
+      assert error[:field] == :failing_field
+    end
+
+    test "array dump_to_native error includes index for string error message" do
+      values = [
+        %EmbeddedWithFailingType{name: "ok", failing_field: "valid"},
+        %EmbeddedWithFailingType{name: "fail", failing_field: "fail_message"}
+      ]
+
+      assert {:error, [error]} =
+               Ash.Type.dump_to_native({:array, EmbeddedWithFailingType}, values, [])
+
+      assert error[:index] == 1
+      assert error[:message] == "dump error message"
+    end
+
+    test "array dump_to_native error includes index for keyword error" do
+      values = [
+        %EmbeddedWithFailingType{name: "ok", failing_field: "valid"},
+        %EmbeddedWithFailingType{name: "fail", failing_field: "fail_keyword"}
+      ]
+
+      assert {:error, [error]} =
+               Ash.Type.dump_to_native({:array, EmbeddedWithFailingType}, values, [])
+
+      assert error[:index] == 1
+      assert error[:message] == "dump keyword error"
+      assert error[:custom] == :data
+    end
+
+    test "array dump_to_native error index is correct for first element" do
+      values = [
+        %EmbeddedWithFailingType{name: "fail", failing_field: "fail_bare"},
+        %EmbeddedWithFailingType{name: "ok", failing_field: "valid"}
+      ]
+
+      assert {:error, [error]} =
+               Ash.Type.dump_to_native({:array, EmbeddedWithFailingType}, values, [])
+
+      assert error[:index] == 0
+      assert error[:field] == :failing_field
+    end
+  end
 end
