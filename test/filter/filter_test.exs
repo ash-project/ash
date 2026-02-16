@@ -237,6 +237,12 @@ defmodule Ash.Test.Filter.FilterTest do
         source_attribute: :author2_id,
         public?: true
 
+      has_many :source_post_links, PostLink, public?: true, destination_attribute: :source_post_id
+
+      has_many :same_related_posts, __MODULE__,
+        through: [:source_post_links, :destination_post],
+        public?: true
+
       many_to_many :related_posts, __MODULE__,
         through: PostLink,
         source_attribute_on_join_resource: :source_post_id,
@@ -617,6 +623,13 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [%{id: ^post4_id}] =
                Post
                |> Ash.Query.filter(related_posts == ^post3.id)
+               |> Ash.read!()
+    end
+
+    test "filtering on a through relationship", %{post4: %{id: post4_id}, post3: post3} do
+      assert [%{id: ^post4_id}] =
+               Post
+               |> Ash.Query.filter(same_related_posts == ^post3.id)
                |> Ash.read!()
     end
 
