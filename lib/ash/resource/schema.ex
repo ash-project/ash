@@ -223,12 +223,6 @@ defmodule Ash.Schema do
                 %{no_attributes?: true} ->
                   :ok
 
-                %{manual?: true} ->
-                  :ok
-
-                %{manual: manual} when not is_nil(manual) ->
-                  :ok
-
                 %{type: :belongs_to} ->
                   belongs_to relationship.name, relationship.destination,
                     define_field: false,

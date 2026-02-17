@@ -103,6 +103,9 @@ defmodule Ash.Resource.Relationships.HasMany do
   def manual(module) when is_atom(module), do: {:ok, {module, []}}
 
   def transform(relationship) do
-    {:ok, relationship |> Ash.Resource.Actions.Read.concat_filters()}
+    {:ok,
+     relationship
+     |> Ash.Resource.Actions.Read.concat_filters()
+     |> manual_implies_no_attributes()}
   end
 end

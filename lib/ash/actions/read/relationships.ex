@@ -541,12 +541,19 @@ defmodule Ash.Actions.Read.Relationships do
             tenant: related_query.tenant
           })
           |> case do
-            {:ok, records} ->
-              records
-              |> Enum.flat_map(fn {key, value} ->
+            {:ok, result} -> {:ok, result}
+            {:error, error} -> {:error, error}
+            result when is_list(result) -> {:ok, result}
+          end
+          |> case do
+            {:ok, result_records} ->
+              result_records
+              |> normalize_manual_results(records, relationship)
+              |> Enum.with_index()
+              |> Enum.flat_map(fn {value, index} ->
                 value
                 |> List.wrap()
-                |> Enum.map(&Ash.Resource.put_metadata(&1, :manual_key, key))
+                |> Enum.map(&Ash.Resource.put_metadata(&1, :manual_key, index))
               end)
               |> Ash.load(related_query,
                 domain: related_query.domain,
@@ -556,7 +563,7 @@ defmodule Ash.Actions.Read.Relationships do
               )
               |> case do
                 {:ok, results} ->
-                  {:ok, regroup_manual_results(results, relationship)}
+                  {:ok, regroup_manual_results(results, relationship, Enum.count(records))}
 
                 {:error, error} ->
                   {:error, error}
@@ -919,25 +926,132 @@ defmodule Ash.Actions.Read.Relationships do
     end)
   end
 
-  defp regroup_manual_results(records, %{cardinality: :many}) do
-    Enum.group_by(records, & &1.__metadata__.manual_key, &delete_manual_key/1)
+  defp regroup_manual_results(records, %{cardinality: :many}, count) do
+    indexed_records =
+      Enum.group_by(records, & &1.__metadata__.manual_key, &delete_manual_key/1)
+
+    Enum.map(0..max(count - 1, 0), fn index ->
+      Map.get(indexed_records, index, [])
+    end)
   end
 
-  defp regroup_manual_results(records, %{cardinality: :one}) do
-    Map.new(records, &{&1.__metadata__.manual_key, delete_manual_key(&1)})
+  defp regroup_manual_results(records, %{cardinality: :one}, count) do
+    indexed_records =
+      Map.new(records, fn record ->
+        {record.__metadata__.manual_key, delete_manual_key(record)}
+      end)
+
+    Enum.map(0..max(count - 1, 0), fn index ->
+      Map.get(indexed_records, index)
+    end)
   end
 
   defp delete_manual_key(record) do
     Map.update!(record, :__metadata__, &Map.delete(&1, :manual_key))
   end
 
+  defp normalize_manual_results(result_records, [%resource{} | _] = records, relationship)
+       when is_map(result_records) do
+    default =
+      case relationship.cardinality do
+        :one ->
+          nil
+
+        :many ->
+          []
+      end
+
+    if Ash.Resource.Info.primary_key_simple_equality?(resource) do
+      pkey = Ash.Resource.Info.primary_key(resource)
+
+      single_match? =
+        case pkey do
+          [_] -> true
+          _ -> false
+        end
+
+      Enum.map(records, fn record ->
+        value =
+          if single_match? do
+            case Map.fetch(result_records, Map.get(record, Enum.at(pkey, 0))) do
+              {:ok, value} -> {:ok, value}
+              :error -> Map.fetch(result_records, Map.take(record, pkey))
+            end
+          else
+            Map.fetch(result_records, Map.take(record, pkey))
+          end
+
+        case value do
+          {:ok, result} ->
+            result
+
+          :error ->
+            default
+        end
+      end)
+    else
+      pkey = Ash.Resource.Info.primary_key(resource)
+
+      case pkey do
+        [pkey_key] ->
+          Enum.map(records, fn record ->
+            pkey_values = Map.take(record, pkey)
+
+            value =
+              Enum.find_value(result_records, fn {key, value} ->
+                if is_map(key) do
+                  if resource.primary_key_matches?(key, pkey_values) do
+                    {:ok, value}
+                  end
+                else
+                  if resource.primary_key_matches?(%{pkey_key => key}, pkey_values) do
+                    {:ok, value}
+                  end
+                end
+              end) || :error
+
+            case value do
+              {:ok, result} ->
+                result
+
+              :error ->
+                default
+            end
+          end)
+
+        _pkeys ->
+          Enum.map(records, fn record ->
+            pkey_values = Map.take(record, pkey)
+
+            value =
+              Enum.find_value(result_records, fn {key, value} ->
+                if resource.primary_key_matches?(key, pkey_values) do
+                  {:ok, value}
+                end
+              end) || :error
+
+            case value do
+              {:ok, result} ->
+                result
+
+              :error ->
+                default
+            end
+          end)
+      end
+    end
+  end
+
+  defp normalize_manual_results(result_records, _records, _relationship) do
+    result_records
+  end
+
   defp select_destination_attribute(related_query, relationship) do
     if Map.get(relationship, :no_attributes?) ||
-         (Map.get(relationship, :manual) &&
-            !Ash.Resource.Info.attribute(
-              relationship.destination,
-              relationship.destination_attribute
-            )) do
+         !Ash.Resource.Info.attribute(
+           relationship.destination,
+           relationship.destination_attribute
+         ) do
       related_query
     else
       Ash.Query.ensure_selected(related_query, [relationship.destination_attribute])
@@ -1131,99 +1245,25 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp do_attach_related_records(
-         [%resource{} | _] = records,
+         records,
          %{manual: {_module, _opts}} = relationship,
-         map,
+         values,
          _related_query
        ) do
     default =
       case relationship.cardinality do
-        :one ->
-          nil
-
-        :many ->
-          []
+        :one -> nil
+        :many -> []
       end
 
-    if Ash.Resource.Info.primary_key_simple_equality?(resource) do
-      pkey = Ash.Resource.Info.primary_key(resource)
+    records
+    |> Enum.zip_with(values, fn
+      record, nil ->
+        Map.put(record, relationship.name, default)
 
-      single_match? =
-        case pkey do
-          [_] -> true
-          _ -> false
-        end
-
-      Enum.map(records, fn record ->
-        value =
-          if single_match? do
-            case Map.fetch(map, Map.get(record, Enum.at(pkey, 0))) do
-              {:ok, value} -> {:ok, value}
-              :error -> Map.fetch(map, Map.take(record, pkey))
-            end
-          else
-            Map.fetch(map, Map.take(record, pkey))
-          end
-
-        case value do
-          {:ok, result} ->
-            Map.put(record, relationship.name, result)
-
-          :error ->
-            Map.put(record, relationship.name, default)
-        end
-      end)
-    else
-      pkey = Ash.Resource.Info.primary_key(resource)
-
-      case pkey do
-        [pkey_key] ->
-          Enum.map(records, fn record ->
-            pkey_values = Map.take(record, pkey)
-
-            value =
-              Enum.find_value(map, fn {key, value} ->
-                if is_map(key) do
-                  if resource.primary_key_matches?(key, pkey_values) do
-                    {:ok, value}
-                  end
-                else
-                  if resource.primary_key_matches?(%{pkey_key => key}, pkey_values) do
-                    {:ok, value}
-                  end
-                end
-              end) || :error
-
-            case value do
-              {:ok, result} ->
-                Map.put(record, relationship.name, result)
-
-              :error ->
-                Map.put(record, relationship.name, default)
-            end
-          end)
-
-        _pkeys ->
-          Enum.map(records, fn record ->
-            pkey_values = Map.take(record, pkey)
-
-            value =
-              Enum.find_value(map, fn {key, value} ->
-                if resource.primary_key_matches?(key, pkey_values) do
-                  {:ok, value}
-                end
-              end) || :error
-
-            case value do
-              {:ok, result} ->
-                Map.put(record, relationship.name, result)
-
-              :error ->
-                Map.put(record, relationship.name, default)
-            end
-          end)
-      end
-    end
+      record, value ->
+        Map.put(record, relationship.name, value)
+    end)
   end
 
   defp do_attach_related_records(

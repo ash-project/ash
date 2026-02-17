@@ -41,8 +41,7 @@ jobs:
               org: "ash-project",
               name: "ash_sqlite",
               migrate: true,
-
-              generate_migrations: true,
+              generate_migrations: true
             },
             { org: "ash-project", name: "ash_paper_trail" },
             { org: "team-alembic", name: "ash_authentication" },
@@ -50,8 +49,8 @@ jobs:
             # { org: "sevenseacat", name: "tunez", ref: "end-of-chapter-8" }
           ]
         # todo: add 28 here when its available
-        otp: ["27.1.2"]
-        elixir: ["1.18.4"]
+        otp: ["28.2"]
+        elixir: ["1.19.3"]
     services:
       pg:
         image: postgres:16

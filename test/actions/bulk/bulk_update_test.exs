@@ -363,6 +363,22 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       update :update_with_conditional_after_action_error do
         change ConditionalAfterActionErrorWithAfterTransaction
       end
+
+      update :remove_related_posts do
+        require_atomic? false
+
+        argument :related_posts, {:array, :uuid} do
+          allow_nil? false
+        end
+
+        change manage_relationship(:related_posts, type: :remove)
+      end
+
+      update :update_with_ignored_relationship do
+        argument :related_posts, {:array, :uuid}
+
+        change manage_relationship(:related_posts, type: :append, ignore?: true)
+      end
     end
 
     identities do
@@ -2166,6 +2182,119 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
       assert is_list(notifications)
       refute Enum.empty?(notifications)
+    end
+  end
+
+  describe "bulk update with manage_relationship" do
+    test "manage_relationship changes are applied in bulk updates" do
+      related_post1 = Ash.create!(Post, %{title: "Related 1"})
+      related_post2 = Ash.create!(Post, %{title: "Related 2"})
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Main Post"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [related_post1, related_post2],
+          type: :append_and_remove
+        )
+        |> Ash.create!()
+
+      post_with_relations = Ash.load!(post, :related_posts)
+      assert length(post_with_relations.related_posts) == 2
+
+      assert %Ash.BulkResult{records: [updated_post]} =
+               Ash.bulk_update!(
+                 [post],
+                 :remove_related_posts,
+                 %{related_posts: [related_post1.id]},
+                 resource: Post,
+                 strategy: :stream,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      updated_post = Ash.load!(updated_post, :related_posts)
+      assert length(updated_post.related_posts) == 1
+      assert hd(updated_post.related_posts).id == related_post2.id
+    end
+
+    test "manage_relationship falls back to stream when atomic requested" do
+      related_post1 = Ash.create!(Post, %{title: "Related A"})
+      related_post2 = Ash.create!(Post, %{title: "Related B"})
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Main Post 2"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [related_post1, related_post2],
+          type: :append_and_remove
+        )
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{records: [updated_post]} =
+               Ash.bulk_update!(
+                 [post],
+                 :remove_related_posts,
+                 %{related_posts: [related_post1.id]},
+                 resource: Post,
+                 strategy: [:atomic_batches, :stream],
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      updated_post = Ash.load!(updated_post, :related_posts)
+      assert length(updated_post.related_posts) == 1
+      assert hd(updated_post.related_posts).id == related_post2.id
+    end
+
+    test "manage_relationship works in multitenant bulk updates" do
+      tenant = Ash.create!(Tenant, %{})
+      tag = Ash.create!(MultitenantTag, %{name: "main_tag"}, tenant: tenant)
+      _ = Ash.create!(MultitenantTag, %{name: "related_tag"}, tenant: tenant)
+
+      assert %Ash.BulkResult{records: [updated_tag]} =
+               Ash.bulk_update!([tag], :add_related_tags, %{related_tags: ["related_tag"]},
+                 resource: MultitenantTag,
+                 strategy: :stream,
+                 tenant: tenant,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      updated_tag = Ash.load!(updated_tag, :related_tags, tenant: tenant)
+      assert length(updated_tag.related_tags) == 1
+      assert hd(updated_tag.related_tags).name == "related_tag"
+    end
+
+    test "ignored manage_relationship runs atomically and does not modify relationships" do
+      related_post = Ash.create!(Post, %{title: "Related"})
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Main"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [related_post],
+          type: :append_and_remove
+        )
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{records: [updated_post]} =
+               Ash.bulk_update!(
+                 [post],
+                 :update_with_ignored_relationship,
+                 %{title2: "updated", related_posts: []},
+                 resource: Post,
+                 strategy: :atomic,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert updated_post.title2 == "updated"
+
+      updated_post = Ash.load!(updated_post, :related_posts)
+      assert length(updated_post.related_posts) == 1
+      assert hd(updated_post.related_posts).id == related_post.id
     end
   end
 end

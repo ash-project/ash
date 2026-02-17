@@ -239,6 +239,77 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  defmodule BatchChangeSetPublishedAt do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    @impl true
+    def batch_change(changesets, _opts, _context) do
+      Enum.map(changesets, fn changeset ->
+        if Ash.Changeset.fetch_change(changeset, :published) == {:ok, true} do
+          Ash.Changeset.force_change_attribute(changeset, :first_published_at, DateTime.utc_now())
+        else
+          changeset
+        end
+      end)
+    end
+  end
+
+  defmodule ChangeSetSlugOnPublish do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, _opts, _context) do
+      if Ash.Changeset.fetch_change(changeset, :first_published_at) != :error do
+        name = Ash.Changeset.get_attribute(changeset, :name) || "untitled"
+        slug = name |> String.downcase() |> String.replace(~r/\s+/, "-")
+        Ash.Changeset.force_change_attribute(changeset, :slug, slug)
+      else
+        changeset
+      end
+    end
+  end
+
+  defmodule PublishablePost do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string, public?: true
+      attribute :slug, :string, public?: true
+      attribute :published, :boolean, default: false, public?: true
+      attribute :first_published_at, :utc_datetime, public?: true
+    end
+
+    actions do
+      defaults [:read]
+
+      create :create do
+        accept [:name, :published]
+
+        change BatchChangeSetPublishedAt
+        change ChangeSetSlugOnPublish
+      end
+
+      update :update do
+        accept [:name, :published]
+        require_atomic? false
+
+        change BatchChangeSetPublishedAt
+        change ChangeSetSlugOnPublish
+      end
+    end
+  end
+
   defmodule TenantPost do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -1534,6 +1605,41 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Ash.Changeset.force_change_attribute(:title, nil)
 
       assert changeset.attributes == %{title: nil}
+    end
+  end
+
+  describe "batch_change and change callback ordering" do
+    test "changes are applied in the correct order on create when mixing batch_change and change callbacks" do
+      assert {:ok,
+              %PublishablePost{
+                published: true,
+                slug: "my-first-post",
+                first_published_at: first_published_at
+              }} =
+               PublishablePost
+               |> Ash.Changeset.for_create(:create, %{name: "My First Post", published: true})
+               |> Ash.create()
+
+      refute is_nil(first_published_at)
+    end
+
+    test "changes are applied in the correct order on update when mixing batch_change and change callbacks" do
+      {:ok, resource} =
+        PublishablePost
+        |> Ash.Changeset.for_create(:create, %{name: "My First Post", published: false})
+        |> Ash.create()
+
+      assert {:ok,
+              %PublishablePost{
+                published: true,
+                slug: "my-first-post",
+                first_published_at: first_published_at
+              }} =
+               resource
+               |> Ash.Changeset.for_update(:update, %{published: true})
+               |> Ash.update()
+
+      refute is_nil(first_published_at)
     end
   end
 end

@@ -46,6 +46,67 @@ defmodule Ash.Test.Actions.AtomicSetTest do
     end
   end
 
+  defmodule RequiredFieldPost do
+    @moduledoc "Resource for testing allow_nil? protection with atomic_set"
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy]
+
+      create :create do
+        accept [:title, :required_field]
+      end
+
+      create :create_with_nilable_atomic do
+        accept [:title]
+        argument :value, :string, public?: true
+
+        change atomic_set(:required_field, expr(^arg(:value)))
+      end
+
+      create :create_with_safe_atomic do
+        accept [:title]
+
+        change atomic_set(:required_field, expr("safe_value"))
+      end
+
+      create :create_with_conditional_nil do
+        accept [:title]
+        argument :condition, :boolean, public?: true
+
+        # This expression can return nil at runtime
+        change atomic_set(
+                 :required_field,
+                 expr(
+                   if ^arg(:condition) do
+                     "value"
+                   else
+                     nil
+                   end
+                 )
+               )
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :required_field, :string do
+        public?(true)
+        allow_nil?(false)
+      end
+    end
+  end
+
   defmodule Comment do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -288,6 +349,140 @@ defmodule Ash.Test.Actions.AtomicSetTest do
 
       for record <- records do
         assert record.counter == 77
+      end
+    end
+  end
+
+  describe "allow_nil? protection for create_atomics" do
+    # These tests verify that atomic_set properly enforces allow_nil?: false constraints
+    # on create actions, similar to how handle_allow_nil_atomics works for updates.
+    # The protection should wrap expressions that can_return_nil? with error checks.
+
+    test "atomic_set with eagerly-evaluated nil expression raises error for required attribute" do
+      # When arg(:value) is nil, the expression resolves to nil during hydration
+      assert {:error, error} =
+               RequiredFieldPost
+               |> Ash.Changeset.for_create(:create_with_nilable_atomic, %{
+                 title: "Test",
+                 value: nil
+               })
+               |> Ash.create()
+
+      assert Exception.message(error) =~ "required"
+    end
+
+    test "atomic_set with expression that cannot return nil succeeds for required attribute" do
+      # Literal expressions like expr("safe_value") cannot return nil
+      {:ok, post} =
+        RequiredFieldPost
+        |> Ash.Changeset.for_create(:create_with_safe_atomic, %{title: "Test"})
+        |> Ash.create()
+
+      assert post.required_field == "safe_value"
+    end
+
+    test "atomic_set with eagerly-evaluated non-nil expression succeeds for required attribute" do
+      # When arg(:value) is provided, the expression resolves to that value during hydration
+      {:ok, post} =
+        RequiredFieldPost
+        |> Ash.Changeset.for_create(:create_with_nilable_atomic, %{
+          title: "Test",
+          value: "provided_value"
+        })
+        |> Ash.create()
+
+      assert post.required_field == "provided_value"
+    end
+
+    test "bulk_create with atomic_set nil expression raises error for required attribute" do
+      inputs = [
+        %{title: "Post 1", value: nil},
+        %{title: "Post 2", value: "valid"}
+      ]
+
+      assert %Ash.BulkResult{status: :error, errors: errors} =
+               Ash.bulk_create(inputs, RequiredFieldPost, :create_with_nilable_atomic,
+                 return_errors?: true,
+                 return_records?: true
+               )
+
+      assert length(errors) > 0
+    end
+
+    test "bulk_create with atomic_set non-nil expressions succeeds" do
+      inputs = [
+        %{title: "Post 1", value: "value1"},
+        %{title: "Post 2", value: "value2"}
+      ]
+
+      assert %Ash.BulkResult{status: :success, records: records} =
+               Ash.bulk_create(inputs, RequiredFieldPost, :create_with_nilable_atomic,
+                 return_records?: true
+               )
+
+      assert length(records) == 2
+
+      for record <- records do
+        assert record.required_field in ["value1", "value2"]
+      end
+    end
+
+    test "atomic_set with runtime expression that evaluates to nil raises error" do
+      assert {:error, error} =
+               RequiredFieldPost
+               |> Ash.Changeset.for_create(:create_with_conditional_nil, %{
+                 title: "Test",
+                 condition: false
+               })
+               |> Ash.create()
+
+      assert Exception.message(error) =~ "required"
+    end
+
+    test "atomic_set with runtime expression that evaluates to non-nil succeeds" do
+      {:ok, post} =
+        RequiredFieldPost
+        |> Ash.Changeset.for_create(:create_with_conditional_nil, %{
+          title: "Test",
+          condition: true
+        })
+        |> Ash.create()
+
+      assert post.required_field == "value"
+    end
+
+    test "bulk_create with runtime conditional expression that evaluates to nil fails" do
+      inputs = [
+        %{title: "Post 1", condition: false}
+      ]
+
+      result =
+        Ash.bulk_create(inputs, RequiredFieldPost, :create_with_conditional_nil,
+          return_errors?: true,
+          return_records?: true
+        )
+
+      assert result.status == :error
+      assert length(result.errors) > 0
+    end
+
+    test "bulk_create with runtime conditional expression that evaluates to non-nil succeeds" do
+      inputs = [
+        %{title: "Post 1", condition: true},
+        %{title: "Post 2", condition: true}
+      ]
+
+      result =
+        Ash.bulk_create(inputs, RequiredFieldPost, :create_with_conditional_nil,
+          return_errors?: true,
+          return_records?: true
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 2
+
+      for record <- result.records do
+        assert record.required_field == "value"
       end
     end
   end

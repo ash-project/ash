@@ -1499,14 +1499,11 @@ defmodule Ash.Actions.Read do
         []
       else
         case Ash.Resource.Info.relationship(query.resource, name) do
+          %{manual: {module, opts}} ->
+            module.select(opts)
+
           %{no_attributes?: true} ->
             []
-
-          %{manual: {module, opts}, source_attribute: source_attribute} ->
-            fields =
-              module.select(opts)
-
-            [source_attribute | fields]
 
           %{source_attribute: source_attribute} ->
             [source_attribute]
@@ -1703,18 +1700,12 @@ defmodule Ash.Actions.Read do
        """}
     else
       filter =
-        initial_data
-        |> List.wrap()
-        |> Enum.map(&Map.take(&1, primary_key))
-        |> case do
+        case List.wrap(initial_data) do
           [] ->
             false
 
-          [single] ->
-            [single]
-
-          multiple ->
-            [or: multiple]
+          records ->
+            Ash.pkey_filter(records, primary_key)
         end
 
       with %{valid?: true} = query <-
@@ -2811,7 +2802,8 @@ defmodule Ash.Actions.Read do
   end
 
   defp handle_aggregate_multitenancy(query) do
-    Enum.reduce_while(query.aggregates, {:ok, %{}}, fn {key, aggregate}, {:ok, acc} ->
+    query.aggregates
+    |> Enum.reduce_while({:ok, %{}}, fn {key, aggregate}, {:ok, acc} ->
       with aggregate_query <-
              apply_aggregate_tenant(aggregate.query, query.tenant, aggregate.multitenancy),
            :ok <- validate_aggregate_multitenancy(aggregate),
@@ -2823,8 +2815,16 @@ defmodule Ash.Actions.Read do
       end
     end)
     |> case do
-      {:ok, aggregates} -> {:ok, %{query | aggregates: aggregates}}
-      {:error, error} -> {:error, error}
+      {:ok, aggregates} ->
+        calculations =
+          Map.new(query.calculations, fn {key, calculation} ->
+            {key, apply_calculation_tenant(calculation)}
+          end)
+
+        {:ok, %{query | aggregates: aggregates, calculations: calculations}}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -2881,6 +2881,22 @@ defmodule Ash.Actions.Read do
       :ok
     end
   end
+
+  defp apply_calculation_tenant(%{multitenancy: multitenancy} = calculation)
+       when multitenancy in [:bypass, :bypass_all, :allow_global] do
+    mode = if multitenancy == :allow_global, do: :allow_global, else: :bypass_all
+
+    updated_context =
+      Map.update!(calculation.context, :source_context, fn source_context ->
+        Ash.Helpers.deep_merge_maps(source_context, %{
+          private: %{multitenancy: mode}
+        })
+      end)
+
+    %{calculation | context: updated_context}
+  end
+
+  defp apply_calculation_tenant(calculation), do: calculation
 
   defp add_tenant(data, query) do
     if Ash.Resource.Info.multitenancy_strategy(query.resource) do

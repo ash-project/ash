@@ -433,7 +433,7 @@ Using Ash to get the destination records is ideal, so you can authorize access
 like normal but if you need to use a raw ecto query here, you can. As long as
 you return the right structure.
 
-The `TicketsAboveThreshold` module is implemented as follows.
+The `TicketsAboveThreshold` module is implemented as follows, using `Ash.Resource.ManualRelationship`.
 
 ```elixir
 defmodule Helpdesk.Support.Ticket.Relationships.TicketsAboveThreshold do
@@ -444,16 +444,34 @@ defmodule Helpdesk.Support.Ticket.Relationships.TicketsAboveThreshold do
     # Use existing records to limit results
     rep_ids = Enum.map(records, & &1.id)
 
-    {:ok,
+     # Build a map of the items grouped by the primary key of the source, i.e representative.id => [...tickets above threshold]
+    tickets_by_rep =
      query
      |> Ash.Query.filter(representative_id in ^rep_ids)
      |> Ash.Query.filter(priority > representative.priority_threshold)
      |> Ash.read!(Ash.Context.to_opts(context))
-     # Return the items grouped by the primary key of the source, i.e representative.id => [...tickets above threshold]
-     |> Enum.group_by(& &1.representative_id)}
+     |> Enum.group_by(& &1.representative_id)
+
+    # Return the tickets to relate to each representative in `records`
+    Enum.map(records, &Map.get(tickets_by_rep, &1.id))
   end
 end
 ```
+
+Notice that each item of the resulting list at a given index ends up being related to the record from the input list at the same index.
+In other words, for an input record list `[r1, r2, ...]`, and an output list of `[s1, s2, ...]` the resulting relationships are `r1 -> s1, r2 -> s2, ...`.
+
+This is similar to how [Module Calculations](documentation/topics/resources/calculations.md#module-calculations) are done.
+
+> ### Returning a map? {: .info}
+> At Ash version 3.14.1 and earlier, instead of returning a list from the `load/3` callback,
+> it was necessary to return a map of input record ids to related records.
+>
+> Returning a map is still supported for backwards compatibility,
+> but due to performance issues in certain cases it is recommended to return a list instead.
+> Though it is supported, you should consider returning a map here as deprecated. Doing so may become unsupported in a future version.
+>
+> See issue [#2505](https://github.com/ash-project/ash/issues/2505) for more information.
 
 ### Reusing the Query
 
@@ -496,7 +514,7 @@ defmodule Helpdesk.Support.Ticket.Relationships.TicketsAboveThreshold do
   def load(records, _opts, %{query: query, actor: actor, authorize?: authorize?}) do
     rep_ids = Enum.map(records, & &1.id)
 
-    {:ok,
+    tickets_by_rep =
      query
      # If this isn't added, representative_id would be set to %Ash.NotLoaded, causing the
      # Enum.group_by call below to fail mapping results to the correct records.
@@ -504,7 +522,9 @@ defmodule Helpdesk.Support.Ticket.Relationships.TicketsAboveThreshold do
      |> Ash.Query.filter(representative_id in ^rep_ids)
      |> Ash.Query.filter(priority > representative.priority_threshold)
      |> Helpdesk.Support.read!(actor: actor, authorize?: authorize?)
-     |> Enum.group_by(& &1.representative_id)}
+     |> Enum.group_by(& &1.representative_id)
+    
+    Enum.map(records, &Map.get(tickets_by_rep, &1.id))
   end
 end
 ```
@@ -518,13 +538,19 @@ need and then apply the query to them in memory.
 ```elixir
 def load(records, _opts, %{query: query, ..}) do
   # fetch the data from the other source, which is capable of sorting
-  data = get_other_data(data, query.sort)
+  # (assume this returns a map of record ids => data to relate)
+  data_by_record_id = get_other_data(records, query.sort)
 
-  query
   # unset the sort since we already applied that
-  |> Ash.Query.unset([:sort])
+  query= 
+   query
+   |> Ash.Query.unset([:sort])
+  
   # apply the query in memory (filtering, distinct, limit, offset)
-  |> Ash.Query.apply_to(data)
+  Enum.map(records, fn record ->
+    data = data_by_record_id[record.id]
+    Ash.Query.apply_to(query, data)
+  end)
 end
 ```
 

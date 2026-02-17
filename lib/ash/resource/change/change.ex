@@ -304,8 +304,8 @@ defmodule Ash.Resource.Change do
           def change(changeset, opts, context) do
             changeset
             |> simulate_before_batch(opts, context)
-            |> Ash.Changeset.before_action(fn changeset ->
-              Enum.at(batch_change([changeset], opts, context), 0)
+            |> then(fn changeset ->
+              [changeset] |> batch_change(opts, context) |> Enum.at(0)
             end)
             |> simulate_after_batch(opts, context)
           end

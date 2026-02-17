@@ -736,4 +736,137 @@ defmodule Ash.Test.ManageRelationshipTest do
 
     assert Exception.message(error) =~ "record with id: #{inspect(non_existent_id)} not found"
   end
+
+  describe "manage_relationship with actor-templated relationship filter" do
+    defmodule ActorFilteredTarget do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.Domain,
+        data_layer: Ash.DataLayer.Ets
+
+      actions do
+        defaults [:read, create: :*]
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, allow_nil?: false, public?: true
+      end
+
+      relationships do
+        has_many :actor_join_resources,
+                 Ash.Test.ManageRelationshipTest.ActorFilteredJoinResource
+      end
+    end
+
+    defmodule ActorFilteredJoinResource do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.Domain,
+        data_layer: Ash.DataLayer.Ets
+
+      actions do
+        defaults [:read, :destroy, create: :*]
+      end
+
+      attributes do
+        uuid_primary_key :id
+      end
+
+      relationships do
+        belongs_to :actor_filtered_parent,
+                   Ash.Test.ManageRelationshipTest.ActorFilteredParent
+
+        belongs_to :actor_filtered_target, ActorFilteredTarget
+      end
+    end
+
+    defmodule ActorFilteredParent do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.Domain,
+        data_layer: Ash.DataLayer.Ets
+
+      actions do
+        defaults [:read, create: :*]
+
+        update :assign_targets do
+          require_atomic? false
+          argument :target_ids, {:array, :uuid}
+
+          change manage_relationship(:target_ids, :actor_filtered_targets,
+                   type: :append_and_remove,
+                   on_no_match: :error,
+                   on_match: :ignore,
+                   on_lookup: :relate
+                 )
+        end
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, allow_nil?: false, public?: true
+      end
+
+      relationships do
+        has_many :actor_join_resources, ActorFilteredJoinResource
+
+        many_to_many :actor_filtered_targets, ActorFilteredTarget do
+          join_relationship :actor_join_resources
+          filter expr(is_nil(^actor(:tenant_id)))
+        end
+      end
+    end
+
+    test "sort_and_filter resolves ^actor() templates in relationship filters" do
+      parent =
+        ActorFilteredParent
+        |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+        |> Ash.create!()
+
+      target =
+        ActorFilteredTarget
+        |> Ash.Changeset.for_create(:create, %{name: "Test Target"})
+        |> Ash.create!()
+
+      # Actor with tenant_id: nil should match filter: is_nil(^actor(:tenant_id))
+      actor = %{tenant_id: nil}
+
+      assert {:ok, _updated} =
+               parent
+               |> Ash.Changeset.for_update(:assign_targets, %{target_ids: [target.id]},
+                 actor: actor
+               )
+               |> Ash.update()
+
+      # Verify the join record was created
+      join_records = Ash.read!(ActorFilteredJoinResource)
+      assert length(join_records) == 1
+      assert hd(join_records).actor_filtered_parent_id == parent.id
+      assert hd(join_records).actor_filtered_target_id == target.id
+    end
+
+    test "sort_and_filter correctly applies ^actor() filter to exclude non-matching records" do
+      parent =
+        ActorFilteredParent
+        |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+        |> Ash.create!()
+
+      target =
+        ActorFilteredTarget
+        |> Ash.Changeset.for_create(:create, %{name: "Test Target"})
+        |> Ash.create!()
+
+      # Actor with tenant_id: "some_value" should NOT match filter: is_nil(^actor(:tenant_id))
+      # So the lookup should fail to find the target through the filtered relationship
+      actor = %{tenant_id: "some_tenant"}
+
+      assert {:error, _} =
+               parent
+               |> Ash.Changeset.for_update(:assign_targets, %{target_ids: [target.id]},
+                 actor: actor
+               )
+               |> Ash.update()
+    end
+  end
 end

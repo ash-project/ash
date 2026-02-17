@@ -991,18 +991,33 @@ defmodule Ash.Policy.Authorizer do
         {simple_expression, acc} = replace_refs(simple_expression, acc)
         {%{custom_expression | expression: expression, simple_expression: simple_expression}, acc}
 
+      %Ash.Query.Exists{expr: expr, resource: resource, related?: false} = exists ->
+        original_stack = acc.stack
+        [{_, _, _, domain} | _] = original_stack
+        domain = Ash.Resource.Info.domain(resource) || domain
+        action = Ash.Resource.Info.primary_action!(resource, :read)
+
+        {expr, acc} =
+          replace_refs(expr, %{
+            acc
+            | stack: [{resource, [], action, domain} | original_stack]
+          })
+
+        {%{exists | expr: expr}, %{acc | stack: original_stack}}
+
       %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists ->
         full_path = at_path ++ path
-        [{resource, current_path, _, domain} | _] = acc.stack
+        original_stack = acc.stack
+        [{resource, current_path, _, domain} | _] = original_stack
         {resource, action} = related_with_action(resource, full_path)
 
         {expr, acc} =
           replace_refs(expr, %{
             acc
-            | stack: [{resource, current_path ++ full_path, action, domain} | acc.stack]
+            | stack: [{resource, current_path ++ full_path, action, domain} | original_stack]
           })
 
-        {%{exists | expr: expr}, %{acc | stack: tl(acc.stack)}}
+        {%{exists | expr: expr}, %{acc | stack: original_stack}}
 
       %{__operator__?: true, left: left, right: right} = op ->
         {left, acc} = replace_refs(left, acc)

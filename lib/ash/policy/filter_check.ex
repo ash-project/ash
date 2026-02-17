@@ -354,11 +354,7 @@ defmodule Ash.Policy.FilterCheck do
       def check(actor, data, authorizer, opts) do
         pkey = Ash.Resource.Info.primary_key(authorizer.resource)
 
-        filter =
-          case data do
-            [record] -> Map.take(record, pkey)
-            records -> [or: Enum.map(data, &Map.take(&1, pkey))]
-          end
+        filter = Ash.pkey_filter(data, pkey)
 
         authorizer.resource
         |> Ash.Query.filter(^filter)

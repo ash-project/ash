@@ -116,6 +116,24 @@ defmodule Ash.Actions.MultitenancyTest do
       end
     end
 
+    calculations do
+      calculate :name_lower, :string, expr(string_downcase(name)), public?: true
+
+      calculate :name_lower_bypass, :string, expr(string_downcase(name)),
+        public?: true,
+        multitenancy: :bypass
+
+      calculate :name_lower_allow_global, :string, expr(string_downcase(name)),
+        public?: true,
+        multitenancy: :allow_global
+
+      calculate :cross_tenant_post_count,
+                :integer,
+                Ash.Actions.MultitenancyTest.CrossTenantPostCount,
+                public?: true,
+                multitenancy: :bypass
+    end
+
     relationships do
       has_many :posts, Ash.Actions.MultitenancyTest.Post,
         destination_attribute: :author_id,
@@ -261,6 +279,12 @@ defmodule Ash.Actions.MultitenancyTest do
       end
     end
 
+    calculations do
+      calculate :name_lower_bypass, :string, expr(string_downcase(name)),
+        public?: true,
+        multitenancy: :bypass
+    end
+
     relationships do
       belongs_to :commenter, User do
         public?(true)
@@ -292,6 +316,20 @@ defmodule Ash.Actions.MultitenancyTest do
 
     defimpl Ash.ToTenant do
       def to_tenant(tenant, _resource), do: tenant.id
+    end
+  end
+
+  defmodule CrossTenantPostCount do
+    use Ash.Resource.Calculation
+
+    def load(_, _, _) do
+      [:posts]
+    end
+
+    def calculate(records, _, _) do
+      Enum.map(records, fn record ->
+        length(record.posts || [])
+      end)
     end
   end
 
@@ -682,6 +720,13 @@ defmodule Ash.Actions.MultitenancyTest do
       tenant1: tenant1
     } do
       assert 0 = Ash.count!(Comment, tenant: tenant1)
+    end
+
+    test "an aggregate can be used with a scope that provides a tenant", %{
+      tenant1: tenant1
+    } do
+      scope = %{tenant: tenant1}
+      assert 0 = Ash.count!(Comment, scope: scope)
     end
 
     test "an aggregate cannot be used without tenant specified", %{
@@ -1571,6 +1616,159 @@ defmodule Ash.Actions.MultitenancyTest do
 
       # All records deleted
       assert Enum.empty?(User |> Ash.Query.for_read(:bypass_tenant) |> Ash.read!())
+    end
+  end
+
+  describe "calculation multitenancy bypass" do
+    setup do
+      tenant1 = Ash.UUID.generate()
+      tenant2 = Ash.UUID.generate()
+
+      user1 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "alice"}, tenant: tenant1)
+        |> Ash.create!()
+
+      user2 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "bob"}, tenant: tenant2)
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{author_id: user1.id}, tenant: tenant1)
+      |> Ash.create!()
+
+      %{tenant1: tenant1, tenant2: tenant2, user1: user1, user2: user2}
+    end
+
+    test "bypass calculation returns 2 records, no-bypass returns 1 for same data", %{
+      tenant1: tenant1
+    } do
+      # No bypass: tenant1 only sees its own record
+      no_bypass =
+        User
+        |> Ash.Query.set_tenant(tenant1)
+        |> Ash.Query.load(:name_lower)
+        |> Ash.read!()
+
+      assert length(no_bypass) == 1
+      assert hd(no_bypass).name_lower == "alice"
+
+      # Bypass: same data, sees both tenants
+      bypass =
+        User
+        |> Ash.Query.for_read(:bypass_tenant)
+        |> Ash.Query.load(:name_lower_bypass)
+        |> Ash.read!()
+
+      assert length(bypass) == 2
+      assert Enum.map(bypass, & &1.name_lower_bypass) |> Enum.sort() == ["alice", "bob"]
+    end
+
+    test "bypass module calculation loads across tenants, no-bypass only loads within tenant", %{
+      tenant1: tenant1
+    } do
+      # No bypass: tenant1 sees 1 user with 1 post
+      no_bypass =
+        User
+        |> Ash.Query.set_tenant(tenant1)
+        |> Ash.Query.load(:cross_tenant_post_count)
+        |> Ash.read!()
+
+      assert length(no_bypass) == 1
+      assert hd(no_bypass).cross_tenant_post_count == 1
+
+      # Bypass: sees 2 users — alice with 1 post, bob with 0
+      bypass =
+        User
+        |> Ash.Query.for_read(:bypass_tenant)
+        |> Ash.Query.load(:cross_tenant_post_count)
+        |> Ash.read!()
+
+      assert length(bypass) == 2
+
+      counts = bypass |> Enum.sort_by(& &1.name) |> Enum.map(& &1.cross_tenant_post_count)
+      assert counts == [1, 0]
+    end
+
+    test "allow_global with tenant returns 1, without tenant returns 2", %{
+      tenant1: tenant1
+    } do
+      # With tenant: scoped to tenant1 only
+      with_tenant =
+        User
+        |> Ash.Query.for_read(:allow_global)
+        |> Ash.Query.set_tenant(tenant1)
+        |> Ash.Query.load(:name_lower_allow_global)
+        |> Ash.read!()
+
+      assert length(with_tenant) == 1
+      assert hd(with_tenant).name_lower_allow_global == "alice"
+
+      # Without tenant: sees all
+      without_tenant =
+        User
+        |> Ash.Query.for_read(:allow_global)
+        |> Ash.Query.load(:name_lower_allow_global)
+        |> Ash.read!()
+
+      assert length(without_tenant) == 2
+    end
+
+    test "bypass and no-bypass calculations on same query return different visibility", %{
+      tenant1: tenant1
+    } do
+      # Load both bypass and no-bypass on a bypass read (sees 2 records)
+      bypass_read =
+        User
+        |> Ash.Query.for_read(:bypass_tenant)
+        |> Ash.Query.load([:name_lower_bypass, :name_lower])
+        |> Ash.read!()
+
+      assert length(bypass_read) == 2
+      bypass_values = bypass_read |> Enum.map(& &1.name_lower_bypass) |> Enum.sort()
+      no_bypass_values = bypass_read |> Enum.map(& &1.name_lower) |> Enum.sort()
+
+      # Both calculations computed for all 2 records
+      assert bypass_values == ["alice", "bob"]
+      assert no_bypass_values == ["alice", "bob"]
+
+      # Tenanted read: only 1 record, so both calculations only see 1
+      tenanted_read =
+        User
+        |> Ash.Query.set_tenant(tenant1)
+        |> Ash.Query.load([:name_lower_bypass, :name_lower])
+        |> Ash.read!()
+
+      assert length(tenanted_read) == 1
+      assert hd(tenanted_read).name_lower_bypass == "alice"
+      assert hd(tenanted_read).name_lower == "alice"
+    end
+
+    test "context strategy allows bypass calculation (unlike aggregates)", %{
+      tenant1: tenant1
+    } do
+      Comment
+      |> Ash.Changeset.for_create(:create, %{name: "hello"}, tenant: tenant1)
+      |> Ash.create!()
+
+      # No bypass: requires tenant, returns 1
+      with_tenant =
+        Comment
+        |> Ash.Query.set_tenant(tenant1)
+        |> Ash.Query.load(:name_lower_bypass)
+        |> Ash.read!()
+
+      assert length(with_tenant) == 1
+      assert hd(with_tenant).name_lower_bypass == "hello"
+
+      bypass =
+        Comment
+        |> Ash.Query.for_read(:bypass_tenant)
+        |> Ash.Query.load(:name_lower_bypass)
+        |> Ash.read!()
+
+      assert is_list(bypass)
     end
   end
 end

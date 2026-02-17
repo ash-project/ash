@@ -4047,4 +4047,15 @@ defmodule Ash do
 
   @doc false
   def stream_opt_keys, do: Keyword.keys(@stream_opts)
+
+  @doc false
+  def pkey_filter(records, pkey) do
+    case pkey do
+      [single_key] ->
+        [{single_key, [in: Enum.map(records, &Map.get(&1, single_key))]}]
+
+      composite_keys ->
+        [or: Enum.map(records, &Map.take(&1, composite_keys))]
+    end
+  end
 end

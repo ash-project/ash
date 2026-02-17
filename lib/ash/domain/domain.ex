@@ -51,6 +51,23 @@ defmodule Ash.Domain do
   @impl Spark.Dsl
   def handle_opts(opts) do
     quote do
+      if Module.get_attribute(__MODULE__, :__ash_domain_used__) do
+        first_line = Module.get_attribute(__MODULE__, :__ash_domain_used__)
+
+        raise CompileError,
+          file: __ENV__.file,
+          line: __ENV__.line,
+          description: """
+          `use Ash.Domain` can only be called once per module.
+
+          It was already called on line #{first_line}.
+          Remove the duplicate `use Ash.Domain` invocation.
+          """
+      end
+
+      # Mark that `use Ash.Domain` has been called and store the line number
+      @__ash_domain_used__ __ENV__.line
+
       @behaviour Ash.Domain
 
       @impl Ash.Domain
