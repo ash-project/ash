@@ -22,6 +22,7 @@ defmodule Ash.Resource.Aggregate do
     :uniq?,
     :multitenancy,
     include_nil?: false,
+    filters: [],
     join_filters: [],
     authorize?: true,
     filterable?: true,
@@ -128,7 +129,8 @@ defmodule Ash.Resource.Aggregate do
           name: atom(),
           relationship_path: list(atom()),
           resource: atom() | nil,
-          filter: Keyword.t(),
+          filter: Keyword.t() | any,
+          filters: [any],
           field: atom,
           kind: Ash.Query.Aggregate.kind(),
           description: String.t() | nil,
@@ -150,7 +152,7 @@ defmodule Ash.Resource.Aggregate do
 
   @doc false
   def transform(aggregate) do
-    transformed =
+    aggregate =
       case aggregate.relationship_path do
         path when is_atom(path) ->
           path_string = to_string(path)
@@ -168,6 +170,30 @@ defmodule Ash.Resource.Aggregate do
           aggregate
       end
 
-    {:ok, transformed}
+    {:ok, concat_filters(aggregate)}
+  end
+
+  # Combines multiple filter entities with AND, matching read actions behavior.
+  defp concat_filters(%{filters: []} = aggregate), do: aggregate
+
+  defp concat_filters(%{filters: [first | rest]} = aggregate) do
+    combined =
+      Enum.reduce(rest, first.filter, fn filter, acc ->
+        Ash.Query.BooleanExpression.new(:and, filter.filter, acc)
+      end)
+
+    combine_filter(aggregate, combined)
+  end
+
+  defp concat_filters(aggregate), do: aggregate
+
+  defp combine_filter(%{filter: existing} = aggregate, new_filter) do
+    cond do
+      is_nil(existing) or existing == [] ->
+        %{aggregate | filter: new_filter}
+
+      true ->
+        %{aggregate | filter: Ash.Query.BooleanExpression.new(:and, new_filter, existing)}
+    end
   end
 end
