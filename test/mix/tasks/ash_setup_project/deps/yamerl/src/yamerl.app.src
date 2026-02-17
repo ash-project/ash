@@ -1,0 +1,10 @@
+{application,yamerl,
+             [{description,"YAML 1.2 and JSON parser in pure Erlang"},
+              {vsn,"0.10.0"},
+              {modules,[]},
+              {registered,[yamerl_sup]},
+              {applications,[kernel,stdlib]},
+              {mod,{yamerl_app,[]}},
+              {env,[{node_mods,[]}]},
+              {licenses,["BSD 2-Clause"]},
+              {links,[{"GitHub","https://github.com/yakaz/yamerl"}]}]}.

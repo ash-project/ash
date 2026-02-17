@@ -1,0 +1,31 @@
+%% vim:ft=erlang:
+
+case {os:getenv("GITHUB_ACTIONS"), os:getenv("GITHUB_TOKEN")} of
+    {"true", Token} when is_list(Token) ->
+        CONFIG1 = [
+                   %% FIXME: We need to use a fork of the plugin until the
+                   %% following pull request is merged:
+                   %% https://github.com/markusn/coveralls-erl/pull/36
+                   %% {plugins, [coveralls]},
+                   {plugins, [{coveralls,
+                               {git,
+                                "https://github.com/RoadRunnr/coveralls-erl.git",
+                                {branch, "feature/git-info"}}}]},
+                   {coveralls_coverdata, "_build/test/cover/eunit.coverdata"},
+                   {coveralls_service_name , "github"},
+                   {coveralls_parallel, true},
+                   {coveralls_repo_token, Token},
+                   {coveralls_service_job_id, os:getenv("GITHUB_RUN_ID")},
+                   {coveralls_service_number, os:getenv("GITHUB_RUN_NUMBER")},
+                   {coveralls_commit_sha, os:getenv("GITHUB_SHA")},
+                   {coveralls_flag_name, os:getenv("COVERALLS_FLAG_NAME")}| CONFIG],
+        case os:getenv("GITHUB_EVENT_NAME") =:= "pull_request"
+             andalso string:tokens(os:getenv("GITHUB_REF"), "/") of
+            [_, "pull", PRNO, _] ->
+                [{coveralls_service_pull_request, PRNO} | CONFIG1];
+            _ ->
+                CONFIG1
+        end;
+    _ ->
+        CONFIG
+end.

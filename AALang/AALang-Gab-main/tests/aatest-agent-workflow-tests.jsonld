@@ -1,0 +1,345 @@
+{
+  "@context": {
+    "@vocab": "https://aalang.org/spec",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ex": "https://aalang.org/example/"
+  },
+  "@graph": [
+    {
+      "@id": "ex:Test_CompleteTestWorkflow_EndToEnd_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_CompleteTestWorkflow_EndToEnd_HappyPath",
+        "description": "Test successful complete end-to-end test workflow: user provides product file → test need evaluation → test generation → test execution → test result reporting. Message sends user input with product file path. Expected: Workflow completes successfully, all modes executed correctly, final report generated.",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "userInput": "Test product file: gab.jsonld",
+              "workflow": "completeTestWorkflow"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "finalOutput": "Test results report generated",
+          "allModesExecuted": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["TestNeedEvaluationMode", "TestGenerationMode", "TestExecutionMode", "TestResultReportingMode"],
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "isLike",
+          "expected": "Workflow completes successfully",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "completeness",
+          "expected": "All modes in workflow are executed",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_CompleteTestWorkflow_EndToEnd_InvalidInput_ErrorPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_CompleteTestWorkflow_EndToEnd_InvalidInput_ErrorPath",
+        "description": "Test end-to-end workflow with invalid user input (non-existent product file). Message sends invalid product file path. Expected: Agent handles invalid input gracefully, provides appropriate error message or recovery, no crashes.",
+        "type": "AgentWorkflowTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "userInput": "Test product file: nonexistent.jsonld",
+              "workflow": "completeTestWorkflow"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": false,
+          "errorHandled": true,
+          "recoveryOccurred": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Agent handles invalid input gracefully",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "No crashes or undefined behavior",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Agent provides appropriate error message or recovery",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_FullAgentExecution_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_FullAgentExecution_HappyPath",
+        "description": "Test that agent can be loaded and executed as complete system. Message sends request to load agent file AATest/AATest.jsonld. Expected: Agent loaded successfully, execution started, all modes accessible, all actors accessible.",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "agentFile": "AATest/AATest.jsonld",
+              "executionTrigger": "file load"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "agentLoaded": true,
+          "executionStarted": true,
+          "allModesAccessible": true,
+          "allActorsAccessible": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "hasStructure",
+          "expected": "Agent structure is valid",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "completeness",
+          "expected": "All modes and actors are accessible",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "consistency",
+          "expected": "Agent behavior is consistent",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_FullAgentExecution_InvalidStructure_ErrorPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_FullAgentExecution_InvalidStructure_ErrorPath",
+        "description": "Test agent loading with invalid or malformed structure. Message sends request to load agent with invalid JSON-LD structure. Expected: Agent does not load or reports error, error message is clear and helpful.",
+        "type": "AgentWorkflowTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "agentFile": "invalid-agent.jsonld",
+              "executionTrigger": "file load"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "agentLoaded": false,
+          "errorMessage": "Invalid agent structure"
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Invalid agent should not load or should report error",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Error message is clear and helpful",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_UserPerspective_ProductFileProvided_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_UserPerspective_ProductFileProvided_HappyPath",
+        "description": "Test successful agent behavior from user perspective when product file is provided. Message sends user message with product file path. Expected: Agent response matches user expectations semantically, response is helpful and appropriate.",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "userMessage": "AATest.jsonld",
+              "userContext": {
+                "expectation": "Agent analyzes product and identifies test needs"
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "agentResponse": "Product analysis complete",
+          "responseMatchesExpectation": true,
+          "userSatisfied": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "isLike",
+          "expected": "Agent response matches user expectations semantically",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Agent behaves correctly from user perspective",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Response is helpful and appropriate",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_UserPerspective_InvalidInput_ErrorPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_UserPerspective_InvalidInput_ErrorPath",
+        "description": "Test agent behavior with invalid or unexpected user input. Message sends invalid, ambiguous, or malformed user input. Expected: Agent handles invalid input gracefully, provides helpful error message or clarification, no crashes.",
+        "type": "AgentWorkflowTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "userMessage": "invalid input with no clear meaning",
+              "userContext": {
+                "expectation": "Agent provides clarification"
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "agentResponse": "Clarification or error message",
+          "errorHandled": true,
+          "userSatisfied": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Agent handles invalid input gracefully",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "isLike",
+          "expected": "Agent provides helpful error message or clarification",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "No crashes or undefined behavior",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_InitialResponse_Display_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_InitialResponse_Display_HappyPath",
+        "description": "Test that agent displays InitialResponse immediately when loaded. Message triggers agent load. Expected: InitialResponse content displayed immediately, agent begins test need evaluation, no analysis or explanation of file structure.",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "system",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "action": "loadAgent",
+              "agentFile": "AATest/AATest.jsonld"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "initialResponseDisplayed": true,
+          "testNeedEvaluationStarted": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "contains",
+          "expected": "Welcome to the AALang Testing Tool",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "No analysis or explanation of file structure",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Agent displays InitialResponse and begins test need evaluation immediately",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    }
+  ]
+}
+

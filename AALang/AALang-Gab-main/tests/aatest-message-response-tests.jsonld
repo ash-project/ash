@@ -1,0 +1,1615 @@
+{
+  "@context": {
+    "@vocab": "https://aalang.org/spec",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ex": "https://aalang.org/example/"
+  },
+  "@graph": [
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_DetermineProductFilePath_WithPath_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_DetermineProductFilePath_WithPath_HappyPath",
+        "description": "Test that ProductAnalyzerActor accepts and uses a valid product file path provided by user. Message sends product file path 'gab.jsonld' to ProductAnalyzerActor. Expected: Actor accepts message, stores productFilePath in TestNeedEvaluationModeState, proceeds without asking user for path.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "analyzeProduct",
+              "productFilePath": "gab.jsonld"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "productFilePath": "gab.jsonld",
+            "waitingForUserResponse": false
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "ProductAnalyzerActor accepts product file path and stores it in state without asking user",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestNeedEvaluationModeState contains productFilePath='gab.jsonld' and waitingForUserResponse=false",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "No user prompt asking for product file path",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_DetermineProductFilePath_WithoutPath_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_DetermineProductFilePath_WithoutPath_HappyPath",
+        "description": "Test that ProductAnalyzerActor asks user for product file path when not provided. Message sends request to analyze product without productFilePath. Expected: Actor accepts message, sets waitingForUserResponse=true in TestNeedEvaluationModeState, sends message to user asking for product file path.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "analyzeProduct"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "waitingForUserResponse": true
+          }
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductAnalyzerPersona",
+              "to": "user"
+            },
+            "payload": {
+              "semanticContent": "Please provide the path to the AALang product file you want to test"
+            }
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "ProductAnalyzerActor asks user for product file path when not provided",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestNeedEvaluationModeState contains waitingForUserResponse=true",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "contains",
+          "expected": "Please provide the path to the AALang product file you want to test",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_DetermineProductFilePath_EmptyString_Boundary",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_DetermineProductFilePath_EmptyString_Boundary",
+        "description": "Test that ProductAnalyzerActor rejects empty string as product file path. Message sends empty string as productFilePath. Expected: Actor rejects message or treats as missing path, asks user for valid path, sets waitingForUserResponse=true.",
+        "type": "MessageResponseTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "analyzeProduct",
+              "productFilePath": ""
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": false,
+          "messageRejected": true
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "waitingForUserResponse": true
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Empty string should not be accepted as valid product file path",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "contains",
+          "expected": "Error message or request for valid path",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State should not be corrupted, waitingForUserResponse should be set to true",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_DetermineProductFilePath_Null_InvalidInput",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_DetermineProductFilePath_Null_InvalidInput",
+        "description": "Test that ProductAnalyzerActor rejects null product file path. Message sends null as productFilePath. Expected: Actor rejects message, provides clear error message, does not corrupt state, sets waitingForUserResponse=true.",
+        "type": "MessageResponseTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "analyzeProduct",
+              "productFilePath": null
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": false,
+          "messageRejected": true
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateBefore": {},
+          "stateAfter": {
+            "waitingForUserResponse": true
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Null value should not be accepted as valid product file path",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "contains",
+          "expected": "Error message indicating invalid product file path",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State must not be corrupted, must maintain consistency",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Actor handles null input gracefully without crashing",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_ReadProductFile_ValidFile_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_ReadProductFile_ValidFile_HappyPath",
+        "description": "Test that ProductAnalyzerActor reads and parses a valid JSON-LD product file. Message sends request to read product file 'gab.jsonld'. Expected: Actor accepts message, reads file, parses JSON-LD structure, extracts @context and @graph array, stores parsed structure in TestNeedEvaluationModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "setup": "Ensure gab.jsonld exists in workspace",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "readProductFile",
+              "productFilePath": "gab.jsonld"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "productFilePath": "gab.jsonld",
+            "parsedStructure": {
+              "@context": {},
+              "@graph": []
+            }
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "ProductAnalyzerActor reads and parses valid JSON-LD file successfully",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Parsed structure contains @context and @graph properties",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestNeedEvaluationModeState contains parsedStructure with @context and @graph",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_ReadProductFile_FileNotFound_InvalidInput",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_ReadProductFile_FileNotFound_InvalidInput",
+        "description": "Test that ProductAnalyzerActor handles file not found error gracefully. Message sends request to read non-existent file 'nonexistent.jsonld'. Expected: Actor rejects operation or reports error, sends error message to user: 'Error: Product file not found at nonexistent.jsonld. Please provide a valid path to an AALang product file.', sets waitingForUserResponse=true, does not corrupt state.",
+        "type": "MessageResponseTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "readProductFile",
+              "productFilePath": "nonexistent.jsonld"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": false,
+          "messageRejected": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductAnalyzerPersona",
+              "to": "user"
+            },
+            "payload": {
+              "semanticContent": "Error: Product file not found at nonexistent.jsonld. Please provide a valid path to an AALang product file."
+            }
+          }
+        ],
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "waitingForUserResponse": true
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "contains",
+          "expected": "Error: Product file not found at nonexistent.jsonld. Please provide a valid path to an AALang product file.",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State must not be corrupted, waitingForUserResponse must be set to true",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "No crashes or undefined behavior when file not found",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Actor handles file not found error gracefully with clear error message",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_ParseJSONLD_ValidJSONLD_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_ParseJSONLD_ValidJSONLD_HappyPath",
+        "description": "Test that ProductAnalyzerActor parses valid JSON-LD structure correctly. Message sends parsed JSON-LD content with @context and @graph. Expected: Actor accepts message, validates JSON syntax, validates JSON-LD structure (nodes with @id, @type), extracts all nodes, stores in TestNeedEvaluationModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "parseJSONLD",
+              "jsonldContent": {
+                "@context": {
+                  "@vocab": "https://aalang.org/spec"
+                },
+                "@graph": [
+                  {
+                    "@id": "ex:TestAgent",
+                    "@type": "LLMAgent",
+                    "pattern": "1-mode-1-actor"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "parsedNodes": [
+              {
+                "@id": "ex:TestAgent",
+                "@type": "LLMAgent"
+              }
+            ]
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "ProductAnalyzerActor parses valid JSON-LD structure correctly",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Parsed nodes contain @id and @type properties",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestNeedEvaluationModeState contains parsedNodes array with extracted nodes",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_ParseJSONLD_InvalidJSON_InvalidInput",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_ParseJSONLD_InvalidJSON_InvalidInput",
+        "description": "Test that ProductAnalyzerActor rejects invalid JSON syntax. Message sends malformed JSON content (missing closing brace). Expected: Actor rejects message, reports error: 'Error: Invalid JSON syntax in file [path]. Please provide a valid JSON-LD file.', does not corrupt state, sets waitingForUserResponse=true.",
+        "type": "MessageResponseTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "parseJSONLD",
+              "jsonldContent": "{\"@context\": {\"@vocab\": \"https://aalang.org/spec\"}, \"@graph\": ["
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": false,
+          "messageRejected": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductAnalyzerPersona",
+              "to": "user"
+            },
+            "payload": {
+              "semanticContent": "Error: Invalid JSON syntax"
+            }
+          }
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateBefore": {},
+          "stateAfter": {
+            "waitingForUserResponse": true
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "contains",
+          "expected": "Error: Invalid JSON syntax",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "Invalid JSON should not be parsed or stored in state",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State must not be corrupted by invalid JSON",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Actor handles invalid JSON gracefully with clear error message",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_AnalyzeProductStructure_ValidStructure_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_AnalyzeProductStructure_ValidStructure_HappyPath",
+        "description": "Test that ProductAnalyzerActor analyzes valid AALang product structure correctly. Message sends request to analyze product structure with LLMAgent, Mode, Actor, Persona nodes. Expected: Actor accepts message, identifies LLMAgent root node, extracts pattern/modes/actors, identifies all Mode nodes, identifies all Actor nodes, identifies all Persona nodes, identifies IsolatedState nodes, stores complete analysis in TestNeedEvaluationModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "analyzeProductStructure",
+              "parsedNodes": [
+                {
+                  "@id": "ex:TestAgent",
+                  "@type": "LLMAgent",
+                  "pattern": "1-mode-1-actor",
+                  "modes": ["ex:TestMode"],
+                  "actors": ["ex:TestActor"]
+                },
+                {
+                  "@id": "ex:TestMode",
+                  "@type": "Mode"
+                },
+                {
+                  "@id": "ex:TestActor",
+                  "@type": "Actor",
+                  "id": "TestActor"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "llmAgent": {
+              "@id": "ex:TestAgent",
+              "@type": "LLMAgent"
+            },
+            "modes": [
+              {
+                "@id": "ex:TestMode",
+                "@type": "Mode"
+              }
+            ],
+            "actors": [
+              {
+                "@id": "ex:TestActor",
+                "@type": "Actor"
+              }
+            ]
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "ProductAnalyzerActor identifies LLMAgent root node and extracts structure correctly",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Analysis results contain llmAgent, modes, and actors arrays",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "completeness",
+          "expected": "All Mode nodes and Actor nodes are identified and stored",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestNeedEvaluationModeState contains complete product structure analysis",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_ValidateProductStructure_MissingLLMAgent_InvalidInput",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_ValidateProductStructure_MissingLLMAgent_InvalidInput",
+        "description": "Test that ProductAnalyzerActor rejects product structure missing LLMAgent root node. Message sends product structure without LLMAgent node. Expected: Actor rejects structure, reports validation error: 'Error: Product structure validation failed: [list of errors]. Please provide a valid AALang product file.', sets waitingForUserResponse=true, does not corrupt state.",
+        "type": "MessageResponseTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "validateProductStructure",
+              "productStructure": {
+                "modes": [],
+                "actors": []
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": false,
+          "messageRejected": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductAnalyzerPersona",
+              "to": "user"
+            },
+            "payload": {
+              "semanticContent": "Error: Product structure validation failed"
+            }
+          }
+        ],
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "waitingForUserResponse": true,
+            "validationErrors": [
+              "Missing LLMAgent root node"
+            ]
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "contains",
+          "expected": "Error: Product structure validation failed",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "Invalid structure should not be stored as valid in state",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State must contain validationErrors array with specific errors",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Actor validates structure and reports specific validation errors",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_ExtractProductName_ValidPath_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_ExtractProductName_ValidPath_HappyPath",
+        "description": "Test that ProductAnalyzerActor extracts product name from file path correctly. Message sends productFilePath 'gab.jsonld'. Expected: Actor accepts message, extracts product name 'gab' (removes .jsonld extension), stores productName='gab' in TestNeedEvaluationModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "extractProductName",
+              "productFilePath": "gab.jsonld"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "productName": "gab"
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "ProductAnalyzerActor extracts product name 'gab' from 'gab.jsonld'",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestNeedEvaluationModeState contains productName='gab'",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "Product name should not contain .jsonld extension",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_ExtractProductName_WithDirectoryPath_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_ExtractProductName_WithDirectoryPath_HappyPath",
+        "description": "Test that ProductAnalyzerActor extracts product name from directory path correctly. Message sends productFilePath 'subdirectory/product.jsonld'. Expected: Actor accepts message, extracts product name 'product' (removes directory path and .jsonld extension), stores productName='product' in TestNeedEvaluationModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "extractProductName",
+              "productFilePath": "subdirectory/product.jsonld"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "productName": "product"
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "ProductAnalyzerActor extracts product name 'product' from 'subdirectory/product.jsonld'",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestNeedEvaluationModeState contains productName='product'",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "Product name should not contain directory path or .jsonld extension",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_StoreAnalysisResults_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_StoreAnalysisResults_HappyPath",
+        "description": "Test that ProductAnalyzerActor stores complete product analysis results in TestNeedEvaluationModeState. Message sends request to store analysis results with all required fields. Expected: Actor accepts message, stores structured data with productFilePath, productName, productType, llmAgent, modes, actors, personas, isolatedStates, messageInterfaces, actorResponsibilities, modeConstraints, validationStatus in TestNeedEvaluationModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "storeAnalysisResults",
+              "analysisResults": {
+                "productFilePath": "gab.jsonld",
+                "productName": "gab",
+                "productType": "AALang Tool",
+                "llmAgent": {},
+                "modes": [],
+                "actors": [],
+                "personas": [],
+                "isolatedStates": [],
+                "messageInterfaces": [],
+                "actorResponsibilities": {},
+                "modeConstraints": {},
+                "validationStatus": "valid",
+                "validationErrors": []
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "productFilePath": "gab.jsonld",
+            "productName": "gab",
+            "productType": "AALang Tool",
+            "llmAgent": {},
+            "modes": [],
+            "actors": [],
+            "personas": [],
+            "isolatedStates": [],
+            "messageInterfaces": [],
+            "actorResponsibilities": {},
+            "modeConstraints": {},
+            "validationStatus": "valid",
+            "validationErrors": []
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "ProductAnalyzerActor stores complete analysis results in TestNeedEvaluationModeState",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Stored state contains all required fields: productFilePath, productName, productType, llmAgent, modes, actors, personas, isolatedStates, messageInterfaces, actorResponsibilities, modeConstraints, validationStatus, validationErrors",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "completeness",
+          "expected": "All analysis result fields are stored in state",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestNeedEvaluationModeState contains complete structured analysis data",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_StoreAnalysisResults_CorruptedState_StateError",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_StoreAnalysisResults_CorruptedState_StateError",
+        "description": "Test that ProductAnalyzerActor handles corrupted state gracefully when storing analysis results. Message sends request to store analysis results when state is corrupted (null values, invalid structure). Expected: Actor either corrects corrupted state or rejects operation with error, maintains state consistency, does not crash.",
+        "type": "MessageResponseTest",
+        "priority": 3
+      },
+      "setup": "Simulate corrupted TestNeedEvaluationModeState with null values",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "storeAnalysisResults",
+              "analysisResults": {
+                "productFilePath": null,
+                "productName": null,
+                "productType": "AALang Tool"
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": false,
+          "messageRejected": true
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateBefore": {
+            "productFilePath": null,
+            "productName": null
+          },
+          "stateAfter": {
+            "productFilePath": null,
+            "productName": null
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "No crashes or undefined behavior when state is corrupted",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Actor either corrects corrupted state or rejects operation gracefully",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State remains consistent or is corrected appropriately",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Actor handles corrupted state gracefully",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductAnalyzerActor_RapidFileRequests_EdgeCase",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductAnalyzerActor_RapidFileRequests_EdgeCase",
+        "description": "Test that ProductAnalyzerActor handles rapid successive file read requests correctly. Message sends multiple file read requests in rapid succession. Expected: Actor processes requests in order, maintains state consistency, does not mix results from different requests.",
+        "type": "MessageResponseTest",
+        "priority": 3
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "readProductFile",
+              "productFilePath": "gab.jsonld"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ProductAnalyzerPersona"
+            },
+            "payload": {
+              "action": "readProductFile",
+              "productFilePath": "index.jsonld"
+            }
+          }
+        ],
+        "messageSequence": [0, 1]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "productFilePath": "index.jsonld"
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["First file read completes", "Second file read completes"],
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State contains correct productFilePath from last request, no mixing of results",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Actor handles rapid requests correctly without state corruption",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_MessageResponseTestExecutorActor_LoadTestFiles_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_MessageResponseTestExecutorActor_LoadTestFiles_HappyPath",
+        "description": "Test that MessageResponseTestExecutorActor loads message response test files correctly. Message sends request to load test files using file pattern. Expected: Actor accepts message, reads test file from tests/ directory, parses JSON-LD structure, extracts @graph array, extracts all test nodes with type='MessageResponseTest', stores tests in memory.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "setup": "Ensure aatest-message-response-tests.jsonld exists in tests/ directory",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:MessageResponseTestExecutorPersona"
+            },
+            "payload": {
+              "action": "loadTestFiles",
+              "testType": "MessageResponseTest",
+              "productName": "aatest"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestExecutionMode",
+          "stateChanges": {
+            "loadedTests": [
+              {
+                "testId": "string",
+                "test": {}
+              }
+            ]
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "MessageResponseTestExecutorActor loads test files and parses them correctly",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Loaded tests contain testId and test properties",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestExecutionModeState contains loadedTests array",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_MessageResponseTestExecutorActor_LoadTestFiles_FileNotFound_InvalidInput",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_MessageResponseTestExecutorActor_LoadTestFiles_FileNotFound_InvalidInput",
+        "description": "Test that MessageResponseTestExecutorActor handles missing test file gracefully. Message sends request to load non-existent test file. Expected: Actor rejects operation or reports error, does not crash, continues with empty test list or reports error message.",
+        "type": "MessageResponseTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:MessageResponseTestExecutorPersona"
+            },
+            "payload": {
+              "action": "loadTestFiles",
+              "testType": "MessageResponseTest",
+              "productName": "nonexistent"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": false,
+          "messageRejected": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "No crashes when test file not found",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "contains",
+          "expected": "Error message indicating test file not found",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Actor handles missing test file gracefully",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_MessageResponseTestExecutorActor_AdoptActorDefinition_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_MessageResponseTestExecutorActor_AdoptActorDefinition_HappyPath",
+        "description": "Test that MessageResponseTestExecutorActor adopts actor definition from product for testing. Message sends request to adopt actor definition for ProductAnalyzerActor. Expected: Actor accepts message, reads product JSON-LD file, parses structure, extracts Actor node and Persona node, adopts persona definition (responsibilities, personality, canMessage, canReceiveFrom), stores adoption status in TestExecutionModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "setup": "Ensure product file exists with ProductAnalyzerActor definition",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:MessageResponseTestExecutorPersona"
+            },
+            "payload": {
+              "action": "adoptActorDefinition",
+              "actorId": "ProductAnalyzerActor",
+              "productFilePath": "AATest/AATest.jsonld"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestExecutionMode",
+          "stateChanges": {
+            "adoptedActorDefinition": {
+              "actorId": "ProductAnalyzerActor",
+              "persona": {}
+            }
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "MessageResponseTestExecutorActor adopts actor definition correctly",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Adopted definition contains actorId and persona with responsibilities",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestExecutionModeState contains adoptedActorDefinition",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_MessageResponseTestExecutorActor_ExecuteTest_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_MessageResponseTestExecutorActor_ExecuteTest_HappyPath",
+        "description": "Test that MessageResponseTestExecutorActor executes a message response test correctly. Message sends request to execute test with test inputs. Expected: Actor accepts message, adopts actor definition, processes test messages, collects actual response and/or validates actor's internal state, evaluates assertions, stores test result in TestExecutionModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:MessageResponseTestExecutorPersona"
+            },
+            "payload": {
+              "action": "executeTest",
+              "testId": "ex:Test_ProductAnalyzerActor_DetermineProductFilePath_WithPath_HappyPath",
+              "testInput": {
+                "routingGraph": {
+                  "from": "user",
+                  "to": "ex:ProductAnalyzerPersona"
+                },
+                "payload": {
+                  "action": "analyzeProduct",
+                  "productFilePath": "gab.jsonld"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestExecutionMode",
+          "stateChanges": {
+            "testResults": [
+              {
+                "testId": "ex:Test_ProductAnalyzerActor_DetermineProductFilePath_WithPath_HappyPath",
+                "status": "pass",
+                "assertionResults": []
+              }
+            ]
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "MessageResponseTestExecutorActor executes test and evaluates assertions correctly",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Test result contains testId, status, and assertionResults",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestExecutionModeState contains testResults array with execution results",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_MessageResponseTestExecutorActor_EvaluateAssertions_StrictEvaluation_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_MessageResponseTestExecutorActor_EvaluateAssertions_StrictEvaluation_HappyPath",
+        "description": "Test that MessageResponseTestExecutorActor evaluates assertions using strict LLM reasoning. Message sends request to evaluate assertions with expected and actual values. Expected: Actor accepts message, evaluates each assertion strictly (no leniency), creates assertion result with passed boolean (true ONLY if assertion passes strictly), stores results in TestExecutionModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:MessageResponseTestExecutorPersona"
+            },
+            "payload": {
+              "action": "evaluateAssertions",
+              "assertions": [
+                {
+                  "type": "contains",
+                  "expected": "test string",
+                  "actual": "test string"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestExecutionMode",
+          "stateChanges": {
+            "assertionResults": [
+              {
+                "assertionIndex": 0,
+                "type": "contains",
+                "expected": "test string",
+                "actual": "test string",
+                "passed": true,
+                "reason": "Actual contains expected text"
+              }
+            ]
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "MessageResponseTestExecutorActor evaluates assertions strictly with no leniency",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Assertion results contain assertionIndex, type, expected, actual, passed, reason",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestExecutionModeState contains assertionResults with strict evaluation results",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_MessageResponseTestExecutorActor_EvaluateAssertions_Failure_StrictEvaluation",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_MessageResponseTestExecutorActor_EvaluateAssertions_Failure_StrictEvaluation",
+        "description": "Test that MessageResponseTestExecutorActor fails assertions strictly when actual doesn't match expected. Message sends request to evaluate assertion where actual doesn't match expected. Expected: Actor evaluates assertion strictly, creates assertion result with passed=false, provides detailed reason for failure, stores in TestExecutionModeState.",
+        "type": "MessageResponseTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:MessageResponseTestExecutorPersona"
+            },
+            "payload": {
+              "action": "evaluateAssertions",
+              "assertions": [
+                {
+                  "type": "contains",
+                  "expected": "test string",
+                  "actual": "different string"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestExecutionMode",
+          "stateChanges": {
+            "assertionResults": [
+              {
+                "assertionIndex": 0,
+                "type": "contains",
+                "expected": "test string",
+                "actual": "different string",
+                "passed": false,
+                "reason": "Actual does not contain expected text"
+              }
+            ]
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "MessageResponseTestExecutorActor fails assertion when actual doesn't match expected",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Assertion result has passed=false and detailed reason for failure",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestExecutionModeState contains failed assertion result",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestGapAnalyzerActor_ReadProductAnalysis_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestGapAnalyzerActor_ReadProductAnalysis_HappyPath",
+        "description": "Test that TestGapAnalyzerActor reads product analysis results from TestNeedEvaluationModeState. Message sends request to read product analysis. Expected: Actor accepts message, accesses TestNeedEvaluationModeState context, extracts actors array, personas array with responsibilities, modes array, actorResponsibilities mapping, modeConstraints mapping, productName using semantic filtering, stores in TestGapAnalyzerActor state.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductAnalyzerPersona",
+              "to": "ex:TestGapAnalyzerPersona"
+            },
+            "payload": {
+              "action": "readProductAnalysis",
+              "productAnalysis": {
+                "actors": [],
+                "personas": [],
+                "modes": [],
+                "actorResponsibilities": {},
+                "modeConstraints": {},
+                "productName": "aatest"
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "productAnalysisRead": true
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "TestGapAnalyzerActor reads product analysis results from TestNeedEvaluationModeState",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestGapAnalyzerActor has access to product analysis data",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestGapAnalyzerActor_IdentifyGaps_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestGapAnalyzerActor_IdentifyGaps_HappyPath",
+        "description": "Test that TestGapAnalyzerActor identifies missing test coverage gaps correctly. Message sends request to identify gaps between product structure and existing tests. Expected: Actor accepts message, compares product structure to existing tests, identifies missing test types, missing actor tests, missing mode tests, missing agent workflow tests, creates gap report, stores in TestNeedEvaluationModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:TestGapAnalyzerPersona"
+            },
+            "payload": {
+              "action": "identifyGaps",
+              "productStructure": {
+                "actors": [
+                  {
+                    "id": "ProductAnalyzerActor"
+                  }
+                ],
+                "existingTests": []
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestNeedEvaluationMode",
+          "stateChanges": {
+            "gapReport": {
+              "missingTestTypes": [],
+              "missingActorTests": [
+                {
+                  "actorId": "ProductAnalyzerActor",
+                  "missingTests": []
+                }
+              ]
+            }
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "TestGapAnalyzerActor identifies missing test coverage gaps correctly",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Gap report contains missingTestTypes, missingActorTests, missingModeTests, missingAgentWorkflowTests",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestNeedEvaluationModeState contains gapReport with identified gaps",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ReportGeneratorActor_ReadAggregatedResults_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ReportGeneratorActor_ReadAggregatedResults_HappyPath",
+        "description": "Test that ReportGeneratorActor reads aggregated results from TestResultReportingModeState. Message sends request to read aggregated results. Expected: Actor accepts message, accesses TestResultReportingModeState context, extracts aggregatedResults object containing summary, allResults, organizedByType, executionLogs, stores for report generation.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ResultAggregatorPersona",
+              "to": "ex:ReportGeneratorPersona"
+            },
+            "payload": {
+              "action": "readAggregatedResults",
+              "aggregatedResults": {
+                "summary": {
+                  "totalTests": 10,
+                  "passedTests": 8,
+                  "failedTests": 2
+                },
+                "allResults": [],
+                "organizedByType": {},
+                "executionLogs": []
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestResultReportingMode",
+          "stateChanges": {
+            "aggregatedResultsRead": true
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "ReportGeneratorActor reads aggregated results from TestResultReportingModeState",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Aggregated results contain summary, allResults, organizedByType, executionLogs",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "ReportGeneratorActor has access to aggregated results for report generation",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ReportGeneratorActor_GenerateReportFile_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ReportGeneratorActor_GenerateReportFile_HappyPath",
+        "description": "Test that ReportGeneratorActor generates test results markdown file correctly. Message sends request to generate report file. Expected: Actor accepts message, creates markdown report with summary, coverage metrics, test results, execution logs, writes to tests/{product-name}-test-results.md, displays summary to console, stores report status in TestResultReportingModeState.",
+        "type": "MessageResponseTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:ReportGeneratorPersona"
+            },
+            "payload": {
+              "action": "generateReportFile",
+              "productName": "aatest",
+              "aggregatedResults": {
+                "summary": {
+                  "totalTests": 10,
+                  "passedTests": 8,
+                  "failedTests": 2
+                }
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        },
+        "observedStateChanges": {
+          "mode": "ex:TestResultReportingMode",
+          "stateChanges": {
+            "reportGenerated": true,
+            "reportFile": "tests/aatest-test-results.md"
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "actorBehavior",
+          "expected": "ReportGeneratorActor generates test results markdown file correctly",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Report file contains summary, coverage metrics, test results, execution logs sections",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "TestResultReportingModeState contains reportGenerated=true and reportFile path",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "Report does not include execution time",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    }
+  ]
+}
+

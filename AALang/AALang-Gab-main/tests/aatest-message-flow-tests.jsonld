@@ -1,0 +1,501 @@
+{
+  "@context": {
+    "@vocab": "https://aalang.org/spec",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ex": "https://aalang.org/example/"
+  },
+  "@graph": [
+    {
+      "@id": "ex:Test_TestNeedEvaluationMode_ProductAnalyzer_to_TestGapAnalyzer_Communication_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestNeedEvaluationMode_ProductAnalyzer_to_TestGapAnalyzer_Communication_HappyPath",
+        "description": "Test successful communication from ProductAnalyzerActor to TestGapAnalyzerActor in TestNeedEvaluationMode. Message sends product analysis results from ProductAnalyzerPersona to TestGapAnalyzerPersona. Expected: Message delivered successfully, TestGapAnalyzerActor receives and processes message, communication follows AALang message format.",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductAnalyzerPersona",
+              "to": "ex:TestGapAnalyzerPersona",
+              "mode": "ex:TestNeedEvaluationMode"
+            },
+            "payload": {
+              "action": "productAnalysisComplete",
+              "productAnalysis": {
+                "actors": [],
+                "modes": []
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageReceived": true,
+          "messageContent": {}
+        }
+      },
+      "assertions": [
+        {
+          "type": "messageFormat",
+          "expected": "Message follows AALang message format with routingGraph and payload",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "TestGapAnalyzerActor receives and processes message correctly",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["ProductAnalyzerActor sends message", "TestGapAnalyzerActor receives message"],
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestNeedEvaluationMode_ProductAnalyzer_to_TestGapAnalyzer_InvalidCommunication_ErrorPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestNeedEvaluationMode_ProductAnalyzer_to_TestGapAnalyzer_InvalidCommunication_ErrorPath",
+        "description": "Test invalid communication attempt from ProductAnalyzerActor to TestGapAnalyzerActor (malformed message). Message sends malformed message without required routingGraph. Expected: Message rejected, appropriate error message, no state corruption.",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductAnalyzerPersona",
+              "to": "ex:TestGapAnalyzerPersona",
+              "mode": "ex:TestNeedEvaluationMode"
+            },
+            "payload": {}
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "messageRejected": true,
+          "errorMessage": "Message format invalid"
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Invalid message should not be processed",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "contains",
+          "expected": "Appropriate error message",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Actor handles invalid communication gracefully",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestNeedEvaluationMode_to_TestGenerationMode_Transition_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestNeedEvaluationMode_to_TestGenerationMode_Transition_HappyPath",
+        "description": "Test successful mode transition from TestNeedEvaluationMode to TestGenerationMode. Message triggers mode transition after test need evaluation completes. Expected: Transition occurs according to mode constraints, state is preserved or correctly updated during transition, TestGenerationMode becomes active.",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "action": "transitionToTestGeneration",
+              "currentMode": "ex:TestNeedEvaluationMode",
+              "targetMode": "ex:TestGenerationMode"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "transitionOccurred": true,
+          "newMode": "ex:TestGenerationMode",
+          "statePreserved": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "modeTransition",
+          "expected": "Transition occurs according to mode constraints (TestNeedEvaluationMode precedes TestGenerationMode)",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State is preserved or correctly updated during transition",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["TestNeedEvaluationMode active", "Transition triggered", "TestGenerationMode active"],
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestNeedEvaluationMode_to_TestResultReportingMode_InvalidTransition_ErrorPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestNeedEvaluationMode_to_TestResultReportingMode_InvalidTransition_ErrorPath",
+        "description": "Test invalid mode transition attempt from TestNeedEvaluationMode to TestResultReportingMode (not allowed by mode constraints). Message attempts transition that is not in precedes array. Expected: Transition does not occur, error message provided, state remains consistent.",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "action": "transitionToTestResultReporting",
+              "currentMode": "ex:TestNeedEvaluationMode",
+              "targetMode": "ex:TestResultReportingMode"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "transitionOccurred": false,
+          "errorMessage": "Transition not allowed"
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Transition should not occur when invalid",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State should remain consistent when transition fails",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Agent handles invalid transition gracefully",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestNeedEvaluationMode_StateManagement_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestNeedEvaluationMode_StateManagement_HappyPath",
+        "description": "Test successful state management for TestNeedEvaluationMode. Message sends state update from ProductAnalyzerActor in TestNeedEvaluationMode. Expected: State updated correctly, state isolation maintained (actors from other modes cannot access), state consistent before and after update.",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductAnalyzerPersona",
+              "to": "ex:TestNeedEvaluationModeState",
+              "mode": "ex:TestNeedEvaluationMode"
+            },
+            "payload": {
+              "action": "updateState",
+              "stateUpdate": {
+                "productFilePath": "gab.jsonld",
+                "productName": "gab"
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "stateUpdated": true,
+          "newState": {
+            "productFilePath": "gab.jsonld",
+            "productName": "gab"
+          },
+          "isolationMaintained": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "stateConsistency",
+          "expected": "State is consistent before and after update",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "hasProperty",
+          "expected": "State contains required properties (productFilePath, productName)",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "excludes",
+          "expected": "Actors from other modes cannot access this state",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestNeedEvaluationMode_StateManagement_InvalidUpdate_ErrorPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestNeedEvaluationMode_StateManagement_InvalidUpdate_ErrorPath",
+        "description": "Test invalid state update handling (corrupted state, invalid values). Message sends invalid state update with null values. Expected: Invalid state not accepted, state remains consistent or is corrected, error handled gracefully.",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductAnalyzerPersona",
+              "to": "ex:TestNeedEvaluationModeState",
+              "mode": "ex:TestNeedEvaluationMode"
+            },
+            "payload": {
+              "action": "updateState",
+              "stateUpdate": {
+                "productFilePath": null,
+                "productName": null
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "stateUpdated": false,
+          "errorHandled": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Invalid state should not be accepted",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "State remains consistent or is corrected",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Actor handles invalid state update gracefully",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestNeedEvaluationMode_StateManagement_UnauthorizedAccess_ErrorPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestNeedEvaluationMode_StateManagement_UnauthorizedAccess_ErrorPath",
+        "description": "Test unauthorized state access from other modes. Message attempts to access TestNeedEvaluationModeState from TestGenerationMode actor. Expected: Access denied, error message provided, state isolation maintained.",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:MessageResponseTestGeneratorPersona",
+              "to": "ex:TestNeedEvaluationModeState",
+              "mode": "ex:TestGenerationMode"
+            },
+            "payload": {
+              "action": "readState",
+              "targetState": "ex:TestNeedEvaluationModeState"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "accessDenied": true,
+          "errorMessage": "Unauthorized access to isolated state"
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Unauthorized actors cannot access state",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State isolation is maintained",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestGenerationMode_to_TestExecutionMode_Transition_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestGenerationMode_to_TestExecutionMode_Transition_HappyPath",
+        "description": "Test successful mode transition from TestGenerationMode to TestExecutionMode. Message triggers mode transition after test generation completes. Expected: Transition occurs according to mode constraints, state is preserved, TestExecutionMode becomes active.",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "action": "transitionToTestExecution",
+              "currentMode": "ex:TestGenerationMode",
+              "targetMode": "ex:TestExecutionMode"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "transitionOccurred": true,
+          "newMode": "ex:TestExecutionMode",
+          "statePreserved": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "modeTransition",
+          "expected": "Transition occurs according to mode constraints (TestGenerationMode precedes TestExecutionMode)",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State is preserved during transition",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["TestGenerationMode active", "Transition triggered", "TestExecutionMode active"],
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestExecutionMode_to_TestResultReportingMode_Transition_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestExecutionMode_to_TestResultReportingMode_Transition_HappyPath",
+        "description": "Test successful mode transition from TestExecutionMode to TestResultReportingMode. Message triggers mode transition after test execution completes with verified execution logs. Expected: Transition occurs according to mode constraints, execution logs verified, TestResultReportingMode becomes active.",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "action": "transitionToTestResultReporting",
+              "currentMode": "ex:TestExecutionMode",
+              "targetMode": "ex:TestResultReportingMode",
+              "executionLogsVerified": true
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "transitionOccurred": true,
+          "newMode": "ex:TestResultReportingMode",
+          "statePreserved": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "modeTransition",
+          "expected": "Transition occurs according to mode constraints (TestExecutionMode precedes TestResultReportingMode)",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State is preserved during transition",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["TestExecutionMode active", "Execution logs verified", "Transition triggered", "TestResultReportingMode active"],
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_TestExecutionMode_to_TestResultReportingMode_Transition_WithoutVerification_ErrorPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_TestExecutionMode_to_TestResultReportingMode_Transition_WithoutVerification_ErrorPath",
+        "description": "Test invalid mode transition from TestExecutionMode to TestResultReportingMode without verified execution logs. Message attempts transition without execution logs verification. Expected: Transition does not occur, error message provided, state remains consistent.",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:AALangTestingToolAgent"
+            },
+            "payload": {
+              "action": "transitionToTestResultReporting",
+              "currentMode": "ex:TestExecutionMode",
+              "targetMode": "ex:TestResultReportingMode",
+              "executionLogsVerified": false
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedBehavior": {
+          "transitionOccurred": false,
+          "errorMessage": "Cannot transition without verified execution logs"
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Transition should not occur without verified execution logs",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State should remain consistent when transition fails",
+          "actual": "TO_BE_EVALUATED"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Agent enforces transition validation requirement",
+          "actual": "TO_BE_EVALUATED"
+        }
+      ]
+    }
+  ]
+}
+

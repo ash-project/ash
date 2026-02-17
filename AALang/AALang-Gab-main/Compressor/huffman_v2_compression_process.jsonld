@@ -1,0 +1,241 @@
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "compression": "https://example.org/compression#",
+    "process": "https://example.org/process#"
+  },
+  "@graph": [
+    {
+      "@id": "compression:HuffmanV2Process",
+      "@type": "compression:CompressionAlgorithm",
+      "name": "Huffman V2 Compression for JSON-LD",
+      "description": "Optimized Huffman-style encoding with compact codebook for JSON-LD files, designed for LLM readability",
+      "version": "2.0",
+      "implementation": "compress_jsonld_huffman_v2.py",
+      
+      "process:overview": {
+        "description": "Multi-stage compression process that reduces JSON-LD file size while maintaining LLM readability",
+        "stages": [
+          "Key Mapping",
+          "URL Replacement",
+          "String Frequency Analysis",
+          "Codebook Generation",
+          "String Encoding",
+          "Header Generation"
+        ]
+      },
+      
+      "process:stage1_keyMapping": {
+        "name": "Key Mapping",
+        "description": "Replace long JSON keys with short abbreviations",
+        "method": "Direct dictionary lookup using KEY_MAP",
+        "examples": {
+          "@context": "@c",
+          "@graph": "@g",
+          "@id": "@i",
+          "@type": "@t",
+          "description": "d",
+          "purpose": "purp",
+          "constraints": "const"
+        },
+        "benefit": "Reduces key overhead, especially for frequently repeated keys",
+        "appliedTo": "All dictionary keys in the JSON structure"
+      },
+      
+      "process:stage2_urlReplacement": {
+        "name": "URL Replacement",
+        "description": "Replace long URLs with short prefixes",
+        "method": "String replacement using URL_REPLACEMENTS dictionary",
+        "replacements": {
+          "https://aalang.org/": "a:",
+          "https://aalang.org/spec": "a:spec",
+          "https://aalang.dev/python-tutor/example/": "x:",
+          "http://www.w3.org/1999/02/22-rdf-syntax-ns#": "rdf:",
+          "http://www.w3.org/2000/01/rdf-schema#": "rdfs:"
+        },
+        "appliedTo": "All string values in the JSON structure",
+        "order": "Applied before string encoding to maximize compression"
+      },
+      
+      "process:stage3_frequencyAnalysis": {
+        "name": "String Frequency Analysis",
+        "description": "Collect and count all strings in the JSON-LD graph to identify compression candidates",
+        "method": "Recursive traversal of JSON structure using collect_strings()",
+        "parameters": {
+          "min_length": 15,
+          "description": "Only consider strings longer than 15 characters for encoding"
+        },
+        "dataStructure": "Counter object tracking (string, frequency) pairs",
+        "scope": "Only analyzes @graph content, not @context",
+        "rationale": "Long strings that appear multiple times provide the best compression benefit"
+      },
+      
+      "process:stage4_codebookGeneration": {
+        "name": "Codebook Generation",
+        "description": "Build Huffman-style codebook assigning short codes to frequent strings",
+        "method": "build_huffman_codes() function",
+        "parameters": {
+          "max_codes": {
+            "value": 150,
+            "description": "Maximum number of codes to generate"
+          },
+          "min_savings_per_use": {
+            "value": 5,
+            "description": "Minimum bytes saved per occurrence to include in codebook"
+          }
+        },
+        "codeAssignment": {
+          "first_62_codes": "Single character: $0, $1, ..., $9, $a, $b, ..., $z, $A, ..., $Z",
+          "remaining_codes": "Two-digit format: $00, $01, ..., $99",
+          "rationale": "Shorter codes for most frequent strings, longer codes for less frequent"
+        },
+        "selectionCriteria": {
+          "step1": "Calculate compression benefit: (original_length - code_length) * frequency",
+          "step2": "Filter candidates with total_savings > min_savings_per_use",
+          "step3": "Sort by total_savings (descending)",
+          "step4": "Take top max_codes candidates",
+          "step5": "Assign codes in order of frequency"
+        },
+        "headerCodebook": {
+          "size": 30,
+          "description": "Only top 30 codes included in file header for LLM readability",
+          "truncation": "Long strings truncated to 80 characters in header",
+          "rationale": "LLMs can infer remaining codes from context, reducing header overhead"
+        }
+      },
+      
+      "process:stage5_stringEncoding": {
+        "name": "String Encoding",
+        "description": "Replace frequent strings with their assigned codes throughout the JSON",
+        "method": "encode_string() function with sorted replacement",
+        "algorithm": {
+          "step1": "Apply URL replacements first",
+          "step2": "Sort codebook by original string length (longest first)",
+          "step3": "Replace each original string with its code",
+          "step4": "Process recursively through all JSON values"
+        },
+        "replacementOrder": "Longest strings first to avoid partial matches",
+        "appliedTo": "All string values in dictionaries, lists, and nested structures"
+      },
+      
+      "process:stage6_headerGeneration": {
+        "name": "Header Generation",
+        "description": "Create human-readable header with codebook and instructions",
+        "format": "Comment-style header with codebook entries",
+        "content": {
+          "line1": "Compression scheme explanation (@c, @g, @i, @t abbreviations)",
+          "line2": "URL prefix mappings",
+          "line3": "Top 30 codebook entries in format: $code=text",
+          "line4": "Note about additional codes"
+        },
+        "purpose": "Enable LLM to understand and decompress the file",
+        "size": "Approximately 2-3KB for typical files"
+      },
+      
+      "compression:characteristics": {
+        "lossless": true,
+        "readable": true,
+        "description": "Fully reversible compression that maintains semantic meaning. Designed for LLM consumption with readable codes and header",
+        "llmOptimized": true
+      },
+      
+      "compression:performance": {
+        "typicalRatio": "1.4x to 1.5x",
+        "factors": {
+          "repetitionRate": "Most content is unique, limiting compression potential",
+          "codebookOverhead": "Header adds 2-3KB overhead",
+          "keyMappingBenefit": "Provides ~1.2x compression",
+          "stringEncodingBenefit": "Provides additional ~1.2x compression on repeated strings"
+        },
+        "optimization": {
+          "maxCodes": "150 codes balances compression vs. overhead",
+          "headerSize": "30 codes in header balances readability vs. size",
+          "minLength": "15 character minimum filters out short strings with minimal benefit"
+        }
+      },
+      
+      "compression:algorithmDetails": {
+        "type": "Frequency-based text substitution",
+        "similarTo": "Huffman coding but with fixed-length codes for simplicity",
+        "differences": {
+          "huffman": "Uses variable-length codes based on frequency",
+          "thisAlgorithm": "Uses fixed-length codes ($X or $XX) assigned by frequency rank"
+        },
+        "rationale": "Fixed-length codes are easier for LLMs to parse and understand"
+      },
+      
+      "compression:implementationNotes": {
+        "language": "Python 3",
+        "dependencies": ["json", "collections.Counter"],
+        "keyFunctions": {
+          "collect_strings": "Recursively collects strings for frequency analysis",
+          "build_huffman_codes": "Generates codebook based on frequency and savings",
+          "encode_string": "Applies URL replacements and code substitutions",
+          "compress_value": "Recursively compresses JSON structure",
+          "create_header": "Generates human-readable header with codebook"
+        },
+        "dataFlow": [
+          "Load JSON-LD file",
+          "Extract @context and @graph",
+          "Collect string frequencies from @graph",
+          "Build codebook from frequencies",
+          "Compress @graph using key mapping and codebook",
+          "Generate header with top codes",
+          "Write compressed file with header + minified JSON"
+        ]
+      },
+      
+      "compression:limitations": {
+        "lowRepetition": "Most JSON-LD content is unique, limiting compression",
+        "codebookOverhead": "Header adds fixed overhead that reduces net compression",
+        "singlePass": "Only one encoding pass, doesn't compress substrings",
+        "contextAgnostic": "Same codebook used for all contexts"
+      },
+      
+      "compression:improvements": {
+        "potentialEnhancements": [
+          {
+            "name": "Substring-level compression",
+            "description": "Encode common phrases/substrings, not just full strings",
+            "expectedBenefit": "1.2x additional compression"
+          },
+          {
+            "name": "Multi-pass compression",
+            "description": "Multiple passes to compress phrases, then substrings, then words",
+            "expectedBenefit": "1.5x additional compression"
+          },
+          {
+            "name": "Context-aware encoding",
+            "description": "Different codebooks for different JSON contexts",
+            "expectedBenefit": "Better compression with shorter codes per context"
+          },
+          {
+            "name": "Template-based compression",
+            "description": "Identify common node structures and create templates",
+            "expectedBenefit": "3-5x compression for structured data"
+          }
+        ]
+      },
+      
+      "compression:usage": {
+        "command": "python compress_jsonld_huffman_v2.py <input.jsonld> [output.jsonld]",
+        "input": "Standard JSON-LD file",
+        "output": "Compressed JSON-LD with header comments",
+        "outputFormat": "Header comments + minified JSON (no newlines in JSON)"
+      },
+      
+      "compression:decompression": {
+        "method": "Manual or programmatic",
+        "process": [
+          "Parse header to extract codebook",
+          "Reverse URL replacements",
+          "Replace codes with original strings",
+          "Expand key abbreviations",
+          "Reconstruct full JSON-LD structure"
+        ],
+        "llmSupport": "LLMs can decompress by reading header and applying reverse transformations"
+      }
+    }
+  ]
+}
+

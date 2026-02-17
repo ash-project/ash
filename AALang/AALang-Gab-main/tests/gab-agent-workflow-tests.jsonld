@@ -1,0 +1,1373 @@
+{
+  "@context": {
+    "@vocab": "https://aalang.org/spec",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ex": "https://aalang.org/example/"
+  },
+  "@graph": [
+    {
+      "@id": "ex:Test_CompleteClarificationWorkflow_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_CompleteClarificationWorkflow_HappyPath",
+        "description": "Test complete clarification workflow from user input to confidence threshold met - GAB should process ambiguous requirements, ask clarifying questions, update confidence scores, and reach transition threshold",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in ClarificationMode with empty state",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "I want to build a chatbot for my website that can answer customer questions",
+        "workflow": "clarification_complete",
+        "expectedOutcome": "confidence_above_threshold"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "finalMode": "ex:DiscussionMode",
+          "clarificationRounds": 2,
+          "confidenceAchieved": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "To help clarify your chatbot requirements, I need to understand:",
+              "questions": [
+                "What type of chatbot do you want? (conversational, FAQ-based, hybrid)",
+                "What specific customer questions should it handle?",
+                "Will it integrate with your existing systems?"
+              ]
+            },
+            "semanticContent": "Clarification questions about chatbot requirements"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["User input received", "Ambiguities identified", "Clarification questions asked", "Confidence scores updated", "Threshold reached", "Mode transition to Discussion"]
+        },
+        {
+          "type": "withinRange",
+          "expected": "Final overallConfidence between 0.8 and 1.0"
+        },
+        {
+          "type": "modeTransition",
+          "expected": "Successful transition from ClarificationMode to DiscussionMode"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "ClarificationPersona1 enforces confidence threshold before allowing transition"
+        },
+        {
+          "type": "completeness",
+          "expected": "All required clarification aspects addressed"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Clarification actors work together to resolve ambiguities"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_CompleteDiscussionWorkflow_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_CompleteDiscussionWorkflow_HappyPath",
+        "description": "Test complete discussion workflow from clarified requirements to consensus - GAB should perform problem decomposition, propose design solutions, reach agreement, and transition to Formalization",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in DiscussionMode with clarified requirements and confidence >= 0.8",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Yes, I want a conversational chatbot that handles general customer service questions and integrates with our CRM system",
+        "workflow": "discussion_complete",
+        "expectedOutcome": "consensus_reached"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "finalMode": "ex:FormalizationMode",
+          "designProposals": 3,
+          "consensusAchieved": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Based on your clarified requirements, I propose this design:",
+              "proposedStructure": {
+                "productType": "AALang Agent",
+                "modes": ["CustomerQueryMode", "CRMIntegrationMode", "ResponseGenerationMode"],
+                "actors": ["QueryProcessor", "CRMConnector", "ResponseBuilder"]
+              }
+            },
+            "semanticContent": "Discussion design proposal"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["User input processed", "Problem decomposition performed", "Design proposals made", "Consensus reached", "Satisfaction indicators set", "Mode transition to Formalization"]
+        },
+        {
+          "type": "modeTransition",
+          "expected": "Successful transition from DiscussionMode to FormalizationMode"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "All discussion satisfaction indicators (satisfied, confident, consensus) are true"
+        },
+        {
+          "type": "completeness",
+          "expected": "Complete AALang product structure proposed and agreed upon"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Discussion actors collaborate to reach design consensus"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "DiscussionMode state properly updated throughout workflow"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_CompleteFormalizationWorkflow_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_CompleteFormalizationWorkflow_HappyPath",
+        "description": "Test complete formalization workflow from design proposal to satisfaction - GAB should analyze design for logic errors, verify AALang compliance, and confirm readiness for generation",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in FormalizationMode with agreed design from DiscussionMode",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "The proposed design looks good, I agree with the structure",
+        "workflow": "formalization_complete",
+        "expectedOutcome": "formalization_satisfied"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "finalMode": "ex:GenerationMode",
+          "analysisCompleted": true,
+          "complianceVerified": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Formalization analysis complete. The proposed design:",
+              "analysis": {
+                "logicErrors": "None found",
+                "aalangCompliance": "Verified",
+                "missingInformation": "None",
+                "recommendations": "Ready for generation"
+              }
+            },
+            "semanticContent": "Formalization analysis results"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Design analysis begun", "Logic errors checked", "AALang compliance verified", "Missing information identified", "Satisfaction confirmed", "Mode transition to Generation"]
+        },
+        {
+          "type": "modeTransition",
+          "expected": "Successful transition from FormalizationMode to GenerationMode"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "FormalizationMode satisfaction indicators properly set"
+        },
+        {
+          "type": "completeness",
+          "expected": "All formalization analysis aspects completed"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Formalization actors verify design correctness and compliance"
+        },
+        {
+          "type": "consistency",
+          "expected": "Formalization analysis consistent with DiscussionMode results"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_CompleteGenerationWorkflow_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_CompleteGenerationWorkflow_HappyPath",
+        "description": "Test complete generation workflow from verified design to product output - GAB should create AALang product, apply verification checklist, and deliver final product",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with verified design from FormalizationMode",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Please generate the chatbot agent according to the agreed design",
+        "workflow": "generation_complete",
+        "expectedOutcome": "product_generated"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "finalMode": "ex:GenerationMode",
+          "productGenerated": true,
+          "verificationPassed": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Product generation complete! Here's your AALang chatbot agent:",
+              "product": {
+                "fileName": "customer-service-chatbot.jsonld",
+                "structure": "Valid AALang agent with 3 modes and 6 actors",
+                "attribution": "Created using AALang and Gab"
+              }
+            },
+            "semanticContent": "Final product delivery"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Generation readiness verified", "Product creation begun", "Verification checklist applied", "Attribution added", "Product finalized", "Delivery to user"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Generation readiness requirements met before generation begins"
+        },
+        {
+          "type": "completeness",
+          "expected": "All verification checklist items completed"
+        },
+        {
+          "type": "hasStructure",
+          "expected": "Generated product has valid AALang structure"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Generation actors collaborate to create verified product"
+        },
+        {
+          "type": "contains",
+          "expected": "Final product includes 'Created using AALang and Gab' attribution"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_FullAgentExecution_4ModeProgression",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_FullAgentExecution_4ModeProgression",
+        "description": "Test complete GAB agent execution from initial user request to final product delivery - All 4 modes execute in sequence with proper state management and actor coordination",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in ClarificationMode with fresh state",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Build me an email automation tool that can categorize and respond to customer emails",
+        "workflow": "full_agent_execution",
+        "expectedOutcome": "complete_product_delivered"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "modesExecuted": ["ex:ClarificationMode", "ex:DiscussionMode", "ex:FormalizationMode", "ex:GenerationMode"],
+          "fullCycleCompleted": true,
+          "productDelivered": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Your email automation tool is ready!",
+              "product": {
+                "fileName": "email-automation-tool.jsonld",
+                "description": "Complete AALang tool for email processing"
+              }
+            },
+            "semanticContent": "Complete product delivery after full workflow"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["ClarificationMode executed", "DiscussionMode executed", "FormalizationMode executed", "GenerationMode executed", "Product delivered"]
+        },
+        {
+          "type": "modeTransition",
+          "expected": "All mode transitions occur in correct order: Clarification→Discussion→Formalization→Generation"
+        },
+        {
+          "type": "completeness",
+          "expected": "All 13 actors participate appropriately in their respective modes"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "All transition requirements met (confidence thresholds, satisfaction indicators, readiness checks)"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State properly managed across all 4 modes"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "All actor types (Clarification, Discussion, Formalization, Generation, State management) function correctly"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_UserPerspective_EdgeCase_ComplexRequirements",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_UserPerspective_EdgeCase_ComplexRequirements",
+        "description": "Test GAB behavior with complex, ambiguous user requirements - Agent should handle multiple clarification rounds and reach proper understanding",
+        "type": "AgentWorkflowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in ClarificationMode",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "I need something that does everything - handles data, talks to users, makes decisions, and integrates with all our systems",
+        "workflow": "user_perspective_complex",
+        "expectedOutcome": "requirements_clarified_successfully"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "clarificationRounds": 3,
+          "ambiguitiesResolved": true,
+          "confidenceAchieved": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Your requirements are quite broad. To provide the best solution, I need clarification on several aspects:",
+              "questions": [
+                "What specific types of data processing are needed?",
+                "What user interactions should be supported?",
+                "Which systems need integration?",
+                "What decision-making capabilities are required?"
+              ]
+            },
+            "semanticContent": "Multiple clarification rounds for complex requirements"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Initial ambiguity detected", "First clarification round", "Partial clarification achieved", "Second clarification round", "Further clarification", "Third round if needed", "Full confidence achieved"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Multiple clarification rounds used when requirements are highly ambiguous"
+        },
+        {
+          "type": "withinRange",
+          "expected": "Final confidence score reaches required threshold after clarification"
+        },
+        {
+          "type": "completeness",
+          "expected": "All major ambiguity categories addressed"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Clarification actors persist through multiple rounds until understanding is complete"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_FormalizationWorkflow_SkipOption",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_FormalizationWorkflow_SkipOption",
+        "description": "Test formalization workflow skip option - User can authorize skipping formalization, allowing direct transition to generation with appropriate state management",
+        "type": "AgentWorkflowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in DiscussionMode with completed discussion",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "skip formalization",
+        "workflow": "formalization_skip",
+        "expectedOutcome": "formalization_skipped_generation_allowed"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "formalizationSkipped": true,
+          "finalMode": "ex:GenerationMode",
+          "userAuthorization": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Formalization skipped per your authorization. Proceeding to generation.",
+              "confirmation": "User explicitly authorized skipping formalization analysis"
+            },
+            "semanticContent": "Formalization skip confirmation"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Skip command received", "User authorization verified", "Formalization marked as skipped", "Generation readiness checked", "Transition to Generation allowed"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "DiscussionMode satisfaction verified before allowing skip"
+        },
+        {
+          "type": "modeTransition",
+          "expected": "Successful transition to GenerationMode with formalization skipped"
+        },
+        {
+          "type": "hasProperty",
+          "expected": "State correctly reflects formalizationMode.skipped = true"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Formalization actors respect user skip authorization"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_GenerationWorkflow_ReadinessFailure",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_GenerationWorkflow_ReadinessFailure",
+        "description": "Test generation workflow with readiness failure - Generation should be refused when discussion or formalization requirements are not met",
+        "type": "AgentWorkflowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in FormalizationMode with incomplete satisfaction indicators",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Please generate the product now",
+        "workflow": "generation_readiness_failure",
+        "expectedOutcome": "generation_refused_readiness_not_met"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": false,
+          "generationRefused": true,
+          "readinessCheckFailed": true,
+          "userNotified": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Cannot generate product: Discussion and Formalization modes have not reached consensus and satisfaction. Please complete Formalization Mode analysis first, or user (Team Lead) must explicitly authorize skipping Formalization with 'skip formalization' command.",
+              "missingRequirements": ["formalizationMode.satisfied"]
+            },
+            "semanticContent": "Generation refusal due to unmet readiness requirements"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Product generation does not occur when readiness requirements not met"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["Generation request received", "Readiness check performed", "Requirements not met detected", "Generation refused", "Clear explanation provided"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Generation readiness enforcement cannot be bypassed"
+        },
+        {
+          "type": "contains",
+          "expected": "Refusal message specifies missing requirements and skip option"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Generation actors enforce mandatory readiness requirements"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_FailedWorkflow_Recovery",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_FailedWorkflow_Recovery",
+        "description": "Test complete workflow failure with recovery options - GAB should handle catastrophic workflow failures and provide clear recovery guidance",
+        "type": "AgentWorkflowTest",
+        "priority": 3
+      },
+      "setup": "Initialize GAB agent with simulated failure conditions (invalid state, missing dependencies)",
+      "teardown": "Reset all GAB state and restore normal operation",
+      "inputs": {
+        "userInput": "Build a complex system with multiple integrations and advanced features",
+        "workflow": "failed_workflow_recovery",
+        "expectedOutcome": "failure_handled_gracefully"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": false,
+          "failureDetected": true,
+          "recoveryOptionsProvided": true,
+          "systemStabilityMaintained": true,
+          "userGuidanceGiven": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationActor1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Critical workflow failure detected during formalization phase. The proposed system complexity exceeds current capabilities.",
+              "failureDetails": {
+                "failureType": "complexity_overload",
+                "failurePoint": "formalization_analysis",
+                "errorCode": "SYS_COMPLEXITY_LIMIT_EXCEEDED",
+                "affectedComponents": ["state_management", "actor_coordination", "validation_system"]
+              },
+              "recoveryOptions": [
+                "1. Simplify requirements: Break down into smaller, manageable components",
+                "2. Phase implementation: Implement core features first, add complexity later",
+                "3. Consult documentation: Review AALang limitations and best practices",
+                "4. Start over: Begin with simpler requirements that fit within system capabilities"
+              ],
+              "systemStatus": "stable_but_limited",
+              "recommendation": "Start with simplified requirements for successful completion"
+            },
+            "semanticContent": "Workflow failure with comprehensive recovery guidance"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Workflow failure should not cause system crash or undefined behavior"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Failure detected early with clear error categorization and recovery options"
+        },
+        {
+          "type": "contains",
+          "expected": "Recovery options provide actionable steps for user to proceed"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "System maintains stability and provides clear guidance despite failure"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB handles workflow failures gracefully with comprehensive error reporting and recovery guidance"
+        },
+        {
+          "type": "completeness",
+          "expected": "Failure analysis includes root cause, impact assessment, and multiple recovery paths"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_InterruptedWorkflow_Resume",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_InterruptedWorkflow_Resume",
+        "description": "Test workflow interruption and resumption - GAB should handle user-initiated cancellations and provide state preservation for resumption",
+        "type": "AgentWorkflowTest",
+        "priority": 3
+      },
+      "setup": "Initialize GAB agent mid-workflow in DiscussionMode with partial progress",
+      "teardown": "Reset all GAB state",
+      "inputs": {
+        "userInput": "cancel",
+        "workflow": "interrupted_workflow_resume",
+        "expectedOutcome": "graceful_interruption_with_resume_option"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": false,
+          "interruptionHandled": true,
+          "statePreserved": true,
+          "resumeOptionsProvided": true,
+          "systemResourcesReleased": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionActor1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Workflow cancelled as requested. Your progress has been preserved.",
+              "cancellationSummary": {
+                "interruptionPoint": "discussion_phase_design_iteration_2",
+                "progressPreserved": "requirements_analysis_and_initial_design_proposals",
+                "stateSaved": "session_resume_token_abc123"
+              },
+              "resumeOptions": [
+                "1. Resume now: Continue from where you left off",
+                "2. Resume later: Use session token 'abc123' to restore progress",
+                "3. Start over: Begin with fresh requirements",
+                "4. Save current state: Export current progress for manual review"
+              ],
+              "preservedData": {
+                "requirements": "customer service chatbot with CRM integration",
+                "confidenceLevel": 0.85,
+                "proposedModes": ["QueryMode", "CRMMode", "ResponseMode"],
+                "designNotes": "Preliminary actor structure defined"
+              }
+            },
+            "semanticContent": "Graceful workflow interruption with comprehensive resume options"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Workflow interruption handled immediately without data loss"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "All progress preserved and accessible for resumption"
+        },
+        {
+          "type": "contains",
+          "expected": "Multiple resume options provided with clear instructions"
+        },
+        {
+          "type": "completeness",
+          "expected": "Interruption summary includes progress assessment and preserved data inventory"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB handles user cancellations gracefully while preserving all work for future resumption"
+        },
+        {
+          "type": "hasProperty",
+          "expected": "Resume options include immediate continuation, session tokens, and fresh start"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_RetryWorkflow_Success",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_RetryWorkflow_Success",
+        "description": "Test failed operation retry with successful recovery - GAB should detect failures, attempt recovery strategies, and successfully complete after retry",
+        "type": "AgentWorkflowTest",
+        "priority": 3
+      },
+      "setup": "Initialize GAB agent with simulated generation failure (e.g., validation error, resource issue)",
+      "teardown": "Reset all GAB state",
+      "inputs": {
+        "userInput": "Please try again with the corrected approach",
+        "workflow": "retry_workflow_success",
+        "expectedOutcome": "failure_recovery_successful_completion"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "initialFailureDetected": true,
+          "retryAttempted": true,
+          "recoverySuccessful": true,
+          "finalProductDelivered": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationActor1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Generation retry successful! Product created with improved approach.",
+              "retrySummary": {
+                "initialFailure": "validation_error_schema_mismatch",
+                "retryStrategy": "simplified_validation_approach",
+                "retryAttempts": 1,
+                "recoveryTime": "2_seconds",
+                "successFactors": "reduced_complexity_validation"
+              },
+              "product": {
+                "fileName": "customer-chatbot-retry.jsonld",
+                "validationStatus": "passed",
+                "approachUsed": "simplified_validation_with_fallbacks",
+                "attribution": "Created using AALang and Gab"
+              }
+            },
+            "semanticContent": "Successful retry after initial failure with comprehensive recovery reporting"
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Initial failure detected", "Retry strategy selected", "Recovery attempted", "Success achieved", "Product delivered"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "System automatically detects failure and initiates appropriate retry strategy"
+        },
+        {
+          "type": "contains",
+          "expected": "Retry summary includes failure analysis, strategy used, and success factors"
+        },
+        {
+          "type": "completeness",
+          "expected": "Final product meets all requirements and includes proper attribution"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB demonstrates intelligent failure recovery with successful retry completion"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "System maintains stability throughout failure and recovery process"
+        }
+      ],
+    {
+      "@id": "ex:Test_FormalizationSkippedWorkflow_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_FormalizationSkippedWorkflow_HappyPath",
+        "description": "Test complete workflow when formalization is skipped by user - GAB should proceed from Discussion to Generation when formalization is skipped",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in DiscussionMode with satisfied discussion and user authorization to skip formalization",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Skip formalization and proceed to generation",
+        "workflow": "formalization_skipped",
+        "expectedOutcome": "generation_allowed"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "finalMode": "ex:GenerationMode",
+          "formalizationSkipped": true,
+          "generationAllowed": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Formalization skipped per user authorization. Proceeding to Generation Mode.",
+              "action": "transition_to_generation"
+            }
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Discussion satisfied", "User authorizes skip", "Formalization skipped", "Mode transition to Generation", "Generation allowed"]
+        },
+        {
+          "type": "modeTransition",
+          "expected": "Successful transition from DiscussionMode to GenerationMode when formalization skipped"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Generation readiness check allows generation when formalizationMode.skipped=true"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB correctly handles formalization skipped workflow"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_FormalizationSkippedWorkflow_ReadinessCheck",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_FormalizationSkippedWorkflow_ReadinessCheck",
+        "description": "Test readiness check behavior when formalization skipped - GenerationMode should verify readiness with formalizationMode.skipped=true",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with discussionMode satisfied and formalizationMode skipped",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Generate product with formalization skipped",
+        "workflow": "generation_with_skipped_formalization",
+        "expectedOutcome": "readiness_verified"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "readinessVerified": true,
+          "generationAllowed": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "generationReadiness"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:SatisfactionIndicatorsStateActor",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "generationReadiness": {
+                "ready": true,
+                "discussionMode": {
+                  "satisfied": true,
+                  "confident": true,
+                  "consensus": true
+                },
+                "formalizationMode": {
+                  "skipped": true
+                }
+              }
+            }
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Readiness check initiated", "State request sent", "Readiness verified", "Generation allowed"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Readiness check correctly evaluates formalizationMode.skipped=true as valid"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GenerationMode correctly handles readiness check with skipped formalization"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_GenerationMode_RefusalWorkflow",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_GenerationMode_RefusalWorkflow",
+        "description": "Test workflow when generation is refused due to missing requirements - GenerationMode should refuse and explain specific missing requirements",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with incomplete satisfaction indicators",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Generate product now",
+        "workflow": "generation_refused",
+        "expectedOutcome": "generation_blocked_with_explanation"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": false,
+          "generationRefused": true,
+          "finalMode": "ex:GenerationMode"
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Cannot generate product: Discussion and Formalization modes have not reached consensus and satisfaction",
+              "missingRequirements": [
+                "formalizationMode.satisfied OR formalizationMode.skipped"
+              ],
+              "action": "complete_requirements"
+            }
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Generation should not proceed when requirements not met"
+        },
+        {
+          "type": "contains",
+          "expected": "Error message explains specific missing requirements"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "GenerationMode correctly refuses generation and explains why"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GenerationMode enforces readiness requirements strictly"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ErrorRecoveryWorkflow",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ErrorRecoveryWorkflow",
+        "description": "Test error recovery and continuation after errors - GAB should handle errors gracefully and continue workflow",
+        "type": "AgentWorkflowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in GenerationMode with error scenario",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Generate product",
+        "workflow": "error_recovery",
+        "expectedOutcome": "error_handled_and_continued"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "errorOccurred": true,
+          "errorRecovered": true,
+          "productGenerated": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Error occurred during generation: file write failed. Providing product content in response.",
+              "error": "file_write_failed",
+              "productContent": {
+                "@id": "ex:TestAgent",
+                "@type": "LLMAgent"
+              }
+            }
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Error detected", "Error handled gracefully", "Recovery attempted", "Workflow continued", "Product delivered"]
+        },
+        {
+          "type": "excludes",
+          "expected": "No crashes or undefined behavior from errors"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Error recovery maintains workflow continuity"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB handles errors gracefully and recovers appropriately"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_MultiRoundClarificationWorkflow",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_MultiRoundClarificationWorkflow",
+        "description": "Test workflow with multiple clarification rounds - GAB should support multiple clarification rounds until confidence threshold met",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in ClarificationMode with ambiguous initial requirements",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "I want to build something for my business",
+        "workflow": "multi_round_clarification",
+        "expectedOutcome": "confidence_threshold_met_after_multiple_rounds"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "finalMode": "ex:DiscussionMode",
+          "clarificationRounds": 3,
+          "confidenceAchieved": true,
+          "finalConfidence": 0.85
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "To help clarify your requirements, I need to understand:",
+              "questions": [
+                "What type of product do you want to build?",
+                "What problem does it solve?"
+              ],
+              "round": 1
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "I need more clarification:",
+              "questions": [
+                "What specific features are required?",
+                "What are the constraints?"
+              ],
+              "round": 2
+            }
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Initial input received", "Round 1 questions asked", "User responds", "Round 2 questions asked", "User responds", "Confidence threshold met", "Mode transition"]
+        },
+        {
+          "type": "withinRange",
+          "expected": "Final overallConfidence between 0.8 and 1.0 after multiple rounds"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Multiple clarification rounds supported until confidence threshold met"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB correctly handles multi-round clarification workflow"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_UserCommandWorkflow",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_UserCommandWorkflow",
+        "description": "Test workflow with user commands - GAB should handle user commands like 'debug on', 'debug off', 'skip formalization'",
+        "type": "AgentWorkflowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in DiscussionMode",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "debug on",
+        "workflow": "user_command",
+        "expectedOutcome": "command_executed"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "commandExecuted": true,
+          "debugModeActivated": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "user",
+              "to": "ex:DebugModeStateActor"
+            },
+            "payload": {
+              "command": "debug on",
+              "source": "user"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DebugModeStateActor",
+              "to": "user"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "debugMode": "ON"
+            }
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["User command received", "Command parsed", "State updated", "Response sent"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "User commands are parsed and executed correctly"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB handles user commands appropriately"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_StateConsistencyAcrossModes",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_StateConsistencyAcrossModes",
+        "description": "Test state consistency maintained across all mode transitions - GAB should maintain state consistency throughout workflow",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in ClarificationMode with initial state",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Build a test agent",
+        "workflow": "state_consistency",
+        "expectedOutcome": "state_consistent_throughout"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "stateConsistent": true,
+          "allModeTransitions": ["ClarificationMode", "DiscussionMode", "FormalizationMode", "GenerationMode"]
+        },
+        "observedStateChanges": {
+          "clarificationModeState": {
+            "preserved": true
+          },
+          "discussionModeState": {
+            "preserved": true
+          },
+          "formalizationModeState": {
+            "preserved": true
+          },
+          "generationModeState": {
+            "preserved": true
+          }
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["ClarificationMode state set", "Mode transition to Discussion", "DiscussionMode state set", "Mode transition to Formalization", "FormalizationMode state set", "Mode transition to Generation", "GenerationMode state set"]
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State consistency maintained across all mode transitions"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Each mode's isolated state is preserved during transitions"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB maintains state consistency throughout complete workflow"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_AttributionInclusionWorkflow",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_AttributionInclusionWorkflow",
+        "description": "Test that attribution is included in all generated products - GAB should verify 'Created using AALang and Gab' is present in all products",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with ready to generate",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Generate the product",
+        "workflow": "attribution_verification",
+        "expectedOutcome": "attribution_included"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "productGenerated": true,
+          "attributionIncluded": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Product generation complete! Here's your AALang agent:",
+              "product": {
+                "initialResponse": {
+                  "content": "Welcome to the test agent. Created using AALang and Gab"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "contains",
+          "expected": "Generated product includes 'Created using AALang and Gab' attribution"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Attribution is at the end of the first text the user sees"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB includes attribution in all generated products"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_CopyrightProhibitionWorkflow",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_CopyrightProhibitionWorkflow",
+        "description": "Test that copyright notice is never included in generated products - GAB should verify no ex:CopyrightNotice node in generated products",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with ready to generate",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Generate the product",
+        "workflow": "copyright_prohibition_verification",
+        "expectedOutcome": "no_copyright_in_product"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "productGenerated": true,
+          "copyrightProhibitionVerified": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Product generation complete!",
+              "product": {
+                "@graph": [
+                  {
+                    "@id": "ex:TestAgent",
+                    "@type": "LLMAgent"
+                  }
+                ]
+              },
+              "copyrightProhibitionStatus": "compliant"
+            }
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "No ex:CopyrightNotice node in generated product @graph"
+        },
+        {
+          "type": "excludes",
+          "expected": "No copyright text or license text in generated product"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Copyright prohibition verified and enforced"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB correctly prohibits copyright notice in generated products"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_QualityChecklistWorkflow",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_QualityChecklistWorkflow",
+        "description": "Test that quality checklist is executed for all generated products - GAB should verify all quality checklist categories are addressed",
+        "type": "AgentWorkflowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with ready to generate",
+      "teardown": "Reset all GAB state and mode contexts",
+      "inputs": {
+        "userInput": "Generate the product",
+        "workflow": "quality_checklist_execution",
+        "expectedOutcome": "quality_checklist_completed"
+      },
+      "outputs": {
+        "observedBehavior": {
+          "workflowCompleted": true,
+          "productGenerated": true,
+          "qualityChecklistExecuted": true,
+          "allCategoriesAddressed": true
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:GenerationPersona2"
+            },
+            "payload": {
+              "action": "qualityChecklistComplete",
+              "status": "all_categories_addressed",
+              "categoriesVerified": ["structure", "format", "compliance", "requirements", "functionality", "error_handling", "performance", "scalability"]
+            }
+          }
+        ]
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Product generation begun", "Quality checklist execution", "All categories verified", "Product finalized"]
+        },
+        {
+          "type": "completeness",
+          "expected": "All quality checklist categories addressed"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Quality checklist executed systematically for generated product"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB executes quality checklist for all generated products"
+        }
+      ]
+    }
+  ]
+}
