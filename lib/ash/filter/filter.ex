@@ -5056,16 +5056,22 @@ defmodule Ash.Filter do
   defp expand_through_path(_resource, [], acc), do: Enum.reverse(acc)
 
   defp expand_through_path(resource, [name | rest], acc) do
-    rel = Ash.Resource.Info.relationship(resource, name)
+    relationship = Ash.Resource.Info.relationship(resource, name)
 
-    case Map.get(rel, :through) do
+    if is_nil(relationship) do
+      raise Ash.Error.Query.NoSuchRelationship,
+        resource: resource,
+        relationship: name
+    end
+
+    case Map.get(relationship, :through) do
       through when is_list(through) ->
         nested_rels = expand_through_path(resource, through, [])
         destination = List.last(nested_rels).destination
         expand_through_path(destination, rest, Enum.reverse(nested_rels) ++ acc)
 
       _ ->
-        expand_through_path(rel.destination, rest, [rel | acc])
+        expand_through_path(relationship.destination, rest, [relationship | acc])
     end
   end
 
