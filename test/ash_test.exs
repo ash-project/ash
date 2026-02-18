@@ -513,6 +513,21 @@ defmodule Ash.Test.AshTest do
     end
   end
 
+  describe "get/2" do
+    test "accepts error? and not_found_error? as options" do
+      # `error?` will be removed in 4.0 in order to bring get/2 inline with `get? true` in read actions
+      Ash.create!(User, %{name: "Alice"})
+
+      assert {:ok, nil} = Ash.get(User, "dcbbe7f0-0d77-4c38-923b-ab66a42cc817", error?: false)
+
+      assert {:ok, nil} =
+               Ash.get(User, "dcbbe7f0-0d77-4c38-923b-ab66a42cc817", not_found_error?: false)
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(User, "dcbbe7f0-0d77-4c38-923b-ab66a42cc817")
+    end
+  end
+
   describe "transact/3" do
     setup do
       import ExUnit.CaptureLog
