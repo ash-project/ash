@@ -22,6 +22,110 @@ if Code.ensure_loaded?(Igniter) do
       end
     end
 
+    @doc """
+    Builds a concise error message when an Igniter task fails, including which tasks did not run.
+
+    Accepts the igniter (with its `tasks` list), the 0-based index of the task that failed,
+    and the exception/error. Returns a string suitable for logging or raising.
+
+    ## Options
+
+    * `:format` – `:string` (default) returns a single formatted string;
+      `:iodata` returns IO.iodata for custom formatting.
+
+    ## Example
+
+        tasks = [{"ash.codegen", ["foo"]}, {"ash.other", []}]
+        igniter = %{igniter | tasks: tasks}
+        # Suppose task at index 0 failed
+        Ash.Igniter.compile_task_error_message(igniter, 0, %RuntimeError{message: "compile failed"})
+        #=> "Task 1 (ash.codegen [\"foo\"]) failed: compile failed. The following tasks were not run: ash.other."
+
+    """
+    def compile_task_error_message(igniter, failed_at_index, error, opts \\ []) do
+      format = Keyword.get(opts, :format, :string)
+      tasks = Map.get(igniter, :tasks) || []
+      failed_task = Enum.at(tasks, failed_at_index)
+      not_run = tasks_not_run(tasks, failed_at_index)
+      summary = build_task_error_summary(failed_at_index, failed_task, error, not_run)
+
+      case format do
+        :iodata -> summary
+        _ -> IO.iodata_to_binary(summary)
+      end
+    end
+
+    @doc """
+    Returns a structured error report for a task failure: what failed, which tasks did not run, and a concise message.
+
+    Use this when you need the raw data (e.g. for `Ash.Igniter.Error` or custom formatting).
+    """
+    def task_error_report(igniter, failed_at_index, error) do
+      tasks = Map.get(igniter, :tasks) || []
+      failed_task = Enum.at(tasks, failed_at_index)
+      not_run = tasks_not_run(tasks, failed_at_index)
+      message = compile_task_error_message(igniter, failed_at_index, error, format: :string)
+
+      %{
+        failed_at_index: failed_at_index,
+        failed_task: failed_task,
+        tasks_not_run: not_run,
+        task_count: length(tasks),
+        error: error,
+        message: message
+      }
+    end
+
+    defp tasks_not_run(tasks, failed_at_index) when is_list(tasks) and failed_at_index >= 0 do
+      tasks
+      |> Enum.drop(failed_at_index + 1)
+      |> Enum.map(&task_label/1)
+    end
+
+    defp tasks_not_run(_, _), do: []
+
+    defp task_label({name, args}) when is_list(args), do: "#{name} #{inspect(args)}"
+    defp task_label({name, _}), do: to_string(name)
+
+    defp build_task_error_summary(failed_at_index, failed_task, error, not_run) do
+      one_based = failed_at_index + 1
+      task_desc = task_label(failed_task || {"(unknown)", []})
+      err_msg = format_error_term(error)
+
+      [
+        "Task ",
+        to_string(one_based),
+        " (",
+        task_desc,
+        ") failed: ",
+        err_msg,
+        not_run_summary(not_run)
+      ]
+    end
+
+    defp not_run_summary([]), do: "."
+    defp not_run_summary(not_run) do
+      n = length(not_run)
+      verb = if n == 1, do: "was", else: "were"
+      [
+        ". The following ",
+        plural("task", n),
+        " ",
+        verb,
+        " not run: ",
+        Enum.join(not_run, "; "),
+        "."
+      ]
+    end
+
+    defp plural(word, 1), do: word
+    defp plural(word, _n), do: word <> "s"
+
+    defp format_error_term(%{__struct__: _} = e) when is_struct(e) do
+      Exception.message(e)
+    end
+    defp format_error_term(e), do: inspect(e)
+
     @doc "Adds a codegen task, or updates the name to be `<old_name>_and_name`"
     def codegen(igniter, name) do
       has_codegen? =

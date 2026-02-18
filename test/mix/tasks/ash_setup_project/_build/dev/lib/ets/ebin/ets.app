@@ -1,0 +1,10 @@
+{application,ets,
+             [{modules,['Elixir.ETS','Elixir.ETS.Bag','Elixir.ETS.Base',
+                        'Elixir.ETS.KeyValueSet',
+                        'Elixir.ETS.KeyValueSet.Macros','Elixir.ETS.Set',
+                        'Elixir.ETS.Utils']},
+              {optional_applications,[]},
+              {applications,[kernel,stdlib,elixir,logger]},
+              {description,"Elixir wrapper for the Erlang :ets module."},
+              {registered,[]},
+              {vsn,"0.9.0"}]}.

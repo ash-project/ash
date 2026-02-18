@@ -17,6 +17,7 @@ if Code.ensure_loaded?(Igniter) do
     - `--port` - PostgreSQL port for the install-time check (e.g. `--port 5433`).
     - `--host` - PostgreSQL host for the install-time check (e.g. `--host db.example.com`).
       Use with `--port` for script/CI runs without prompts.
+    - `--yes` / `-y` - Assume yes for the "Continue anyway?" prompt when Postgres is not running.
     """
 
     use Igniter.Mix.Task
@@ -101,8 +102,10 @@ if Code.ensure_loaded?(Igniter) do
           setup: :boolean,
           example: :boolean,
           port: :integer,  # e.g. mix igniter.install ash --port 5433
-          host: :string    # e.g. mix igniter.install ash --host 192.168.1.1
-        ]
+          host: :string,   # e.g. mix igniter.install ash --host 192.168.1.1
+          yes: :boolean   # skip "Continue anyway?" when Postgres not running (script/CI)
+        ],
+        aliases: [y: :yes]
       }
     end
 #check configuration for postgres opts if they were provided, if they were pass them into the function
@@ -146,7 +149,14 @@ if Code.ensure_loaded?(Igniter) do
         This avoids partial installs that leave assets unbuilt when setup fails on DB connection.
         """)
 
-        unless Mix.shell().yes?("Continue anyway? [y/N]") do
+        continue =
+          if igniter.args.options[:yes] do
+            true
+          else
+            Mix.shell().yes?("Continue anyway? [y/N]")
+          end
+
+        unless continue do
           exit({:shutdown, 1})
         end
       end

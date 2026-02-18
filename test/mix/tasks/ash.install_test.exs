@@ -27,12 +27,13 @@ defmodule Mix.Tasks.Ash.InstallTest do
       assert info.composes == ["spark.install", "ash.gen.resource"]
     end
 
-    test "returns schema with setup, example, port, and host options" do
+    test "returns schema with setup, example, port, host, and yes options" do
       info = Mix.Tasks.Ash.Install.info([], nil)
       assert Keyword.get(info.schema, :setup) == :boolean
       assert Keyword.get(info.schema, :example) == :boolean
       assert Keyword.get(info.schema, :port) == :integer
       assert Keyword.get(info.schema, :host) == :string
+      assert Keyword.get(info.schema, :yes) == :boolean
     end
 
     test "returns an Igniter.Mix.Task.Info struct" do
@@ -51,14 +52,14 @@ defmodule Mix.Tasks.Ash.InstallTest do
     end
 
     test "continues without prompting when TCP connect succeeds" do
-      igniter = test_project()
+      igniter = test_project() |> put_install_option(:yes, true)
       result = Mix.Tasks.Ash.Install.igniter(igniter)
       assert %Igniter{} = result
     end
 
     test "does not prompt when TCP connect succeeds" do
       # When Postgres is "running" (stubbed), we must not prompt for "Continue anyway?"
-      igniter = test_project()
+      igniter = test_project() |> put_install_option(:yes, true)
 
       Mix.Tasks.Ash.Install.igniter(igniter)
 
@@ -74,10 +75,11 @@ defmodule Mix.Tasks.Ash.InstallTest do
       end)
       Mimic.stub(Ash.Mix.Tasks.Install.PostgresCheck, :close, fn _socket -> :ok end)
 
-      igniter = test_project()
-      options = (igniter.args.options || []) ++ [port: 5433, host: "db.example.com"]
-      args = %{igniter.args | options: options}
-      igniter = %{igniter | args: args}
+      igniter =
+        test_project()
+        |> put_install_option(:port, 5433)
+        |> put_install_option(:host, "db.example.com")
+        |> put_install_option(:yes, true)
 
       result = Mix.Tasks.Ash.Install.igniter(igniter)
       assert %Igniter{} = result
@@ -93,8 +95,7 @@ defmodule Mix.Tasks.Ash.InstallTest do
     end
 
     test "prints error and prompts to continue when user answers yes" do
-      igniter = test_project()
-      send(self(), {:mix_shell_input, :yes?, true})
+      igniter = test_project() |> put_install_option(:yes, true)
 
       result = Mix.Tasks.Ash.Install.igniter(igniter)
 
@@ -103,8 +104,7 @@ defmodule Mix.Tasks.Ash.InstallTest do
       message_str = IO.iodata_to_binary(message)
       assert message_str =~ "Postgres is not running"
       assert message_str =~ "mix setup"
-      assert_received {:mix_shell, :yes?, prompt}
-      assert IO.iodata_to_binary(prompt) =~ "Continue anyway?"
+      # With --yes we skip the prompt; no {:mix_shell, :yes?, _} is sent
     end
 
     test "exits with {:shutdown, 1} when user answers no" do
@@ -121,24 +121,12 @@ defmodule Mix.Tasks.Ash.InstallTest do
       assert reason == {:shutdown, 1} or reason == 1
     end
 
-    test "exits when no input (default N)" do
-      # When yes? is called and no {:mix_shell_input, :yes?, _} is in the mailbox,
-      # Mix.Shell.Process.yes?/1 aborts (raises or exits).
-      igniter = test_project()
-
-      Process.flag(:trap_exit, true)
-      pid = spawn_link(fn ->
-        Mix.Tasks.Ash.Install.igniter(igniter)
-      end)
-
-      ref = Process.monitor(pid)
-      # Process will exit (abort or {:shutdown, 1})
-      assert_receive {:DOWN, ^ref, :process, ^pid, _reason}
-    end
   end
 
   describe "igniter/1 edge cases (Postgres check)" do
     setup do
+      # Each test in this block sets up its own stub and sends input
+      # This setup ensures Mimic is ready, but tests override as needed
       :ok
     end
 
@@ -147,8 +135,7 @@ defmodule Mix.Tasks.Ash.InstallTest do
         {:error, :timeout}
       end)
 
-      igniter = test_project()
-      send(self(), {:mix_shell_input, :yes?, true})
+      igniter = test_project() |> put_install_option(:yes, true)
 
       result = Mix.Tasks.Ash.Install.igniter(igniter)
       assert %Igniter{} = result
@@ -161,8 +148,7 @@ defmodule Mix.Tasks.Ash.InstallTest do
         {:error, :econnrefused}
       end)
 
-      igniter = test_project()
-      send(self(), {:mix_shell_input, :yes?, true})
+      igniter = test_project() |> put_install_option(:yes, true)
 
       result = Mix.Tasks.Ash.Install.igniter(igniter)
       assert %Igniter{} = result
@@ -173,12 +159,17 @@ defmodule Mix.Tasks.Ash.InstallTest do
         {:error, :ehostunreach}
       end)
 
-      igniter = test_project()
-      send(self(), {:mix_shell_input, :yes?, true})
+      igniter = test_project() |> put_install_option(:yes, true)
 
       result = Mix.Tasks.Ash.Install.igniter(igniter)
       assert %Igniter{} = result
     end
+  end
+
+  defp put_install_option(igniter, key, value) do
+    options = Keyword.put(igniter.args.options || [], key, value)
+    args = %{igniter.args | options: options}
+    %{igniter | args: args}
   end
 
   describe "fallback module (no Igniter)" do

@@ -1,0 +1,11 @@
+{application,decimal,
+             [{modules,['Elixir.Decimal','Elixir.Decimal.Context',
+                        'Elixir.Decimal.Error','Elixir.Decimal.Macros',
+                        'Elixir.Inspect.Decimal',
+                        'Elixir.JSON.Encoder.Decimal',
+                        'Elixir.String.Chars.Decimal']},
+              {optional_applications,[]},
+              {applications,[kernel,stdlib,elixir]},
+              {description,"Arbitrary precision decimal arithmetic."},
+              {registered,[]},
+              {vsn,"2.3.0"}]}.
