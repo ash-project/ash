@@ -1365,7 +1365,8 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path],
-    schema: Ash.Resource.Aggregate.schema() |> Keyword.drop([:sort, :field]) |> Keyword.delete(:filter),
+    schema:
+      Ash.Resource.Aggregate.schema() |> Keyword.drop([:sort, :field]) |> Keyword.delete(:filter),
     transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :exists]
   }
