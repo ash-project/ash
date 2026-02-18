@@ -204,99 +204,17 @@ if Code.ensure_loaded?(Igniter) do
               @domain_default_section_order
             )
           end)
-        end)
-        |> Igniter.Scribe.section(
-          "Configure Dev/Test environments",
-          @setup_backwards_compatibility,
-          fn igniter ->
-            Igniter.Scribe.patch(igniter, fn igniter ->
-              igniter
-              |> Igniter.Project.Config.configure(
-                "test.exs",
-                :ash,
-                [:policies, :show_policy_breakdowns?],
-                true
-              )
-              |> Igniter.Project.Config.configure(
-                "dev.exs",
-                :ash,
-                [:policies, :show_policy_breakdowns?],
-                true
-              )
-            end)
-          end
-        )
-        |> Igniter.Scribe.section(
-          "Setup Backwards Compatibility Configurations",
-          @setup_backwards_compatibility,
-          fn igniter ->
-            Igniter.Scribe.patch(igniter, fn igniter ->
-              igniter
-              |> Igniter.Project.Config.configure(
-                "config.exs",
-                :ash,
-                [:allow_forbidden_field_for_relationships_by_default?],
-                true
-              )
-              |> Igniter.Project.Config.configure(
-                "config.exs",
-                :ash,
-                [:include_embedded_source_by_default?],
-                false
-              )
-              |> Igniter.Project.Config.configure(
-                "config.exs",
-                :ash,
-                [:show_keysets_for_all_actions?],
-                false
-              )
-              |> Igniter.Project.Config.configure(
-                "config.exs",
-                :ash,
-                [:default_page_type],
-                :keyset
-              )
-              |> Igniter.Project.Config.configure(
-                "config.exs",
-                :ash,
-                [:policies, :no_filter_static_forbidden_reads?],
-                false
-              )
-              |> Igniter.Project.Config.configure(
-                "config.exs",
-                :ash,
-                [:keep_read_action_loads_when_loading?],
-                false
-              )
-              |> Igniter.Project.Config.configure(
-                "config.exs",
-                :ash,
-                [:default_actions_require_atomic?],
-                true
-              )
-              |> Igniter.Project.Config.configure(
-                "config.exs",
-                :ash,
-                [:read_action_after_action_hooks_in_order?],
-                true
-              )
-              |> Igniter.Project.Config.configure(
-                "config.exs",
-                :ash,
-                [:bulk_actions_default_to_errors?],
-                true
-              )
-              |> Igniter.Project.Config.configure(
-                "config.exs",
-                :ash,
-                [:transaction_rollback_on_error?],
-                true
-              )
-            end)
-          end
-        )
-        |> Igniter.Scribe.section("Register Your Domains", @register_domains, fn igniter ->
+        end
+      )
+      |> Igniter.Scribe.section("Register Your Domains", @register_domains, fn igniter ->
         igniter
+      end)
+      |> then(fn igniter ->
+        if igniter.args.options[:example] do
+          generate_example(igniter, igniter.args.argv_flags)
+        else
+          igniter
+        end
       end)
       |> then(fn igniter ->
           if igniter.args.options[:example] do
