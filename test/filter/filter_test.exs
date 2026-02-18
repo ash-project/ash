@@ -298,25 +298,25 @@ defmodule Ash.Test.Filter.FilterTest do
   describe "predicate optimization" do
     # Testing against the stringified query may be a bad idea, but its a quick win and we
     # can switch to actually checking the structure if this bites us
-    test "equality simplifies to `in`" do
+    test "equality does not simplify to `in`" do
       stringified_query =
         Post
         |> Ash.Query.filter(title == "foo" or title == "bar")
         |> inspect()
 
-      assert stringified_query =~ ~S(title in ["bar", "foo"])
+      assert stringified_query =~ ~S(title == "foo" or title == "bar")
     end
 
-    test "in with equality simplifies to `in`" do
+    test "in with equality does not simplify to `in`" do
       stringified_query =
         Post
         |> Ash.Query.filter(title in ["foo", "bar", "baz"] or title == "bar")
         |> inspect()
 
-      assert stringified_query =~ ~S(title in ["bar", "baz", "foo"])
+      assert stringified_query =~ ~S(title == "bar" or title in ["bar", "baz", "foo"])
     end
 
-    test "multiple nested equality simplifies to `in`" do
+    test "multiple nested equality does not simplify to `in`" do
       import Ash.Expr
       keys = [:id]
 
@@ -340,7 +340,7 @@ defmodule Ash.Test.Filter.FilterTest do
         |> Ash.Query.filter(^expr)
         |> inspect()
 
-      assert stringified_query =~ ~S(id in ["bar", "baz", "buz", "foo"])
+      assert stringified_query =~ ~S(id == "foo" or id == "bar" or id == "baz" or id == "buz")
     end
 
     test "in across ands in ors isn't optimized" do
@@ -367,13 +367,13 @@ defmodule Ash.Test.Filter.FilterTest do
       assert stringified_query =~ ~S(title in ["baz", "foo"])
     end
 
-    test "in with or-in simplifies to `in`" do
+    test "in with or-in does not simplify to `in`" do
       stringified_query =
         Post
         |> Ash.Query.filter(title in ["foo", "bar"] or title in ["bar", "baz"])
         |> inspect()
 
-      assert stringified_query =~ ~S(title in ["bar", "baz", "foo"])
+      assert stringified_query =~ ~S(title in ["bar", "foo"] or title in ["bar", "baz"])
     end
 
     test "in with and-in simplifies to `in` when multiple values overlap" do

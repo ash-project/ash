@@ -1499,14 +1499,11 @@ defmodule Ash.Actions.Read do
         []
       else
         case Ash.Resource.Info.relationship(query.resource, name) do
+          %{manual: {module, opts}} ->
+            module.select(opts)
+
           %{no_attributes?: true} ->
             []
-
-          %{manual: {module, opts}, source_attribute: source_attribute} ->
-            fields =
-              module.select(opts)
-
-            [source_attribute | fields]
 
           %{source_attribute: source_attribute} ->
             [source_attribute]
@@ -1703,18 +1700,12 @@ defmodule Ash.Actions.Read do
        """}
     else
       filter =
-        initial_data
-        |> List.wrap()
-        |> Enum.map(&Map.take(&1, primary_key))
-        |> case do
+        case List.wrap(initial_data) do
           [] ->
             false
 
-          [single] ->
-            [single]
-
-          multiple ->
-            [or: multiple]
+          records ->
+            Ash.pkey_filter(records, primary_key)
         end
 
       with %{valid?: true} = query <-

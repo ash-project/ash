@@ -442,7 +442,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`manual`](#relationships-has_one-manual){: #relationships-has_one-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. |
+| [`manual`](#relationships-has_one-manual){: #relationships-has_one-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. Setting this will automatically set `no_attributes?` to `true`. |
 | [`no_attributes?`](#relationships-has_one-no_attributes?){: #relationships-has_one-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
 | [`allow_nil?`](#relationships-has_one-allow_nil?){: #relationships-has_one-allow_nil? } | `boolean` | `true` | Marks the relationship as required. Has no effect on validations, but can inform extensions that there will always be a related entity. |
 | [`from_many?`](#relationships-has_one-from_many?){: #relationships-has_one-from_many? } | `boolean` | `false` | Signal that this relationship is actually a `has_many` where the first record is given via the `sort`. This will allow data layers to properly deduplicate when necessary. |
@@ -544,7 +544,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`manual`](#relationships-has_many-manual){: #relationships-has_many-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. |
+| [`manual`](#relationships-has_many-manual){: #relationships-has_many-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. Setting this will automatically set `no_attributes?` to `true`. |
 | [`no_attributes?`](#relationships-has_many-no_attributes?){: #relationships-has_many-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
 | [`limit`](#relationships-has_many-limit){: #relationships-has_many-limit } | `integer` |  | An integer to limit entries from loaded relationship. |
 | [`description`](#relationships-has_many-description){: #relationships-has_many-description } | `String.t` |  | An optional description for the relationship |

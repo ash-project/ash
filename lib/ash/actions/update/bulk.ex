@@ -1298,7 +1298,7 @@ defmodule Ash.Actions.Update.Bulk do
       opts,
       ref,
       fn batch ->
-        pkeys = [or: Enum.map(batch, &Map.take(&1, pkey))]
+        pkeys = Ash.pkey_filter(batch, pkey)
 
         read_action = get_read_action(resource, action, opts).name
 

@@ -10,7 +10,7 @@ defmodule Ash.MixProject do
   A declarative, extensible framework for building Elixir applications.
   """
 
-  @version "3.15.0"
+  @version "3.16.0"
 
   def project do
     [
@@ -379,7 +379,7 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:usage_rules, "~> 0.1", only: [:dev]},
+      {:usage_rules, "~> 1.1", only: [:dev]},
       # DSLs
       {:spark, "~> 2.3 and >= 2.3.14"},
       # Ash resources are backed by ecto scheams
