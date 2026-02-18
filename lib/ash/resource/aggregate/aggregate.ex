@@ -187,12 +187,10 @@ defmodule Ash.Resource.Aggregate do
   defp concat_filters(aggregate), do: aggregate
 
   defp combine_filter(%{filter: existing} = aggregate, new_filter) do
-    cond do
-      is_nil(existing) or existing == [] ->
-        %{aggregate | filter: new_filter}
-
-      true ->
-        %{aggregate | filter: Ash.Query.BooleanExpression.new(:and, new_filter, existing)}
+    if is_nil(existing) or existing == [] do
+      %{aggregate | filter: new_filter}
+    else
+      %{aggregate | filter: Ash.Query.BooleanExpression.new(:and, new_filter, existing)}
     end
   end
 end
