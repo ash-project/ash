@@ -52,12 +52,37 @@ defmodule Ash.Actions.Helpers.Bulk do
   """
   @spec maybe_stop_on_error(error, Keyword.t()) :: error | no_return() when error: term()
   def maybe_stop_on_error(error, opts) do
-    if opts[:stop_on_error?] && !opts[:return_stream?] do
+    if stop_on_error?(opts) do
       throw({:error, Ash.Error.to_error_class(error)})
     end
 
     error
   end
+
+  @doc """
+  Conditionally stops bulk create operation on error.
+
+  In addition to the checks performed in from `maybe_stop_on_error/2`, we pass
+  the resource and check if the data layer supports partial success (via
+  `:bulk_create_with_partial_success`). If it does, we don't stop on error
+  because the data layer may have already persisted some records successfully.
+  Stopping would hide those successful results from the caller.
+
+  Returns the error unchanged for piping.
+  """
+  @spec maybe_stop_on_bulk_create_error(error, Ash.Resource.t() | nil, Keyword.t()) ::
+          error | no_return()
+        when error: term()
+  def maybe_stop_on_bulk_create_error(error, resource, opts) do
+    if stop_on_error?(opts) &&
+         !Ash.DataLayer.data_layer_can?(resource, :bulk_create_with_partial_success) do
+      throw({:error, Ash.Error.to_error_class(error)})
+    end
+
+    error
+  end
+
+  defp stop_on_error?(opts), do: opts[:stop_on_error?] && !opts[:return_stream?]
 
   @doc """
   Looks up the changeset for a result record using ref metadata.
