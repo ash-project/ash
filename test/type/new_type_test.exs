@@ -232,12 +232,12 @@ defmodule Ash.Test.Type.NewTypeTest do
 
     @impl Ash.Type
     def constraints do
-      Keyword.merge(super(), [
+      Keyword.merge(super(),
         allowed_domains: [
           type: {:list, :string},
           doc: "If set, only addresses at these domains are accepted"
         ]
-      ])
+      )
     end
 
     @impl Ash.Type
@@ -252,7 +252,9 @@ defmodule Ash.Test.Type.NewTypeTest do
           if domain in domains do
             {:ok, value}
           else
-            {:error, message: "must be an address at one of: %{domains}", domains: Enum.join(domains, ", ")}
+            {:error,
+             message: "must be an address at one of: %{domains}",
+             domains: Enum.join(domains, ", ")}
           end
       end
     end
@@ -268,7 +270,8 @@ defmodule Ash.Test.Type.NewTypeTest do
     end
 
     test "restricts to allowed_domains when set" do
-      {:ok, constraints} = Ash.Type.init(EmailAddress, allowed_domains: ["company.com", "corp.co"])
+      {:ok, constraints} =
+        Ash.Type.init(EmailAddress, allowed_domains: ["company.com", "corp.co"])
 
       assert {:ok, _} =
                Ash.Type.apply_constraints(EmailAddress, "user@company.com", constraints)

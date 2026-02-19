@@ -488,8 +488,7 @@ defmodule Ash.Type.NewType do
 
                 case field_keys -- [:type, :constraints, :allow_nil?, :description] do
                   [] ->
-                    {:cont,
-                     validate_type_constraints(key, field[:type], field[:constraints])}
+                    {:cont, validate_type_constraints(key, field[:type], field[:constraints])}
 
                   keys ->
                     {:halt, {:error, "Unknown options given to #{key}: #{inspect(keys)}"}}
