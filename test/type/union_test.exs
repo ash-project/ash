@@ -59,6 +59,25 @@ defmodule Ash.Test.Filter.UnionTest do
     end
   end
 
+  defmodule EtsResource do
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
+
+    actions do
+      defaults [:read, :create]
+
+      default_accept [:count]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :count, :integer do
+        allow_nil? false
+        public? true
+      end
+    end
+  end
+
   defmodule FooBarUnion do
     use Ash.Type.NewType,
       subtype_of: :union,
@@ -286,6 +305,78 @@ defmodule Ash.Test.Filter.UnionTest do
               type: Baz,
               tag: :type,
               tag_value: :baz
+            ]
+          ]
+        ]
+    end
+  end
+
+  defmodule TypeAndValueExample do
+    use Ash.Resource, data_layer: :embedded
+
+    actions do
+      defaults [:read, :create, :destroy, :update]
+      default_accept [:thing]
+    end
+
+    attributes do
+      attribute :thing, :union,
+        constraints: [
+          storage: :type_and_value,
+          types: [
+            foo: [
+              type: Baz,
+              tag: :type,
+              tag_value: :baz
+            ]
+          ]
+        ]
+    end
+  end
+
+  defmodule EtsUnionExample do
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
+
+    actions do
+      defaults [:read, :create]
+      default_accept [:thing]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :thing, :union,
+        constraints: [
+          types: [
+            foo: [
+              type: EtsResource,
+              tag: :type,
+              tag_value: :foo
+            ]
+          ]
+        ]
+    end
+  end
+
+  defmodule EtsUnionExample2 do
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
+
+    actions do
+      defaults [:read, :create]
+      default_accept [:thing]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :thing, :union,
+        constraints: [
+          types: [
+            foo: [
+              type: :struct,
+              constraints: [instance_of: EtsResource],
+              tag: :type,
+              tag_value: :foo
             ]
           ]
         ]
