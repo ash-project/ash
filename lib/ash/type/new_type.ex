@@ -233,16 +233,29 @@ defmodule Ash.Type.NewType do
 
       @doc false
       def do_init(constraints) do
-        case validate_constraints(unquote(subtype_of), constraints) do
-          :ok ->
-            type_constraints =
-              type_constraints(constraints, unquote(subtype_constraints))
-
-            Ash.Type.init(unquote(subtype_of), type_constraints)
-
-          {:error, error} ->
-            {:error, error}
+        with :ok <- validate_constraints(unquote(subtype_of), constraints),
+             own_keys =
+               Keyword.keys(constraints()) -- Keyword.keys(unquote(subtype_of).constraints()),
+             {:ok, validated_custom} <-
+               validate_custom_constraints(constraints, own_keys),
+             type_constraints =
+               type_constraints(
+                 Keyword.drop(constraints, own_keys),
+                 unquote(subtype_constraints)
+               ),
+             {:ok, initialized} <-
+               Ash.Type.init(unquote(subtype_of), type_constraints) do
+          {:ok, Keyword.merge(initialized, validated_custom)}
         end
+      end
+
+      defp validate_custom_constraints(_constraints, []), do: {:ok, []}
+
+      defp validate_custom_constraints(constraints, own_keys) do
+        Spark.Options.validate(
+          Keyword.take(constraints, own_keys),
+          Keyword.take(constraints(), own_keys)
+        )
       end
 
       @impl Ash.Type
@@ -444,48 +457,71 @@ defmodule Ash.Type.NewType do
       end
 
       defp get_constraints(constraints) do
-        constraints
+        own_keys = Keyword.keys(constraints()) -- Keyword.keys(unquote(subtype_of).constraints())
+
+        case own_keys do
+          [] -> constraints
+          keys -> Keyword.drop(constraints, keys)
+        end
       end
 
-      defp validate_constraints(type, constraints) do
+      defp validate_constraints(_type, constraints) do
         constraint_keys = constraints |> List.wrap() |> Keyword.keys()
-        valid_constraint_keys = type |> Ash.Type.constraints() |> Keyword.keys()
+        valid_constraint_keys = constraints() |> Keyword.keys()
 
         case constraint_keys -- valid_constraint_keys do
           [] ->
-            case constraints[:fields] do
-              nil ->
-                :ok
-
-              fields ->
-                fields
-                |> Enum.reduce_while(:ok, fn
-                  {key, field}, :ok ->
-                    field_keys = field |> List.wrap() |> Keyword.keys()
-
-                    case field_keys -- [:type, :constraints, :allow_nil?, :description] do
-                      [] ->
-                        {:cont, validate_constraints(field[:type], field[:constraints])}
-
-                      keys ->
-                        {:halt, {:error, "Unknown options given to #{key}: #{inspect(keys)}"}}
-                    end
-
-                  _, acc ->
-                    {:halt, acc}
-                end)
-            end
+            validate_field_constraints(constraints)
 
           keys ->
-            {:error, "Unknown options given to `#{type}`: #{inspect(keys)}"}
+            {:error, "Unknown options given to `#{__MODULE__}`: #{inspect(keys)}"}
+        end
+      end
+
+      defp validate_field_constraints(constraints) do
+        case constraints[:fields] do
+          nil ->
+            :ok
+
+          fields ->
+            Enum.reduce_while(fields, :ok, fn
+              {key, field}, :ok ->
+                field_keys = field |> List.wrap() |> Keyword.keys()
+
+                case field_keys -- [:type, :constraints, :allow_nil?, :description] do
+                  [] ->
+                    {:cont,
+                     validate_type_constraints(key, field[:type], field[:constraints])}
+
+                  keys ->
+                    {:halt, {:error, "Unknown options given to #{key}: #{inspect(keys)}"}}
+                end
+
+              _, acc ->
+                {:halt, acc}
+            end)
+        end
+      end
+
+      defp validate_type_constraints(key, type, constraints) do
+        constraint_keys = constraints |> List.wrap() |> Keyword.keys()
+        valid_keys = type |> Ash.Type.constraints() |> Keyword.keys()
+
+        case constraint_keys -- valid_keys do
+          [] -> validate_field_constraints(constraints)
+          bad_keys -> {:error, "Unknown options given to #{key}: #{inspect(bad_keys)}"}
         end
       end
 
       defoverridable apply_constraints_array: 2,
+                     apply_constraints: 2,
+                     apply_atomic_constraints: 2,
+                     apply_atomic_constraints_array: 2,
                      cast_input_array: 2,
                      cast_input: 2,
                      cast_stored_array: 2,
                      cast_stored: 2,
+                     constraints: 0,
                      dump_to_embedded_array: 2,
                      dump_to_embedded: 2,
                      dump_to_native_array: 2,
