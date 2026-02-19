@@ -418,6 +418,16 @@ defmodule Ash.Test.Actions.LoadTest do
         source_attribute_on_join_resource :post_id
         destination_attribute_on_join_resource :category_id
       end
+
+      has_many :a_categories, Ash.Test.Actions.LoadTest.Category do
+        through [:post_categories, :category]
+        filter expr(name == "A")
+      end
+
+      has_one :a_category, Ash.Test.Actions.LoadTest.Category do
+        through [:post_categories, :category]
+        filter expr(name == "A")
+      end
     end
   end
 
@@ -2344,6 +2354,49 @@ defmodule Ash.Test.Actions.LoadTest do
       # The top 3 categories should be A, B, C (priorities 100, 90, 80)
       top_category_names = post_with_top.top_categories |> Enum.map(& &1.name) |> Enum.sort()
       assert top_category_names == ["A", "B", "C"]
+    end
+  end
+
+  describe "through relationship" do
+    test "filters has_many and has_one" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
+        |> Ash.create!()
+
+      # Create 6 categories with different priorities, one is category is duplicate
+      for {name, priority} <- [{"D", 70}, {"C", 80}, {"B", 90}, {"E", 60}, {"A", 100}, {"A", 120}] do
+        category =
+          Category
+          |> Ash.Changeset.for_create(:create, %{name: name})
+          |> Ash.create!()
+
+        PostCategory
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          category_id: category.id,
+          priority: priority
+        })
+        |> Ash.create!()
+      end
+
+      post_with_all = Ash.load!(post, :categories)
+      assert length(post_with_all.categories) == 6
+
+      post_with_top_join = Ash.load!(post, :top_post_categories)
+      assert length(post_with_top_join.top_post_categories) == 3
+
+      priorities = Enum.map(post_with_top_join.top_post_categories, & &1.priority)
+      assert priorities == [120, 100, 90]
+
+      post_with_top = Ash.load!(post, :top_categories)
+      assert length(post_with_top.top_categories) == 3
+
+      top_category_names = post_with_top.top_categories |> Enum.map(& &1.name) |> Enum.sort()
+      assert top_category_names == ["A", "A", "B"]
+
+      assert [%{name: "A"}, %{name: "A"}] = Ash.load!(post, :a_categories).a_categories
+      assert %{name: "A"} = Ash.load!(post, :a_category).a_category
     end
   end
 end
