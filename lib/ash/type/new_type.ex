@@ -233,14 +233,14 @@ defmodule Ash.Type.NewType do
 
       @doc false
       def do_init(constraints) do
-        with :ok <- validate_constraints(unquote(subtype_of), constraints),
-             own_keys =
+        with :ok <- validate_constraints(constraints),
+             custom_constraint_keys =
                Keyword.keys(constraints()) -- Keyword.keys(unquote(subtype_of).constraints()),
              {:ok, validated_custom} <-
-               validate_custom_constraints(constraints, own_keys),
+               validate_custom_constraints(constraints, custom_constraint_keys),
              type_constraints =
                type_constraints(
-                 Keyword.drop(constraints, own_keys),
+                 Keyword.drop(constraints, custom_constraint_keys),
                  unquote(subtype_constraints)
                ),
              {:ok, initialized} <-
@@ -251,10 +251,10 @@ defmodule Ash.Type.NewType do
 
       defp validate_custom_constraints(_constraints, []), do: {:ok, []}
 
-      defp validate_custom_constraints(constraints, own_keys) do
+      defp validate_custom_constraints(constraints, custom_constraint_keys) do
         Spark.Options.validate(
-          Keyword.take(constraints, own_keys),
-          Keyword.take(constraints(), own_keys)
+          Keyword.take(constraints, custom_constraint_keys),
+          Keyword.take(constraints(), custom_constraint_keys)
         )
       end
 
@@ -457,15 +457,13 @@ defmodule Ash.Type.NewType do
       end
 
       defp get_constraints(constraints) do
-        own_keys = Keyword.keys(constraints()) -- Keyword.keys(unquote(subtype_of).constraints())
-
-        case own_keys do
+        case Keyword.keys(constraints()) -- Keyword.keys(unquote(subtype_of).constraints()) do
           [] -> constraints
-          keys -> Keyword.drop(constraints, keys)
+          custom_constraint_keys -> Keyword.drop(constraints, custom_constraint_keys)
         end
       end
 
-      defp validate_constraints(_type, constraints) do
+      defp validate_constraints(constraints) do
         constraint_keys = constraints |> List.wrap() |> Keyword.keys()
         valid_constraint_keys = constraints() |> Keyword.keys()
 
