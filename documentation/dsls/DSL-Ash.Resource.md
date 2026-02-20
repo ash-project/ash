@@ -410,7 +410,7 @@ Declares a `has_one` relationship. In a relational database, the foreign key wou
 Generally speaking, a `has_one` also implies that the destination table is
 unique on that foreign key. To add a uniqueness constraint, you will need
 to add an identity for the foreign key column on the resource which defines
-the `belongs_to` side of the relationship. See the 
+the `belongs_to` side of the relationship. See the
 [identities guide](/documentation/topics/resources/identities.md) to learn more.
 
 See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
@@ -444,6 +444,7 @@ end
 |------|------|---------|------|
 | [`manual`](#relationships-has_one-manual){: #relationships-has_one-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. Setting this will automatically set `no_attributes?` to `true`. |
 | [`no_attributes?`](#relationships-has_one-no_attributes?){: #relationships-has_one-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
+| [`through`](#relationships-has_one-through){: #relationships-has_one-through } | `atom \| list(atom)` |  | A list of relationship names to traverse. The result will be the first record reachable by following the relationships in order. |
 | [`allow_nil?`](#relationships-has_one-allow_nil?){: #relationships-has_one-allow_nil? } | `boolean` | `true` | Marks the relationship as required. Has no effect on validations, but can inform extensions that there will always be a related entity. |
 | [`from_many?`](#relationships-has_one-from_many?){: #relationships-has_one-from_many? } | `boolean` | `false` | Signal that this relationship is actually a `has_many` where the first record is given via the `sort`. This will allow data layers to properly deduplicate when necessary. |
 | [`description`](#relationships-has_one-description){: #relationships-has_one-description } | `String.t` |  | An optional description for the relationship |
@@ -546,6 +547,7 @@ end
 |------|------|---------|------|
 | [`manual`](#relationships-has_many-manual){: #relationships-has_many-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. Setting this will automatically set `no_attributes?` to `true`. |
 | [`no_attributes?`](#relationships-has_many-no_attributes?){: #relationships-has_many-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
+| [`through`](#relationships-has_many-through){: #relationships-has_many-through } | `atom \| list(atom)` |  | A list of relationship names to traverse. The result will be all records reachable by following the relationships in order. For example, `through: [:classrooms, :teachers]` would load all teachers from all classrooms. |
 | [`limit`](#relationships-has_many-limit){: #relationships-has_many-limit } | `integer` |  | An integer to limit entries from loaded relationship. |
 | [`description`](#relationships-has_many-description){: #relationships-has_many-description } | `String.t` |  | An optional description for the relationship |
 | [`destination_attribute`](#relationships-has_many-destination_attribute){: #relationships-has_many-destination_attribute } | `atom` |  | The attribute on the related resource that should match the `source_attribute` configured on this resource. |
@@ -758,6 +760,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`through`](#relationships-belongs_to-through){: #relationships-belongs_to-through } | `atom \| list(atom)` |  | A list of relationship names to traverse. The result will be the record reachable by following the relationships in order. |
 | [`primary_key?`](#relationships-belongs_to-primary_key?){: #relationships-belongs_to-primary_key? } | `boolean` | `false` | Whether the generated attribute is, or is part of, the primary key of a resource. |
 | [`allow_nil?`](#relationships-belongs_to-allow_nil?){: #relationships-belongs_to-allow_nil? } | `boolean` | `true` | Whether this relationship must always be present, e.g: must be included on creation, and never removed (it may be modified). The generated attribute will not allow nil values. |
 | [`attribute_writable?`](#relationships-belongs_to-attribute_writable?){: #relationships-belongs_to-attribute_writable? } | `boolean` |  | Whether the generated attribute will be marked as writable. If not set, it will default to the relationship's `writable?` setting. |
