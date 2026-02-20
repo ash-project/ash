@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+# 4.0: remove this
 defmodule Ash.Error.Exception do
   @moduledoc "Tooling for creating an Ash exception"
 
