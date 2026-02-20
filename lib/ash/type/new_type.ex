@@ -194,26 +194,35 @@ defmodule Ash.Type.NewType do
 
       @impl Ash.Type
       def cast_input(value, constraints) do
-        constraints = get_constraints(constraints)
+        subtype_constraints = get_constraints(constraints)
 
-        with {:ok, value} <- unquote(subtype_of).cast_input(value, constraints) do
-          Ash.Type.apply_constraints(unquote(subtype_of), value, constraints)
+        with {:ok, value} <- unquote(subtype_of).cast_input(value, subtype_constraints),
+             {:ok, value} <-
+               Ash.Type.apply_constraints(
+                 unquote(subtype_of),
+                 value,
+                 subtype_constraints
+               ) do
+          apply_constraints(value, constraints)
         end
       end
 
       @impl Ash.Type
       def coerce(value, constraints) do
         constraints = get_constraints(constraints)
-
         unquote(subtype_of).coerce(value, constraints)
       end
 
       @impl Ash.Type
       def cast_input_array(value, constraints) do
-        constraints = get_constraints(constraints)
+        subtype_constraints = get_constraints(constraints)
 
-        with {:ok, value} <- unquote(subtype_of).cast_input_array(value, constraints) do
-          Ash.Type.apply_constraints({:array, unquote(subtype_of)}, value, items: constraints)
+        with {:ok, value} <- unquote(subtype_of).cast_input_array(value, subtype_constraints) do
+          Ash.Type.apply_constraints(
+            {:array, unquote(subtype_of)},
+            value,
+            items: subtype_constraints
+          )
         end
       end
 
@@ -261,11 +270,7 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       def cast_stored(value, constraints) do
         constraints = get_constraints(constraints)
-
-        unquote(subtype_of).cast_stored(
-          value,
-          constraints
-        )
+        unquote(subtype_of).cast_stored(value, constraints)
       end
 
       @impl Ash.Type
@@ -276,8 +281,12 @@ defmodule Ash.Type.NewType do
 
       @impl Ash.Type
       def include_source(constraints, source) do
-        constraints = get_constraints(constraints)
-        Ash.Type.include_source(unquote(subtype_of), source, constraints)
+        subtype_constraints = get_constraints(constraints)
+        custom_constraint_keys = Keyword.keys(constraints) -- Keyword.keys(subtype_constraints)
+
+        subtype_constraints
+        |> then(&Ash.Type.include_source(unquote(subtype_of), source, &1))
+        |> Keyword.merge(Keyword.take(constraints, custom_constraint_keys))
       end
 
       @impl Ash.Type
@@ -307,11 +316,7 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       def dump_to_native(value, constraints) do
         constraints = get_constraints(constraints)
-
-        unquote(subtype_of).dump_to_native(
-          value,
-          constraints
-        )
+        unquote(subtype_of).dump_to_native(value, constraints)
       end
 
       @impl Ash.Type
@@ -322,10 +327,7 @@ defmodule Ash.Type.NewType do
 
       @impl Ash.Type
       def equal?(left, right) do
-        unquote(subtype_of).equal?(
-          left,
-          right
-        )
+        unquote(subtype_of).equal?(left, right)
       end
 
       @impl Ash.Type
@@ -428,14 +430,25 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
-      def apply_constraints(value, _constraints) do
-        {:ok, value}
+      def apply_constraints(value, constraints) do
+        Ash.Type.apply_constraints(
+          unquote(subtype_of),
+          value,
+          get_constraints(constraints)
+        )
       end
 
       @impl Ash.Type
       def apply_constraints_array(value, constraints) do
-        constraints = get_constraints(constraints)
-        Ash.Type.apply_constraints({:array, unquote(subtype_of)}, value, items: constraints)
+        with {:ok, results} <-
+               Enum.reduce_while(value, {:ok, []}, fn item, {:ok, acc} ->
+                 case apply_constraints(item, constraints) do
+                   {:ok, result} -> {:cont, {:ok, [result | acc]}}
+                   err -> {:halt, err}
+                 end
+               end) do
+          {:ok, Enum.reverse(results)}
+        end
       end
 
       @impl Ash.Type

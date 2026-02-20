@@ -6,6 +6,8 @@ defmodule Ash.Test.Type.NewTypeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule SSN do
     use Ash.Type.NewType,
       subtype_of: :string,
@@ -148,37 +150,65 @@ defmodule Ash.Test.Type.NewTypeTest do
     end
 
     defp to_seconds(%Duration{} = d) do
-      d.hour * 3600 + d.minute * 60 + d.second
+      d.year * 365 * 24 * 3600 +
+        d.month * 30 * 24 * 3600 +
+        d.week * 7 * 24 * 3600 +
+        d.day * 24 * 3600 +
+        d.hour * 3600 +
+        d.minute * 60 +
+        d.second
     end
 
     @impl Ash.Type
     def apply_constraints(value, constraints) do
-      seconds = to_seconds(value)
-
-      errors =
-        Enum.reduce(constraints, [], fn
-          {:min, min}, errors ->
-            if seconds < min do
-              [[message: "must be at least %{min} seconds", min: min] | errors]
-            else
-              errors
-            end
-
-          {:max, max}, errors ->
-            if seconds > max do
-              [[message: "must be at most %{max} seconds", max: max] | errors]
-            else
-              errors
-            end
-
-          _, errors ->
-            errors
-        end)
-
-      case errors do
+      Enum.reduce(constraints, [], fn constraint, errors ->
+        case apply_constraint(value, constraint) do
+          :ok -> errors
+          {:error, error} -> [error | errors]
+        end
+      end)
+      |> case do
         [] -> {:ok, value}
         errors -> {:error, errors}
       end
+    end
+
+    defp apply_constraint(value, {:min, min}) do
+      if to_seconds(value) < min,
+        do: {:error, message: "must be at least %{min} seconds", min: min},
+        else: :ok
+    end
+
+    defp apply_constraint(value, {:max, max}) do
+      if to_seconds(value) > max,
+        do: {:error, message: "must be at most %{max} seconds", max: max},
+        else: :ok
+    end
+  end
+
+  defmodule DurationRecord do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :bounded, BoundedDuration,
+        constraints: [min: 60, max: 3600],
+        public?: true
+
+      attribute :bounded_list, {:array, BoundedDuration},
+        constraints: [items: [min: 60, max: 3600]],
+        public?: true
     end
   end
 
@@ -190,32 +220,67 @@ defmodule Ash.Test.Type.NewTypeTest do
       assert :max in keys
     end
 
-    test "enforces minimum duration" do
-      {:ok, constraints} = Ash.Type.init(BoundedDuration, min: 60)
+    test "accepts a valid duration" do
+      ten_min = Duration.new!(minute: 10)
+
+      record =
+        DurationRecord
+        |> Ash.Changeset.for_create(:create, %{bounded: ten_min})
+        |> Ash.create!()
+
+      assert record.bounded == ten_min
+    end
+
+    test "rejects a duration below the minimum" do
+      thirty_sec = Duration.new!(second: 30)
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               DurationRecord
+               |> Ash.Changeset.for_create(:create, %{bounded: thirty_sec})
+               |> Ash.create()
+
+      assert Exception.message(error) =~ "must be at least"
+    end
+
+    test "rejects a duration above the maximum" do
+      two_hours = Duration.new!(hour: 2)
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               DurationRecord
+               |> Ash.Changeset.for_create(:create, %{bounded: two_hours})
+               |> Ash.create()
+
+      assert Exception.message(error) =~ "must be at most"
+    end
+
+    test "accepts a valid duration array" do
+      ten_min = Duration.new!(minute: 10)
+      thirty_min = Duration.new!(minute: 30)
+
+      record =
+        DurationRecord
+        |> Ash.Changeset.for_create(:create, %{bounded_list: [ten_min, thirty_min]})
+        |> Ash.create!()
+
+      assert record.bounded_list == [ten_min, thirty_min]
+    end
+
+    test "rejects an invalid duration in array" do
       ten_min = Duration.new!(minute: 10)
       thirty_sec = Duration.new!(second: 30)
 
-      assert {:ok, ^ten_min} = Ash.Type.apply_constraints(BoundedDuration, ten_min, constraints)
-      assert {:error, _} = Ash.Type.apply_constraints(BoundedDuration, thirty_sec, constraints)
-    end
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               DurationRecord
+               |> Ash.Changeset.for_create(:create, %{bounded_list: [ten_min, thirty_sec]})
+               |> Ash.create()
 
-    test "enforces maximum duration" do
-      {:ok, constraints} = Ash.Type.init(BoundedDuration, max: 3600)
-      thirty_min = Duration.new!(minute: 30)
-      two_hours = Duration.new!(hour: 2)
-
-      assert {:ok, ^thirty_min} =
-               Ash.Type.apply_constraints(BoundedDuration, thirty_min, constraints)
-
-      assert {:error, _} = Ash.Type.apply_constraints(BoundedDuration, two_hours, constraints)
-    end
-
-    test "cast_input still delegates to duration" do
-      assert {:ok, nil} = Ash.Type.cast_input(BoundedDuration, nil)
+      assert Exception.message(error) =~ "must be at least"
     end
 
     test "unknown constraint keys are rejected" do
-      assert {:error, _} = Ash.Type.init(BoundedDuration, unit: :millisecond)
+      assert {:error, error} = Ash.Type.init(BoundedDuration, unit: :millisecond)
+      assert error =~ "Unknown options"
+      assert error =~ "unit"
     end
   end
 
@@ -260,31 +325,80 @@ defmodule Ash.Test.Type.NewTypeTest do
     end
   end
 
+  defmodule EmailRecord do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :email, EmailAddress,
+        constraints: [allowed_domains: ["company.com", "corp.co"]],
+        public?: true
+
+      attribute :emails, {:array, EmailAddress},
+        constraints: [items: [allowed_domains: ["company.com", "corp.co"]]],
+        public?: true
+    end
+  end
+
   describe "EmailAddress (string with domain restriction)" do
-    test "casts valid emails using the subtype's regex constraint" do
-      assert {:ok, "user@example.com"} = Ash.Type.cast_input(EmailAddress, "user@example.com")
+    test "accepts a valid email at an allowed domain" do
+      record =
+        EmailRecord
+        |> Ash.Changeset.for_create(:create, %{email: "user@company.com"})
+        |> Ash.create!()
+
+      assert record.email == "user@company.com"
+    end
+
+    test "rejects a valid email at a disallowed domain" do
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               EmailRecord
+               |> Ash.Changeset.for_create(:create, %{email: "user@gmail.com"})
+               |> Ash.create()
+
+      assert Exception.message(error) =~ "must be an address at one of"
     end
 
     test "rejects strings that fail the baked-in regex" do
-      assert {:error, _} = Ash.Type.cast_input(EmailAddress, "not-an-email")
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               EmailRecord
+               |> Ash.Changeset.for_create(:create, %{email: "not-an-email"})
+               |> Ash.create()
+
+      assert Exception.message(error) =~ "must match the pattern"
     end
 
-    test "restricts to allowed_domains when set" do
-      {:ok, constraints} =
-        Ash.Type.init(EmailAddress, allowed_domains: ["company.com", "corp.co"])
+    test "accepts a valid email array at allowed domains" do
+      record =
+        EmailRecord
+        |> Ash.Changeset.for_create(:create, %{
+          emails: ["user@company.com", "admin@corp.co"]
+        })
+        |> Ash.create!()
 
-      assert {:ok, _} =
-               Ash.Type.apply_constraints(EmailAddress, "user@company.com", constraints)
-
-      assert {:error, _} =
-               Ash.Type.apply_constraints(EmailAddress, "user@gmail.com", constraints)
+      assert record.emails == ["user@company.com", "admin@corp.co"]
     end
 
-    test "allows any domain when allowed_domains is not set" do
-      {:ok, constraints} = Ash.Type.init(EmailAddress, [])
+    test "rejects a disallowed domain in email array" do
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               EmailRecord
+               |> Ash.Changeset.for_create(:create, %{
+                 emails: ["user@company.com", "user@gmail.com"]
+               })
+               |> Ash.create()
 
-      assert {:ok, _} =
-               Ash.Type.apply_constraints(EmailAddress, "anyone@anywhere.org", constraints)
+      assert Exception.message(error) =~ "must be an address at one of"
     end
 
     test "subtype string constraints still available alongside custom" do
