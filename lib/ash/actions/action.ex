@@ -20,6 +20,15 @@ defmodule Ash.Actions.Action do
     else
       {:error, Ash.Error.to_error_class(input.errors)}
     end
+  rescue
+    e ->
+      reraise Ash.Error.to_error_class(e,
+                stacktrace: __STACKTRACE__,
+                bread_crumbs: [
+                  "Exception raised in: #{inspect(input.resource)}.#{input.action.name}"
+                ]
+              ),
+              __STACKTRACE__
   end
 
   defp run_with_lifecycle(domain, input, opts) do
@@ -70,15 +79,50 @@ defmodule Ash.Actions.Action do
             end
           end)
 
-        with {:ok, result, _} <-
-               Ash.Actions.Helpers.load(result, input, domain,
-                 actor: opts[:actor],
-                 reuse_values?: true,
-                 action: Ash.Resource.Info.primary_action(input.resource, :read) || input.action,
-                 authorize?: opts[:authorize?],
-                 tracer: opts[:tracer]
-               ) do
-          {:ok, result}
+        result =
+          with {:ok, result, _} <-
+                 Ash.Actions.Helpers.load(result, input, domain,
+                   actor: opts[:actor],
+                   reuse_values?: true,
+                   action:
+                     Ash.Resource.Info.primary_action(input.resource, :read) || input.action,
+                   authorize?: opts[:authorize?],
+                   tracer: opts[:tracer]
+                 ) do
+            {:ok, result}
+          end
+
+        case result do
+          {:error, error} ->
+            error =
+              Ash.Error.to_error_class(
+                error,
+                bread_crumbs:
+                  "Error returned from: #{inspect(input.resource)}.#{input.action.name}"
+              )
+
+            if opts[:tracer] do
+              stacktrace =
+                case error do
+                  %{stacktrace: %{stacktrace: stacktrace}} ->
+                    stacktrace || []
+
+                  _ ->
+                    {:current_stacktrace, stacktrace} =
+                      Process.info(self(), :current_stacktrace)
+
+                    stacktrace
+                end
+
+              Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
+                stacktrace: stacktrace
+              )
+            end
+
+            {:error, error}
+
+          other ->
+            other
         end
       end
     end
