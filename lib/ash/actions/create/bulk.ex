@@ -558,7 +558,7 @@ defmodule Ash.Actions.Create.Bulk do
             {:error, error} ->
               error
               |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
               |> Ash.Helpers.error()
               |> List.wrap()
           end
@@ -583,7 +583,7 @@ defmodule Ash.Actions.Create.Bulk do
             {:error, error} ->
               error
               |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
 
               {batch_acc, [{:error_hooks_done, error, changeset} | results_acc]}
           end
@@ -929,7 +929,7 @@ defmodule Ash.Actions.Create.Bulk do
         {:exit, error} ->
           error
           |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-          |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+          |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
           |> Ash.Helpers.error()
           |> List.wrap()
       end)
@@ -1391,13 +1391,35 @@ defmodule Ash.Actions.Create.Bulk do
 
               Ash.Actions.Helpers.select(result, %{resource: resource, select: action_select})
 
+            {:partial_success, failed, results} ->
+              Process.put({:any_success?, ref}, true)
+
+              results =
+                if tenant = opts[:tenant] do
+                  Enum.map(results, fn record ->
+                    %{record | __metadata__: Map.put(record.__metadata__, :tenant, tenant)}
+                  end)
+                else
+                  results
+                end
+
+              selected_results =
+                Ash.Actions.Helpers.select(results, %{resource: resource, select: action_select})
+
+              error_tuples =
+                Enum.map(failed, fn {error, changeset} ->
+                  {:error, error, changeset}
+                end)
+
+              selected_results ++ error_tuples
+
             :ok ->
               Process.put({:any_success?, ref}, true)
               []
 
             {:error, error} ->
               error
-              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
               |> Ash.Helpers.error()
               |> List.wrap()
           end
@@ -1540,7 +1562,7 @@ defmodule Ash.Actions.Create.Bulk do
                 error_result =
                   error
                   |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-                  |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+                  |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
                   |> Ash.Helpers.error()
                   |> List.wrap()
 
@@ -1551,7 +1573,7 @@ defmodule Ash.Actions.Create.Bulk do
               error_result =
                 e
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
                 |> Ash.Helpers.error()
                 |> List.wrap()
 
@@ -1599,7 +1621,7 @@ defmodule Ash.Actions.Create.Bulk do
                 error_result =
                   error
                   |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-                  |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+                  |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
                   |> Ash.Helpers.error()
                   |> List.wrap()
 
@@ -1610,7 +1632,7 @@ defmodule Ash.Actions.Create.Bulk do
               error_result =
                 e
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
                 |> Ash.Helpers.error()
                 |> List.wrap()
 
@@ -1670,7 +1692,7 @@ defmodule Ash.Actions.Create.Bulk do
               {:error, error} ->
                 error
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
                 |> Ash.Helpers.error()
                 |> List.wrap()
             end
@@ -1678,7 +1700,7 @@ defmodule Ash.Actions.Create.Bulk do
           {:error, error} ->
             error
             |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-            |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+            |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
             |> Ash.Helpers.error()
             |> List.wrap()
         end
