@@ -6,6 +6,93 @@ if Code.ensure_loaded?(Igniter) do
   defmodule Ash.Igniter do
     @moduledoc "Codemods and utilities for working with Ash & Igniter"
 
+    @doc """
+    Returns a concise log of tasks in the igniter's task queue.
+
+    Use this when an igniter run fails to show which tasks were queued and may not
+    have run. Pass the igniter struct (e.g. from a rescue block or from before
+    calling `run_with_failure_report/2`).
+
+    ## Examples
+
+        # In a rescue after Igniter.do_or_dry_run(igniter) fails:
+        rescue
+          e ->
+            IO.puts(Ash.Igniter.format_pending_tasks(igniter))
+            reraise e, __STACKTRACE__
+        end
+    """
+    @spec format_pending_tasks(Igniter.t()) :: String.t()
+    def format_pending_tasks(igniter) do
+      lines =
+        igniter
+        |> pending_task_entries()
+        |> Enum.map(&format_task_entry/1)
+
+      if lines == [] do
+        "No tasks were queued."
+      else
+        [
+          "Tasks that did not run (or may not have completed):",
+          "" | Enum.map(lines, fn line -> "  • " <> line end)
+        ]
+        |> Enum.join("\n")
+      end
+    end
+
+    @doc """
+    Returns a list of `{task_name, args}` for each queued task.
+
+    Useful when you need to inspect or replay tasks programmatically.
+    Delayed tasks are included with `args: [":delayed"]`.
+    """
+    @spec pending_task_entries(Igniter.t()) :: [{String.t(), [String.t()]}]
+    def pending_task_entries(igniter) do
+      Enum.map(igniter.tasks || [], fn
+        name when is_binary(name) ->
+          {name, []}
+
+        {name, args} when is_list(args) ->
+          {name, args}
+
+        {name, args, :delayed} ->
+          {name, args ++ [":delayed"]}
+      end)
+    end
+
+    @doc """
+    Runs the igniter with `Igniter.do_or_dry_run/2` and on failure prints a
+    concise log of queued tasks that did not run, then re-raises.
+
+    Options are passed through to `Igniter.do_or_dry_run/2`, except:
+
+    - `:on_failure_log` - optional `(log_string :: String.t() -> term())` callback
+      invoked with the formatted pending-tasks log when a failure occurs (e.g. for
+      tests). Default is to write the log to stderr.
+    """
+    @spec run_with_failure_report(Igniter.t(), keyword()) ::
+            Igniter.t()
+            | :changes_aborted
+            | :changes_made
+            | :dry_run_with_changes
+            | :dry_run_with_no_changes
+            | :issues
+            | :no_changes
+            | nil
+    def run_with_failure_report(igniter, opts \\ []) do
+      run_opts = Keyword.drop(opts, [:on_failure_log])
+
+      Igniter.do_or_dry_run(igniter, run_opts)
+    rescue
+      e ->
+        log_fn = Keyword.get(opts, :on_failure_log, &IO.puts(:stderr, &1))
+        log_fn.("\n" <> format_pending_tasks(igniter) <> "\n")
+        reraise e, __STACKTRACE__
+    end
+
+    defp format_task_entry({name, []}), do: name
+    defp format_task_entry({name, args}), do: name <> " " <> Enum.join(args, " ")
+
     @doc "Adds a codegen task, or updates the name to be `<old_name>_and_name`"
     def codegen(igniter, name) do
       has_codegen? =
