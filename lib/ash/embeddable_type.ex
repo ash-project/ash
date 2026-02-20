@@ -437,7 +437,7 @@ defmodule Ash.EmbeddableType do
               {:cont, {:ok, struct}}
 
             other ->
-              {:halt, other}
+              {:halt, Ash.Helpers.error_with_context(other, field: attr.name)}
           end
         end)
         |> case do
@@ -509,14 +509,14 @@ defmodule Ash.EmbeddableType do
                      value,
                      Map.get(attribute, :constraints) || []
                    ) do
-                :error ->
-                  {:halt, :error}
-
                 {:ok, nil} when unquote(!opts[:embed_nil_values?]) ->
                   {:cont, {:ok, acc}}
 
                 {:ok, dumped} ->
                   {:cont, {:ok, Map.put(acc, attribute.source, dumped)}}
+
+                error ->
+                  {:halt, Ash.Helpers.error_with_context(error, field: attribute.name)}
               end
           end
         end)
