@@ -1138,8 +1138,8 @@ defmodule Ash.Actions.Destroy.Bulk do
           )
           |> handle_batch(domain, resource, action, all_changes, opts, ref, base_changeset)
         after
-          if opts[:notify?] && !opts[:return_notifications?] do
-            Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}))
+          if opts[:return_stream?] && opts[:notify?] && !opts[:return_notifications?] do
+            Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
           end
         end
       end
@@ -1239,9 +1239,20 @@ defmodule Ash.Actions.Destroy.Bulk do
               :error
             end
 
+          accumulated_notifications = Process.delete({:bulk_notifications, ref})
+
+          notifications =
+            if opts[:notify?] do
+              if opts[:return_notifications?] do
+                accumulated_notifications
+              else
+                Ash.Notifier.notify(accumulated_notifications || [])
+              end
+            end
+
           result = %Ash.BulkResult{
             status: status,
-            notifications: Process.delete({:bulk_notifications, ref})
+            notifications: notifications
           }
 
           {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
@@ -1820,8 +1831,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                   process_notifications ++ bulk_notifications
                 else
                   if opts[:transaction] && opts[:transaction] != :all do
-                    Ash.Notifier.notify(bulk_notifications)
-                    Ash.Notifier.notify(process_notifications)
+                  Ash.Notifier.notify(Enum.concat(List.wrap(bulk_notifications), List.wrap(process_notifications)))
                   end
 
                   []
@@ -2413,7 +2423,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             resource_notifications: remaining_notifications
           })
 
-          %{bulk_result | notifications: notifications}
+          %{bulk_result | notifications: remaining_notifications}
         else
           %{bulk_result | notifications: []}
         end
