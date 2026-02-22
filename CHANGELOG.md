@@ -8,6 +8,31 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.17.0](https://github.com/ash-project/ash/compare/v3.16.0...v3.17.0) (2026-02-22)
+
+
+
+
+### Features:
+
+* add `not_found_error?` to `Ash.get` to bring it in-line with actions (#2572) by StephanH90 [(#2572)](https://github.com/ash-project/ash/pull/2572)
+
+### Bug Fixes:
+
+* Update Ash.Gen.Resource, validate relationship type (#2563) by Matt Savoia [(#2563)](https://github.com/ash-project/ash/pull/2563)
+
+* don't optimize equality into `in` expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* manual relationship implies no_attributes? true (#2562) by zackattackz [(#2562)](https://github.com/ash-project/ash/pull/2562)
+
+### Improvements:
+
+* include bread crumbs and standardize generic action errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* Allow Ash.Type.NewType to apply its own constraints (#2575) by Christopher Bonhage [(#2575)](https://github.com/ash-project/ash/pull/2575)
+
+* Split up usage rules into sub-rules (#2561) by [@mylanconnolly](https://github.com/mylanconnolly) [(#2561)](https://github.com/ash-project/ash/pull/2561)
+
 ## [v3.16.0](https://github.com/ash-project/ash/compare/v3.15.0...v3.16.0) (2026-02-09)
 
 
