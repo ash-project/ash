@@ -37,19 +37,6 @@ defmodule Ash.Test.NotifierTest do
     end
   end
 
-  defmodule TypedNotifier do
-    use Ash.Notifier,
-      type: Ash.Type.String,
-      transform: fn notification -> notification.data.name end
-
-    def notify(notification) do
-      send(
-        Application.get_env(__MODULE__, :notifier_test_pid),
-        {:typed_notification, notification}
-      )
-    end
-  end
-
   # Both of these notifiers request the same :comments field — the dep resolver
   # should load it only once.
   defmodule ConflictingLoadNotifier1 do
@@ -273,7 +260,6 @@ defmodule Ash.Test.NotifierTest do
     Application.put_env(Notifier, :notifier_test_pid, self())
     Application.put_env(Notifier2, :notifier_test_pid, self())
     Application.put_env(LoadNotifier, :notifier_test_pid, self())
-    Application.put_env(TypedNotifier, :notifier_test_pid, self())
     Application.put_env(ConflictingLoadNotifier1, :notifier_test_pid, self())
     Application.put_env(ConflictingLoadNotifier2, :notifier_test_pid, self())
 
@@ -394,30 +380,6 @@ defmodule Ash.Test.NotifierTest do
 
       assert comments1 == []
       assert comments2 == []
-    end
-  end
-
-  describe "type/transform on use Ash.Notifier" do
-    test "__ash_notification_type__ returns the declared type" do
-      assert TypedNotifier.__ash_notification_type__() == Ash.Type.String
-    end
-
-    test "__ash_notification_transform__ applies the transform function" do
-      notification = %Ash.Notifier.Notification{
-        data: %{name: "hello"},
-        resource: Post
-      }
-
-      assert TypedNotifier.__ash_notification_transform__(notification) == "hello"
-    end
-
-    test "notifier without type returns nil for __ash_notification_type__" do
-      assert Notifier.__ash_notification_type__() == nil
-    end
-
-    test "notifier without type returns notification unchanged from __ash_notification_transform__" do
-      notification = %Ash.Notifier.Notification{}
-      assert Notifier.__ash_notification_transform__(notification) == notification
     end
   end
 

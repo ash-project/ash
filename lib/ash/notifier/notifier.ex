@@ -27,33 +27,7 @@ defmodule Ash.Notifier do
 
   require Ash.Tracer
 
-  defmacro __using__(opts) do
-    type = Keyword.get(opts, :type)
-    transform = Keyword.get(opts, :transform)
-
-    if type && is_nil(transform) do
-      raise CompileError,
-        description:
-          "When using Ash.Notifier with a `type` option, the `transform` option is also required"
-    end
-
-    type_fns =
-      if type do
-        quote do
-          @doc "The declared output type for this notifier's notifications."
-          def __ash_notification_type__, do: unquote(type)
-
-          @doc "Transforms a notification to the declared output type."
-          def __ash_notification_transform__(notification),
-            do: unquote(transform).(notification)
-        end
-      else
-        quote do
-          def __ash_notification_type__, do: nil
-          def __ash_notification_transform__(notification), do: notification
-        end
-      end
-
+  defmacro __using__(_opts) do
     quote do
       @behaviour Ash.Notifier
 
@@ -61,8 +35,6 @@ defmodule Ash.Notifier do
       def load(_, _), do: []
 
       defoverridable requires_original_data?: 2, load: 2
-
-      unquote(type_fns)
     end
   end
 
