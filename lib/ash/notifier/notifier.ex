@@ -9,15 +9,60 @@ defmodule Ash.Notifier do
   @callback notify(Ash.Notifier.Notification.t()) :: :ok
   @callback requires_original_data?(Ash.Resource.t(), Ash.Resource.Actions.action()) :: boolean
 
+  @doc """
+  A load statement to be applied before this notifier receives the notification.
+
+  The loaded fields are merged onto `notification.data` before `notify/1` is called.
+  If multiple notifiers request the same fields with the same arguments, the
+  calculation dependency resolver ensures they are only loaded once.
+
+  The return value can be anything accepted by `Ash.Query.load/2`, including
+  `%Ash.Query.Calculation{}` structs for multi-level dependency resolution
+  (e.g. a PubSub notifier building one inner load per publication).
+  """
+  @callback load(Ash.Resource.t(), Ash.Resource.Actions.action()) ::
+              atom | [atom] | Keyword.t()
+
+  @optional_callbacks load: 2
+
   require Ash.Tracer
 
-  defmacro __using__(_) do
+  defmacro __using__(opts) do
+    type = Keyword.get(opts, :type)
+    transform = Keyword.get(opts, :transform)
+
+    if type && is_nil(transform) do
+      raise CompileError,
+        description:
+          "When using Ash.Notifier with a `type` option, the `transform` option is also required"
+    end
+
+    type_fns =
+      if type do
+        quote do
+          @doc "The declared output type for this notifier's notifications."
+          def __ash_notification_type__, do: unquote(type)
+
+          @doc "Transforms a notification to the declared output type."
+          def __ash_notification_transform__(notification),
+            do: unquote(transform).(notification)
+        end
+      else
+        quote do
+          def __ash_notification_type__, do: nil
+          def __ash_notification_transform__(notification), do: notification
+        end
+      end
+
     quote do
       @behaviour Ash.Notifier
 
       def requires_original_data?(_, _), do: false
+      def load(_, _), do: []
 
-      defoverridable requires_original_data?: 2
+      defoverridable requires_original_data?: 2, load: 2
+
+      unquote(type_fns)
     end
   end
 
@@ -41,22 +86,163 @@ defmodule Ash.Notifier do
       end)
 
     for {resource, notifications} <- to_send, notification <- notifications do
-      case notification.for do
-        nil ->
-          for notifier <- Ash.Resource.Info.notifiers(resource) do
-            do_notify(notifier, %{notification | from: self()})
-          end
+      notifiers =
+        case notification.for do
+          nil -> Ash.Resource.Info.notifiers(resource)
+          allowed_notifiers -> Enum.uniq(List.wrap(allowed_notifiers))
+        end
 
-        allowed_notifiers ->
-          for notifier <- Enum.uniq(List.wrap(allowed_notifiers)) do
-            do_notify(notifier, %{notification | from: self()})
-          end
+      {notification, notifier_data} = load_notification_data(notification, notifiers)
+
+      for notifier <- notifiers do
+        enriched = enrich_notification(notification, notifier, notifier_data)
+        do_notify(notifier, %{enriched | from: self()})
       end
     end
 
     unsent
     |> Enum.map(&elem(&1, 1))
     |> List.flatten()
+  end
+
+  # Builds one NotifierDependencies calculation per notifier that has a
+  # non-empty load statement, then does a single Ash.load so the calculation
+  # dependency resolver can deduplicate identical underlying loads.
+  defp load_notification_data(notification, notifiers) do
+    notifier_statements =
+      Enum.reduce(notifiers, %{}, fn notifier, acc ->
+        statement =
+          if function_exported?(notifier, :load, 2) do
+            notifier.load(notification.resource, notification.action)
+          else
+            []
+          end
+
+        case List.wrap(statement) do
+          [] -> acc
+          statement -> Map.put(acc, notifier, statement)
+        end
+      end)
+
+    if map_size(notifier_statements) == 0 do
+      {notification, %{}}
+    else
+      domain =
+        notification.domain ||
+          Ash.Resource.Info.domain(notification.resource)
+
+      source_context =
+        (notification.changeset && notification.changeset.context) || %{}
+
+      query =
+        Enum.reduce(
+          notifier_statements,
+          Ash.Query.new(notification.resource),
+          fn {notifier, statement}, query ->
+            Ash.Query.calculate(
+              query,
+              {Ash.Notifier.NotifierDependencies, notifier: notifier},
+              Ash.Type.Map,
+              {Ash.Notifier.NotifierDependencies, [statement: statement, notifier: notifier]},
+              %{},
+              [],
+              %{},
+              source_context: source_context
+            )
+          end
+        )
+
+      case Ash.load(
+             notification.data,
+             query,
+             domain: domain,
+             authorize?: false,
+             context: %{private: %{internal?: true}}
+           ) do
+        {:ok, loaded_data} ->
+          notifier_data =
+            Map.new(notifier_statements, fn {notifier, statement} ->
+              extra =
+                Map.get(
+                  loaded_data.calculations || %{},
+                  {Ash.Notifier.NotifierDependencies, notifier: notifier},
+                  %{}
+                )
+
+              {notifier, {statement, extra}}
+            end)
+
+          {%{notification | data: loaded_data}, notifier_data}
+
+        {:error, _error} ->
+          {notification, %{}}
+      end
+    end
+  end
+
+  # Merges the notifier's dependency map onto notification.data.
+  # Placement is determined by the original load statement intent:
+  # attributes, relationships, and aggregates go directly on the struct;
+  # calculations without a `load` field go into .calculations.
+  defp enrich_notification(notification, notifier, notifier_data) do
+    case Map.get(notifier_data, notifier) do
+      nil ->
+        notification
+
+      {_statement, extra} when map_size(extra) == 0 ->
+        notification
+
+      {statement, extra} ->
+        resource = notification.resource
+
+        enriched_data =
+          Enum.reduce(extra, notification.data, fn {key, value}, data ->
+            case placement_for_key(key, statement, resource) do
+              :struct -> Map.put(data, key, value)
+              :calculations -> Map.update!(data, :calculations, &Map.put(&1 || %{}, key, value))
+            end
+          end)
+
+        %{notification | data: enriched_data}
+    end
+  end
+
+  # Determines whether a key from the notifier's extra map belongs on the
+  # resource struct directly or in record.calculations, based on resource schema
+  # and any %Ash.Query.Calculation{} structs in the original statement.
+  @doc false
+  def placement_for_key(key, statement, resource) do
+    calc_struct =
+      Enum.find(List.wrap(statement), fn
+        %Ash.Query.Calculation{name: ^key} -> true
+        _ -> false
+      end)
+
+    case calc_struct do
+      %Ash.Query.Calculation{load: load} when not is_nil(load) ->
+        :struct
+
+      %Ash.Query.Calculation{} ->
+        :calculations
+
+      nil ->
+        cond do
+          Ash.Resource.Info.attribute(resource, key) ->
+            :struct
+
+          Ash.Resource.Info.relationship(resource, key) ->
+            :struct
+
+          Ash.Resource.Info.aggregate(resource, key) ->
+            :struct
+
+          Ash.Resource.Info.calculation(resource, key) ->
+            :calculations
+
+          true ->
+            :calculations
+        end
+    end
   end
 
   defp do_notify(notifier, notification) do

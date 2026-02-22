@@ -3569,7 +3569,7 @@ defmodule Ash.Query do
   """
   @spec calculate(
           t() | Ash.Resource.t(),
-          atom(),
+          term(),
           Ash.Type.t(),
           module() | {module(), Keyword.t()},
           map(),
