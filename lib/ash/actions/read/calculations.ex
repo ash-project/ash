@@ -1837,7 +1837,7 @@ defmodule Ash.Actions.Read.Calculations do
             new_calc_name =
               {:__calc_dep__,
                [
-                 {calc_path, {:calc, equivalent_calculation.name, equivalent_calculation.load},
+                 {calc_path, {:calc, calculation.name, calculation.load},
                   calc_name, calc_load}
                ]}
 
