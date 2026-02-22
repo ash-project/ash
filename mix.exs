@@ -358,7 +358,7 @@ defmodule Ash.MixProject do
       ],
       licenses: ["MIT"],
       files: ~w(lib .formatter.exs mix.exs README* LICENSE*
-      CHANGELOG* usage-rules.md),
+      CHANGELOG* usage-rules.md usage-rules),
       links: %{
         "GitHub" => "https://github.com/ash-project/ash",
         "Changelog" => "https://github.com/ash-project/ash/blob/main/CHANGELOG.md",
