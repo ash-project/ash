@@ -7,7 +7,7 @@ on:
   push:
     tags:
       - "v*"
-    branches: [main, "3.0"]
+    branches: [main]
 permissions:
   contents: read
 jobs:
@@ -102,11 +102,17 @@ jobs:
         working-directory: ./${{matrix.project.name}}
       - run: mix test.create
         if: ${{matrix.project.migrate}}
+        env:
+          MIX_ENV: test
         working-directory: ./${{matrix.project.name}}
       - run: mix test.migrate
         if: ${{matrix.project.migrate}}
+        env:
+          MIX_ENV: test
         working-directory: ./${{matrix.project.name}}
       - run: mix test.migrate_tenants
+        env:
+          MIX_ENV: test
         if: ${{matrix.project.migrate_tenants}}
         working-directory: ./${{matrix.project.name}}
       - name: mix compile --force --warnings-as-errors inside ./${{matrix.project.name}}
