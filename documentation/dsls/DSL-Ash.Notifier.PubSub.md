@@ -121,6 +121,28 @@ Configured with `broadcast_type`.
 - `:phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}` (see above)
 - `:broadcast` sends `%{topic: (topic), event: (event), payload: (notification)}`
 
+## Loading data before broadcast
+
+Publications support a `load` option that declares fields to load onto `notification.data`
+before the notification is broadcast. This is useful when a `transform` or `filter` function,
+or a subscriber, needs access to related data that is not present on the record returned by
+the action.
+
+The value is any load statement accepted by `Ash.Query.load/2`.
+
+```elixir
+pub_sub do
+  module MyAppWeb.Endpoint
+  prefix "post"
+
+  publish :create, "created", load: [:comment, author: [:full_name]]
+  publish :update, ["updated", :id], load: [:comment, author: [:full_name]]
+end
+```
+
+Different publications on the same resource can request different loads. Loads that are
+identical across publications are deduplicated and fetched only once.
+
 
 ## pub_sub
 A section for configuring how resource actions are published over pubsub
