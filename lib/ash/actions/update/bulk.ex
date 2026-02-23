@@ -942,7 +942,7 @@ defmodule Ash.Actions.Update.Bulk do
             resource_notifications: remaining
           })
 
-          %{bulk_result | notifications: notifications}
+          %{bulk_result | notifications: remaining}
         else
           %{bulk_result | notifications: []}
         end
@@ -1467,11 +1467,8 @@ defmodule Ash.Actions.Update.Bulk do
             action_select
           )
         after
-          if opts[:notify?] && !opts[:return_notifications?] do
-            Process.put(
-              {:bulk_notifications, ref},
-              Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
-            )
+          if opts[:return_stream?] && opts[:notify?] && !opts[:return_notifications?] do
+            Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
           end
         end
       end
@@ -1569,9 +1566,20 @@ defmodule Ash.Actions.Update.Bulk do
               :error
             end
 
+          accumulated_notifications = Process.delete({:bulk_notifications, ref})
+
+          notifications =
+            if opts[:notify?] do
+              if opts[:return_notifications?] do
+                accumulated_notifications
+              else
+                Ash.Notifier.notify(accumulated_notifications || [])
+              end
+            end
+
           result = %Ash.BulkResult{
             status: status,
-            notifications: Process.delete({:bulk_notifications, ref})
+            notifications: notifications
           }
 
           {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
@@ -2184,8 +2192,9 @@ defmodule Ash.Actions.Update.Bulk do
                 process_notifications ++ bulk_notifications
               else
                 if opts[:transaction] && opts[:transaction] != :all do
-                  Ash.Notifier.notify(bulk_notifications)
-                  Ash.Notifier.notify(process_notifications)
+                  Ash.Notifier.notify(
+                    Enum.concat(List.wrap(bulk_notifications), List.wrap(process_notifications))
+                  )
                 end
 
                 []

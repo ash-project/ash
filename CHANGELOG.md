@@ -8,6 +8,52 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.17.1](https://github.com/ash-project/ash/compare/v3.17.0...v3.17.1) (2026-02-23)
+
+
+
+
+### Bug Fixes:
+
+* Include usage-rules directory in package (#2581) by Nick Urban [(#2581)](https://github.com/ash-project/ash/pull/2581)
+
+* boolean expression not eq optimization (#2579) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2579)](https://github.com/ash-project/ash/pull/2579)
+
+### Improvements:
+
+* add support for notifier load statements by [@zachdaniel](https://github.com/zachdaniel)
+
+* add support for declaring a type for notifiers by [@zachdaniel](https://github.com/zachdaniel)
+
+* add support for per-publication load statements by [@zachdaniel](https://github.com/zachdaniel)
+
+* make `event` an optional positional argument (and support atoms) by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.17.0](https://github.com/ash-project/ash/compare/v3.16.0...v3.17.0) (2026-02-22)
+
+
+
+
+### Features:
+
+* add `not_found_error?` to `Ash.get` to bring it in-line with actions (#2572) by StephanH90 [(#2572)](https://github.com/ash-project/ash/pull/2572)
+
+### Bug Fixes:
+
+* Update Ash.Gen.Resource, validate relationship type (#2563) by Matt Savoia [(#2563)](https://github.com/ash-project/ash/pull/2563)
+
+* don't optimize equality into `in` expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* manual relationship implies no_attributes? true (#2562) by zackattackz [(#2562)](https://github.com/ash-project/ash/pull/2562)
+
+### Improvements:
+
+* include bread crumbs and standardize generic action errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* Allow Ash.Type.NewType to apply its own constraints (#2575) by Christopher Bonhage [(#2575)](https://github.com/ash-project/ash/pull/2575)
+
+* Split up usage rules into sub-rules (#2561) by [@mylanconnolly](https://github.com/mylanconnolly) [(#2561)](https://github.com/ash-project/ash/pull/2561)
+
 ## [v3.16.0](https://github.com/ash-project/ash/compare/v3.15.0...v3.16.0) (2026-02-09)
 
 

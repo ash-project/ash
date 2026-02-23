@@ -393,6 +393,16 @@ defmodule Ash.Test.Filter.FilterTest do
 
       assert stringified_query =~ ~S(title == "bar")
     end
+
+    test "duplicate not-equal filters are simplified correctly" do
+      stringified_query =
+        Post
+        |> Ash.Query.filter(title != "foo")
+        |> Ash.Query.filter(title != "foo")
+        |> inspect()
+
+      assert stringified_query =~ ~S(title != "foo")
+    end
   end
 
   describe "no such function errors" do

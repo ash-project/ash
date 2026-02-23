@@ -121,6 +121,28 @@ Configured with `broadcast_type`.
 - `:phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}` (see above)
 - `:broadcast` sends `%{topic: (topic), event: (event), payload: (notification)}`
 
+## Loading data before broadcast
+
+Publications support a `load` option that declares fields to load onto `notification.data`
+before the notification is broadcast. This is useful when a `transform` or `filter` function,
+or a subscriber, needs access to related data that is not present on the record returned by
+the action.
+
+The value is any load statement accepted by `Ash.Query.load/2`.
+
+```elixir
+pub_sub do
+  module MyAppWeb.Endpoint
+  prefix "post"
+
+  publish :create, "created", load: [:comment, author: [:full_name]]
+  publish :update, ["updated", :id], load: [:comment, author: [:full_name]]
+end
+```
+
+Different publications on the same resource can request different loads. Loads that are
+identical across publications are deduplicated and fetched only once.
+
 
 ## pub_sub
 A section for configuring how resource actions are published over pubsub
@@ -163,7 +185,7 @@ end
 
 ### pub_sub.publish
 ```elixir
-publish action, topic
+publish event \\ nil, action, topic
 ```
 
 
@@ -177,6 +199,10 @@ publish :create, "created"
 ```
 
 ```
+publish "my_event", :create, "created"
+```
+
+```
 publish :assign, "assigned"
 
 ```
@@ -187,16 +213,20 @@ publish :assign, "assigned"
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`event`](#pub_sub-publish-event){: #pub_sub-publish-event } | `atom \| String.t` |  | The name of the event to publish. Defaults to the action name |
 | [`action`](#pub_sub-publish-action){: #pub_sub-publish-action .spark-required} | `atom` |  | The name of the action that should be published |
 | [`topic`](#pub_sub-publish-topic){: #pub_sub-publish-topic .spark-required} | `any` |  | The topic to publish |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`returns`](#pub_sub-publish-returns){: #pub_sub-publish-returns } | `any` |  | An `Ash.Type` for the notification payload. When specified, `transform` is required and must return a value of this type. |
+| [`constraints`](#pub_sub-publish-constraints){: #pub_sub-publish-constraints } | `keyword` | `[]` | Constraints for the `returns` type. See `Ash.Type` for more. |
 | [`previous_values?`](#pub_sub-publish-previous_values?){: #pub_sub-publish-previous_values? } | `boolean` | `false` | Whether or not to publish messages with both the new values and the old values for referencing changed attributes |
 | [`filter`](#pub_sub-publish-filter){: #pub_sub-publish-filter } | `(any -> any)` |  | A filter for notifications. Receives a notification, and ignores it if the function returns a falsy value. |
 | [`transform`](#pub_sub-publish-transform){: #pub_sub-publish-transform } | `(any -> any)` |  | A transformer for notifications. Receives a notification, and returns a new value to be broadcasted. |
-| [`event`](#pub_sub-publish-event){: #pub_sub-publish-event } | `String.t` |  | The name of the event to publish. Defaults to the action name |
+| [`public?`](#pub_sub-publish-public?){: #pub_sub-publish-public? } | `boolean` | `false` | Whether or not this publication is considered public. Extensions may use this. |
+| [`load`](#pub_sub-publish-load){: #pub_sub-publish-load } | `any` |  | A load statement to be applied before this publication's notification is dispatched. Loaded fields will be merged onto `notification.data`. |
 | [`dispatcher`](#pub_sub-publish-dispatcher){: #pub_sub-publish-dispatcher } | `atom` |  | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
 
 
@@ -209,7 +239,7 @@ Target: `Ash.Notifier.PubSub.Publication`
 
 ### pub_sub.publish_all
 ```elixir
-publish_all type, topic
+publish_all event \\ nil, type, topic
 ```
 
 
@@ -223,12 +253,17 @@ Works the same as `publish`, except that it takes a type and publishes all actio
 publish_all :create, "created"
 ```
 
+```
+publish_all "my_creates", :create, "created"
+```
+
 
 
 ### Arguments
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`event`](#pub_sub-publish_all-event){: #pub_sub-publish_all-event } | `atom \| String.t` |  | The name of the event to publish. Defaults to the action name |
 | [`type`](#pub_sub-publish_all-type){: #pub_sub-publish_all-type } | `:create \| :update \| :destroy` |  | Publish on all actions of a given type |
 | [`topic`](#pub_sub-publish_all-topic){: #pub_sub-publish_all-topic .spark-required} | `any` |  | The topic to publish |
 ### Options
@@ -237,10 +272,13 @@ publish_all :create, "created"
 |------|------|---------|------|
 | [`except`](#pub_sub-publish_all-except){: #pub_sub-publish_all-except } | `list(atom)` | `[]` | Exclude these actions from notifications |
 | [`action`](#pub_sub-publish_all-action){: #pub_sub-publish_all-action } | `atom` |  | The name of the action that should be published |
+| [`returns`](#pub_sub-publish_all-returns){: #pub_sub-publish_all-returns } | `any` |  | An `Ash.Type` for the notification payload. When specified, `transform` is required and must return a value of this type. |
+| [`constraints`](#pub_sub-publish_all-constraints){: #pub_sub-publish_all-constraints } | `keyword` | `[]` | Constraints for the `returns` type. See `Ash.Type` for more. |
 | [`previous_values?`](#pub_sub-publish_all-previous_values?){: #pub_sub-publish_all-previous_values? } | `boolean` | `false` | Whether or not to publish messages with both the new values and the old values for referencing changed attributes |
 | [`filter`](#pub_sub-publish_all-filter){: #pub_sub-publish_all-filter } | `(any -> any)` |  | A filter for notifications. Receives a notification, and ignores it if the function returns a falsy value. |
 | [`transform`](#pub_sub-publish_all-transform){: #pub_sub-publish_all-transform } | `(any -> any)` |  | A transformer for notifications. Receives a notification, and returns a new value to be broadcasted. |
-| [`event`](#pub_sub-publish_all-event){: #pub_sub-publish_all-event } | `String.t` |  | The name of the event to publish. Defaults to the action name |
+| [`public?`](#pub_sub-publish_all-public?){: #pub_sub-publish_all-public? } | `boolean` | `false` | Whether or not this publication is considered public. Extensions may use this. |
+| [`load`](#pub_sub-publish_all-load){: #pub_sub-publish_all-load } | `any` |  | A load statement to be applied before this publication's notification is dispatched. Loaded fields will be merged onto `notification.data`. |
 | [`dispatcher`](#pub_sub-publish_all-dispatcher){: #pub_sub-publish_all-dispatcher } | `atom` |  | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
 
 

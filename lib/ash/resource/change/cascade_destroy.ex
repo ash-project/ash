@@ -330,7 +330,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
           load_query =
             if read_action_name do
               opts.relationship.destination
-              |> Ash.Query.for_read(read_action_name)
+              |> Ash.Query.for_read(read_action_name, %{}, scope: context)
               |> Ash.Query.set_context(%{
                 cascade_destroy: true,
                 accessing_from: %{source: relationship.source, name: relationship.name}

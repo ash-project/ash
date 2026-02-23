@@ -425,8 +425,8 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
 
     test "generic actions raise if they have a return type but don't have a return value" do
-      assert_raise Ash.Error.Framework.InvalidReturnType,
-                   ~r/Expected {:ok, result} or {:error, error}/,
+      assert_raise Ash.Error.Framework,
+                   ~r/Expected \{:ok, result\} or \{:error, error\}/,
                    fn ->
                      Post
                      |> Ash.ActionInput.for_action(:typed_without_value, %{})
@@ -435,8 +435,8 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
 
     test "generic actions raise if they don't have a return type but have an return value" do
-      assert_raise Ash.Error.Framework.InvalidReturnType,
-                   ~r/Expected :ok or {:error, error}/,
+      assert_raise Ash.Error.Framework,
+                   ~r/Expected :ok or \{:error, error\}/,
                    fn ->
                      Post
                      |> Ash.ActionInput.for_action(:untyped_with_value, %{})
@@ -800,7 +800,7 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
   describe "error handling in generic actions with lifecycle" do
     test "invalid before_action hook return value raises appropriate error" do
-      assert_raise RuntimeError, fn ->
+      assert_raise Ash.Error.Unknown, fn ->
         Post
         |> Ash.ActionInput.for_action(:with_lifecycle_hooks, %{message: "test"})
         |> Ash.ActionInput.before_action(fn _input ->
@@ -812,7 +812,7 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
 
     test "invalid after_action hook return value raises appropriate error" do
-      assert_raise RuntimeError, ~r/Invalid return value from after_action hook/, fn ->
+      assert_raise Ash.Error.Unknown, ~r/Invalid return value from after_action hook/, fn ->
         Post
         |> Ash.ActionInput.for_action(:with_lifecycle_hooks, %{message: "test"})
         |> Ash.ActionInput.after_action(fn _input, _result ->
@@ -1144,7 +1144,7 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
 
     test "invalid before_transaction hook return raises error" do
-      assert_raise RuntimeError, ~r/Invalid return value from before_transaction hook/, fn ->
+      assert_raise Ash.Error.Unknown, ~r/Invalid return value from before_transaction hook/, fn ->
         Post
         |> Ash.ActionInput.for_action(:with_transaction, %{message: "test"})
         |> Ash.ActionInput.before_transaction(fn _input ->

@@ -24,6 +24,47 @@ defmodule Ash.Test.NotifierTest do
     end
   end
 
+  defmodule LoadNotifier do
+    use Ash.Notifier
+
+    def load(_resource, _action), do: [:comments]
+
+    def notify(notification) do
+      send(
+        Application.get_env(__MODULE__, :notifier_test_pid),
+        {:load_notification, notification}
+      )
+    end
+  end
+
+  # Both of these notifiers request the same :comments field — the dep resolver
+  # should load it only once.
+  defmodule ConflictingLoadNotifier1 do
+    use Ash.Notifier
+
+    def load(_resource, _action), do: [:comments]
+
+    def notify(notification) do
+      send(
+        Application.get_env(__MODULE__, :notifier_test_pid),
+        {:conflict_notifier_1, notification}
+      )
+    end
+  end
+
+  defmodule ConflictingLoadNotifier2 do
+    use Ash.Notifier
+
+    def load(_resource, _action), do: [:comments]
+
+    def notify(notification) do
+      send(
+        Application.get_env(__MODULE__, :notifier_test_pid),
+        {:conflict_notifier_2, notification}
+      )
+    end
+  end
+
   defmodule PostLink do
     use Ash.Resource,
       domain: Domain,
@@ -157,9 +198,70 @@ defmodule Ash.Test.NotifierTest do
     end
   end
 
+  defmodule PostWithConflictingLoadNotifiers do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      notifiers: [ConflictingLoadNotifier1, ConflictingLoadNotifier2]
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+
+    relationships do
+      has_many :comments, Comment, destination_attribute: :post_id, public?: true
+    end
+  end
+
+  defmodule PostWithLoadNotifier do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      notifiers: [LoadNotifier]
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+
+    relationships do
+      has_many :comments, Comment, destination_attribute: :post_id, public?: true
+    end
+  end
+
   setup do
     Application.put_env(Notifier, :notifier_test_pid, self())
     Application.put_env(Notifier2, :notifier_test_pid, self())
+    Application.put_env(LoadNotifier, :notifier_test_pid, self())
+    Application.put_env(ConflictingLoadNotifier1, :notifier_test_pid, self())
+    Application.put_env(ConflictingLoadNotifier2, :notifier_test_pid, self())
 
     :ok
   end
@@ -252,6 +354,33 @@ defmodule Ash.Test.NotifierTest do
 
     assert_receive {:notification,
                     %Ash.Notifier.Notification{changeset: %{context: %{foobar: :baz}}}}
+  end
+
+  describe "load/2 callback" do
+    test "loaded fields are available on notification.data" do
+      PostWithLoadNotifier
+      |> Ash.Changeset.for_create(:create, %{name: "test"})
+      |> Ash.create!()
+
+      assert_receive {:load_notification, %Ash.Notifier.Notification{data: %{comments: comments}}}
+
+      assert comments == []
+    end
+
+    test "two notifiers requesting the same field both receive the loaded data" do
+      PostWithConflictingLoadNotifiers
+      |> Ash.Changeset.for_create(:create, %{name: "conflict"})
+      |> Ash.create!()
+
+      assert_receive {:conflict_notifier_1,
+                      %Ash.Notifier.Notification{data: %{comments: comments1}}}
+
+      assert_receive {:conflict_notifier_2,
+                      %Ash.Notifier.Notification{data: %{comments: comments2}}}
+
+      assert comments1 == []
+      assert comments2 == []
+    end
   end
 
   describe "related notifications" do
