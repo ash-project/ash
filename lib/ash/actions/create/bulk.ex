@@ -319,6 +319,14 @@ defmodule Ash.Actions.Create.Bulk do
                 end
             end
           catch
+            {:batch_partial_success, batch_results, batch_ref} ->
+              batch_results
+              |> Ash.Actions.Helpers.Bulk.build_batch_partial_success_result(
+                batch_ref,
+                opts
+              )
+              |> handle_bulk_result(resource, action, opts)
+
             {:error, error} ->
               status =
                 if Process.get({:any_success?, ref}) do
@@ -914,27 +922,47 @@ defmodule Ash.Actions.Create.Bulk do
         timeout: :infinity,
         max_concurrency: max_concurrency
       )
-      |> Stream.flat_map(fn
-        {:ok, {:throw, value}} ->
+      |> Stream.transform([], fn
+        {:ok, {:throw, value}}, _acc ->
           throw(value)
 
-        {:ok, {result, notifications, any_success?}} ->
+        {:ok, {result, notifications, any_success?}}, acc ->
           Process.put({:any_success?, ref}, any_success?)
-
           Ash.Actions.Helpers.Bulk.store_notification(ref, notifications, opts)
 
-          # result already contains records and {:error, error} tuples inline
-          result
+          Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_batch_error(
+            result,
+            resource,
+            opts,
+            ref,
+            acc
+          )
 
-        {:exit, error} ->
+        {:exit, error}, acc ->
           error
           |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
           |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
           |> Ash.Helpers.error()
           |> List.wrap()
+          |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_batch_error(
+            resource,
+            opts,
+            ref,
+            acc
+          )
       end)
     else
-      Stream.map(stream, callback)
+      stream
+      |> Stream.transform([], fn batch, acc ->
+        batch
+        |> callback.()
+        |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_batch_error(
+          resource,
+          opts,
+          ref,
+          acc
+        )
+      end)
     end
   end
 

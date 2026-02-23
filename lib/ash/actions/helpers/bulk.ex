@@ -82,6 +82,76 @@ defmodule Ash.Actions.Helpers.Bulk do
     error
   end
 
+  @doc """
+  Conditionally stops bulk create operation after a batch with errors.
+
+  For data layers that support `:bulk_create_with_partial_success`, when
+  `stop_on_error?` is true, we stop at the end of the first batch containing
+  errors (instead of at the first individual error). This allows us to return
+  all results from that batch, including successfully persisted records.
+
+  Designed for use with `Stream.transform/3`. Returns `{[batch_results_list],
+  acc ++ batch_results_list}` to continue processing, or throws
+  `{:batch_partial_success, accumulated ++ batch_results_list, ref}` to signal
+  that processing should stop.
+  """
+  @spec maybe_stop_on_bulk_create_batch_error(
+          Enumerable.t(),
+          Ash.Resource.t(),
+          Keyword.t(),
+          reference(),
+          Enumerable.t()
+        ) :: {Enumerable.t(), Enumerable.t()} | no_return()
+  def maybe_stop_on_bulk_create_batch_error(batch_results, resource, opts, ref, acc) do
+    batch_results_list = Enum.to_list(batch_results)
+
+    if stop_on_error?(opts) and
+         Ash.DataLayer.data_layer_can?(resource, :bulk_create_with_partial_success) and
+         any_batch_errors?(batch_results) do
+      throw({:batch_partial_success, acc ++ batch_results_list, ref})
+    else
+      # Return the result in the format expected by Stream.transform since we're called by it
+      {[batch_results_list], acc ++ batch_results_list}
+    end
+  end
+
+  defp any_batch_errors?(batch_results) do
+    Enum.any?(batch_results, &match?({:error, _}, &1))
+  end
+
+  @doc """
+  Constructs a BulkResult from batch results after a batch partial success.
+
+  Called when `maybe_stop_on_bulk_create_batch_error` throws, to build the final result
+  with all records and errors from the batch that caused the stop.
+  """
+  @spec build_batch_partial_success_result(
+          batch_results :: [Ash.Resource.record() | {:error, term()}],
+          reference(),
+          Keyword.t()
+        ) :: Ash.BulkResult.t()
+  def build_batch_partial_success_result(batch_results, ref, opts) do
+    {records, error_tuples} =
+      Enum.split_with(batch_results, fn
+        {:error, _} -> false
+        _ -> true
+      end)
+
+    errors = Enum.map(error_tuples, &(&1 |> elem(1) |> Ash.Error.to_ash_error()))
+
+    status = if Process.get({:any_success?, ref}), do: :partial_success, else: :error
+
+    result = %Ash.BulkResult{
+      status: status,
+      records: records,
+      notifications: Process.delete({:bulk_notifications, ref})
+    }
+
+    {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, errors, opts)
+
+    %{result | errors: errors, error_count: error_count}
+  end
+
   defp stop_on_error?(opts), do: opts[:stop_on_error?] && !opts[:return_stream?]
 
   @doc """

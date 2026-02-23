@@ -2238,5 +2238,105 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       assert Enum.find(result.errors, &match?(%Ash.Error.Unknown.UnknownError{}, &1))
       assert Enum.find(result.errors, &match?(%Ash.Error.Invalid{}, &1))
     end
+
+    test "stop_on_error? stops at end of batch with partial success data layer" do
+      # With batch_size: 2, we have 2 batches:
+      # Batch 1: [success_1, fail_1] -> partial success, stop here
+      # Batch 2: [success_2, success_3] -> should NOT be processed
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "fail_1"},
+            %{title: "success_2"},
+            %{title: "success_3"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          stop_on_error?: true,
+          batch_size: 2
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+      # Only records from first batch should be returned
+      assert [%{title: "success_1"}] = result.records
+      assert length(result.errors) == 1
+    end
+
+    test "stop_on_error? with all successes in first batch continues to next batch" do
+      # With batch_size: 2, we have 2 batches:
+      # Batch 1: [success_1, success_2] -> success, continue
+      # Batch 2: [fail_1, success_3] -> partial success, stop here
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "success_2"},
+            %{title: "fail_1"},
+            %{title: "success_3"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          stop_on_error?: true,
+          batch_size: 2
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+      # Records from both batches up to the error should be returned
+      titles = Enum.map(result.records, & &1.title) |> Enum.sort()
+      assert titles == ["success_1", "success_2", "success_3"]
+    end
+
+    test "stop_on_error? with no errors processes all batches" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "success_2"},
+            %{title: "success_3"},
+            %{title: "success_4"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          stop_on_error?: true,
+          batch_size: 2
+        )
+
+      assert result.status == :success
+      assert result.error_count == 0
+      assert length(result.records) == 4
+    end
+
+    test "with stop_on_error?: false processes all batches even with errors" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "success_2"},
+            %{title: "fail"},
+            %{title: "success_3"},
+            %{title: "fail"},
+            %{title: "success_4"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          stop_on_error?: false,
+          batch_size: 2
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 2
+      assert length(result.records) == 4
+    end
   end
 end
