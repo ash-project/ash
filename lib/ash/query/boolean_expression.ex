@@ -147,7 +147,7 @@ defmodule Ash.Query.BooleanExpression do
         %NotEq{left: left, right: right_value} = right_expr
       ) do
     if can_optimize?(left_value) && can_optimize?(right_value) && left_value == right_value do
-      left_value
+      left_expr
     else
       do_new(:and, left_expr, right_expr)
     end
