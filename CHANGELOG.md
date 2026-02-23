@@ -8,6 +8,27 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.17.1](https://github.com/ash-project/ash/compare/v3.17.0...v3.17.1) (2026-02-23)
+
+
+
+
+### Bug Fixes:
+
+* Include usage-rules directory in package (#2581) by Nick Urban [(#2581)](https://github.com/ash-project/ash/pull/2581)
+
+* boolean expression not eq optimization (#2579) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2579)](https://github.com/ash-project/ash/pull/2579)
+
+### Improvements:
+
+* add support for notifier load statements by [@zachdaniel](https://github.com/zachdaniel)
+
+* add support for declaring a type for notifiers by [@zachdaniel](https://github.com/zachdaniel)
+
+* add support for per-publication load statements by [@zachdaniel](https://github.com/zachdaniel)
+
+* make `event` an optional positional argument (and support atoms) by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.17.0](https://github.com/ash-project/ash/compare/v3.16.0...v3.17.0) (2026-02-22)
 
 
