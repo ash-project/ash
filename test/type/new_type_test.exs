@@ -277,6 +277,30 @@ defmodule Ash.Test.Type.NewTypeTest do
       assert Exception.message(error) =~ "must be at least"
     end
 
+    test "rejects a duration above the maximum in array" do
+      two_hours = Duration.new!(hour: 2)
+
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               DurationRecord
+               |> Ash.Changeset.for_create(:create, %{bounded_list: [two_hours]})
+               |> Ash.create()
+
+      assert Exception.message(error) =~ "must be at most"
+    end
+
+    test "array apply_constraints enforces custom constraints on each item" do
+      {:ok, constraints} = Ash.Type.init(BoundedDuration, min: 60, max: 3600)
+      thirty_sec = Duration.new!(second: 30)
+      ten_min = Duration.new!(minute: 10)
+
+      assert {:error, _} =
+               Ash.Type.apply_constraints(
+                 {:array, BoundedDuration},
+                 [ten_min, thirty_sec],
+                 items: constraints
+               )
+    end
+
     test "unknown constraint keys are rejected" do
       assert {:error, error} = Ash.Type.init(BoundedDuration, unit: :millisecond)
       assert error =~ "Unknown options"
@@ -399,6 +423,38 @@ defmodule Ash.Test.Type.NewTypeTest do
                |> Ash.create()
 
       assert Exception.message(error) =~ "must be an address at one of"
+    end
+
+    test "rejects an invalid email format in array" do
+      assert {:error, %Ash.Error.Invalid{} = error} =
+               EmailRecord
+               |> Ash.Changeset.for_create(:create, %{emails: ["not-an-email"]})
+               |> Ash.create()
+
+      assert Exception.message(error) =~ "must match the pattern"
+    end
+
+    test "array apply_constraints enforces subtype regex on each item" do
+      {:ok, constraints} = Ash.Type.init(EmailAddress, allowed_domains: ["company.com"])
+
+      # "has space@company.com" passes domain check but fails subtype regex
+      assert {:error, _} =
+               Ash.Type.apply_constraints(
+                 {:array, EmailAddress},
+                 ["has space@company.com"],
+                 items: constraints
+               )
+    end
+
+    test "array apply_constraints accepts valid values" do
+      {:ok, constraints} = Ash.Type.init(EmailAddress, allowed_domains: ["company.com"])
+
+      assert {:ok, ["user@company.com"]} =
+               Ash.Type.apply_constraints(
+                 {:array, EmailAddress},
+                 ["user@company.com"],
+                 items: constraints
+               )
     end
 
     test "subtype string constraints still available alongside custom" do
