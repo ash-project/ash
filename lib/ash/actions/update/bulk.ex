@@ -2192,7 +2192,9 @@ defmodule Ash.Actions.Update.Bulk do
                 process_notifications ++ bulk_notifications
               else
                 if opts[:transaction] && opts[:transaction] != :all do
-                  Ash.Notifier.notify(Enum.concat(List.wrap(bulk_notifications), List.wrap(process_notifications)))
+                  Ash.Notifier.notify(
+                    Enum.concat(List.wrap(bulk_notifications), List.wrap(process_notifications))
+                  )
                 end
 
                 []
