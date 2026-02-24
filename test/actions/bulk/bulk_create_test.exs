@@ -2141,7 +2141,10 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
 
     defmodule PartialSuccessPost do
-      use Ash.Resource, data_layer: PartialSuccessDataLayer, domain: Ash.Test.Domain
+      use Ash.Resource,
+        data_layer: PartialSuccessDataLayer,
+        domain: Ash.Test.Domain,
+        notifiers: [Notifier]
 
       attributes do
         uuid_primary_key :id
@@ -2337,6 +2340,54 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       assert result.status == :partial_success
       assert result.error_count == 2
       assert length(result.records) == 4
+    end
+
+    test "stop_on_error? with return_notifications?: true returns notifications" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "fail_1"},
+            %{title: "success_2"},
+            %{title: "success_3"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          return_notifications?: true,
+          stop_on_error?: true,
+          batch_size: 2
+        )
+
+      assert result.status == :partial_success
+      assert [%{title: "success_1"}] = result.records
+      refute_received {:notification, _}
+      assert length(result.notifications) == 1
+    end
+
+    test "stop_on_error? with notify?: true sends notifications" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "fail_1"},
+            %{title: "success_2"},
+            %{title: "success_3"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          notify?: true,
+          stop_on_error?: true,
+          batch_size: 2
+        )
+
+      assert result.status == :partial_success
+      assert [%{title: "success_1"}] = result.records
+      assert_received {:notification, _}
+      assert result.notifications == nil
     end
   end
 end

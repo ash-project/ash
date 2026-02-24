@@ -90,6 +90,11 @@ defmodule Ash.Actions.Helpers.Bulk do
   errors (instead of at the first individual error). This allows us to return
   all results from that batch, including successfully persisted records.
 
+  When stopping, notifications accumulated in `{:bulk_notifications, ref}` are
+  handled via `build_batch_partial_success_result/3`, which calls
+  `return_notifications_or_notify/2` to either return them or send them
+  immediately depending on `notify?` and `return_notifications?` options.
+
   Designed for use with `Stream.transform/3`. Returns `{[batch_results_list],
   acc ++ batch_results_list}` to continue processing, or throws
   `{:batch_partial_success, accumulated ++ batch_results_list, ref}` to signal
@@ -141,10 +146,12 @@ defmodule Ash.Actions.Helpers.Bulk do
 
     status = if Process.get({:any_success?, ref}), do: :partial_success, else: :error
 
+    notifications = return_notifications_or_notify(ref, opts)
+
     result = %Ash.BulkResult{
       status: status,
       records: records,
-      notifications: Process.delete({:bulk_notifications, ref})
+      notifications: notifications
     }
 
     {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, errors, opts)
