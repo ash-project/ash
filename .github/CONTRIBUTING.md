@@ -56,7 +56,7 @@ To find the right module to edit:
 
 When making DSL documentation improvements, make sure to:
 1. Edit the appropriate DSL definition module (not generated docs)
-3. Test that your changes generate correctly by running `mix docs`
+2. Test that your changes generate correctly by running `mix docs`
 
 ## Rules
 
