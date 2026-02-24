@@ -248,39 +248,7 @@ defmodule Ash.Actions.Create.Bulk do
 
             records = if opts[:return_records?], do: records, else: nil
 
-            notifications =
-              if opts[:notify?] do
-                Process.delete({:bulk_notifications, ref}) || []
-              else
-                []
-              end
-
-            # Unless return_notifications? is true, we always want to end up with nil.
-            notifications =
-              cond do
-                Enum.empty?(notifications) ->
-                  if opts[:return_notifications?], do: [], else: nil
-
-                opts[:return_notifications?] ->
-                  notifications
-
-                true ->
-                  notifications =
-                    if opts[:notify?] do
-                      Ash.Notifier.notify(notifications)
-                    else
-                      notifications
-                    end
-
-                  if Process.get(:ash_started_transaction?) do
-                    Process.put(
-                      :ash_notifications,
-                      Process.get(:ash_notifications, []) ++ notifications
-                    )
-                  end
-
-                  nil
-              end
+            notifications = Ash.Actions.Helpers.Bulk.return_notifications_or_notify(ref, opts)
 
             error_count = length(error_tuples)
 

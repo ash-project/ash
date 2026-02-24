@@ -152,6 +152,48 @@ defmodule Ash.Actions.Helpers.Bulk do
     %{result | errors: errors, error_count: error_count}
   end
 
+  @doc """
+  Handles notifications at the end of a bulk operation.
+
+  This function consolidates the notification handling logic that is used in
+  multiple places in bulk operations. It handles three cases:
+
+  1. `notify?: false` - Returns `nil`, notifications are discarded
+  2. `return_notifications?: true` - Returns the accumulated notifications from
+     `{:bulk_notifications, ref}` for the caller to handle
+  3. `notify?: true` and `return_notifications?: false` - Calls
+     `Ash.Notifier.notify/1` to send notifications immediately (or defer them
+     if in a transaction by storing in `:ash_notifications`), then returns `nil`
+  """
+  @spec return_notifications_or_notify(reference(), Keyword.t()) :: list() | nil
+  def return_notifications_or_notify(ref, opts) do
+    cond do
+      opts[:return_notifications?] ->
+        # We return notifications
+        Process.delete({:bulk_notifications, ref}) || []
+
+      !opts[:notify?] ->
+        # Nothing to do, just return nil
+        nil
+
+      true ->
+        # Here notify? == true and return_notifications? == false, so we need to notify as a side effect
+        # (possibly storing in ash_notifications for later) and return nil
+        unsent_notifications =
+          (Process.delete({:bulk_notifications, ref}) || [])
+          |> Ash.Notifier.notify()
+
+        if Process.get(:ash_started_transaction?) do
+          Process.put(
+            :ash_notifications,
+            Process.get(:ash_notifications, []) ++ unsent_notifications
+          )
+        end
+
+        nil
+    end
+  end
+
   defp stop_on_error?(opts), do: opts[:stop_on_error?] && !opts[:return_stream?]
 
   @doc """
