@@ -1377,10 +1377,19 @@ defmodule Ash.DataLayer.Ets do
 
             :error ->
               {:halt,
-               {:error, "Failed to load #{inspect(value)} as type #{inspect(attribute.type)}"}}
+               {:error,
+                Ash.Error.Invalid.InvalidStoredData.exception(
+                  resource: resource,
+                  field: attribute.name
+                )}}
 
-            {:error, error} ->
-              {:halt, {:error, error}}
+            {:error, _error} ->
+              {:halt,
+               {:error,
+                Ash.Error.Invalid.InvalidStoredData.exception(
+                  resource: resource,
+                  field: attribute.name
+                )}}
           end
       end
     end)

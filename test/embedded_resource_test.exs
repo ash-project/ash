@@ -868,4 +868,79 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
       assert error[:field] == :failing_field
     end
   end
+
+  describe "end-to-end: corrupted ETS data produces safe errors" do
+    defmodule CorruptibleEmbed do
+      @moduledoc false
+      use Ash.Resource, data_layer: :embedded
+
+      attributes do
+        attribute :name, :string, public?: true
+        attribute :score, :integer, public?: true
+      end
+    end
+
+    defmodule ResourceWithEmbed do
+      @moduledoc false
+
+      use Ash.Resource,
+        domain: Ash.Test.Changeset.EmbeddedResourceTest.EtsDomain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private?(true)
+      end
+
+      actions do
+        default_accept :*
+        defaults [:create, :read]
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :profile, CorruptibleEmbed, public?: true
+      end
+    end
+
+    defmodule EtsDomain do
+      @moduledoc false
+      use Ash.Domain
+
+      resources do
+        resource ResourceWithEmbed
+      end
+    end
+
+    defp create_and_corrupt_record(corrupted_profile) do
+      record =
+        ResourceWithEmbed
+        |> Ash.Changeset.for_create(:create, %{profile: %{name: "valid", score: 42}})
+        |> Ash.create!()
+
+      table = Process.get({:ash_ets_table, ResourceWithEmbed, nil})
+      pkey = %{id: record.id}
+      {key, stored} = ETS.Set.get!(table, pkey)
+
+      corrupted = %{stored | profile: corrupted_profile}
+      ETS.Set.put(table, {key, corrupted})
+
+      record
+    end
+
+    test "reading a record with corrupted embedded data returns an Ash.Error.Invalid" do
+      create_and_corrupt_record(%{name: "valid", score: "not_an_integer"})
+
+      assert {:error, %Ash.Error.Invalid{}} = Ash.read(ResourceWithEmbed)
+    end
+
+    test "error from corrupted embedded data does not expose raw values" do
+      create_and_corrupt_record(%{name: "valid", score: "not_an_integer"})
+
+      {:error, error} = Ash.read(ResourceWithEmbed)
+
+      # The error message should not leak the raw corrupted value to end users
+      error_string = Exception.message(error)
+      refute error_string =~ "not_an_integer"
+    end
+  end
 end
