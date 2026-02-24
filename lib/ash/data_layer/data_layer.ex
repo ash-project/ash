@@ -96,6 +96,7 @@ defmodule Ash.DataLayer do
           | :boolean_filter
           | :async_engine
           | :bulk_create
+          | :bulk_create_with_partial_success
           | :update_query
           | :destroy_query
           | :create
@@ -220,6 +221,9 @@ defmodule Ash.DataLayer do
             ) ::
               :ok
               | {:ok, Enumerable.t(Ash.Resource.record())}
+              | {:partial_success,
+                 failed :: Enumerable.t({error :: term(), changeset :: Ash.Changeset.t()}),
+                 Enumerable.t(Ash.Resource.record())}
               | {:error, Ash.Error.t()}
               | {:error, :no_rollback, Ash.Error.t()}
   @callback create(Ash.Resource.t(), Ash.Changeset.t()) ::
@@ -583,6 +587,9 @@ defmodule Ash.DataLayer do
         ) ::
           :ok
           | {:ok, Enumerable.t(Ash.Resource.record())}
+          | {:partial_success,
+             failed :: Enumerable.t({error :: term(), changeset :: Ash.Changeset.t()}),
+             Enumerable.t(Ash.Resource.record())}
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def bulk_create(resource, changesets, options) do

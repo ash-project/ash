@@ -2084,4 +2084,310 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       end
     end
   end
+
+  describe "data layer partial_success" do
+    defmodule PartialSuccessDataLayer do
+      use Spark.Dsl.Extension, sections: []
+
+      @behaviour Ash.DataLayer
+
+      @impl true
+      def can?(_, :create), do: true
+      def can?(_, :bulk_create), do: true
+      def can?(_, :bulk_create_with_partial_success), do: true
+      def can?(_, :read), do: true
+      def can?(_, _), do: false
+
+      @impl true
+      def resource_to_query(_resource, _domain), do: %{}
+
+      @impl true
+      def run_query(_query, _resource), do: {:ok, []}
+
+      @impl true
+      def create(_resource, changeset) do
+        record =
+          struct(changeset.resource, %{
+            id: Ash.UUID.generate(),
+            title: changeset.attributes.title
+          })
+
+        {:ok, record}
+      end
+
+      @impl true
+      def bulk_create(resource, changesets, _opts) do
+        {succeeded, failed} =
+          Enum.reduce(changesets, {[], []}, fn changeset, {succeeded_acc, failed_acc} ->
+            if String.contains?(changeset.attributes.title, "fail") do
+              error = "Partial failure"
+              {succeeded_acc, [{error, changeset} | failed_acc]}
+            else
+              record =
+                resource
+                |> struct(changeset.attributes)
+                |> Ash.Actions.Helpers.Bulk.put_metadata(changeset)
+
+              {[record | succeeded_acc], failed_acc}
+            end
+          end)
+
+        if failed == [] do
+          {:ok, Enum.reverse(succeeded)}
+        else
+          {:partial_success, Enum.reverse(failed), Enum.reverse(succeeded)}
+        end
+      end
+    end
+
+    defmodule PartialSuccessPost do
+      use Ash.Resource,
+        data_layer: PartialSuccessDataLayer,
+        domain: Ash.Test.Domain,
+        notifiers: [Notifier]
+
+      attributes do
+        uuid_primary_key :id
+        attribute :title, :string, allow_nil?: false, public?: true
+      end
+
+      actions do
+        default_accept :*
+        defaults [:create]
+      end
+    end
+
+    test "data layer can return {:partial_success, errors, results}" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "fail_1"},
+            %{title: "success_2"},
+            %{title: "fail_2"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 2
+      assert [%{title: "success_1"}, %{title: "success_2"}] = result.records
+      assert [%{error: "Partial failure"}, %{error: "Partial failure"}] = result.errors
+
+      titles = Enum.map(result.records, & &1.title) |> Enum.sort()
+      assert titles == ["success_1", "success_2"]
+    end
+
+    test "data layer partial_success without return_records?" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "fail_1"},
+            %{title: "success_2"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: false,
+          return_errors?: true
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+      assert result.records == nil
+      assert length(result.errors) == 1
+    end
+
+    test "data layer partial_success without return_errors?" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "fail_1"},
+            %{title: "success_2"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: false
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+      assert length(result.records) == 2
+      assert result.errors == nil
+    end
+
+    test "data layer partial_success mixes with validation errors" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "fail_1"},
+            %{title: "success_2"},
+            %{title: ""}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 2
+      assert Enum.find(result.errors, &match?(%Ash.Error.Unknown.UnknownError{}, &1))
+      assert Enum.find(result.errors, &match?(%Ash.Error.Invalid{}, &1))
+    end
+
+    test "stop_on_error? stops at end of batch with partial success data layer" do
+      # With batch_size: 2, we have 2 batches:
+      # Batch 1: [success_1, fail_1] -> partial success, stop here
+      # Batch 2: [success_2, success_3] -> should NOT be processed
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "fail_1"},
+            %{title: "success_2"},
+            %{title: "success_3"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          stop_on_error?: true,
+          batch_size: 2
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+      # Only records from first batch should be returned
+      assert [%{title: "success_1"}] = result.records
+      assert length(result.errors) == 1
+    end
+
+    test "stop_on_error? with all successes in first batch continues to next batch" do
+      # With batch_size: 2, we have 2 batches:
+      # Batch 1: [success_1, success_2] -> success, continue
+      # Batch 2: [fail_1, success_3] -> partial success, stop here
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "success_2"},
+            %{title: "fail_1"},
+            %{title: "success_3"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          stop_on_error?: true,
+          batch_size: 2
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 1
+      # Records from both batches up to the error should be returned
+      titles = Enum.map(result.records, & &1.title) |> Enum.sort()
+      assert titles == ["success_1", "success_2", "success_3"]
+    end
+
+    test "stop_on_error? with no errors processes all batches" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "success_2"},
+            %{title: "success_3"},
+            %{title: "success_4"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          stop_on_error?: true,
+          batch_size: 2
+        )
+
+      assert result.status == :success
+      assert result.error_count == 0
+      assert length(result.records) == 4
+    end
+
+    test "with stop_on_error?: false processes all batches even with errors" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "success_2"},
+            %{title: "fail"},
+            %{title: "success_3"},
+            %{title: "fail"},
+            %{title: "success_4"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          stop_on_error?: false,
+          batch_size: 2
+        )
+
+      assert result.status == :partial_success
+      assert result.error_count == 2
+      assert length(result.records) == 4
+    end
+
+    test "stop_on_error? with return_notifications?: true returns notifications" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "fail_1"},
+            %{title: "success_2"},
+            %{title: "success_3"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          return_notifications?: true,
+          stop_on_error?: true,
+          batch_size: 2
+        )
+
+      assert result.status == :partial_success
+      assert [%{title: "success_1"}] = result.records
+      refute_received {:notification, _}
+      assert length(result.notifications) == 1
+    end
+
+    test "stop_on_error? with notify?: true sends notifications" do
+      result =
+        Ash.bulk_create(
+          [
+            %{title: "success_1"},
+            %{title: "fail_1"},
+            %{title: "success_2"},
+            %{title: "success_3"}
+          ],
+          PartialSuccessPost,
+          :create,
+          return_records?: true,
+          return_errors?: true,
+          notify?: true,
+          stop_on_error?: true,
+          batch_size: 2
+        )
+
+      assert result.status == :partial_success
+      assert [%{title: "success_1"}] = result.records
+      assert_received {:notification, _}
+      assert result.notifications == nil
+    end
+  end
 end
