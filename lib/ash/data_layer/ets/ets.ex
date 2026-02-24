@@ -1375,15 +1375,7 @@ defmodule Ash.DataLayer.Ets do
             {:ok, value} ->
               {:cont, {:ok, Map.put(attrs, attribute.name, value)}}
 
-            :error ->
-              {:halt,
-               {:error,
-                Ash.Error.Invalid.InvalidStoredData.exception(
-                  resource: resource,
-                  field: attribute.name
-                )}}
-
-            {:error, _error} ->
+            _ ->
               {:halt,
                {:error,
                 Ash.Error.Invalid.InvalidStoredData.exception(
