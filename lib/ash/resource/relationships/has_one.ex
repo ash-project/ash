@@ -19,6 +19,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :domain,
     :sort,
     :default_sort,
+    :offset,
     :read_action,
     :not_found_message,
     :violation_message,
@@ -62,6 +63,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           manual: atom | {atom, Keyword.t()} | nil,
           sort: Keyword.t() | nil,
           default_sort: Keyword.t() | nil,
+          offset: non_neg_integer() | nil,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
@@ -86,6 +88,12 @@ defmodule Ash.Resource.Relationships.HasOne do
                       doc: """
                       Signal that this relationship is actually a `has_many` where the first record is given via the `sort`. This will allow data layers to properly deduplicate when necessary.
                       """
+                    ],
+                    offset: [
+                      type: :non_neg_integer,
+                      doc: """
+                      An offset to skip entries when loading the relationship. Implies `from_many?: true`.
+                      """
                     ]
                   ],
                 @global_opts,
@@ -99,7 +107,10 @@ defmodule Ash.Resource.Relationships.HasOne do
     {:ok,
      relationship
      |> Ash.Resource.Actions.Read.concat_filters()
-     |> Map.put(:from_many?, relationship.from_many? || not is_nil(relationship.sort))
+     |> Map.put(
+       :from_many?,
+       relationship.from_many? || not is_nil(relationship.sort) || not is_nil(relationship.offset)
+     )
      |> manual_implies_no_attributes()}
   end
 end

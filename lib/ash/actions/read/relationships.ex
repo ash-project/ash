@@ -328,6 +328,7 @@ defmodule Ash.Actions.Read.Relationships do
             query
         end
       end)
+      |> apply_relationship_offset(relationship)
       |> Ash.Query.sort(relationship.sort)
       |> Ash.Query.default_sort(relationship.default_sort)
       |> Ash.Query.do_filter(relationship.filter, parent_stack: parent_stack)
@@ -594,6 +595,7 @@ defmodule Ash.Actions.Read.Relationships do
                 query
               end
             end)
+            |> apply_relationship_offset(relationship)
             |> Ash.Actions.Read.unpaginated_read(nil,
               authorize_with: relationship.authorize_read_with
             )
@@ -845,6 +847,7 @@ defmodule Ash.Actions.Read.Relationships do
             query
           end
         end)
+        |> apply_relationship_offset(relationship)
 
       case Ash.Actions.Read.unpaginated_read(per_record_query, nil,
              authorize_with: relationship.authorize_read_with
@@ -1810,6 +1813,14 @@ defmodule Ash.Actions.Read.Relationships do
         true
       )
     )
+  end
+
+  defp apply_relationship_offset(query, relationship) do
+    if Map.get(relationship, :offset) do
+      Ash.Query.offset(query, relationship.offset)
+    else
+      query
+    end
   end
 
   defp offset_and_limit(query) do

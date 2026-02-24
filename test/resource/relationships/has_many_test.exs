@@ -77,6 +77,31 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
 
       assert nil == Ash.Resource.Info.public_relationship(Post, :bar)
     end
+
+    test "it creates a relationship with offset and limit" do
+      defposts do
+        relationships do
+          has_many :recent, Foo do
+            destination_attribute :post_id
+            sort inserted_at: :desc
+            offset 1
+            limit 10
+            public? true
+          end
+        end
+      end
+
+      assert [
+               %HasMany{
+                 name: :recent,
+                 destination: Foo,
+                 sort: [inserted_at: :desc],
+                 offset: 1,
+                 limit: 10,
+                 public?: true
+               }
+             ] = Ash.Resource.Info.relationships(Post)
+    end
   end
 
   describe "validations" do
