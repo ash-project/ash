@@ -32,6 +32,10 @@ defmodule Ash.Test.Actions.HasManyTest do
       attribute :content, :string do
         public?(true)
       end
+
+      attribute :priority, :integer do
+        public?(true)
+      end
     end
   end
 
@@ -167,6 +171,23 @@ defmodule Ash.Test.Actions.HasManyTest do
 
       has_many :meow_list_comments, Comment do
         manual MeowCommentListRelationship
+      end
+
+      has_one :second_top_comment, Comment do
+        destination_attribute :post_id
+        sort priority: :desc
+        offset(1)
+        public? true
+        domain OtherDomain
+      end
+
+      has_many :comments_after_top, Comment do
+        destination_attribute :post_id
+        sort priority: :desc
+        offset(1)
+        limit 2
+        public? true
+        domain OtherDomain
       end
     end
   end
@@ -447,5 +468,50 @@ defmodule Ash.Test.Actions.HasManyTest do
 
     user = Ash.get!(User, to_string(user.id), load: :unread_posts, authorize?: false)
     assert length(user.unread_posts) == 2
+  end
+
+  describe "relationship offset and limit" do
+    test "has_one with sort and offset returns the second record" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
+        |> Ash.create!()
+
+      for priority <- [70, 80, 90, 60, 100] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          content: "comment #{priority}",
+          priority: priority
+        })
+        |> Ash.create!()
+      end
+
+      # Sorted by priority desc: [100, 90, 80, 70, 60], offset 1 => second record (priority 90)
+      post = Ash.load!(post, :second_top_comment)
+      assert post.second_top_comment.priority == 90
+    end
+
+    test "has_many with sort, offset and limit returns the correct slice" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
+        |> Ash.create!()
+
+      for priority <- [70, 80, 90, 60, 100] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          content: "comment #{priority}",
+          priority: priority
+        })
+        |> Ash.create!()
+      end
+
+      post = Ash.load!(post, :comments_after_top)
+      priorities = Enum.map(post.comments_after_top, & &1.priority)
+      # Sorted desc: [100, 90, 80, 70, 60], offset 1 => [90, 80, 70, 60], limit 2 => [90, 80]
+      assert priorities == [90, 80]
+    end
   end
 end
