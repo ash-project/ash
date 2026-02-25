@@ -22,7 +22,11 @@ defmodule Ash.Actions.Destroy do
         %{changeset | action_type: :destroy}
       else
         Ash.Changeset.for_destroy(%{changeset | action_type: :destroy}, action.name, %{},
-          actor: opts[:actor]
+          actor: opts[:actor],
+          authorize?: opts[:authorize?],
+          tracer: opts[:tracer],
+          tenant: opts[:tenant],
+          timeout: opts[:timeout]
         )
       end
 
