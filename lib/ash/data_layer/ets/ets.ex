@@ -1474,7 +1474,10 @@ defmodule Ash.DataLayer.Ets do
           end
         end)
 
-      to_set = Ash.Changeset.set_on_upsert(changeset, keys)
+      to_set =
+        changeset
+        |> Ash.Changeset.set_on_upsert(keys)
+        |> apply_upsert_update_defaults(resource, opts)
 
       resource
       |> resource_to_query(changeset.domain)
@@ -1516,6 +1519,35 @@ defmodule Ash.DataLayer.Ets do
         {:ok, _} ->
           {:error, "Multiple records matching keys"}
       end
+    end
+  end
+
+  defp apply_upsert_update_defaults(to_set, resource, opts) do
+    update_default_attrs =
+      resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.filter(& &1.update_default)
+
+    if opts[:touch_update_defaults?] == false || to_set == [] do
+      update_default_names = MapSet.new(update_default_attrs, & &1.name)
+      Keyword.reject(to_set, fn {key, _} -> MapSet.member?(update_default_names, key) end)
+    else
+      # Add update_defaults that aren't already in to_set
+      # (set_on_upsert's upsert_fields branch doesn't include them)
+      Enum.reduce(update_default_attrs, to_set, fn attr, acc ->
+        if Keyword.has_key?(acc, attr.name) do
+          acc
+        else
+          value =
+            case attr.update_default do
+              function when is_function(function) -> function.()
+              {m, f, a} when is_atom(m) and is_atom(f) and is_list(a) -> apply(m, f, a)
+              value -> value
+            end
+
+          Keyword.put(acc, attr.name, value)
+        end
+      end)
     end
   end
 

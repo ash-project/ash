@@ -56,6 +56,8 @@ defmodule Ash.DataLayer.MnesiaTest do
       attribute :age, :integer, public?: true
       attribute :title, :string, public?: true
       attribute :roles, {:array, :atom}, public?: true
+      create_timestamp :inserted_at
+      update_timestamp :updated_at, writable?: true, public?: true
     end
   end
 
@@ -130,6 +132,70 @@ defmodule Ash.DataLayer.MnesiaTest do
                notifications: nil,
                error_count: 0
              } = resp
+    end
+
+    test "bulk_create with upsert updates update_timestamp" do
+      past = DateTime.add(DateTime.utc_now(), -60, :second)
+
+      user =
+        %{name: "John", age: 30, title: "Developer", roles: [:admin, :user], updated_at: past}
+        |> then(&Ash.create!(MnesiaTestUser, &1))
+
+      assert DateTime.compare(user.updated_at, past) == :eq
+
+      resp =
+        [%{name: "Johnny", id: user.id}]
+        |> Ash.bulk_create(MnesiaTestUser, :create,
+          upsert?: true,
+          upsert_fields: [:name],
+          return_records?: true
+        )
+
+      assert %Ash.BulkResult{status: :success, records: [%MnesiaTestUser{} = updated]} = resp
+      assert updated.name == "Johnny"
+      assert DateTime.after?(updated.updated_at, past)
+    end
+
+    test "bulk_create with empty upsert does not update update_timestamp" do
+      past = DateTime.add(DateTime.utc_now(), -60, :second)
+
+      user =
+        %{name: "John", age: 30, title: "Developer", roles: [:admin, :user], updated_at: past}
+        |> then(&Ash.create!(MnesiaTestUser, &1))
+
+      resp =
+        [%{name: "Johnny", id: user.id}]
+        |> Ash.bulk_create(MnesiaTestUser, :create,
+          upsert?: true,
+          upsert_fields: [],
+          return_records?: true
+        )
+
+      assert %Ash.BulkResult{status: :success, records: [%MnesiaTestUser{} = updated]} = resp
+      assert DateTime.compare(updated.updated_at, past) == :eq
+    end
+
+    test "bulk_create with upsert does not update update_timestamp when touch_update_defaults? is false" do
+      past = DateTime.add(DateTime.utc_now(), -60, :second)
+
+      user =
+        %{name: "John", age: 30, title: "Developer", roles: [:admin, :user], updated_at: past}
+        |> then(&Ash.create!(MnesiaTestUser, &1))
+
+      assert DateTime.compare(user.updated_at, past) == :eq
+
+      resp =
+        [%{name: "Johnny", id: user.id}]
+        |> Ash.bulk_create(MnesiaTestUser, :create,
+          upsert?: true,
+          upsert_fields: [:name],
+          touch_update_defaults?: false,
+          return_records?: true
+        )
+
+      assert %Ash.BulkResult{status: :success, records: [%MnesiaTestUser{} = updated]} = resp
+      assert updated.name == "Johnny"
+      assert DateTime.compare(updated.updated_at, past) == :eq
     end
 
     test "bulk_create/3 with UPSERT without returning records" do

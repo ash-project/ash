@@ -357,7 +357,9 @@ defmodule Ash.DataLayer.Mnesia do
               })
           })
 
-        case upsert(resource, changeset, options.upsert_keys) do
+        case do_upsert(resource, changeset, options.upsert_keys,
+               touch_update_defaults?: Map.get(options, :touch_update_defaults?, true)
+             ) do
           {:ok, result} ->
             result =
               if options[:return_records?] do
@@ -614,6 +616,10 @@ defmodule Ash.DataLayer.Mnesia do
   @doc false
   @impl true
   def upsert(resource, changeset, keys) do
+    do_upsert(resource, changeset, keys, [])
+  end
+
+  defp do_upsert(resource, changeset, keys, opts) do
     keys = keys || Ash.Resource.Info.primary_key(resource)
 
     if Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
@@ -636,7 +642,10 @@ defmodule Ash.DataLayer.Mnesia do
           create(resource, changeset)
 
         {:ok, [result]} ->
-          to_set = Ash.Changeset.set_on_upsert(changeset, keys)
+          to_set =
+            changeset
+            |> Ash.Changeset.set_on_upsert(keys)
+            |> apply_upsert_update_defaults(resource, result, opts)
 
           changeset =
             changeset
@@ -649,6 +658,25 @@ defmodule Ash.DataLayer.Mnesia do
         {:ok, _} ->
           {:error, "Multiple records matching keys"}
       end
+    end
+  end
+
+  # Mnesia's update/2 calls apply_attributes which re-applies update_defaults
+  # via set_defaults/3. To prevent unwanted updates, we preserve existing
+  # values from the record for update_default fields so set_defaults sees
+  # them as already set and skips them.
+  defp apply_upsert_update_defaults(to_set, resource, existing_record, opts) do
+    if opts[:touch_update_defaults?] == false || to_set == [] do
+      update_default_attrs =
+        resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.filter(& &1.update_default)
+
+      Enum.reduce(update_default_attrs, to_set, fn attr, acc ->
+        Keyword.put(acc, attr.name, Map.get(existing_record, attr.name))
+      end)
+    else
+      to_set
     end
   end
 

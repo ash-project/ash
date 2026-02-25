@@ -1298,6 +1298,7 @@ defmodule Ash.Actions.Create.Bulk do
                           nil -> action.return_skipped_upsert?
                           other -> other
                         end,
+                      touch_update_defaults?: Keyword.get(opts, :touch_update_defaults?, true),
                       tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
                     }
                   )
