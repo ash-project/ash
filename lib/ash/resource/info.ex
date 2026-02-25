@@ -981,6 +981,26 @@ defmodule Ash.Resource.Info do
       !relationship || !candidate_relationship ->
         false
 
+      is_list(Map.get(relationship, :through)) ->
+        expanded_path = Map.get(relationship, :through) ++ rest
+
+        synonymous_relationship_paths?(
+          left_resource,
+          [candidate_first | candidate_rest],
+          expanded_path,
+          right_resource
+        )
+
+      is_list(Map.get(candidate_relationship, :through)) ->
+        expanded_candidate = Map.get(candidate_relationship, :through) ++ candidate_rest
+
+        synonymous_relationship_paths?(
+          left_resource,
+          expanded_candidate,
+          [first | rest],
+          right_resource
+        )
+
       relationship.type == :many_to_many && candidate_relationship.type == :has_many ->
         synonymous_relationship_paths?(left_resource, [relationship.join_relationship], [
           candidate_first

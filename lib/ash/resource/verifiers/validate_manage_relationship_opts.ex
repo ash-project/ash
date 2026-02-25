@@ -55,6 +55,24 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
               location: Entity.anno(action),
               message: "No such relationship #{opts[:relationship]} exists."
 
+        if is_list(relationship.through) do
+          raise Spark.Error.DslError,
+            module: Verifier.get_persisted(dsl_state, :module),
+            path:
+              [
+                :actions,
+                action.type,
+                action.name,
+                :change,
+                :manage_relationship
+              ] ++ Enum.uniq([opts[:argument], opts[:relationship]]),
+            location: Entity.anno(action),
+            message: """
+                Cannot use manage_relationship on #{opts[:relationship]}, because it has a through path.
+                Relationships with through paths are read-only.
+            """
+        end
+
         if ensure_compiled?(relationship) do
           try do
             manage_opts =
