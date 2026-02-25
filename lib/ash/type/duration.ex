@@ -26,15 +26,23 @@ defmodule Ash.Type.Duration do
   def cast_input(value, _) do
     case Ecto.Type.cast(:duration, value) do
       :error ->
-        case Duration.from_iso8601(value) do
-          {:ok, duration} -> {:ok, duration}
-          {:error, error} -> {:error, error}
+        if is_binary(value) do
+          case Duration.from_iso8601(value) do
+            {:ok, duration} -> {:ok, duration}
+            {:error, error} -> {:error, error}
+          end
+        else
+          :error
         end
 
       {:error, error} ->
-        case Duration.from_iso8601(value) do
-          {:ok, duration} -> {:ok, duration}
-          {:error, _} -> {:error, error}
+        if is_binary(value) do
+          case Duration.from_iso8601(value) do
+            {:ok, duration} -> {:ok, duration}
+            {:error, _} -> {:error, error}
+          end
+        else
+          {:error, error}
         end
 
       {:ok, duration} ->
