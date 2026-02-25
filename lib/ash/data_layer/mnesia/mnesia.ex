@@ -619,6 +619,12 @@ defmodule Ash.DataLayer.Mnesia do
     do_upsert(resource, changeset, keys, [])
   end
 
+  @doc false
+  @impl true
+  def upsert(resource, changeset, keys, _identity, opts) do
+    do_upsert(resource, changeset, keys, opts)
+  end
+
   defp do_upsert(resource, changeset, keys, opts) do
     keys = keys || Ash.Resource.Info.primary_key(resource)
 
@@ -645,7 +651,7 @@ defmodule Ash.DataLayer.Mnesia do
           to_set =
             changeset
             |> Ash.Changeset.set_on_upsert(keys)
-            |> apply_upsert_update_defaults(resource, result, opts)
+            |> apply_upsert_update_defaults(resource, result, changeset, opts)
 
           changeset =
             changeset
@@ -665,20 +671,32 @@ defmodule Ash.DataLayer.Mnesia do
   # via set_defaults/3. To prevent unwanted updates, we preserve existing
   # values from the record for update_default fields so set_defaults sees
   # them as already set and skips them.
-  defp apply_upsert_update_defaults(to_set, resource, existing_record, opts) do
+  defp apply_upsert_update_defaults(to_set, resource, existing_record, changeset, opts) do
     if opts[:touch_update_defaults?] == false || to_set == [] do
+      upsert_fields = changeset.context[:private][:upsert_fields]
+
       update_default_attrs =
         resource
         |> Ash.Resource.Info.attributes()
         |> Enum.filter(& &1.update_default)
 
       Enum.reduce(update_default_attrs, to_set, fn attr, acc ->
-        Keyword.put(acc, attr.name, Map.get(existing_record, attr.name))
+        if explicitly_set?(attr.name, upsert_fields, changeset) do
+          acc
+        else
+          Keyword.put(acc, attr.name, Map.get(existing_record, attr.name))
+        end
       end)
     else
       to_set
     end
   end
+
+  defp explicitly_set?(key, upsert_fields, _changeset) when is_list(upsert_fields),
+    do: key in upsert_fields
+
+  defp explicitly_set?(key, _, changeset),
+    do: Map.has_key?(changeset.attributes, key) && key not in Map.get(changeset, :defaults, [])
 
   @doc false
   @impl true

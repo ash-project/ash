@@ -451,7 +451,9 @@ defmodule Ash.Actions.Create do
                               Ash.Resource.Info.identity(
                                 changeset.resource,
                                 opts[:upsert_identity] || changeset.action.upsert_identity
-                              )
+                              ),
+                            touch_update_defaults?:
+                              Keyword.get(opts, :touch_update_defaults?, true)
                           )
                           |> case do
                             {:ok, {:upsert_skipped, _query, callback}} ->

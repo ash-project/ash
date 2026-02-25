@@ -365,6 +365,12 @@ defmodule Ash do
                           type: :any,
                           doc:
                             "An expression to check if the record should be updated when there's a conflict."
+                        ],
+                        touch_update_defaults?: [
+                          type: :boolean,
+                          default: true,
+                          doc:
+                            "Whether or not to apply update defaults (like `updated_at` timestamps) on upsert. Only relevant when `upsert?: true` is set. Set to `false` to skip touching update_default fields when an upsert results in an update."
                         ]
                       ]
                       |> Spark.Options.merge(@global_opts, "Global Options")

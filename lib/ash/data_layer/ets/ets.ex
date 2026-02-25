@@ -1477,7 +1477,7 @@ defmodule Ash.DataLayer.Ets do
       to_set =
         changeset
         |> Ash.Changeset.set_on_upsert(keys)
-        |> apply_upsert_update_defaults(resource, opts)
+        |> apply_upsert_update_defaults(resource, changeset, opts)
 
       resource
       |> resource_to_query(changeset.domain)
@@ -1522,15 +1522,20 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp apply_upsert_update_defaults(to_set, resource, opts) do
+  defp apply_upsert_update_defaults(to_set, resource, changeset, opts) do
     update_default_attrs =
       resource
       |> Ash.Resource.Info.attributes()
       |> Enum.filter(& &1.update_default)
 
     if opts[:touch_update_defaults?] == false || to_set == [] do
+      upsert_fields = changeset.context[:private][:upsert_fields]
       update_default_names = MapSet.new(update_default_attrs, & &1.name)
-      Keyword.reject(to_set, fn {key, _} -> MapSet.member?(update_default_names, key) end)
+
+      Keyword.reject(to_set, fn {key, _} ->
+        MapSet.member?(update_default_names, key) &&
+          !explicitly_set?(key, upsert_fields, changeset)
+      end)
     else
       # Add update_defaults that aren't already in to_set
       # (set_on_upsert's upsert_fields branch doesn't include them)
@@ -1550,6 +1555,12 @@ defmodule Ash.DataLayer.Ets do
       end)
     end
   end
+
+  defp explicitly_set?(key, upsert_fields, _changeset) when is_list(upsert_fields),
+    do: key in upsert_fields
+
+  defp explicitly_set?(key, _, changeset),
+    do: Map.has_key?(changeset.attributes, key) && key not in Map.get(changeset, :defaults, [])
 
   @spec upsert_conflict_check(
           changeset :: Ash.Changeset.t(),
