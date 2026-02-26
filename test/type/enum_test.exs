@@ -100,6 +100,16 @@ defmodule Ash.Test.Type.EnumTest do
     assert DescriptiveEnum.label(:with_details) == "I have a label"
   end
 
+  test "label and description can be overridden" do
+    assert OverriddenEnum.label(:active) == "Currently Active"
+    assert OverriddenEnum.label(:inactive) == "Inactive"
+    assert OverriddenEnum.label(:archived) == "Archived"
+
+    assert OverriddenEnum.description(:active) == "This item is currently active"
+    assert OverriddenEnum.description(:inactive) == nil
+    assert OverriddenEnum.description(:archived) == nil
+  end
+
   describe "types are correctly generated" do
     test "simple atoms" do
       assert {:ok,
