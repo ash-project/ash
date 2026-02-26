@@ -243,19 +243,6 @@ defmodule Ash.DataLayer do
                   (-> {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term})}}
               | {:error, term}
               | {:error, :no_rollback, term}
-  @callback upsert(
-              Ash.Resource.t(),
-              Ash.Changeset.t(),
-              list(atom),
-              Ash.Resource.Identity.t() | nil,
-              Keyword.t()
-            ) ::
-              {:ok,
-               Ash.Resource.record()
-               | {:upsert_skipped, Ash.Query.t(),
-                  (-> {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term})}}
-              | {:error, term}
-              | {:error, :no_rollback, term}
   @callback update(Ash.Resource.t(), Ash.Changeset.t()) ::
               {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
 
@@ -356,7 +343,6 @@ defmodule Ash.DataLayer do
                       rollback: 2,
                       upsert: 3,
                       upsert: 4,
-                      upsert: 5,
                       functions: 1,
                       in_transaction?: 1,
                       prefer_lateral_join_for_many_to_many?: 0,
@@ -642,8 +628,7 @@ defmodule Ash.DataLayer do
           Ash.Resource.t(),
           Ash.Changeset.t(),
           list(atom),
-          identity :: Ash.Resource.Identity.t() | nil,
-          opts :: Keyword.t()
+          identity :: Ash.Resource.Identity.t() | nil
         ) ::
           {:ok,
            Ash.Resource.record()
@@ -652,19 +637,14 @@ defmodule Ash.DataLayer do
           | {:error, term}
           | {:error, :no_rollback, term}
 
-  def upsert(resource, changeset, keys, identity \\ nil, opts \\ []) do
+  def upsert(resource, changeset, keys, identity \\ nil) do
     changeset = %{changeset | tenant: changeset.to_tenant}
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    cond do
-      Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :upsert, 5) ->
-        data_layer.upsert(resource, changeset, keys, identity, opts)
-
-      Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :upsert, 4) ->
-        data_layer.upsert(resource, changeset, keys, identity)
-
-      true ->
-        data_layer.upsert(resource, changeset, keys)
+    if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :upsert, 4) do
+      data_layer.upsert(resource, changeset, keys, identity)
+    else
+      data_layer.upsert(resource, changeset, keys)
     end
   end
 

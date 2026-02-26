@@ -353,13 +353,12 @@ defmodule Ash.DataLayer.Mnesia do
           Ash.Changeset.set_context(changeset, %{
             private:
               Map.merge(changeset.context[:private] || %{}, %{
-                upsert_fields: options[:upsert_fields] || []
+                upsert_fields: options[:upsert_fields] || [],
+                touch_update_defaults?: Map.get(options, :touch_update_defaults?, true)
               })
           })
 
-        case do_upsert(resource, changeset, options.upsert_keys,
-               touch_update_defaults?: Map.get(options, :touch_update_defaults?, true)
-             ) do
+        case upsert(resource, changeset, options.upsert_keys) do
           {:ok, result} ->
             result =
               if options[:return_records?] do
@@ -616,16 +615,6 @@ defmodule Ash.DataLayer.Mnesia do
   @doc false
   @impl true
   def upsert(resource, changeset, keys) do
-    do_upsert(resource, changeset, keys, [])
-  end
-
-  @doc false
-  @impl true
-  def upsert(resource, changeset, keys, _identity, opts) do
-    do_upsert(resource, changeset, keys, opts)
-  end
-
-  defp do_upsert(resource, changeset, keys, opts) do
     keys = keys || Ash.Resource.Info.primary_key(resource)
 
     if Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
@@ -651,7 +640,7 @@ defmodule Ash.DataLayer.Mnesia do
           to_set =
             changeset
             |> Ash.Changeset.set_on_upsert(keys)
-            |> apply_upsert_update_defaults(resource, result, changeset, opts)
+            |> apply_upsert_update_defaults(resource, result, changeset)
 
           changeset =
             changeset
@@ -671,8 +660,11 @@ defmodule Ash.DataLayer.Mnesia do
   # via set_defaults/3. To prevent unwanted updates, we preserve existing
   # values from the record for update_default fields so set_defaults sees
   # them as already set and skips them.
-  defp apply_upsert_update_defaults(to_set, resource, existing_record, changeset, opts) do
-    if opts[:touch_update_defaults?] == false || to_set == [] do
+  defp apply_upsert_update_defaults(to_set, resource, existing_record, changeset) do
+    touch_update_defaults? =
+      changeset.context[:private][:touch_update_defaults?]
+
+    if touch_update_defaults? == false || to_set == [] do
       upsert_fields = changeset.context[:private][:upsert_fields]
 
       update_default_attrs =
