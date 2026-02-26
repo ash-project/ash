@@ -2799,6 +2799,15 @@ defmodule Ash.Actions.Update.Bulk do
             end
 
           {:error, error} ->
+            if opts[:transaction] && opts[:rollback_on_error?] do
+              if Ash.DataLayer.in_transaction?(changeset.resource) do
+                Ash.DataLayer.rollback(
+                  changeset.resource,
+                  error
+                )
+              end
+            end
+
             [{:error, error, changeset}]
         end
 
