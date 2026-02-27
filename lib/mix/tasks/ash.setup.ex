@@ -21,10 +21,7 @@ defmodule Mix.Tasks.Ash.Setup do
 
     extensions = extensions_fn.(argv)
 
-    failures =
-      []
-      |> run_compile(compile_fn)
-      |> run_extensions(extensions, argv)
+    failures = run_compile(compile_fn) ++ run_extensions(extensions, argv)
 
     if failures != [] do
       message =
@@ -44,17 +41,17 @@ defmodule Mix.Tasks.Ash.Setup do
     end
   end
 
-  defp run_compile(failures, compile_fn) do
+  defp run_compile(compile_fn) do
     try do
       compile_fn.()
-      failures
+      []
     rescue
-      e -> failures ++ [{"compile", e}]
+      e -> [{"compile", e}]
     end
   end
 
-  defp run_extensions(failures, extensions, argv) do
-    Enum.reduce(extensions, failures, fn extension, acc ->
+  defp run_extensions(extensions, argv) do
+    Enum.reduce(extensions, [], fn extension, acc ->
       if function_exported?(extension, :setup, 1) do
         name =
           if function_exported?(extension, :name, 0) do
