@@ -1735,7 +1735,14 @@ defmodule Ash.Type do
             {:ok, value} ->
               {:ok, value}
 
-            _ ->
+            {:error, error} ->
+              raise Ash.Error.Unknown.InvalidStoredValue,
+                type: parent,
+                value: term,
+                constraints: params,
+                error: error
+
+            :error ->
               :error
           end
         end
@@ -1748,7 +1755,14 @@ defmodule Ash.Type do
             {:ok, value} ->
               {:ok, value}
 
-            _ ->
+            {:error, error} ->
+              raise Ash.Error.Unknown.InvalidCastedValue,
+                type: parent,
+                value: term,
+                constraints: params,
+                error: error
+
+            :error ->
               :error
           end
         end
