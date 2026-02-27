@@ -138,6 +138,44 @@ defmodule Ash.Test.ManageRelationshipTest do
                  on_match: {:update, :update}
                )
       end
+
+      destroy :destroy_with_related do
+        require_atomic? false
+        argument :other_resources, {:array, :map}
+        change manage_relationship(:other_resources, type: :direct_control)
+      end
+
+      destroy :destroy_with_hard_related do
+        require_atomic? false
+        argument :other_resources, {:array, :map}
+
+        change manage_relationship(:other_resources,
+                 type: :direct_control,
+                 on_missing: {:destroy, :hard_destroy}
+               )
+      end
+
+      destroy :destroy_and_create_related do
+        require_atomic? false
+        argument :related_resource, :map
+        change manage_relationship(:related_resource, :related_resource, type: :create)
+      end
+
+      destroy :soft_destroy_with_related do
+        soft? true
+        require_atomic? false
+        argument :other_resources, {:array, :map}
+        change set_attribute(:archived_at, &DateTime.utc_now/0)
+        change manage_relationship(:other_resources, type: :direct_control)
+      end
+
+      destroy :soft_destroy_and_create_related do
+        soft? true
+        require_atomic? false
+        argument :related_resource, :map
+        change set_attribute(:archived_at, &DateTime.utc_now/0)
+        change manage_relationship(:related_resource, :related_resource, type: :create)
+      end
     end
 
     changes do
@@ -153,6 +191,7 @@ defmodule Ash.Test.ManageRelationshipTest do
     attributes do
       uuid_primary_key :id
       attribute :name, :string
+      attribute :archived_at, :utc_datetime_usec, public?: true
     end
 
     relationships do
@@ -239,6 +278,8 @@ defmodule Ash.Test.ManageRelationshipTest do
         soft? true
         change set_attribute(:archived_at, &DateTime.utc_now/0)
       end
+
+      destroy :hard_destroy
     end
 
     attributes do
@@ -867,6 +908,351 @@ defmodule Ash.Test.ManageRelationshipTest do
                  actor: actor
                )
                |> Ash.update()
+    end
+  end
+
+  describe "hard destroy with manage_relationship" do
+    test "can create related records during hard destroy" do
+      parent =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+        |> Ash.create!()
+
+      assert {:ok, _destroyed} =
+               parent
+               |> Ash.Changeset.for_destroy(:destroy_and_create_related, %{
+                 related_resource: %{required_attribute: "created_during_destroy"}
+               })
+               |> Ash.destroy(return_destroyed?: true)
+
+      # Parent should be gone
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(ParentResource, parent.id)
+
+      # Related resource should exist with the parent's id
+      {:ok, related} = Ash.load(parent, :related_resource)
+      refute is_nil(related.related_resource)
+      assert related.related_resource.required_attribute == "created_during_destroy"
+    end
+
+    test "can update related records during hard destroy" do
+      {:ok, parent} =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{
+          name: "Test Parent",
+          other_resources: [
+            %{required_attribute: "first"},
+            %{required_attribute: "second"}
+          ]
+        })
+        |> Ash.create!()
+        |> Ash.load(:other_resources)
+
+      first = Enum.find(parent.other_resources, &(&1.required_attribute == "first"))
+      second = Enum.find(parent.other_resources, &(&1.required_attribute == "second"))
+
+      assert {:ok, _destroyed} =
+               parent
+               |> Ash.Changeset.for_destroy(:destroy_with_related, %{
+                 other_resources: [
+                   %{id: first.id, required_attribute: "first_updated"},
+                   %{id: second.id, required_attribute: "second_updated"}
+                 ]
+               })
+               |> Ash.destroy(return_destroyed?: true)
+
+      # Parent should be gone
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(ParentResource, parent.id)
+
+      # Related resources should be updated
+      assert {:ok, first_record} = Ash.get(OtherResource, first.id)
+      assert first_record.required_attribute == "first_updated"
+
+      assert {:ok, second_record} = Ash.get(OtherResource, second.id)
+      assert second_record.required_attribute == "second_updated"
+    end
+
+    test "can destroy related records during hard destroy (direct_control with empty list)" do
+      {:ok, parent} =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{
+          name: "Test Parent",
+          other_resources: [
+            %{required_attribute: "first"},
+            %{required_attribute: "second"}
+          ]
+        })
+        |> Ash.create!()
+        |> Ash.load(:other_resources)
+
+      other_ids = Enum.map(parent.other_resources, & &1.id)
+
+      # Destroy parent with empty other_resources list — direct_control should
+      # destroy (soft, since OtherResource's primary destroy is soft) the related records
+      assert {:ok, _destroyed} =
+               parent
+               |> Ash.Changeset.for_destroy(:destroy_with_related, %{
+                 other_resources: []
+               })
+               |> Ash.destroy(return_destroyed?: true)
+
+      # Parent should be gone
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(ParentResource, parent.id)
+
+      # Related resources should be soft-destroyed (archived_at set)
+      for id <- other_ids do
+        assert {:ok, record} = Ash.get(OtherResource, id)
+        assert not is_nil(record.archived_at)
+      end
+    end
+
+    test "can hard-destroy related records during hard destroy" do
+      {:ok, parent} =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{
+          name: "Test Parent",
+          other_resources: [
+            %{required_attribute: "first"},
+            %{required_attribute: "second"}
+          ]
+        })
+        |> Ash.create!()
+        |> Ash.load(:other_resources)
+
+      other_ids = Enum.map(parent.other_resources, & &1.id)
+
+      # Destroy parent with empty list using hard_destroy action for missing records
+      assert {:ok, _destroyed} =
+               parent
+               |> Ash.Changeset.for_destroy(:destroy_with_hard_related, %{
+                 other_resources: []
+               })
+               |> Ash.destroy(return_destroyed?: true)
+
+      # Parent should be gone
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(ParentResource, parent.id)
+
+      # Related resources should be completely gone (hard deleted)
+      for id <- other_ids do
+        assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+                 Ash.get(OtherResource, id)
+      end
+    end
+
+    test "returns error when manage_relationship fails during hard destroy" do
+      parent =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+        |> Ash.create!()
+
+      # Attempt to create a related resource with invalid data (nil required_attribute)
+      assert {:error, %Ash.Error.Invalid{}} =
+               parent
+               |> Ash.Changeset.for_destroy(:destroy_and_create_related, %{
+                 related_resource: %{required_attribute: nil}
+               })
+               |> Ash.destroy()
+    end
+  end
+
+  describe "soft destroy with manage_relationship" do
+    test "can create related records during soft destroy" do
+      parent =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+        |> Ash.create!()
+
+      assert {:ok, destroyed} =
+               parent
+               |> Ash.Changeset.for_destroy(:soft_destroy_and_create_related, %{
+                 related_resource: %{required_attribute: "created_during_soft_destroy"}
+               })
+               |> Ash.destroy(return_destroyed?: true)
+
+      # Parent should be soft-destroyed (archived_at set)
+      assert not is_nil(destroyed.archived_at)
+
+      # Related resource should exist
+      {:ok, reloaded} = Ash.load(parent, :related_resource)
+      refute is_nil(reloaded.related_resource)
+      assert reloaded.related_resource.required_attribute == "created_during_soft_destroy"
+    end
+
+    test "can manage related records during soft destroy (direct_control)" do
+      {:ok, parent} =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{
+          name: "Test Parent",
+          other_resources: [
+            %{required_attribute: "first"},
+            %{required_attribute: "second"}
+          ]
+        })
+        |> Ash.create!()
+        |> Ash.load(:other_resources)
+
+      first = Enum.find(parent.other_resources, &(&1.required_attribute == "first"))
+      second = Enum.find(parent.other_resources, &(&1.required_attribute == "second"))
+
+      # Soft destroy parent, keeping only first (updated) and removing second
+      assert {:ok, destroyed} =
+               parent
+               |> Ash.Changeset.for_destroy(:soft_destroy_with_related, %{
+                 other_resources: [
+                   %{id: first.id, required_attribute: "first_updated"}
+                 ]
+               })
+               |> Ash.destroy(return_destroyed?: true)
+
+      # Parent should be soft-destroyed
+      assert not is_nil(destroyed.archived_at)
+
+      # First should be updated
+      assert {:ok, first_record} = Ash.get(OtherResource, first.id)
+      assert first_record.required_attribute == "first_updated"
+
+      # Second should be soft-destroyed
+      assert {:ok, second_record} = Ash.get(OtherResource, second.id)
+      assert not is_nil(second_record.archived_at)
+    end
+
+    test "returns error when manage_relationship fails during soft destroy" do
+      parent =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+        |> Ash.create!()
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               parent
+               |> Ash.Changeset.for_destroy(:soft_destroy_and_create_related, %{
+                 related_resource: %{required_attribute: nil}
+               })
+               |> Ash.destroy()
+    end
+  end
+
+  describe "bulk hard destroy with manage_relationship" do
+    test "can create related records during bulk hard destroy" do
+      parent1 =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{name: "Parent 1"})
+        |> Ash.create!()
+
+      parent2 =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{name: "Parent 2"})
+        |> Ash.create!()
+
+      result =
+        Ash.bulk_destroy!(
+          [parent1, parent2],
+          :destroy_and_create_related,
+          %{related_resource: %{required_attribute: "bulk_created"}},
+          strategy: :stream,
+          return_errors?: true,
+          return_records?: true
+        )
+
+      assert result.status == :success
+      assert length(result.records) == 2
+
+      # Parents should be gone
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(ParentResource, parent1.id)
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(ParentResource, parent2.id)
+
+      # Each parent should have created a related resource
+      {:ok, rel1} = Ash.load(parent1, :related_resource)
+      refute is_nil(rel1.related_resource)
+      assert rel1.related_resource.required_attribute == "bulk_created"
+
+      {:ok, rel2} = Ash.load(parent2, :related_resource)
+      refute is_nil(rel2.related_resource)
+      assert rel2.related_resource.required_attribute == "bulk_created"
+    end
+
+    test "can manage related records during bulk hard destroy (direct_control)" do
+      {:ok, parent} =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{
+          name: "Test Parent",
+          other_resources: [%{required_attribute: "will_be_destroyed"}]
+        })
+        |> Ash.create!()
+        |> Ash.load(:other_resources)
+
+      other_id = hd(parent.other_resources).id
+
+      result =
+        Ash.bulk_destroy!([parent], :destroy_with_hard_related, %{other_resources: []},
+          strategy: :stream,
+          return_errors?: true,
+          return_records?: true
+        )
+
+      assert result.status == :success
+
+      # Parent should be gone
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(ParentResource, parent.id)
+
+      # Related resource should be hard deleted
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(OtherResource, other_id)
+    end
+
+    test "returns errors when manage_relationship fails during bulk hard destroy" do
+      parent =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{name: "Test Parent"})
+        |> Ash.create!()
+
+      assert_raise Ash.Error.Invalid, fn ->
+        Ash.bulk_destroy!(
+          [parent],
+          :destroy_and_create_related,
+          %{related_resource: %{required_attribute: nil}},
+          strategy: :stream,
+          return_errors?: true
+        )
+      end
+    end
+  end
+
+  describe "bulk soft destroy with manage_relationship" do
+    test "can manage related records during bulk soft destroy" do
+      {:ok, parent} =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{
+          name: "Test Parent",
+          other_resources: [%{required_attribute: "will_be_destroyed"}]
+        })
+        |> Ash.create!()
+        |> Ash.load(:other_resources)
+
+      other_id = hd(parent.other_resources).id
+
+      result =
+        Ash.bulk_destroy!([parent], :soft_destroy_with_related, %{other_resources: []},
+          strategy: :stream,
+          return_errors?: true,
+          return_records?: true
+        )
+
+      assert result.status == :success
+
+      # Parent should be soft-destroyed
+      assert {:ok, reloaded_parent} = Ash.get(ParentResource, parent.id)
+      assert not is_nil(reloaded_parent.archived_at)
+
+      # Related resource should be soft-destroyed
+      assert {:ok, reloaded_other} = Ash.get(OtherResource, other_id)
+      assert not is_nil(reloaded_other.archived_at)
     end
   end
 end

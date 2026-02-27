@@ -242,11 +242,15 @@ defmodule Ash.Actions.Destroy do
                   end
                 end
               end
+              |> manage_relationships(domain, changeset,
+                actor: opts[:actor],
+                authorize?: opts[:authorize?]
+              )
               |> then(fn result ->
                 case result do
-                  {:ok, destroyed} ->
+                  {:ok, destroyed, %{notifications: manage_notifications}} ->
                     if opts[:return_destroyed?] do
-                      {:ok, destroyed, %{notifications: []}}
+                      {:ok, destroyed, %{notifications: manage_notifications}}
                       |> Helpers.notify(changeset, opts)
                       |> Helpers.select(changeset)
                       |> Helpers.restrict_field_access(changeset)
@@ -257,7 +261,7 @@ defmodule Ash.Actions.Destroy do
                           select: changeset.action_select
                         })
 
-                      {:ok, destroyed, %{notifications: []}}
+                      {:ok, destroyed, %{notifications: manage_notifications}}
                       |> Helpers.notify(changeset, opts)
                     end
 
@@ -303,6 +307,37 @@ defmodule Ash.Actions.Destroy do
         {:error, error}
     end
   end
+
+  defp manage_relationships(
+         {:ok, destroyed, %{notifications: notifications}},
+         domain,
+         changeset,
+         engine_opts
+       ) do
+    case manage_relationships({:ok, destroyed}, domain, changeset, engine_opts) do
+      {:ok, destroyed, info} ->
+        {:ok, destroyed, Map.update(info, :notifications, notifications, &(&1 ++ notifications))}
+
+      other ->
+        other
+    end
+  end
+
+  defp manage_relationships({:ok, destroyed}, domain, changeset, engine_opts) do
+    with {:ok, loaded} <-
+           Ash.Actions.ManagedRelationships.load(domain, destroyed, changeset, engine_opts),
+         {:ok, with_relationships, new_notifications} <-
+           Ash.Actions.ManagedRelationships.manage_relationships(
+             loaded,
+             changeset,
+             engine_opts[:actor],
+             engine_opts
+           ) do
+      {:ok, with_relationships, %{notifications: new_notifications}}
+    end
+  end
+
+  defp manage_relationships(other, _, _, _), do: other
 
   defp set_tenant(changeset) do
     changeset =
