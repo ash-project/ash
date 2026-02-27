@@ -25,6 +25,23 @@ defmodule DescriptiveEnum do
     ]
 end
 
+defmodule OverriddenEnum do
+  @moduledoc false
+
+  use Ash.Type.Enum,
+    values: [
+      :active,
+      :inactive,
+      :archived
+    ]
+
+  def label(:active), do: "Currently Active"
+  def label(value), do: super(value)
+
+  def description(:active), do: "This item is currently active"
+  def description(value), do: super(value)
+end
+
 defmodule StringEnum do
   @moduledoc false
 
