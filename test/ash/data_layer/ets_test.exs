@@ -45,6 +45,8 @@ defmodule Ash.DataLayer.EtsTest do
       attribute :age, :integer, public?: true
       attribute :title, :string, public?: true
       attribute :roles, {:array, :atom}, public?: true
+      create_timestamp :inserted_at
+      update_timestamp :updated_at, writable?: true, public?: true
     end
   end
 
@@ -136,6 +138,146 @@ defmodule Ash.DataLayer.EtsTest do
 
     assert [{%{id: ^id}, %EtsTestUser{name: nil, age: 25}}] =
              user_table()
+  end
+
+  test "upsert with empty upsert_fields does not update update_timestamp" do
+    past = DateTime.add(DateTime.utc_now(), -60, :second)
+
+    %EtsTestUser{id: id} = create_user(%{name: "Mike", updated_at: past})
+
+    updated =
+      create_user(%{name: "Mike Updated", id: id},
+        upsert?: true,
+        upsert_fields: []
+      )
+
+    assert updated.id == id
+    assert updated.name == "Mike"
+    assert DateTime.compare(updated.updated_at, past) == :eq
+  end
+
+  test "upsert does not update update_timestamp when touch_update_defaults? is false" do
+    past = DateTime.add(DateTime.utc_now(), -60, :second)
+
+    %EtsTestUser{id: id} = create_user(%{name: "Mike", updated_at: past})
+
+    updated =
+      create_user(%{name: "Mike Updated", id: id},
+        upsert?: true,
+        touch_update_defaults?: false
+      )
+
+    assert updated.id == id
+    assert updated.name == "Mike Updated"
+    assert DateTime.compare(updated.updated_at, past) == :eq
+  end
+
+  test "upsert preserves explicitly set update_default fields when touch_update_defaults? is false" do
+    past = DateTime.add(DateTime.utc_now(), -120, :second)
+    explicit_time = DateTime.add(DateTime.utc_now(), -30, :second)
+
+    %EtsTestUser{id: id} = create_user(%{name: "Mike", updated_at: past})
+
+    updated =
+      create_user(%{name: "Mike Updated", id: id, updated_at: explicit_time},
+        upsert?: true,
+        touch_update_defaults?: false
+      )
+
+    assert updated.id == id
+    assert updated.name == "Mike Updated"
+    assert DateTime.compare(updated.updated_at, explicit_time) == :eq
+  end
+
+  test "bulk_create with upsert updates update_timestamp" do
+    past = DateTime.add(DateTime.utc_now(), -60, :second)
+
+    %EtsTestUser{id: id} = create_user(%{name: "Mike", updated_at: past})
+
+    assert [{_, %EtsTestUser{updated_at: stored}}] = user_table()
+    assert DateTime.compare(stored, past) == :eq
+
+    result =
+      Ash.bulk_create!(
+        [%{name: "Mike Updated", id: id}],
+        EtsTestUser,
+        :create,
+        upsert?: true,
+        upsert_fields: [:name],
+        return_records?: true
+      )
+
+    assert [%EtsTestUser{id: ^id, name: "Mike Updated", updated_at: new_updated_at}] =
+             result.records
+
+    assert DateTime.after?(new_updated_at, past)
+  end
+
+  test "bulk_create with empty upsert does not update update_timestamp" do
+    past = DateTime.add(DateTime.utc_now(), -60, :second)
+
+    %EtsTestUser{id: id} = create_user(%{name: "Mike", updated_at: past})
+
+    result =
+      Ash.bulk_create!(
+        [%{name: "Mike Updated", id: id}],
+        EtsTestUser,
+        :create,
+        upsert?: true,
+        upsert_fields: [],
+        return_records?: true
+      )
+
+    assert [%EtsTestUser{id: ^id, updated_at: new_updated_at}] = result.records
+    assert DateTime.compare(new_updated_at, past) == :eq
+  end
+
+  test "bulk_create with upsert does not update update_timestamp when touch_update_defaults? is false" do
+    past = DateTime.add(DateTime.utc_now(), -60, :second)
+
+    %EtsTestUser{id: id} = create_user(%{name: "Mike", updated_at: past})
+
+    assert [{_, %EtsTestUser{updated_at: stored}}] = user_table()
+    assert DateTime.compare(stored, past) == :eq
+
+    result =
+      Ash.bulk_create!(
+        [%{name: "Mike Updated", id: id}],
+        EtsTestUser,
+        :create,
+        upsert?: true,
+        upsert_fields: [:name],
+        touch_update_defaults?: false,
+        return_records?: true
+      )
+
+    assert [%EtsTestUser{id: ^id, name: "Mike Updated", updated_at: new_updated_at}] =
+             result.records
+
+    assert DateTime.compare(new_updated_at, past) == :eq
+  end
+
+  test "bulk_create with upsert preserves explicitly set update_default fields when touch_update_defaults? is false" do
+    past = DateTime.add(DateTime.utc_now(), -120, :second)
+    explicit_time = DateTime.add(DateTime.utc_now(), -30, :second)
+
+    %EtsTestUser{id: id} = create_user(%{name: "Mike", updated_at: past})
+
+    result =
+      Ash.bulk_create!(
+        [%{name: "Mike Updated", id: id, updated_at: explicit_time}],
+        EtsTestUser,
+        :create,
+        upsert?: true,
+        upsert_fields: [:name, :updated_at],
+        touch_update_defaults?: false,
+        return_records?: true
+      )
+
+    assert [%EtsTestUser{id: ^id, name: "Mike Updated", updated_at: new_updated_at}] =
+             result.records
+
+    assert DateTime.compare(new_updated_at, explicit_time) == :eq
   end
 
   test "destroy" do

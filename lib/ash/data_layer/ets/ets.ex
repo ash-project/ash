@@ -1441,13 +1441,17 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def upsert(resource, changeset, keys, identity, opts \\ [from_bulk_create?: false]) do
+  def upsert(resource, changeset, keys, identity \\ nil) do
+    do_upsert(resource, changeset, keys, identity)
+  end
+
+  defp do_upsert(resource, changeset, keys, identity, from_bulk_create? \\ false) do
     pkey = Ash.Resource.Info.primary_key(resource)
     keys = keys || pkey
 
     if (is_nil(identity) || !identity.nils_distinct?) &&
          Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
-      create(resource, changeset, opts[:from_bulk_create?])
+      create(resource, changeset, from_bulk_create?)
     else
       key_filters =
         Enum.map(keys, fn key ->
@@ -1474,7 +1478,10 @@ defmodule Ash.DataLayer.Ets do
           end
         end)
 
-      to_set = Ash.Changeset.set_on_upsert(changeset, keys)
+      to_set =
+        changeset
+        |> Ash.Changeset.set_on_upsert(keys)
+        |> apply_upsert_update_defaults(resource, changeset)
 
       resource
       |> resource_to_query(changeset.domain)
@@ -1483,7 +1490,7 @@ defmodule Ash.DataLayer.Ets do
       |> run_query(resource)
       |> case do
         {:ok, []} ->
-          create(resource, changeset, opts[:from_bulk_create?])
+          create(resource, changeset, from_bulk_create?)
 
         {:ok, [result]} ->
           with {:ok, conflicting_upsert_values} <- Ash.Changeset.apply_attributes(changeset),
@@ -1503,7 +1510,7 @@ defmodule Ash.DataLayer.Ets do
               resource,
               %{changeset | action_type: :update, filter: nil},
               Map.take(result, pkey),
-              opts[:from_bulk_create?]
+              from_bulk_create?
             )
           else
             {:ok, []} ->
@@ -1518,6 +1525,49 @@ defmodule Ash.DataLayer.Ets do
       end
     end
   end
+
+  defp apply_upsert_update_defaults(to_set, resource, changeset) do
+    touch_update_defaults? =
+      changeset.context[:private][:touch_update_defaults?]
+
+    update_default_attrs =
+      resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.filter(& &1.update_default)
+
+    if touch_update_defaults? == false || to_set == [] do
+      upsert_fields = changeset.context[:private][:upsert_fields]
+      update_default_names = MapSet.new(update_default_attrs, & &1.name)
+
+      Keyword.reject(to_set, fn {key, _} ->
+        MapSet.member?(update_default_names, key) &&
+          !explicitly_set?(key, upsert_fields, changeset)
+      end)
+    else
+      # Add update_defaults that aren't already in to_set
+      # (set_on_upsert's upsert_fields branch doesn't include them)
+      Enum.reduce(update_default_attrs, to_set, fn attr, acc ->
+        if Keyword.has_key?(acc, attr.name) do
+          acc
+        else
+          value =
+            case attr.update_default do
+              function when is_function(function) -> function.()
+              {m, f, a} when is_atom(m) and is_atom(f) and is_list(a) -> apply(m, f, a)
+              value -> value
+            end
+
+          Keyword.put(acc, attr.name, value)
+        end
+      end)
+    end
+  end
+
+  defp explicitly_set?(key, upsert_fields, _changeset) when is_list(upsert_fields),
+    do: key in upsert_fields
+
+  defp explicitly_set?(key, _, changeset),
+    do: Map.has_key?(changeset.attributes, key) && key not in Map.get(changeset, :defaults, [])
 
   @spec upsert_conflict_check(
           changeset :: Ash.Changeset.t(),
@@ -1561,15 +1611,18 @@ defmodule Ash.DataLayer.Ets do
       |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
         changeset =
           Ash.Changeset.set_context(changeset, %{
-            private: %{upsert_fields: options[:upsert_fields] || []}
+            private: %{
+              upsert_fields: options[:upsert_fields] || [],
+              touch_update_defaults?: Map.get(options, :touch_update_defaults?, true)
+            }
           })
 
-        case upsert(
+        case do_upsert(
                resource,
                changeset,
                options.upsert_keys,
                options.identity,
-               Map.put(options, :from_bulk_create?, true)
+               true
              ) do
           {:ok, result} ->
             if Ash.Resource.get_metadata(result, :upsert_skipped) do

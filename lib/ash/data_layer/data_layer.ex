@@ -203,6 +203,7 @@ defmodule Ash.DataLayer do
             | :replace_all
             | {:replace, list(atom)}
             | {:replace_all_except, list(atom)},
+          touch_update_defaults?: boolean,
           tenant: term()
         }
 
