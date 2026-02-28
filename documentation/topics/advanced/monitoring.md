@@ -29,6 +29,9 @@ Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, (doma
 - `[:ash, (domain_short_name), :read]` - The execution of a read action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, (domain_short_name), :destroy]` - The execution of a destroy action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, (domain_short_name), :action]` - The execution of a generic action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (domain_short_name), :bulk_create]` - The execution of a bulk create action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (domain_short_name), :bulk_update]` - The execution of a bulk update action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (domain_short_name), :bulk_destroy]` - The execution of a bulk destroy action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, :changeset]` - A changeset being processed for a given action, i.e with `Ash.Changeset.for_create`. Use `resource_short_name` metadata to break down measurements.
 - `[:ash, :query]` - A query being processed for an action, with `Ash.Query.for_read`. Use `resource_short_name` metadata to break down measurements.
 - `[:ash, :validation]` - A validation being run on a changeset. Use `resource_short_name` and `validation` metadata to break down measurements.
@@ -69,21 +72,24 @@ For customizing the names created for each span, see:
 
 These are the list of trace types.
 
-- :custom
-- :action
-- :changeset
-- :validation
-- :change
-- :calculation
-- :before_transaction
-- :before_action
-- :after_transaction
-- :after_action
-- :request_step
-- :query
-- :notifier
-- :preparation
-- :preparation
+- `:action` - A single action (create, read, update, destroy, or generic action).
+- `:bulk_create` - A bulk create operation.
+- `:bulk_update` - A bulk update operation.
+- `:bulk_destroy` - A bulk destroy operation.
+- `:bulk_batch` - An individual batch within a bulk operation. Bulk actions process records in batches, and each batch gets its own span nested inside the bulk action span.
+- `:changeset` - A changeset being processed.
+- `:query` - A query being processed.
+- `:validation` - A validation being run.
+- `:change` - A change being run.
+- `:calculation` - A calculation module being computed.
+- `:before_transaction` - A before_transaction hook.
+- `:before_action` - A before_action hook.
+- `:after_transaction` - An after_transaction hook.
+- `:after_action` - An after_action hook.
+- `:request_step` - An internal request step resolution.
+- `:notifier` - A notifier being triggered.
+- `:preparation` - A preparation being run.
+- `:custom` - A custom span created via `Ash.Tracer.span/4`.
 
 ## After/Before Action Hooks
 

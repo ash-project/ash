@@ -5,6 +5,8 @@
 defmodule Ash.Actions.Create.Bulk do
   @moduledoc false
 
+  require Ash.Tracer
+
   @spec run(Ash.Domain.t(), Ash.Resource.t(), atom(), Enumerable.t(map), Keyword.t()) ::
           Ash.BulkResult.t()
   def run(domain, resource, action_name, inputs, opts) do
@@ -35,55 +37,82 @@ defmodule Ash.Actions.Create.Bulk do
         resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
       end)
 
-    if opts[:transaction] == :all &&
-         Ash.DataLayer.data_layer_can?(resource, :transact) do
-      notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
-
-      Ash.DataLayer.transaction(
-        List.wrap(resource) ++ action.touches_resources,
-        fn ->
-          do_run(domain, resource, action, inputs, opts)
-        end,
-        opts[:timeout],
+    Ash.Tracer.span :bulk_create,
+                    fn ->
+                      Ash.Domain.Info.span_name(
+                        domain,
+                        resource,
+                        action.name
+                      )
+                    end,
+                    opts[:tracer] do
+      metadata = fn ->
         %{
-          type: :bulk_create,
-          metadata: %{
-            resource: resource,
-            action: action.name,
-            actor: opts[:actor]
-          },
-          data_layer_context: opts[:data_layer_context] || %{}
-        },
-        rollback_on_error?: false
-      )
-      |> case do
-        {:ok, bulk_result} ->
-          bulk_result =
-            if notify? do
-              %{
-                bulk_result
-                | notifications:
-                    (bulk_result.notifications || []) ++
-                      (Process.delete(:ash_notifications) || [])
-              }
-            else
-              bulk_result
-            end
-
-          handle_bulk_result(bulk_result, resource, action, opts)
-
-        {:error, error} ->
-          handle_bulk_result(
-            %Ash.BulkResult{errors: [error], status: :error},
-            resource,
-            action,
-            opts
-          )
+          domain: domain,
+          resource: resource,
+          resource_short_name: Ash.Resource.Info.short_name(resource),
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          action: action.name,
+          authorize?: opts[:authorize?]
+        }
       end
-    else
-      domain
-      |> do_run(resource, action, inputs, opts)
-      |> handle_bulk_result(resource, action, opts)
+
+      Ash.Tracer.set_metadata(opts[:tracer], :bulk_create, metadata)
+
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :bulk_create],
+                                metadata do
+        if opts[:transaction] == :all &&
+             Ash.DataLayer.data_layer_can?(resource, :transact) do
+          notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
+
+          Ash.DataLayer.transaction(
+            List.wrap(resource) ++ action.touches_resources,
+            fn ->
+              do_run(domain, resource, action, inputs, opts)
+            end,
+            opts[:timeout],
+            %{
+              type: :bulk_create,
+              metadata: %{
+                resource: resource,
+                action: action.name,
+                actor: opts[:actor]
+              },
+              data_layer_context: opts[:data_layer_context] || %{}
+            },
+            rollback_on_error?: false
+          )
+          |> case do
+            {:ok, bulk_result} ->
+              bulk_result =
+                if notify? do
+                  %{
+                    bulk_result
+                    | notifications:
+                        (bulk_result.notifications || []) ++
+                          (Process.delete(:ash_notifications) || [])
+                  }
+                else
+                  bulk_result
+                end
+
+              handle_bulk_result(bulk_result, resource, action, opts)
+
+            {:error, error} ->
+              handle_bulk_result(
+                %Ash.BulkResult{errors: [error], status: :error},
+                resource,
+                action,
+                opts
+              )
+          end
+        else
+          domain
+          |> do_run(resource, action, inputs, opts)
+          |> handle_bulk_result(resource, action, opts)
+        end
+      end
     end
   end
 
@@ -198,32 +227,54 @@ defmodule Ash.Actions.Create.Bulk do
             opts,
             ref,
             fn batch ->
-              try do
-                batch
-                |> Enum.map(
-                  &setup_changeset(
-                    &1,
-                    action,
-                    opts,
-                    lazy_matching_default_values(resource),
-                    base_changeset,
-                    argument_names
+              Ash.Tracer.span :bulk_batch,
+                              fn ->
+                                Ash.Domain.Info.span_name(
+                                  domain,
+                                  resource,
+                                  action.name
+                                )
+                              end,
+                              opts[:tracer] do
+                Ash.Tracer.set_metadata(opts[:tracer], :bulk_batch, fn ->
+                  %{
+                    domain: domain,
+                    resource: resource,
+                    resource_short_name: Ash.Resource.Info.short_name(resource),
+                    actor: opts[:actor],
+                    tenant: opts[:tenant],
+                    action: action.name,
+                    authorize?: opts[:authorize?]
+                  }
+                end)
+
+                try do
+                  batch
+                  |> Enum.map(
+                    &setup_changeset(
+                      &1,
+                      action,
+                      opts,
+                      lazy_matching_default_values(resource),
+                      base_changeset,
+                      argument_names
+                    )
                   )
-                )
-                |> handle_batch(
-                  domain,
-                  resource,
-                  action,
-                  all_changes,
-                  data_layer_can_bulk?,
-                  opts,
-                  ref,
-                  attrs_to_require,
-                  action_select
-                )
-              after
-                if opts[:return_stream?] && opts[:notify?] && !opts[:return_notifications?] do
-                  Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
+                  |> handle_batch(
+                    domain,
+                    resource,
+                    action,
+                    all_changes,
+                    data_layer_can_bulk?,
+                    opts,
+                    ref,
+                    attrs_to_require,
+                    action_select
+                  )
+                after
+                  if opts[:return_stream?] && opts[:notify?] && !opts[:return_notifications?] do
+                    Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
+                  end
                 end
               end
             end

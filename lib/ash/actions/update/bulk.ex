@@ -6,6 +6,7 @@ defmodule Ash.Actions.Update.Bulk do
   @moduledoc false
 
   require Ash.Query
+  require Ash.Tracer
 
   @spec run(Ash.Domain.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
           Ash.BulkResult.t()
@@ -17,130 +18,222 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   def run(domain, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
-    opts = set_strategy(opts, query.resource)
+    action_name = if is_atom(action), do: action, else: action.name
 
-    opts =
-      if opts[:return_notifications?] do
-        Keyword.put(opts, :notify?, true)
-      else
-        opts
-      end
-
-    {query, opts} =
-      if query.__validated_for_action__ do
-        {query, opts}
-      else
-        {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
-
-        query =
-          Ash.Query.for_read(
-            query,
-            get_read_action(query.resource, action, opts).name,
-            %{},
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            context: %{query_for: :bulk_update}
-          )
-
-        {query, opts}
-      end
-
-    query = %{query | domain: domain}
-
-    fully_atomic_changeset =
+    span_type =
       cond do
-        not_atomic_reason ->
-          {:not_atomic, not_atomic_reason}
-
-        :atomic not in opts[:strategy] ->
-          {:not_atomic, "Not in requested strategies"}
-
-        query.action.manual ->
-          {:not_atomic, "Manual read actions cannot be updated atomically"}
-
-        !Enum.empty?(query.before_action) ->
-          {:not_atomic, "cannot atomically update a query if it has `before_action` hooks"}
-
-        !Enum.empty?(query.after_action) ->
-          {:not_atomic, "cannot atomically update a query if it has `after_action` hooks"}
-
-        changeset = opts[:atomic_changeset] ->
-          changeset
-
-        Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
-          private_context = Map.new(Keyword.take(opts, [:actor, :tenant, :authorize]))
-
-          opts =
-            Keyword.update(
-              opts,
-              :context,
-              %{private: private_context},
-              fn context ->
-                Map.update(context, :private, private_context, &Map.merge(&1, private_context))
-              end
-            )
-
-          Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
-
-        true ->
-          {:not_atomic, "data layer does not support updating a query"}
+        opts[:atomic_changeset] -> :action
+        is_map(action) and Map.get(action, :type) == :destroy -> :bulk_destroy
+        true -> :bulk_update
       end
 
-    case fully_atomic_changeset do
-      {:not_atomic, reason} ->
-        case Ash.Actions.Read.Stream.stream_strategy(
-               query,
-               nil,
-               opts[:allow_stream_with] || :keyset
-             ) do
-          {:error, %Ash.Error.Invalid.NonStreamableAction{} = exception} ->
-            %Ash.BulkResult{
-              status: :error,
-              error_count: 1,
-              errors: [
-                Ash.Error.to_error_class(
-                  Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
-                    resource: query.resource,
-                    action: action,
-                    requested_strategies: opts[:strategy],
-                    not_atomic_reason: reason,
-                    not_stream_reason: "could not stream the query",
-                    footer: "Non stream reason:\n\n" <> Exception.message(exception)
-                  )
-                )
-              ]
-            }
+    Ash.Tracer.span span_type,
+                    fn ->
+                      Ash.Domain.Info.span_name(
+                        domain,
+                        query.resource,
+                        action_name
+                      )
+                    end,
+                    opts[:tracer] do
+      Ash.Tracer.set_metadata(opts[:tracer], span_type, fn ->
+        %{
+          domain: domain,
+          resource: query.resource,
+          resource_short_name: Ash.Resource.Info.short_name(query.resource),
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          action: action_name,
+          authorize?: opts[:authorize?]
+        }
+      end)
 
-          _ ->
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), span_type],
+                                fn ->
+                                  %{
+                                    resource_short_name:
+                                      Ash.Resource.Info.short_name(query.resource),
+                                    action: action_name
+                                  }
+                                end do
+        opts = set_strategy(opts, query.resource)
+
+        opts =
+          if opts[:return_notifications?] do
+            Keyword.put(opts, :notify?, true)
+          else
+            opts
+          end
+
+        {query, opts} =
+          if query.__validated_for_action__ do
+            {query, opts}
+          else
+            {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
+
             query =
-              Ash.Query.do_filter(query, opts[:filter])
-
-            read_opts =
-              opts
-              |> then(fn read_opts ->
-                if opts[:stream_batch_size] do
-                  Keyword.put(read_opts, :batch_size, opts[:stream_batch_size])
-                else
-                  Keyword.delete(read_opts, :batch_size)
-                end
-              end)
-              |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
-              |> Keyword.update(
-                :context,
-                %{query_for: :bulk_update},
-                &Map.put(&1, :query_for, :bulk_update)
+              Ash.Query.for_read(
+                query,
+                get_read_action(query.resource, action, opts).name,
+                %{},
+                actor: opts[:actor],
+                tenant: opts[:tenant],
+                context: %{query_for: :bulk_update}
               )
-              |> Keyword.put(:domain, domain)
-              |> Keyword.delete(:load)
 
-            if query.limit && query.limit < (opts[:batch_size] || 100) do
-              read_opts = Keyword.take(read_opts, Keyword.keys(Ash.read_opts()))
+            {query, opts}
+          end
 
-              case Ash.Actions.Read.unpaginated_read(query, query.action, read_opts) do
-                {:ok, results} ->
+        query = %{query | domain: domain}
+
+        fully_atomic_changeset =
+          cond do
+            not_atomic_reason ->
+              {:not_atomic, not_atomic_reason}
+
+            :atomic not in opts[:strategy] ->
+              {:not_atomic, "Not in requested strategies"}
+
+            query.action.manual ->
+              {:not_atomic, "Manual read actions cannot be updated atomically"}
+
+            !Enum.empty?(query.before_action) ->
+              {:not_atomic, "cannot atomically update a query if it has `before_action` hooks"}
+
+            !Enum.empty?(query.after_action) ->
+              {:not_atomic, "cannot atomically update a query if it has `after_action` hooks"}
+
+            changeset = opts[:atomic_changeset] ->
+              changeset
+
+            Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
+              private_context = Map.new(Keyword.take(opts, [:actor, :tenant, :authorize]))
+
+              opts =
+                Keyword.update(
+                  opts,
+                  :context,
+                  %{private: private_context},
+                  fn context ->
+                    Map.update(
+                      context,
+                      :private,
+                      private_context,
+                      &Map.merge(&1, private_context)
+                    )
+                  end
+                )
+
+              Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
+
+            true ->
+              {:not_atomic, "data layer does not support updating a query"}
+          end
+
+        case fully_atomic_changeset do
+          {:not_atomic, reason} ->
+            case Ash.Actions.Read.Stream.stream_strategy(
+                   query,
+                   nil,
+                   opts[:allow_stream_with] || :keyset
+                 ) do
+              {:error, %Ash.Error.Invalid.NonStreamableAction{} = exception} ->
+                %Ash.BulkResult{
+                  status: :error,
+                  error_count: 1,
+                  errors: [
+                    Ash.Error.to_error_class(
+                      Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
+                        resource: query.resource,
+                        action: action,
+                        requested_strategies: opts[:strategy],
+                        not_atomic_reason: reason,
+                        not_stream_reason: "could not stream the query",
+                        footer: "Non stream reason:\n\n" <> Exception.message(exception)
+                      )
+                    )
+                  ]
+                }
+
+              _ ->
+                query =
+                  Ash.Query.do_filter(query, opts[:filter])
+
+                read_opts =
+                  opts
+                  |> then(fn read_opts ->
+                    if opts[:stream_batch_size] do
+                      Keyword.put(read_opts, :batch_size, opts[:stream_batch_size])
+                    else
+                      Keyword.delete(read_opts, :batch_size)
+                    end
+                  end)
+                  |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
+                  |> Keyword.update(
+                    :context,
+                    %{query_for: :bulk_update},
+                    &Map.put(&1, :query_for, :bulk_update)
+                  )
+                  |> Keyword.put(:domain, domain)
+                  |> Keyword.delete(:load)
+
+                if query.limit && query.limit < (opts[:batch_size] || 100) do
+                  read_opts = Keyword.take(read_opts, Keyword.keys(Ash.read_opts()))
+
+                  case Ash.Actions.Read.unpaginated_read(query, query.action, read_opts) do
+                    {:ok, results} ->
+                      run(
+                        domain,
+                        results,
+                        action,
+                        input,
+                        Keyword.merge(
+                          opts,
+                          [
+                            resource: query.resource,
+                            input_was_stream?: false,
+                            context:
+                              opts[:atomic_changeset] &&
+                                Map.delete(opts[:atomic_changeset].context, :private)
+                          ],
+                          fn
+                            :context, v1, v2 ->
+                              Ash.Helpers.deep_merge_maps(v1, v2)
+
+                            _k, _v1, v2 ->
+                              v2
+                          end
+                        ),
+                        reason
+                      )
+
+                    {:error, error} ->
+                      %Ash.BulkResult{
+                        status: :error,
+                        error_count: 1,
+                        errors: [Ash.Error.to_error_class(error)]
+                      }
+                  end
+                else
+                  read_opts =
+                    Keyword.put(
+                      Keyword.take(read_opts, Ash.stream_opt_keys()),
+                      :batch_size,
+                      opts[:batch_size] || 100
+                    )
+
+                  # We need to figure out a way to capture errors raised by the stream when picking items off somehow
+                  # for now, we only go this route if there are potentially more records in the result set than
+                  # in the batch size, to solve this problem for atomic upgrades.
+                  # we can likely make the stream throw something instead of raising something
+                  # like `{:stream_error, ...}` if a specific option is passed in.
+                  # once we figure this out, we may be able to remove the branch above
                   run(
                     domain,
-                    results,
+                    Ash.stream!(
+                      query,
+                      read_opts
+                    ),
                     action,
                     input,
                     Keyword.merge(
@@ -148,6 +241,7 @@ defmodule Ash.Actions.Update.Bulk do
                       [
                         resource: query.resource,
                         input_was_stream?: false,
+                        query_sort: query.sort,
                         context:
                           opts[:atomic_changeset] &&
                             Map.delete(opts[:atomic_changeset].context, :private)
@@ -162,244 +256,205 @@ defmodule Ash.Actions.Update.Bulk do
                     ),
                     reason
                   )
+                end
+            end
 
-                {:error, error} ->
-                  %Ash.BulkResult{
-                    status: :error,
-                    error_count: 1,
-                    errors: [Ash.Error.to_error_class(error)]
-                  }
+          %Ash.Changeset{valid?: false, errors: errors} = changeset ->
+            # Run after_transaction hooks for failed changesets
+            case Ash.Changeset.run_after_transactions(
+                   {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
+                   changeset
+                 ) do
+              {:ok, result} ->
+                %Ash.BulkResult{
+                  status: :success,
+                  records: [result]
+                }
+
+              {:error, error} ->
+                %Ash.BulkResult{
+                  status: :error,
+                  error_count: 1,
+                  errors: [error]
+                }
+            end
+
+          atomic_changeset ->
+            atomic_changeset =
+              Ash.Changeset.filter(atomic_changeset, opts[:filter])
+
+            {atomic_changeset, opts} =
+              Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
+
+            atomic_changeset = Ash.Actions.Helpers.apply_opts_load(atomic_changeset, opts)
+
+            atomic_changeset =
+              if opts[:select] do
+                Ash.Changeset.select(atomic_changeset, opts[:select])
+              else
+                atomic_changeset
               end
-            else
-              read_opts =
-                Keyword.put(
-                  Keyword.take(read_opts, Ash.stream_opt_keys()),
-                  :batch_size,
-                  opts[:batch_size] || 100
+
+            atomic_changeset = %{atomic_changeset | domain: domain}
+
+            notify? = !Process.put(:ash_started_transaction?, true)
+
+            try do
+              context =
+                struct(
+                  Ash.Resource.Change.Context,
+                  %{
+                    bulk?: true,
+                    source_context: atomic_changeset.context,
+                    actor: opts[:actor],
+                    tenant: opts[:tenant],
+                    tracer: opts[:tracer],
+                    authorize?: opts[:authorize?]
+                  }
                 )
 
-              # We need to figure out a way to capture errors raised by the stream when picking items off somehow
-              # for now, we only go this route if there are potentially more records in the result set than
-              # in the batch size, to solve this problem for atomic upgrades.
-              # we can likely make the stream throw something instead of raising something
-              # like `{:stream_error, ...}` if a specific option is passed in.
-              # once we figure this out, we may be able to remove the branch above
-              run(
-                domain,
-                Ash.stream!(
-                  query,
-                  read_opts
-                ),
-                action,
-                input,
-                Keyword.merge(
-                  opts,
-                  [
-                    resource: query.resource,
-                    input_was_stream?: false,
-                    query_sort: query.sort,
-                    context:
-                      opts[:atomic_changeset] &&
-                        Map.delete(opts[:atomic_changeset].context, :private)
-                  ],
+              has_after_batch_hooks? =
+                Enum.any?(
+                  atomic_changeset.action.changes ++
+                    Ash.Resource.Info.changes(
+                      atomic_changeset.resource,
+                      atomic_changeset.action_type
+                    ),
                   fn
-                    :context, v1, v2 ->
-                      Ash.Helpers.deep_merge_maps(v1, v2)
+                    %{change: {module, change_opts}} ->
+                      module.has_after_batch?() &&
+                        module.batch_callbacks?(query, change_opts, context)
 
-                    _k, _v1, v2 ->
-                      v2
+                    _ ->
+                      false
                   end
-                ),
-                reason
-              )
-            end
-        end
-
-      %Ash.Changeset{valid?: false, errors: errors} = changeset ->
-        # Run after_transaction hooks for failed changesets
-        case Ash.Changeset.run_after_transactions(
-               {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
-               changeset
-             ) do
-          {:ok, result} ->
-            %Ash.BulkResult{
-              status: :success,
-              records: [result]
-            }
-
-          {:error, error} ->
-            %Ash.BulkResult{
-              status: :error,
-              error_count: 1,
-              errors: [error]
-            }
-        end
-
-      atomic_changeset ->
-        atomic_changeset =
-          Ash.Changeset.filter(atomic_changeset, opts[:filter])
-
-        {atomic_changeset, opts} =
-          Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
-
-        atomic_changeset = Ash.Actions.Helpers.apply_opts_load(atomic_changeset, opts)
-
-        atomic_changeset =
-          if opts[:select] do
-            Ash.Changeset.select(atomic_changeset, opts[:select])
-          else
-            atomic_changeset
-          end
-
-        atomic_changeset = %{atomic_changeset | domain: domain}
-
-        notify? = !Process.put(:ash_started_transaction?, true)
-
-        try do
-          context =
-            struct(
-              Ash.Resource.Change.Context,
-              %{
-                bulk?: true,
-                source_context: atomic_changeset.context,
-                actor: opts[:actor],
-                tenant: opts[:tenant],
-                tracer: opts[:tracer],
-                authorize?: opts[:authorize?]
-              }
-            )
-
-          has_after_batch_hooks? =
-            Enum.any?(
-              atomic_changeset.action.changes ++
-                Ash.Resource.Info.changes(atomic_changeset.resource, atomic_changeset.action_type),
-              fn
-                %{change: {module, change_opts}} ->
-                  module.has_after_batch?() &&
-                    module.batch_callbacks?(query, change_opts, context)
-
-                _ ->
-                  false
-              end
-            )
-
-          {context_key, metadata_key} =
-            case atomic_changeset.action.type do
-              :update ->
-                {:bulk_update, :bulk_update_index}
-
-              :destroy ->
-                {:bulk_destroy, :bulk_destroy_index}
-            end
-
-          prefer_transaction? =
-            has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) ||
-              Ash.DataLayer.prefer_transaction_for_atomic_updates?(atomic_changeset.resource)
-
-          result =
-            if prefer_transaction? &&
-                 Keyword.get(opts, :transaction, true) do
-              Ash.DataLayer.in_transaction?(atomic_changeset.resource)
-
-              Ash.DataLayer.transaction(
-                atomic_changeset.resource,
-                fn ->
-                  do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)
-                end,
-                opts[:timeout],
-                %{
-                  type: context_key,
-                  metadata: %{
-                    resource: query.resource,
-                    action: atomic_changeset.action.name,
-                    actor: opts[:actor]
-                  },
-                  data_layer_context: opts[:data_layer_context] || %{}
-                },
-                rollback_on_error?: false
-              )
-            else
-              {:ok,
-               do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)}
-            end
-
-          # Normalize result - either BulkResult (from fallback) or tagged tuples
-          result
-          |> case do
-            {:ok, %Ash.BulkResult{} = bulk_result} ->
-              bulk_result
-
-            {:ok, {:ok, tagged_results, notifications}} ->
-              {tagged_results, notifications}
-
-            {:ok, {:error, error}} ->
-              {[{:error, error, atomic_changeset}], []}
-
-            {:error, error} ->
-              {[{:error, error, atomic_changeset}], []}
-          end
-          |> case do
-            %Ash.BulkResult{} = bulk_result ->
-              bulk_result
-
-            {tagged_results, notifications} ->
-              ref = make_ref()
-
-              try do
-                processed =
-                  tagged_results
-                  |> process_results(
-                    opts,
-                    ref,
-                    context_key,
-                    metadata_key,
-                    atomic_changeset.resource,
-                    atomic_changeset.domain,
-                    atomic_changeset
-                  )
-                  |> Enum.to_list()
-
-                any_success? = Process.get({:any_success?, ref}, false)
-
-                # Merge notifications from do_atomic_update with those from process_results
-                all_notifications =
-                  notifications ++ (Process.delete({:bulk_notifications, ref}) || [])
-
-                Ash.Actions.BulkManualActionHelpers.build_bulk_result(
-                  processed,
-                  any_success?,
-                  all_notifications,
-                  opts
                 )
-              catch
+
+              {context_key, metadata_key} =
+                case atomic_changeset.action.type do
+                  :update ->
+                    {:bulk_update, :bulk_update_index}
+
+                  :destroy ->
+                    {:bulk_destroy, :bulk_destroy_index}
+                end
+
+              prefer_transaction? =
+                has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) ||
+                  Ash.DataLayer.prefer_transaction_for_atomic_updates?(atomic_changeset.resource)
+
+              result =
+                if prefer_transaction? &&
+                     Keyword.get(opts, :transaction, true) do
+                  Ash.DataLayer.in_transaction?(atomic_changeset.resource)
+
+                  Ash.DataLayer.transaction(
+                    atomic_changeset.resource,
+                    fn ->
+                      do_atomic_update(
+                        query,
+                        atomic_changeset,
+                        has_after_batch_hooks?,
+                        input,
+                        opts
+                      )
+                    end,
+                    opts[:timeout],
+                    %{
+                      type: context_key,
+                      metadata: %{
+                        resource: query.resource,
+                        action: atomic_changeset.action.name,
+                        actor: opts[:actor]
+                      },
+                      data_layer_context: opts[:data_layer_context] || %{}
+                    },
+                    rollback_on_error?: false
+                  )
+                else
+                  {:ok,
+                   do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)}
+                end
+
+              # Normalize result - either BulkResult (from fallback) or tagged tuples
+              result
+              |> case do
+                {:ok, %Ash.BulkResult{} = bulk_result} ->
+                  bulk_result
+
+                {:ok, {:ok, tagged_results, notifications}} ->
+                  {tagged_results, notifications}
+
+                {:ok, {:error, error}} ->
+                  {[{:error, error, atomic_changeset}], []}
+
                 {:error, error} ->
-                  status =
-                    if Process.get({:any_success?, ref}) do
-                      :partial_success
-                    else
-                      :error
-                    end
-
-                  all_notifications =
-                    notifications ++ (Process.delete({:bulk_notifications, ref}) || [])
-
-                  result = %Ash.BulkResult{
-                    status: status,
-                    records: [],
-                    notifications: all_notifications
-                  }
-
-                  {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
-
-                  %{result | errors: errors, error_count: error_count}
+                  {[{:error, error, atomic_changeset}], []}
               end
-          end
-          |> handle_atomic_notifications(atomic_changeset.resource, action, notify?, opts)
-        after
-          if notify? do
-            Process.delete(:ash_started_transaction?)
-          end
+              |> case do
+                %Ash.BulkResult{} = bulk_result ->
+                  bulk_result
+
+                {tagged_results, notifications} ->
+                  ref = make_ref()
+
+                  try do
+                    processed =
+                      tagged_results
+                      |> process_results(
+                        opts,
+                        ref,
+                        context_key,
+                        metadata_key,
+                        atomic_changeset.resource,
+                        atomic_changeset.domain,
+                        atomic_changeset
+                      )
+                      |> Enum.to_list()
+
+                    any_success? = Process.get({:any_success?, ref}, false)
+
+                    # Merge notifications from do_atomic_update with those from process_results
+                    all_notifications =
+                      notifications ++ (Process.delete({:bulk_notifications, ref}) || [])
+
+                    Ash.Actions.BulkManualActionHelpers.build_bulk_result(
+                      processed,
+                      any_success?,
+                      all_notifications,
+                      opts
+                    )
+                  catch
+                    {:error, error} ->
+                      status =
+                        if Process.get({:any_success?, ref}) do
+                          :partial_success
+                        else
+                          :error
+                        end
+
+                      all_notifications =
+                        notifications ++ (Process.delete({:bulk_notifications, ref}) || [])
+
+                      result = %Ash.BulkResult{
+                        status: status,
+                        records: [],
+                        notifications: all_notifications
+                      }
+
+                      {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
+
+                      %{result | errors: errors, error_count: error_count}
+                  end
+              end
+              |> handle_atomic_notifications(atomic_changeset.resource, action, notify?, opts)
+            after
+              if notify? do
+                Process.delete(:ash_started_transaction?)
+              end
+            end
         end
+      end
     end
   rescue
     e ->
@@ -462,115 +517,151 @@ defmodule Ash.Actions.Update.Bulk do
       raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
     end
 
-    {context_key, metadata_key, ref_metadata_key} =
+    span_type =
       case action.type do
-        :destroy ->
-          {:bulk_destroy, :bulk_destroy_index, :bulk_action_ref}
-
-        _ ->
-          {:bulk_update, :bulk_update_index, :bulk_action_ref}
+        :destroy -> :bulk_destroy
+        _ -> :bulk_update
       end
 
-    if opts[:transaction] == :all &&
-         Ash.DataLayer.data_layer_can?(resource, :transact) do
-      notify? = !Process.put(:ash_started_transaction?, true)
+    Ash.Tracer.span span_type,
+                    fn ->
+                      Ash.Domain.Info.span_name(
+                        domain,
+                        resource,
+                        action.name
+                      )
+                    end,
+                    opts[:tracer] do
+      Ash.Tracer.set_metadata(opts[:tracer], span_type, fn ->
+        %{
+          domain: domain,
+          resource: resource,
+          resource_short_name: Ash.Resource.Info.short_name(resource),
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          action: action.name,
+          authorize?: opts[:authorize?]
+        }
+      end)
 
-      try do
-        Ash.DataLayer.transaction(
-          List.wrap(resource) ++ action.touches_resources,
-          fn ->
-            do_run(
-              domain,
-              stream,
-              action,
-              input,
-              Keyword.merge(opts,
-                notify?: opts[:notify?],
-                notification_metadata: opts[:notification_metadata],
-                return_notifications?: opts[:notify?]
-              ),
-              metadata_key,
-              ref_metadata_key,
-              context_key,
-              not_atomic_reason
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), span_type],
+                                fn ->
+                                  %{
+                                    resource_short_name: Ash.Resource.Info.short_name(resource),
+                                    action: action.name
+                                  }
+                                end do
+        {context_key, metadata_key, ref_metadata_key} =
+          case action.type do
+            :destroy ->
+              {:bulk_destroy, :bulk_destroy_index, :bulk_action_ref}
+
+            _ ->
+              {:bulk_update, :bulk_update_index, :bulk_action_ref}
+          end
+
+        if opts[:transaction] == :all &&
+             Ash.DataLayer.data_layer_can?(resource, :transact) do
+          notify? = !Process.put(:ash_started_transaction?, true)
+
+          try do
+            Ash.DataLayer.transaction(
+              List.wrap(resource) ++ action.touches_resources,
+              fn ->
+                do_run(
+                  domain,
+                  stream,
+                  action,
+                  input,
+                  Keyword.merge(opts,
+                    notify?: opts[:notify?],
+                    notification_metadata: opts[:notification_metadata],
+                    return_notifications?: opts[:notify?]
+                  ),
+                  metadata_key,
+                  ref_metadata_key,
+                  context_key,
+                  not_atomic_reason
+                )
+              end,
+              opts[:timeout],
+              %{
+                type: context_key,
+                metadata: %{
+                  resource: resource,
+                  action: action.name,
+                  actor: opts[:actor]
+                },
+                data_layer_context: opts[:data_layer_context] || %{}
+              },
+              rollback_on_error?: false
             )
-          end,
-          opts[:timeout],
-          %{
-            type: context_key,
-            metadata: %{
-              resource: resource,
-              action: action.name,
-              actor: opts[:actor]
-            },
-            data_layer_context: opts[:data_layer_context] || %{}
-          },
-          rollback_on_error?: false
-        )
-        |> case do
-          {:ok, bulk_result} ->
-            bulk_result =
-              if notify? do
-                notifications =
-                  if opts[:return_notifications?] do
-                    bulk_result.notifications ++ List.wrap(Process.delete(:ash_notifications))
-                  else
-                    if opts[:notify?] do
-                      remaining_notifications =
-                        Ash.Notifier.notify(
-                          bulk_result.notifications ++
-                            List.wrap(Process.delete(:ash_notifications))
-                        )
+            |> case do
+              {:ok, bulk_result} ->
+                bulk_result =
+                  if notify? do
+                    notifications =
+                      if opts[:return_notifications?] do
+                        bulk_result.notifications ++ List.wrap(Process.delete(:ash_notifications))
+                      else
+                        if opts[:notify?] do
+                          remaining_notifications =
+                            Ash.Notifier.notify(
+                              bulk_result.notifications ++
+                                List.wrap(Process.delete(:ash_notifications))
+                            )
 
-                      Ash.Actions.Helpers.warn_missed!(resource, action, %{
-                        resource_notifications: remaining_notifications
-                      })
-                    else
-                      []
-                    end
+                          Ash.Actions.Helpers.warn_missed!(resource, action, %{
+                            resource_notifications: remaining_notifications
+                          })
+                        else
+                          []
+                        end
+                      end
+
+                    %{
+                      bulk_result
+                      | notifications: notifications
+                    }
+                  else
+                    Process.put(
+                      :ash_notifications,
+                      List.wrap(Process.get(:ash_notifications)) ++
+                        List.wrap(bulk_result.notifications)
+                    )
+
+                    bulk_result
                   end
 
-                %{
-                  bulk_result
-                  | notifications: notifications
-                }
-              else
-                Process.put(
-                  :ash_notifications,
-                  List.wrap(Process.get(:ash_notifications)) ++
-                    List.wrap(bulk_result.notifications)
+                handle_bulk_result(bulk_result, metadata_key, opts)
+
+              {:error, error} ->
+                handle_bulk_result(
+                  %Ash.BulkResult{errors: [error], status: :error},
+                  metadata_key,
+                  opts
                 )
-
-                bulk_result
-              end
-
-            handle_bulk_result(bulk_result, metadata_key, opts)
-
-          {:error, error} ->
-            handle_bulk_result(
-              %Ash.BulkResult{errors: [error], status: :error},
-              metadata_key,
-              opts
-            )
-        end
-      after
-        if notify? do
-          Process.delete(:ash_started_transaction?)
+            end
+          after
+            if notify? do
+              Process.delete(:ash_started_transaction?)
+            end
+          end
+        else
+          domain
+          |> do_run(
+            stream,
+            action,
+            input,
+            opts,
+            metadata_key,
+            ref_metadata_key,
+            context_key,
+            not_atomic_reason
+          )
+          |> handle_bulk_result(metadata_key, opts)
         end
       end
-    else
-      domain
-      |> do_run(
-        stream,
-        action,
-        input,
-        opts,
-        metadata_key,
-        ref_metadata_key,
-        context_key,
-        not_atomic_reason
-      )
-      |> handle_bulk_result(metadata_key, opts)
     end
   rescue
     e ->
@@ -1440,35 +1531,57 @@ defmodule Ash.Actions.Update.Bulk do
       opts,
       ref,
       fn batch ->
-        try do
-          batch
-          |> Enum.map(
-            &setup_changeset(
-              &1,
-              action,
-              opts,
-              input,
-              argument_names,
-              domain,
-              context_key
+        Ash.Tracer.span :bulk_batch,
+                        fn ->
+                          Ash.Domain.Info.span_name(
+                            domain,
+                            resource,
+                            action.name
+                          )
+                        end,
+                        opts[:tracer] do
+          Ash.Tracer.set_metadata(opts[:tracer], :bulk_batch, fn ->
+            %{
+              domain: domain,
+              resource: resource,
+              resource_short_name: Ash.Resource.Info.short_name(resource),
+              actor: opts[:actor],
+              tenant: opts[:tenant],
+              action: action.name,
+              authorize?: opts[:authorize?]
+            }
+          end)
+
+          try do
+            batch
+            |> Enum.map(
+              &setup_changeset(
+                &1,
+                action,
+                opts,
+                input,
+                argument_names,
+                domain,
+                context_key
+              )
             )
-          )
-          |> handle_batch(
-            domain,
-            resource,
-            action,
-            all_changes,
-            opts,
-            ref,
-            context_key,
-            metadata_key,
-            ref_metadata_key,
-            base_changeset,
-            action_select
-          )
-        after
-          if opts[:return_stream?] && opts[:notify?] && !opts[:return_notifications?] do
-            Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
+            |> handle_batch(
+              domain,
+              resource,
+              action,
+              all_changes,
+              opts,
+              ref,
+              context_key,
+              metadata_key,
+              ref_metadata_key,
+              base_changeset,
+              action_select
+            )
+          after
+            if opts[:return_stream?] && opts[:notify?] && !opts[:return_notifications?] do
+              Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
+            end
           end
         end
       end

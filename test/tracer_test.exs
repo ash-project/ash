@@ -315,3 +315,305 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     refute_receive {:telemetry, _}
   end
 end
+
+defmodule Ash.Test.TracerTest.BulkActionsTest do
+  @moduledoc false
+  use ExUnit.Case, async: false
+
+  alias Ash.Test.Domain, as: Domain
+
+  defmodule Post do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+
+      update :atomic_upgrade_update do
+        atomic_upgrade? true
+      end
+
+      update :non_atomic_update do
+        require_atomic? false
+        atomic_upgrade? false
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :title, :string do
+        public? true
+      end
+    end
+  end
+
+  setup do
+    pid = self()
+
+    events =
+      [
+        [:ash, :domain, :bulk_create],
+        [:ash, :domain, :bulk_update],
+        [:ash, :domain, :bulk_destroy]
+      ]
+      |> Enum.flat_map(fn list ->
+        [list ++ [:start], list ++ [:stop]]
+      end)
+
+    :telemetry.attach_many(
+      :bulk_tracer_test_handler,
+      events,
+      fn event_name, event_measurements, event_metadata, handler_config ->
+        send(
+          pid,
+          {:telemetry, {event_name, event_measurements, event_metadata, handler_config}}
+        )
+      end,
+      []
+    )
+
+    on_exit(fn ->
+      :telemetry.detach(:bulk_tracer_test_handler)
+    end)
+
+    :ok
+  end
+
+  test "bulk_create produces a :bulk_create span" do
+    Ash.bulk_create!([%{title: "post1"}, %{title: "post2"}], Post, :create,
+      tracer: Ash.Tracer.Simple
+    )
+
+    spans = Ash.Tracer.Simple.gather_spans()
+
+    assert [
+             %Ash.Tracer.Simple.Span{
+               type: :bulk_create,
+               name: "domain:post.create",
+               metadata: %{
+                 action: :create,
+                 resource: Ash.Test.TracerTest.BulkActionsTest.Post
+               }
+             }
+           ] = top_level_spans(spans, :bulk_create)
+  end
+
+  test "bulk_create produces telemetry events" do
+    Ash.bulk_create!([%{title: "post1"}], Post, :create, tracer: Ash.Tracer.Simple)
+
+    assert_receive {:telemetry,
+                    {[:ash, :domain, :bulk_create, :start], %{system_time: _},
+                     %{resource_short_name: :post}, _}}
+
+    assert_receive {:telemetry,
+                    {[:ash, :domain, :bulk_create, :stop], %{duration: _},
+                     %{resource_short_name: :post}, _}}
+  end
+
+  test "bulk_create produces :bulk_batch spans" do
+    Ash.bulk_create!([%{title: "post1"}, %{title: "post2"}], Post, :create,
+      tracer: Ash.Tracer.Simple,
+      batch_size: 2
+    )
+
+    spans = Ash.Tracer.Simple.gather_spans()
+
+    bulk_create_span = find_span(spans, :bulk_create)
+    assert bulk_create_span
+
+    batch_spans = find_nested_spans(bulk_create_span, :bulk_batch)
+    assert length(batch_spans) >= 1
+  end
+
+  test "bulk_update produces a :bulk_update span" do
+    Ash.bulk_create!([%{title: "post1"}, %{title: "post2"}], Post, :create)
+
+    Ash.bulk_update!(Post, :update, %{title: "updated"},
+      tracer: Ash.Tracer.Simple,
+      strategy: :stream,
+      return_errors?: true
+    )
+
+    spans = Ash.Tracer.Simple.gather_spans()
+
+    assert [
+             %Ash.Tracer.Simple.Span{
+               type: :bulk_update,
+               name: "domain:post.update",
+               metadata: %{
+                 action: :update,
+                 resource: Ash.Test.TracerTest.BulkActionsTest.Post
+               }
+             }
+           ] = top_level_spans(spans, :bulk_update)
+  end
+
+  test "bulk_update produces telemetry events" do
+    Ash.bulk_create!([%{title: "post1"}], Post, :create)
+
+    Ash.bulk_update!(Post, :update, %{title: "updated"},
+      tracer: Ash.Tracer.Simple,
+      strategy: :stream,
+      return_errors?: true
+    )
+
+    assert_receive {:telemetry,
+                    {[:ash, :domain, :bulk_update, :start], %{system_time: _},
+                     %{resource_short_name: :post}, _}}
+
+    assert_receive {:telemetry,
+                    {[:ash, :domain, :bulk_update, :stop], %{duration: _},
+                     %{resource_short_name: :post}, _}}
+  end
+
+  test "bulk_update with stream strategy produces :bulk_batch spans" do
+    Ash.bulk_create!([%{title: "post1"}, %{title: "post2"}], Post, :create)
+
+    Ash.bulk_update!(Post, :update, %{title: "updated"},
+      tracer: Ash.Tracer.Simple,
+      strategy: :stream,
+      batch_size: 2,
+      return_errors?: true
+    )
+
+    spans = Ash.Tracer.Simple.gather_spans()
+
+    bulk_update_span = find_span(spans, :bulk_update)
+    assert bulk_update_span
+
+    batch_spans = find_nested_spans(bulk_update_span, :bulk_batch)
+    assert length(batch_spans) >= 1
+  end
+
+  test "bulk_destroy produces a :bulk_destroy span" do
+    Ash.bulk_create!([%{title: "post1"}, %{title: "post2"}], Post, :create)
+
+    Ash.bulk_destroy!(Post, :destroy, %{},
+      tracer: Ash.Tracer.Simple,
+      strategy: :stream,
+      return_errors?: true
+    )
+
+    spans = Ash.Tracer.Simple.gather_spans()
+
+    assert [
+             %Ash.Tracer.Simple.Span{
+               type: :bulk_destroy,
+               name: "domain:post.destroy",
+               metadata: %{
+                 action: :destroy,
+                 resource: Ash.Test.TracerTest.BulkActionsTest.Post
+               }
+             }
+           ] = top_level_spans(spans, :bulk_destroy)
+  end
+
+  test "bulk_destroy produces telemetry events" do
+    Ash.bulk_create!([%{title: "post1"}], Post, :create)
+
+    Ash.bulk_destroy!(Post, :destroy, %{},
+      tracer: Ash.Tracer.Simple,
+      strategy: :stream,
+      return_errors?: true
+    )
+
+    assert_receive {:telemetry,
+                    {[:ash, :domain, :bulk_destroy, :start], %{system_time: _},
+                     %{resource_short_name: :post}, _}}
+
+    assert_receive {:telemetry,
+                    {[:ash, :domain, :bulk_destroy, :stop], %{duration: _},
+                     %{resource_short_name: :post}, _}}
+  end
+
+  test "bulk_destroy with stream strategy produces :bulk_batch spans" do
+    Ash.bulk_create!([%{title: "post1"}, %{title: "post2"}], Post, :create)
+
+    Ash.bulk_destroy!(Post, :destroy, %{},
+      tracer: Ash.Tracer.Simple,
+      strategy: :stream,
+      batch_size: 2,
+      return_errors?: true
+    )
+
+    spans = Ash.Tracer.Simple.gather_spans()
+
+    bulk_destroy_span = find_span(spans, :bulk_destroy)
+    assert bulk_destroy_span
+
+    batch_spans = find_nested_spans(bulk_destroy_span, :bulk_batch)
+    assert length(batch_spans) >= 1
+  end
+
+  test "atomic upgraded update produces an :action span, not a :bulk_update span" do
+    post =
+      Ash.Changeset.for_create(Post, :create, %{title: "original"})
+      |> Ash.create!()
+
+    # The :atomic_upgrade_update action has atomic_upgrade? true.
+    # ETS supports update_query and expr_error, so this will be atomically
+    # upgraded to go through Update.Bulk.run, but it should still emit
+    # an :action span since it was a single-record update call.
+    Ash.Changeset.for_update(post, :atomic_upgrade_update, %{title: "updated"},
+      tracer: Ash.Tracer.Simple
+    )
+    |> Ash.update!(tracer: Ash.Tracer.Simple, authorize?: false)
+
+    spans = Ash.Tracer.Simple.gather_spans()
+
+    # Even though the atomic upgrade goes through Update.Bulk.run internally,
+    # it should produce an :action span (not :bulk_update) since it was a
+    # single-record Ash.update! call.
+    assert find_span(spans, :action)
+    refute find_span(spans, :bulk_update)
+  end
+
+  test "non-atomic update produces :action span and no :bulk_update span" do
+    post =
+      Ash.Changeset.for_create(Post, :create, %{title: "original"})
+      |> Ash.create!()
+
+    Ash.Changeset.for_update(post, :non_atomic_update, %{title: "updated"},
+      tracer: Ash.Tracer.Simple
+    )
+    |> Ash.update!(tracer: Ash.Tracer.Simple)
+
+    spans = Ash.Tracer.Simple.gather_spans()
+
+    action_spans = top_level_spans(spans, :action)
+    bulk_update_spans = top_level_spans(spans, :bulk_update)
+
+    assert action_spans != []
+    assert bulk_update_spans == []
+  end
+
+  defp top_level_spans(spans, type) do
+    Enum.filter(spans, &(&1.type == type))
+  end
+
+  defp find_span(spans, type) do
+    Enum.find(spans, &(&1.type == type)) ||
+      Enum.find_value(spans, fn span ->
+        find_span(span.spans, type)
+      end)
+  end
+
+  defp find_nested_spans(%{spans: spans}, type) do
+    direct = Enum.filter(spans, &(&1.type == type))
+
+    nested =
+      Enum.flat_map(spans, fn span ->
+        find_nested_spans(span, type)
+      end)
+
+    direct ++ nested
+  end
+end
