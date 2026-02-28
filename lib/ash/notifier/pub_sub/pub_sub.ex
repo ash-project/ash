@@ -243,7 +243,10 @@ defmodule Ash.Notifier.PubSub do
 
   use Spark.Dsl.Extension,
     sections: @sections,
-    verifiers: [Ash.Notifier.PubSub.Verifiers.VerifyActionNames]
+    verifiers: [
+      Ash.Notifier.PubSub.Verifiers.VerifyActionNames,
+      Ash.Notifier.PubSub.Verifiers.VerifyCalcTransforms
+    ]
 
   use Ash.Notifier
 
@@ -273,24 +276,53 @@ defmodule Ash.Notifier.PubSub do
     |> Enum.filter(&matches?(&1, action))
     |> Enum.with_index()
     |> Enum.flat_map(fn {publication, index} ->
-      case List.wrap(publication.load) do
-        [] ->
-          []
+      calc_loads = load_for_calc_transform(publication, resource)
 
-        statement ->
-          case Ash.Query.Calculation.new(
-                 {:pub_sub_dependency, index},
-                 Ash.Notifier.NotifierDependencies,
-                 [statement: statement],
-                 Ash.Type.Map,
-                 []
-               ) do
-            {:ok, calc} -> [calc]
-            _ -> []
-          end
-      end
+      statement_loads =
+        case List.wrap(publication.load) do
+          [] ->
+            []
+
+          statement ->
+            case Ash.Query.Calculation.new(
+                   {:pub_sub_dependency, index},
+                   Ash.Notifier.NotifierDependencies,
+                   [statement: statement],
+                   Ash.Type.Map,
+                   []
+                 ) do
+              {:ok, calc} -> [calc]
+              _ -> []
+            end
+        end
+
+      calc_loads ++ statement_loads
     end)
   end
+
+  defp load_for_calc_transform(%{transform: calc_name}, resource)
+       when is_atom(calc_name) and not is_nil(calc_name) do
+    case Ash.Resource.Info.calculation(resource, calc_name) do
+      nil ->
+        []
+
+      calc ->
+        type = if calc.type == :auto, do: :any, else: calc.type
+
+        case Ash.Query.Calculation.new(
+               calc_name,
+               elem(calc.calculation, 0),
+               elem(calc.calculation, 1),
+               type,
+               calc.constraints || []
+             ) do
+          {:ok, query_calc} -> [query_calc]
+          _ -> []
+        end
+    end
+  end
+
+  defp load_for_calc_transform(_, _), do: []
 
   # Enriches a notification with the per-publication loaded data before broadcasting.
   defp enrich_for_publication(notification, pub, index) do
@@ -361,10 +393,16 @@ defmodule Ash.Notifier.PubSub do
     transform = publish.transform || Ash.Notifier.PubSub.Info.transform(notification.resource)
 
     value =
-      if transform do
-        transform.(notification)
-      else
-        notification
+      cond do
+        is_atom(transform) and not is_nil(transform) ->
+          # Transform is a calculation name - extract its value from the loaded data
+          get_calculation_value(notification, transform)
+
+        is_function(transform) ->
+          transform.(notification)
+
+        true ->
+          notification
       end
 
     Enum.each(topics, fn topic ->
@@ -390,6 +428,21 @@ defmodule Ash.Notifier.PubSub do
 
       apply(Ash.Notifier.PubSub.Info.module(notification.resource), :broadcast, args)
     end)
+  end
+
+  defp get_calculation_value(notification, calc_name) do
+    # The calculation should have been loaded via load/2
+    case notification.data do
+      %{calculations: %{^calc_name => value}} ->
+        value
+
+      data when is_map(data) ->
+        # Try direct struct access (if the calc has a load field that puts it on the struct)
+        Map.get(data, calc_name)
+
+      _ ->
+        nil
+    end
   end
 
   def to_payload(topic, event, notification, value) do

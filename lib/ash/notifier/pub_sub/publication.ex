@@ -51,9 +51,10 @@ defmodule Ash.Notifier.PubSub.Publication do
         "A filter for notifications. Receives a notification, and ignores it if the function returns a falsy value."
     ],
     transform: [
-      type: {:fun, 1},
+      type: {:or, [{:fun, 1}, :atom]},
       doc:
-        "A transformer for notifications. Receives a notification, and returns a new value to be broadcasted."
+        "A transformer for notifications. Either a function that receives a notification and returns a new value, " <>
+          "or an atom naming a calculation on the resource whose result will be used as the broadcast value."
     ],
     topic: [
       type: {:custom, __MODULE__, :topic, []},
@@ -97,6 +98,11 @@ defmodule Ash.Notifier.PubSub.Publication do
   def publish_all_schema, do: @publish_all_schema
 
   @doc false
+  # When transform is an atom (calculation name), pass through - the verifier will validate it
+  def transform(%__MODULE__{transform: transform} = publication) when is_atom(transform) and not is_nil(transform) do
+    {:ok, publication}
+  end
+
   def transform(%__MODULE__{returns: nil} = publication), do: {:ok, publication}
 
   def transform(%__MODULE__{returns: _returns, transform: nil}) do

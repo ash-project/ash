@@ -2187,6 +2187,10 @@ defmodule Ash.Type do
   defp vagueness(_), do: 0
 
   @doc false
+  def set_type_transformation(%{type: :auto} = thing) do
+    {:ok, thing}
+  end
+
   def set_type_transformation(%{type: original_type, constraints: constraints} = thing) do
     type = get_type!(original_type)
 

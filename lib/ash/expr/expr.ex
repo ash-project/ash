@@ -1655,8 +1655,34 @@ defmodule Ash.Expr do
           {_, type} -> {:ok, type}
         end
 
+      value when is_map(value) and not is_struct(value) and value != %{} ->
+        determine_map_type(value)
+
       _ ->
         :error
+    end
+  end
+
+  defp determine_map_type(map) do
+    if Enum.all?(map, fn {key, _} -> is_atom(key) end) do
+      Enum.reduce_while(map, {:ok, []}, fn {key, val_expr}, {:ok, acc} ->
+        case determine_type(val_expr) do
+          {:ok, {type, constraints}} ->
+            {:cont, {:ok, [{key, [type: type, constraints: constraints]} | acc]}}
+
+          :error ->
+            {:halt, :error}
+        end
+      end)
+      |> case do
+        {:ok, fields} ->
+          {:ok, {Ash.Type.Map, [fields: Enum.reverse(fields)]}}
+
+        :error ->
+          :error
+      end
+    else
+      :error
     end
   end
 
