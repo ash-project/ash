@@ -8,6 +8,27 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.19.0](https://github.com/ash-project/ash/compare/v3.18.0...v3.19.0) (2026-03-01)
+
+
+
+
+### Features:
+
+* Allow dumping and casting instance_of union types (#2597) by [@Munksgaard](https://github.com/Munksgaard) [(#2597)](https://github.com/ash-project/ash/pull/2597)
+
+* make enum label/description overridable (#2594) by Hannes Wüthrich [(#2594)](https://github.com/ash-project/ash/pull/2594)
+
+* add touch_update_defaults? option to bulk_create (#2590) by Michael Bärtschi [(#2590)](https://github.com/ash-project/ash/pull/2590)
+
+### Bug Fixes:
+
+* call manage_relationships in single hard destroy path (#2596) by [@barnabasJ](https://github.com/barnabasJ) [(#2596)](https://github.com/ash-project/ash/pull/2596)
+
+### Improvements:
+
+* add new trace types for bulk actions by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.18.0](https://github.com/ash-project/ash/compare/v3.17.1...v3.18.0) (2026-02-25)
 
 
