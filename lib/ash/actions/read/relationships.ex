@@ -361,6 +361,7 @@ defmodule Ash.Actions.Read.Relationships do
                   else
                     current_resource
                     |> Ash.Query.new()
+                    |> Ash.Query.set_tenant(source_query.tenant)
                     |> clear_lateral_join_source()
                   end
 
