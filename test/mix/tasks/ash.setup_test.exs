@@ -121,7 +121,10 @@ defmodule Mix.Tasks.Ash.SetupTest do
       rescue
         e ->
           message = Exception.message(e)
-          assert message =~ "Mix.Tasks.Ash.SetupTest.NoNameExtension" or message =~ "NoNameExtension"
+
+          assert message =~ "Mix.Tasks.Ash.SetupTest.NoNameExtension" or
+                   message =~ "NoNameExtension"
+
           assert message =~ "no name extension failed"
       end
     end

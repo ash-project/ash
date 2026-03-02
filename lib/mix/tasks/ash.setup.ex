@@ -26,10 +26,9 @@ defmodule Mix.Tasks.Ash.Setup do
     if failures != [] do
       message =
         failures
-        |> Enum.map(fn {task, error} ->
+        |> Enum.map_join("\n", fn {task, error} ->
           "  • #{task}: #{Exception.message(error)}"
         end)
-        |> Enum.join("\n")
 
       Mix.raise("""
       Setup failed with the following errors:
@@ -42,12 +41,10 @@ defmodule Mix.Tasks.Ash.Setup do
   end
 
   defp run_compile(compile_fn) do
-    try do
-      compile_fn.()
-      []
-    rescue
-      e -> [{"compile", e}]
-    end
+    compile_fn.()
+    []
+  rescue
+    e -> [{"compile", e}]
   end
 
   defp run_extensions(extensions, argv) do
