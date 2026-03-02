@@ -283,8 +283,14 @@ defmodule Ash.Type.Struct do
   def apply_constraints(nil, _constraints), do: {:ok, nil}
 
   def apply_constraints(value, constraints) do
-    with {:ok, value} <- handle_fields(value, constraints) do
-      handle_instance_of(value, constraints)
+    instance_of = constraints[:instance_of]
+
+    if instance_of && !constraints[:fields] && is_struct(value, instance_of) do
+      {:ok, value}
+    else
+      with {:ok, value} <- handle_fields(value, constraints) do
+        handle_instance_of(value, constraints)
+      end
     end
   end
 
