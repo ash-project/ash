@@ -442,4 +442,19 @@ defmodule Type.StructTest do
 
     assert changeset.valid?
   end
+
+  test "apply_constraints preserves __meta__ state for already valid struct instances" do
+    loaded_struct = %Embedded{name: "fred", title: "title"}
+    loaded_struct = Ecto.put_meta(loaded_struct, state: :loaded)
+    assert loaded_struct.__meta__.state == :loaded
+
+    assert {:ok, result} =
+             Ash.Type.apply_constraints(Ash.Type.Struct, loaded_struct,
+               instance_of: Embedded
+             )
+
+    assert result.__meta__.state == :loaded
+    assert result.name == "fred"
+    assert result.title == "title"
+  end
 end
