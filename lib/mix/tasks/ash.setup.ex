@@ -41,12 +41,10 @@ defmodule Mix.Tasks.Ash.Setup do
   end
 
   defp run_compile(compile_fn) do
-    try do
-      compile_fn.()
-      []
-    rescue
-      e -> [{"compile", e}]
-    end
+    compile_fn.()
+    []
+  rescue
+    e -> [{"compile", e}]
   end
 
   defp run_extensions(extensions, argv) do
