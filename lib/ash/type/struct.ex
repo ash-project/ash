@@ -160,13 +160,27 @@ defmodule Ash.Type.Struct do
         fields
 
       :error ->
-        instance_of = constraints[:instance_of]
+        inferred_fields(constraints)
+    end
+  end
 
-        if instance_of && Ash.Resource.Info.resource?(instance_of) do
-          instance_of
-          |> Ash.Resource.Info.attributes()
-          |> Map.new(&{&1.name, [type: &1.type, constraints: &1.constraints]})
-        end
+  defp inferred_fields(constraints) do
+    with {:ok, instance_of} <- Keyword.fetch(constraints, :instance_of),
+         true <- Ash.Resource.Info.resource?(instance_of),
+         true <- Ash.Resource.Info.embedded?(instance_of) do
+      instance_of
+      |> Ash.Resource.Info.public_attributes()
+      |> Enum.map(fn attribute ->
+        {attribute.name,
+         [
+           type: attribute.type,
+           allow_nil?: attribute.allow_nil?,
+           description: attribute.description,
+           constraints: attribute.constraints || []
+         ]}
+      end)
+    else
+      _ -> nil
     end
   end
 
