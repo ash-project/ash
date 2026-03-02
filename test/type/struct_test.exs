@@ -449,9 +449,7 @@ defmodule Type.StructTest do
     assert loaded_struct.__meta__.state == :loaded
 
     assert {:ok, result} =
-             Ash.Type.apply_constraints(Ash.Type.Struct, loaded_struct,
-               instance_of: Embedded
-             )
+             Ash.Type.apply_constraints(Ash.Type.Struct, loaded_struct, instance_of: Embedded)
 
     assert result.__meta__.state == :loaded
     assert result.name == "fred"
