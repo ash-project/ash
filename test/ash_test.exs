@@ -19,7 +19,8 @@ defmodule Ash.Test.AshTest do
     @moduledoc false
 
     use Ash.Resource,
-      domain: Domain
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -284,7 +285,7 @@ defmodule Ash.Test.AshTest do
                |> Ash.Changeset.new()
                |> Ash.update(%{name: "Bob"}, action: :update)
 
-      assert {:ok, %User{name: "Alice", state: :awake}} =
+      assert {:ok, %User{state: :awake}} =
                user
                |> Ash.Changeset.new()
                |> Ash.update(%{state: :awake}, action: :update_state)
@@ -303,7 +304,7 @@ defmodule Ash.Test.AshTest do
       assert {:ok, %User{name: "Bob"}} =
                Ash.update(user, %{name: "Bob"}, action: :update)
 
-      assert {:ok, %User{name: "Alice", state: :awake}} =
+      assert {:ok, %User{state: :awake}} =
                Ash.update(user, %{state: :awake}, action: :update_state)
     end
   end
@@ -364,7 +365,7 @@ defmodule Ash.Test.AshTest do
                |> Ash.Changeset.new()
                |> Ash.update!(%{name: "Bob"}, action: :update)
 
-      assert %User{name: "Alice", state: :awake} =
+      assert %User{state: :awake} =
                user
                |> Ash.Changeset.new()
                |> Ash.update!(%{state: :awake}, action: :update_state)
@@ -383,7 +384,7 @@ defmodule Ash.Test.AshTest do
       assert %User{name: "Bob"} =
                Ash.update!(user, %{name: "Bob"}, action: :update)
 
-      assert %User{name: "Alice", state: :awake} =
+      assert %User{state: :awake} =
                Ash.update!(user, %{state: :awake}, action: :update_state)
     end
   end
@@ -509,6 +510,21 @@ defmodule Ash.Test.AshTest do
       assert_raise Ash.Error.Invalid, ~r/no such action/i, fn ->
         Ash.get!(User, user.id, action: :this_action_does_not_exist)
       end
+    end
+  end
+
+  describe "get/2" do
+    test "accepts error? and not_found_error? as options" do
+      # `error?` will be removed in 4.0 in order to bring get/2 inline with `get? true` in read actions
+      Ash.create!(User, %{name: "Alice"})
+
+      assert {:ok, nil} = Ash.get(User, "dcbbe7f0-0d77-4c38-923b-ab66a42cc817", error?: false)
+
+      assert {:ok, nil} =
+               Ash.get(User, "dcbbe7f0-0d77-4c38-923b-ab66a42cc817", not_found_error?: false)
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(User, "dcbbe7f0-0d77-4c38-923b-ab66a42cc817")
     end
   end
 

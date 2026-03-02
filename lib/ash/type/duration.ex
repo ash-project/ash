@@ -24,7 +24,30 @@ defmodule Ash.Type.Duration do
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, _) do
-    Ecto.Type.cast(:duration, value)
+    case Ecto.Type.cast(:duration, value) do
+      :error ->
+        if is_binary(value) do
+          case Duration.from_iso8601(value) do
+            {:ok, duration} -> {:ok, duration}
+            {:error, error} -> {:error, error}
+          end
+        else
+          :error
+        end
+
+      {:error, error} ->
+        if is_binary(value) do
+          case Duration.from_iso8601(value) do
+            {:ok, duration} -> {:ok, duration}
+            {:error, _} -> {:error, error}
+          end
+        else
+          {:error, error}
+        end
+
+      {:ok, duration} ->
+        {:ok, duration}
+    end
   end
 
   @impl true
@@ -48,7 +71,13 @@ defmodule Ash.Type.Duration do
   end
 
   @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
 
+  def dump_to_embedded(value, _) do
+    Duration.to_iso8601(value)
+  end
+
+  @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
 
   def dump_to_native(value, _) do

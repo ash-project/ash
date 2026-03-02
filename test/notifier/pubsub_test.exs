@@ -120,6 +120,40 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
   end
 
+  defmodule PostWithLoad do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      notifiers: [Ash.Notifier.PubSub]
+
+    pub_sub do
+      module PubSub
+      prefix "post_load"
+
+      publish("named_create", :create, "created", load: [:name])
+      publish :update, "updated", load: [:name]
+      publish_all("any_create", :create, "any_created", load: [:name])
+    end
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+  end
+
   setup do
     Application.put_env(PubSub, :notifier_test_pid, self())
 
@@ -248,5 +282,110 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
     message = "users.#{user.id}.created"
     assert_receive {:broadcast, ^message, "create", %Ash.Notifier.Notification{}}
+  end
+
+  describe "event as optional first positional argument" do
+    test "atom event as first positional arg is used as the broadcast event" do
+      PostWithLoad
+      |> Ash.Changeset.for_create(:create, %{name: "alice"})
+      |> Ash.create!()
+
+      assert_receive {:broadcast, "post_load:created", "named_create",
+                      %Ash.Notifier.Notification{}}
+    end
+
+    test "string event as first positional arg is used as the broadcast event" do
+      PostWithLoad
+      |> Ash.Changeset.for_create(:create, %{name: "bob"})
+      |> Ash.create!()
+
+      assert_receive {:broadcast, "post_load:any_created", "any_create",
+                      %Ash.Notifier.Notification{}}
+    end
+
+    test "event set as keyword option still works" do
+      Post
+      |> Ash.Changeset.for_create(:create, %{name: "ted"})
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:update, %{name: "joe"})
+      |> Ash.update!()
+
+      assert_receive {:broadcast, _, "name_change", %Ash.Notifier.Notification{}}
+    end
+  end
+
+  describe "publication load" do
+    test "loaded fields are available on notification.data during broadcast" do
+      PostWithLoad
+      |> Ash.Changeset.for_create(:create, %{name: "carol"})
+      |> Ash.create!()
+
+      assert_receive {:broadcast, "post_load:created", "named_create",
+                      %Ash.Notifier.Notification{data: %{name: "carol"}}}
+    end
+
+    test "publish_all with load loads fields for notification" do
+      PostWithLoad
+      |> Ash.Changeset.for_create(:create, %{name: "dave"})
+      |> Ash.create!()
+
+      assert_receive {:broadcast, "post_load:any_created", "any_create",
+                      %Ash.Notifier.Notification{data: %{name: "dave"}}}
+    end
+  end
+
+  describe "public? option on publications" do
+    test "public? defaults to false" do
+      publications = Ash.Notifier.PubSub.Info.publications(Post)
+      assert Enum.all?(publications, &(&1.public? == false))
+    end
+
+    test "public? can be set to true" do
+      defmodule PublicPost do
+        use Ash.Resource,
+          domain: Ash.Test.Domain,
+          data_layer: Ash.DataLayer.Ets,
+          notifiers: [Ash.Notifier.PubSub]
+
+        pub_sub do
+          module Ash.Test.Notifier.PubSubTest.PubSub
+
+          publish :create, "created", public?: true
+          publish :update, "updated"
+        end
+
+        ets do
+          private?(true)
+        end
+
+        actions do
+          default_accept :*
+          defaults [:read, create: :*, update: :*]
+        end
+
+        attributes do
+          uuid_primary_key :id
+        end
+      end
+
+      publications = Ash.Notifier.PubSub.Info.publications(PublicPost)
+      create_pub = Enum.find(publications, &(&1.action == :create))
+      update_pub = Enum.find(publications, &(&1.action == :update))
+      assert create_pub.public? == true
+      assert update_pub.public? == false
+    end
+  end
+
+  describe "returns/transform typed publications" do
+    test "transform option shapes the broadcast payload" do
+      PostWithLoad
+      |> Ash.Changeset.for_create(:create, %{name: "alice"})
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:update, %{name: "bob"})
+      |> Ash.update!()
+
+      assert_receive {:broadcast, "post_load:updated", "update",
+                      %Ash.Notifier.Notification{data: %{name: "bob"}}}
+    end
   end
 end

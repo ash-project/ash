@@ -15,6 +15,7 @@ defmodule Ash.Resource.Relationships.HasMany do
     :description,
     :filter,
     :limit,
+    :offset,
     :sort,
     :default_sort,
     :read_action,
@@ -57,6 +58,7 @@ defmodule Ash.Resource.Relationships.HasMany do
           sortable?: true,
           source_attribute: atom,
           limit: integer,
+          offset: non_neg_integer() | nil,
           sort: Keyword.t() | nil,
           default_sort: Keyword.t() | nil,
           description: String.t(),
@@ -88,6 +90,12 @@ defmodule Ash.Resource.Relationships.HasMany do
                       type: :integer,
                       doc: """
                       An integer to limit entries from loaded relationship.
+                      """
+                    ],
+                    offset: [
+                      type: :non_neg_integer,
+                      doc: """
+                      An offset to skip entries when loading the relationship.
                       """
                     ]
                   ],

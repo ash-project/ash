@@ -263,7 +263,8 @@ defmodule Ash.Filter do
   """
   def parse_input(
         resource,
-        statement
+        statement,
+        opts \\ []
       ) do
     context = %{
       resource: resource,
@@ -271,7 +272,8 @@ defmodule Ash.Filter do
       relationship_path: [],
       public?: true,
       input?: true,
-      data_layer: Ash.DataLayer.data_layer(resource)
+      data_layer: Ash.DataLayer.data_layer(resource),
+      ref_transformer: opts[:ref_transformer]
     }
 
     with {:ok, expression} <- parse_expression(statement, context),
@@ -2829,39 +2831,58 @@ defmodule Ash.Filter do
     end
   end
 
-  defp attribute(%{public?: true, resource: resource}, attribute) when not is_nil(resource),
-    do: Ash.Resource.Info.public_attribute(resource, attribute)
+  defp transform_ref(%{ref_transformer: nil}, name), do: name
 
-  defp attribute(%{public?: false, resource: resource}, attribute) when not is_nil(resource) do
-    Ash.Resource.Info.attribute(resource, attribute)
+  defp transform_ref(%{ref_transformer: transformer, resource: resource}, name) do
+    transformer.(resource, name) || name
+  end
+
+  defp transform_ref(_context, name), do: name
+
+  defp attribute(%{public?: true, resource: resource} = context, attribute)
+       when not is_nil(resource) do
+    Ash.Resource.Info.public_attribute(resource, transform_ref(context, attribute))
+  end
+
+  defp attribute(%{public?: false, resource: resource} = context, attribute)
+       when not is_nil(resource) do
+    Ash.Resource.Info.attribute(resource, transform_ref(context, attribute))
   end
 
   defp attribute(_, _), do: nil
 
-  defp aggregate(%{public?: true, resource: resource}, aggregate) when not is_nil(resource),
-    do: Ash.Resource.Info.public_aggregate(resource, aggregate)
+  defp aggregate(%{public?: true, resource: resource} = context, aggregate)
+       when not is_nil(resource) do
+    Ash.Resource.Info.public_aggregate(resource, transform_ref(context, aggregate))
+  end
 
-  defp aggregate(%{public?: false, resource: resource}, aggregate) when not is_nil(resource),
-    do: Ash.Resource.Info.aggregate(resource, aggregate)
+  defp aggregate(%{public?: false, resource: resource} = context, aggregate)
+       when not is_nil(resource) do
+    Ash.Resource.Info.aggregate(resource, transform_ref(context, aggregate))
+  end
 
   defp aggregate(_, _), do: nil
 
-  defp calculation(%{public?: true, resource: resource}, calculation) when not is_nil(resource),
-    do: Ash.Resource.Info.public_calculation(resource, calculation)
+  defp calculation(%{public?: true, resource: resource} = context, calculation)
+       when not is_nil(resource) do
+    Ash.Resource.Info.public_calculation(resource, transform_ref(context, calculation))
+  end
 
-  defp calculation(%{public?: false, resource: resource}, calculation) when not is_nil(resource),
-    do: Ash.Resource.Info.calculation(resource, calculation)
+  defp calculation(%{public?: false, resource: resource} = context, calculation)
+       when not is_nil(resource) do
+    Ash.Resource.Info.calculation(resource, transform_ref(context, calculation))
+  end
 
   defp calculation(_, _), do: nil
 
-  defp relationship(%{public?: true, resource: resource}, relationship)
+  defp relationship(%{public?: true, resource: resource} = context, relationship)
        when not is_nil(resource) do
-    Ash.Resource.Info.public_relationship(resource, relationship)
+    Ash.Resource.Info.public_relationship(resource, transform_ref(context, relationship))
   end
 
-  defp relationship(%{public?: false, resource: resource}, relationship)
+  defp relationship(%{public?: false, resource: resource} = context, relationship)
        when not is_nil(resource) do
-    Ash.Resource.Info.relationship(resource, relationship)
+    Ash.Resource.Info.relationship(resource, transform_ref(context, relationship))
   end
 
   defp relationship(_, _), do: nil
@@ -3328,6 +3349,23 @@ defmodule Ash.Filter do
 
             _ ->
               {%{}, nested_statement}
+          end
+
+        input =
+          case context[:ref_transformer] do
+            nil ->
+              input
+
+            transformer ->
+              Map.new(input, fn {key, val} ->
+                new_key =
+                  transformer.(
+                    context.resource,
+                    {:calculation_argument, resource_calculation.name, key}
+                  ) || key
+
+                {new_key, val}
+              end)
           end
 
         with {:ok, args} <-

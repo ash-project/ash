@@ -353,7 +353,8 @@ defmodule Ash.DataLayer.Mnesia do
           Ash.Changeset.set_context(changeset, %{
             private:
               Map.merge(changeset.context[:private] || %{}, %{
-                upsert_fields: options[:upsert_fields] || []
+                upsert_fields: options[:upsert_fields] || [],
+                touch_update_defaults?: Map.get(options, :touch_update_defaults?, true)
               })
           })
 
@@ -636,7 +637,10 @@ defmodule Ash.DataLayer.Mnesia do
           create(resource, changeset)
 
         {:ok, [result]} ->
-          to_set = Ash.Changeset.set_on_upsert(changeset, keys)
+          to_set =
+            changeset
+            |> Ash.Changeset.set_on_upsert(keys)
+            |> apply_upsert_update_defaults(resource, result, changeset)
 
           changeset =
             changeset
@@ -651,6 +655,40 @@ defmodule Ash.DataLayer.Mnesia do
       end
     end
   end
+
+  # Mnesia's update/2 calls apply_attributes which re-applies update_defaults
+  # via set_defaults/3. To prevent unwanted updates, we preserve existing
+  # values from the record for update_default fields so set_defaults sees
+  # them as already set and skips them.
+  defp apply_upsert_update_defaults(to_set, resource, existing_record, changeset) do
+    touch_update_defaults? =
+      changeset.context[:private][:touch_update_defaults?]
+
+    if touch_update_defaults? == false || to_set == [] do
+      upsert_fields = changeset.context[:private][:upsert_fields]
+
+      update_default_attrs =
+        resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.filter(& &1.update_default)
+
+      Enum.reduce(update_default_attrs, to_set, fn attr, acc ->
+        if explicitly_set?(attr.name, upsert_fields, changeset) do
+          acc
+        else
+          Keyword.put(acc, attr.name, Map.get(existing_record, attr.name))
+        end
+      end)
+    else
+      to_set
+    end
+  end
+
+  defp explicitly_set?(key, upsert_fields, _changeset) when is_list(upsert_fields),
+    do: key in upsert_fields
+
+  defp explicitly_set?(key, _, changeset),
+    do: Map.has_key?(changeset.attributes, key) && key not in Map.get(changeset, :defaults, [])
 
   @doc false
   @impl true

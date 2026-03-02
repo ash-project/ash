@@ -160,7 +160,13 @@ defmodule Ash.Type.Struct do
         fields
 
       :error ->
-        nil
+        instance_of = constraints[:instance_of]
+
+        if instance_of && Ash.Resource.Info.resource?(instance_of) do
+          instance_of
+          |> Ash.Resource.Info.attributes()
+          |> Map.new(&{&1.name, [type: &1.type, constraints: &1.constraints]})
+        end
     end
   end
 

@@ -404,4 +404,22 @@ defmodule Ash.Resource.Validation.Builtins do
   def argument_in(argument, list) do
     {Validation.ArgumentIn, argument: argument, list: list}
   end
+
+  @doc """
+  Validates that the action is being run in a pre-flight authorization context (i.e. `Ash.can?/3`).
+
+  Primarily meant for use in `where` to skip or enable validations during authorization checks.
+
+  ## Examples
+
+      # Skip an expensive validation during can/can? checks
+      validate expensive_check(), where: [negate(pre_flight_authorization())]
+
+      # Only run a validation during can/can? checks
+      validate some_check(), where: [pre_flight_authorization()]
+  """
+  @spec pre_flight_authorization() :: Validation.ref()
+  def pre_flight_authorization do
+    {Validation.PreFlightAuthorization, []}
+  end
 end

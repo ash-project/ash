@@ -366,7 +366,8 @@ defmodule Ash.Actions.Read.Calculations do
         {_name, calculation, calculation_results}, {:ok, records} ->
           case calculation_results do
             {:ok, value} ->
-              {:cont, {:ok, attach_calculation_results(calculation, records, value)}}
+              new_records = attach_calculation_results(calculation, records, value)
+              {:cont, {:ok, new_records}}
 
             {:error, error} ->
               {:halt, {:error, error}}
@@ -1836,8 +1837,7 @@ defmodule Ash.Actions.Read.Calculations do
             new_calc_name =
               {:__calc_dep__,
                [
-                 {calc_path, {:calc, equivalent_calculation.name, equivalent_calculation.load},
-                  calc_name, calc_load}
+                 {calc_path, {:calc, calculation.name, calculation.load}, calc_name, calc_load}
                ]}
 
             Ash.Query.calculate(
@@ -1845,7 +1845,8 @@ defmodule Ash.Actions.Read.Calculations do
               new_calc_name,
               equivalent_calculation.type,
               {Ash.Resource.Calculation.FetchCalc,
-               load: equivalent_calculation.name, name: equivalent_calculation.load},
+               load: equivalent_calculation.load && equivalent_calculation.name,
+               name: equivalent_calculation.load || equivalent_calculation.name},
               equivalent_calculation.context.arguments,
               equivalent_calculation.constraints,
               equivalent_calculation.context

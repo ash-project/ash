@@ -86,6 +86,30 @@ defmodule ExampleNotifier do
 end
 ```
 
+### Loading data before notification
+
+Notifiers can implement the optional `load/2` callback to declare fields that should be loaded onto `notification.data` before `notify/1` is called. This is useful when your notifier needs access to related data, calculations, or aggregates that may not be present on the record returned by the action.
+
+The return value is any load statement accepted by `Ash.Query.load/2` — atoms, keyword lists, or nested loads.
+
+```elixir
+defmodule MyApp.PostNotifier do
+  use Ash.Notifier
+
+  # Request that :author (a relationship) and :comment_count (an aggregate)
+  # are loaded before notify/1 is called.
+  def load(_resource, _action) do
+    [:author, :comment_count]
+  end
+
+  def notify(%Ash.Notifier.Notification{data: post}) do
+    MyApp.Mailer.send_post_created(post.author.email, post.comment_count)
+  end
+end
+```
+
+If multiple notifiers on the same resource request the same fields, Ash deduplicates the loads so each field is fetched at most once.
+
 ## Transactions
 
 Domain calls involving resources who's datalayer supports transactions (like Postgres), notifications are saved up and sent after the transaction is closed. For example, the domain call below ultimately results in many many database calls.

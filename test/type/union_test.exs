@@ -80,6 +80,42 @@ defmodule Ash.Test.Filter.UnionTest do
       ]
   end
 
+  defmodule StructUnionResource do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults [:read]
+      default_accept :*
+
+      create :create do
+        accept [:*]
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :integration, :union,
+        public?: true,
+        constraints: [
+          types: [
+            baz: [
+              type: :struct,
+              constraints: [instance_of: Baz]
+            ],
+            foo: [
+              type: :struct,
+              constraints: [instance_of: Foo]
+            ]
+          ]
+        ]
+    end
+  end
+
   defmodule DefaultedType do
     @moduledoc "A type with a default constraint"
     use Ash.Type
@@ -723,6 +759,37 @@ defmodule Ash.Test.Filter.UnionTest do
              RequiredNewTypeExample
              |> Ash.Changeset.for_create(:argument, %{untagged_arg: 1})
              |> Map.get(:arguments)
+  end
+
+  describe "cast_stored with struct instance_of union variants" do
+    defp integration_constraints do
+      %{constraints: constraints} =
+        Ash.Resource.Info.attribute(StructUnionResource, :integration)
+
+      constraints
+    end
+
+    test "reconstructs a struct from type_and_value format" do
+      stored = %{"type" => "baz", "value" => %{"count" => 42}}
+
+      assert {:ok, %Ash.Union{type: :baz, value: %Baz{count: 42}}} =
+               Ash.Type.cast_stored(Ash.Type.Union, stored, integration_constraints())
+    end
+
+    test "round-trips through dump_to_native and cast_stored" do
+      constraints = integration_constraints()
+      union = %Ash.Union{type: :baz, value: %Baz{count: 7}}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_native(Ash.Type.Union, union, constraints)
+      assert {:ok, reconstructed} = Ash.Type.cast_stored(Ash.Type.Union, dumped, constraints)
+
+      assert %Ash.Union{type: :baz, value: %Baz{count: 7}} = reconstructed
+    end
+
+    test "handles nil" do
+      assert {:ok, nil} =
+               Ash.Type.cast_stored(Ash.Type.Union, nil, integration_constraints())
+    end
   end
 
   test "it fails when attempting to define a resource using a union with invalid constraints" do

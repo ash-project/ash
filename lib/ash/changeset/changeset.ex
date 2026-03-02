@@ -3713,7 +3713,13 @@ defmodule Ash.Changeset do
   def hydrate_atomic_refs(changeset, actor, opts \\ []) do
     changeset
     |> add_atomic_validations(actor, opts)
-    |> do_hydrate_atomic_refs(actor)
+    |> case do
+      {:not_atomic, reason} ->
+        {:not_atomic, reason}
+
+      changeset ->
+        do_hydrate_atomic_refs(changeset, actor)
+    end
     |> case do
       {:ok, hydrated_changeset} ->
         hydrated_changeset

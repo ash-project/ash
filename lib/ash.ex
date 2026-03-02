@@ -230,7 +230,14 @@ defmodule Ash do
                     )
 
   @get_opts_schema [
+                     # This will be removed in 4.0. Use `not_found_error?` instead.
                      error?: [
+                       type: :boolean,
+                       default: true,
+                       doc:
+                         "Deprecated: Use not_found_error? instead. Whether or not an error should be returned or raised when the record is not found. If set to false, `nil` will be returned. Deprecated: This will be removed in 4.0."
+                     ],
+                     not_found_error?: [
                        type: :boolean,
                        default: true,
                        doc:
@@ -358,6 +365,12 @@ defmodule Ash do
                           type: :any,
                           doc:
                             "An expression to check if the record should be updated when there's a conflict."
+                        ],
+                        touch_update_defaults?: [
+                          type: :boolean,
+                          default: true,
+                          doc:
+                            "Whether or not to apply update defaults (like `updated_at` timestamps) on upsert. Only relevant when `upsert?: true` is set. Set to `false` to skip touching update_default fields when an upsert results in an update."
                         ]
                       ]
                       |> Spark.Options.merge(@global_opts, "Global Options")
@@ -672,6 +685,12 @@ defmodule Ash do
                                type: :any,
                                doc:
                                  "An expression to check if the record should be updated when there's a conflict."
+                             ],
+                             touch_update_defaults?: [
+                               type: :boolean,
+                               default: true,
+                               doc:
+                                 "Whether or not to apply update defaults (like `updated_at` timestamps) on upsert. Only relevant when `upsert?: true` is set. Set to `false` to skip touching update_default fields when an upsert results in an update."
                              ]
                            ]
                            |> Spark.Options.merge(
@@ -2124,7 +2143,8 @@ defmodule Ash do
         {:ok, single_result}
 
       {:ok, %{results: []}} ->
-        if opts[:error?] do
+        # deprecated: opts[:error?] will be removed in 4.0 and then opts[:not_found_error?] can be used directly here
+        if Enum.all?([opts[:error?], opts[:not_found_error?]]) do
           {:error,
            Ash.Error.Query.NotFound.exception(
              primary_key: filter,
@@ -2146,7 +2166,8 @@ defmodule Ash do
         {:ok, single_result}
 
       {:ok, []} ->
-        if opts[:error?] do
+        # deprecated: opts[:error?] will be removed in 4.0 and then opts[:not_found_error?] can be used directly here
+        if Enum.all?([opts[:error?], opts[:not_found_error?]]) do
           {:error,
            Ash.Error.Query.NotFound.exception(
              primary_key: filter,

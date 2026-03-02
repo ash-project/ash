@@ -111,6 +111,32 @@ defmodule Ash.Type.Enum do
   MyApp.TicketStatus.details(:closed)
   iex> %{description: "A closed ticket", label: "Closed"}
   ```
+
+  ### Overriding label and description
+
+  The `label/1` and `description/1` functions are overridable. This can be useful, for example,
+  to integrate with Gettext for internationalization. Use the Gettext macro in the `values` option
+  so that the keys are discovered at compile time, then override `label/1` to translate at runtime:
+
+  ```elixir
+  defmodule MyApp.TicketStatus do
+    use Gettext, backend: MyApp.Gettext
+
+    use Ash.Type.Enum,
+      values: [
+        open: [label: gettext("Open")],
+        closed: [label: gettext("Closed")],
+        escalated: [label: gettext("Escalated")]
+      ]
+
+    def label(nil), do: "N/A"
+
+    def label(value) do
+      with label when is_binary(label) <- super(value),
+        do: Gettext.gettext(MyApp.Gettext, label)
+    end
+  end
+  ```
   """
   @doc "The list of valid values (not all input types that match them)"
   @callback values() :: [atom | String.t()]
@@ -329,7 +355,12 @@ defmodule Ash.Type.Enum do
           :error
       end
 
-      defoverridable match: 1, storage_type: 0, cast_stored: 2, dump_to_native: 2
+      defoverridable match: 1,
+                     storage_type: 0,
+                     cast_stored: 2,
+                     dump_to_native: 2,
+                     label: 1,
+                     description: 1
     end
   end
 

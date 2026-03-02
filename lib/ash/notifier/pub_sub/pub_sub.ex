@@ -8,28 +8,32 @@ defmodule Ash.Notifier.PubSub do
   @publish %Spark.Dsl.Entity{
     name: :publish,
     target: Ash.Notifier.PubSub.Publication,
+    transform: {Ash.Notifier.PubSub.Publication, :transform, []},
     describe: "Configure a given action to publish its results over a given topic.",
     examples: [
       "publish :create, \"created\"",
+      "publish \"my_event\", :create, \"created\"",
       """
       publish :assign, "assigned"
       """
     ],
     schema: Ash.Notifier.PubSub.Publication.schema(),
-    args: [:action, :topic]
+    args: [{:optional, :event}, :action, :topic]
   }
 
   @publish_all %Spark.Dsl.Entity{
     name: :publish_all,
     target: Ash.Notifier.PubSub.Publication,
+    transform: {Ash.Notifier.PubSub.Publication, :transform, []},
     describe: """
     Works the same as `publish`, except that it takes a type and publishes all actions of that type.
     """,
     examples: [
-      "publish_all :create, \"created\""
+      "publish_all :create, \"created\"",
+      "publish_all \"my_creates\", :create, \"created\""
     ],
     schema: Ash.Notifier.PubSub.Publication.publish_all_schema(),
-    args: [:type, :topic]
+    args: [{:optional, :event}, :type, :topic]
   }
 
   @pub_sub %Spark.Dsl.Section{
@@ -213,6 +217,28 @@ defmodule Ash.Notifier.PubSub do
   - `:notification` just sends the notification
   - `:phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}` (see above)
   - `:broadcast` sends `%{topic: (topic), event: (event), payload: (notification)}`
+
+  ## Loading data before broadcast
+
+  Publications support a `load` option that declares fields to load onto `notification.data`
+  before the notification is broadcast. This is useful when a `transform` or `filter` function,
+  or a subscriber, needs access to related data that is not present on the record returned by
+  the action.
+
+  The value is any load statement accepted by `Ash.Query.load/2`.
+
+  ```elixir
+  pub_sub do
+    module MyAppWeb.Endpoint
+    prefix "post"
+
+    publish :create, "created", load: [:comment, author: [:full_name]]
+    publish :update, ["updated", :id], load: [:comment, author: [:full_name]]
+  end
+  ```
+
+  Different publications on the same resource can request different loads. Loads that are
+  identical across publications are deduplicated and fetched only once.
   """
 
   use Spark.Dsl.Extension,
@@ -229,12 +255,66 @@ defmodule Ash.Notifier.PubSub do
 
     resource
     |> Ash.Notifier.PubSub.Info.publications()
-    |> Enum.filter(
-      &(matches?(&1, notification.action) &&
-          (is_nil(&1.filter) || &1.filter.(notification)) &&
-          (is_nil(filter) || filter.(notification)))
-    )
-    |> Enum.each(&publish_notification(&1, notification))
+    |> Enum.filter(&matches?(&1, notification.action))
+    |> Enum.with_index()
+    |> Enum.each(fn {pub, index} ->
+      if (is_nil(pub.filter) || pub.filter.(notification)) &&
+           (is_nil(filter) || filter.(notification)) do
+        enriched = enrich_for_publication(notification, pub, index)
+        publish_notification(pub, enriched)
+      end
+    end)
+  end
+
+  @doc false
+  def load(resource, action) do
+    resource
+    |> Ash.Notifier.PubSub.Info.publications()
+    |> Enum.filter(&matches?(&1, action))
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {publication, index} ->
+      case List.wrap(publication.load) do
+        [] ->
+          []
+
+        statement ->
+          case Ash.Query.Calculation.new(
+                 {:pub_sub_dependency, index},
+                 Ash.Notifier.NotifierDependencies,
+                 [statement: statement],
+                 Ash.Type.Map,
+                 []
+               ) do
+            {:ok, calc} -> [calc]
+            _ -> []
+          end
+      end
+    end)
+  end
+
+  # Enriches a notification with the per-publication loaded data before broadcasting.
+  defp enrich_for_publication(notification, pub, index) do
+    case List.wrap(pub.load) do
+      [] ->
+        notification
+
+      statement ->
+        extra =
+          get_in(notification.data, [Access.key(:calculations, %{}), {:pub_sub_dependency, index}]) ||
+            %{}
+
+        resource = notification.resource
+
+        enriched_data =
+          Enum.reduce(extra, notification.data, fn {key, value}, data ->
+            case Ash.Notifier.placement_for_key(key, statement, resource) do
+              :struct -> Map.put(data, key, value)
+              :calculations -> Map.update!(data, :calculations, &Map.put(&1 || %{}, key, value))
+            end
+          end)
+
+        %{notification | data: enriched_data}
+    end
   end
 
   @doc false
@@ -252,7 +332,7 @@ defmodule Ash.Notifier.PubSub do
 
   defp publish_notification(publish, notification) do
     debug? = Application.get_env(:ash, :pub_sub)[:debug?] || false
-    event = publish.event || to_string(notification.action.name)
+    event = to_string(publish.event || notification.action.name)
     prefix = Ash.Notifier.PubSub.Info.prefix(notification.resource) || ""
     delimiter = Info.delimiter(notification.resource)
 

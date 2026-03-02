@@ -11,10 +11,15 @@ defmodule Ash.Notifier.PubSub.Publication do
     :event,
     :type,
     :except,
+    :returns,
+    :constraints,
+    :public?,
+    :load,
     :filter,
     :transform,
     :dispatcher,
     :previous_values?,
+    :__identifier__,
     :__spark_metadata__
   ]
 
@@ -23,6 +28,16 @@ defmodule Ash.Notifier.PubSub.Publication do
       type: :atom,
       doc: "The name of the action that should be published",
       required: true
+    ],
+    returns: [
+      type: :any,
+      doc:
+        "An `Ash.Type` for the notification payload. When specified, `transform` is required and must return a value of this type."
+    ],
+    constraints: [
+      type: :keyword_list,
+      default: [],
+      doc: "Constraints for the `returns` type. See `Ash.Type` for more."
     ],
     previous_values?: [
       type: :boolean,
@@ -46,8 +61,18 @@ defmodule Ash.Notifier.PubSub.Publication do
       required: true
     ],
     event: [
-      type: :string,
+      type: {:or, [:atom, :string]},
       doc: "The name of the event to publish. Defaults to the action name"
+    ],
+    public?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not this publication is considered public. Extensions may use this."
+    ],
+    load: [
+      type: :any,
+      doc:
+        "A load statement to be applied before this publication's notification is dispatched. Loaded fields will be merged onto `notification.data`."
     ],
     dispatcher: [
       type: :atom,
@@ -70,6 +95,29 @@ defmodule Ash.Notifier.PubSub.Publication do
 
   def schema, do: @schema
   def publish_all_schema, do: @publish_all_schema
+
+  @doc false
+  def transform(%__MODULE__{returns: nil} = publication), do: {:ok, publication}
+
+  def transform(%__MODULE__{returns: _returns, transform: nil}) do
+    {:error, "A `transform` option is required on publications that specify `returns`"}
+  end
+
+  def transform(%__MODULE__{returns: returns, constraints: constraints} = publication) do
+    resolved_type = Ash.Type.get_type(returns)
+
+    if is_nil(resolved_type) do
+      {:error, "Unknown type: #{inspect(returns)}"}
+    else
+      case Ash.Type.init(resolved_type, constraints || []) do
+        {:ok, constraints} ->
+          {:ok, %{publication | returns: resolved_type, constraints: constraints}}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+  end
 
   @doc false
   def topic(topic) when is_binary(topic) do

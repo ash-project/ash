@@ -167,12 +167,15 @@ defmodule Ash.Actions.Create do
     opts =
       Keyword.put(opts, :upsert_identity, upsert_identity)
 
+    touch_update_defaults? = Keyword.get(opts, :touch_update_defaults?, true)
+
     changeset =
       Ash.Changeset.set_context(changeset, %{
         private: %{
           upsert?: true,
           upsert_identity: upsert_identity,
-          upsert_fields: upsert_fields
+          upsert_fields: upsert_fields,
+          touch_update_defaults?: touch_update_defaults?
         }
       })
 

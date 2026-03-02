@@ -1735,7 +1735,14 @@ defmodule Ash.Type do
             {:ok, value} ->
               {:ok, value}
 
-            _ ->
+            {:error, error} ->
+              raise Ash.Error.Unknown.InvalidStoredValue,
+                type: parent,
+                value: term,
+                constraints: params,
+                error: error
+
+            :error ->
               :error
           end
         end
@@ -1748,7 +1755,14 @@ defmodule Ash.Type do
             {:ok, value} ->
               {:ok, value}
 
-            _ ->
+            {:error, error} ->
+              raise Ash.Error.Unknown.InvalidCastedValue,
+                type: parent,
+                value: term,
+                constraints: params,
+                error: error
+
+            :error ->
               :error
           end
         end
@@ -1919,14 +1933,15 @@ defmodule Ash.Type do
           {:ok, nil}
         else
           term
+          |> Enum.with_index()
           |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
             case Ash.Type.dump_to_native(__MODULE__, item, single_constraints) do
-              :error ->
-                {:halt, :error}
-
               {:ok, value} ->
                 {:cont, {:ok, [value | dumped]}}
+
+              error ->
+                {:halt, Ash.Helpers.error_with_context(error, index: index)}
             end
           end)
         end
@@ -1938,14 +1953,15 @@ defmodule Ash.Type do
           {:ok, nil}
         else
           term
+          |> Enum.with_index()
           |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
             case Ash.Type.dump_to_embedded(__MODULE__, item, single_constraints) do
-              :error ->
-                {:halt, :error}
-
               {:ok, value} ->
                 {:cont, {:ok, [value | dumped]}}
+
+              error ->
+                {:halt, Ash.Helpers.error_with_context(error, index: index)}
             end
           end)
         end

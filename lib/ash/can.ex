@@ -74,7 +74,12 @@ defmodule Ash.Can do
     opts = Keyword.put_new(opts, :maybe_is, :maybe)
     opts = Keyword.put_new(opts, :run_queries?, true)
     opts = Keyword.put_new(opts, :filter_with, :filter)
-    context = opts[:context] || %{}
+    pre_flight? = Keyword.get(opts, :pre_flight?, true)
+
+    context =
+      Ash.Helpers.deep_merge_maps(opts[:context] || %{}, %{
+        private: %{pre_flight_authorization?: pre_flight?}
+      })
 
     {actor, opts} =
       if is_struct(actor_or_scope) and Ash.Scope.ToOpts.impl_for(actor_or_scope) do
@@ -102,17 +107,23 @@ defmodule Ash.Can do
         %Ash.ActionInput{} = action_input ->
           action_input
           |> Ash.ActionInput.set_tenant(opts[:tenant] || action_input.tenant)
-          |> Ash.ActionInput.set_context(%{private: %{actor: actor}})
+          |> Ash.ActionInput.set_context(%{
+            private: %{actor: actor, pre_flight_authorization?: pre_flight?}
+          })
 
         %Ash.Query{} = query ->
           query
           |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
-          |> Ash.Query.set_context(%{private: %{actor: actor}})
+          |> Ash.Query.set_context(%{
+            private: %{actor: actor, pre_flight_authorization?: pre_flight?}
+          })
 
         %Ash.Changeset{} = changeset ->
           changeset
           |> Ash.Changeset.set_tenant(opts[:tenant] || changeset.tenant)
-          |> Ash.Changeset.set_context(%{private: %{actor: actor}})
+          |> Ash.Changeset.set_context(%{
+            private: %{actor: actor, pre_flight_authorization?: pre_flight?}
+          })
 
         %{type: :update, name: name} ->
           if opts[:data] do
@@ -179,7 +190,6 @@ defmodule Ash.Can do
     else
       subject = %{subject | domain: domain}
 
-      pre_flight? = Keyword.get(opts, :pre_flight?, true)
       reuse_values? = Keyword.get(opts, :reuse_values?, false)
 
       opts =
@@ -200,14 +210,9 @@ defmodule Ash.Can do
       subject =
         case subject do
           %Ash.Query{} ->
-            Ash.Query.set_context(subject, %{private: %{pre_flight_authorization?: pre_flight?}})
+            subject
 
-          %Ash.Changeset{} ->
-            changeset =
-              Ash.Changeset.set_context(subject, %{
-                private: %{pre_flight_authorization?: pre_flight?}
-              })
-
+          %Ash.Changeset{} = changeset ->
             if pre_flight? && !reuse_values? && is_struct(changeset.data, resource) do
               fields = [:__metadata__ | Enum.to_list(Ash.Resource.Info.attribute_names(resource))]
 
@@ -217,9 +222,7 @@ defmodule Ash.Can do
             end
 
           %Ash.ActionInput{} ->
-            Ash.ActionInput.set_context(subject, %{
-              private: %{pre_flight_authorization?: pre_flight?}
-            })
+            subject
         end
         |> Ash.Subject.set_context(%{
           private: %{authorizer_log?: opts[:log?] || false}

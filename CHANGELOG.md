@@ -8,6 +8,117 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.19.1](https://github.com/ash-project/ash/compare/v3.19.0...v3.19.1) (2026-03-02)
+
+
+
+
+### Bug Fixes:
+
+* handle `{:not_atomic, ...}` branch in `Ash.Changeset` by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* add a member name transformer for `Ash.Filter.parse_input` by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.19.0](https://github.com/ash-project/ash/compare/v3.18.0...v3.19.0) (2026-03-01)
+
+
+
+
+### Features:
+
+* Allow dumping and casting instance_of union types (#2597) by [@Munksgaard](https://github.com/Munksgaard) [(#2597)](https://github.com/ash-project/ash/pull/2597)
+
+* make enum label/description overridable (#2594) by Hannes Wüthrich [(#2594)](https://github.com/ash-project/ash/pull/2594)
+
+* add touch_update_defaults? option to bulk_create (#2590) by Michael Bärtschi [(#2590)](https://github.com/ash-project/ash/pull/2590)
+
+### Bug Fixes:
+
+* call manage_relationships in single hard destroy path (#2596) by [@barnabasJ](https://github.com/barnabasJ) [(#2596)](https://github.com/ash-project/ash/pull/2596)
+
+### Improvements:
+
+* add new trace types for bulk actions by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.18.0](https://github.com/ash-project/ash/compare/v3.17.1...v3.18.0) (2026-02-25)
+
+
+
+
+### Features:
+
+* Add offset option to has_one and has_many relationships (#2584) by [@nallwhy](https://github.com/nallwhy) [(#2584)](https://github.com/ash-project/ash/pull/2584)
+
+* add InvalidStoredData error for safe ETS cast failures by [@mikaelweiss](https://github.com/mikaelweiss) [(#2570)](https://github.com/ash-project/ash/pull/2570)
+
+* add support for data layers with partial success in bulk_create (#2576) by [@rbino](https://github.com/rbino) [(#2576)](https://github.com/ash-project/ash/pull/2576)
+
+### Bug Fixes:
+
+* use `to_doc` to inspect vectors by [@zachdaniel](https://github.com/zachdaniel)
+
+* pass all opts to for_destroy in soft deletes by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* add pre_flight_authorization() builtin validation for conditional checks during Ash.can? (#2587) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2587)](https://github.com/ash-project/ash/pull/2587)
+
+* Add error messages to `cast_stored` and `dump_to_native` (#2570) by [@mikaelweiss](https://github.com/mikaelweiss) [(#2570)](https://github.com/ash-project/ash/pull/2570)
+
+* Enhance Ash.Type.NewType custom constraints to support arrays (#2578) by Christopher Bonhage [(#2578)](https://github.com/ash-project/ash/pull/2578)
+
+* Add context to read actions in cascade changes (#2582) by [@stevebrambilla](https://github.com/stevebrambilla) [(#2582)](https://github.com/ash-project/ash/pull/2582)
+
+* add embedded & embedded casting to Duration type by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.17.1](https://github.com/ash-project/ash/compare/v3.17.0...v3.17.1) (2026-02-23)
+
+
+
+
+### Bug Fixes:
+
+* Include usage-rules directory in package (#2581) by Nick Urban [(#2581)](https://github.com/ash-project/ash/pull/2581)
+
+* boolean expression not eq optimization (#2579) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2579)](https://github.com/ash-project/ash/pull/2579)
+
+### Improvements:
+
+* add support for notifier load statements by [@zachdaniel](https://github.com/zachdaniel)
+
+* add support for declaring a type for notifiers by [@zachdaniel](https://github.com/zachdaniel)
+
+* add support for per-publication load statements by [@zachdaniel](https://github.com/zachdaniel)
+
+* make `event` an optional positional argument (and support atoms) by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.17.0](https://github.com/ash-project/ash/compare/v3.16.0...v3.17.0) (2026-02-22)
+
+
+
+
+### Features:
+
+* add `not_found_error?` to `Ash.get` to bring it in-line with actions (#2572) by StephanH90 [(#2572)](https://github.com/ash-project/ash/pull/2572)
+
+### Bug Fixes:
+
+* Update Ash.Gen.Resource, validate relationship type (#2563) by Matt Savoia [(#2563)](https://github.com/ash-project/ash/pull/2563)
+
+* don't optimize equality into `in` expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+* manual relationship implies no_attributes? true (#2562) by zackattackz [(#2562)](https://github.com/ash-project/ash/pull/2562)
+
+### Improvements:
+
+* include bread crumbs and standardize generic action errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* Allow Ash.Type.NewType to apply its own constraints (#2575) by Christopher Bonhage [(#2575)](https://github.com/ash-project/ash/pull/2575)
+
+* Split up usage rules into sub-rules (#2561) by [@mylanconnolly](https://github.com/mylanconnolly) [(#2561)](https://github.com/ash-project/ash/pull/2561)
+
 ## [v3.16.0](https://github.com/ash-project/ash/compare/v3.15.0...v3.16.0) (2026-02-09)
 
 

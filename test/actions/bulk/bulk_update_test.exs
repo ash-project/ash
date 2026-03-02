@@ -696,7 +696,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                authorize?: false
              )
 
-    assert_received {:notification, %{data: %{title: "title2"}}}
+    assert_received {:notification, %{data: %{title: "title1"}}}
     assert_received {:notification, %{data: %{title: "title2"}}}
   end
 

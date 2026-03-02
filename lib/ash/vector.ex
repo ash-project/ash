@@ -68,6 +68,6 @@ defimpl Inspect, for: Ash.Vector do
 
   @doc false
   def inspect(vec, opts) do
-    concat(["Ash.Vector.new(", Inspect.List.inspect(Ash.Vector.to_list(vec), opts), ")"])
+    concat(["Ash.Vector.new(", to_doc(Ash.Vector.to_list(vec), opts), ")"])
   end
 end

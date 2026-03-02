@@ -5,6 +5,8 @@
 defmodule Ash.Actions.Create.Bulk do
   @moduledoc false
 
+  require Ash.Tracer
+
   @spec run(Ash.Domain.t(), Ash.Resource.t(), atom(), Enumerable.t(map), Keyword.t()) ::
           Ash.BulkResult.t()
   def run(domain, resource, action_name, inputs, opts) do
@@ -35,55 +37,82 @@ defmodule Ash.Actions.Create.Bulk do
         resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
       end)
 
-    if opts[:transaction] == :all &&
-         Ash.DataLayer.data_layer_can?(resource, :transact) do
-      notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
-
-      Ash.DataLayer.transaction(
-        List.wrap(resource) ++ action.touches_resources,
-        fn ->
-          do_run(domain, resource, action, inputs, opts)
-        end,
-        opts[:timeout],
+    Ash.Tracer.span :bulk_create,
+                    fn ->
+                      Ash.Domain.Info.span_name(
+                        domain,
+                        resource,
+                        action.name
+                      )
+                    end,
+                    opts[:tracer] do
+      metadata = fn ->
         %{
-          type: :bulk_create,
-          metadata: %{
-            resource: resource,
-            action: action.name,
-            actor: opts[:actor]
-          },
-          data_layer_context: opts[:data_layer_context] || %{}
-        },
-        rollback_on_error?: false
-      )
-      |> case do
-        {:ok, bulk_result} ->
-          bulk_result =
-            if notify? do
-              %{
-                bulk_result
-                | notifications:
-                    (bulk_result.notifications || []) ++
-                      (Process.delete(:ash_notifications) || [])
-              }
-            else
-              bulk_result
-            end
-
-          handle_bulk_result(bulk_result, resource, action, opts)
-
-        {:error, error} ->
-          handle_bulk_result(
-            %Ash.BulkResult{errors: [error], status: :error},
-            resource,
-            action,
-            opts
-          )
+          domain: domain,
+          resource: resource,
+          resource_short_name: Ash.Resource.Info.short_name(resource),
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          action: action.name,
+          authorize?: opts[:authorize?]
+        }
       end
-    else
-      domain
-      |> do_run(resource, action, inputs, opts)
-      |> handle_bulk_result(resource, action, opts)
+
+      Ash.Tracer.set_metadata(opts[:tracer], :bulk_create, metadata)
+
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :bulk_create],
+                                metadata do
+        if opts[:transaction] == :all &&
+             Ash.DataLayer.data_layer_can?(resource, :transact) do
+          notify? = opts[:notify?] && !Process.put(:ash_started_transaction?, true)
+
+          Ash.DataLayer.transaction(
+            List.wrap(resource) ++ action.touches_resources,
+            fn ->
+              do_run(domain, resource, action, inputs, opts)
+            end,
+            opts[:timeout],
+            %{
+              type: :bulk_create,
+              metadata: %{
+                resource: resource,
+                action: action.name,
+                actor: opts[:actor]
+              },
+              data_layer_context: opts[:data_layer_context] || %{}
+            },
+            rollback_on_error?: false
+          )
+          |> case do
+            {:ok, bulk_result} ->
+              bulk_result =
+                if notify? do
+                  %{
+                    bulk_result
+                    | notifications:
+                        (bulk_result.notifications || []) ++
+                          (Process.delete(:ash_notifications) || [])
+                  }
+                else
+                  bulk_result
+                end
+
+              handle_bulk_result(bulk_result, resource, action, opts)
+
+            {:error, error} ->
+              handle_bulk_result(
+                %Ash.BulkResult{errors: [error], status: :error},
+                resource,
+                action,
+                opts
+              )
+          end
+        else
+          domain
+          |> do_run(resource, action, inputs, opts)
+          |> handle_bulk_result(resource, action, opts)
+        end
+      end
     end
   end
 
@@ -198,35 +227,54 @@ defmodule Ash.Actions.Create.Bulk do
             opts,
             ref,
             fn batch ->
-              try do
-                batch
-                |> Enum.map(
-                  &setup_changeset(
-                    &1,
+              Ash.Tracer.span :bulk_batch,
+                              fn ->
+                                Ash.Domain.Info.span_name(
+                                  domain,
+                                  resource,
+                                  action.name
+                                )
+                              end,
+                              opts[:tracer] do
+                Ash.Tracer.set_metadata(opts[:tracer], :bulk_batch, fn ->
+                  %{
+                    domain: domain,
+                    resource: resource,
+                    resource_short_name: Ash.Resource.Info.short_name(resource),
+                    actor: opts[:actor],
+                    tenant: opts[:tenant],
+                    action: action.name,
+                    authorize?: opts[:authorize?]
+                  }
+                end)
+
+                try do
+                  batch
+                  |> Enum.map(
+                    &setup_changeset(
+                      &1,
+                      action,
+                      opts,
+                      lazy_matching_default_values(resource),
+                      base_changeset,
+                      argument_names
+                    )
+                  )
+                  |> handle_batch(
+                    domain,
+                    resource,
                     action,
+                    all_changes,
+                    data_layer_can_bulk?,
                     opts,
-                    lazy_matching_default_values(resource),
-                    base_changeset,
-                    argument_names
+                    ref,
+                    attrs_to_require,
+                    action_select
                   )
-                )
-                |> handle_batch(
-                  domain,
-                  resource,
-                  action,
-                  all_changes,
-                  data_layer_can_bulk?,
-                  opts,
-                  ref,
-                  attrs_to_require,
-                  action_select
-                )
-              after
-                if opts[:notify?] && !opts[:return_notifications?] do
-                  Process.put(
-                    {:bulk_notifications, ref},
+                after
+                  if opts[:return_stream?] && opts[:notify?] && !opts[:return_notifications?] do
                     Ash.Notifier.notify(Process.delete({:bulk_notifications, ref}) || [])
-                  )
+                  end
                 end
               end
             end
@@ -248,39 +296,7 @@ defmodule Ash.Actions.Create.Bulk do
 
             records = if opts[:return_records?], do: records, else: nil
 
-            notifications =
-              if opts[:notify?] do
-                Process.delete({:bulk_notifications, ref}) || []
-              else
-                []
-              end
-
-            # Unless return_notifications? is true, we always want to end up with nil.
-            notifications =
-              cond do
-                Enum.empty?(notifications) ->
-                  if opts[:return_notifications?], do: [], else: nil
-
-                opts[:return_notifications?] ->
-                  notifications
-
-                true ->
-                  notifications =
-                    if opts[:notify?] do
-                      Ash.Notifier.notify(notifications)
-                    else
-                      notifications
-                    end
-
-                  if Process.get(:ash_started_transaction?) do
-                    Process.put(
-                      :ash_notifications,
-                      Process.get(:ash_notifications, []) ++ notifications
-                    )
-                  end
-
-                  nil
-              end
+            notifications = Ash.Actions.Helpers.Bulk.return_notifications_or_notify(ref, opts)
 
             error_count = length(error_tuples)
 
@@ -319,6 +335,14 @@ defmodule Ash.Actions.Create.Bulk do
                 end
             end
           catch
+            {:batch_partial_success, batch_results, batch_ref} ->
+              batch_results
+              |> Ash.Actions.Helpers.Bulk.build_batch_partial_success_result(
+                batch_ref,
+                opts
+              )
+              |> handle_bulk_result(resource, action, opts)
+
             {:error, error} ->
               status =
                 if Process.get({:any_success?, ref}) do
@@ -327,9 +351,20 @@ defmodule Ash.Actions.Create.Bulk do
                   :error
                 end
 
+              accumulated_notifications = Process.delete({:bulk_notifications, ref})
+
+              notifications =
+                if opts[:notify?] do
+                  if opts[:return_notifications?] do
+                    accumulated_notifications
+                  else
+                    Ash.Notifier.notify(accumulated_notifications || [])
+                  end
+                end
+
               result = %Ash.BulkResult{
                 status: status,
-                notifications: Process.delete({:bulk_notifications, ref})
+                notifications: notifications
               }
 
               {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, error, opts)
@@ -558,7 +593,7 @@ defmodule Ash.Actions.Create.Bulk do
             {:error, error} ->
               error
               |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
               |> Ash.Helpers.error()
               |> List.wrap()
           end
@@ -583,7 +618,7 @@ defmodule Ash.Actions.Create.Bulk do
             {:error, error} ->
               error
               |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
 
               {batch_acc, [{:error_hooks_done, error, changeset} | results_acc]}
           end
@@ -914,27 +949,47 @@ defmodule Ash.Actions.Create.Bulk do
         timeout: :infinity,
         max_concurrency: max_concurrency
       )
-      |> Stream.flat_map(fn
-        {:ok, {:throw, value}} ->
+      |> Stream.transform([], fn
+        {:ok, {:throw, value}}, _acc ->
           throw(value)
 
-        {:ok, {result, notifications, any_success?}} ->
+        {:ok, {result, notifications, any_success?}}, acc ->
           Process.put({:any_success?, ref}, any_success?)
-
           Ash.Actions.Helpers.Bulk.store_notification(ref, notifications, opts)
 
-          # result already contains records and {:error, error} tuples inline
-          result
+          Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_batch_error(
+            result,
+            resource,
+            opts,
+            ref,
+            acc
+          )
 
-        {:exit, error} ->
+        {:exit, error}, acc ->
           error
           |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-          |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+          |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
           |> Ash.Helpers.error()
           |> List.wrap()
+          |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_batch_error(
+            resource,
+            opts,
+            ref,
+            acc
+          )
       end)
     else
-      Stream.map(stream, callback)
+      stream
+      |> Stream.transform([], fn batch, acc ->
+        batch
+        |> callback.()
+        |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_batch_error(
+          resource,
+          opts,
+          ref,
+          acc
+        )
+      end)
     end
   end
 
@@ -1294,6 +1349,7 @@ defmodule Ash.Actions.Create.Bulk do
                           nil -> action.return_skipped_upsert?
                           other -> other
                         end,
+                      touch_update_defaults?: Keyword.get(opts, :touch_update_defaults?, true),
                       tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
                     }
                   )
@@ -1391,13 +1447,35 @@ defmodule Ash.Actions.Create.Bulk do
 
               Ash.Actions.Helpers.select(result, %{resource: resource, select: action_select})
 
+            {:partial_success, failed, results} ->
+              Process.put({:any_success?, ref}, true)
+
+              results =
+                if tenant = opts[:tenant] do
+                  Enum.map(results, fn record ->
+                    %{record | __metadata__: Map.put(record.__metadata__, :tenant, tenant)}
+                  end)
+                else
+                  results
+                end
+
+              selected_results =
+                Ash.Actions.Helpers.select(results, %{resource: resource, select: action_select})
+
+              error_tuples =
+                Enum.map(failed, fn {error, changeset} ->
+                  {:error, error, changeset}
+                end)
+
+              selected_results ++ error_tuples
+
             :ok ->
               Process.put({:any_success?, ref}, true)
               []
 
             {:error, error} ->
               error
-              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+              |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
               |> Ash.Helpers.error()
               |> List.wrap()
           end
@@ -1488,6 +1566,15 @@ defmodule Ash.Actions.Create.Bulk do
             end
 
           {:error, error} ->
+            if opts[:transaction] && opts[:rollback_on_error?] do
+              if Ash.DataLayer.in_transaction?(changeset.resource) do
+                Ash.DataLayer.rollback(
+                  changeset.resource,
+                  error
+                )
+              end
+            end
+
             [{:error, error, changeset}]
         end
 
@@ -1540,7 +1627,7 @@ defmodule Ash.Actions.Create.Bulk do
                 error_result =
                   error
                   |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-                  |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+                  |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
                   |> Ash.Helpers.error()
                   |> List.wrap()
 
@@ -1551,7 +1638,7 @@ defmodule Ash.Actions.Create.Bulk do
               error_result =
                 e
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
                 |> Ash.Helpers.error()
                 |> List.wrap()
 
@@ -1599,7 +1686,7 @@ defmodule Ash.Actions.Create.Bulk do
                 error_result =
                   error
                   |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-                  |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+                  |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
                   |> Ash.Helpers.error()
                   |> List.wrap()
 
@@ -1610,7 +1697,7 @@ defmodule Ash.Actions.Create.Bulk do
               error_result =
                 e
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
                 |> Ash.Helpers.error()
                 |> List.wrap()
 
@@ -1670,7 +1757,7 @@ defmodule Ash.Actions.Create.Bulk do
               {:error, error} ->
                 error
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+                |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
                 |> Ash.Helpers.error()
                 |> List.wrap()
             end
@@ -1678,7 +1765,7 @@ defmodule Ash.Actions.Create.Bulk do
           {:error, error} ->
             error
             |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
-            |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
+            |> Ash.Actions.Helpers.Bulk.maybe_stop_on_bulk_create_error(resource, opts)
             |> Ash.Helpers.error()
             |> List.wrap()
         end

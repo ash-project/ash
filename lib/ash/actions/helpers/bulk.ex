@@ -52,12 +52,156 @@ defmodule Ash.Actions.Helpers.Bulk do
   """
   @spec maybe_stop_on_error(error, Keyword.t()) :: error | no_return() when error: term()
   def maybe_stop_on_error(error, opts) do
-    if opts[:stop_on_error?] && !opts[:return_stream?] do
+    if stop_on_error?(opts) do
       throw({:error, Ash.Error.to_error_class(error)})
     end
 
     error
   end
+
+  @doc """
+  Conditionally stops bulk create operation on error.
+
+  In addition to the checks performed in from `maybe_stop_on_error/2`, we pass
+  the resource and check if the data layer supports partial success (via
+  `:bulk_create_with_partial_success`). If it does, we don't stop on error
+  because the data layer may have already persisted some records successfully.
+  Stopping would hide those successful results from the caller.
+
+  Returns the error unchanged for piping.
+  """
+  @spec maybe_stop_on_bulk_create_error(error, Ash.Resource.t() | nil, Keyword.t()) ::
+          error | no_return()
+        when error: term()
+  def maybe_stop_on_bulk_create_error(error, resource, opts) do
+    if stop_on_error?(opts) &&
+         !Ash.DataLayer.data_layer_can?(resource, :bulk_create_with_partial_success) do
+      throw({:error, Ash.Error.to_error_class(error)})
+    end
+
+    error
+  end
+
+  @doc """
+  Conditionally stops bulk create operation after a batch with errors.
+
+  For data layers that support `:bulk_create_with_partial_success`, when
+  `stop_on_error?` is true, we stop at the end of the first batch containing
+  errors (instead of at the first individual error). This allows us to return
+  all results from that batch, including successfully persisted records.
+
+  When stopping, notifications accumulated in `{:bulk_notifications, ref}` are
+  handled via `build_batch_partial_success_result/3`, which calls
+  `return_notifications_or_notify/2` to either return them or send them
+  immediately depending on `notify?` and `return_notifications?` options.
+
+  Designed for use with `Stream.transform/3`. Returns `{[batch_results_list],
+  acc ++ batch_results_list}` to continue processing, or throws
+  `{:batch_partial_success, accumulated ++ batch_results_list, ref}` to signal
+  that processing should stop.
+  """
+  @spec maybe_stop_on_bulk_create_batch_error(
+          Enumerable.t(),
+          Ash.Resource.t(),
+          Keyword.t(),
+          reference(),
+          Enumerable.t()
+        ) :: {Enumerable.t(), Enumerable.t()} | no_return()
+  def maybe_stop_on_bulk_create_batch_error(batch_results, resource, opts, ref, acc) do
+    batch_results_list = Enum.to_list(batch_results)
+
+    if stop_on_error?(opts) and
+         Ash.DataLayer.data_layer_can?(resource, :bulk_create_with_partial_success) and
+         any_batch_errors?(batch_results) do
+      throw({:batch_partial_success, acc ++ batch_results_list, ref})
+    else
+      # Return the result in the format expected by Stream.transform since we're called by it
+      {[batch_results_list], acc ++ batch_results_list}
+    end
+  end
+
+  defp any_batch_errors?(batch_results) do
+    Enum.any?(batch_results, &match?({:error, _}, &1))
+  end
+
+  @doc """
+  Constructs a BulkResult from batch results after a batch partial success.
+
+  Called when `maybe_stop_on_bulk_create_batch_error` throws, to build the final result
+  with all records and errors from the batch that caused the stop.
+  """
+  @spec build_batch_partial_success_result(
+          batch_results :: [Ash.Resource.record() | {:error, term()}],
+          reference(),
+          Keyword.t()
+        ) :: Ash.BulkResult.t()
+  def build_batch_partial_success_result(batch_results, ref, opts) do
+    {records, error_tuples} =
+      Enum.split_with(batch_results, fn
+        {:error, _} -> false
+        _ -> true
+      end)
+
+    errors = Enum.map(error_tuples, &(&1 |> elem(1) |> Ash.Error.to_ash_error()))
+
+    status = if Process.get({:any_success?, ref}), do: :partial_success, else: :error
+
+    notifications = return_notifications_or_notify(ref, opts)
+
+    result = %Ash.BulkResult{
+      status: status,
+      records: records,
+      notifications: notifications
+    }
+
+    {error_count, errors} = Ash.Actions.Helpers.Bulk.errors(result, errors, opts)
+
+    %{result | errors: errors, error_count: error_count}
+  end
+
+  @doc """
+  Handles notifications at the end of a bulk operation.
+
+  This function consolidates the notification handling logic that is used in
+  multiple places in bulk operations. It handles three cases:
+
+  1. `notify?: false` - Returns `nil`, notifications are discarded
+  2. `return_notifications?: true` - Returns the accumulated notifications from
+     `{:bulk_notifications, ref}` for the caller to handle
+  3. `notify?: true` and `return_notifications?: false` - Calls
+     `Ash.Notifier.notify/1` to send notifications immediately (or defer them
+     if in a transaction by storing in `:ash_notifications`), then returns `nil`
+  """
+  @spec return_notifications_or_notify(reference(), Keyword.t()) :: list() | nil
+  def return_notifications_or_notify(ref, opts) do
+    cond do
+      opts[:return_notifications?] ->
+        # We return notifications
+        Process.delete({:bulk_notifications, ref}) || []
+
+      !opts[:notify?] ->
+        # Nothing to do, just return nil
+        nil
+
+      true ->
+        # Here notify? == true and return_notifications? == false, so we need to notify as a side effect
+        # (possibly storing in ash_notifications for later) and return nil
+        unsent_notifications =
+          (Process.delete({:bulk_notifications, ref}) || [])
+          |> Ash.Notifier.notify()
+
+        if Process.get(:ash_started_transaction?) do
+          Process.put(
+            :ash_notifications,
+            Process.get(:ash_notifications, []) ++ unsent_notifications
+          )
+        end
+
+        nil
+    end
+  end
+
+  defp stop_on_error?(opts), do: opts[:stop_on_error?] && !opts[:return_stream?]
 
   @doc """
   Looks up the changeset for a result record using ref metadata.
