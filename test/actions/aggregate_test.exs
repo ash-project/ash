@@ -64,12 +64,28 @@ defmodule Ash.Test.Actions.AggregateTest do
       belongs_to :post, Ash.Test.Actions.AggregateTest.Post do
         public?(true)
       end
+
+      belongs_to :parent, Ash.Test.Actions.AggregateTest.Comment do
+        public? true
+      end
+
+      has_many :children, Ash.Test.Actions.AggregateTest.Comment do
+        destination_attribute :parent_id
+      end
     end
 
     policies do
       policy do
         condition(always())
         authorize_if expr(public == true)
+      end
+    end
+
+    aggregates do
+      count :count_of_children_relationship_based, :children
+
+      count :count_of_children_resource_based, Comment do
+        filter expr(parent_id == parent(id))
       end
     end
   end
@@ -211,6 +227,12 @@ defmodule Ash.Test.Actions.AggregateTest do
         public? true
         authorize? false
       end
+
+      sum :sum_of_count_of_children_relationship_based,
+          :comments,
+          :count_of_children_relationship_based
+
+      sum :sum_of_count_of_children_resource_based, :comments, :count_of_children_resource_based
     end
 
     relationships do
@@ -590,6 +612,27 @@ defmodule Ash.Test.Actions.AggregateTest do
       # Previously this returned {:ok, nil} because attribute/2 was used instead of field/2.
       assert {:ok, Ash.Type.Integer} =
                Ash.Resource.Info.aggregate_type(Post, :sum_of_doubled_thing3)
+    end
+
+    test "aggregates can sum on counts" do
+      post = Post |> Ash.create!(%{public: true}, authorize?: false)
+
+      comment =
+        Comment
+        |> Ash.create!(%{post_id: post.id, public: true}, authorize?: false)
+
+      Comment
+      |> Ash.create!(%{post_id: post.id, public: false, parent_id: comment.id}, authorize?: false)
+
+      post =
+        Ash.load!(post, [
+          :sum_of_count_of_children_relationship_based,
+          :sum_of_count_of_children_resource_based,
+          comments: :count_of_children_relationship_based
+        ])
+
+      assert post.sum_of_count_of_children_relationship_based == 0
+      assert post.sum_of_count_of_children_resource_based == 0
     end
   end
 end
