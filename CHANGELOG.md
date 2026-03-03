@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.19.2](https://github.com/ash-project/ash/compare/v3.19.1...v3.19.2) (2026-03-03)
+
+
+
+
+### Bug Fixes:
+
+* add Tuple.apply_constraints nil guard and propagate allow_nil? in Struct field derivation by [@zachdaniel](https://github.com/zachdaniel)
+
+* preserve __meta__ state in Ash.Type.Struct.apply_constraints (#2602) by [@nallwhy](https://github.com/nallwhy) [(#2602)](https://github.com/ash-project/ash/pull/2602)
+
 ## [v3.19.1](https://github.com/ash-project/ash/compare/v3.19.0...v3.19.1) (2026-03-02)
 
 
