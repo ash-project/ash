@@ -165,7 +165,9 @@ defmodule Ash.Type.Struct do
         if instance_of && Ash.Resource.Info.resource?(instance_of) do
           instance_of
           |> Ash.Resource.Info.attributes()
-          |> Map.new(&{&1.name, [type: &1.type, constraints: &1.constraints]})
+          |> Map.new(
+            &{&1.name, [type: &1.type, constraints: &1.constraints, allow_nil?: &1.allow_nil?]}
+          )
         end
     end
   end

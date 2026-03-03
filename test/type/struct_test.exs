@@ -20,6 +20,20 @@ defmodule Type.StructTest do
     end
   end
 
+  defmodule EmbeddedWithTuple do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :name, :string, allow_nil?: false, public?: true
+
+      attribute :metadata, :tuple do
+        allow_nil? true
+        public? true
+        constraints fields: [key: [type: :string]]
+      end
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -441,6 +455,32 @@ defmodule Type.StructTest do
       |> Ash.Changeset.for_create(:create, %{dummy_metadata: nil})
 
     assert changeset.valid?
+  end
+
+  test "instance_of with nullable tuple fields handles nil values" do
+    # When a resource has a nullable tuple attribute and we use instance_of
+    # without explicit fields, nil tuple values should not crash apply_constraints
+    constraints = [instance_of: EmbeddedWithTuple]
+
+    assert {:ok, %EmbeddedWithTuple{name: "test", metadata: nil}} =
+             Ash.Type.apply_constraints(Ash.Type.Struct, %{name: "test"}, constraints)
+  end
+
+  test "instance_of auto-derived fields propagate allow_nil?" do
+    # When using instance_of with an Ash resource and no explicit fields,
+    # the auto-derived fields from attributes should include allow_nil?
+    constraints = [instance_of: Embedded]
+
+    # Missing required fields should be rejected
+    assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Struct, %{}, constraints)
+
+    # Providing required fields should succeed
+    assert {:ok, %Embedded{name: "fred", title: "title"}} =
+             Ash.Type.apply_constraints(
+               Ash.Type.Struct,
+               %{name: "fred", title: "title"},
+               constraints
+             )
   end
 
   test "apply_constraints preserves __meta__ state for already valid struct instances" do

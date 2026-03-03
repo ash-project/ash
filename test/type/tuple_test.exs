@@ -130,6 +130,10 @@ defmodule Ash.Type.TupleTest do
            ] = changeset.errors
   end
 
+  test "apply_constraints handles nil values" do
+    assert {:ok, nil} = Ash.Type.Tuple.apply_constraints(nil, fields: [foo: [type: :string]])
+  end
+
   test "values are casted before checked" do
     changeset =
       Post

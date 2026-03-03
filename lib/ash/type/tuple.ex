@@ -173,6 +173,8 @@ defmodule Ash.Type.Tuple do
   def dump_to_native(_, _), do: :error
 
   @impl true
+  def apply_constraints(nil, _), do: {:ok, nil}
+
   def apply_constraints(value, constraints) do
     constraints[:fields]
     |> Enum.with_index()
