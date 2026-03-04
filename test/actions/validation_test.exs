@@ -362,6 +362,11 @@ defmodule Ash.Test.Actions.ValidationTest do
         create :create_with_sensitive_string_length do
           validate string_length(:secret, min: 5)
         end
+
+        update :update_atomic_sensitive_one_of do
+          require_atomic? true
+          validate one_of(:secret, ["allowed1", "allowed2"])
+        end
       end
 
       attributes do
@@ -449,6 +454,18 @@ defmodule Ash.Test.Actions.ValidationTest do
         |> get_error()
 
       assert error.value == "**redacted**"
+    end
+
+    test "atomic: redacts value when attribute is sensitive" do
+      record =
+        SensitiveResource
+        |> Ash.Changeset.for_create(:create, %{secret: "bad_value"})
+        |> Ash.create!()
+
+      %Ash.BulkResult{errors: [%Ash.Error.Invalid{errors: errors}]} =
+        Ash.bulk_update([record], :update_atomic_sensitive_one_of, %{}, return_errors?: true)
+
+      assert Enum.any?(errors, &match?(%{value: "**redacted**"}, &1))
     end
 
     test "non-sensitive fields still show value" do

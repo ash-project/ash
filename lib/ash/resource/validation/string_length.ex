@@ -138,7 +138,7 @@ defmodule Ash.Resource.Validation.StringLength do
                  %{
                    field: ^opts[:attribute],
                    value: ^error_value,
-                   message: ^(context.message || "must have length of at most %{exact}"),
+                   message: ^(context.message || "must have length of exactly %{exact}"),
                    vars: %{exact: ^exact}
                  }
                )

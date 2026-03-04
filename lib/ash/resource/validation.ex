@@ -253,16 +253,20 @@ defmodule Ash.Resource.Validation do
 
   @doc false
   def sensitive?(subject, field) do
-    argument =
-      Enum.find(subject.action.arguments, &(&1.name == field))
+    argument_sensitive? =
+      (subject.action.arguments || [])
+      |> Enum.find(&(&1.name == field))
+      |> case do
+        %{sensitive?: true} -> true
+        _ -> false
+      end
 
-    if argument do
-      argument.sensitive?
-    else
+    attribute_sensitive? =
       case Ash.Resource.Info.attribute(subject.resource, field) do
         %{sensitive?: true} -> true
         _ -> false
       end
-    end
+
+    argument_sensitive? or attribute_sensitive?
   end
 end
