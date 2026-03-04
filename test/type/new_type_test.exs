@@ -464,4 +464,82 @@ defmodule Ash.Test.Type.NewTypeTest do
       assert :match in keys
     end
   end
+
+  describe "array callbacks respect single-item overrides" do
+    defmodule TaggedString do
+      @moduledoc """
+      A Ash.Type.NewType that overrides all four single-item callbacks to add a
+      transformation, so we can verify the array variants route through them.
+      """
+      use Ash.Type.NewType, subtype_of: :string
+
+      @impl Ash.Type
+      def cast_input(value, constraints) do
+        case super(value, constraints) do
+          {:ok, str} -> {:ok, "cast:" <> str}
+          other -> other
+        end
+      end
+
+      @impl Ash.Type
+      def cast_stored(value, constraints) do
+        case super(value, constraints) do
+          {:ok, str} -> {:ok, "stored:" <> str}
+          other -> other
+        end
+      end
+
+      @impl Ash.Type
+      def dump_to_native(value, constraints) do
+        case super(value, constraints) do
+          {:ok, str} -> {:ok, "dumped:" <> str}
+          other -> other
+        end
+      end
+
+      @impl Ash.Type
+      def dump_to_embedded(value, constraints) do
+        case super(value, constraints) do
+          {:ok, str} -> {:ok, "embedded:" <> str}
+          other -> other
+        end
+      end
+    end
+
+    test "cast_input_array calls overridden cast_input for each element" do
+      assert {:ok, ["cast:hello", "cast:world"]} =
+               Ash.Type.cast_input({:array, TaggedString}, ["hello", "world"])
+    end
+
+    test "cast_input_array handles nil" do
+      assert {:ok, nil} = Ash.Type.cast_input({:array, TaggedString}, nil)
+    end
+
+    test "cast_stored_array calls overridden cast_stored for each element" do
+      assert {:ok, ["stored:hello", "stored:world"]} =
+               TaggedString.cast_stored_array(["hello", "world"], [])
+    end
+
+    test "cast_stored_array handles nil" do
+      assert {:ok, nil} = TaggedString.cast_stored_array(nil, [])
+    end
+
+    test "dump_to_native_array calls overridden dump_to_native for each element" do
+      assert {:ok, ["dumped:hello", "dumped:world"]} =
+               Ash.Type.dump_to_native({:array, TaggedString}, ["hello", "world"])
+    end
+
+    test "dump_to_native_array handles nil" do
+      assert {:ok, nil} = Ash.Type.dump_to_native({:array, TaggedString}, nil)
+    end
+
+    test "dump_to_embedded_array calls overridden dump_to_embedded for each element" do
+      assert {:ok, ["embedded:hello", "embedded:world"]} =
+               Ash.Type.dump_to_embedded({:array, TaggedString}, ["hello", "world"])
+    end
+
+    test "dump_to_embedded_array handles nil" do
+      assert {:ok, nil} = Ash.Type.dump_to_embedded({:array, TaggedString}, nil)
+    end
+  end
 end
