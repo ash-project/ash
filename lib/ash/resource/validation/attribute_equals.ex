@@ -30,12 +30,19 @@ defmodule Ash.Resource.Validation.AttributeEquals do
   end
 
   @impl true
-  def atomic(_changeset, opts, context) do
+  def atomic(changeset, opts, context) do
+    error_value =
+      if Ash.Resource.Validation.sensitive?(changeset, opts[:attribute]) do
+        Ash.Helpers.redact(nil)
+      else
+        atomic_ref(opts[:attribute])
+      end
+
     {:atomic, [opts[:attribute]], expr(^atomic_ref(opts[:attribute]) != ^opts[:value]),
      expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
-         value: ^atomic_ref(opts[:attribute]),
+         value: ^error_value,
          message: ^(context.message || "must equal %{value}"),
          vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })
@@ -59,7 +66,10 @@ defmodule Ash.Resource.Validation.AttributeEquals do
 
     if Comp.not_equal?(value, opts[:value]) do
       {:error,
-       [field: opts[:attribute], value: value]
+       [
+         field: opts[:attribute],
+         value: Ash.Resource.Validation.maybe_redact(changeset, opts[:attribute], value)
+       ]
        |> with_description(opts)
        |> InvalidAttribute.exception()}
     else

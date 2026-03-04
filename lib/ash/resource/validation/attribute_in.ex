@@ -48,19 +48,29 @@ defmodule Ash.Resource.Validation.AttributeIn do
       :ok
     else
       {:error,
-       [value: value, field: opts[:attribute]]
+       [
+         value: Ash.Resource.Validation.maybe_redact(changeset, opts[:attribute], value),
+         field: opts[:attribute]
+       ]
        |> with_description(opts)
        |> InvalidAttribute.exception()}
     end
   end
 
   @impl true
-  def atomic(_changeset, opts, context) do
+  def atomic(changeset, opts, context) do
+    error_value =
+      if Ash.Resource.Validation.sensitive?(changeset, opts[:attribute]) do
+        Ash.Helpers.redact(nil)
+      else
+        atomic_ref(opts[:attribute])
+      end
+
     {:atomic, [opts[:attribute]], expr(^atomic_ref(opts[:attribute]) not in ^opts[:list]),
      expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
-         value: ^atomic_ref(opts[:attribute]),
+         value: ^error_value,
          message: ^(context.message || "must be in %{list}"),
          vars: %{field: ^opts[:attribute], list: ^opts[:list]}
        })

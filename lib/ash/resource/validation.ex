@@ -241,4 +241,28 @@ defmodule Ash.Resource.Validation do
   def opt_schema, do: @schema
   def action_schema, do: @action_schema
   def validation_type, do: @validation_type
+
+  @doc false
+  def maybe_redact(subject, field, value) do
+    if sensitive?(subject, field) do
+      Ash.Helpers.redact(value)
+    else
+      value
+    end
+  end
+
+  @doc false
+  def sensitive?(subject, field) do
+    argument =
+      Enum.find(subject.action.arguments, &(&1.name == field))
+
+    if argument do
+      argument.sensitive?
+    else
+      case Ash.Resource.Info.attribute(subject.resource, field) do
+        %{sensitive?: true} -> true
+        _ -> false
+      end
+    end
+  end
 end
