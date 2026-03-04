@@ -30,7 +30,27 @@ defmodule Ash.Actions.Destroy do
         )
       end
 
-    Ash.Actions.Update.run(domain, changeset, action, opts)
+    case Ash.Actions.Update.run(domain, changeset, action, opts) do
+      {:ok, notifications} when is_list(notifications) ->
+        {:ok, notifications}
+
+      {:ok, record} ->
+        if opts[:return_destroyed?] do
+          {:ok, record}
+        else
+          :ok
+        end
+
+      {:ok, record, notifications} ->
+        if opts[:return_destroyed?] do
+          {:ok, record, notifications}
+        else
+          {:ok, notifications}
+        end
+
+      other ->
+        other
+    end
   end
 
   def run(domain, changeset, action, opts) do
