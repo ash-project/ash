@@ -232,3 +232,23 @@ Incorrectly allowed non UUIDv7's to be loaded.
 ### New Behavior
 
 Configuring the variable allows UUIDv4's to be loaded.
+
+
+## redact_sensitive_values_in_errors?
+
+```elixir
+config :ash, redact_sensitive_values_in_errors?: true
+```
+
+### Old Behavior
+
+Built-in validations would include the actual field value in error structs even when
+the field was marked `sensitive?: true`. This could leak sensitive data (e.g. passwords,
+tokens) through error messages.
+
+### New Behavior
+
+When a field is marked `sensitive?: true`, its value in validation error structs is
+replaced with a redacted placeholder via `Ash.Helpers.redact/1`. This applies to both
+the non-atomic (`validate/3`) and atomic (`atomic/3`) code paths across all built-in
+validations.

@@ -85,7 +85,7 @@ defmodule Ash.Resource.Validation.OneOf do
       value = expr(^atomic_ref(opts[:attribute]))
 
       error_value =
-        if Ash.Resource.Validation.sensitive?(changeset, opts[:attribute]) do
+        if Ash.Resource.Validation.should_redact?(changeset, opts[:attribute]) do
           Ash.Helpers.redact(nil)
         else
           value

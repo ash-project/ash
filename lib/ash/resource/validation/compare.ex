@@ -111,7 +111,7 @@ defmodule Ash.Resource.Validation.Compare do
       validate(changeset, opts, context)
     else
       error_value =
-        if Ash.Resource.Validation.sensitive?(changeset, opts[:attribute]) do
+        if Ash.Resource.Validation.should_redact?(changeset, opts[:attribute]) do
           Ash.Helpers.redact(nil)
         else
           atomic_ref(opts[:attribute])

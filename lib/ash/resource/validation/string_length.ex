@@ -90,7 +90,7 @@ defmodule Ash.Resource.Validation.StringLength do
 
       :error ->
         error_value =
-          if Ash.Resource.Validation.sensitive?(changeset, opts[:attribute]) do
+          if Ash.Resource.Validation.should_redact?(changeset, opts[:attribute]) do
             Ash.Helpers.redact(nil)
           else
             atomic_ref(opts[:attribute])

@@ -244,11 +244,17 @@ defmodule Ash.Resource.Validation do
 
   @doc false
   def maybe_redact(subject, field, value) do
-    if sensitive?(subject, field) do
+    if should_redact?(subject, field) do
       Ash.Helpers.redact(value)
     else
       value
     end
+  end
+
+  @doc false
+  def should_redact?(subject, field) do
+    Application.get_env(:ash, :redact_sensitive_values_in_errors?, false) &&
+      sensitive?(subject, field)
   end
 
   @doc false

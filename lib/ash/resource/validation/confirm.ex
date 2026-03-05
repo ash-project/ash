@@ -47,8 +47,8 @@ defmodule Ash.Resource.Validation.Confirm do
       :ok
     else
       error_value =
-        if Ash.Resource.Validation.sensitive?(subject, opts[:confirmation]) ||
-             Ash.Resource.Validation.sensitive?(subject, opts[:field]) do
+        if Ash.Resource.Validation.should_redact?(subject, opts[:confirmation]) ||
+             Ash.Resource.Validation.should_redact?(subject, opts[:field]) do
           Ash.Helpers.redact(confirmation_value)
         else
           confirmation_value
@@ -82,8 +82,8 @@ defmodule Ash.Resource.Validation.Confirm do
       end
 
     error_value =
-      if Ash.Resource.Validation.sensitive?(changeset, opts[:confirmation]) ||
-           Ash.Resource.Validation.sensitive?(changeset, opts[:field]) do
+      if Ash.Resource.Validation.should_redact?(changeset, opts[:confirmation]) ||
+           Ash.Resource.Validation.should_redact?(changeset, opts[:field]) do
         Ash.Helpers.redact(nil)
       else
         value
