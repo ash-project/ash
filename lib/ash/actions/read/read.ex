@@ -4651,22 +4651,38 @@ defmodule Ash.Actions.Read do
       )
 
     if authorize? && field.authorize? do
+      related_resource = Ash.Resource.Info.related(agg.resource, agg.relationship_path)
+
+      field_path_filters =
+        case Ash.Filter.relationship_filters(
+               domain,
+               field.query,
+               actor,
+               tenant,
+               [field],
+               authorize?,
+               path_filters
+             ) do
+          {:ok, filters} -> filters
+          _ -> path_filters
+        end
+
       {:ok,
        authorize_aggregate(
          field,
-         path_filters,
+         field_path_filters,
          actor,
          authorize?,
          tenant,
          tracer,
          domain,
-         agg.resource,
+         related_resource,
          ref_path,
          [agg.resource | parent_stack],
          source_context
        )}
     else
-      {:ok, agg}
+      {:ok, field}
     end
   end
 
