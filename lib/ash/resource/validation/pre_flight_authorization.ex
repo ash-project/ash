@@ -33,6 +33,6 @@ defmodule Ash.Resource.Validation.PreFlightAuthorization do
 
   @impl true
   def describe(_opts) do
-    [message: "must be in a pre-flight authorization context", vars: %{}]
+    [message: error_message("must be in a pre-flight authorization context"), vars: %{}]
   end
 end

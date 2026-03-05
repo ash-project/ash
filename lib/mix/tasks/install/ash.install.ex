@@ -234,6 +234,12 @@ if Code.ensure_loaded?(Igniter) do
               [:transaction_rollback_on_error?],
               true
             )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:redact_sensitive_values_in_errors?],
+              true
+            )
           end)
         end
       )

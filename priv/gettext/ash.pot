@@ -1,0 +1,190 @@
+## This file is a PO Template file.
+##
+## `msgid`s here are often extracted from source code.
+## Add new translations manually only if they're not extracted.
+##
+## Run `mix ash.gettext.extract` to refresh this file.
+## Run `mix ash.gen.gettext` in your app to copy this file.
+## Run `mix gettext.merge priv/gettext --locale LOCALE` to merge into a .po file.
+
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Domain: ash\n"
+
+#: lib/ash/resource/validation/action_is.ex:65
+msgid "action must be one of %{action}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:184
+#: lib/ash/resource/validation/present.ex:224
+msgid "at least %{at_least} of %{keys} must be present"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:197
+#: lib/ash/resource/validation/present.ex:227
+msgid "at most %{at_most} of %{keys} must be present"
+msgstr ""
+
+
+#: lib/ash/resource/validation/confirm.ex:97
+#: lib/ash/resource/validation/confirm.ex:105
+msgid "confirmation did not match value"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:71
+msgid "could not be parsed"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:140
+#: lib/ash/resource/validation/present.ex:221
+msgid "exactly %{exactly} of %{keys} must be present"
+msgstr ""
+
+
+#: lib/ash/resource/validation/data_one_of.ex:84
+#: lib/ash/resource/validation/data_one_of.ex:94
+#: lib/ash/resource/validation/one_of.ex:101
+#: lib/ash/resource/validation/one_of.ex:112
+msgid "expected one of %{values}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/action_is.ex:70
+msgid "must be %{action}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:134
+#: lib/ash/resource/validation/present.ex:212
+msgid "must be absent"
+msgstr ""
+
+
+#: lib/ash/resource/validation/changing.ex:172
+#: lib/ash/resource/validation/changing.ex:252
+msgid "must be changing"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:191
+#: lib/ash/resource/validation/compare.ex:417
+msgid "must be equal to %{is_equal}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:139
+#: lib/ash/resource/validation/compare.ex:405
+msgid "must be greater than %{greater_than}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:165
+#: lib/ash/resource/validation/compare.ex:411
+msgid "must be greater than or equal to %{greater_than_or_equal_to}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/attribute_in.ex:74
+#: lib/ash/resource/validation/attribute_in.ex:83
+msgid "must be in %{list}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/pre_flight_authorization.ex:36
+msgid "must be in a pre-flight authorization context"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:151
+#: lib/ash/resource/validation/compare.ex:408
+msgid "must be less than %{less_than}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:179
+#: lib/ash/resource/validation/compare.ex:414
+msgid "must be less than or equal to %{less_than_or_equal_to}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:215
+#: lib/ash/resource/validation/compare.ex:423
+msgid "must be nil"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:137
+#: lib/ash/resource/validation/present.ex:218
+msgid "must be present"
+msgstr ""
+
+
+#: lib/ash/resource/validation/argument_equals.ex:70
+#: lib/ash/resource/validation/argument_in.ex:70
+#: lib/ash/resource/validation/attribute_equals.ex:46
+#: lib/ash/resource/validation/attribute_equals.ex:83
+msgid "must equal %{value}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:112
+#: lib/ash/resource/validation/string_length.ex:207
+msgid "must have length of at least %{min}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:128
+msgid "must have length of at most %{max}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:202
+msgid "must have length of between %{min} and %{max}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:144
+#: lib/ash/resource/validation/string_length.ex:198
+msgid "must have length of exactly %{exact}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:210
+msgid "must have length of no more than %{max}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:204
+#: lib/ash/resource/validation/compare.ex:420
+msgid "must not be equal to %{is_not_equal}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:226
+#: lib/ash/resource/validation/compare.ex:426
+msgid "must not be nil"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:215
+msgid "must not be present"
+msgstr ""
+
+
+#: lib/ash/resource/validation/argument_does_not_equal.ex:71
+#: lib/ash/resource/validation/attribute_does_not_equal.ex:75
+#: lib/ash/resource/validation/attribute_does_not_equal.ex:84
+msgid "must not equal %{value}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/function.ex:26
+msgid "must pass function %{function}"
+msgstr ""
+

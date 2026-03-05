@@ -67,7 +67,7 @@ defmodule Ash.Resource.Validation.ArgumentIn do
   @impl true
   def describe(opts) do
     [
-      message: "must equal %{value}",
+      message: error_message("must equal %{value}"),
       vars: [field: opts[:argument], value: opts[:value]]
     ]
   end
