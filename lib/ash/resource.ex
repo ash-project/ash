@@ -376,7 +376,7 @@ defmodule Ash.Resource do
       @spec input(values :: map | Keyword.t()) :: map | no_return
       def input(opts) do
         Map.new(opts, fn {key, value} ->
-          if key in @all_arguments || key in @all_attributes do
+          if Enum.member?(@all_arguments, key) || Enum.member?(@all_attributes, key) do
             {key, value}
           else
             raise KeyError, key: key
