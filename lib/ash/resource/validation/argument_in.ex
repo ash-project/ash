@@ -50,7 +50,10 @@ defmodule Ash.Resource.Validation.ArgumentIn do
       :ok
     else
       {:error,
-       [value: value, field: opts[:argument]]
+       [
+         value: Ash.Resource.Validation.maybe_redact(subject, opts[:argument], value),
+         field: opts[:argument]
+       ]
        |> with_description(opts)
        |> InvalidArgument.exception()}
     end

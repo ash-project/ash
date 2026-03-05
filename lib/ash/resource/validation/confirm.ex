@@ -46,8 +46,16 @@ defmodule Ash.Resource.Validation.Confirm do
     if Comp.equal?(confirmation_value, value) do
       :ok
     else
+      error_value =
+        if Ash.Resource.Validation.should_redact?(subject, opts[:confirmation]) ||
+             Ash.Resource.Validation.should_redact?(subject, opts[:field]) do
+          Ash.Helpers.redact(confirmation_value)
+        else
+          confirmation_value
+        end
+
       {:error,
-       [field: opts[:confirmation], value: confirmation_value]
+       [field: opts[:confirmation], value: error_value]
        |> with_description(opts)
        |> InvalidAttribute.exception()}
     end
@@ -73,11 +81,19 @@ defmodule Ash.Resource.Validation.Confirm do
           Changeset.atomic_ref(changeset, opts[:field])
       end
 
+    error_value =
+      if Ash.Resource.Validation.should_redact?(changeset, opts[:confirmation]) ||
+           Ash.Resource.Validation.should_redact?(changeset, opts[:field]) do
+        Ash.Helpers.redact(nil)
+      else
+        value
+      end
+
     {:atomic, [opts[:confirmation], opts[:field]], Ash.Expr.expr(^confirmation != ^value),
      Ash.Expr.expr(
        error(^InvalidAttribute, %{
          field: ^opts[:confirmation],
-         value: ^value,
+         value: ^error_value,
          message: ^(context.message || "confirmation did not match value")
        })
      )}
