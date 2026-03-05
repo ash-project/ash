@@ -1674,6 +1674,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.VerifyFilterExpressions,
     Ash.Resource.Verifiers.ValidateAggregateField,
     Ash.Resource.Verifiers.ValidateRelationshipAttributes,
+    Ash.Resource.Verifiers.ValidateThroughRelationships,
     Ash.Resource.Verifiers.NoReservedFieldNames,
     Ash.Resource.Verifiers.ValidateAccept,
     Ash.Resource.Verifiers.ValidateActionTypesSupported,
