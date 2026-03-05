@@ -15,7 +15,7 @@ defmodule Ash.Resource.Transformers.SetRelationshipSource do
       relationship = %{relationship | source: Transformer.get_persisted(dsl_state, :module)}
 
       new_relationship =
-        if is_list(relationship.through),
+        if is_list(Map.get(relationship, :through)),
           do: %{relationship | no_attributes?: true},
           else: relationship
 

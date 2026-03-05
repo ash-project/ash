@@ -55,7 +55,7 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
               location: Entity.anno(action),
               message: "No such relationship #{opts[:relationship]} exists."
 
-        if is_list(relationship.through) do
+        if is_list(Map.get(relationship, :through)) do
           raise Spark.Error.DslError,
             module: Verifier.get_persisted(dsl_state, :module),
             path:
