@@ -72,7 +72,7 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^error_value,
-         message: ^(context.message || "must not equal %{value}"),
+         message: ^(context.message || error_message("must not equal %{value}")),
          vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })
      )}
@@ -81,7 +81,7 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
   @impl true
   def describe(opts) do
     [
-      message: "must not equal %{value}",
+      message: error_message("must not equal %{value}"),
       vars: [field: opts[:attribute], value: opts[:value]]
     ]
   end

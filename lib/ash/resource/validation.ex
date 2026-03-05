@@ -156,6 +156,7 @@ defmodule Ash.Resource.Validation do
       @before_compile Ash.Resource.Validation
 
       import Ash.Expr
+      import Ash.Gettext
       require Ash.Query
 
       @impl true

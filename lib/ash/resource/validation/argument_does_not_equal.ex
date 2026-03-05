@@ -68,7 +68,7 @@ defmodule Ash.Resource.Validation.ArgumentDoesNotEqual do
   @impl true
   def describe(opts) do
     [
-      message: "must not equal %{value}",
+      message: error_message("must not equal %{value}"),
       vars: [field: opts[:argument], value: opts[:value]]
     ]
   end

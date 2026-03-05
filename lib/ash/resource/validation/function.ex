@@ -23,7 +23,7 @@ defmodule Ash.Resource.Validation.Function do
   @impl true
   def describe(opts) do
     [
-      message: "must pass function %{function}",
+      message: error_message("must pass function %{function}"),
       vars: [function: opts[:fun]]
     ]
   end
