@@ -762,7 +762,6 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`through`](#relationships-belongs_to-through){: #relationships-belongs_to-through } | `atom \| list(atom)` |  | A list of relationship names to traverse. The result will be the record reachable by following the relationships in order. |
 | [`primary_key?`](#relationships-belongs_to-primary_key?){: #relationships-belongs_to-primary_key? } | `boolean` | `false` | Whether the generated attribute is, or is part of, the primary key of a resource. |
 | [`allow_nil?`](#relationships-belongs_to-allow_nil?){: #relationships-belongs_to-allow_nil? } | `boolean` | `true` | Whether this relationship must always be present, e.g: must be included on creation, and never removed (it may be modified). The generated attribute will not allow nil values. |
 | [`attribute_writable?`](#relationships-belongs_to-attribute_writable?){: #relationships-belongs_to-attribute_writable? } | `boolean` |  | Whether the generated attribute will be marked as writable. If not set, it will default to the relationship's `writable?` setting. |
