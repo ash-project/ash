@@ -889,6 +889,23 @@ defmodule Ash.Test.CalculationTest do
         destination_attribute_on_join_resource(:target_id)
         source_attribute_on_join_resource(:source_id)
       end
+
+      has_many :source_friend_links, FriendLink do
+        public?(true)
+        destination_attribute(:source_id)
+      end
+
+      has_many :friends_named_zach, __MODULE__ do
+        public?(true)
+        through([:source_friend_links, :target])
+        filter expr(first_name == "zach")
+      end
+
+      has_many :friends_named_brian, __MODULE__ do
+        public?(true)
+        through([:source_friend_links, :target])
+        filter expr(first_name == "brian")
+      end
     end
 
     code_interface do
@@ -2011,6 +2028,25 @@ defmodule Ash.Test.CalculationTest do
         end
       end
     end
+  end
+
+  test "through relationships with filters load correct friends, and calculations work on the results",
+       %{user1: user1, user2: user2} do
+    user1 =
+      user1
+      |> Ash.Changeset.for_update(:update)
+      |> Ash.Changeset.manage_relationship(:best_friend, user2, type: :append_and_remove)
+      |> Ash.Changeset.manage_relationship(:friends, user2, type: :append_and_remove)
+      |> Ash.update!()
+
+    user1 = Ash.load!(user1, [:friends_named_zach, :friends_named_brian])
+    user2 = Ash.load!(user2, [:friends_named_zach, :friends_named_brian])
+
+    assert user1.friends_named_zach == []
+    assert user2.friends_named_brian == []
+    assert [%{first_name: "brian"}] = user1.friends_named_brian
+    assert [%{first_name: "zach"} = user1] = user2.friends_named_zach
+    assert %{best_friends_name: "brian cranston"} = Ash.load!(user1, :best_friends_name)
   end
 
   describe "calculation context" do
