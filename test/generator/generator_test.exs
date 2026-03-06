@@ -680,6 +680,90 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  describe "seed_generator generate_rest?" do
+    test "default behavior still generates all attributes" do
+      result =
+        Ash.Generator.seed_generator({Author, %{meta: %{}}})
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+      assert result.name != nil
+    end
+
+    test "generate_rest?: true generates all attributes" do
+      result =
+        Ash.Generator.seed_generator({Author, %{meta: %{}}}, generate_rest?: true)
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+      assert result.name != nil
+    end
+
+    test "generate_rest?: false only generates listed attributes" do
+      result =
+        Ash.Generator.seed_generator(
+          {Author, %{meta: %{key: "value"}}},
+          generate_rest?: false
+        )
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+      assert result.meta == %{key: "value"}
+      assert result.metadata == nil
+    end
+
+    test "generate_rest?: false applies resource defaults" do
+      result =
+        Ash.Generator.seed_generator(
+          {Author, %{meta: %{}}},
+          generate_rest?: false
+        )
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+      assert result.name == "Fred"
+    end
+
+    test "generate_rest?: false raises for missing required attributes" do
+      assert_raise ArgumentError,
+                   ~r/Attribute :meta .* is required/,
+                   fn ->
+                     Ash.Generator.seed_generator(
+                       {Author, %{}},
+                       generate_rest?: false
+                     )
+                     |> Ash.Generator.generate()
+                   end
+    end
+
+    test "generate_rest?: false works with overrides" do
+      result =
+        Ash.Generator.seed_generator(
+          {Author, %{meta: %{}}},
+          generate_rest?: false,
+          overrides: %{name: "Custom Name"}
+        )
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+      assert result.name == "Custom Name"
+    end
+
+    test "generate_rest?: false works with uses" do
+      result =
+        Ash.Generator.seed_generator(
+          fn uses -> {Author, %{meta: %{}, name: uses.name}} end,
+          generate_rest?: false,
+          uses: %{name: StreamData.constant("Generated Name")}
+        )
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+      assert result.name == "Generated Name"
+      assert result.metadata == nil
+    end
+  end
+
   describe "changeset_generator" do
     test "it correctly seeds a record" do
       assert %Author{} =
