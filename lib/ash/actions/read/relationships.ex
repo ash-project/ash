@@ -352,10 +352,10 @@ defmodule Ash.Actions.Read.Relationships do
             through_path = Map.get(relationship, :through)
             expanded_relationships = expand_through_path(relationship.source, through_path)
 
-            {path, _} =
-              Enum.reduce(expanded_relationships, {[], relationship.source}, fn relationship,
-                                                                                {acc,
-                                                                                 current_resource} ->
+            Enum.reduce_while(
+              expanded_relationships,
+              {:ok, [], relationship.source},
+              fn relationship, {:ok, acc, current_resource} ->
                 entry_query =
                   if acc == [] do
                     clear_lateral_join_source(source_query)
@@ -363,6 +363,24 @@ defmodule Ash.Actions.Read.Relationships do
                     current_resource
                     |> Ash.Query.new()
                     |> Ash.Query.set_tenant(source_query.tenant)
+                    |> Ash.Query.do_filter(relationship.filter)
+                    |> Ash.Query.set_context(%{
+                      accessing_from: %{
+                        source: current_resource,
+                        name: relationship.name
+                      },
+                      shared: source_query.context[:shared] || %{}
+                    })
+                    |> Ash.Query.for_read(
+                      relationship.read_action ||
+                        Ash.Resource.Info.primary_action!(current_resource, :read).name,
+                      %{},
+                      authorize?: source_query.context[:private][:authorize?],
+                      actor: source_query.context[:private][:actor],
+                      tenant: source_query.tenant,
+                      tracer: source_query.context[:private][:tracer],
+                      domain: relationship.domain || related_query.domain
+                    )
                     |> clear_lateral_join_source()
                   end
 
@@ -371,11 +389,44 @@ defmodule Ash.Actions.Read.Relationships do
                   destination_attribute: destination_attribute
                 } = relationship
 
-                entry = {entry_query, source_attribute, destination_attribute, relationship}
-                {acc ++ [entry], relationship.destination}
-              end)
+                if acc != [] && source_query.context[:private][:authorize?] do
+                  case Ash.can(
+                         entry_query,
+                         source_query.context[:private][:actor],
+                         return_forbidden_error?: true,
+                         pre_flight?: false,
+                         alter_source?: true,
+                         run_queries?: false,
+                         base_query: entry_query
+                       ) do
+                    {:ok, true} ->
+                      entry =
+                        {entry_query, source_attribute, destination_attribute, relationship}
 
-            {:ok, path}
+                      {:cont, {:ok, acc ++ [entry], relationship.destination}}
+
+                    {:ok, true, authorized_query} ->
+                      entry =
+                        {authorized_query, source_attribute, destination_attribute, relationship}
+
+                      {:cont, {:ok, acc ++ [entry], relationship.destination}}
+
+                    {:ok, false, error} ->
+                      {:halt, {:error, Ash.Error.set_path(error, relationship.name)}}
+
+                    {:error, error} ->
+                      {:halt, {:error, Ash.Error.set_path(error, relationship.name)}}
+                  end
+                else
+                  entry = {entry_query, source_attribute, destination_attribute, relationship}
+                  {:cont, {:ok, acc ++ [entry], relationship.destination}}
+                end
+              end
+            )
+            |> case do
+              {:ok, path, _} -> {:ok, path}
+              {:error, error} -> {:error, error}
+            end
 
           relationship.type == :many_to_many ->
             join_relationship =
