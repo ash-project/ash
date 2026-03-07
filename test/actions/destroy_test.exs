@@ -156,9 +156,22 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
   end
 
+  defmodule Notifier do
+    @moduledoc false
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(self(), {:notification, notification})
+      :ok
+    end
+  end
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      notifiers: [Ash.Test.Actions.DestroyTest.Notifier]
 
     ets do
       private?(true)
@@ -172,6 +185,12 @@ defmodule Ash.Test.Actions.DestroyTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      destroy :soft do
+        soft? true
+        require_atomic? false
+        change set_attribute(:tag, "archived")
+      end
     end
 
     attributes do
@@ -261,6 +280,48 @@ defmodule Ash.Test.Actions.DestroyTest do
       end)
 
       assert Ash.get!(Author, author.id, authorize?: false)
+    end
+  end
+
+  describe "soft destroy" do
+    test "returns notifications when return_notifications? is true" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
+        |> Ash.create!()
+
+      assert {:ok, [_ | _] = _notifications} =
+               Ash.destroy(post, action: :soft, return_notifications?: true)
+
+      assert Ash.get!(Post, post.id)
+    end
+
+    test "returns record and notifications when both options are true" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
+        |> Ash.create!()
+
+      post_id = post.id
+
+      assert {:ok, %{id: ^post_id}, [_ | _]} =
+               Ash.destroy(post,
+                 action: :soft,
+                 return_destroyed?: true,
+                 return_notifications?: true
+               )
+
+      assert Ash.get!(Post, post.id)
+    end
+
+    test "returns :ok when no return options are set" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
+        |> Ash.create!()
+
+      assert :ok = Ash.destroy!(post, action: :soft)
+      assert Ash.get!(Post, post.id)
     end
   end
 

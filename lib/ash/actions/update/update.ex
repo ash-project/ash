@@ -403,25 +403,17 @@ defmodule Ash.Actions.Update do
          resource,
          result,
          action,
-         changeset,
+         _changeset,
          instructions,
          return_notifications?,
-         return_destroyed?
+         _return_destroyed?
        ) do
     if return_notifications? do
-      if changeset.action_type == :destroy && !return_destroyed? do
-        {:ok, Map.get(instructions, :notifications, [])}
-      else
-        {:ok, result, Map.get(instructions, :notifications, [])}
-      end
+      {:ok, result, Map.get(instructions, :notifications, [])}
     else
       Helpers.warn_missed!(resource, action, instructions)
 
-      if changeset.action_type == :destroy && !return_destroyed? do
-        :ok
-      else
-        {:ok, result}
-      end
+      {:ok, result}
     end
   end
 
