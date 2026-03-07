@@ -1836,20 +1836,29 @@ defmodule Ash.Actions.Destroy.Bulk do
          argument_names,
          domain
        ) do
-    record
-    |> Ash.Changeset.new()
-    |> Map.put(:domain, domain)
-    |> Ash.Changeset.prepare_changeset_for_action(action, opts)
-    |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
-    |> Ash.Changeset.put_context(:bulk_destroy, %{index: index, ref: make_ref()})
-    |> Ash.Changeset.set_context(opts[:context] || %{})
-    |> handle_params(
-      Keyword.get(opts, :assume_casted?, false),
-      action,
-      opts,
-      input,
-      argument_names
-    )
+    changeset =
+      record
+      |> Ash.Changeset.new()
+      |> Map.put(:domain, domain)
+      |> Ash.Changeset.prepare_changeset_for_action(action, opts)
+      |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
+      |> Ash.Changeset.put_context(:bulk_destroy, %{index: index, ref: make_ref()})
+      |> Ash.Changeset.set_context(opts[:context] || %{})
+
+    changeset =
+      handle_params(
+        changeset,
+        Keyword.get(opts, :assume_casted?, false),
+        action,
+        opts,
+        input,
+        argument_names
+      )
+
+    case opts[:transform_changeset] do
+      nil -> changeset
+      transform -> transform.(changeset)
+    end
   end
 
   defp handle_params(changeset, false, action, opts, input, _argument_names) do

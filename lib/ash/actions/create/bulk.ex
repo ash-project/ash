@@ -848,19 +848,25 @@ defmodule Ash.Actions.Create.Bulk do
          base,
          argument_names
        ) do
-    base
-    |> Ash.Changeset.put_context(:bulk_create, %{index: index, ref: make_ref()})
-    |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
-    |> handle_params(
-      Keyword.get(opts, :assume_casted?, false),
-      action,
-      opts,
-      input,
-      argument_names
-    )
-    |> set_lazy_non_matching_defaults()
-    |> set_lazy_matching_defaults(lazy_matching_default_values)
-    |> set_tenant(action)
+    changeset =
+      base
+      |> Ash.Changeset.put_context(:bulk_create, %{index: index, ref: make_ref()})
+      |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
+      |> handle_params(
+        Keyword.get(opts, :assume_casted?, false),
+        action,
+        opts,
+        input,
+        argument_names
+      )
+      |> set_lazy_non_matching_defaults()
+      |> set_lazy_matching_defaults(lazy_matching_default_values)
+      |> set_tenant(action)
+
+    case opts[:transform_changeset] do
+      nil -> changeset
+      transform -> transform.(changeset)
+    end
   end
 
   defp set_tenant(changeset, action) do

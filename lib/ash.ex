@@ -565,6 +565,11 @@ defmodule Ash do
                              load: [
                                type: :any,
                                doc: "A load statement to apply on the resulting records."
+                             ],
+                             transform_changeset: [
+                               type: {:fun, 1},
+                               doc:
+                                 "A function that takes and returns a changeset, applied to each changeset after it is built but before validation. Used internally by managed relationships to set foreign keys and context."
                              ]
                            ]
                            |> Spark.Options.merge(
@@ -621,6 +626,11 @@ defmodule Ash do
                                 type: :any,
                                 doc:
                                   "A filter to apply to records. This is also applied to a stream of inputs."
+                              ],
+                              transform_changeset: [
+                                type: {:fun, 1},
+                                doc:
+                                  "A function that takes and returns a changeset, applied to each changeset after it is built but before validation. Used internally by managed relationships to set foreign keys and context."
                               ]
                             ]
                             |> Spark.Options.merge(
@@ -691,6 +701,11 @@ defmodule Ash do
                                default: true,
                                doc:
                                  "Whether or not to apply update defaults (like `updated_at` timestamps) on upsert. Only relevant when `upsert?: true` is set. Set to `false` to skip touching update_default fields when an upsert results in an update."
+                             ],
+                             transform_changeset: [
+                               type: {:fun, 1},
+                               doc:
+                                 "A function that takes and returns a changeset, applied to each changeset after it is built but before validation. Used internally by managed relationships to set foreign keys and context."
                              ]
                            ]
                            |> Spark.Options.merge(

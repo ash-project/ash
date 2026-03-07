@@ -663,40 +663,19 @@ defmodule Ash.Actions.ManagedRelationships do
            opts
          ) do
       {:ok, new_value, notifications} ->
-        inputs
-        |> Stream.with_index()
-        |> Enum.reduce_while(
-          {:ok, new_value, notifications},
-          fn {input, input_index}, {:ok, new_value, all_notifications} ->
-            try do
-              case handle_input(
-                     record,
-                     new_value,
-                     original_value,
-                     relationship,
-                     input,
-                     pkeys,
-                     changeset,
-                     actor,
-                     index,
-                     opts
-                   ) do
-                {:ok, new_value, notifications} ->
-                  {:cont, {:ok, new_value, notifications ++ all_notifications}}
-
-                {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-                  {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
-
-                {:error, error} ->
-                  {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
-              end
-            catch
-              {DBConnection, ref, error} ->
-                throw({DBConnection, ref, set_error_path(error, relationship, input_index, opts)})
-            end
-          end
-        )
-        |> case do
+        case maybe_bulk_manage_relationship(
+               record,
+               new_value,
+               original_value,
+               relationship,
+               inputs,
+               pkeys,
+               changeset,
+               actor,
+               index,
+               opts,
+               notifications
+             ) do
           {:ok, new_value, notifications} ->
             new_value =
               if is_list(new_value) do
@@ -816,6 +795,838 @@ defmodule Ash.Actions.ManagedRelationships do
   catch
     {DBConnection, ref, error} ->
       throw({DBConnection, ref, set_error_path(error, relationship, 0, opts)})
+  end
+
+  # Determines whether we can use bulk operations for the :many cardinality path.
+  # If conditions are met, classifies inputs and batches creates together.
+  # Falls back to individual processing otherwise.
+  defp maybe_bulk_manage_relationship(
+         record,
+         new_value,
+         original_value,
+         relationship,
+         inputs,
+         pkeys,
+         changeset,
+         actor,
+         index,
+         opts,
+         notifications
+       ) do
+    if can_bulk_create?(relationship, opts) do
+      bulk_manage_relationship(
+        record,
+        new_value,
+        original_value,
+        relationship,
+        inputs,
+        pkeys,
+        changeset,
+        actor,
+        index,
+        opts,
+        notifications
+      )
+    else
+      sequential_manage_relationship(
+        record,
+        new_value,
+        original_value,
+        relationship,
+        inputs,
+        pkeys,
+        changeset,
+        actor,
+        index,
+        opts,
+        notifications
+      )
+    end
+  end
+
+  defp can_bulk_create?(relationship, opts) do
+    case opts[:on_no_match] do
+      {:create, _action_name} ->
+        relationship.type != :many_to_many &&
+          Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create)
+
+      {:create, _action_name, _join_action_name, _params} ->
+        Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create)
+
+      _ ->
+        false
+    end
+  end
+
+  defp sequential_manage_relationship(
+         record,
+         new_value,
+         original_value,
+         relationship,
+         inputs,
+         pkeys,
+         changeset,
+         actor,
+         index,
+         opts,
+         notifications
+       ) do
+    inputs
+    |> Stream.with_index()
+    |> Enum.reduce_while(
+      {:ok, new_value, notifications},
+      fn {input, input_index}, {:ok, new_value, all_notifications} ->
+        try do
+          case handle_input(
+                 record,
+                 new_value,
+                 original_value,
+                 relationship,
+                 input,
+                 pkeys,
+                 changeset,
+                 actor,
+                 index,
+                 opts
+               ) do
+            {:ok, new_value, notifications} ->
+              {:cont, {:ok, new_value, notifications ++ all_notifications}}
+
+            {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+              {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
+
+            {:error, error} ->
+              {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
+          end
+        catch
+          {DBConnection, ref, error} ->
+            throw({DBConnection, ref, set_error_path(error, relationship, input_index, opts)})
+        end
+      end
+    )
+  end
+
+  defp bulk_manage_relationship(
+         record,
+         new_value,
+         original_value,
+         relationship,
+         inputs,
+         pkeys,
+         changeset,
+         actor,
+         index,
+         opts,
+         notifications
+       ) do
+    # Classify all inputs into creates vs updates/lookups
+    {creates, updates, lookups} =
+      inputs
+      |> Enum.with_index()
+      |> Enum.reduce({[], [], []}, fn {input, input_index}, {creates, updates, lookups} ->
+        match =
+          find_match(
+            List.wrap(original_value),
+            input,
+            pkeys,
+            relationship,
+            opts[:on_no_match] == :match
+          )
+
+        if is_nil(match) || opts[:on_match] == :no_match do
+          if opts[:on_lookup] != :ignore do
+            {creates, updates, [{input, input_index} | lookups]}
+          else
+            {[{input, input_index} | creates], updates, lookups}
+          end
+        else
+          {creates, [{input, input_index, match} | updates], lookups}
+        end
+      end)
+
+    creates = Enum.reverse(creates)
+    updates = Enum.reverse(updates)
+    lookups = Enum.reverse(lookups)
+
+    # Process lookups first - they may become creates or updates
+    with {:ok, new_value, notifications, additional_creates} <-
+           process_lookups_for_bulk(
+             lookups,
+             record,
+             new_value,
+             original_value,
+             relationship,
+             pkeys,
+             changeset,
+             actor,
+             index,
+             opts,
+             notifications
+           ),
+         creates <- additional_creates ++ creates,
+         # Batch creates
+         {:ok, new_value, notifications} <-
+           batch_creates(
+             creates,
+             record,
+             new_value,
+             relationship,
+             changeset,
+             actor,
+             index,
+             opts,
+             notifications
+           ) do
+      process_updates(
+        updates,
+        record,
+        new_value,
+        relationship,
+        changeset,
+        actor,
+        pkeys,
+        opts,
+        notifications
+      )
+    end
+  end
+
+  defp process_lookups_for_bulk(
+         [],
+         _record,
+         new_value,
+         _original_value,
+         _relationship,
+         _pkeys,
+         _changeset,
+         _actor,
+         _index,
+         _opts,
+         notifications
+       ) do
+    {:ok, new_value, notifications, []}
+  end
+
+  defp process_lookups_for_bulk(
+         lookups,
+         record,
+         new_value,
+         _original_value,
+         relationship,
+         _pkeys,
+         changeset,
+         actor,
+         index,
+         opts,
+         notifications
+       ) do
+    Enum.reduce_while(lookups, {:ok, new_value, notifications, []}, fn
+      {input, input_index}, {:ok, new_value, all_notifications, creates} ->
+        case handle_create(
+               record,
+               new_value,
+               relationship,
+               input,
+               changeset,
+               actor,
+               index,
+               _pkeys = pkeys(relationship, opts),
+               opts
+             ) do
+          {:ok, new_value, notifs} ->
+            {:cont, {:ok, new_value, notifs ++ all_notifications, creates}}
+
+          {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+            {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
+
+          {:error, error} ->
+            {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
+        end
+    end)
+  end
+
+  defp process_updates(
+         [],
+         _record,
+         new_value,
+         _relationship,
+         _changeset,
+         _actor,
+         _pkeys,
+         _opts,
+         notifications
+       ) do
+    {:ok, new_value, notifications}
+  end
+
+  defp process_updates(
+         updates,
+         record,
+         new_value,
+         relationship,
+         changeset,
+         actor,
+         pkeys,
+         opts,
+         notifications
+       ) do
+    Enum.reduce_while(updates, {:ok, new_value, notifications}, fn
+      {input, input_index, match}, {:ok, current_value, all_notifications} ->
+        try do
+          case handle_update(
+                 record,
+                 current_value,
+                 relationship,
+                 match,
+                 input,
+                 changeset,
+                 actor,
+                 pkeys,
+                 opts
+               ) do
+            {:ok, new_value, notifs} ->
+              {:cont, {:ok, new_value, notifs ++ all_notifications}}
+
+            {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+              {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
+
+            {:error, error} ->
+              {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
+          end
+        catch
+          {DBConnection, ref, error} ->
+            throw({DBConnection, ref, set_error_path(error, relationship, input_index, opts)})
+        end
+    end)
+  end
+
+  defp batch_creates(
+         [],
+         _record,
+         new_value,
+         _relationship,
+         _changeset,
+         _actor,
+         _index,
+         _opts,
+         notifications
+       ) do
+    {:ok, new_value, notifications}
+  end
+
+  defp batch_creates(
+         creates,
+         record,
+         new_value,
+         relationship,
+         changeset,
+         actor,
+         index,
+         opts,
+         notifications
+       ) do
+    # Filter out struct inputs that don't need actual creation
+    {struct_inputs, map_inputs} =
+      Enum.split_with(creates, fn {input, _input_index} ->
+        is_struct(input, relationship.destination)
+      end)
+
+    # Handle struct inputs immediately (they don't need creation)
+    new_value =
+      Enum.reduce(struct_inputs, new_value, fn {input, _}, acc ->
+        [input | acc]
+      end)
+
+    # Check for belongs_to_manage_created context
+    {already_created, to_create} =
+      Enum.split_with(map_inputs, fn {_input, input_index} ->
+        changeset.context[:private][:belongs_to_manage_created][relationship.name][input_index] !=
+          nil
+      end)
+
+    # Add already-created records to new_value
+    new_value =
+      Enum.reduce(already_created, new_value, fn {_input, input_index}, acc ->
+        created =
+          changeset.context[:private][:belongs_to_manage_created][relationship.name][input_index]
+
+        [created | acc]
+      end)
+
+    if to_create == [] do
+      {:ok, new_value, notifications}
+    else
+      case opts[:on_no_match] do
+        {:create, action_name} ->
+          do_batch_create(
+            to_create,
+            record,
+            new_value,
+            relationship,
+            action_name,
+            changeset,
+            actor,
+            opts,
+            notifications
+          )
+
+        {:create, action_name, join_action_name, params} ->
+          do_batch_create_m2m(
+            to_create,
+            record,
+            new_value,
+            relationship,
+            action_name,
+            join_action_name,
+            params,
+            changeset,
+            actor,
+            opts,
+            notifications
+          )
+
+        _ ->
+          # Shouldn't happen since can_bulk_create? already checked, but fall back
+          sequential_creates(
+            to_create,
+            record,
+            new_value,
+            relationship,
+            changeset,
+            actor,
+            index,
+            opts,
+            notifications
+          )
+      end
+    end
+  end
+
+  defp sequential_creates(
+         creates,
+         record,
+         new_value,
+         relationship,
+         changeset,
+         actor,
+         index,
+         opts,
+         notifications
+       ) do
+    Enum.reduce_while(creates, {:ok, new_value, notifications}, fn
+      {input, input_index}, {:ok, current_value, all_notifications} ->
+        case do_handle_create(
+               record,
+               current_value,
+               relationship,
+               input,
+               changeset,
+               actor,
+               index,
+               opts
+             ) do
+          {:ok, new_value, notifs} ->
+            {:cont, {:ok, new_value, notifs ++ all_notifications}}
+
+          {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+            {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
+
+          {:error, error} ->
+            {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
+        end
+    end)
+  end
+
+  defp do_batch_create(
+         to_create,
+         record,
+         new_value,
+         relationship,
+         action_name,
+         changeset,
+         actor,
+         opts,
+         notifications
+       ) do
+    # Prepare inputs - filter to only action-relevant keys
+    create_inputs =
+      Enum.map(to_create, fn {input, _input_index} ->
+        input =
+          if is_struct(input) do
+            Map.from_struct(input)
+          else
+            input
+          end
+
+        Map.take(
+          input,
+          Enum.to_list(Ash.Resource.Info.action_inputs(relationship.destination, action_name))
+        )
+      end)
+
+    source_value = Map.get(record, relationship.source_attribute)
+    domain = domain(changeset, relationship)
+
+    transform_changeset = fn cs ->
+      maybe_force_change_attribute(
+        cs,
+        relationship,
+        :destination_attribute,
+        source_value
+      )
+    end
+
+    bulk_context =
+      Map.take(changeset.context, [:shared])
+      |> Map.merge(%{
+        accessing_from: %{source: relationship.source, name: relationship.name}
+      })
+      |> Map.merge(relationship.context || %{})
+
+    result =
+      Ash.bulk_create(
+        create_inputs,
+        relationship.destination,
+        action_name,
+        transform_changeset: transform_changeset,
+        skip_unknown_inputs: [:*],
+        return_records?: true,
+        return_notifications?: true,
+        return_errors?: true,
+        stop_on_error?: true,
+        authorize?: opts[:authorize?],
+        actor: actor,
+        tenant: changeset.tenant,
+        context: bulk_context,
+        domain: domain,
+        transaction: false
+      )
+
+    case result do
+      %Ash.BulkResult{status: :success, records: records, notifications: bulk_notifications} ->
+        debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
+
+        new_value = Enum.reduce(records || [], new_value, fn created, acc -> [created | acc] end)
+        {:ok, new_value, (bulk_notifications || []) ++ notifications}
+
+      %Ash.BulkResult{status: :error, errors: errors} ->
+        debug_log(relationship.name, changeset, :create, :error, opts[:debug?])
+        error = List.first(List.wrap(errors))
+
+        if error do
+          {:error, add_bread_crumb(error, relationship, :create)}
+        else
+          {:error,
+           add_bread_crumb(
+             InvalidRelationship.exception(
+               relationship: relationship.name,
+               message: "bulk create failed"
+             ),
+             relationship,
+             :create
+           )}
+        end
+    end
+  end
+
+  defp do_batch_create_m2m(
+         to_create,
+         record,
+         new_value,
+         relationship,
+         action_name,
+         join_action_name,
+         params,
+         changeset,
+         actor,
+         opts,
+         notifications
+       ) do
+    join_keys = params ++ Enum.map(params, &to_string/1)
+    domain = domain(changeset, relationship)
+
+    # Split inputs into join params and regular params
+    {create_inputs, join_inputs_list} =
+      to_create
+      |> Enum.map(fn {input, _input_index} ->
+        input =
+          cond do
+            is_struct(input, relationship.destination) -> input
+            is_struct(input) -> Map.from_struct(input)
+            true -> input
+          end
+
+        {join_params, regular_params} = split_join_keys(input, join_keys)
+
+        regular_params =
+          if is_struct(input, relationship.destination) do
+            regular_params
+          else
+            Map.take(
+              regular_params,
+              Enum.to_list(Ash.Resource.Info.action_inputs(relationship.destination, action_name))
+            )
+          end
+
+        {regular_params, join_params}
+      end)
+      |> Enum.unzip()
+
+    # Check if any are already structs of the destination
+    {struct_inputs, map_inputs_with_joins} =
+      Enum.zip(create_inputs, join_inputs_list)
+      |> Enum.zip(to_create)
+      |> Enum.split_with(fn {{_input, _join}, {orig_input, _}} ->
+        is_struct(orig_input, relationship.destination)
+      end)
+
+    # Struct inputs don't need creation
+    already_created =
+      Enum.map(struct_inputs, fn {{_input, join_params}, {orig_input, _}} ->
+        {orig_input, join_params}
+      end)
+
+    inputs_to_bulk_create =
+      Enum.map(map_inputs_with_joins, fn {{input, join_params}, _} ->
+        {input, join_params}
+      end)
+
+    if inputs_to_bulk_create == [] do
+      # Only struct inputs - just create join records
+      create_join_records_for_m2m(
+        already_created,
+        record,
+        new_value,
+        relationship,
+        join_action_name,
+        changeset,
+        actor,
+        opts,
+        notifications
+      )
+    else
+      # Bulk create destination records
+      bulk_inputs = Enum.map(inputs_to_bulk_create, fn {input, _} -> input end)
+
+      bulk_context =
+        Map.take(changeset.context, [:shared])
+        |> Map.merge(%{
+          accessing_from: %{source: relationship.source, name: relationship.name}
+        })
+        |> Map.merge(relationship.context || %{})
+
+      result =
+        Ash.bulk_create(
+          bulk_inputs,
+          relationship.destination,
+          action_name,
+          skip_unknown_inputs: [:*],
+          return_records?: true,
+          return_notifications?: true,
+          return_errors?: true,
+          stop_on_error?: true,
+          sorted?: true,
+          authorize?: opts[:authorize?],
+          actor: actor,
+          tenant: changeset.tenant,
+          context: bulk_context,
+          domain: domain,
+          transaction: false
+        )
+
+      case result do
+        %Ash.BulkResult{
+          status: :success,
+          records: created_records,
+          notifications: bulk_notifications
+        } ->
+          debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
+
+          # Pair created records with their join params
+          created_with_joins =
+            Enum.zip(
+              created_records || [],
+              Enum.map(inputs_to_bulk_create, fn {_, join} -> join end)
+            )
+            |> Enum.map(fn {created, join_params} -> {created, join_params} end)
+
+          all_for_join = already_created ++ created_with_joins
+
+          create_join_records_for_m2m(
+            all_for_join,
+            record,
+            new_value,
+            relationship,
+            join_action_name,
+            changeset,
+            actor,
+            opts,
+            (bulk_notifications || []) ++ notifications
+          )
+
+        %Ash.BulkResult{status: :error, errors: errors} ->
+          debug_log(relationship.name, changeset, :create, :error, opts[:debug?])
+          error = List.first(List.wrap(errors))
+
+          if error do
+            {:error, add_bread_crumb(error, relationship, :create)}
+          else
+            {:error,
+             add_bread_crumb(
+               InvalidRelationship.exception(
+                 relationship: relationship.name,
+                 message: "bulk create failed"
+               ),
+               relationship,
+               :create
+             )}
+          end
+      end
+    end
+  end
+
+  defp create_join_records_for_m2m(
+         created_with_joins,
+         record,
+         new_value,
+         relationship,
+         join_action_name,
+         changeset,
+         actor,
+         opts,
+         notifications
+       ) do
+    source_value = Map.get(record, relationship.source_attribute)
+
+    join_relationship =
+      Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
+
+    join_inputs =
+      Enum.map(created_with_joins, fn {_created, join_params} ->
+        join_params
+      end)
+
+    destination_values =
+      Enum.map(created_with_joins, fn {created, _join_params} ->
+        Map.get(created, relationship.destination_attribute)
+      end)
+
+    # Use bulk_create for join records if data layer supports it
+    if Ash.DataLayer.data_layer_can?(relationship.through, :bulk_create) &&
+         length(join_inputs) > 1 do
+      transform_changeset = fn cs ->
+        # Get the index from bulk_create context to map to correct destination value
+        idx = cs.context[:bulk_create][:index]
+        dest_value = Enum.at(destination_values, idx)
+
+        cs
+        |> maybe_force_change_attribute(
+          relationship,
+          :source_attribute_on_join_resource,
+          source_value
+        )
+        |> maybe_force_change_attribute(
+          relationship,
+          :destination_attribute_on_join_resource,
+          dest_value
+        )
+      end
+
+      bulk_context =
+        Map.take(changeset.context, [:shared])
+        |> Map.merge(%{
+          accessing_from: %{source: join_relationship.source, name: join_relationship.name}
+        })
+        |> Map.merge(join_relationship.context || %{})
+
+      result =
+        Ash.bulk_create(
+          join_inputs,
+          relationship.through,
+          join_action_name,
+          transform_changeset: transform_changeset,
+          skip_unknown_inputs: [:*],
+          return_records?: false,
+          return_notifications?: true,
+          return_errors?: true,
+          stop_on_error?: true,
+          sorted?: true,
+          authorize?: opts[:authorize?],
+          actor: actor,
+          tenant: changeset.tenant,
+          context: bulk_context,
+          domain: domain(changeset, join_relationship),
+          transaction: false
+        )
+
+      case result do
+        %Ash.BulkResult{status: :success, notifications: join_notifications} ->
+          debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
+
+          created_records = Enum.map(created_with_joins, fn {created, _} -> created end)
+          new_value = Enum.reduce(created_records, new_value, fn c, acc -> [c | acc] end)
+          {:ok, new_value, (join_notifications || []) ++ notifications}
+
+        %Ash.BulkResult{status: :error, errors: errors} ->
+          debug_log(relationship.name, changeset, :create, :error, opts[:debug?])
+          error = List.first(List.wrap(errors))
+
+          if error do
+            {:error, add_bread_crumb(error, relationship, :create)}
+          else
+            {:error,
+             add_bread_crumb(
+               InvalidRelationship.exception(
+                 relationship: relationship.name,
+                 message: "bulk create of join records failed"
+               ),
+               relationship,
+               :create
+             )}
+          end
+      end
+    else
+      # Fall back to individual join record creation
+      Enum.zip(created_with_joins, destination_values)
+      |> Enum.reduce_while({:ok, new_value, notifications}, fn
+        {{created, join_params}, dest_value}, {:ok, current_value, all_notifications} ->
+          relationship.through
+          |> Ash.Changeset.new()
+          |> Ash.Changeset.set_context(%{
+            accessing_from: %{source: join_relationship.source, name: join_relationship.name}
+          })
+          |> Ash.Changeset.for_create(join_action_name, join_params,
+            require?: false,
+            authorize?: opts[:authorize?],
+            actor: actor,
+            context: Map.take(changeset.context, [:shared]),
+            tenant: changeset.tenant,
+            skip_unknown_inputs: Map.keys(join_params),
+            domain: domain(changeset, join_relationship)
+          )
+          |> maybe_force_change_attribute(
+            relationship,
+            :source_attribute_on_join_resource,
+            source_value
+          )
+          |> maybe_force_change_attribute(
+            relationship,
+            :destination_attribute_on_join_resource,
+            dest_value
+          )
+          |> Ash.Changeset.set_context(join_relationship.context)
+          |> Ash.create(return_notifications?: true)
+          |> case do
+            {:ok, _join_row, join_notifications} ->
+              debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
+              {:cont, {:ok, [created | current_value], join_notifications ++ all_notifications}}
+
+            {:error, error} ->
+              debug_log(relationship.name, changeset, :create, {:error, error}, opts[:debug?])
+              {:halt, {:error, add_bread_crumb(error, relationship, :create)}}
+          end
+      end)
+    end
   end
 
   defp set_error_path(error, relationship, input_index, opts) do
@@ -1844,198 +2655,416 @@ defmodule Ash.Actions.ManagedRelationships do
         )
       end)
 
-    missing
-    |> Enum.reduce_while(
-      {:ok, [], []},
-      fn record, {:ok, current_value, all_notifications} ->
-        case opts[:on_missing] do
-          :ignore ->
-            {:cont, {:ok, [record | current_value], []}}
+    case opts[:on_missing] do
+      :ignore ->
+        {:ok, missing, []}
 
-          {:destroy, action_name, join_action_name} ->
-            source_value = Map.get(source_record, relationship.source_attribute)
-            destination_value = Map.get(record, relationship.destination_attribute)
+      :error when missing != [] ->
+        {:error,
+         add_bread_crumb(
+           InvalidRelationship.exception(
+             relationship: relationship.name,
+             message: "changes would destroy a record"
+           ),
+           relationship,
+           :destroy
+         )}
 
-            join_relationship =
-              Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
+      :error ->
+        {:ok, [], []}
 
-            relationship.through
-            |> Ash.Query.set_context(%{
-              accessing_from: %{source: join_relationship.source, name: join_relationship.name}
-            })
-            |> Ash.Query.filter(
-              ^ref(relationship.source_attribute_on_join_resource) == ^source_value
-            )
-            |> Ash.Query.filter(
-              ^ref(relationship.destination_attribute_on_join_resource) == ^destination_value
-            )
-            |> Ash.Query.limit(1)
-            |> Ash.Query.set_tenant(changeset.tenant)
-            |> Ash.Query.set_context(join_relationship.context)
-            |> sort_and_filter(relationship)
-            |> Ash.read_one(
-              domain: domain(changeset, join_relationship),
-              authorize?: opts[:authorize?],
-              actor: actor,
-              context: Map.take(changeset.context, [:shared])
-            )
-            |> case do
-              {:ok, result} ->
-                debug_log(relationship.name, changeset, :read, :ok, opts[:debug?])
+      {:destroy, action_name} when missing != [] ->
+        bulk_delete_unused_destroy(
+          missing,
+          relationship,
+          action_name,
+          changeset,
+          actor,
+          domain,
+          opts
+        )
 
-                result
-                |> Ash.Changeset.new()
-                |> Ash.Changeset.set_context(%{
-                  accessing_from: %{
-                    source: join_relationship.source,
-                    name: join_relationship.name
-                  }
-                })
-                |> Ash.Changeset.for_destroy(
-                  join_action_name,
-                  %{},
-                  actor: actor,
-                  context: Map.take(changeset.context, [:shared]),
-                  tenant: changeset.tenant,
-                  authorize?: opts[:authorize?],
-                  domain: domain(changeset, join_relationship)
-                )
-                |> Ash.Changeset.set_context(join_relationship.context)
-                |> Ash.destroy(return_notifications?: true)
-                |> case do
-                  {:ok, join_notifications} ->
-                    debug_log(
-                      relationship.name,
-                      changeset,
-                      :destroy,
-                      :ok,
-                      opts[:debug?]
-                    )
+      {:destroy, _action_name} ->
+        {:ok, [], []}
 
-                    destroy_destination(
-                      record,
-                      changeset,
-                      relationship,
-                      action_name,
-                      join_notifications ++ all_notifications,
-                      domain,
-                      current_value,
-                      actor,
-                      changeset.tenant,
-                      opts[:authorize?],
-                      opts[:debug?]
-                    )
+      {:destroy, action_name, join_action_name} when missing != [] ->
+        bulk_delete_unused_m2m(
+          missing,
+          source_record,
+          relationship,
+          action_name,
+          join_action_name,
+          changeset,
+          actor,
+          domain,
+          opts
+        )
 
-                  {:ok, _destroyed_join_record, join_notifications} ->
-                    debug_log(
-                      relationship.name,
-                      changeset,
-                      :destroy,
-                      :ok,
-                      opts[:debug?]
-                    )
+      {:destroy, _action_name, _join_action_name} ->
+        {:ok, [], []}
 
-                    destroy_destination(
-                      record,
-                      changeset,
-                      relationship,
-                      action_name,
-                      join_notifications ++ all_notifications,
-                      domain,
-                      current_value,
-                      actor,
-                      changeset.tenant,
-                      opts[:authorize?],
-                      opts[:debug?]
-                    )
+      {:unrelate, action_name} when missing != [] ->
+        bulk_delete_unused_unrelate(
+          missing,
+          source_record,
+          relationship,
+          action_name,
+          changeset,
+          actor,
+          domain,
+          opts
+        )
 
-                  {:error, error} ->
-                    debug_log(
-                      relationship.name,
-                      changeset,
-                      :destroy,
-                      :error,
-                      opts[:debug?]
-                    )
+      {:unrelate, _action_name} ->
+        {:ok, [], []}
+    end
+  end
 
-                    {:halt, {:error, add_bread_crumb(error, relationship, :destroy)}}
-                end
+  defp bulk_delete_unused_destroy(
+         missing,
+         relationship,
+         action_name,
+         changeset,
+         actor,
+         domain,
+         opts
+       ) do
+    if Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create) &&
+         length(missing) > 1 do
+      transform_changeset = fn cs ->
+        cs
+        |> Ash.Changeset.set_context(%{
+          accessing_from: %{source: relationship.source, name: relationship.name}
+        })
+        |> Ash.Changeset.set_context(relationship.context)
+      end
 
-              {:error, error} ->
-                debug_log(
-                  relationship.name,
-                  changeset,
-                  :read,
-                  {:error, error},
-                  opts[:debug?]
-                )
+      result =
+        Ash.bulk_destroy(
+          missing,
+          action_name,
+          %{},
+          transform_changeset: transform_changeset,
+          resource: relationship.destination,
+          return_notifications?: true,
+          return_errors?: true,
+          stop_on_error?: true,
+          authorize?: opts[:authorize?],
+          actor: actor,
+          tenant: changeset.tenant,
+          context: Map.take(changeset.context, [:shared]),
+          domain: domain,
+          strategy: :stream,
+          transaction: false
+        )
 
-                {:halt, {:error, add_bread_crumb(error, relationship, :lookup)}}
-            end
+      case result do
+        %Ash.BulkResult{status: :success, notifications: bulk_notifications} ->
+          debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
+          {:ok, [], bulk_notifications || []}
 
-          {:destroy, action_name} ->
-            record
-            |> Ash.Changeset.new()
+        %Ash.BulkResult{status: :error, errors: errors} ->
+          debug_log(relationship.name, changeset, :destroy, :error, opts[:debug?])
+          error = List.first(List.wrap(errors))
+
+          if error do
+            {:error, add_bread_crumb(error, relationship, :destroy)}
+          else
+            {:error,
+             add_bread_crumb(
+               InvalidRelationship.exception(
+                 relationship: relationship.name,
+                 message: "bulk destroy failed"
+               ),
+               relationship,
+               :destroy
+             )}
+          end
+      end
+    else
+      # Fall back to individual destroys
+      Enum.reduce_while(missing, {:ok, [], []}, fn record,
+                                                   {:ok, current_value, all_notifications} ->
+        record
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.set_context(%{
+          accessing_from: %{source: relationship.source, name: relationship.name}
+        })
+        |> Ash.Changeset.for_destroy(action_name, %{},
+          actor: actor,
+          context: Map.take(changeset.context, [:shared]),
+          tenant: changeset.tenant,
+          authorize?: opts[:authorize?],
+          domain: domain
+        )
+        |> Ash.Changeset.set_context(relationship.context)
+        |> Ash.destroy(return_notifications?: true)
+        |> case do
+          {:ok, notifications} ->
+            debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
+            {:cont, {:ok, current_value, notifications ++ all_notifications}}
+
+          {:ok, _soft_destroyed_record, notifications} ->
+            debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
+            {:cont, {:ok, current_value, notifications ++ all_notifications}}
+
+          {:error, error} ->
+            debug_log(relationship.name, changeset, :destroy, :error, opts[:debug?])
+            {:halt, {:error, add_bread_crumb(error, relationship, :destroy)}}
+        end
+      end)
+    end
+  end
+
+  defp bulk_delete_unused_m2m(
+         missing,
+         source_record,
+         relationship,
+         action_name,
+         join_action_name,
+         changeset,
+         actor,
+         domain,
+         opts
+       ) do
+    source_value = Map.get(source_record, relationship.source_attribute)
+    destination_values = Enum.map(missing, &Map.get(&1, relationship.destination_attribute))
+
+    join_relationship =
+      Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
+
+    # Pass the query directly to bulk_destroy — no need to read first
+    join_query =
+      relationship.through
+      |> Ash.Query.set_context(%{
+        accessing_from: %{source: join_relationship.source, name: join_relationship.name}
+      })
+      |> Ash.Query.filter(^ref(relationship.source_attribute_on_join_resource) == ^source_value)
+      |> Ash.Query.filter(
+        ^ref(relationship.destination_attribute_on_join_resource) in ^destination_values
+      )
+      |> Ash.Query.set_tenant(changeset.tenant)
+      |> Ash.Query.set_context(join_relationship.context)
+      |> sort_and_filter(relationship)
+
+    join_destroy_result =
+      Ash.bulk_destroy(
+        join_query,
+        join_action_name,
+        %{},
+        return_notifications?: true,
+        return_errors?: true,
+        stop_on_error?: true,
+        authorize?: opts[:authorize?],
+        actor: actor,
+        tenant: changeset.tenant,
+        context: Map.take(changeset.context, [:shared]),
+        domain: domain(changeset, join_relationship),
+        strategy: [:atomic, :atomic_batches, :stream],
+        transaction: false
+      )
+
+    case join_destroy_result do
+      %Ash.BulkResult{status: :success, notifications: notifs} ->
+        debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
+
+        if action_name do
+          destroy_missing_destinations(
+            missing,
+            relationship,
+            action_name,
+            changeset,
+            actor,
+            domain,
+            notifs || [],
+            opts
+          )
+        else
+          {:ok, [], notifs || []}
+        end
+
+      %Ash.BulkResult{status: :error, errors: errors} ->
+        debug_log(relationship.name, changeset, :destroy, :error, opts[:debug?])
+        error = List.first(List.wrap(errors))
+        {:error, add_bread_crumb(error || "bulk destroy failed", relationship, :destroy)}
+    end
+  end
+
+  defp destroy_missing_destinations(
+         missing,
+         relationship,
+         action_name,
+         changeset,
+         actor,
+         domain,
+         notifications,
+         opts
+       ) do
+    if Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create) &&
+         length(missing) > 1 do
+      transform_changeset = fn cs ->
+        cs
+        |> Ash.Changeset.set_context(%{
+          accessing_from: %{source: relationship.source, name: relationship.name}
+        })
+        |> Ash.Changeset.set_context(relationship.context)
+      end
+
+      result =
+        Ash.bulk_destroy(
+          missing,
+          action_name,
+          %{},
+          transform_changeset: transform_changeset,
+          resource: relationship.destination,
+          return_notifications?: true,
+          return_errors?: true,
+          stop_on_error?: true,
+          authorize?: opts[:authorize?],
+          actor: actor,
+          tenant: changeset.tenant,
+          context: Map.take(changeset.context, [:shared]),
+          domain: domain,
+          strategy: :stream,
+          transaction: false
+        )
+
+      case result do
+        %Ash.BulkResult{status: :success, notifications: dest_notifs} ->
+          debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
+          {:ok, [], (dest_notifs || []) ++ notifications}
+
+        %Ash.BulkResult{status: :error, errors: errors} ->
+          debug_log(relationship.name, changeset, :destroy, :error, opts[:debug?])
+          error = List.first(List.wrap(errors))
+          {:error, add_bread_crumb(error || "bulk destroy failed", relationship, :destroy)}
+      end
+    else
+      Enum.reduce_while(missing, {:ok, [], notifications}, fn record,
+                                                              {:ok, current_value,
+                                                               all_notifications} ->
+        destroy_destination(
+          record,
+          changeset,
+          relationship,
+          action_name,
+          all_notifications,
+          domain,
+          current_value,
+          actor,
+          changeset.tenant,
+          opts[:authorize?],
+          opts[:debug?]
+        )
+      end)
+    end
+  end
+
+  defp bulk_delete_unused_unrelate(
+         missing,
+         source_record,
+         relationship,
+         action_name,
+         changeset,
+         actor,
+         domain,
+         opts
+       ) do
+    case relationship.type do
+      :many_to_many ->
+        # Pass the query directly to bulk_destroy — no need to read first
+        source_value = Map.get(source_record, relationship.source_attribute)
+        destination_values = Enum.map(missing, &Map.get(&1, relationship.destination_attribute))
+
+        join_relationship =
+          Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
+
+        join_query =
+          relationship.through
+          |> Ash.Query.set_context(%{
+            accessing_from: %{source: join_relationship.source, name: join_relationship.name}
+          })
+          |> Ash.Query.filter(
+            ^ref(relationship.source_attribute_on_join_resource) == ^source_value
+          )
+          |> Ash.Query.filter(
+            ^ref(relationship.destination_attribute_on_join_resource) in ^destination_values
+          )
+          |> Ash.Query.set_tenant(changeset.tenant)
+          |> Ash.Query.set_context(join_relationship.context)
+
+        result =
+          Ash.bulk_destroy(
+            join_query,
+            action_name,
+            %{},
+            return_notifications?: true,
+            return_errors?: true,
+            stop_on_error?: true,
+            authorize?: opts[:authorize?],
+            actor: actor,
+            tenant: changeset.tenant,
+            context: Map.take(changeset.context, [:shared]),
+            domain: domain(changeset, join_relationship),
+            strategy: [:atomic, :atomic_batches, :stream],
+            transaction: false
+          )
+
+        case result do
+          %Ash.BulkResult{status: :success, notifications: notifs} ->
+            {:ok, [], notifs || []}
+
+          %Ash.BulkResult{status: :error, errors: errors} ->
+            error = List.first(List.wrap(errors))
+            {:error, add_bread_crumb(error || "bulk unrelate failed", relationship, :unrelate)}
+        end
+
+      type when type in [:has_many, :has_one] ->
+        # For has_many/has_one unrelate, bulk update to nil out the FK
+        if Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create) &&
+             length(missing) > 1 do
+          transform_changeset = fn cs ->
+            cs
             |> Ash.Changeset.set_context(%{
-              accessing_from: %{source: relationship.source, name: relationship.name}
+              accessing_from: %{
+                source: relationship.source,
+                name: relationship.name,
+                unrelating?: true
+              }
             })
-            |> Ash.Changeset.for_destroy(action_name, %{},
-              actor: actor,
-              context: Map.take(changeset.context, [:shared]),
-              tenant: changeset.tenant,
-              authorize?: opts[:authorize?],
-              domain: domain
-            )
             |> Ash.Changeset.set_context(relationship.context)
-            |> Ash.destroy(return_notifications?: true)
-            |> case do
-              {:ok, notifications} ->
-                debug_log(
-                  relationship.name,
-                  changeset,
-                  :destroy,
-                  :ok,
-                  opts[:debug?]
-                )
+            |> maybe_force_change_attribute(relationship, :destination_attribute, nil)
+          end
 
-                {:cont, {:ok, current_value, notifications ++ all_notifications}}
+          result =
+            Ash.bulk_update(
+              missing,
+              action_name,
+              %{},
+              transform_changeset: transform_changeset,
+              resource: relationship.destination,
+              return_notifications?: true,
+              return_errors?: true,
+              stop_on_error?: true,
+              authorize?: opts[:authorize?],
+              actor: actor,
+              tenant: changeset.tenant,
+              context: Map.take(changeset.context, [:shared]),
+              domain: domain,
+              strategy: :stream,
+              transaction: false
+            )
 
-              {:ok, _soft_destroyed_record, notifications} ->
-                debug_log(
-                  relationship.name,
-                  changeset,
-                  :destroy,
-                  :ok,
-                  opts[:debug?]
-                )
+          case result do
+            %Ash.BulkResult{status: :success, notifications: notifs} ->
+              {:ok, [], notifs || []}
 
-                {:cont, {:ok, current_value, notifications ++ all_notifications}}
-
-              {:error, error} ->
-                debug_log(
-                  relationship.name,
-                  changeset,
-                  :destroy,
-                  :error,
-                  opts[:debug?]
-                )
-
-                {:halt, {:error, add_bread_crumb(error, relationship, :destroy)}}
-            end
-
-          :error ->
-            {:halt,
-             {:error,
-              add_bread_crumb(
-                InvalidRelationship.exception(
-                  relationship: relationship.name,
-                  message: "changes would destroy a record"
-                ),
-                relationship,
-                :destroy
-              )}}
-
-          {:unrelate, action_name} ->
+            %Ash.BulkResult{status: :error, errors: errors} ->
+              error = List.first(List.wrap(errors))
+              {:error, add_bread_crumb(error || "bulk unrelate failed", relationship, :unrelate)}
+          end
+        else
+          Enum.reduce_while(missing, {:ok, [], []}, fn record, {:ok, _, all_notifs} ->
             case unrelate_data(
                    source_record,
                    record,
@@ -2047,14 +3076,17 @@ defmodule Ash.Actions.ManagedRelationships do
                    relationship
                  ) do
               {:ok, notifications} ->
-                {:cont, {:ok, current_value, notifications}}
+                {:cont, {:ok, [], notifications ++ all_notifs}}
 
               {:error, error} ->
                 {:halt, {:error, add_bread_crumb(error, relationship, :unrelate)}}
             end
+          end)
         end
-      end
-    )
+
+      :belongs_to ->
+        {:ok, [], []}
+    end
   end
 
   defp destroy_destination(

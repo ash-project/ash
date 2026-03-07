@@ -2213,23 +2213,32 @@ defmodule Ash.Actions.Update.Bulk do
     # Generate unique ref per changeset (not per batch)
     ref = make_ref()
 
-    record
-    |> Ash.Changeset.new()
-    |> Map.put(:domain, domain)
-    |> Ash.Changeset.prepare_changeset_for_action(action, opts)
-    |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
-    |> Ash.Changeset.put_context(context_key, %{index: index, ref: ref})
-    |> Ash.Changeset.set_context(opts[:context] || %{})
-    |> Ash.Changeset.atomic_update(opts[:atomic_update] || [])
-    |> Ash.Changeset.hydrate_atomic_refs(opts[:actor], opts)
-    |> handle_params(
-      Keyword.get(opts, :assume_casted?, false),
-      action,
-      opts,
-      input,
-      argument_names
-    )
-    |> Ash.Changeset.apply_atomic_constraints(opts[:actor])
+    changeset =
+      record
+      |> Ash.Changeset.new()
+      |> Map.put(:domain, domain)
+      |> Ash.Changeset.prepare_changeset_for_action(action, opts)
+      |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
+      |> Ash.Changeset.put_context(context_key, %{index: index, ref: ref})
+      |> Ash.Changeset.set_context(opts[:context] || %{})
+
+    changeset =
+      changeset
+      |> Ash.Changeset.atomic_update(opts[:atomic_update] || [])
+      |> Ash.Changeset.hydrate_atomic_refs(opts[:actor], opts)
+      |> handle_params(
+        Keyword.get(opts, :assume_casted?, false),
+        action,
+        opts,
+        input,
+        argument_names
+      )
+      |> Ash.Changeset.apply_atomic_constraints(opts[:actor])
+
+    case opts[:transform_changeset] do
+      nil -> changeset
+      transform -> transform.(changeset)
+    end
   end
 
   defp handle_params(changeset, false, action, opts, input, _argument_names) do
