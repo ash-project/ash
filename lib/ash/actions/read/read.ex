@@ -3520,6 +3520,11 @@ defmodule Ash.Actions.Read do
         last_relationship = last_relationship(resource, prefix ++ path)
 
         case Map.fetch(path_filters, {last_relationship.source, last_relationship.name, action}) do
+          {:ok, %Ash.Filter{expression: expression}} ->
+            Map.update(current_join_filters, path, expression, fn current_filter ->
+              Ash.Query.BooleanExpression.new(:and, current_filter, expression)
+            end)
+
           {:ok, filter} ->
             Map.update(current_join_filters, path, filter, fn current_filter ->
               Ash.Query.BooleanExpression.new(:and, current_filter, filter)
