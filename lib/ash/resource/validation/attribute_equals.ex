@@ -43,7 +43,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^error_value,
-         message: ^(context.message || "must equal %{value}"),
+         message: ^(context.message || error_message("must equal %{value}")),
          vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })
      )}
@@ -80,7 +80,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
   @impl true
   def describe(opts) do
     [
-      message: "must equal %{value}",
+      message: error_message("must equal %{value}"),
       vars: [field: opts[:attribute], value: opts[:value]]
     ]
   end
