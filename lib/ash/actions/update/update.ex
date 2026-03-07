@@ -335,10 +335,8 @@ defmodule Ash.Actions.Update do
         changeset.resource,
         result,
         changeset.action,
-        changeset,
         instructions,
-        opts[:return_notifications?],
-        opts[:return_destroyed?]
+        opts[:return_notifications?]
       )
     end
     |> case do
@@ -403,10 +401,8 @@ defmodule Ash.Actions.Update do
          resource,
          result,
          action,
-         _changeset,
          instructions,
-         return_notifications?,
-         _return_destroyed?
+         return_notifications?
        ) do
     if return_notifications? do
       {:ok, result, Map.get(instructions, :notifications, [])}
