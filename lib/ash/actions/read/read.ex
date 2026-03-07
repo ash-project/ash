@@ -3520,13 +3520,11 @@ defmodule Ash.Actions.Read do
         last_relationship = last_relationship(resource, prefix ++ path)
 
         case Map.fetch(path_filters, {last_relationship.source, last_relationship.name, action}) do
-          {:ok, %Ash.Filter{expression: expression}} ->
-            Map.update(current_join_filters, path, expression, fn current_filter ->
-              Ash.Query.BooleanExpression.new(:and, current_filter, expression)
-            end)
-
           {:ok, filter} ->
+            filter = unwrap_filter_expression(filter)
+
             Map.update(current_join_filters, path, filter, fn current_filter ->
+              current_filter = unwrap_filter_expression(current_filter)
               Ash.Query.BooleanExpression.new(:and, current_filter, filter)
             end)
 
@@ -3536,6 +3534,9 @@ defmodule Ash.Actions.Read do
       end)
     end
   end
+
+  defp unwrap_filter_expression(%Ash.Filter{expression: expression}), do: expression
+  defp unwrap_filter_expression(other), do: other
 
   defp maybe_await(%Task{} = task, timeout) do
     case Task.await(task, timeout) do
