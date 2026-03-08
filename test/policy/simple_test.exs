@@ -478,6 +478,7 @@ defmodule Ash.Test.Policy.SimpleTest do
   test "Ash.can? honors a provided scope", %{admin: admin, user: user} do
     tweet = Ash.create!(Ash.Changeset.for_create(Tweet, :create), authorize?: false)
     assert Ash.can?({tweet, :read}, %Scope{actor: admin})
+    assert Ash.can?({tweet, :read}, %{}, scope: %Scope{actor: admin})
     refute Ash.can?({tweet, :read}, %Scope{actor: user})
   end
 

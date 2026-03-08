@@ -3,6 +3,18 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Test.CodeInterfaceTest do
+  defmodule Scope do
+    defstruct [:actor, :tenant, :context]
+
+    defimpl Ash.Scope.ToOpts do
+      def get_actor(%{actor: actor}), do: {:ok, actor}
+      def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
+      def get_context(%{context: context}), do: {:ok, context}
+      def get_tracer(_), do: :error
+      def get_authorize?(_), do: :error
+    end
+  end
+
   @moduledoc false
   use ExUnit.Case, async: true
 
@@ -680,6 +692,10 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     assert User.can_update_by_id?(user, user.id, %{})
     assert User.can_destroy_by_id?(user, user.id, %{})
+
+    assert User.can_destroy_by_id?(user, %{},
+             scope: %Ash.Test.CodeInterfaceTest.Scope{actor: user}
+           )
   end
 
   test "optional arguments are optional" do
@@ -735,18 +751,6 @@ defmodule Ash.Test.CodeInterfaceTest do
     # Test that function-based defaults can still be overridden
     assert "Hello, Override Actor." =
              User.hello_actor_with_function_default!(actor: %{name: "Override Actor"})
-  end
-
-  defmodule Scope do
-    defstruct [:actor, :tenant, :context]
-
-    defimpl Ash.Scope.ToOpts do
-      def get_actor(%{actor: actor}), do: {:ok, actor}
-      def get_tenant(%{tenant: tenant}), do: {:ok, tenant}
-      def get_context(%{context: context}), do: {:ok, context}
-      def get_tracer(_), do: :error
-      def get_authorize?(_), do: :error
-    end
   end
 
   defmodule ContextScope do

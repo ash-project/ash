@@ -76,6 +76,8 @@ defmodule Ash.Can do
     opts = Keyword.put_new(opts, :filter_with, :filter)
     pre_flight? = Keyword.get(opts, :pre_flight?, true)
 
+    actor_or_scope = Ash.Helpers.deep_merge_maps(actor_or_scope, opts[:scope])
+
     context =
       Ash.Helpers.deep_merge_maps(opts[:context] || %{}, %{
         private: %{pre_flight_authorization?: pre_flight?}
