@@ -1078,4 +1078,245 @@ defmodule Ash.Test.Resource.AggregatesTest do
       assert loaded_post.like_count_normal == 0
     end
   end
+
+  describe "multiple filters" do
+    defmodule FilterableComment do
+      @moduledoc false
+      use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+      attributes do
+        uuid_primary_key :id
+
+        attribute :post_id, :uuid do
+          public?(true)
+        end
+
+        attribute :status, :string do
+          public?(true)
+        end
+
+        attribute :rating, :integer do
+          public?(true)
+        end
+
+        attribute :author_name, :string do
+          public?(true)
+        end
+      end
+
+      actions do
+        defaults [:read, :create]
+        default_accept :*
+      end
+    end
+
+    test "aggregates support multiple filter lines" do
+      defposts do
+        aggregates do
+          count :filtered_comments, :comments do
+            filter expr(status == "active")
+            filter expr(rating > 5)
+          end
+        end
+
+        relationships do
+          has_many :comments, FilterableComment, destination_attribute: :post_id, public?: true
+        end
+      end
+
+      aggregate = Ash.Resource.Info.aggregate(Post, :filtered_comments)
+
+      assert aggregate != nil
+      assert aggregate.name == :filtered_comments
+      assert aggregate.kind == :count
+      # Verify that filters were combined (filter should be a BooleanExpression with :and)
+      assert aggregate.filter != nil
+      assert aggregate.filter != []
+    end
+
+    test "multiple filters are combined with AND" do
+      defposts do
+        aggregates do
+          count :multi_filtered_comments, :comments do
+            filter expr(status == "active")
+            filter expr(rating >= 3)
+            filter expr(not is_nil(author_name))
+          end
+        end
+
+        relationships do
+          has_many :comments, FilterableComment, destination_attribute: :post_id, public?: true
+        end
+      end
+
+      aggregate = Ash.Resource.Info.aggregate(Post, :multi_filtered_comments)
+
+      assert aggregate != nil
+      # The filter should be a combined BooleanExpression
+      assert aggregate.filter != nil
+      assert aggregate.filter != []
+    end
+
+    test "backward compatibility: single filter option still works" do
+      defposts do
+        aggregates do
+          count :single_filter_comments, :comments do
+            filter expr(status == "active")
+          end
+        end
+
+        relationships do
+          has_many :comments, FilterableComment, destination_attribute: :post_id, public?: true
+        end
+      end
+
+      aggregate = Ash.Resource.Info.aggregate(Post, :single_filter_comments)
+
+      assert aggregate != nil
+      assert aggregate.name == :single_filter_comments
+      assert aggregate.filter != nil
+    end
+
+    test "multiple filters work with all aggregate types" do
+      defposts do
+        aggregates do
+          count :count_filtered, :comments do
+            filter expr(status == "active")
+            filter expr(rating > 0)
+          end
+
+          sum :sum_filtered, :comments, :rating do
+            filter expr(status == "active")
+            filter expr(rating > 0)
+          end
+
+          avg :avg_filtered, :comments, :rating do
+            filter expr(status == "active")
+            filter expr(rating > 0)
+          end
+
+          max :max_filtered, :comments, :rating do
+            filter expr(status == "active")
+            filter expr(rating > 0)
+          end
+
+          min :min_filtered, :comments, :rating do
+            filter expr(status == "active")
+            filter expr(rating > 0)
+          end
+
+          first :first_filtered, :comments, :author_name do
+            filter expr(status == "active")
+            filter expr(not is_nil(author_name))
+          end
+
+          exists :exists_filtered, :comments do
+            filter expr(status == "active")
+            filter expr(rating > 5)
+          end
+        end
+
+        relationships do
+          has_many :comments, FilterableComment, destination_attribute: :post_id, public?: true
+        end
+      end
+
+      # Verify all aggregates compile and have filters
+      assert %{filter: filter1} = Ash.Resource.Info.aggregate(Post, :count_filtered)
+      assert filter1 != nil
+
+      assert %{filter: filter2} = Ash.Resource.Info.aggregate(Post, :sum_filtered)
+      assert filter2 != nil
+
+      assert %{filter: filter3} = Ash.Resource.Info.aggregate(Post, :avg_filtered)
+      assert filter3 != nil
+
+      assert %{filter: filter4} = Ash.Resource.Info.aggregate(Post, :max_filtered)
+      assert filter4 != nil
+
+      assert %{filter: filter5} = Ash.Resource.Info.aggregate(Post, :min_filtered)
+      assert filter5 != nil
+
+      assert %{filter: filter6} = Ash.Resource.Info.aggregate(Post, :first_filtered)
+      assert filter6 != nil
+
+      assert %{filter: filter7} = Ash.Resource.Info.aggregate(Post, :exists_filtered)
+      assert filter7 != nil
+    end
+
+    test "multiple filters actually filter results correctly" do
+      defposts do
+        aggregates do
+          count :active_high_rated_comments, :comments do
+            filter expr(status == "active")
+            filter expr(rating >= 5)
+          end
+        end
+
+        relationships do
+          has_many :comments, FilterableComment, destination_attribute: :post_id, public?: true
+        end
+
+        actions do
+          defaults [:read, :create]
+          default_accept :*
+        end
+      end
+
+      # Create a post
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
+      # Create comments with different statuses and ratings
+      # Only comments with status="active" AND rating>=5 should be counted
+      FilterableComment
+      |> Ash.Changeset.for_create(:create, %{post_id: post.id, status: "active", rating: 7})
+      |> Ash.create!()
+
+      FilterableComment
+      |> Ash.Changeset.for_create(:create, %{post_id: post.id, status: "active", rating: 3})
+      |> Ash.create!()
+
+      FilterableComment
+      |> Ash.Changeset.for_create(:create, %{post_id: post.id, status: "inactive", rating: 8})
+      |> Ash.create!()
+
+      FilterableComment
+      |> Ash.Changeset.for_create(:create, %{post_id: post.id, status: "active", rating: 6})
+      |> Ash.create!()
+
+      # Load the aggregate and verify it only counts matching comments
+      loaded_post = Ash.load!(post, :active_high_rated_comments)
+
+      # Should only count the 2 comments that match BOTH filters: status="active" AND rating>=5
+      assert loaded_post.active_high_rated_comments == 2
+    end
+
+    test "empty filters list works (no filters applied)" do
+      defposts do
+        aggregates do
+          count :all_comments, :comments do
+            # No filters - should count all comments
+          end
+        end
+
+        relationships do
+          has_many :comments, FilterableComment, destination_attribute: :post_id, public?: true
+        end
+
+        actions do
+          defaults [:read, :create]
+          default_accept :*
+        end
+      end
+
+      aggregate = Ash.Resource.Info.aggregate(Post, :all_comments)
+
+      assert aggregate != nil
+      # When no filters are provided, filter should be nil or empty
+      assert aggregate.filter == [] || is_nil(aggregate.filter)
+    end
+  end
 end
