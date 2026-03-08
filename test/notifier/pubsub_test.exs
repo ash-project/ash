@@ -154,6 +154,42 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
   end
 
+  defmodule MultitenantPostWithLoad do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      notifiers: [Ash.Notifier.PubSub]
+
+    multitenancy do
+      strategy :context
+    end
+
+    pub_sub do
+      module PubSub
+      prefix "mt_post"
+
+      publish :update, "updated", load: [:name]
+    end
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+  end
+
   setup do
     Application.put_env(PubSub, :notifier_test_pid, self())
 
@@ -386,6 +422,66 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
       assert_receive {:broadcast, "post_load:updated", "update",
                       %Ash.Notifier.Notification{data: %{name: "bob"}}}
+    end
+
+    test "bulk_update with load option populates notification data" do
+      PostWithLoad
+      |> Ash.Changeset.for_create(:create, %{name: "alice"})
+      |> Ash.create!()
+
+      # Flush create notifications
+      assert_receive {:broadcast, _, _, _}
+      assert_receive {:broadcast, _, _, _}
+
+      Ash.bulk_update!(PostWithLoad, :update, %{name: "charlie"},
+        strategy: [:atomic],
+        notify?: true,
+        return_errors?: true
+      )
+
+      assert_receive {:broadcast, "post_load:updated", "update",
+                      %Ash.Notifier.Notification{data: data}}
+
+      assert data.name == "charlie",
+             "Expected name to be loaded via PubSub load but got: #{inspect(data.name)}"
+    end
+  end
+
+  describe "publication load with multitenant resource" do
+    test "update propagates tenant so PubSub load can re-fetch attributes" do
+      post =
+        MultitenantPostWithLoad
+        |> Ash.Changeset.for_create(:create, %{name: "alice"})
+        |> Ash.create!(tenant: "test_tenant")
+
+      post
+      |> Ash.Changeset.for_update(:update, %{name: "bob"})
+      |> Ash.update!(tenant: "test_tenant")
+
+      assert_receive {:broadcast, "mt_post:updated", "update",
+                      %Ash.Notifier.Notification{data: data}}
+
+      assert data.name == "bob",
+             "Expected name to be loaded via PubSub load but got: #{inspect(data.name)}"
+    end
+
+    test "bulk_update propagates tenant so PubSub load can re-fetch attributes" do
+      MultitenantPostWithLoad
+      |> Ash.Changeset.for_create(:create, %{name: "alice"})
+      |> Ash.create!(tenant: "test_tenant")
+
+      Ash.bulk_update!(MultitenantPostWithLoad, :update, %{name: "charlie"},
+        tenant: "test_tenant",
+        strategy: [:atomic],
+        notify?: true,
+        return_errors?: true
+      )
+
+      assert_receive {:broadcast, "mt_post:updated", "update",
+                      %Ash.Notifier.Notification{data: data}}
+
+      assert data.name == "charlie",
+             "Expected name to be loaded via PubSub load but got: #{inspect(data.name)}"
     end
   end
 end
