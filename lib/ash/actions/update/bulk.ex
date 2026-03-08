@@ -3132,9 +3132,20 @@ defmodule Ash.Actions.Update.Bulk do
            tracer: opts[:tracer]
          ) do
       {:ok, records} ->
+        load_query =
+          changeset.resource
+          |> Ash.Query.load(List.wrap(changeset.load))
+          |> Ash.Actions.Helpers.merge_notifier_calculations(
+            Ash.Notifier.notifier_calculation_query(
+              changeset.resource,
+              changeset.action,
+              changeset.context
+            )
+          )
+
         Ash.load(
           records,
-          List.wrap(changeset.load),
+          load_query,
           reuse_values?: true,
           tenant: opts[:tenant],
           action: Ash.Resource.Info.primary_action(changeset.resource, :read) || changeset.action,

@@ -97,9 +97,7 @@ Update `config/config.exs`:
 ```
 
 ## Configure Dev/Test environments
-Configure backwards compatibility settings. See the [backwards compatibility guide](https://hexdocs.pm/ash/backwards-compatibility-config.html)
-for an explanation of each of the configurations.
-
+Configure your dev and test environments
 Update `config/config.exs`:
 ```diff
 ...
@@ -149,7 +147,7 @@ Update `config/config.exs`:
 +   bulk_actions_default_to_errors?: true,
 +   transaction_rollback_on_error?: true,
 +   redact_sensitive_values_in_errors?: true
-+
++ 
   config :spark,
     formatter: [
 ...

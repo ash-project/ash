@@ -1744,9 +1744,16 @@ defmodule Ash.Actions.Create.Bulk do
                tracer: opts[:tracer]
              ) do
           {:ok, records} ->
+            load_query =
+              resource
+              |> Ash.Query.load(List.wrap(opts[:load]))
+              |> Ash.Actions.Helpers.merge_notifier_calculations(
+                Ash.Notifier.notifier_calculation_query(resource, action)
+              )
+
             Ash.load(
               records,
-              List.wrap(opts[:load]),
+              load_query,
               context: %{private: %{just_created_by_action: action.name}},
               domain: domain,
               tenant: opts[:tenant],

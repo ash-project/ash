@@ -149,7 +149,7 @@ if Code.ensure_loaded?(Igniter) do
       end)
       |> Igniter.Scribe.section(
         "Configure Dev/Test environments",
-        @setup_backwards_compatibility,
+        "Configure your dev and test environments",
         fn igniter ->
           Igniter.Scribe.patch(igniter, fn igniter ->
             igniter
@@ -232,6 +232,12 @@ if Code.ensure_loaded?(Igniter) do
               "config.exs",
               :ash,
               [:transaction_rollback_on_error?],
+              true
+            )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:redact_sensitive_values_in_errors?],
               true
             )
           end)

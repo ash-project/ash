@@ -744,12 +744,15 @@ defmodule Ash.Actions.Helpers do
   end
 
   def load({:ok, result, instructions}, changeset, domain, opts) do
-    if changeset.load in [nil, []] do
+    notifier_query = notifier_query_for(changeset)
+
+    if changeset.load in [nil, []] && is_nil(notifier_query) do
       {:ok, result, instructions}
     else
       query =
         changeset.resource
         |> Ash.Query.load(changeset.load)
+        |> merge_notifier_calculations(notifier_query)
         |> Ash.Query.set_context(changeset.context)
         |> select_selected(result)
 
@@ -764,12 +767,15 @@ defmodule Ash.Actions.Helpers do
   end
 
   def load({:ok, result}, changeset, domain, opts) do
-    if changeset.load in [nil, []] do
+    notifier_query = notifier_query_for(changeset)
+
+    if changeset.load in [nil, []] && is_nil(notifier_query) do
       {:ok, result, %{}}
     else
       query =
         changeset.resource
         |> Ash.Query.load(changeset.load)
+        |> merge_notifier_calculations(notifier_query)
         |> Ash.Query.set_context(changeset.context)
         |> select_selected(result)
 
@@ -784,6 +790,25 @@ defmodule Ash.Actions.Helpers do
   end
 
   def load(other, _, _, _), do: other
+
+  defp notifier_query_for(%Ash.Changeset{} = changeset) do
+    Ash.Notifier.notifier_calculation_query(
+      changeset.resource,
+      changeset.action,
+      changeset.context
+    )
+  end
+
+  defp notifier_query_for(_), do: nil
+
+  @doc false
+  def merge_notifier_calculations(query, nil), do: query
+
+  def merge_notifier_calculations(query, notifier_query) do
+    Map.update!(query, :calculations, fn calcs ->
+      Map.merge(calcs, notifier_query.calculations)
+    end)
+  end
 
   defp select_selected(query, result) do
     select =

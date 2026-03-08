@@ -132,10 +132,17 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         {%{status: status, errors: errors}, _} when status in [:error, :partial_success] ->
           Enum.map(result, fn _ -> {:error, Ash.Error.to_error_class(errors)} end)
 
-        {_, false} -> result
-        {%{notifications: empty}, true} when empty in [nil, []] -> result
-        {%{notifications: notifications}, true} -> Enum.concat(result, notifications)
-        {:ok, _} -> result
+        {_, false} ->
+          result
+
+        {%{notifications: empty}, true} when empty in [nil, []] ->
+          result
+
+        {%{notifications: notifications}, true} ->
+          Enum.concat(result, notifications)
+
+        {:ok, _} ->
+          result
       end
     else
       {:error, reason} -> [{:error, reason}]
