@@ -124,10 +124,15 @@ defmodule Ash.Notifier do
           end
         )
 
+      tenant =
+        get_in(notification, [Access.key(:changeset), Access.key(:tenant)]) ||
+          get_in(notification, [Access.key(:data), Access.key(:__metadata__), :tenant])
+
       case Ash.load(
              notification.data,
              query,
              domain: domain,
+             tenant: tenant,
              authorize?: false,
              context: %{private: %{internal?: true}}
            ) do
@@ -146,7 +151,12 @@ defmodule Ash.Notifier do
 
           {%{notification | data: loaded_data}, notifier_data}
 
-        {:error, _error} ->
+        {:error, error} ->
+          Logger.warning("""
+          Failed to load notification data for #{inspect(notification.resource)}.#{notification.action.name}: \
+          #{inspect(error)}
+          """)
+
           {notification, %{}}
       end
     end
