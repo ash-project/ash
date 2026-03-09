@@ -61,6 +61,8 @@ defmodule Ash.Schema do
               )
             end
 
+            Ash.Schema.register_ecto_autogenerate(__MODULE__)
+
             field(:aggregates, :map, virtual: true, default: %{})
             field(:calculations, :map, virtual: true, default: %{})
             field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
@@ -197,6 +199,8 @@ defmodule Ash.Schema do
                 )
               )
             end
+
+            Ash.Schema.register_ecto_autogenerate(__MODULE__)
 
             field(:aggregates, :map, virtual: true, default: %{})
             field(:calculations, :map, virtual: true, default: %{})
@@ -383,4 +387,92 @@ defmodule Ash.Schema do
   def attribute_default(fun) when is_function(fun), do: nil
   def attribute_default({_mod, _func, _args}), do: nil
   def attribute_default(value), do: value
+
+  @doc false
+  # Called at compile time from within the `schema do ... end` block to wire
+  # Ash's create_timestamp/update_timestamp attributes into Ecto's autogenerate
+  # system. This enables Repo.insert/1 and Repo.update/1 to auto-populate
+  # timestamp fields without going through Ash's changeset pipeline.
+  def register_ecto_autogenerate(module) do
+    autogen_timestamps =
+      Ash.Resource.Info.attributes(module)
+      |> Enum.filter(&timestamp_attribute?/1)
+
+    # Partition by match_other_defaults?: timestamps that share defaults are
+    # grouped into a single {[field1, field2], mfa} tuple so Ecto calls the MFA
+    # once and assigns the same value to all fields. Timestamps with
+    # match_other_defaults? == false each get their own entry.
+    {shared, individual} =
+      Enum.split_with(autogen_timestamps, & &1.match_other_defaults?)
+
+    shared
+    |> Enum.group_by(&Ash.Type.storage_type(&1.type, &1.constraints))
+    |> Enum.each(fn {storage_type, attrs} ->
+      field_names = Enum.map(attrs, & &1.name)
+
+      Module.put_attribute(
+        module,
+        :ecto_autogenerate,
+        {field_names, {Ecto.Schema, :__timestamps__, [storage_type]}}
+      )
+    end)
+
+    Enum.each(individual, fn attr ->
+      storage_type = Ash.Type.storage_type(attr.type, attr.constraints)
+
+      Module.put_attribute(
+        module,
+        :ecto_autogenerate,
+        {[attr.name], {Ecto.Schema, :__timestamps__, [storage_type]}}
+      )
+    end)
+
+    # Register update_timestamp fields in :ecto_autoupdate so Repo.update/1
+    # refreshes them automatically.
+    update_timestamps =
+      Enum.filter(autogen_timestamps, fn attr -> not is_nil(attr.update_default) end)
+
+    {shared_update, individual_update} =
+      Enum.split_with(update_timestamps, & &1.match_other_defaults?)
+
+    shared_update
+    |> Enum.group_by(&Ash.Type.storage_type(&1.type, &1.constraints))
+    |> Enum.each(fn {storage_type, attrs} ->
+      field_names = Enum.map(attrs, & &1.name)
+
+      Module.put_attribute(
+        module,
+        :ecto_autoupdate,
+        {field_names, {Ecto.Schema, :__timestamps__, [storage_type]}}
+      )
+    end)
+
+    Enum.each(individual_update, fn attr ->
+      storage_type = Ash.Type.storage_type(attr.type, attr.constraints)
+
+      Module.put_attribute(
+        module,
+        :ecto_autoupdate,
+        {[attr.name], {Ecto.Schema, :__timestamps__, [storage_type]}}
+      )
+    end)
+  end
+
+  @doc false
+  def timestamp_attribute?(attr) do
+    ecto_datetime_type?(Ash.Type.storage_type(attr.type, attr.constraints)) &&
+      attr.writable? == false &&
+      datetime_default?(attr.default) &&
+      attr.allow_nil? == false
+  end
+
+  defp datetime_default?(fun) when is_function(fun, 0) do
+    fun == (&DateTime.utc_now/0)
+  end
+
+  defp datetime_default?(_), do: false
+
+  defp ecto_datetime_type?(type) do
+    type in [:utc_datetime, :utc_datetime_usec, :naive_datetime, :naive_datetime_usec]
+  end
 end
