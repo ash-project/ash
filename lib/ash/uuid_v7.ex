@@ -39,27 +39,41 @@ defmodule Ash.UUIDv7 do
   @doc """
   Generates a version 7 UUID using submilliseconds for increased clock precision.
 
-  ## Example
+  Optionally accepts a `DateTime` to embed a specific timestamp, which is useful
+  when migrating existing records and you need to preserve their original creation order.
+
+  ## Examples
 
       iex> UUIDv7.generate()
       "018e90d8-06e8-7f9f-bfd7-6730ba98a51b"
 
+      iex> UUIDv7.generate(~U[2024-01-01 00:00:00Z])
+      "018cfa9b-b400-7e72-a400-000398daddd9"
+
   """
   @spec generate() :: t
+  @spec generate(DateTime.t()) :: t
   def generate, do: bingenerate() |> encode()
+  def generate(%DateTime{} = dt), do: bingenerate(dt) |> encode()
 
   @doc """
   Generates a version 7 UUID in the binary format.
 
-  ## Example
+  Optionally accepts a `DateTime` to embed a specific timestamp, which is useful
+  when migrating existing records and you need to preserve their original creation order.
+
+  ## Examples
 
       iex> UUIDv7.bingenerate()
       <<1, 142, 144, 216, 6, 232, 127, 159, 191, 215, 103, 48, 186, 152, 165, 27>>
 
   """
   @spec bingenerate() :: raw
-  def bingenerate do
-    timestamp_nanoseconds = System.system_time(:nanosecond)
+  @spec bingenerate(DateTime.t()) :: raw
+  def bingenerate, do: do_bingenerate(System.system_time(:nanosecond))
+  def bingenerate(%DateTime{} = dt), do: do_bingenerate(DateTime.to_unix(dt, :nanosecond))
+
+  defp do_bingenerate(timestamp_nanoseconds) do
     timestamp_milliseconds = trunc(timestamp_nanoseconds / 1_000_000)
 
     nanoseconds = timestamp_nanoseconds - timestamp_milliseconds * 1_000_000

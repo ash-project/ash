@@ -48,7 +48,10 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
 
     if value != opts[:value] do
       {:error,
-       [field: opts[:argument], value: value]
+       [
+         field: opts[:argument],
+         value: Ash.Resource.Validation.maybe_redact(subject, opts[:argument], value)
+       ]
        |> with_description(opts)
        |> InvalidArgument.exception()}
     else

@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.19.3](https://github.com/ash-project/ash/compare/v3.19.2...v3.19.3) (2026-03-04)
+
+
+
+
+### Bug Fixes:
+
+* honor destroy return type semantics for soft destroys by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.19.2](https://github.com/ash-project/ash/compare/v3.19.1...v3.19.2) (2026-03-03)
 
 

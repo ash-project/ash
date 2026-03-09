@@ -3521,7 +3521,10 @@ defmodule Ash.Actions.Read do
 
         case Map.fetch(path_filters, {last_relationship.source, last_relationship.name, action}) do
           {:ok, filter} ->
+            filter = unwrap_filter_expression(filter)
+
             Map.update(current_join_filters, path, filter, fn current_filter ->
+              current_filter = unwrap_filter_expression(current_filter)
               Ash.Query.BooleanExpression.new(:and, current_filter, filter)
             end)
 
@@ -3531,6 +3534,9 @@ defmodule Ash.Actions.Read do
       end)
     end
   end
+
+  defp unwrap_filter_expression(%Ash.Filter{expression: expression}), do: expression
+  defp unwrap_filter_expression(other), do: other
 
   defp maybe_await(%Task{} = task, timeout) do
     case Task.await(task, timeout) do
@@ -4651,22 +4657,38 @@ defmodule Ash.Actions.Read do
       )
 
     if authorize? && field.authorize? do
+      related_resource = Ash.Resource.Info.related(agg.resource, agg.relationship_path)
+
+      field_path_filters =
+        case Ash.Filter.relationship_filters(
+               domain,
+               field.query,
+               actor,
+               tenant,
+               [field],
+               authorize?,
+               path_filters
+             ) do
+          {:ok, filters} -> filters
+          _ -> path_filters
+        end
+
       {:ok,
        authorize_aggregate(
          field,
-         path_filters,
+         field_path_filters,
          actor,
          authorize?,
          tenant,
          tracer,
          domain,
-         agg.resource,
+         related_resource,
          ref_path,
          [agg.resource | parent_stack],
          source_context
        )}
     else
-      {:ok, agg}
+      {:ok, field}
     end
   end
 

@@ -87,6 +87,10 @@ on:
       mysql-version:
         type: string
         default: "8.0"
+      ex-unit-args:
+        type: string
+        default: ""
+        description: "Extra arguments to pass to mix test (e.g. '--include s3_integration')"
 env:
   PG_VERSION: ${{inputs.postgres-version}}
   MYSQL_VERSION: ${{inputs.mysql-version}}
@@ -548,9 +552,10 @@ jobs:
           mix-env: test
           task: ecto.migrate
         if: ${{inputs.mysql && inputs.ecto_mysql}}
-      - uses: team-alembic/staple-actions/actions/mix-test@59199173e18eee6748b65d01626ef82d51c6e963 # main
+      - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
+          task: test ${{ inputs.ex-unit-args }}
         env:
           PGUSER: postgres
           PGPASS: postgres
