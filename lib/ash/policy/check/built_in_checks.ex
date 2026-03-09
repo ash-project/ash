@@ -93,6 +93,23 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
+  This check is true when the current action is private (`public?: false`).
+
+  Use it to bypass authorization for internal-only actions that must never be exposed
+  by API extensions:
+
+  ```elixir
+  policy bypass private_action?() do
+    authorize_if always()
+  end
+  ```
+  """
+  @spec private_action?() :: Ash.Policy.Check.ref()
+  def private_action? do
+    Ash.Policy.Check.PrivateAction
+  end
+
+  @doc """
   This check is true when there is an actor specified, and false when the actor is `nil`.
   """
   @spec actor_present() :: Ash.Policy.Check.ref()

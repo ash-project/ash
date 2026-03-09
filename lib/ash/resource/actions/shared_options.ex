@@ -36,6 +36,15 @@ defmodule Ash.Resource.Actions.SharedOptions do
       type: {:wrap_list, {:or, [:atom, :string]}},
       default: [],
       doc: "A list of unknown fields to skip, or `:*` to skip all unknown fields."
+    ],
+    public?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Whether the action is part of the resource's public API. When `false`, the action is internal-only
+      and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do
+      authorize_if always() end` in policies to allow internal callers. Defaults to `true`.
+      """
     ]
   ]
 

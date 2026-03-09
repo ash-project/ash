@@ -1019,13 +1019,16 @@ defmodule Ash.Test.Policy.Policy do
 
   describe inspect(&Ash.Policy.Policy.debug_expr/2) do
     test "generates readable expression" do
-      assert Ash.Policy.Policy.debug_expr(
-               b({RuntimeCheck, []} and ({RuntimeCheck, [some: :config]} or not true))
-             ) == """
-             Expr:
+      result =
+        Ash.Policy.Policy.debug_expr(
+          b({RuntimeCheck, []} and ({RuntimeCheck, [some: :config]} or not true))
+        )
 
-             "returns true at runtime" and ("returns true at runtime" or not true)\
-             """
+      # Normalize line endings so test passes on both Unix and Windows
+      expected =
+        "Expr:\n\n\"returns true at runtime\" and (\"returns true at runtime\" or not true)"
+
+      assert String.replace(result, "\r\n", "\n") == expected
     end
   end
 
