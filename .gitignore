@@ -42,3 +42,6 @@ shell.nix
 .vscode
 .elixir-tools
 .claude
+
+# Stashed (removed from repo temporarily)
+lib/AALang-Gab/
