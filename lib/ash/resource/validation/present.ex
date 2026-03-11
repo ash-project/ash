@@ -5,6 +5,7 @@
 defmodule Ash.Resource.Validation.Present do
   @moduledoc false
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.{InvalidAttribute, InvalidChanges}
   import Ash.Expr

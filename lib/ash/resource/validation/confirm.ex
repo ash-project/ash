@@ -5,6 +5,7 @@
 defmodule Ash.Resource.Validation.Confirm do
   @moduledoc false
   use Ash.Resource.Validation
+  import Ash.Gettext
   alias Ash.Changeset
   alias Ash.Error.Changes.InvalidAttribute
   require Ash.Expr

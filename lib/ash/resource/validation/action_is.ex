@@ -5,6 +5,7 @@
 defmodule Ash.Resource.Validation.ActionIs do
   @moduledoc "Validates that the action is the specified action."
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   @opt_schema [
     action: [

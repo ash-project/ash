@@ -5,6 +5,7 @@
 defmodule Ash.Resource.Validation.StringLength do
   @moduledoc false
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidAttribute
   import Ash.Expr

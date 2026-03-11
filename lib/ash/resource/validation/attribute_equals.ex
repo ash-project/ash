@@ -19,6 +19,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
   ]
 
   use Ash.Resource.Validation
+  import Ash.Gettext
   alias Ash.Error.Changes.InvalidAttribute
   import Ash.Expr
 

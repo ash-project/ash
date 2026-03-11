@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.Changing do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   import Ash.Changeset
 

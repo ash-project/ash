@@ -19,6 +19,7 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
   ]
 
   use Ash.Resource.Validation
+  import Ash.Gettext
   alias Ash.Error.Changes.InvalidArgument
 
   opt_schema = @opt_schema

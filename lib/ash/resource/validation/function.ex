@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.Function do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   @impl true
   def validate(changeset_query_or_input, [{:fun, {m, f, a}}], context) do

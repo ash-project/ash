@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.ArgumentDoesNotEqual do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidArgument
 
