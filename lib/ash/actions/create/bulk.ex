@@ -1240,34 +1240,39 @@ defmodule Ash.Actions.Create.Bulk do
                   end
 
                 if function_exported?(mod, :bulk_create, 3) do
-                  mod.bulk_create(batch, manual_opts, %Ash.Resource.ManualCreate.BulkContext{
-                    actor: opts[:actor],
-                    select: opts[:select],
-                    batch_size: opts[:batch_size],
-                    authorize?: opts[:authorize?],
-                    source_context: source_context,
-                    tracer: opts[:tracer],
-                    domain: domain,
-                    upsert?: opts[:upsert?] || action.upsert?,
-                    upsert_keys: upsert_keys,
-                    identity:
-                      (opts[:upsert_identity] || action.upsert_identity) &&
-                        Ash.Resource.Info.identity(
-                          resource,
-                          opts[:upsert_identity] || action.upsert_identity
+                  Ash.Resource.ManualCreate.bulk_create(
+                    mod,
+                    batch,
+                    manual_opts,
+                    %Ash.Resource.ManualCreate.BulkContext{
+                      actor: opts[:actor],
+                      select: opts[:select],
+                      batch_size: opts[:batch_size],
+                      authorize?: opts[:authorize?],
+                      source_context: source_context,
+                      tracer: opts[:tracer],
+                      domain: domain,
+                      upsert?: opts[:upsert?] || action.upsert?,
+                      upsert_keys: upsert_keys,
+                      identity:
+                        (opts[:upsert_identity] || action.upsert_identity) &&
+                          Ash.Resource.Info.identity(
+                            resource,
+                            opts[:upsert_identity] || action.upsert_identity
+                          ),
+                      upsert_fields:
+                        Ash.Changeset.expand_upsert_fields(
+                          opts[:upsert_fields] || action.upsert_fields,
+                          resource
                         ),
-                    upsert_fields:
-                      Ash.Changeset.expand_upsert_fields(
-                        opts[:upsert_fields] || action.upsert_fields,
-                        resource
-                      ),
-                    return_records?:
-                      opts[:return_records?] || must_return_records? ||
-                        must_return_records_for_changes?,
-                    return_notifications?: opts[:return_notifications?] || false,
-                    return_errors?: opts[:return_errors?] || false,
-                    tenant: opts[:tenant]
-                  })
+                      return_records?:
+                        opts[:return_records?] || must_return_records? ||
+                          must_return_records_for_changes?,
+                      return_notifications?: opts[:return_notifications?] || false,
+                      return_errors?: opts[:return_errors?] || false,
+                      tenant: opts[:tenant]
+                    }
+                  )
                 else
                   ctx = %Ash.Resource.ManualCreate.Context{
                     actor: opts[:actor],
@@ -1296,7 +1301,7 @@ defmodule Ash.Actions.Create.Bulk do
                   [changeset] = batch
 
                   [
-                    mod.create(changeset, manual_opts, ctx)
+                    Ash.Resource.ManualCreate.create(mod, changeset, manual_opts, ctx)
                     |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
                       changeset,
                       :bulk_create,
@@ -1884,7 +1889,7 @@ defmodule Ash.Actions.Create.Bulk do
                         changeset
                       )
 
-                  {:ok, opts} = module.init(opts)
+                  {:ok, opts} = Ash.Resource.Validation.init(module, opts)
 
                   Ash.Resource.Validation.validate(
                     module,
@@ -1903,7 +1908,7 @@ defmodule Ash.Actions.Create.Bulk do
                       changeset
                     )
 
-                  {:ok, opts} = module.init(opts)
+                  {:ok, opts} = Ash.Resource.Validation.init(module, opts)
 
                   case Ash.Resource.Validation.validate(
                          module,
@@ -1978,7 +1983,7 @@ defmodule Ash.Actions.Create.Bulk do
                         changeset
                       )
 
-                    {:ok, opts} = module.init(opts)
+                    {:ok, opts} = Ash.Resource.Validation.init(module, opts)
 
                     Ash.Resource.Validation.validate(
                       module,
@@ -2039,14 +2044,15 @@ defmodule Ash.Actions.Create.Bulk do
     case change_opts do
       {:templated, change_opts} ->
         if module.has_batch_change?() do
-          module.batch_change(
+          Ash.Resource.Change.batch_change(
+            module,
             batch,
             change_opts,
             struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
           )
         else
           Enum.map(batch, fn changeset ->
-            {:ok, change_opts} = module.init(change_opts)
+            {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
 
             Ash.Resource.Change.change(
               module,
@@ -2071,9 +2077,10 @@ defmodule Ash.Actions.Create.Bulk do
                 changeset
               )
 
-            {:ok, change_opts} = module.init(change_opts)
+            {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
 
-            module.batch_change(
+            Ash.Resource.Change.batch_change(
+              module,
               [changeset],
               change_opts,
               struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
@@ -2092,7 +2099,7 @@ defmodule Ash.Actions.Create.Bulk do
                 changeset
               )
 
-            {:ok, change_opts} = module.init(change_opts)
+            {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
 
             Ash.Resource.Change.change(
               module,

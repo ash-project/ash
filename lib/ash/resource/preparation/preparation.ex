@@ -89,6 +89,26 @@ defmodule Ash.Resource.Preparation do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
   end
 
+  @doc false
+  @spec init(module(), Keyword.t()) :: {:ok, Keyword.t()} | {:error, term()}
+  def init(module, opts) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :init,
+      [opts],
+      [{:ok, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "init/1"
+    )
+  end
+
+  @doc false
+  @spec prepare(
+          module(),
+          Ash.Query.t() | Ash.ActionInput.t(),
+          Keyword.t(),
+          Ash.Resource.Preparation.Context.t()
+        ) :: Ash.Query.t() | Ash.ActionInput.t()
   def prepare(module, query_or_input, opts, context) do
     Ash.BehaviourHelpers.check_type!(module, module.prepare(query_or_input, opts, context), [
       %Ash.Query{},

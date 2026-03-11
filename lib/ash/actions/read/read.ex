@@ -552,7 +552,7 @@ defmodule Ash.Actions.Read do
       case query.action.manual do
         {module, opts} ->
           if module.has_load_relationships?() do
-            module.load_relationships(query, data, opts, context, lazy?)
+            Ash.Resource.ManualRead.load_relationships(module, query, data, opts, context, lazy?)
           else
             Ash.Actions.Read.Relationships.load(
               data,
@@ -2029,7 +2029,12 @@ defmodule Ash.Actions.Read do
             %Ash.Query.Calculation{} = calculation ->
               if calculation.module.has_expression?() and
                    Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
-                expression = calculation.module.expression(calculation.opts, calculation.context)
+                expression =
+                  Ash.Resource.Calculation.expression(
+                    calculation.module,
+                    calculation.opts,
+                    calculation.context
+                  )
 
                 expression =
                   Ash.Expr.fill_template(
@@ -2473,7 +2478,7 @@ defmodule Ash.Actions.Read do
 
         if Keyword.get(opts, :expand?, false) && calc.module.has_expression?() do
           expr =
-            case calc.module.expression(calc.opts, calc.context) do
+            case Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context) do
               %Ash.Query.Function.Type{} = expr ->
                 expr
 
@@ -2626,7 +2631,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp expand_expression(calc, resource, parent_stack, first_combination) do
-    calc.module.expression(calc.opts, calc.context)
+    Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context)
     |> case do
       %Ash.Query.Function.Type{} = expr ->
         expr
@@ -4125,8 +4130,7 @@ defmodule Ash.Actions.Read do
          load_attributes?
        ) do
     {result, query} =
-      query
-      |> mod.read(data_layer_query, opts, context)
+      Ash.Resource.ManualRead.read(mod, query, data_layer_query, opts, context)
       |> case do
         {:ok, result, extra_info} ->
           query =
@@ -4207,7 +4211,12 @@ defmodule Ash.Actions.Read do
        ) do
     Enum.reduce_while(calculations_to_add, {:ok, []}, fn calculation, {:ok, calculations} ->
       if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
-        expression = calculation.module.expression(calculation.opts, calculation.context)
+        expression =
+          Ash.Resource.Calculation.expression(
+            calculation.module,
+            calculation.opts,
+            calculation.context
+          )
 
         expression =
           Ash.Expr.fill_template(
@@ -4587,7 +4596,7 @@ defmodule Ash.Actions.Read do
 
     if calc.module.has_expression?() do
       expr =
-        case calc.module.expression(calc.opts, calc.context) do
+        case Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context) do
           %Ash.Query.Function.Type{} = expr ->
             expr
 

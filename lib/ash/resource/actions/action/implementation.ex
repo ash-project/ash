@@ -21,6 +21,17 @@ defmodule Ash.Resource.Actions.Implementation do
 
   require Ash.BehaviourHelpers
 
+  @doc false
+  @spec run(
+          module(),
+          Ash.ActionInput.t(),
+          Keyword.t(),
+          Ash.Resource.Actions.Implementation.Context.t()
+        ) ::
+          :ok
+          | {:ok, term()}
+          | {:ok, term(), [Ash.Notifier.Notification.t()]}
+          | {:error, term()}
   def run(module, action_input, opts, context) do
     Ash.BehaviourHelpers.check_type!(module, module.run(action_input, opts, context), [
       :ok,

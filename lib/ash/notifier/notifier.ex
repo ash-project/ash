@@ -28,6 +28,59 @@ defmodule Ash.Notifier do
   require Ash.Tracer
   require Logger
 
+  @doc false
+  @spec notify(module(), Ash.Notifier.Notification.t()) :: :ok
+  def notify(notifier_module, notification) do
+    result = notifier_module.notify(notification)
+
+    if result == :ok do
+      :ok
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(notifier_module)}.notify/1.
+
+        The callback #{inspect(__MODULE__)}.notify/1 expects :ok.
+        """
+    end
+  end
+
+  @doc false
+  @spec requires_original_data?(module(), Ash.Resource.t(), Ash.Resource.Actions.action()) ::
+          boolean
+  def requires_original_data?(notifier_module, resource, action) do
+    result = notifier_module.requires_original_data?(resource, action)
+
+    if is_boolean(result) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(notifier_module)}.requires_original_data?/2.
+
+        The callback #{inspect(__MODULE__)}.requires_original_data?/2 expects a boolean.
+        """
+    end
+  end
+
+  @doc false
+  @spec load(module(), Ash.Resource.t(), Ash.Resource.Actions.action()) ::
+          atom() | [atom()] | Keyword.t()
+  def load(notifier_module, resource, action) do
+    result = notifier_module.load(resource, action)
+    # Accept atom or list (load can return list of atoms, keyword list, or other load shapes)
+    if is_atom(result) or is_list(result) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(notifier_module)}.load/2.
+
+        The callback #{inspect(__MODULE__)}.load/2 expects an atom, list of atoms, or Keyword.t().
+        """
+    end
+  end
+
   defmacro __using__(_opts) do
     quote do
       @behaviour Ash.Notifier
@@ -212,7 +265,7 @@ defmodule Ash.Notifier do
       Enum.reduce(notifiers, %{}, fn notifier, acc ->
         statement =
           if function_exported?(notifier, :load, 2) do
-            notifier.load(notification.resource, notification.action)
+            load(notifier, notification.resource, notification.action)
           else
             []
           end
@@ -378,7 +431,7 @@ defmodule Ash.Notifier do
       Ash.Tracer.set_metadata(tracer, :action, metadata)
 
       Ash.Tracer.telemetry_span [:ash, :notifier], metadata do
-        notifier.notify(notification)
+        notify(notifier, notification)
       end
     end
   end

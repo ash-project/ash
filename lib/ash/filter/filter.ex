@@ -800,7 +800,12 @@ defmodule Ash.Filter do
     end)
     |> Enum.flat_map(fn %{attribute: calculation} = calculation_ref ->
       if calculation.module.has_expression?() do
-        expression = calculation.module.expression(calculation.opts, calculation.context)
+        expression =
+          Ash.Resource.Calculation.expression(
+            calculation.module,
+            calculation.opts,
+            calculation.context
+          )
 
         case hydrate_refs(expression, %{
                resource: Ash.Resource.Info.related(resource, calculation_ref.relationship_path),
@@ -2218,7 +2223,7 @@ defmodule Ash.Filter do
          expand_aggregates?
        ) do
     if module.has_expression?() do
-      expression = module.expression(opts, context)
+      expression = Ash.Resource.Calculation.expression(module, opts, context)
 
       case hydrate_refs(expression, %{
              resource: resource,
@@ -2753,7 +2758,7 @@ defmodule Ash.Filter do
         relationship_path: calc_relationship_path
       } = ref ->
         if expand_calculations? && module.has_expression?() do
-          expression = module.expression(opts, context)
+          expression = Ash.Resource.Calculation.expression(module, opts, context)
 
           case hydrate_refs(expression, %{
                  resource: ref.resource,
@@ -3812,7 +3817,7 @@ defmodule Ash.Filter do
             Ash.DataLayer.Simple
           end
 
-        with {:ok, expr} <- module.expression(data_layer, arguments),
+        with {:ok, expr} <- Ash.CustomExpression.expression(module, data_layer, arguments),
              {:ok, expr} <- hydrate_refs(expr, context) do
           if data_layer == Ash.DataLayer.Simple do
             {:ok,
@@ -3822,7 +3827,8 @@ defmodule Ash.Filter do
                simple_expression: {:ok, expr}
              }}
           else
-            with {:ok, simple_expr} <- module.expression(Ash.DataLayer.Simple, arguments),
+            with {:ok, simple_expr} <-
+                   Ash.CustomExpression.expression(module, Ash.DataLayer.Simple, arguments),
                  {:ok, simple_expr} <- hydrate_refs(simple_expr, context) do
               {:ok,
                %Ash.CustomExpression{

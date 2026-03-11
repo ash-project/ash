@@ -41,7 +41,7 @@ defmodule Ash.Resource.Validation.Any do
           case Code.ensure_compiled(validation) do
             {:module, ^validation} ->
               if function_exported?(validation, :describe, 1) do
-                {:ok, validation_opts} = validation.init(validation_opts)
+                {:ok, validation_opts} = Ash.Resource.Validation.init(validation, validation_opts)
                 {validation, validation_opts}
               else
                 raise ArgumentError,
@@ -85,7 +85,7 @@ defmodule Ash.Resource.Validation.Any do
 
     results =
       Enum.map(validations, fn {validation, validation_opts} ->
-        validation.validate(subject, validation_opts, context)
+        Ash.Resource.Validation.validate(validation, subject, validation_opts, context)
       end)
 
     case Enum.any?(results, &(&1 == :ok)) do
@@ -114,7 +114,7 @@ defmodule Ash.Resource.Validation.Any do
 
     atomic_results =
       Enum.map(validations, fn {validation, validation_opts} ->
-        validation.atomic(changeset, validation_opts, context)
+        Ash.Resource.Validation.atomic(validation, changeset, validation_opts, context)
       end)
       |> List.flatten()
 

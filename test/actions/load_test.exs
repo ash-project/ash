@@ -598,14 +598,15 @@ defmodule Ash.Test.Actions.LoadTest do
         )
         |> Ash.read!()
 
-      Enum.map(records, fn record ->
-        Enum.filter(posts_with_secrets, fn post ->
-          String.contains?(
-            post.secret,
-            record.secret
-          )
-        end)
-      end)
+      {:ok,
+       Enum.map(records, fn record ->
+         Enum.filter(posts_with_secrets, fn post ->
+           String.contains?(
+             post.secret,
+             record.secret
+           )
+         end)
+       end)}
     end
   end
 

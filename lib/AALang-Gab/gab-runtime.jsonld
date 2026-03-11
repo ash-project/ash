@@ -1,0 +1,125 @@
+{
+  "@context": {
+    "@vocab": "https://aalang.dev/gab/",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ex": "https://aalang.dev/gab/example/"
+  },
+  "@graph": [
+    {
+      "@id": "ex:CopyrightNotice",
+      "@type": "Copyright",
+      "copyright": "Copyright (c) 2025 Lee S. Barney",
+      "license": "Permission is hereby granted, free of charge, to any person obtaining a copy of this software (the 'Software'), including AALang and GAB, to use, copy, modify, merge, publish, and distribute the Software for private, educational, and business purposes, subject to the following conditions:\n\n1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\n2. RESTRICTION ON SALE: The Software, including but not limited to this file, any modified versions of this file, any portions of this file, any derivative works based on this file, and any other files comprising AALang or GAB, may NOT be sold, licensed for a fee, or otherwise commercialized. This restriction applies to the Software in its original form, in any modified form, in any derivative form, and to any portion or component thereof.\n\n3. PRODUCTS BUILT WITH SOFTWARE: Products built using the Software may be used, distributed, and sold freely for any purpose (public, private, free, or commercial) without restriction.\n\nTHE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
+      "note": "This copyright notice applies to this file and all AALang and GAB specification files. Users may use AALang and GAB for private, educational, and business purposes but cannot sell the files, modified versions, portions, or derivatives thereof. Products built with AALang/GAB may be sold without restriction."
+    },
+    {
+      "@id": "ex:CommonRuntimeBehaviors",
+      "@type": "RuntimeInstruction",
+      "purpose": "Common runtime behaviors that all personas must follow",
+      "appliesTo": ["ex:ClarificationPersona1", "ex:ClarificationPersona2", "ex:DiscussionPersona1", "ex:DiscussionPersona2", "ex:FormalizationPersona1", "ex:FormalizationPersona2", "ex:GenerationPersona1", "ex:GenerationPersona2"],
+      "behaviors": [
+        {
+          "@id": "ex:DebugModeCheck",
+          "name": "Debug Mode Checking",
+          "when": "Before generating ANY user-facing output",
+          "steps": [
+            "Send state request message to ex:DebugModeStatePersona to check debug mode status",
+            "Follow ex:SemanticFilteringProtocol (see message-protocol.jsonld - read complete protocol definition and execute all steps) to extract debug mode value from response message",
+            "When debug_duh is ON: follow ex:OutputFormat.workOutput.debugMode (see gab-formats.jsonld - read complete definition) to show internal routing metadata, actor behaviors, message sequences, and state transitions",
+            "When debug_duh is OFF: hide internal metadata per ex:OutputFormat.workOutput.hide (see gab-formats.jsonld - read complete definition)"
+          ],
+          "note": "All personas must check debug mode before generating user-facing output. Generation personas also check before writing to debug file."
+        },
+        {
+          "@id": "ex:UserQuestionHandling",
+          "name": "User Question Protocol",
+          "when": "When asking user (Team Lead) questions",
+          "instruction": "MUST wait for response before proceeding (follow ex:UserQuestionProtocol - see message-protocol.jsonld - read complete protocol definition and execute all steps)",
+          "note": "This applies to all questions asked to the user, including clarification questions, decision escalations, and approval requests."
+        },
+        {
+          "@id": "ex:DecisionLoggingPattern",
+          "name": "Decision Logging",
+          "when": "When making or participating in a decision",
+          "instruction": "Distinguish between questions and decisions: Questions are requests for information/clarification. Decisions are choices that affect the product. Log ALL decisions to decision log file (format: '{productName}/{productName}-build-log.md' where productName comes from ex:ProductNameStatePersona via state request message, or 'product/product-build-log.md' if productName is null) following ex:DecisionLogging.entryFormat (see gab-formats.jsonld - read complete definition). Questions are only logged to debug log file when debug mode is ON (see ex:DebugLogging in gab-formats.jsonld - read complete definition). If a question leads to a decision, log the decision (not the question) to decision log file.",
+          "note": "All personas must log decisions. Questions are only logged in debug mode."
+        },
+        {
+          "@id": "ex:ProductNameIdentification",
+          "name": "Product Name Identification",
+          "when": "During Clarification Mode when product name can be determined",
+          "appliesTo": ["ex:ClarificationPersona1", "ex:ClarificationPersona2"],
+          "instruction": "Identify product name from user description and send state update message to ex:ProductNameStatePersona to store product name. Product name should be a filesystem-safe identifier (e.g., 'service-mesh-simulator', 'number-guessing-game'). This name will be used for the build log filename: '{productName}/{productName}-build-log.md' and debug filename: '{productName}/{productName}-debug.md'",
+          "note": "Product name should be identified early in Clarification Mode and stored for use throughout the building process."
+        }
+      ]
+    },
+    {
+      "@id": "ex:CommonErrorHandling",
+      "@type": "RuntimeInstruction",
+      "purpose": "Common error handling patterns for all personas",
+      "appliesTo": ["ex:ClarificationPersona1", "ex:ClarificationPersona2", "ex:DiscussionPersona1", "ex:DiscussionPersona2", "ex:FormalizationPersona1", "ex:FormalizationPersona2", "ex:GenerationPersona1", "ex:GenerationPersona2"],
+      "commonPatterns": [
+        "If file operations fail (directory creation, file writing), inform user of the error but continue processing - do not halt workflow",
+        "If build log file cannot be created or written, inform user and continue with in-memory logging",
+        "If user provides contradictory information, identify the contradiction, ask for clarification, and log the issue",
+        "If conflicts arise between personas, follow ex:PersonaConflictResolution protocol (see agent-to-actor.jsonld - read complete protocol definition and execute all steps, attempt discussion first, escalate if no consensus)"
+      ],
+      "note": "Each persona has mode-specific error handling in addition to these common patterns. See individual persona responsibilities for mode-specific error handling details."
+    },
+    {
+      "@id": "ex:GenerationModeRuntimeBehaviors",
+      "@type": "RuntimeInstruction",
+      "purpose": "Additional runtime behaviors specific to Generation Mode personas",
+      "appliesTo": ["ex:GenerationPersona1", "ex:GenerationPersona2"],
+      "behaviors": [
+        {
+          "@id": "ex:GenerationDebugFileCheck",
+          "name": "Debug File Check",
+          "when": "Before generating ANY user-facing output or writing to debug file",
+          "steps": [
+            "Send state request message to ex:ProductNameStatePersona to get productName",
+            "Use format '{productName}/{productName}-debug.md' (or 'product/product-debug.md' if productName is null)",
+            "Send state request message to ex:DebugModeStatePersona to check debug mode status",
+            "Follow ex:SemanticFilteringProtocol (see message-protocol.jsonld - read complete protocol definition and execute all steps) to extract debug mode value from response message",
+            "When debug_duh is ON: follow ex:OutputFormat.workOutput.debugMode and ex:DebugLogging.process (see gab-formats.jsonld - read complete definitions) to show internal metadata and log messages",
+            "When debug_duh is OFF: hide internal metadata per ex:OutputFormat.workOutput.hide (see gab-formats.jsonld - read complete definition) and skip debug logging"
+          ]
+        },
+        {
+          "@id": "ex:GenerationReadinessCheck",
+          "name": "Generation Readiness Check",
+          "when": "Before generating ANY product file or updating ANY .jsonld file",
+          "instruction": "CRITICAL: MUST send state request message to ex:SatisfactionIndicatorsStatePersona to check generationReadiness.ready. Verify that discussionMode.satisfied=true AND (formalizationMode.satisfied=true OR formalizationMode.skipped=true). If not ready, REFUSE to generate and state: 'Cannot generate: Discussion and Formalization modes have not reached satisfaction. Please complete Formalization Mode analysis first, or user must explicitly authorize skipping Formalization.'",
+          "enforcement": "This check CANNOT be bypassed. Generation Mode is MANDATORY and cannot be skipped by anyone, including user (Team Lead)."
+        }
+      ]
+    },
+    {
+      "@id": "ex:ModeTransitionValidation",
+      "@type": "RuntimeInstruction",
+      "purpose": "Protocol for validating mode transitions before proceeding",
+      "appliesTo": ["ex:ClarificationPersona1", "ex:ClarificationPersona2", "ex:DiscussionPersona1", "ex:DiscussionPersona2", "ex:FormalizationPersona1", "ex:FormalizationPersona2"],
+      "process": [
+        "1. Before attempting to transition to next mode, check mode-specific transition requirements",
+        "2. For Clarification → Discussion: Send state request message to ex:UnderstandingIndicatorsStatePersona to check overallConfidence. Follow ex:SemanticFilteringProtocol (see message-protocol.jsonld - read complete protocol definition and execute all steps) to extract value. If overallConfidence < 0.8, do NOT transition - continue clarification rounds",
+        "3. For Discussion → Formalization: Send state request message to ex:SatisfactionIndicatorsStatePersona to check discussionMode.satisfied, confident, consensus. All must be true. If not, do NOT transition - continue discussion",
+        "4. For Formalization → Generation: Send state request message to ex:SatisfactionIndicatorsStatePersona to check discussionMode.satisfied AND (formalizationMode.satisfied OR formalizationMode.skipped). If not ready, do NOT transition - continue formalization or request user authorization",
+        "5. If transition requirements are met, proceed with mode transition",
+        "6. If transition requirements are not met, inform user of missing requirements and continue in current mode"
+      ],
+      "enforcement": "Personas enforce mode transition requirements. Mode transitions are blocked until requirements are satisfied. This prevents premature progression through workflow.",
+      "note": "Mode transitions are validated by personas before proceeding. Runtime may also enforce mode transition rules, but persona validation provides first line of defense."
+    },
+    {
+      "@id": "ex:RuntimeBehaviorReference",
+      "@type": "RuntimeInstruction",
+      "purpose": "Instructions for how personas should reference and follow runtime behaviors",
+      "appliesTo": ["ex:ClarificationPersona1", "ex:ClarificationPersona2", "ex:DiscussionPersona1", "ex:DiscussionPersona2", "ex:FormalizationPersona1", "ex:FormalizationPersona2", "ex:GenerationPersona1", "ex:GenerationPersona2"],
+      "instruction": "When persona responsibilities reference runtime behaviors (e.g., 'follow ex:DebugModeCheck'), personas must: 1. Read the complete behavior definition from gab-runtime.jsonld, 2. Execute all steps in the behavior definition, 3. Follow the behavior exactly as specified, 4. If behavior definition is not available or unclear, use semantic understanding to infer correct behavior from behavior name and context, 5. Runtime behaviors are mandatory - they cannot be skipped or modified.",
+      "note": "Runtime behaviors are defined once in gab-runtime.jsonld and referenced by all personas. This ensures consistent behavior across all personas while avoiding duplication."
+    }
+  ]
+}
+

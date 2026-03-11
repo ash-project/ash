@@ -82,7 +82,7 @@ defmodule Ash.Actions.Read.Calculations do
 
       if reuse_values? && module.has_expression?() do
         expr =
-          case module.expression(calc_opts, calc_context) do
+          case Ash.Resource.Calculation.expression(module, calc_opts, calc_context) do
             {:ok, result} -> {:ok, result}
             {:error, error} -> {:error, error}
             result -> {:ok, result}
@@ -121,7 +121,8 @@ defmodule Ash.Actions.Read.Calculations do
                         with_trace(
                           fn ->
                             {:ok,
-                             calculation.module.calculate(
+                             Ash.Resource.Calculation.calculate(
+                               calculation.module,
                                [record],
                                calculation.opts,
                                calculation.context
@@ -168,7 +169,14 @@ defmodule Ash.Actions.Read.Calculations do
                     {:error, error} ->
                       if module.has_calculate?() do
                         case with_trace(
-                               fn -> module.calculate([record], calc_opts, calc_context) end,
+                               fn ->
+                                 Ash.Resource.Calculation.calculate(
+                                   module,
+                                   [record],
+                                   calc_opts,
+                                   calc_context
+                                 )
+                               end,
                                resource,
                                calculation,
                                opts
@@ -231,7 +239,14 @@ defmodule Ash.Actions.Read.Calculations do
           if module.has_calculate?() do
             record =
               if primary_key do
-                Ash.load(record, module.load(Ash.Query.new(resource), calc_opts, calc_context),
+                Ash.load(
+                  record,
+                  Ash.Resource.Calculation.load(
+                    module,
+                    Ash.Query.new(resource),
+                    calc_opts,
+                    calc_context
+                  ),
                   actor: opts[:actor],
                   domain: opts[:domain],
                   lazy?: reuse_values?,
@@ -248,7 +263,14 @@ defmodule Ash.Actions.Read.Calculations do
 
             with {:ok, record} <- record do
               case with_trace(
-                     fn -> module.calculate([record], calc_opts, calc_context) end,
+                     fn ->
+                       Ash.Resource.Calculation.calculate(
+                         module,
+                         [record],
+                         calc_opts,
+                         calc_context
+                       )
+                     end,
                      resource,
                      calculation,
                      opts
@@ -543,7 +565,7 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp run_calculate(records, module, opts, context, resource, calculation_name, run_opts) do
     with_trace(
-      fn -> module.calculate(records, opts, context) end,
+      fn -> Ash.Resource.Calculation.calculate(module, records, opts, context) end,
       resource,
       calculation_name,
       run_opts
@@ -978,7 +1000,9 @@ defmodule Ash.Actions.Read.Calculations do
               args: calculation.context.arguments,
               context: calculation.context.source_context
             )
-            |> calculation.module.expression(calculation.context)
+            |> then(
+              &Ash.Resource.Calculation.expression(calculation.module, &1, calculation.context)
+            )
             |> Ash.Expr.fill_template(
               actor: calculation.context.actor,
               tenant: ash_query.to_tenant,
@@ -1148,7 +1172,9 @@ defmodule Ash.Actions.Read.Calculations do
           expression =
             expression ||
               calculation.opts
-              |> calculation.module.expression(calculation.context)
+              |> then(
+                &Ash.Resource.Calculation.expression(calculation.module, &1, calculation.context)
+              )
               |> Ash.Expr.fill_template(
                 actor: calculation.context.actor,
                 tenant: ash_query.to_tenant,
@@ -1995,7 +2021,11 @@ defmodule Ash.Actions.Read.Calculations do
   defp find_equivalent_calculation(query, calculation, authorize?) do
     reusable? =
       if authorize? && calculation.module.has_expression?() do
-        calculation.module.expression(calculation.opts, calculation.context)
+        Ash.Resource.Calculation.expression(
+          calculation.module,
+          calculation.opts,
+          calculation.context
+        )
         |> Ash.Filter.list_refs(false, false, true, true)
         |> Enum.any?(&(&1.relationship_path != []))
         |> Kernel.not()

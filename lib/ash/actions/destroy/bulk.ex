@@ -2111,21 +2111,26 @@ defmodule Ash.Actions.Destroy.Bulk do
                   end
 
                 if function_exported?(mod, :bulk_destroy, 3) do
-                  mod.bulk_destroy(batch, manual_opts, %Ash.Resource.ManualDestroy.BulkContext{
-                    actor: opts[:actor],
-                    select: opts[:select],
-                    source_context: source_context,
-                    batch_size: opts[:batch_size],
-                    authorize?: opts[:authorize?],
-                    tracer: opts[:tracer],
-                    domain: domain,
-                    return_records?:
-                      opts[:return_records?] || must_return_records? ||
-                        must_return_records_for_changes?,
-                    return_notifications?: opts[:return_notifications?] || false,
-                    return_errors?: opts[:return_errors?] || false,
-                    tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
-                  })
+                  Ash.Resource.ManualDestroy.bulk_destroy(
+                    mod,
+                    batch,
+                    manual_opts,
+                    %Ash.Resource.ManualDestroy.BulkContext{
+                      actor: opts[:actor],
+                      select: opts[:select],
+                      source_context: source_context,
+                      batch_size: opts[:batch_size],
+                      authorize?: opts[:authorize?],
+                      tracer: opts[:tracer],
+                      domain: domain,
+                      return_records?:
+                        opts[:return_records?] || must_return_records? ||
+                          must_return_records_for_changes?,
+                      return_notifications?: opts[:return_notifications?] || false,
+                      return_errors?: opts[:return_errors?] || false,
+                      tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
+                    }
+                  )
                 else
                   ctx =
                     %Ash.Resource.ManualDestroy.Context{
@@ -2145,7 +2150,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                   [changeset] = batch
 
                   [
-                    mod.destroy(changeset, manual_opts, ctx)
+                    Ash.Resource.ManualDestroy.destroy(mod, changeset, manual_opts, ctx)
                     |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
                       changeset,
                       :bulk_destroy,

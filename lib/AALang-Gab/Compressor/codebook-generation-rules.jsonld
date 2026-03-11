@@ -1,0 +1,190 @@
+{
+  "@context": {
+    "@vocab": "https://aalang.org/spec",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ex": "https://aalang.org/example/",
+    "compression": "https://example.org/compression#"
+  },
+  "@graph": [
+    {
+      "@id": "ex:CodebookGenerationRules",
+      "@type": "compression:CodebookGenerationSpecification",
+      "name": "Huffman V2 Codebook Generation Rules",
+      "description": "Complete specification of rules and parameters for generating the codebook in Huffman V2 compression algorithm",
+      "version": "2.0",
+      "purpose": "Define the algorithm, constraints, and parameters used to generate the codebook that maps frequent strings to short codes",
+      
+      "inputRequirements": {
+        "source": "Frequency analysis data from Stage 3",
+        "dataStructure": "Dictionary/Counter object tracking (string, frequency) pairs",
+        "scope": "Only analyzes @graph content, not @context",
+        "filtering": {
+          "minLength": 15,
+          "description": "Only consider strings longer than 15 characters for encoding",
+          "rationale": "Short strings provide minimal compression benefit and add overhead"
+        }
+      },
+      
+      "selectionCriteria": {
+        "step1": {
+          "operation": "Calculate compression benefit",
+          "formula": "(original_length - code_length) * frequency",
+          "description": "For each string candidate, calculate total savings across all occurrences",
+          "variables": {
+            "original_length": "Length of the original string in characters",
+            "code_length": "Length of the assigned code (2 for single char codes, 3 for two-digit codes)",
+            "frequency": "Number of times the string appears in the document"
+          }
+        },
+        "step2": {
+          "operation": "Filter candidates",
+          "condition": "total_savings > min_savings_per_use",
+          "min_savings_per_use": 5,
+          "description": "Only include candidates that save more than 5 bytes per occurrence",
+          "rationale": "Filters out strings with minimal compression benefit"
+        },
+        "step3": {
+          "operation": "Sort candidates",
+          "order": "descending",
+          "key": "total_savings",
+          "description": "Sort all candidates by total_savings in descending order (highest savings first)"
+        },
+        "step4": {
+          "operation": "Select top candidates",
+          "max_codes": 150,
+          "description": "Take the top 150 candidates with highest total_savings",
+          "rationale": "Limits codebook size to balance compression benefit vs. overhead"
+        }
+      },
+      
+      "codeAssignment": {
+        "format": "Codes are prefixed with $ symbol",
+        "first62Codes": {
+          "range": "0-61",
+          "format": "Single character: $0, $1, ..., $9, $a, $b, ..., $z, $A, $B, ..., $Z",
+          "characterSet": [
+            "Digits: 0-9 (10 characters)",
+            "Lowercase: a-z (26 characters)",
+            "Uppercase: A-Z (26 characters)"
+          ],
+          "total": 62,
+          "codeLength": 2,
+          "description": "First 62 codes use single character format ($X where X is one character)"
+        },
+        "remainingCodes": {
+          "range": "62-149",
+          "format": "Two-digit format: $00, $01, ..., $99",
+          "total": 88,
+          "codeLength": 3,
+          "description": "Codes 62-149 use two-digit format ($XX where XX is two digits)",
+          "note": "Maximum of 88 additional codes (62-149) since max_codes = 150"
+        },
+        "assignmentOrder": {
+          "method": "Sequential assignment based on frequency rank",
+          "description": "Codes are assigned in order: most frequent string gets $0, second most frequent gets $1, etc.",
+          "rationale": "Shorter codes for most frequent strings maximizes compression benefit"
+        }
+      },
+      
+      "parameters": {
+        "max_codes": {
+          "value": 150,
+          "type": "integer",
+          "description": "Maximum number of codes to generate in the codebook",
+          "rationale": "Balances compression benefit vs. codebook overhead. More codes provide better compression but increase header size."
+        },
+        "min_savings_per_use": {
+          "value": 5,
+          "type": "integer",
+          "unit": "bytes",
+          "description": "Minimum bytes saved per occurrence to include a string in the codebook",
+          "rationale": "Filters out strings with minimal compression benefit that don't justify codebook overhead"
+        },
+        "min_string_length": {
+          "value": 15,
+          "type": "integer",
+          "unit": "characters",
+          "description": "Minimum length of strings to consider for encoding",
+          "rationale": "Short strings provide minimal compression benefit and add overhead"
+        }
+      },
+      
+      "headerCodebook": {
+        "size": 30,
+        "description": "Only top 30 codes included in file header for LLM readability",
+        "truncation": {
+          "maxLength": 80,
+          "description": "Long strings truncated to 80 characters in header",
+          "format": "original[:80] + '...' if len(original) > 80"
+        },
+        "rationale": "LLMs can infer remaining codes from context, reducing header overhead while maintaining readability",
+        "format": "$code=text",
+        "example": "$0=This is a very long string that will be truncated if it exceeds 80 characters..."
+      },
+      
+      "algorithm": {
+        "type": "Frequency-based text substitution",
+        "similarTo": "Huffman coding but with fixed-length codes for simplicity",
+        "differences": {
+          "huffman": "Uses variable-length codes based on frequency",
+          "thisAlgorithm": "Uses fixed-length codes ($X or $XX) assigned by frequency rank"
+        },
+        "rationale": "Fixed-length codes are easier for LLMs to parse and understand"
+      },
+      
+      "implementation": {
+        "function": "generate_codebook(frequency_data)",
+        "language": "Python 3",
+        "steps": [
+          "1. Iterate through frequency_data dictionary",
+          "2. For each string, calculate: original_len = len(string), code_len = 2 (estimate), savings_per_use = original_len - code_len, total_savings = savings_per_use * frequency",
+          "3. Filter candidates where total_savings > 5",
+          "4. Sort candidates by total_savings (descending)",
+          "5. Take top 150 candidates",
+          "6. Assign codes: first 62 use single char format ($0-$9, $a-$z, $A-$Z), remaining use two-digit format ($00-$99)",
+          "7. Return codebook dictionary mapping original strings to codes"
+        ],
+        "dataStructures": {
+          "candidates": "List of dictionaries with keys: string, frequency, original_len, total_savings",
+          "codebook": "Dictionary mapping original_string -> code (e.g., 'long string' -> '$0')"
+        }
+      },
+      
+      "constraints": [
+        "Calculate compression benefit: (original_length - code_length) * frequency for each string",
+        "Filter candidates with total_savings > 5 bytes per use (min_savings_per_use = 5)",
+        "Sort by total_savings (descending)",
+        "Take top 150 candidates (max_codes = 150)",
+        "Assign codes: first 62 codes use single character ($0-$9, $a-$z, $A-$Z), remaining use two-digit format ($00-$99)",
+        "Only consider strings longer than 15 characters for encoding",
+        "Only analyze @graph content, not @context",
+        "Store codebook in shared state (MessageInterface) for string encoding stage"
+      ],
+      
+      "validation": {
+        "checks": [
+          "Verify codebook size does not exceed 150 codes",
+          "Verify code assignments follow pattern (first 62 single char, rest two-digit)",
+          "Verify compression benefit calculations are accurate",
+          "Verify all codes are unique",
+          "Verify code format matches specification ($X or $XX)"
+        ]
+      },
+      
+      "usage": {
+        "stage": "Stage 4 of Huffman V2 compression",
+        "precedes": "Stage 5: String Encoding",
+        "follows": "Stage 3: String Frequency Analysis",
+        "output": "Codebook dictionary passed to string encoding stage"
+      },
+      
+      "notes": {
+        "codeLengthEstimation": "During candidate selection, code_length is estimated as 2 (for single char codes). Actual assignment may use 2 or 3 character codes, but this estimation is sufficient for filtering.",
+        "sortingOrder": "Codebook must be sorted by original string length (longest first) before use in string encoding to avoid partial matches",
+        "replacementOrder": "When encoding strings, process longest strings first to prevent shorter strings from partially matching longer ones"
+      }
+    }
+  ]
+}
+

@@ -1159,7 +1159,7 @@ defmodule Ash.Query do
              context: query.context
            )
 
-         case module.init(opts) do
+         case Ash.Resource.Validation.init(module, opts) do
            {:ok, opts} ->
              Ash.Resource.Validation.validate(
                module,
@@ -1191,7 +1191,7 @@ defmodule Ash.Query do
               context: query.context
             )
 
-          with {:ok, opts} <- validation.module.init(opts),
+          with {:ok, opts} <- Ash.Resource.Validation.init(validation.module, opts),
                :ok <-
                  Ash.Resource.Validation.validate(
                    validation.module,
@@ -1277,7 +1277,7 @@ defmodule Ash.Query do
              context: query.context
            )
 
-         case module.init(opts) do
+         case Ash.Resource.Validation.init(module, opts) do
            {:ok, opts} ->
              Ash.Resource.Validation.validate(
                module,
@@ -1300,7 +1300,7 @@ defmodule Ash.Query do
         end do
           Ash.Tracer.set_metadata(tracer, :preparation, metadata)
 
-          {:ok, opts} = module.init(opts)
+          {:ok, opts} = Ash.Resource.Preparation.init(module, opts)
 
           opts =
             Ash.Expr.fill_template(
@@ -2338,7 +2338,8 @@ defmodule Ash.Query do
         List.wrap(resource_calculation.load)
 
       loads =
-        module.load(
+        Ash.Resource.Calculation.load(
+          module,
           query,
           opts,
           Map.put(calculation.context, :context, query.context)
@@ -2349,7 +2350,8 @@ defmodule Ash.Query do
       %{calculation | required_loads: loads}
     else
       loads =
-        module.load(
+        Ash.Resource.Calculation.load(
+          module,
           query,
           opts,
           Map.put(calculation.context, :context, query.context)
@@ -3628,7 +3630,8 @@ defmodule Ash.Query do
         calculation = %{calculation | context: context}
 
         loads =
-          module.load(
+          Ash.Resource.Calculation.load(
+            module,
             query,
             opts,
             calculation.context
@@ -4578,7 +4581,8 @@ defmodule Ash.Query do
       fn combination, {:ok, combinations, previous} ->
         calculations =
           Enum.map(combination.calculations, fn {name, calc} ->
-            {%{calc | name: name, load: nil}, calc.module.expression(calc.opts, calc.context)}
+            {%{calc | name: name, load: nil},
+             Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context)}
           end)
 
         base_query
