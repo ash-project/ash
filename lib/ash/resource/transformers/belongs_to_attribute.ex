@@ -35,6 +35,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
             end,
           writable?: relationship.attribute_writable?,
           public?: relationship.attribute_public?,
+          always_select?: relationship.attribute_always_select?,
           primary_key?: relationship.primary_key?
         )
 
