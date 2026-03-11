@@ -220,6 +220,82 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule CopyTitleToStatusChange do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, _, _) do
+      title = Ash.Changeset.get_attribute(changeset, :title)
+      Ash.Changeset.force_change_attribute(changeset, :status, title)
+    end
+  end
+
+  defmodule ValidateStatusPresenceAndNotBad do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_attribute(changeset, :status) do
+        nil -> {:error, field: :status, message: "status must be set"}
+        "bad" -> {:error, field: :status, message: "status cannot be bad"}
+        _ -> :ok
+      end
+    end
+  end
+
+  defmodule ValidateStatusNotUgly do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_attribute(changeset, :status) do
+        nil -> {:error, field: :status, message: "status must be set by hook"}
+        "ugly" -> {:error, field: :status, message: "status cannot be ugly"}
+        _ -> :ok
+      end
+    end
+  end
+
+  defmodule PostWithBulkValidationOrdering do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+
+      update :update do
+        primary? true
+        accept [:title]
+        require_atomic? false
+      end
+    end
+
+    changes do
+      change CopyTitleToStatusChange, on: [:update]
+    end
+
+    validations do
+      validate ValidateStatusPresenceAndNotBad, on: [:update]
+      validate ValidateStatusNotUgly, on: [:update], before_action?: true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :status, :string, public?: true
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -2295,6 +2371,67 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       updated_post = Ash.load!(updated_post, :related_posts)
       assert length(updated_post.related_posts) == 1
       assert hd(updated_post.related_posts).id == related_post.id
+    end
+  end
+
+  describe "bulk_update global validation ordering" do
+    test "succeeds when global change sets status that passes both validations" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "initial"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :success, records: [%{status: "good"}]} =
+               Ash.bulk_update(
+                 [post],
+                 :update,
+                 %{title: "good"},
+                 resource: PostWithBulkValidationOrdering,
+                 return_records?: true,
+                 return_errors?: true,
+                 strategy: :stream,
+                 authorize?: false
+               )
+    end
+
+    test "regular global validation rejects with correct error" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "initial"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_update(
+                 [post],
+                 :update,
+                 %{title: "bad"},
+                 resource: PostWithBulkValidationOrdering,
+                 return_errors?: true,
+                 strategy: :stream,
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "status cannot be bad"
+    end
+
+    test "before_action? global validation rejects with correct error" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "initial"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_update(
+                 [post],
+                 :update,
+                 %{title: "ugly"},
+                 resource: PostWithBulkValidationOrdering,
+                 return_errors?: true,
+                 strategy: :stream,
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "status cannot be ugly"
     end
   end
 end
