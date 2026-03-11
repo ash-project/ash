@@ -1848,12 +1848,12 @@ defmodule Ash.Actions.Create.Bulk do
             if validation.before_action? do
               Enum.map(batch, fn changeset ->
                 Ash.Changeset.before_action(changeset, fn changeset ->
-                  run_bulk_validation(changeset, validation, module, opts, context, actor, tenant)
+                  run_bulk_validation(changeset, validation, module, opts, context, actor)
                 end)
               end)
             else
               Enum.map(batch, fn changeset ->
-                run_bulk_validation(changeset, validation, module, opts, context, actor, tenant)
+                run_bulk_validation(changeset, validation, module, opts, context, actor)
               end)
             end
 
@@ -1957,7 +1957,7 @@ defmodule Ash.Actions.Create.Bulk do
     )
   end
 
-  defp run_bulk_validation(changeset, validation, module, opts, context, actor, _tenant) do
+  defp run_bulk_validation(changeset, validation, module, opts, context, actor) do
     cond do
       !module.has_validate?() ->
         Ash.Changeset.add_error(
@@ -2032,14 +2032,14 @@ defmodule Ash.Actions.Create.Bulk do
           {:error, error} ->
             error = Ash.Error.to_ash_error(error)
 
-            if validation.message do
-              error =
+            error =
+              if validation.message do
                 Ash.Error.override_validation_message(error, validation.message)
+              else
+                error
+              end
 
-              Ash.Changeset.add_error(changeset, error)
-            else
-              Ash.Changeset.add_error(changeset, error)
-            end
+            Ash.Changeset.add_error(changeset, error)
         end
 
       true ->
