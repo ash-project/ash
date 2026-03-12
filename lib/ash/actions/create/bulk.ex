@@ -1945,7 +1945,7 @@ defmodule Ash.Actions.Create.Bulk do
         {%{change: {module, change_opts}} = change, change_index}, %{batch: batch} = state ->
           # could track if any element in the batch is invalid, and if not use the fast version
           if Enum.empty?(change.where) && !change.only_when_valid? do
-            batch = batch_change(module, batch, change_opts, context, actor)
+            batch = batch_change(change, batch, context, actor)
 
             must_return_records? =
               state.must_return_records? ||
@@ -2006,7 +2006,7 @@ defmodule Ash.Actions.Create.Bulk do
                   changes: state.changes
               }
             else
-              matches = batch_change(module, matches, change_opts, context, actor)
+              matches = batch_change(change, matches, context, actor)
 
               must_return_records? =
                 state.must_return_records? ||
@@ -2035,72 +2035,138 @@ defmodule Ash.Actions.Create.Bulk do
     )
   end
 
-  defp batch_change(module, batch, change_opts, context, actor) do
+  defp batch_change(%{change: {module, change_opts}} = change, batch, context, actor) do
     case change_opts do
       {:templated, change_opts} ->
-        if module.has_batch_change?() do
-          module.batch_change(
-            batch,
-            change_opts,
-            struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
-          )
-        else
-          Enum.map(batch, fn changeset ->
-            {:ok, change_opts} = module.init(change_opts)
-
-            Ash.Resource.Change.change(
-              module,
-              changeset,
+        cond do
+          module.has_batch_change?() ->
+            module.batch_change(
+              batch,
               change_opts,
               struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
             )
-          end)
+
+          module.has_change?() ->
+            Enum.map(batch, fn changeset ->
+              {:ok, change_opts} = module.init(change_opts)
+
+              Ash.Resource.Change.change(
+                module,
+                changeset,
+                change_opts,
+                struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
+              )
+            end)
+
+          module.atomic?() ->
+            Enum.map(batch, fn changeset ->
+              change = %{
+                change
+                | change:
+                    {module,
+                     templated_opts(
+                       change_opts,
+                       actor,
+                       changeset.to_tenant,
+                       changeset.arguments,
+                       changeset.context,
+                       changeset
+                     )}
+              }
+
+              case Ash.Changeset.run_atomic_change(changeset, change, context) do
+                {:not_atomic, reason} ->
+                  Ash.Changeset.add_error(
+                    changeset,
+                    "Could not be made atomic: #{inspect(reason)}"
+                  )
+
+                changeset ->
+                  changeset
+              end
+            end)
+
+          true ->
+            raise "#{inspect(module)} must define at least one of `atomic/3`, `change/3` or `batch_change/3`"
         end
 
       change_opts ->
-        if module.has_batch_change?() do
-          batch
-          |> Enum.map(fn changeset ->
-            change_opts =
-              templated_opts(
+        cond do
+          module.has_batch_change?() ->
+            batch
+            |> Enum.map(fn changeset ->
+              change_opts =
+                templated_opts(
+                  change_opts,
+                  actor,
+                  changeset.to_tenant,
+                  changeset.arguments,
+                  changeset.context,
+                  changeset
+                )
+
+              {:ok, change_opts} = module.init(change_opts)
+
+              module.batch_change(
+                [changeset],
                 change_opts,
-                actor,
-                changeset.to_tenant,
-                changeset.arguments,
-                changeset.context,
-                changeset
+                struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
               )
+            end)
+            |> Enum.concat()
 
-            {:ok, change_opts} = module.init(change_opts)
+          module.has_change?() ->
+            Enum.map(batch, fn changeset ->
+              change_opts =
+                templated_opts(
+                  change_opts,
+                  actor,
+                  changeset.to_tenant,
+                  changeset.arguments,
+                  changeset.context,
+                  changeset
+                )
 
-            module.batch_change(
-              [changeset],
-              change_opts,
-              struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
-            )
-          end)
-          |> Enum.concat()
-        else
-          Enum.map(batch, fn changeset ->
-            change_opts =
-              templated_opts(
+              {:ok, change_opts} = module.init(change_opts)
+
+              Ash.Resource.Change.change(
+                module,
+                changeset,
                 change_opts,
-                actor,
-                changeset.to_tenant,
-                changeset.arguments,
-                changeset.context,
-                changeset
+                struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
               )
+            end)
 
-            {:ok, change_opts} = module.init(change_opts)
+          module.atomic?() ->
+            Enum.map(batch, fn changeset ->
+              change = %{
+                change
+                | change:
+                    {module,
+                     templated_opts(
+                       change_opts,
+                       actor,
+                       changeset.to_tenant,
+                       changeset.arguments,
+                       changeset.context,
+                       changeset
+                     )}
+              }
 
-            Ash.Resource.Change.change(
-              module,
-              changeset,
-              change_opts,
-              struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
-            )
-          end)
+              case Ash.Changeset.run_atomic_change(changeset, change, context) do
+                {:not_atomic, reason} ->
+                  Ash.Changeset.add_error(
+                    changeset,
+                    "Could not be made atomic: #{inspect(reason)}"
+                  )
+
+                changeset ->
+                  changeset
+              end
+            end)
+
+          true ->
+            raise "#{inspect(module)} must define at least one of `atomic/3`, `change/3` or `batch_change/3`"
         end
     end
   end

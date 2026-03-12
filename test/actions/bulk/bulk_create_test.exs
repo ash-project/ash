@@ -403,6 +403,14 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  {:ok, result}
                end)
       end
+
+      create :create_with_atomic_set do
+        accept [:title]
+
+        argument :title_suffix, :string, allow_nil?: false
+
+        change atomic_set(:title2, expr(^arg(:title_suffix) <> "_computed"))
+      end
     end
 
     identities do
@@ -2475,6 +2483,44 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                )
 
       assert Exception.message(error) =~ "status cannot be bad"
+    end
+  end
+
+  describe "atomic_set in bulk_create" do
+    test "atomic_set changes are applied to each record" do
+      org = Ash.create!(Org, %{})
+
+      assert %Ash.BulkResult{status: :success, records: [record1, record2]} =
+               Ash.bulk_create!(
+                 [
+                   %{title: "post1", title_suffix: "alpha"},
+                   %{title: "post2", title_suffix: "beta"}
+                 ],
+                 Post,
+                 :create_with_atomic_set,
+                 return_records?: true,
+                 authorize?: false,
+                 tenant: org.id
+               )
+
+      assert record1.title2 == "alpha_computed"
+      assert record2.title2 == "beta_computed"
+    end
+
+    test "atomic_set changes work with single record" do
+      org = Ash.create!(Org, %{})
+
+      assert %Ash.BulkResult{status: :success, records: [record]} =
+               Ash.bulk_create!(
+                 [%{title: "solo", title_suffix: "gamma"}],
+                 Post,
+                 :create_with_atomic_set,
+                 return_records?: true,
+                 authorize?: false,
+                 tenant: org.id
+               )
+
+      assert record.title2 == "gamma_computed"
     end
   end
 end
