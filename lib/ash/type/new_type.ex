@@ -214,15 +214,48 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
-      def cast_input_array(value, constraints) do
-        subtype_constraints = subtype_constraints(constraints)
+      def cast_input_array(nil, _), do: {:ok, nil}
 
-        with {:ok, value} <- unquote(subtype_of).cast_input_array(value, subtype_constraints) do
-          Ash.Type.apply_constraints(
-            {:array, unquote(subtype_of)},
-            value,
-            items: subtype_constraints
-          )
+      def cast_input_array(term, constraints) do
+        term
+        |> Stream.with_index()
+        |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+          case cast_input(item, constraints) do
+            :error ->
+              {:halt, {:error, message: "invalid value at %{index}", index: index, path: [index]}}
+
+            {:error, keyword} ->
+              errors =
+                keyword
+                |> List.wrap()
+                |> Ash.Helpers.flatten_preserving_keywords()
+                |> Enum.map(fn
+                  message when is_binary(message) ->
+                    [message: message, index: index, path: [index]]
+
+                  error when is_exception(error) ->
+                    error
+                    |> Ash.Error.to_ash_error()
+                    |> Ash.Error.set_path([index])
+
+                  keyword ->
+                    keyword
+                    |> Keyword.put(:index, index)
+                    |> Keyword.update(:path, [index], &[index | &1])
+                end)
+
+              {:halt, {:error, errors}}
+
+            {:ok, value} ->
+              {:cont, {:ok, [value | casted]}}
+          end
+        end)
+        |> case do
+          {:ok, result} ->
+            {:ok, Enum.reverse(result)}
+
+          {:error, error} ->
+            {:error, error}
         end
       end
 
@@ -276,9 +309,38 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
-      def cast_stored_array(value, constraints) do
-        constraints = subtype_constraints(constraints)
-        Ash.Type.cast_stored({:array, unquote(subtype_of)}, value, items: constraints)
+      def cast_stored_array(term, constraints) do
+        if is_nil(term) do
+          {:ok, nil}
+        else
+          term
+          |> Enum.with_index()
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+            case cast_stored(item, constraints) do
+              :error ->
+                {:halt, {:error, index: index}}
+
+              {:error, keyword} ->
+                errors =
+                  keyword
+                  |> List.wrap()
+                  |> Ash.Helpers.flatten_preserving_keywords()
+                  |> Enum.map(fn
+                    string when is_binary(string) ->
+                      [message: string, index: index]
+
+                    vars ->
+                      Keyword.put(vars, :index, index)
+                  end)
+
+                {:halt, {:error, errors}}
+
+              {:ok, value} ->
+                {:cont, {:ok, [value | casted]}}
+            end
+          end)
+        end
       end
 
       @impl Ash.Type
@@ -307,9 +369,23 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
-      def dump_to_embedded_array(value, constraints) do
-        constraints = subtype_constraints(constraints)
-        Ash.Type.dump_to_embedded({:array, unquote(subtype_of)}, value, items: constraints)
+      def dump_to_embedded_array(term, constraints) do
+        if is_nil(term) do
+          {:ok, nil}
+        else
+          term
+          |> Enum.with_index()
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
+            case dump_to_embedded(item, constraints) do
+              {:ok, value} ->
+                {:cont, {:ok, [value | dumped]}}
+
+              error ->
+                {:halt, Ash.Helpers.error_with_context(error, index: index)}
+            end
+          end)
+        end
       end
 
       @impl Ash.Type
@@ -319,9 +395,23 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
-      def dump_to_native_array(value, constraints) do
-        constraints = subtype_constraints(constraints)
-        Ash.Type.dump_to_native({:array, unquote(subtype_of)}, value, items: constraints)
+      def dump_to_native_array(term, constraints) do
+        if is_nil(term) do
+          {:ok, nil}
+        else
+          term
+          |> Enum.with_index()
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
+            case dump_to_native(item, constraints) do
+              {:ok, value} ->
+                {:cont, {:ok, [value | dumped]}}
+
+              error ->
+                {:halt, Ash.Helpers.error_with_context(error, index: index)}
+            end
+          end)
+        end
       end
 
       @impl Ash.Type
