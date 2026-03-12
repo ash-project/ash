@@ -25,7 +25,7 @@ or for your convenience you can use `use Ash.Reactor` which expands to exactly t
 ## Running Reactors as an action
 
 Ash's [generic actions](actions.md#generic-actions) support providing a Reactor module directly as their `run` option.
-This is the preferred way for you to initiate reactors in your application. These actions could be defined on your existing resources, your you could even have a resource w/ a single action on it that runs a reactor, and no attributes/data layer etc. for example.
+This is the preferred way for you to initiate reactors in your application. These actions could be defined on your existing resources, or you could even have a resource with a single action on it that runs a reactor, and no attributes/data layer etc. for example.
 
 Notes:
 
