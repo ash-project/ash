@@ -4798,7 +4798,7 @@ defmodule Ash.Query do
     select =
       cond do
         is_nil(left_select) and is_nil(right_select) ->
-          nil
+          Enum.to_list(Ash.Resource.Info.selected_by_default_attribute_names(query.resource))
 
         is_nil(left_select) ->
           right_select
