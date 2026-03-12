@@ -39,10 +39,12 @@ defmodule Mix.Tasks.Ash.VerifyPublicActions do
       Mix.shell().info([:green, "All public? / private_action? verification tests passed."])
     else
       Mix.shell().error("")
+
       Mix.shell().error([
         :red,
         "Verification failed for: " <> Enum.join(failures, ", ")
       ])
+
       System.halt(1)
     end
   end

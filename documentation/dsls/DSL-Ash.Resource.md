@@ -908,8 +908,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`defaults`](#actions-defaults){: #actions-defaults } | `list(:create \| :read \| :update \| :destroy \| {atom, atom \| list(atom)})` |  | Creates a simple action of each specified type, with the same name as the type. These will be `primary?` unless one already exists for that type. Embedded resources, however, have a default of all resource types. |
-| [`default_accept`](#actions-default_accept){: #actions-default_accept } | `list(atom) \| :*` |  | A default value for the `accept` option for each action. Use `:*` to accept all public attributes.
- Ash >= 3.0 defaults to no attributes accepted. In prior versions of Ash all public, writable attributes were accepted by default. |
+| [`default_accept`](#actions-default_accept){: #actions-default_accept } | `list(atom) \| :*` |  | A default value for the `accept` option for each action. Use `:*` to accept all public attributes.  Ash >= 3.0 defaults to no attributes accepted. In prior versions of Ash all public, writable attributes were accepted by default. |
 
 
 
@@ -963,9 +962,7 @@ end
 | [`transaction?`](#actions-action-transaction?){: #actions-action-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-action-touches_resources){: #actions-action-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-action-skip_unknown_inputs){: #actions-action-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-action-public?){: #actions-action-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only
- and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do
- authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
+| [`public?`](#actions-action-public?){: #actions-action-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 
 
 ### actions.action.argument
@@ -1152,9 +1149,7 @@ end
 | [`transaction?`](#actions-create-transaction?){: #actions-create-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-create-touches_resources){: #actions-create-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-create-skip_unknown_inputs){: #actions-create-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-create-public?){: #actions-create-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only
- and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do
- authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
+| [`public?`](#actions-create-public?){: #actions-create-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-create-accept){: #actions-create-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`action_select`](#actions-create-action_select){: #actions-create-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes/notifiers, it defaults to the externally selected attributes. Keep in mind that action_select is applied *before* notifiers. |
 | [`require_attributes`](#actions-create-require_attributes){: #actions-create-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -1403,9 +1398,7 @@ end
 | [`transaction?`](#actions-read-transaction?){: #actions-read-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-read-touches_resources){: #actions-read-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-read-skip_unknown_inputs){: #actions-read-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-read-public?){: #actions-read-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only
- and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do
- authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
+| [`public?`](#actions-read-public?){: #actions-read-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 
 
 ### actions.read.argument
@@ -1700,9 +1693,7 @@ update :flag_for_review, primary?: true
 | [`transaction?`](#actions-update-transaction?){: #actions-update-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-update-touches_resources){: #actions-update-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-update-skip_unknown_inputs){: #actions-update-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-update-public?){: #actions-update-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only
- and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do
- authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
+| [`public?`](#actions-update-public?){: #actions-update-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-update-accept){: #actions-update-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`action_select`](#actions-update-action_select){: #actions-update-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes/notifiers, it defaults to the externally selected attributes. Keep in mind that action_select is applied *before* notifiers. |
 | [`require_attributes`](#actions-update-require_attributes){: #actions-update-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -1950,9 +1941,7 @@ end
 | [`transaction?`](#actions-destroy-transaction?){: #actions-destroy-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-destroy-touches_resources){: #actions-destroy-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-destroy-skip_unknown_inputs){: #actions-destroy-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-destroy-public?){: #actions-destroy-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only
- and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do
- authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
+| [`public?`](#actions-destroy-public?){: #actions-destroy-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-destroy-accept){: #actions-destroy-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`action_select`](#actions-destroy-action_select){: #actions-destroy-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes/notifiers, it defaults to the externally selected attributes. Keep in mind that action_select is applied *before* notifiers. |
 | [`require_attributes`](#actions-destroy-require_attributes){: #actions-destroy-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -2896,9 +2885,7 @@ end
 | [`sortable?`](#aggregates-count-sortable?){: #aggregates-count-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-count-sensitive?){: #aggregates-count-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-count-authorize?){: #aggregates-count-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-count-multitenancy){: #aggregates-count-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.
- 
- * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-count-multitenancy){: #aggregates-count-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.count.join_filter
@@ -2987,9 +2974,7 @@ exists :has_ticket, :assigned_tickets
 | [`sortable?`](#aggregates-exists-sortable?){: #aggregates-exists-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-exists-sensitive?){: #aggregates-exists-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-exists-authorize?){: #aggregates-exists-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-exists-multitenancy){: #aggregates-exists-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.
- 
- * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-exists-multitenancy){: #aggregates-exists-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.exists.join_filter
@@ -3085,9 +3070,7 @@ end
 | [`sortable?`](#aggregates-first-sortable?){: #aggregates-first-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-first-sensitive?){: #aggregates-first-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-first-authorize?){: #aggregates-first-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-first-multitenancy){: #aggregates-first-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.
- 
- * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-first-multitenancy){: #aggregates-first-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.first.join_filter
@@ -3179,9 +3162,7 @@ end
 | [`sortable?`](#aggregates-sum-sortable?){: #aggregates-sum-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-sum-sensitive?){: #aggregates-sum-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-sum-authorize?){: #aggregates-sum-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-sum-multitenancy){: #aggregates-sum-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.
- 
- * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-sum-multitenancy){: #aggregates-sum-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.sum.join_filter
@@ -3277,9 +3258,7 @@ end
 | [`sortable?`](#aggregates-list-sortable?){: #aggregates-list-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-list-sensitive?){: #aggregates-list-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-list-authorize?){: #aggregates-list-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-list-multitenancy){: #aggregates-list-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.
- 
- * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-list-multitenancy){: #aggregates-list-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.list.join_filter
@@ -3371,9 +3350,7 @@ end
 | [`sortable?`](#aggregates-max-sortable?){: #aggregates-max-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-max-sensitive?){: #aggregates-max-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-max-authorize?){: #aggregates-max-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-max-multitenancy){: #aggregates-max-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.
- 
- * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-max-multitenancy){: #aggregates-max-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.max.join_filter
@@ -3465,9 +3442,7 @@ end
 | [`sortable?`](#aggregates-min-sortable?){: #aggregates-min-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-min-sensitive?){: #aggregates-min-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-min-authorize?){: #aggregates-min-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-min-multitenancy){: #aggregates-min-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.
- 
- * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-min-multitenancy){: #aggregates-min-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.min.join_filter
@@ -3559,9 +3534,7 @@ end
 | [`sortable?`](#aggregates-avg-sortable?){: #aggregates-avg-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-avg-sensitive?){: #aggregates-avg-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-avg-authorize?){: #aggregates-avg-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-avg-multitenancy){: #aggregates-avg-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.
- 
- * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-avg-multitenancy){: #aggregates-avg-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.avg.join_filter
@@ -3658,9 +3631,7 @@ end
 | [`sortable?`](#aggregates-custom-sortable?){: #aggregates-custom-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`sensitive?`](#aggregates-custom-sensitive?){: #aggregates-custom-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-custom-authorize?){: #aggregates-custom-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
-| [`multitenancy`](#aggregates-custom-multitenancy){: #aggregates-custom-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.
- 
- * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
+| [`multitenancy`](#aggregates-custom-multitenancy){: #aggregates-custom-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate.  * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
 
 ### aggregates.custom.join_filter
@@ -3804,11 +3775,7 @@ end
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |
 | [`sortable?`](#calculations-calculate-sortable?){: #calculations-calculate-sortable? } | `boolean` | `true` | Whether or not the calculation can be referenced in sorts. |
-| [`multitenancy`](#calculations-calculate-multitenancy){: #calculations-calculate-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` |  | Configures multitenancy behavior for the calculation.
- `:enforce` requires a tenant to be set (the default behavior),
- `:allow_global` allows using this calculation both with and without a tenant,
- `:bypass` completely ignores the tenant even if it's set,
- `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for nested resources. |
+| [`multitenancy`](#calculations-calculate-multitenancy){: #calculations-calculate-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` |  | Configures multitenancy behavior for the calculation. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this calculation both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for nested resources. |
 
 
 ### calculations.calculate.argument
