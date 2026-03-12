@@ -1024,11 +1024,10 @@ defmodule Ash.Test.Policy.Policy do
           b({RuntimeCheck, []} and ({RuntimeCheck, [some: :config]} or not true))
         )
 
-      # Normalize line endings so test passes on both Unix and Windows
       expected =
         "Expr:\n\n\"returns true at runtime\" and (\"returns true at runtime\" or not true)"
 
-      assert String.replace(result, "\r\n", "\n") == expected
+      assert result == expected
     end
   end
 
