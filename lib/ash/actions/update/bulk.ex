@@ -3504,7 +3504,23 @@ defmodule Ash.Actions.Update.Bulk do
                  Enum.all?(validation.where, fn {module, _opts} ->
                    module.has_validate?()
                  end) do
-              validate_batch_non_atomically(validation, batch, validation_context, actor)
+              if validation.before_action? do
+                Enum.map(batch, fn changeset ->
+                  Ash.Changeset.before_action(changeset, fn changeset ->
+                    [changeset] =
+                      validate_batch_non_atomically(
+                        validation,
+                        [changeset],
+                        validation_context,
+                        actor
+                      )
+
+                    changeset
+                  end)
+                end)
+              else
+                validate_batch_non_atomically(validation, batch, validation_context, actor)
+              end
             else
               if module.atomic?() do
                 validate_batch_atomically(validation, batch, validation_context, context, actor)
@@ -3659,12 +3675,14 @@ defmodule Ash.Actions.Update.Bulk do
             changeset
 
           {:error, error} ->
-            if validation.message do
-              error = Ash.Error.override_validation_message(error, validation.message)
-              Ash.Changeset.add_error(changeset, error)
-            else
-              Ash.Changeset.add_error(changeset, error)
-            end
+            error =
+              if validation.message do
+                Ash.Error.override_validation_message(error, validation.message)
+              else
+                error
+              end
+
+            Ash.Changeset.add_error(changeset, error)
         end
       else
         changeset
