@@ -13,4 +13,7 @@ defmodule Ash.Type.File.Path do
   @impl Ash.Type.File.Implementation
   # sobelow_skip ["Traversal.FileModule"]
   def open(path, modes), do: File.open(path, modes)
+
+  @impl Ash.Type.File.Implementation
+  def filename(path), do: {:ok, Path.basename(path)}
 end
