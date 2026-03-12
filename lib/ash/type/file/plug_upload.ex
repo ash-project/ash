@@ -14,6 +14,12 @@ if Code.ensure_loaded?(Plug.Upload) do
     # sobelow_skip ["Traversal.FileModule"]
     @impl Ash.Type.File.Implementation
     def open(%Plug.Upload{path: path}, options), do: File.open(path, options)
+
+    @impl Ash.Type.File.Implementation
+    def filename(%Plug.Upload{filename: filename}), do: {:ok, filename}
+
+    @impl Ash.Type.File.Implementation
+    def content_type(%Plug.Upload{content_type: content_type}), do: {:ok, content_type}
   end
 
   defimpl Ash.Type.File.Source, for: Plug.Upload do
