@@ -88,7 +88,8 @@ defmodule Ash.Can do
         |> Ash.Actions.Helpers.apply_scope_to_opts()
         |> Keyword.pop(:actor)
       else
-        {actor_or_scope, opts}
+        {actor_or_scope,
+         opts |> Ash.Actions.Helpers.apply_scope_to_opts() |> Keyword.delete(:actor)}
       end
 
     opts = Keyword.update(opts, :context, context, &Ash.Helpers.deep_merge_maps(&1, context))

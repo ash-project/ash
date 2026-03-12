@@ -481,6 +481,16 @@ defmodule Ash.Test.Policy.SimpleTest do
     refute Ash.can?({tweet, :read}, %Scope{actor: user})
   end
 
+  test "Ash.can and Ash.can? honor a provided scope in opts", %{admin: admin} do
+    context_record =
+      Context
+      |> Ash.Changeset.for_create(:create, %{name: "Foo"})
+      |> Ash.create!()
+
+    assert Ash.can?({context_record, :read}, admin, scope: %Scope{context: %{name: "Foo"}})
+    refute Ash.can?({context_record, :read}, admin, scope: %Scope{context: %{name: "Bar"}})
+  end
+
   test "arguments can be referenced in expression policies", %{admin: admin, user: user} do
     Tweet
     |> Ash.Changeset.for_create(:create_foo, %{foo: "foo", user_id: admin.id}, actor: user)
