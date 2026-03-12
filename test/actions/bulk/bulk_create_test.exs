@@ -101,6 +101,66 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule CopyTitleToStatusChange do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, _, _) do
+      title = Ash.Changeset.get_attribute(changeset, :title)
+      Ash.Changeset.force_change_attribute(changeset, :status, title)
+    end
+  end
+
+  defmodule ValidateStatusPresenceAndNotBad do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_attribute(changeset, :status) do
+        nil -> {:error, field: :status, message: "status must be set"}
+        "bad" -> {:error, field: :status, message: "status cannot be bad"}
+        _ -> :ok
+      end
+    end
+  end
+
+  defmodule PostWithBulkValidationOrdering do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read]
+
+      create :create do
+        primary? true
+        accept [:title]
+      end
+    end
+
+    changes do
+      change CopyTitleToStatusChange
+    end
+
+    validations do
+      validate ValidateStatusPresenceAndNotBad
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :status, :string, public?: true
+    end
+  end
+
   defmodule Org do
     @moduledoc false
     use Ash.Resource,
@@ -2388,6 +2448,33 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       assert [%{title: "success_1"}] = result.records
       assert_received {:notification, _}
       assert result.notifications == nil
+    end
+  end
+
+  describe "bulk_create global validation ordering" do
+    test "succeeds when global change sets status that passes validation" do
+      assert %Ash.BulkResult{status: :success, records: [%{status: "good"}]} =
+               Ash.bulk_create(
+                 [%{title: "good"}],
+                 PostWithBulkValidationOrdering,
+                 :create,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+    end
+
+    test "global validation rejects with correct error" do
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_create(
+                 [%{title: "bad"}],
+                 PostWithBulkValidationOrdering,
+                 :create,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "status cannot be bad"
     end
   end
 end
