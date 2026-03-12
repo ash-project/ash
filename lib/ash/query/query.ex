@@ -4778,7 +4778,6 @@ defmodule Ash.Query do
 
   defp merge_load(
          %__MODULE__{
-           resource: resource,
            load: left_loads,
            timeout: left_timeout,
            calculations: left_calculations,
@@ -4797,10 +4796,18 @@ defmodule Ash.Query do
          opts
        ) do
     select =
-      if is_nil(left_select) or is_nil(right_select) do
-        Enum.to_list(Ash.Resource.Info.selected_by_default_attribute_names(resource))
-      else
-        Enum.uniq(left_select ++ right_select)
+      cond do
+        is_nil(left_select) and is_nil(right_select) ->
+          Enum.to_list(Ash.Resource.Info.selected_by_default_attribute_names(query.resource))
+
+        is_nil(left_select) ->
+          right_select
+
+        is_nil(right_select) ->
+          left_select
+
+        true ->
+          Enum.uniq(left_select ++ right_select)
       end
 
     %{
