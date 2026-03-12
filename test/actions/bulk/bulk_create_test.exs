@@ -126,6 +126,20 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule ValidateStatusNotUgly do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_attribute(changeset, :status) do
+        nil -> {:error, field: :status, message: "status must be set by hook"}
+        "ugly" -> {:error, field: :status, message: "status cannot be ugly"}
+        _ -> :ok
+      end
+    end
+  end
+
   defmodule PostWithBulkValidationOrdering do
     @moduledoc false
     use Ash.Resource,
@@ -152,6 +166,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
     validations do
       validate ValidateStatusPresenceAndNotBad
+      validate ValidateStatusNotUgly, before_action?: true
     end
 
     attributes do
@@ -2452,7 +2467,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   describe "bulk_create global validation ordering" do
-    test "succeeds when global change sets status that passes validation" do
+    test "succeeds when global change sets status that passes both validations" do
       assert %Ash.BulkResult{status: :success, records: [%{status: "good"}]} =
                Ash.bulk_create(
                  [%{title: "good"}],
@@ -2464,7 +2479,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                )
     end
 
-    test "global validation rejects with correct error" do
+    test "regular global validation rejects with correct error" do
       assert %Ash.BulkResult{status: :error, errors: [error]} =
                Ash.bulk_create(
                  [%{title: "bad"}],
@@ -2475,6 +2490,19 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                )
 
       assert Exception.message(error) =~ "status cannot be bad"
+    end
+
+    test "before_action? global validation rejects with correct error" do
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_create(
+                 [%{title: "ugly"}],
+                 PostWithBulkValidationOrdering,
+                 :create,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "status cannot be ugly"
     end
   end
 end
