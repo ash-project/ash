@@ -1459,6 +1459,39 @@ defmodule Ash.Test.Actions.LoadTest do
       assert Enum.sort(Enum.map(post_secret1.posts_with_secret, & &1.secret)) ==
                Enum.sort([post2.secret, post3.secret])
     end
+
+    test "duplicate relationship load entries preserve select" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "author"})
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        title: "post1",
+        category: "foo",
+        author_id: author.id
+      })
+      |> Ash.create!()
+
+      result =
+        Author
+        |> Ash.Query.build(
+          load: [
+            posts: [:author],
+            posts: Ash.Query.select(Post, [:title])
+          ]
+        )
+        |> Ash.read!()
+        |> List.first()
+
+      loaded_post = List.first(result.posts)
+
+      assert loaded_post.title == "post1"
+      assert %Ash.NotLoaded{} = loaded_post.contents
+
+      assert loaded_post.author.name == "author"
+    end
   end
 
   describe "forbidden lazy loads" do
