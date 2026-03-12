@@ -109,6 +109,66 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
   end
 
+  defmodule CopyTitleToStatusChange do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, _, _) do
+      title = Ash.Changeset.get_attribute(changeset, :title)
+      Ash.Changeset.force_change_attribute(changeset, :status, title)
+    end
+  end
+
+  defmodule ValidateStatusPresenceAndNotBad do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_attribute(changeset, :status) do
+        nil -> {:error, field: :status, message: "status must be set"}
+        "bad" -> {:error, field: :status, message: "status cannot be bad"}
+        _ -> :ok
+      end
+    end
+  end
+
+  defmodule PostWithBulkValidationOrdering do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+
+      destroy :destroy do
+        primary? true
+        require_atomic? false
+      end
+    end
+
+    changes do
+      change CopyTitleToStatusChange, on: [:destroy]
+    end
+
+    validations do
+      validate ValidateStatusPresenceAndNotBad, on: [:destroy]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :status, :string, public?: true
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -1338,6 +1398,46 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       for notification <- result.notifications do
         assert %Author{name: "Test Author"} = notification.data.author
       end
+    end
+  end
+
+  describe "bulk_destroy global validation ordering" do
+    test "succeeds when global change sets status that passes validation" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "good"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :success} =
+               Ash.bulk_destroy(
+                 [post],
+                 :destroy,
+                 %{},
+                 resource: PostWithBulkValidationOrdering,
+                 return_errors?: true,
+                 strategy: :stream,
+                 authorize?: false
+               )
+    end
+
+    test "global validation rejects with correct error" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "bad"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_destroy(
+                 [post],
+                 :destroy,
+                 %{},
+                 resource: PostWithBulkValidationOrdering,
+                 return_errors?: true,
+                 strategy: :stream,
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "status cannot be bad"
     end
   end
 end
