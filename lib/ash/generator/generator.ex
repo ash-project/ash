@@ -401,6 +401,10 @@ defmodule Ash.Generator do
   * `:context` - Passed through to the changeset
   * `:after_action` - A one argument function that takes the result and returns
     a new result to run after the record is created.
+  * `:generate_rest?` - If `false`, only generates values for attributes explicitly provided
+    in the attributes map (and overrides). Unlisted attributes receive their resource-level
+    default or `nil` (if `allow_nil?`). Raises if a required attribute with no default is
+    missing. Only applies to the tuple form `{Resource, attrs}`. Defaults to `true`.
   """
   @spec seed_generator(
           Ash.Resource.record()
@@ -447,21 +451,28 @@ defmodule Ash.Generator do
             |> StreamData.fixed_map()
 
           {resource, attributes} ->
-            resource
-            |> Ash.Resource.Info.attributes()
-            |> Enum.reject(&(!&1.writable? && &1.generated?))
-            |> generate_attributes(
-              to_generators(
-                Map.put(
-                  Map.merge(attributes, Map.new(opts[:overrides] || %{})),
-                  :__will_be_struct__,
-                  resource
-                )
-              ),
-              false,
-              :create,
-              []
-            )
+            merged = Map.merge(attributes, Map.new(opts[:overrides] || %{}))
+
+            if opts[:generate_rest?] == false do
+              validate_required_attributes(resource, merged, :create)
+
+              merged
+              |> to_generators()
+              |> Map.put(:__will_be_struct__, resource)
+              |> StreamData.fixed_map()
+            else
+              resource
+              |> Ash.Resource.Info.attributes()
+              |> Enum.reject(&(!&1.writable? && &1.generated?))
+              |> generate_attributes(
+                to_generators(
+                  Map.put(merged, :__will_be_struct__, resource)
+                ),
+                false,
+                :create,
+                []
+              )
+            end
         end
       end)
       |> StreamData.map(fn keys ->
@@ -502,15 +513,22 @@ defmodule Ash.Generator do
           |> StreamData.fixed_map()
 
         {_resource, attributes} ->
-          resource
-          |> Ash.Resource.Info.attributes()
-          |> Enum.reject(&(!&1.writable? && &1.generated?))
-          |> generate_attributes(
-            to_generators(Map.merge(attributes, Map.new(opts[:overrides] || %{}))),
-            false,
-            :create,
-            []
-          )
+          merged = Map.merge(attributes, Map.new(opts[:overrides] || %{}))
+
+          if opts[:generate_rest?] == false do
+            validate_required_attributes(resource, merged, :create)
+            merged |> to_generators() |> StreamData.fixed_map()
+          else
+            resource
+            |> Ash.Resource.Info.attributes()
+            |> Enum.reject(&(!&1.writable? && &1.generated?))
+            |> generate_attributes(
+              to_generators(merged),
+              false,
+              :create,
+              []
+            )
+          end
       end
       |> StreamData.map(fn keys ->
         Ash.Resource.set_metadata(
@@ -1120,6 +1138,23 @@ defmodule Ash.Generator do
     {StreamData.fixed_map(required), StreamData.optional_map(optional)}
     |> StreamData.map(fn {required, optional} ->
       Map.merge(required, optional)
+    end)
+  end
+
+  defp validate_required_attributes(resource, generators, action_type) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.reject(&(!&1.writable? && &1.generated?))
+    |> Enum.each(fn attribute ->
+      default =
+        if action_type == :create, do: attribute.default, else: attribute.update_default
+
+      if !attribute.allow_nil? && is_nil(default) && !Map.has_key?(generators, attribute.name) do
+        raise ArgumentError,
+              "Attribute #{inspect(attribute.name)} on #{inspect(resource)} is required " <>
+                "(allow_nil?: false) and has no default, but no generator was provided. " <>
+                "Add a generator for this attribute or set generate_rest?: true."
+      end
     end)
   end
 
