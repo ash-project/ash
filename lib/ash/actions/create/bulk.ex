@@ -2059,32 +2059,7 @@ defmodule Ash.Actions.Create.Bulk do
             end)
 
           module.atomic?() ->
-            Enum.map(batch, fn changeset ->
-              change = %{
-                change
-                | change:
-                    {module,
-                     templated_opts(
-                       change_opts,
-                       actor,
-                       changeset.to_tenant,
-                       changeset.arguments,
-                       changeset.context,
-                       changeset
-                     )}
-              }
-
-              case Ash.Changeset.run_atomic_change(changeset, change, context) do
-                {:not_atomic, reason} ->
-                  Ash.Changeset.add_error(
-                    changeset,
-                    "Could not be made atomic: #{inspect(reason)}"
-                  )
-
-                changeset ->
-                  changeset
-              end
-            end)
+            batch_atomic_change(batch, change, module, change_opts, context, actor)
 
           true ->
             raise "#{inspect(module)} must define at least one of `atomic/3`, `change/3` or `batch_change/3`"
@@ -2138,36 +2113,40 @@ defmodule Ash.Actions.Create.Bulk do
             end)
 
           module.atomic?() ->
-            Enum.map(batch, fn changeset ->
-              change = %{
-                change
-                | change:
-                    {module,
-                     templated_opts(
-                       change_opts,
-                       actor,
-                       changeset.to_tenant,
-                       changeset.arguments,
-                       changeset.context,
-                       changeset
-                     )}
-              }
-
-              case Ash.Changeset.run_atomic_change(changeset, change, context) do
-                {:not_atomic, reason} ->
-                  Ash.Changeset.add_error(
-                    changeset,
-                    "Could not be made atomic: #{inspect(reason)}"
-                  )
-
-                changeset ->
-                  changeset
-              end
-            end)
+            batch_atomic_change(batch, change, module, change_opts, context, actor)
 
           true ->
             raise "#{inspect(module)} must define at least one of `atomic/3`, `change/3` or `batch_change/3`"
         end
     end
+  end
+
+  defp batch_atomic_change(batch, change, module, change_opts, context, actor) do
+    Enum.map(batch, fn changeset ->
+      change = %{
+        change
+        | change:
+            {module,
+             templated_opts(
+               change_opts,
+               actor,
+               changeset.to_tenant,
+               changeset.arguments,
+               changeset.context,
+               changeset
+             )}
+      }
+
+      case Ash.Changeset.run_atomic_change(changeset, change, context) do
+        {:not_atomic, reason} ->
+          Ash.Changeset.add_error(
+            changeset,
+            "Could not be made atomic: #{inspect(reason)}"
+          )
+
+        changeset ->
+          changeset
+      end
+    end)
   end
 end

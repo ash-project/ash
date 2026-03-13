@@ -255,6 +255,29 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule AtomicOnlyChange do
+    @moduledoc "A change that only implements atomic/3 — no change/3 or batch_change/3."
+    use Ash.Resource.Change
+
+    @impl true
+    def atomic(_changeset, opts, _context) do
+      value = opts[:expr]
+      attribute = opts[:attribute]
+
+      {:atomic_set, %{attribute => value}}
+    end
+  end
+
+  defmodule NotAtomicChange do
+    @moduledoc "A change that always returns {:not_atomic, reason} from atomic/3."
+    use Ash.Resource.Change
+
+    @impl true
+    def atomic(_changeset, _opts, _context) do
+      {:not_atomic, "this change cannot run atomically"}
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -410,6 +433,19 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         argument :title_suffix, :string, allow_nil?: false
 
         change atomic_set(:title2, expr(^arg(:title_suffix) <> "_computed"))
+      end
+
+      create :create_with_atomic_only_change do
+        accept [:title]
+
+        argument :suffix, :string, allow_nil?: false
+
+        change {AtomicOnlyChange, attribute: :title2, expr: expr(^arg(:suffix) <> "_atomic_only")}
+      end
+
+      create :create_with_not_atomic_change do
+        accept [:title]
+        change NotAtomicChange
       end
     end
 
@@ -2490,7 +2526,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     test "atomic_set changes are applied to each record" do
       org = Ash.create!(Org, %{})
 
-      assert %Ash.BulkResult{status: :success, records: [record1, record2]} =
+      assert %Ash.BulkResult{status: :success, records: records} =
                Ash.bulk_create!(
                  [
                    %{title: "post1", title_suffix: "alpha"},
@@ -2503,6 +2539,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  tenant: org.id
                )
 
+      [record1, record2] = Enum.sort_by(records, & &1.title)
       assert record1.title2 == "alpha_computed"
       assert record2.title2 == "beta_computed"
     end
@@ -2521,6 +2558,41 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                )
 
       assert record.title2 == "gamma_computed"
+    end
+
+    test "atomic-only change module (no change/3) works in bulk_create" do
+      org = Ash.create!(Org, %{})
+
+      assert %Ash.BulkResult{status: :success, records: records} =
+               Ash.bulk_create!(
+                 [
+                   %{title: "post1", suffix: "foo"},
+                   %{title: "post2", suffix: "bar"}
+                 ],
+                 Post,
+                 :create_with_atomic_only_change,
+                 return_records?: true,
+                 authorize?: false,
+                 tenant: org.id
+               )
+
+      [record1, record2] = Enum.sort_by(records, & &1.title)
+      assert record1.title2 == "foo_atomic_only"
+      assert record2.title2 == "bar_atomic_only"
+    end
+
+    test "not_atomic change adds error to changeset in bulk_create" do
+      org = Ash.create!(Org, %{})
+
+      assert %Ash.BulkResult{status: :error, errors: [_ | _]} =
+               Ash.bulk_create(
+                 [%{title: "post1"}],
+                 Post,
+                 :create_with_not_atomic_change,
+                 return_errors?: true,
+                 authorize?: false,
+                 tenant: org.id
+               )
     end
   end
 end
