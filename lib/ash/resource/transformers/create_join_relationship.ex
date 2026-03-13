@@ -31,6 +31,9 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
 
           {:halt, {:error, error}}
 
+        nil when is_list(relationship.through) ->
+          {:cont, {:ok, dsl_state}}
+
         nil ->
           {:ok, join_relationship} =
             Transformer.build_entity(

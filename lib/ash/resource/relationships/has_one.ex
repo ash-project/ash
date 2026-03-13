@@ -25,6 +25,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :violation_message,
     :manual,
     :writable?,
+    :through,
     filters: [],
     from_many?: false,
     no_attributes?: false,
@@ -63,6 +64,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           manual: atom | {atom, Keyword.t()} | nil,
           sort: Keyword.t() | nil,
           default_sort: Keyword.t() | nil,
+          through: list(atom) | nil,
           offset: non_neg_integer() | nil,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
@@ -75,6 +77,13 @@ defmodule Ash.Resource.Relationships.HasOne do
   @opt_schema Spark.Options.merge(
                 [manual(), no_attributes()] ++
                   [
+                    through: [
+                      type: {:wrap_list, :atom},
+                      doc: """
+                      A list of relationship names to traverse. The result will be the first record
+                      reachable by following the relationships in order.
+                      """
+                    ],
                     allow_nil?: [
                       type: :boolean,
                       default: true,
