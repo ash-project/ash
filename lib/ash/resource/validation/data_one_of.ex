@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.DataOneOf do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidAttribute
   import Ash.Expr
@@ -81,7 +82,7 @@ defmodule Ash.Resource.Validation.DataOneOf do
          %{
            field: ^opts[:attribute],
            value: ^error_value,
-           message: ^(context.message || "expected one of %{values}"),
+           message: ^(context.message || error_message("expected one of %{values}")),
            vars: %{values: ^Enum.map_join(opts[:values], ", ", &to_string/1)}
          }
        )
@@ -91,7 +92,7 @@ defmodule Ash.Resource.Validation.DataOneOf do
   @impl true
   def describe(opts) do
     [
-      message: "expected one of %{values}",
+      message: error_message("expected one of %{values}"),
       vars: [values: Enum.map_join(opts[:values], ", ", &to_string/1)]
     ]
   end
