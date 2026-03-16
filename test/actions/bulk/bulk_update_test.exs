@@ -2433,5 +2433,24 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
       assert Exception.message(error) =~ "status cannot be ugly"
     end
+
+    test "before_action? validation falls back from atomic to stream strategy" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "initial"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :success, records: [%{status: "good"}]} =
+               Ash.bulk_update(
+                 [post],
+                 :update,
+                 %{title: "good"},
+                 resource: PostWithBulkValidationOrdering,
+                 return_records?: true,
+                 return_errors?: true,
+                 strategy: [:atomic, :stream],
+                 authorize?: false
+               )
+    end
   end
 end
