@@ -4,19 +4,19 @@
 
 defmodule Ash.Error.Framework.InvalidReturnType do
   @moduledoc """
-  Raised when a behaviour implementation returns a value that does not match
-  the behaviour's callback return type.
+  This error is raised when a behaviour implementation returns a value that
+  does not match the behaviour's callback return type.
 
   The `message` field should identify the behaviour module, the callback
-  (e.g. `Module.function/arity`), and list the allowed return shapes so
+  (e.g. `module.function/arity`), and list the allowed return shapes so
   implementors can fix the return value.
 
   ## Usage in behaviour wrappers
 
-  Wrappers should call the implementation and then either match the result
-  against the allowed shapes or use `Ash.BehaviourHelpers.call_and_validate_return/5`.
+  Wrappers should call the implementation and then match the result against
+  the allowed shapes, or use `Ash.BehaviourHelpers.call_and_validate_return/5`.
   When the result does not match any allowed shape, raise this error with a
-  message in the format above (behaviour, callback, and allowed shapes).
+  message in that format (behaviour module, callback, and allowed shapes).
   """
 
   use Splode.Error, fields: [:message], class: :framework

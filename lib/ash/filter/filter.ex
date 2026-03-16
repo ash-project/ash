@@ -799,7 +799,7 @@ defmodule Ash.Filter do
         false
     end)
     |> Enum.flat_map(fn %{attribute: calculation} = calculation_ref ->
-      if calculation.module.has_expression?() do
+      if Ash.Resource.Calculation.has_expression?(calculation.module) do
         expression =
           Ash.Resource.Calculation.expression(
             calculation.module,
@@ -2222,7 +2222,7 @@ defmodule Ash.Filter do
          with_references?,
          expand_aggregates?
        ) do
-    if module.has_expression?() do
+    if Ash.Resource.Calculation.has_expression?(module) do
       expression = Ash.Resource.Calculation.expression(module, opts, context)
 
       case hydrate_refs(expression, %{
@@ -2757,7 +2757,7 @@ defmodule Ash.Filter do
         attribute: %Calculation{module: module, opts: opts, context: context},
         relationship_path: calc_relationship_path
       } = ref ->
-        if expand_calculations? && module.has_expression?() do
+        if expand_calculations? && Ash.Resource.Calculation.has_expression?(module) do
           expression = Ash.Resource.Calculation.expression(module, opts, context)
 
           case hydrate_refs(expression, %{
@@ -3500,7 +3500,7 @@ defmodule Ash.Filter do
         true
 
       data_layer = context[:data_layer] ->
-        data_layer.can?(context.resource, {:filter_expr, expr})
+        Ash.DataLayer.can?(data_layer, context.resource, {:filter_expr, expr})
 
       true ->
         Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, expr})

@@ -890,7 +890,7 @@ defmodule Ash.Filter.Runtime do
         {:ok, result}
 
       :unknown ->
-        if module.has_expression?() do
+        if Ash.Resource.Calculation.has_expression?(module) do
           expression = Ash.Resource.Calculation.expression(module, opts, context)
 
           expression =

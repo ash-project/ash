@@ -270,6 +270,24 @@ defmodule Ash.Resource.Change do
     end
   end
 
+  @doc false
+  @spec batch_callbacks?(
+          module(),
+          any(),
+          Keyword.t(),
+          map()
+        ) :: boolean()
+  def batch_callbacks?(module, changesets_or_query, opts, context) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :batch_callbacks?,
+      [changesets_or_query, opts, context],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "batch_callbacks?/3"
+    )
+  end
+
   defmodule Context do
     @moduledoc """
     The context for a change.
@@ -481,7 +499,7 @@ defmodule Ash.Resource.Change do
               Ash.Changeset.before_action(changeset, fn changeset ->
                 {[changeset], notifications} =
                   Enum.split_with(
-                    apply(__MODULE__, :before_batch, [[changeset], opts, context]),
+                    Ash.Resource.Change.before_batch(__MODULE__, [changeset], opts, context),
                     fn
                       %Ash.Notifier.Notification{} ->
                         false
@@ -506,7 +524,7 @@ defmodule Ash.Resource.Change do
           if Module.defines?(__MODULE__, {:after_batch, 3}, :def) do
             defp simulate_after_batch(changeset, opts, context) do
               Ash.Changeset.after_action(changeset, fn changeset, result ->
-                apply(__MODULE__, :after_batch, [[{changeset, result}], opts, context])
+                Ash.Resource.Change.after_batch(__MODULE__, [{changeset, result}], opts, context)
                 |> then(fn
                   :ok -> [{:ok, result}]
                   other -> other

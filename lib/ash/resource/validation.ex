@@ -166,7 +166,7 @@ defmodule Ash.Resource.Validation do
 
       defp with_description(keyword, opts) do
         if Kernel.function_exported?(__MODULE__, :describe, 1) do
-          keyword ++ apply(__MODULE__, :describe, [opts])
+          keyword ++ Ash.Resource.Validation.describe(__MODULE__, opts)
         else
           keyword
         end
@@ -246,7 +246,7 @@ defmodule Ash.Resource.Validation do
   end
 
   @doc false
-  @spec describe(module(), Keyword.t()) ::
+  @spec describe(module(), Keyword.t() | map()) ::
           String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
   def describe(module, opts) do
     result = apply(module, :describe, [opts])

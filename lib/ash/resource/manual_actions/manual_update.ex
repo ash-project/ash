@@ -117,7 +117,7 @@ defmodule Ash.Resource.ManualUpdate do
             | {:notifications, list(Ash.Notifier.Notification.t())}
           )
   def bulk_update(module, changesets, opts, context) do
-    result = module.bulk_update(changesets, opts, context)
+    result = apply(module, :bulk_update, [changesets, opts, context])
 
     if is_list(result) and Enum.all?(result, &valid_bulk_update_result?/1) do
       result

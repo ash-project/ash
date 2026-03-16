@@ -324,7 +324,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                   fn
                     %{change: {module, change_opts}} ->
                       module.has_after_batch?() &&
-                        module.batch_callbacks?(query, change_opts, context)
+                        Ash.Resource.Change.batch_callbacks?(module, query, change_opts, context)
 
                     _ ->
                       false

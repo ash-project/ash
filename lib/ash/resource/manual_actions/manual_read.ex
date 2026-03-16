@@ -73,18 +73,14 @@ defmodule Ash.Resource.ManualRead do
           | {:ok, list(Ash.Resource.record()), extra_info()}
           | {:error, term()}
   def load_relationships(module, query, results, opts, context, lazy?) do
-    result = module.load_relationships(query, results, opts, context, lazy?)
-
-    if match?({:ok, _}, result) or match?({:ok, _, _}, result) or match?({:error, _}, result) do
-      result
-    else
-      raise Ash.Error.Framework.InvalidReturnType,
-        message: """
-        Invalid value returned from #{inspect(module)}.load_relationships/5.
-
-        The callback #{inspect(__MODULE__)}.load_relationships/5 expects {:ok, list}, {:ok, list, extra_info}, or {:error, term}.
-        """
-    end
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :load_relationships,
+      [query, results, opts, context, lazy?],
+      [{:ok, :_}, {:ok, :_, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "load_relationships/5"
+    )
   end
 
   defmacro __using__(_) do

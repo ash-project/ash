@@ -1815,7 +1815,7 @@ defmodule Ash.Actions.Read.Relationships do
               field: %Ash.Query.Calculation{module: module, opts: opts, context: context}
             }
           } ->
-            if module.has_expression?() do
+            if Ash.Resource.Calculation.has_expression?(module) do
               Ash.Resource.Calculation.expression(module, opts, context)
               |> do_has_parent_expr?(depth + 1)
             else

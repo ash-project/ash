@@ -2027,7 +2027,7 @@ defmodule Ash.Actions.Read do
 
           case aggregate.field do
             %Ash.Query.Calculation{} = calculation ->
-              if calculation.module.has_expression?() and
+              if Ash.Resource.Calculation.has_expression?(calculation.module) and
                    Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
                 expression =
                   Ash.Resource.Calculation.expression(
@@ -2476,7 +2476,7 @@ defmodule Ash.Actions.Read do
       } = ref ->
         calc = add_calc_context(calc, actor, authorize?, tenant, tracer, domain, resource, opts)
 
-        if Keyword.get(opts, :expand?, false) && calc.module.has_expression?() do
+        if Keyword.get(opts, :expand?, false) && Ash.Resource.Calculation.has_expression?(calc.module) do
           expr =
             case Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context) do
               %Ash.Query.Function.Type{} = expr ->
@@ -2627,7 +2627,7 @@ defmodule Ash.Actions.Read do
   defp should_expand_expression?(struct, calc, opts) do
     struct == Ash.Query.Calculation &&
       Keyword.get(opts, :expand?, true) &&
-      calc.module.has_expression?()
+      Ash.Resource.Calculation.has_expression?(calc.module)
   end
 
   defp expand_expression(calc, resource, parent_stack, first_combination) do
@@ -4594,7 +4594,7 @@ defmodule Ash.Actions.Read do
 
     related_resource = Ash.Resource.Info.related(agg.resource, agg.relationship_path)
 
-    if calc.module.has_expression?() do
+    if Ash.Resource.Calculation.has_expression?(calc.module) do
       expr =
         case Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context) do
           %Ash.Query.Function.Type{} = expr ->

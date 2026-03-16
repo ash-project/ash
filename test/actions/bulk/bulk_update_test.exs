@@ -19,6 +19,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
     def notify(notification) do
       send(self(), {:notification, notification})
+      :ok
     end
   end
 

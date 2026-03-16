@@ -60,7 +60,7 @@ defmodule Ash.Authorizer do
           Ash.Domain.t()
         ) :: state
   def initial_state(module, actor, resource, action, domain) do
-    result = module.initial_state(actor, resource, action, domain)
+    result = apply(module, :initial_state, [actor, resource, action, domain])
 
     if is_map(result) do
       result
@@ -78,7 +78,7 @@ defmodule Ash.Authorizer do
   @spec exception(module(), atom(), state()) :: no_return
   def exception(module, reason, state) do
     if function_exported?(module, :exception, 2) do
-      module.exception(reason, state)
+      apply(module, :exception, [reason, state])
     else
       if reason == :must_pass_strict_check do
         raise Ash.Error.Forbidden.MustPassStrictCheck.exception([])
@@ -91,7 +91,7 @@ defmodule Ash.Authorizer do
   @doc false
   @spec strict_check_context(module(), state()) :: [atom()]
   def strict_check_context(module, state) do
-    result = module.strict_check_context(state)
+    result = apply(module, :strict_check_context, [state])
 
     if is_list(result) and Enum.all?(result, &is_atom/1) do
       Enum.uniq(result ++ [:query, :changeset])
@@ -190,18 +190,14 @@ defmodule Ash.Authorizer do
           {:ok, term()} | {:error, Ash.Error.t()}
   def alter_sort(module, state, sort, context) do
     if function_exported?(module, :alter_sort, 3) do
-      result = module.alter_sort(sort, state, context)
-
-      if match?({:ok, _}, result) or match?({:error, _}, result) do
-        result
-      else
-        raise Ash.Error.Framework.InvalidReturnType,
-          message: """
-          Invalid value returned from #{inspect(module)}.alter_sort/3.
-
-          The callback expects {:ok, sort} or {:error, Ash.Error.t()}.
-          """
-      end
+      Ash.BehaviourHelpers.call_and_validate_return(
+        module,
+        :alter_sort,
+        [sort, state, context],
+        [{:ok, :_}, {:error, :_}],
+        behaviour: __MODULE__,
+        callback_name: "alter_sort/3"
+      )
     else
       {:ok, sort}
     end
@@ -210,7 +206,7 @@ defmodule Ash.Authorizer do
   @doc false
   @spec check_context(module(), state()) :: [atom()]
   def check_context(module, state) do
-    result = module.check_context(state)
+    result = apply(module, :check_context, [state])
 
     if is_list(result) and Enum.all?(result, &is_atom/1) do
       result

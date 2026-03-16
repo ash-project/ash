@@ -136,7 +136,7 @@ defmodule Ash.Policy.Check do
   @spec check(module(), actor(), [Ash.Resource.record()], map(), options()) ::
           [Ash.Resource.record()]
   def check(module, actor, records, context, opts) do
-    result = module.check(actor, records, context, opts)
+    result = apply(module, :check, [actor, records, context, opts])
 
     if is_list(result) do
       result
@@ -154,7 +154,7 @@ defmodule Ash.Policy.Check do
   @spec auto_filter(module(), actor(), authorizer(), options()) ::
           Keyword.t() | Ash.Expr.t() | nil
   def auto_filter(module, actor, authorizer, opts) do
-    result = module.auto_filter(actor, authorizer, opts)
+    result = apply(module, :auto_filter, [actor, authorizer, opts])
 
     if is_list(result) or is_struct(result) or is_tuple(result) or is_nil(result) or
          result == false do
@@ -173,7 +173,7 @@ defmodule Ash.Policy.Check do
   @spec auto_filter_not(module(), actor(), authorizer(), options()) ::
           Keyword.t() | Ash.Expr.t() | nil
   def auto_filter_not(module, actor, authorizer, opts) do
-    result = module.auto_filter_not(actor, authorizer, opts)
+    result = apply(module, :auto_filter_not, [actor, authorizer, opts])
 
     if is_list(result) or is_struct(result) or is_tuple(result) or is_nil(result) or
          result == false do
@@ -191,7 +191,7 @@ defmodule Ash.Policy.Check do
   @doc false
   @spec describe(module(), options()) :: String.t()
   def describe(module, opts) do
-    result = module.describe(opts)
+    result = apply(module, :describe, [opts])
 
     if is_binary(result) do
       result
@@ -210,18 +210,14 @@ defmodule Ash.Policy.Check do
           {:ok, String.t()} | :none
   def expand_description(module, actor, authorizer, opts) do
     if function_exported?(module, :expand_description, 3) do
-      result = module.expand_description(actor, authorizer, opts)
-
-      if match?({:ok, _}, result) or result == :none do
-        result
-      else
-        raise Ash.Error.Framework.InvalidReturnType,
-          message: """
-          Invalid value returned from #{inspect(module)}.expand_description/3.
-
-          The callback #{inspect(__MODULE__)}.expand_description/3 expects {:ok, String.t()} or :none.
-          """
-      end
+      Ash.BehaviourHelpers.call_and_validate_return(
+        module,
+        :expand_description,
+        [actor, authorizer, opts],
+        [{:ok, :_}, :none],
+        behaviour: __MODULE__,
+        callback_name: "expand_description/3"
+      )
     else
       :none
     end
@@ -230,42 +226,34 @@ defmodule Ash.Policy.Check do
   @doc false
   @spec requires_original_data?(module(), authorizer(), options()) :: boolean()
   def requires_original_data?(module, authorizer, opts) do
-    result = module.requires_original_data?(authorizer, opts)
-
-    if is_boolean(result) do
-      result
-    else
-      raise Ash.Error.Framework.InvalidReturnType,
-        message: """
-        Invalid value returned from #{inspect(module)}.requires_original_data?/2.
-
-        The callback #{inspect(__MODULE__)}.requires_original_data?/2 expects a boolean.
-        """
-    end
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :requires_original_data?,
+      [authorizer, opts],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "requires_original_data?/2"
+    )
   end
 
   @doc false
   @spec type(module()) :: check_type()
   def type(module) do
-    result = module.type()
-
-    if result in [:simple, :filter, :manual] do
-      result
-    else
-      raise Ash.Error.Framework.InvalidReturnType,
-        message: """
-        Invalid value returned from #{inspect(module)}.type/0.
-
-        The callback #{inspect(__MODULE__)}.type/0 expects :simple, :filter, or :manual.
-        """
-    end
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :type,
+      [],
+      [:simple, :filter, :manual],
+      behaviour: __MODULE__,
+      callback_name: "type/0"
+    )
   end
 
   @doc false
   @spec simplify(module(), ref(), context()) :: Crux.Expression.t(ref())
   def simplify(module, ref, context) do
     if function_exported?(module, :simplify, 2) do
-      result = module.simplify(ref, context)
+      result = apply(module, :simplify, [ref, context])
 
       if result != nil do
         result
@@ -286,18 +274,14 @@ defmodule Ash.Policy.Check do
   @spec implies?(module(), ref(), ref(), context()) :: boolean()
   def implies?(module, left, right, context) do
     if function_exported?(module, :implies?, 3) do
-      result = module.implies?(left, right, context)
-
-      if is_boolean(result) do
-        result
-      else
-        raise Ash.Error.Framework.InvalidReturnType,
-          message: """
-          Invalid value returned from #{inspect(module)}.implies?/3.
-
-          The callback #{inspect(__MODULE__)}.implies?/3 expects a boolean.
-          """
-      end
+      Ash.BehaviourHelpers.call_and_validate_return(
+        module,
+        :implies?,
+        [left, right, context],
+        [true, false],
+        behaviour: __MODULE__,
+        callback_name: "implies?/3"
+      )
     else
       false
     end
@@ -307,21 +291,43 @@ defmodule Ash.Policy.Check do
   @spec conflicts?(module(), ref(), ref(), context()) :: boolean()
   def conflicts?(module, left, right, context) do
     if function_exported?(module, :conflicts?, 3) do
-      result = module.conflicts?(left, right, context)
-
-      if is_boolean(result) do
-        result
-      else
-        raise Ash.Error.Framework.InvalidReturnType,
-          message: """
-          Invalid value returned from #{inspect(module)}.conflicts?/3.
-
-          The callback #{inspect(__MODULE__)}.conflicts?/3 expects a boolean.
-          """
-      end
+      Ash.BehaviourHelpers.call_and_validate_return(
+        module,
+        :conflicts?,
+        [left, right, context],
+        [true, false],
+        behaviour: __MODULE__,
+        callback_name: "conflicts?/3"
+      )
     else
       false
     end
+  end
+
+  @doc false
+  @spec prefer_expanded_description?(module()) :: boolean()
+  def prefer_expanded_description?(module) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :prefer_expanded_description?,
+      [],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "prefer_expanded_description?/0"
+    )
+  end
+
+  @doc false
+  @spec eager_evaluate?(module()) :: boolean()
+  def eager_evaluate?(module) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :eager_evaluate?,
+      [],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "eager_evaluate?/0"
+    )
   end
 
   def defines_check?(module) do

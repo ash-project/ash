@@ -17,6 +17,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
     def notify(notification) do
       send(self(), {:notification, notification})
+      :ok
     end
   end
 

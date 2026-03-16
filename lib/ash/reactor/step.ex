@@ -46,7 +46,7 @@ defmodule Ash.Reactor.Step do
   @doc false
   @spec run(module(), Reactor.inputs(), Reactor.context(), keyword()) :: run_result()
   def run(step_module, arguments, context, options) do
-    result = step_module.run(arguments, context, options)
+    result = apply(step_module, :run, [arguments, context, options])
 
     if valid_run_result?(result) do
       result
@@ -65,7 +65,7 @@ defmodule Ash.Reactor.Step do
           compensate_result()
   def compensate(step_module, reason, arguments, context, options) do
     if function_exported?(step_module, :compensate, 4) do
-      result = step_module.compensate(reason, arguments, context, options)
+      result = apply(step_module, :compensate, [reason, arguments, context, options])
 
       if valid_compensate_result?(result) do
         result
@@ -86,7 +86,7 @@ defmodule Ash.Reactor.Step do
   @spec undo(module(), any(), Reactor.inputs(), Reactor.context(), keyword()) :: undo_result()
   def undo(step_module, value, arguments, context, options) do
     if function_exported?(step_module, :undo, 4) do
-      result = step_module.undo(value, arguments, context, options)
+      result = apply(step_module, :undo, [value, arguments, context, options])
 
       if valid_undo_result?(result) do
         result

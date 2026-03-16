@@ -110,10 +110,14 @@ defmodule Ash.Resource.Preparation do
           Ash.Resource.Preparation.Context.t()
         ) :: Ash.Query.t() | Ash.ActionInput.t()
   def prepare(module, query_or_input, opts, context) do
-    Ash.BehaviourHelpers.check_type!(module, module.prepare(query_or_input, opts, context), [
-      %Ash.Query{},
-      %Ash.ActionInput{}
-    ])
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :prepare,
+      [query_or_input, opts, context],
+      [%Ash.Query{}, %Ash.ActionInput{}],
+      behaviour: __MODULE__,
+      callback_name: "prepare/3"
+    )
   end
 
   defmodule Context do

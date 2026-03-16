@@ -13,7 +13,7 @@ defmodule Ash.Resource.Validation.AttributesPresent do
 
   @impl true
   def init(opts) do
-    Present.init(opts)
+    Ash.Resource.Validation.init(Present, opts)
   end
 
   @impl true

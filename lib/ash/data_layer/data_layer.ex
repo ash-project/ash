@@ -366,7 +366,17 @@ defmodule Ash.DataLayer do
   def prefer_lateral_join_for_many_to_many?(data_layer) do
     if Code.ensure_loaded?(data_layer) &&
          function_exported?(data_layer, :prefer_lateral_join_for_many_to_many?, 0) do
-      data_layer.prefer_lateral_join_for_many_to_many?()
+      result = apply(data_layer, :prefer_lateral_join_for_many_to_many?, [])
+
+      if is_boolean(result) do
+        result
+      else
+        raise Ash.Error.Framework.InvalidReturnType,
+          message: """
+          Invalid value returned from #{inspect(data_layer)}.prefer_lateral_join_for_many_to_many?/0.
+          The callback #{inspect(__MODULE__)}.prefer_lateral_join_for_many_to_many?/0 expects a boolean.
+          """
+      end
     else
       true
     end
@@ -422,7 +432,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec prefer_transaction?(module(), Ash.Resource.t()) :: boolean
   def prefer_transaction?(data_layer_module, resource) do
-    result = data_layer_module.prefer_transaction?(resource)
+    result = apply(data_layer_module, :prefer_transaction?, [resource])
 
     if is_boolean(result) do
       result
@@ -452,7 +462,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec prefer_transaction_for_atomic_updates?(module(), Ash.Resource.t()) :: boolean
   def prefer_transaction_for_atomic_updates?(data_layer_module, resource) do
-    result = data_layer_module.prefer_transaction_for_atomic_updates?(resource)
+    result = apply(data_layer_module, :prefer_transaction_for_atomic_updates?, [resource])
 
     if is_boolean(result) do
       result
@@ -557,7 +567,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec run_transaction(module(), Ash.Resource.t(), (-> term)) :: {:ok, term} | {:error, term}
   def run_transaction(data_layer_module, resource, callback) do
-    result = data_layer_module.transaction(resource, callback)
+    result = apply(data_layer_module, :transaction, [resource, callback])
 
     if match?({:ok, _}, result) or match?({:error, _}, result) do
       result
@@ -574,7 +584,7 @@ defmodule Ash.DataLayer do
   @spec run_transaction(module(), Ash.Resource.t(), (-> term), nil | pos_integer()) ::
           {:ok, term} | {:error, term}
   def run_transaction(data_layer_module, resource, callback, timeout) do
-    result = data_layer_module.transaction(resource, callback, timeout)
+    result = apply(data_layer_module, :transaction, [resource, callback, timeout])
 
     if match?({:ok, _}, result) or match?({:error, _}, result) do
       result
@@ -597,7 +607,7 @@ defmodule Ash.DataLayer do
         ) ::
           {:ok, term} | {:error, term}
   def run_transaction(data_layer_module, resource, callback, timeout, reason) do
-    result = data_layer_module.transaction(resource, callback, timeout, reason)
+    result = apply(data_layer_module, :transaction, [resource, callback, timeout, reason])
 
     if match?({:ok, _}, result) or match?({:error, _}, result) do
       result
@@ -623,7 +633,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec rollback(module(), Ash.Resource.t(), term) :: no_return
   def rollback(data_layer_module, resource, term) do
-    data_layer_module.rollback(resource, term)
+    apply(data_layer_module, :rollback, [resource, term])
   end
 
   @spec resource_to_query(Ash.Resource.t(), Ash.Domain.t()) :: data_layer_query()
@@ -634,7 +644,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec resource_to_query(module(), Ash.Resource.t(), Ash.Domain.t()) :: data_layer_query()
   def resource_to_query(data_layer_module, resource, domain) do
-    data_layer_module.resource_to_query(resource, domain)
+    apply(data_layer_module, :resource_to_query, [resource, domain])
   end
 
   @spec update(Ash.Resource.t(), Ash.Changeset.t()) ::
@@ -688,7 +698,7 @@ defmodule Ash.DataLayer do
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def update_query(data_layer_module, query, changeset, resource, opts) do
-    result = data_layer_module.update_query(query, changeset, resource, opts)
+    result = apply(data_layer_module, :update_query, [query, changeset, resource, opts])
 
     if match?(:ok, result) or match?({:ok, _}, result) or match?({:error, _}, result) or
          match?({:error, :no_rollback, _}, result) do
@@ -732,7 +742,7 @@ defmodule Ash.DataLayer do
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def destroy_query(data_layer_module, query, changeset, resource, opts) do
-    result = data_layer_module.destroy_query(query, changeset, resource, opts)
+    result = apply(data_layer_module, :destroy_query, [query, changeset, resource, opts])
 
     if match?(:ok, result) or match?({:ok, _}, result) or match?({:error, _}, result) or
          match?({:error, :no_rollback, _}, result) do
@@ -824,7 +834,7 @@ defmodule Ash.DataLayer do
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def bulk_create(data_layer_module, resource, changesets, options) do
-    result = data_layer_module.bulk_create(resource, changesets, options)
+    result = apply(data_layer_module, :bulk_create, [resource, changesets, options])
 
     if match?(:ok, result) or match?({:ok, _}, result) or match?({:partial_success, _, _}, result) or
          match?({:error, _}, result) or match?({:error, :no_rollback, _}, result) do
@@ -923,7 +933,7 @@ defmodule Ash.DataLayer do
           | {:error, term}
           | {:error, :no_rollback, term}
   def run_upsert(data_layer_module, resource, changeset, keys) do
-    result = data_layer_module.upsert(resource, changeset, keys)
+    result = apply(data_layer_module, :upsert, [resource, changeset, keys])
 
     if match?({:ok, _}, result) or match?({:error, _}, result) or
          match?({:error, :no_rollback, _}, result) do
@@ -950,7 +960,7 @@ defmodule Ash.DataLayer do
           | {:error, term}
           | {:error, :no_rollback, term}
   def run_upsert(data_layer_module, resource, changeset, keys, identity) do
-    result = data_layer_module.upsert(resource, changeset, keys, identity)
+    result = apply(data_layer_module, :upsert, [resource, changeset, keys, identity])
 
     if match?({:ok, _}, result) or match?({:error, _}, result) or
          match?({:error, :no_rollback, _}, result) do
@@ -1084,7 +1094,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec run_combination_acc(module(), data_layer_query()) :: any()
   def run_combination_acc(data_layer_module, data_layer_query) do
-    data_layer_module.combination_acc(data_layer_query)
+    apply(data_layer_module, :combination_acc, [data_layer_query])
   end
 
   @spec sort(data_layer_query(), Ash.Sort.t(), Ash.Resource.t()) ::
@@ -1371,7 +1381,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec can?(module(), Ash.Resource.t() | Spark.Dsl.t(), feature()) :: boolean
   def can?(data_layer_module, resource, feature) do
-    result = data_layer_module.can?(resource, feature)
+    result = apply(data_layer_module, :can?, [resource, feature])
 
     if is_boolean(result) do
       result
@@ -1496,13 +1506,13 @@ defmodule Ash.DataLayer do
         path
       ) do
     result =
-      data_layer_module.run_aggregate_query_with_lateral_join(
+      apply(data_layer_module, :run_aggregate_query_with_lateral_join, [
         query,
         aggregates,
         root_data,
         destination_resource,
         path
-      )
+      ])
 
     if match?({:ok, _}, result) or match?({:error, _}, result) do
       result
@@ -1567,7 +1577,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec in_transaction?(module(), Ash.Resource.t()) :: boolean
   def in_transaction?(data_layer_module, resource) do
-    result = data_layer_module.in_transaction?(resource)
+    result = apply(data_layer_module, :in_transaction?, [resource])
 
     if is_boolean(result) do
       result
@@ -1593,7 +1603,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec functions(module(), Ash.Resource.t()) :: [module()]
   def functions(data_layer_module, resource) do
-    result = data_layer_module.functions(resource)
+    result = apply(data_layer_module, :functions, [resource])
 
     if is_list(result) do
       result
@@ -1619,7 +1629,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec transform_query(module(), Ash.Query.t()) :: Ash.Query.t()
   def transform_query(data_layer_module, query) do
-    result = data_layer_module.transform_query(query)
+    result = apply(data_layer_module, :transform_query, [query])
 
     if is_struct(result, Ash.Query) do
       result
@@ -1635,7 +1645,7 @@ defmodule Ash.DataLayer do
   @doc false
   @spec source(module(), Ash.Resource.t()) :: String.t()
   def source(data_layer_module, resource) do
-    result = data_layer_module.source(resource)
+    result = apply(data_layer_module, :source, [resource])
 
     if is_binary(result) do
       result

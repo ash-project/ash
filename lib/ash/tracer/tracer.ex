@@ -139,7 +139,7 @@ defmodule Ash.Tracer do
   end
 
   def stop_span(tracer) do
-    result = tracer.stop_span()
+    result = apply(tracer, :stop_span, [])
 
     if result == :ok do
       :ok
@@ -156,7 +156,7 @@ defmodule Ash.Tracer do
   @spec trace_type?(module(), atom()) :: boolean()
   def trace_type?(tracer, type) do
     if function_exported?(tracer, :trace_type?, 1) do
-      result = tracer.trace_type?(type)
+      result = apply(tracer, :trace_type?, [type])
 
       if is_boolean(result) do
         result
@@ -183,7 +183,7 @@ defmodule Ash.Tracer do
 
   def start_span(tracer, type, name) do
     name = resolve_lazy(name)
-    result = tracer.start_span(type, name)
+    result = apply(tracer, :start_span, [type, name])
 
     if result == :ok do
       :ok
@@ -206,7 +206,7 @@ defmodule Ash.Tracer do
 
   def set_handled_error(tracer, error, opts) do
     if function_exported?(tracer, :set_handled_error, 2) do
-      result = tracer.set_handled_error(error, opts)
+      result = apply(tracer, :set_handled_error, [error, opts])
 
       if result == :ok do
         :ok
@@ -233,9 +233,9 @@ defmodule Ash.Tracer do
   def set_error(tracer, error, opts) do
     result =
       if function_exported?(tracer, :set_error, 2) do
-        tracer.set_error(error, opts)
+        apply(tracer, :set_error, [error, opts])
       else
-        tracer.set_error(error)
+        apply(tracer, :set_error, [error])
       end
 
     if result == :ok do
@@ -260,9 +260,9 @@ defmodule Ash.Tracer do
   def set_error(tracer, error) do
     result =
       if function_exported?(tracer, :set_error, 2) do
-        tracer.set_error(error, [])
+        apply(tracer, :set_error, [error, []])
       else
-        tracer.set_error(error)
+        apply(tracer, :set_error, [error])
       end
 
     if result == :ok do
@@ -285,7 +285,7 @@ defmodule Ash.Tracer do
   end
 
   def get_span_context(tracer) do
-    tracer.get_span_context()
+    apply(tracer, :get_span_context, [])
   end
 
   @spec set_span_context(nil | module(), term()) :: :ok
@@ -296,7 +296,7 @@ defmodule Ash.Tracer do
   end
 
   def set_span_context(tracer, context) do
-    result = tracer.set_span_context(context)
+    result = apply(tracer, :set_span_context, [context])
 
     if result == :ok do
       :ok
@@ -326,7 +326,7 @@ defmodule Ash.Tracer do
   def set_metadata(tracer, type, metadata) do
     if Ash.Tracer.trace_type?(tracer, type) do
       metadata = resolve_lazy(metadata)
-      result = tracer.set_metadata(type, metadata)
+      result = apply(tracer, :set_metadata, [type, metadata])
 
       if result == :ok do
         :ok

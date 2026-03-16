@@ -81,7 +81,7 @@ defmodule Ash.Actions.Helpers do
                     changeset
                   )
 
-                if mod.batch_callbacks?([changeset], change_opts, context) do
+                if Ash.Resource.Change.batch_callbacks?(mod, [changeset], change_opts, context) do
                   [%{change | change: {mod, change_opts}}]
                 else
                   []

@@ -14,6 +14,7 @@ defmodule Ash.Test.GeneratorTest do
 
     def notify(notification) do
       send(Application.get_env(__MODULE__, :notifier_test_pid), {:notification, notification})
+      :ok
     end
   end
 

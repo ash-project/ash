@@ -152,7 +152,7 @@ defmodule Ash.Resource.Validation.Any do
 
     validation_messages =
       Enum.map(validations, fn {validation, validation_opts} ->
-        case validation.describe(validation_opts) do
+        case Ash.Resource.Validation.describe(validation, validation_opts) do
           message when is_binary(message) -> message
           options -> options[:message]
         end

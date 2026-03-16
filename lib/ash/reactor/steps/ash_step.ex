@@ -90,7 +90,7 @@ defmodule Ash.Reactor.AshStep do
           maybe_set_kw(acc, k, v)
         end)
 
-      module.compensate(reason, arguments, context, options)
+      Ash.Reactor.Step.compensate(module, reason, arguments, context, options)
     else
       case Keyword.fetch(options, :compensate) do
         {:ok, fun} when is_function(fun, 1) ->

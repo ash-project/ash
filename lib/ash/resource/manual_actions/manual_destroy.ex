@@ -121,7 +121,7 @@ defmodule Ash.Resource.ManualDestroy do
             | {:notifications, list(Ash.Notifier.Notification.t())}
           )
   def bulk_destroy(module, changesets, opts, context) do
-    result = module.bulk_destroy(changesets, opts, context)
+    result = apply(module, :bulk_destroy, [changesets, opts, context])
 
     if is_list(result) and Enum.all?(result, &valid_bulk_destroy_result?/1) do
       result

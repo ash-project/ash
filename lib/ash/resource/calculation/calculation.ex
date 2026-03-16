@@ -231,7 +231,7 @@ defmodule Ash.Resource.Calculation do
   @doc false
   @spec describe(module(), opts) :: String.t()
   def describe(module, opts) do
-    result = module.describe(opts)
+    result = apply(module, :describe, [opts])
 
     if is_binary(result) do
       result
@@ -249,7 +249,7 @@ defmodule Ash.Resource.Calculation do
   @spec calculate(module(), [Ash.Resource.record()], opts, Context.t()) ::
           {:ok, [term()]} | [term()] | {:error, term()} | :unknown
   def calculate(module, records, opts, context) do
-    result = module.calculate(records, opts, context)
+    result = apply(module, :calculate, [records, opts, context])
 
     if match?({:ok, _}, result) or is_list(result) or match?({:error, _}, result) or
          result == :unknown do
@@ -267,14 +267,14 @@ defmodule Ash.Resource.Calculation do
   @doc false
   @spec expression(module(), opts, Context.t()) :: any()
   def expression(module, opts, context) do
-    module.expression(opts, context)
+    apply(module, :expression, [opts, context])
   end
 
   @doc false
   @spec load(module(), Ash.Query.t(), opts, Context.t() | map()) ::
           atom() | [atom()] | Keyword.t()
   def load(module, query, opts, context) do
-    result = module.load(query, opts, context)
+    result = apply(module, :load, [query, opts, context])
 
     # Accept atom or list (implementations may return list of atoms, keyword list, or list of refs)
     if is_atom(result) or is_list(result) do
@@ -287,6 +287,45 @@ defmodule Ash.Resource.Calculation do
         The callback #{inspect(__MODULE__)}.load/3 expects an atom or a list.
         """
     end
+  end
+
+  @doc false
+  @spec has_expression?(module()) :: boolean()
+  def has_expression?(module) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :has_expression?,
+      [],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "has_expression?/0"
+    )
+  end
+
+  @doc false
+  @spec has_calculate?(module()) :: boolean()
+  def has_calculate?(module) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :has_calculate?,
+      [],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "has_calculate?/0"
+    )
+  end
+
+  @doc false
+  @spec strict_loads?(module()) :: boolean()
+  def strict_loads?(module) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :strict_loads?,
+      [],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "strict_loads?/0"
+    )
   end
 
   @doc false
