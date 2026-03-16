@@ -25,6 +25,23 @@ defmodule Ash.Extension do
   @callback tear_down(argv) :: term
   @callback codegen(argv) :: term
 
+  @doc """
+  Returns a list of extension modules that this extension depends on.
+
+  When Ash mix tasks (codegen, migrate, setup, etc.) run extensions, they will
+  be topologically sorted so that dependencies run before the extensions that
+  depend on them.
+
+  Extensions not present in the current project are ignored.
+
+  ## Example
+
+      def dependencies do
+        [AshPostgres.DataLayer]
+      end
+  """
+  @callback dependencies() :: [module()]
+
   @callback install(
               igniter,
               module :: module(),
@@ -40,6 +57,7 @@ defmodule Ash.Extension do
     setup: 1,
     tear_down: 1,
     codegen: 1,
+    dependencies: 0,
     install: 5
   ]
 end

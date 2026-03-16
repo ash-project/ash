@@ -12,43 +12,128 @@ defmodule Ash.Mix.Tasks.Helpers do
   """
   @spec extensions!(argv :: [String.t()], opts :: [in_use?: boolean()]) :: [module()]
   def extensions!(argv, opts \\ []) do
-    if opts[:in_use?] do
-      Mix.shell().info("Getting extensions in use by resources in current project...")
-      domains = Ash.Mix.Tasks.Helpers.domains!(argv)
+    extensions =
+      if opts[:in_use?] do
+        Mix.shell().info("Getting extensions in use by resources in current project...")
+        domains = Ash.Mix.Tasks.Helpers.domains!(argv)
 
-      extensions =
-        Enum.flat_map(
-          domains,
-          &Ash.Domain.Info.extensions(&1, include_resource_extensions?: true)
-        )
+        extensions =
+          Enum.flat_map(
+            domains,
+            &Ash.Domain.Info.extensions(&1, include_resource_extensions?: true)
+          )
 
-      if extensions == [] do
-        Mix.shell().info("No extensions in use by resources in current project...")
-      end
-
-      extensions
-    else
-      Mix.shell().info("Getting extensions in current project...")
-
-      apps =
-        if Code.ensure_loaded?(Mix.Project) do
-          if apps_paths = Mix.Project.apps_paths() do
-            apps_paths |> Map.keys() |> Enum.sort()
-          else
-            [Mix.Project.config()[:app]]
-          end
-        else
-          []
+        if extensions == [] do
+          Mix.shell().info("No extensions in use by resources in current project...")
         end
 
-      apps()
-      |> Stream.concat(apps)
-      |> Stream.uniq()
-      |> Task.async_stream(&Ash.Info.defined_extensions/1, timeout: :infinity, ordered: false)
-      |> Stream.map(&elem(&1, 1))
-      |> Stream.flat_map(& &1)
-      |> Stream.uniq()
-      |> Enum.to_list()
+        extensions
+      else
+        Mix.shell().info("Getting extensions in current project...")
+
+        apps =
+          if Code.ensure_loaded?(Mix.Project) do
+            if apps_paths = Mix.Project.apps_paths() do
+              apps_paths |> Map.keys() |> Enum.sort()
+            else
+              [Mix.Project.config()[:app]]
+            end
+          else
+            []
+          end
+
+        apps()
+        |> Stream.concat(apps)
+        |> Stream.uniq()
+        |> Task.async_stream(&Ash.Info.defined_extensions/1, timeout: :infinity, ordered: false)
+        |> Stream.map(&elem(&1, 1))
+        |> Stream.flat_map(& &1)
+        |> Stream.uniq()
+        |> Enum.to_list()
+      end
+
+    sort_extensions(extensions)
+  end
+
+  @doc """
+  Topologically sorts extensions based on their declared dependencies.
+
+  Extensions can implement `dependencies/0` to return a list of extension modules
+  that must run before them. Dependencies not present in the given list are ignored.
+
+  Raises if a circular dependency is detected.
+  """
+  @spec sort_extensions([module()]) :: [module()]
+  def sort_extensions(extensions) do
+    extension_set = MapSet.new(extensions)
+
+    # Build dependency graph: extension -> list of extensions it depends on (filtered to present ones)
+    graph =
+      Map.new(extensions, fn ext ->
+        deps =
+          if function_exported?(ext, :dependencies, 0) do
+            ext.dependencies() |> Enum.filter(&MapSet.member?(extension_set, &1))
+          else
+            []
+          end
+
+        {ext, deps}
+      end)
+
+    topological_sort(graph)
+  end
+
+  defp topological_sort(graph) do
+    nodes = Map.keys(graph)
+
+    in_degrees = Map.new(graph, fn {node, deps} -> {node, length(deps)} end)
+
+    dependents =
+      Enum.reduce(graph, Map.new(nodes, &{&1, []}), fn {node, deps}, acc ->
+        Enum.reduce(deps, acc, fn dep, acc ->
+          Map.update!(acc, dep, &[node | &1])
+        end)
+      end)
+
+    queue = :queue.from_list(for {node, 0} <- in_degrees, do: node)
+
+    do_topological_sort(queue, in_degrees, dependents, [])
+  end
+
+  defp do_topological_sort(queue, in_degrees, dependents, result) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        sorted = Enum.reverse(result)
+
+        if length(sorted) != map_size(in_degrees) do
+          remaining =
+            in_degrees
+            |> Enum.reject(fn {node, _} -> node in sorted end)
+            |> Enum.map(&elem(&1, 0))
+
+          raise """
+          Circular dependency detected among extensions: #{Enum.map_join(remaining, ", ", &inspect/1)}
+
+          Please check the `dependencies/0` callbacks on these extensions.
+          """
+        end
+
+        sorted
+
+      {{:value, node}, queue} ->
+        {queue, in_degrees} =
+          Enum.reduce(
+            Map.get(dependents, node, []),
+            {queue, in_degrees},
+            fn dependent, {queue, in_degrees} ->
+              new_degree = in_degrees[dependent] - 1
+              in_degrees = Map.put(in_degrees, dependent, new_degree)
+              queue = if new_degree == 0, do: :queue.in(dependent, queue), else: queue
+              {queue, in_degrees}
+            end
+          )
+
+        do_topological_sort(queue, in_degrees, dependents, [node | result])
     end
   end
 
