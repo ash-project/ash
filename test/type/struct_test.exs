@@ -239,7 +239,7 @@ defmodule Type.StructTest do
     assert [
              %Ash.Error.Changes.InvalidAttribute{
                field: :bar,
-               message: "must be more than or equal to %{min}",
+               message: "must be greater than or equal to %{min}",
                private_vars: nil,
                value: %{bar: -1, foo: "hello"},
                bread_crumbs: [],
@@ -274,7 +274,7 @@ defmodule Type.StructTest do
            end)
 
     assert Enum.any?(errors, fn error ->
-             error.field == :bar && error.message == "must be more than or equal to %{min}"
+             error.field == :bar && error.message == "must be greater than or equal to %{min}"
            end)
   end
 
@@ -344,7 +344,7 @@ defmodule Type.StructTest do
 
     # Check for age minimum error
     assert Enum.any?(errors, fn error ->
-             error.field == :age && String.contains?(error.message, "more than")
+             error.field == :age && String.contains?(error.message, "greater than")
            end)
 
     # Check for email format error
@@ -376,7 +376,7 @@ defmodule Type.StructTest do
           |> Enum.map(&(&1[:message] || to_string(&1)))
 
         assert Enum.any?(error_messages, &String.contains?(&1, "must be present"))
-        assert Enum.any?(error_messages, &String.contains?(&1, "more than"))
+        assert Enum.any?(error_messages, &String.contains?(&1, "greater than"))
 
       {:ok, _} ->
         flunk("Expected validation errors but got success")

@@ -388,6 +388,7 @@ defmodule Ash.Changeset do
 
   require Ash.Tracer
   import Ash.Expr
+  import Ash.Gettext
   require Logger
 
   defmodule OriginalDataNotAvailable do
@@ -3491,7 +3492,7 @@ defmodule Ash.Changeset do
         changeset,
         InvalidAttribute.exception(
           field: key,
-          message: "cannot be changed",
+          message: error_message("cannot be changed"),
           value: changeset.attributes[key]
         )
       )
@@ -5927,7 +5928,7 @@ defmodule Ash.Changeset do
         error =
           InvalidRelationship.exception(
             relationship: relationship.name,
-            message: "relationship is not editable"
+            message: error_message("relationship is not editable")
           )
 
         add_error(changeset, error)
@@ -5936,7 +5937,7 @@ defmodule Ash.Changeset do
         error =
           InvalidRelationship.exception(
             relationship: relationship.name,
-            message: "cannot manage a manual relationship"
+            message: error_message("cannot manage a manual relationship")
           )
 
         add_error(changeset, error)
@@ -6026,7 +6027,7 @@ defmodule Ash.Changeset do
               changeset,
               InvalidRelationship.exception(
                 relationship: relationship.name,
-                message: "cannot provide structs that don't match the destination"
+                message: error_message("cannot provide structs that don't match the destination")
               )
             )
           else
