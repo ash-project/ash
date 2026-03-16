@@ -22,7 +22,8 @@ defmodule Ash.Resource.Verifiers.ValidateMultitenancy do
     data_layer = Verifier.get_persisted(dsl_state, :data_layer)
 
     cond do
-      strategy == :context && data_layer && not Ash.DataLayer.can?(data_layer, resource, :multitenancy) ->
+      strategy == :context && data_layer &&
+          not Ash.DataLayer.can?(data_layer, resource, :multitenancy) ->
         # Get location info for the multitenancy strategy option
         strategy_anno = Extension.get_opt_anno(dsl_state, [:multitenancy], :strategy)
 
