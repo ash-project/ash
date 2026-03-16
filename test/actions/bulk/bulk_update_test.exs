@@ -245,6 +245,20 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule ValidateStatusNotUgly do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_attribute(changeset, :status) do
+        nil -> {:error, field: :status, message: "status must be set by hook"}
+        "ugly" -> {:error, field: :status, message: "status cannot be ugly"}
+        _ -> :ok
+      end
+    end
+  end
+
   defmodule PostWithBulkValidationOrdering do
     @moduledoc false
     use Ash.Resource,
@@ -272,6 +286,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
     validations do
       validate ValidateStatusPresenceAndNotBad, on: [:update]
+      validate ValidateStatusNotUgly, on: [:update], before_action?: true
     end
 
     attributes do
@@ -2360,7 +2375,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   end
 
   describe "bulk_update global validation ordering" do
-    test "succeeds when global change sets status that passes validation" do
+    test "succeeds when global change sets status that passes both validations" do
       post =
         PostWithBulkValidationOrdering
         |> Ash.Changeset.for_create(:create, %{title: "initial"})
@@ -2379,7 +2394,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                )
     end
 
-    test "global validation rejects with correct error" do
+    test "regular global validation rejects with correct error" do
       post =
         PostWithBulkValidationOrdering
         |> Ash.Changeset.for_create(:create, %{title: "initial"})
@@ -2397,6 +2412,45 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                )
 
       assert Exception.message(error) =~ "status cannot be bad"
+    end
+
+    test "before_action? global validation rejects with correct error" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "initial"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_update(
+                 [post],
+                 :update,
+                 %{title: "ugly"},
+                 resource: PostWithBulkValidationOrdering,
+                 return_errors?: true,
+                 strategy: :stream,
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "status cannot be ugly"
+    end
+
+    test "before_action? validation falls back from atomic to stream strategy" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "initial"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :success, records: [%{status: "good"}]} =
+               Ash.bulk_update(
+                 [post],
+                 :update,
+                 %{title: "good"},
+                 resource: PostWithBulkValidationOrdering,
+                 return_records?: true,
+                 return_errors?: true,
+                 strategy: [:atomic, :stream],
+                 authorize?: false
+               )
     end
   end
 end
