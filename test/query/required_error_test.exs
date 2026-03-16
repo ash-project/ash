@@ -57,4 +57,3 @@ defmodule Ash.Test.Query.RequiredErrorTest do
     assert RequiredError.evaluate_nil_inputs?() == true
   end
 end
-
