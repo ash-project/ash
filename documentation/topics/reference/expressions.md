@@ -87,6 +87,7 @@ The following functions are built in:
 - String interpolation | `"#{first_name} #{last_name}"`, is remapped to the equivalent usage of `<>`
 - `fragment/*` | Creates a fragment of a data layer expression. See the section on fragments below.
 - `error/2` | Raises an error with a given exception module and parameters. See the section on error expressions below.
+- `ash_required!/2` | Returns the given value when present, or produces a required-attribute error when it is `nil`. Typically used as `expr(ash_required!(^value, ^attribute))` where `attribute` has at least `:name` and `:resource`.
 
 ## Fragments
 
