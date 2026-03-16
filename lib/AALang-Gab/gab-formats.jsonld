@@ -1,0 +1,121 @@
+{
+  "@context": {
+    "@vocab": "https://aalang.dev/gab/",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ex": "https://aalang.dev/gab/example/"
+  },
+  "@graph": [
+    {
+      "@id": "ex:CopyrightNotice",
+      "@type": "Copyright",
+      "copyright": "Copyright (c) 2025 Lee S. Barney",
+      "license": "Permission is hereby granted, free of charge, to any person obtaining a copy of this software (the 'Software'), including AALang and GAB, to use, copy, modify, merge, publish, and distribute the Software for private, educational, and business purposes, subject to the following conditions:\n\n1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\n2. RESTRICTION ON SALE: The Software, including but not limited to this file, any modified versions of this file, any portions of this file, any derivative works based on this file, and any other files comprising AALang or GAB, may NOT be sold, licensed for a fee, or otherwise commercialized. This restriction applies to the Software in its original form, in any modified form, in any derivative form, and to any portion or component thereof.\n\n3. PRODUCTS BUILT WITH SOFTWARE: Products built using the Software may be used, distributed, and sold freely for any purpose (public, private, free, or commercial) without restriction.\n\nTHE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
+      "note": "This copyright notice applies to this file and all AALang and GAB specification files. Users may use AALang and GAB for private, educational, and business purposes but cannot sell the files, modified versions, portions, or derivatives thereof. Products built with AALang/GAB may be sold without restriction."
+    },
+    {
+      "@id": "ex:DebugLogging",
+      "@type": "Process",
+      "trigger": "When debug_duh is ON (send state request message to ex:DebugModeStatePersona and check response for 'Debug mode: ON')",
+      "process": [
+        "1. Send state request message to ex:DebugModeStatePersona to check debug_duh status. Follow ex:SemanticFilteringProtocol (see message-protocol.jsonld - read complete protocol definition and execute all steps) to extract debug mode value from response message",
+        "2. If debug_duh ON: Capture all inter-actor messages (within mode and across modes)",
+        "3. Include complete AALang metadata: routing graph, payload, timestamps",
+        "4. Assign sequential message numbers",
+        "5. Send state request message to ex:ProductNameStatePersona to get productName. If productName is set, use '{productName}/{productName}-debug.md', otherwise use 'product/product-debug.md' as fallback. Overwrite at start of each session (or append if continuing session)",
+        "6. Log ALL questions asked by personas or user to debug log file with timestamp and message number",
+        "7. Log ALL decisions to debug log file with timestamp and message number (decisions are also logged to decision log file)",
+        "8. Append each message, question, and decision with timestamp and message number",
+        "9. Make internal routing metadata visible in user-facing output"
+      ],
+      "outputFormat": {
+        "messageNumber": "Sequential number starting at 1",
+        "timestamp": "ISO 8601 format",
+        "metadata": "Complete AALang message structure (routingGraph, payload, metadata fields)",
+        "naturalLanguage": "Natural language content from payload"
+      },
+      "file": "Dynamic - format: '{productName}/{productName}-debug.md' where productName comes from ex:ProductNameStatePersona (request via state request message)",
+      "filenamePattern": "{productName}/{productName}-debug.md",
+      "overwrite": true,
+      "note": "Personas must send state request message to ex:DebugModeStatePersona to check debug_duh status before logging or showing debug information. When ON: ALL questions and ALL decisions are logged to debug log file. When OFF: debug logging is disabled, internal metadata is hidden from user, and questions are NOT logged (decisions are still logged to decision log file). Debug file location: send state request message to ex:ProductNameStatePersona to get productName, if set use '{productName}/{productName}-debug.md', otherwise use 'product/product-debug.md' as fallback."
+    },
+    {
+      "@id": "ex:DecisionLogging",
+      "@type": "Process",
+      "purpose": "Log all decisions made during AALang product building process (decisions only, not questions)",
+      "trigger": "Whenever a decision is made by personas or user (Team Lead)",
+      "distinction": {
+        "decision": "A choice that affects product structure, mode/actor/agent definitions, workflow progression, or architectural design. Decisions are ALWAYS logged to decision log file regardless of debug mode.",
+        "question": "A request for information or clarification that does not yet constitute a decision. Questions are ONLY logged to debug log file when debug mode is ON."
+      },
+      "file": "Dynamic - format: '{productName}/{productName}-build-log.md' where productName comes from ex:ProductNameStatePersona (request via state request message)",
+      "filenamePattern": "{productName}/{productName}-build-log.md",
+      "append": true,
+      "initialization": {
+        "when": "First decision of session",
+        "action": "Send state request message to ex:ProductNameStatePersona to get productName. If productName is set, use '{productName}/{productName}-build-log.md', otherwise use 'product/product-build-log.md' as fallback. Create the determined directory if it doesn't exist, then create the determined file with header: '# GAB Decision Log' and table header row"
+      },
+      "entryFormat": {
+        "requiredElements": [
+          "Decision # (sequential number)",
+          "Date (YYYY-MM-DD)",
+          "Time (HH:MM:SS or ISO 8601)",
+          "Decision (description of decision made)",
+          "Rationale (reasoning for the decision)",
+          "Impact (what this decision affects)",
+          "Proposed By (persona name(s) or 'Team Lead')",
+          "Status (Pending/Approved/Rejected)"
+        ],
+        "tableFormat": "Markdown table with columns: Decision # | Date | Time | Decision | Rationale | Impact | Proposed By | Status",
+        "example": "| 1 | 2025-01-27 | 14:30:00 | Use 2-mode architecture for prompt | Discussion mode requires both design and assessment perspectives | Affects mode definitions, actor distribution, and communication patterns | DiscussionPersona1 & DiscussionPersona2 | Approved |"
+      },
+      "process": [
+        "1. Send state request message to ex:DecisionLogStatePersona to get current decisionCount, then send state update message to increment it",
+        "2. Capture decision details: description, rationale, impact, proposer",
+        "3. Get current date and time",
+        "4. Format as markdown table row following entryFormat",
+        "5. Send state request message to ex:ProductNameStatePersona to get productName. If productName is set, use '{productName}/{productName}-build-log.md', otherwise use 'product/product-build-log.md' as fallback. Create the determined directory if it doesn't exist",
+        "6. Append to the determined build log filename",
+        "7. Send state update message to ex:DecisionLogStatePersona to update decisionCount and lastDecision"
+      ],
+      "decisionSources": [
+        "Persona consensus decisions",
+        "User (Team Lead) decisions",
+        "Escalated decisions (when personas cannot reach consensus)",
+        "Mode transition decisions",
+        "Architectural decisions (modes, actors, agents needed)",
+        "State update decisions (setting satisfaction indicators, product name, etc.)"
+      ],
+      "note": "Product name must be determined during Clarification Mode and stored via state update message to ex:ProductNameStatePersona. If productName is not yet set, use 'product/product-build-log.md' as fallback. Every DECISION made during the building process must be logged to decision log file (format: '{productName}/{productName}-build-log.md') regardless of debug mode. QUESTIONS are only logged to debug log file when debug mode is ON. Decision log entries must match the format found in aalang-design.jsonld decision log table."
+    },
+    {
+      "@id": "ex:OutputFormat",
+      "@type": "Format",
+      "purpose": "User-facing output format specification",
+      "initialResponse": {
+        "showOnly": "User instructions from ex:InitialResponse",
+        "format": "Clear, user-friendly explanation of how to use GAB (Generic AALang Builder)",
+        "hide": [
+          "DO NOT mention: modes, actors, graph structure, JSON-LD, RDF, technical architecture",
+          "DO NOT explain system internals or implementation details"
+        ]
+      },
+      "workOutput": {
+        "format": "Natural language discussions and work artifacts",
+        "show": [
+          "Persona messages and discussions",
+          "Escalated consensus questions",
+          "Clarification questions with confidence levels",
+          "Work artifacts and results",
+          "Generated AALang products (JSON-LD, markdown, etc.)"
+        ],
+        "hide": [
+          "Internal routing metadata (unless debug_duh is ON - send state request message to ex:DebugModeStatePersona to check debug mode status, follow ex:SemanticFilteringProtocol (see message-protocol.jsonld - read complete protocol definition and execute all steps) to extract value)",
+          "Internal state management details (unless debug_duh is ON - send state request message to ex:DebugModeStatePersona to check debug mode status)"
+        ],
+        "debugMode": "When debug_duh is ON (send state request message to ex:DebugModeStatePersona to check debug mode status, follow ex:SemanticFilteringProtocol (see message-protocol.jsonld - read complete protocol definition and execute all steps) to extract value), show all internal routing metadata, actor behaviors, message sequences, and state transitions to user"
+      }
+    }
+  ]
+}
+

@@ -474,7 +474,8 @@ defmodule Ash.Can do
             {:ok, true, subject},
             fn authorizer, {:ok, true, subject} ->
               authorizer_state =
-                authorizer.initial_state(
+                Ash.Authorizer.initial_state(
+                  authorizer,
                   actor,
                   subject.resource,
                   subject.action,
@@ -605,7 +606,8 @@ defmodule Ash.Can do
       Ash.Resource.Info.authorizers(subject.resource)
       |> Enum.map(fn authorizer ->
         authorizer_state =
-          authorizer.initial_state(
+          Ash.Authorizer.initial_state(
+            authorizer,
             actor,
             subject.resource,
             subject.action,
@@ -655,7 +657,7 @@ defmodule Ash.Can do
         |> Enum.reduce_while(
           {false, base_query, []},
           fn {authorizer, authorizer_state, context}, {_authorized?, query, authorizers} ->
-            case authorizer.strict_check(authorizer_state, context) do
+            case Ash.Authorizer.strict_check(authorizer, authorizer_state, context) do
               {:error, %{class: :forbidden} = e} when is_exception(e) ->
                 {:halt, {false, e, {authorizer, authorizer_state, context}}}
 
@@ -725,7 +727,7 @@ defmodule Ash.Can do
                         fn query, results ->
                           context = Map.merge(context, %{data: results, query: query})
 
-                          case authorizer.check(authorizer_state, context) do
+                          case Ash.Authorizer.check(authorizer, authorizer_state, context) do
                             :authorized ->
                               {:ok, results}
 
@@ -782,7 +784,7 @@ defmodule Ash.Can do
                       |> Ash.Query.authorize_results(fn query, results ->
                         context = Map.merge(context, %{data: results, query: query})
 
-                        case authorizer.check(authorizer_state, context) do
+                        case Ash.Authorizer.check(authorizer, authorizer_state, context) do
                           :authorized ->
                             {:ok, results}
 

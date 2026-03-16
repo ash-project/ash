@@ -82,7 +82,7 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
           dsl
           |> Ash.Resource.Info.notifiers()
           |> Enum.filter(fn notifier ->
-            notifier.requires_original_data?(module, action)
+            Ash.Notifier.requires_original_data?(notifier, module, action)
           end)
           |> case do
             [] ->

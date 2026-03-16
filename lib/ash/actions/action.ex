@@ -320,7 +320,8 @@ defmodule Ash.Actions.Action do
       :ok,
       fn authorizer, :ok ->
         authorizer_state =
-          authorizer.initial_state(
+          Ash.Authorizer.initial_state(
+            authorizer,
             actor,
             input.resource,
             input.action,
@@ -334,7 +335,7 @@ defmodule Ash.Actions.Action do
           changeset: nil
         }
 
-        case authorizer.strict_check(authorizer_state, context) do
+        case Ash.Authorizer.strict_check(authorizer, authorizer_state, context) do
           {:error, %{class: :forbidden} = e} when is_exception(e) ->
             {:halt, {:error, e}}
 

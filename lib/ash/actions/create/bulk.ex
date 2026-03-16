@@ -1240,34 +1240,39 @@ defmodule Ash.Actions.Create.Bulk do
                   end
 
                 if function_exported?(mod, :bulk_create, 3) do
-                  mod.bulk_create(batch, manual_opts, %Ash.Resource.ManualCreate.BulkContext{
-                    actor: opts[:actor],
-                    select: opts[:select],
-                    batch_size: opts[:batch_size],
-                    authorize?: opts[:authorize?],
-                    source_context: source_context,
-                    tracer: opts[:tracer],
-                    domain: domain,
-                    upsert?: opts[:upsert?] || action.upsert?,
-                    upsert_keys: upsert_keys,
-                    identity:
-                      (opts[:upsert_identity] || action.upsert_identity) &&
-                        Ash.Resource.Info.identity(
-                          resource,
-                          opts[:upsert_identity] || action.upsert_identity
+                  Ash.Resource.ManualCreate.bulk_create(
+                    mod,
+                    batch,
+                    manual_opts,
+                    %Ash.Resource.ManualCreate.BulkContext{
+                      actor: opts[:actor],
+                      select: opts[:select],
+                      batch_size: opts[:batch_size],
+                      authorize?: opts[:authorize?],
+                      source_context: source_context,
+                      tracer: opts[:tracer],
+                      domain: domain,
+                      upsert?: opts[:upsert?] || action.upsert?,
+                      upsert_keys: upsert_keys,
+                      identity:
+                        (opts[:upsert_identity] || action.upsert_identity) &&
+                          Ash.Resource.Info.identity(
+                            resource,
+                            opts[:upsert_identity] || action.upsert_identity
+                          ),
+                      upsert_fields:
+                        Ash.Changeset.expand_upsert_fields(
+                          opts[:upsert_fields] || action.upsert_fields,
+                          resource
                         ),
-                    upsert_fields:
-                      Ash.Changeset.expand_upsert_fields(
-                        opts[:upsert_fields] || action.upsert_fields,
-                        resource
-                      ),
-                    return_records?:
-                      opts[:return_records?] || must_return_records? ||
-                        must_return_records_for_changes?,
-                    return_notifications?: opts[:return_notifications?] || false,
-                    return_errors?: opts[:return_errors?] || false,
-                    tenant: opts[:tenant]
-                  })
+                      return_records?:
+                        opts[:return_records?] || must_return_records? ||
+                          must_return_records_for_changes?,
+                      return_notifications?: opts[:return_notifications?] || false,
+                      return_errors?: opts[:return_errors?] || false,
+                      tenant: opts[:tenant]
+                    }
+                  )
                 else
                   ctx = %Ash.Resource.ManualCreate.Context{
                     actor: opts[:actor],
@@ -1296,7 +1301,7 @@ defmodule Ash.Actions.Create.Bulk do
                   [changeset] = batch
 
                   [
-                    mod.create(changeset, manual_opts, ctx)
+                    Ash.Resource.ManualCreate.create(mod, changeset, manual_opts, ctx)
                     |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
                       changeset,
                       :bulk_create,
@@ -1845,17 +1850,95 @@ defmodule Ash.Actions.Create.Bulk do
       fn
         {%{validation: {module, opts}} = validation, _change_index}, %{batch: batch} = state ->
           batch =
-            if validation.before_action? do
-              Enum.map(batch, fn changeset ->
-                Ash.Changeset.before_action(changeset, fn changeset ->
-                  run_bulk_validation(changeset, validation, module, opts, context, actor)
-                end)
-              end)
-            else
-              Enum.map(batch, fn changeset ->
-                run_bulk_validation(changeset, validation, module, opts, context, actor)
-              end)
-            end
+            Enum.map(batch, fn changeset ->
+              cond do
+                !module.has_validate?() ->
+                  Ash.Changeset.add_error(
+                    changeset,
+                    Ash.Error.Framework.CanNotBeAtomic.exception(
+                      resource: changeset.resource,
+                      change: module,
+                      reason: "Create actions cannot be made atomic"
+                    )
+                  )
+
+                invalid =
+                    Enum.find(validation.where, fn {where_mod, _} -> !where_mod.has_validate?() end) ->
+                  {invalid_mod, _} = invalid
+
+                  Ash.Changeset.add_error(
+                    changeset,
+                    Ash.Error.Framework.CanNotBeAtomic.exception(
+                      resource: changeset.resource,
+                      change: invalid_mod,
+                      reason: "Create actions cannot be made atomic"
+                    )
+                  )
+
+                validation.only_when_valid? && !changeset.valid? ->
+                  changeset
+
+                Enum.all?(validation.where || [], fn {where_mod, where_opts} ->
+                  where_opts =
+                      templated_opts(
+                        where_opts,
+                        actor,
+                        changeset.to_tenant,
+                        changeset.arguments,
+                        changeset.context,
+                        changeset
+                      )
+
+                  {:ok, where_opts} = Ash.Resource.Validation.init(where_mod, where_opts)
+
+                  Ash.Resource.Validation.validate(
+                    where_mod,
+                    changeset,
+                    where_opts,
+                    struct(Ash.Resource.Validation.Context, context)
+                  ) == :ok
+                end) ->
+                  opts =
+                    templated_opts(
+                      opts,
+                      actor,
+                      changeset.to_tenant,
+                      changeset.arguments,
+                      changeset.context,
+                      changeset
+                    )
+
+                  {:ok, opts} = Ash.Resource.Validation.init(module, opts)
+
+                  case Ash.Resource.Validation.validate(
+                         module,
+                         changeset,
+                         opts,
+                         struct(
+                           Ash.Resource.Validation.Context,
+                           Map.put(context, :message, validation.message)
+                         )
+                       ) do
+                    :ok ->
+                      changeset
+
+                    {:error, error} ->
+                      error = Ash.Error.to_ash_error(error)
+
+                      if validation.message do
+                        error =
+                          Ash.Error.override_validation_message(error, validation.message)
+
+                        Ash.Changeset.add_error(changeset, error)
+                      else
+                        Ash.Changeset.add_error(changeset, error)
+                      end
+                  end
+
+                true ->
+                  changeset
+              end
+            end)
 
           %{
             state
@@ -1876,7 +1959,7 @@ defmodule Ash.Actions.Create.Bulk do
                 end) ||
                 (module.has_batch_change?() &&
                    module.has_after_batch?() &&
-                   module.batch_callbacks?(batch, change_opts, context))
+                   Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context))
 
             %{
               state
@@ -1900,7 +1983,7 @@ defmodule Ash.Actions.Create.Bulk do
                         changeset
                       )
 
-                    {:ok, opts} = module.init(opts)
+                    {:ok, opts} = Ash.Resource.Validation.init(module, opts)
 
                     Ash.Resource.Validation.validate(
                       module,
@@ -1937,7 +2020,7 @@ defmodule Ash.Actions.Create.Bulk do
                   end) ||
                   (module.has_batch_change?() &&
                      module.has_after_batch?() &&
-                     module.batch_callbacks?(batch, change_opts, context))
+                     Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context))
 
               %{
                 state
@@ -1957,102 +2040,13 @@ defmodule Ash.Actions.Create.Bulk do
     )
   end
 
-  defp run_bulk_validation(changeset, validation, module, opts, context, actor) do
-    cond do
-      !module.has_validate?() ->
-        Ash.Changeset.add_error(
-          changeset,
-          Ash.Error.Framework.CanNotBeAtomic.exception(
-            resource: changeset.resource,
-            change: module,
-            reason: "Create actions cannot be made atomic"
-          )
-        )
-
-      invalid =
-          Enum.find(validation.where, fn {module, _} -> !module.has_validate?() end) ->
-        {module, _} = invalid
-
-        Ash.Changeset.add_error(
-          changeset,
-          Ash.Error.Framework.CanNotBeAtomic.exception(
-            resource: changeset.resource,
-            change: module,
-            reason: "Create actions cannot be made atomic"
-          )
-        )
-
-      validation.only_when_valid? && !changeset.valid? ->
-        changeset
-
-      Enum.all?(validation.where || [], fn {module, opts} ->
-        opts =
-            templated_opts(
-              opts,
-              actor,
-              changeset.to_tenant,
-              changeset.arguments,
-              changeset.context,
-              changeset
-            )
-
-        {:ok, opts} = module.init(opts)
-
-        Ash.Resource.Validation.validate(
-          module,
-          changeset,
-          opts,
-          struct(Ash.Resource.Validation.Context, context)
-        ) == :ok
-      end) ->
-        opts =
-          templated_opts(
-            opts,
-            actor,
-            changeset.to_tenant,
-            changeset.arguments,
-            changeset.context,
-            changeset
-          )
-
-        {:ok, opts} = module.init(opts)
-
-        case Ash.Resource.Validation.validate(
-               module,
-               changeset,
-               opts,
-               struct(
-                 Ash.Resource.Validation.Context,
-                 Map.put(context, :message, validation.message)
-               )
-             ) do
-          :ok ->
-            changeset
-
-          {:error, error} ->
-            error = Ash.Error.to_ash_error(error)
-
-            error =
-              if validation.message do
-                Ash.Error.override_validation_message(error, validation.message)
-              else
-                error
-              end
-
-            Ash.Changeset.add_error(changeset, error)
-        end
-
-      true ->
-        changeset
-    end
-  end
-
   defp batch_change(%{change: {module, change_opts}} = change, batch, context, actor) do
     case change_opts do
       {:templated, change_opts} ->
         cond do
           module.has_batch_change?() ->
-            module.batch_change(
+            Ash.Resource.Change.batch_change(
+              module,
               batch,
               change_opts,
               struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
@@ -2060,7 +2054,7 @@ defmodule Ash.Actions.Create.Bulk do
 
           module.has_change?() ->
             Enum.map(batch, fn changeset ->
-              {:ok, change_opts} = module.init(change_opts)
+              {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
 
               Ash.Resource.Change.change(
                 module,
@@ -2092,9 +2086,10 @@ defmodule Ash.Actions.Create.Bulk do
                   changeset
                 )
 
-              {:ok, change_opts} = module.init(change_opts)
+              {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
 
-              module.batch_change(
+              Ash.Resource.Change.batch_change(
+                module,
                 [changeset],
                 change_opts,
                 struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
@@ -2114,7 +2109,7 @@ defmodule Ash.Actions.Create.Bulk do
                   changeset
                 )
 
-              {:ok, change_opts} = module.init(change_opts)
+              {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
 
               Ash.Resource.Change.change(
                 module,

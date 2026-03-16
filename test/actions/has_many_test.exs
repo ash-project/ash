@@ -110,7 +110,10 @@ defmodule Ash.Test.Actions.HasManyTest do
         |> Enum.group_by(& &1.post_id)
 
       # Need to use Ash.CiString.value here since comment's post_id is defined as a uuid
-      Enum.map(records, &Map.get(grouped_comments, Ash.CiString.value(&1.id)))
+      {:ok,
+       Enum.map(records, fn record ->
+         Map.get(grouped_comments, Ash.CiString.value(record.id)) || []
+       end)}
     end
   end
 

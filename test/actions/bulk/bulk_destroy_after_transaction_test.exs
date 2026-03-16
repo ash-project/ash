@@ -107,7 +107,7 @@ defmodule Ash.Test.Actions.BulkDestroyAfterTransactionTest do
     end
 
     def atomic(_changeset, _opts, _context) do
-      :not_atomic
+      {:not_atomic, "test change forces fallback to stream"}
     end
   end
 

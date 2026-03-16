@@ -1,0 +1,375 @@
+{
+  "@context": {
+    "@vocab": "https://aalang.org/spec",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ex": "https://aalang.org/example/"
+  },
+  "@graph": [
+    {
+      "@id": "ex:TestTypes",
+      "@type": "TestTypes",
+      "rdfs:label": "AALang Test Types",
+      "description": "Definition of all supported AALang test types",
+      "types": [
+        {
+          "@id": "ex:MessageResponseTestType",
+          "name": "MessageResponseTest",
+          "description": "Tests how individual actors respond to messages - tests individual actor responsibilities in isolation",
+          "filePattern": "{product-name}-message-response-tests.jsonld",
+          "purpose": "Test individual actor behavior when receiving messages"
+        },
+        {
+          "@id": "ex:MessageFlowTestType",
+          "name": "MessageFlowTest",
+          "description": "Tests message flow between actors, mode transitions, and state management - tests actor interactions",
+          "filePattern": "{product-name}-message-flow-tests.jsonld",
+          "purpose": "Test actor-to-actor communication, mode transitions, and state management"
+        },
+        {
+          "@id": "ex:AgentWorkflowTestType",
+          "name": "AgentWorkflowTest",
+          "description": "Tests complete agent workflows from user perspective - tests end-to-end workflows and full agent execution",
+          "filePattern": "{product-name}-agent-workflow-tests.jsonld",
+          "purpose": "Test complete agent workflows and end-to-end execution"
+        }
+      ],
+      "typeNames": ["MessageResponseTest", "MessageFlowTest", "AgentWorkflowTest"]
+    },
+    {
+      "@id": "ex:TestSpecification",
+      "@type": "TestSpec",
+      "rdfs:label": "AALang Test Specification",
+      "description": "Complete specification for AALang test structures based on messages passed and results observed. Tests send AALang messages to actors and observe the resulting messages, state changes, and behaviors.",
+      "testTypes": "ex:TestTypes",
+      "testStructure": {
+        "note": "AALang tests are message-based: tests send AALang messages to actors and observe resulting messages, state changes, and behaviors. All test inputs are messages, and all test outputs are observed results from message processing.",
+        "metadata": {
+          "name": {
+            "type": "string",
+            "required": true,
+            "description": "Test name identifier"
+          },
+          "description": {
+            "type": "string",
+            "required": true,
+            "description": "Test description explaining what messages are sent, what actor/mode/workflow is being tested, and what results are expected to be observed"
+          },
+          "type": {
+            "type": "enum",
+            "required": true,
+            "values": "ex:TestTypes.typeNames",
+            "description": "Test type classification - see ex:TestTypes for complete test type definitions"
+          },
+          "priority": {
+            "type": "number",
+            "optional": true,
+            "description": "Test priority for execution order"
+          }
+        },
+        "setup": {
+          "type": "string",
+          "optional": true,
+          "description": "Optional setup instructions executed before test"
+        },
+        "teardown": {
+          "type": "string",
+          "optional": true,
+          "description": "Optional teardown instructions executed after test"
+        },
+        "inputs": {
+          "type": "object",
+          "description": "Messages to send during test execution",
+          "required": true,
+          "properties": {
+            "messages": {
+              "type": "array",
+              "description": "Array of AALang messages to send during test execution",
+              "required": true,
+              "items": {
+                "type": "object",
+                "description": "AALang message following AALang message format (see index.jsonld ex:Message)",
+                "required": ["routingGraph", "payload"],
+                "properties": {
+                  "routingGraph": {
+                    "type": "object",
+                    "description": "Message routing graph specifying target actor/persona",
+                    "required": true
+                  },
+                  "payload": {
+                    "type": "object",
+                    "description": "Message payload containing message content",
+                    "required": true
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "description": "Optional message metadata",
+                    "optional": true
+                  }
+                }
+              }
+            },
+            "messageSequence": {
+              "type": "array",
+              "description": "Optional: Ordered sequence of messages if order matters",
+              "optional": true,
+              "items": {
+                "type": "number",
+                "description": "Index into messages array indicating send order"
+              }
+            },
+            "testContext": {
+              "type": "object",
+              "description": "Optional: Additional context for test (e.g., initial state, preconditions)",
+              "optional": true
+            }
+          }
+        },
+        "outputs": {
+          "type": "object",
+          "description": "Expected observed results from test execution",
+          "required": true,
+          "properties": {
+            "observedMessages": {
+              "type": "array",
+              "description": "Expected messages observed in response (messages sent by actors under test)",
+              "required": false,
+              "items": {
+                "type": "object",
+                "description": "Expected AALang message following AALang message format",
+                "properties": {
+                  "routingGraph": {
+                    "type": "object",
+                    "description": "Expected routing graph (from actor, to actor/persona)"
+                  },
+                  "payload": {
+                    "type": "object",
+                    "description": "Expected message payload content"
+                  },
+                  "semanticContent": {
+                    "type": "string",
+                    "description": "Optional: Expected semantic content of message (for semantic matching)"
+                  }
+                }
+              }
+            },
+            "observedStateChanges": {
+              "type": "object",
+              "description": "Expected state changes observed (if actor's mode isolated state is readable)",
+              "required": false,
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "description": "Mode whose state changed"
+                },
+                "stateBefore": {
+                  "type": "object",
+                  "description": "Expected state before message processing"
+                },
+                "stateAfter": {
+                  "type": "object",
+                  "description": "Expected state after message processing"
+                },
+                "stateChanges": {
+                  "type": "object",
+                  "description": "Expected specific state changes (field-level changes)"
+                }
+              }
+            },
+            "observedBehavior": {
+              "type": "object",
+              "description": "Expected behavioral observations (actor actions, mode transitions, etc.)",
+              "required": false,
+              "properties": {
+                "actorActions": {
+                  "type": "array",
+                  "description": "Expected actions taken by actors"
+                },
+                "modeTransitions": {
+                  "type": "array",
+                  "description": "Expected mode transitions (from mode, to mode)"
+                },
+                "messageAccepted": {
+                  "type": "boolean",
+                  "description": "Expected: whether message was accepted by target actor"
+                },
+                "messageRejected": {
+                  "type": "boolean",
+                  "description": "Expected: whether message was rejected by target actor (with rejection reason if applicable)"
+                }
+              }
+            }
+          }
+        },
+        "assertions": {
+          "types": [
+            {
+              "type": "contains",
+              "description": "Checks if output contains specific text/pattern",
+              "llmFriendly": true
+            },
+            {
+              "type": "isLike",
+              "description": "Semantic similarity check using LLM understanding",
+              "llmFriendly": true
+            },
+            {
+              "type": "boundedDeviation",
+              "description": "Allows variance within user-defined bounds for non-deterministic checks",
+              "llmFriendly": true,
+              "deviationBounds": "user-defined bounds (e.g., semantic similarity threshold)"
+            },
+            {
+              "type": "matchesPattern",
+              "description": "Pattern/regex matching (e.g., message format, structure)",
+              "llmFriendly": true
+            },
+            {
+              "type": "hasStructure",
+              "description": "Verifies structural elements (JSON-LD nodes, graph structure, required properties)",
+              "llmFriendly": true
+            },
+            {
+              "type": "followsSequence",
+              "description": "Verifies actions/events occur in expected order",
+              "llmFriendly": true
+            },
+            {
+              "type": "satisfiesConstraint",
+              "description": "Logical constraint checks (e.g., 'response must be non-empty', 'count must be positive')",
+              "llmFriendly": true
+            },
+            {
+              "type": "withinRange",
+              "description": "Numeric range checks (e.g., confidence scores, counts)",
+              "llmFriendly": true
+            },
+            {
+              "type": "hasProperty",
+              "description": "Presence of specific properties/attributes (e.g., actor has required properties)",
+              "llmFriendly": true
+            },
+            {
+              "type": "excludes",
+              "description": "Ensures something is not present (e.g., no error messages, no prohibited actions)",
+              "llmFriendly": true
+            },
+            {
+              "type": "semanticEquivalence",
+              "description": "Semantic equivalence check (e.g., two messages mean the same thing)",
+              "llmFriendly": true
+            },
+            {
+              "type": "completeness",
+              "description": "All required elements present (e.g., all actors defined, all modes have actors)",
+              "llmFriendly": true
+            },
+            {
+              "type": "consistency",
+              "description": "Behavior consistency across runs (useful for bounded non-determinism)",
+              "llmFriendly": true
+            },
+            {
+              "type": "modeTransition",
+              "description": "AALang-specific: mode transitions occur correctly",
+              "llmFriendly": true
+            },
+            {
+              "type": "actorBehavior",
+              "description": "AALang-specific: actor behaves according to responsibilities",
+              "llmFriendly": true
+            },
+            {
+              "type": "messageFormat",
+              "description": "AALang-specific: messages follow AALang message format",
+              "llmFriendly": true
+            },
+            {
+              "type": "stateConsistency",
+              "description": "State consistency before/after operations",
+              "llmFriendly": true
+            }
+          ],
+          "deviationBounds": {
+            "type": "object",
+            "optional": true,
+            "description": "User-defined bounds for non-deterministic checks",
+            "properties": {
+              "semanticSimilarityThreshold": "number between 0.0 and 1.0",
+              "numericVariance": "number or percentage",
+              "description": "Specific bounds for boundedDeviation and consistency assertions"
+            }
+          }
+        },
+        "fixtures": {
+          "type": "array",
+          "optional": true,
+          "description": "Test fixture/mock definitions",
+          "mockActors": {
+            "pattern": "actor id must contain '_aamock'",
+            "description": "Mock actors defined in test files have '_aamock' in their id property. MockManagerActor_aamock manages these mocks during test execution."
+          },
+          "items": {
+            "type": "object",
+            "properties": {
+              "mockActorId": "string containing '_aamock'",
+              "mockBehavior": "description of mock behavior",
+              "mockResponses": "array of mock response definitions"
+            }
+          }
+        },
+        "parameterized": {
+          "type": "object",
+          "optional": true,
+          "description": "Support for parameterized tests",
+          "parameters": {
+            "type": "array",
+            "description": "Array of parameter definitions",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": "parameter name",
+                "values": "array of parameter values to test"
+              }
+            }
+          }
+        },
+        "suites": {
+          "type": "object",
+          "optional": true,
+          "description": "Test suite/group definitions",
+          "groups": {
+            "type": "array",
+            "description": "Array of test group definitions",
+            "items": {
+              "type": "object",
+              "properties": {
+                "suiteName": "test suite name",
+                "tests": "array of test identifiers in this suite"
+              }
+            }
+          }
+        }
+      },
+      "testFileOrganization": {
+        "location": "tests/ subdirectory by default (user-configurable)",
+        "naming": "ex:TestTypes.types",
+        "note": "File naming patterns are defined in ex:TestTypes.types[].filePattern for each test type"
+      },
+      "testExecution": {
+        "sequential": "default execution mode",
+        "parallel": "optional parallel execution",
+        "filtering": "support filtering by test type",
+        "debugging": "support single-test execution and verbose output",
+        "mocking": "auto-generate basic mocks, allow manual override in test files"
+      },
+      "testResults": {
+        "file": "tests/{product-name}-test-results.md",
+        "includes": ["pass/fail status", "detailed execution logs", "summary statistics"],
+        "excludes": ["execution time"],
+        "output": "both console and file"
+      }
+    }
+  ]
+}
+

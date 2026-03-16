@@ -178,16 +178,17 @@ defmodule Ash.Policy.Policy do
     end)
     |> case do
       nil ->
-        if check_module.requires_original_data?(authorizer, opts) &&
+        if Ash.Policy.Check.requires_original_data?(check_module, authorizer, opts) &&
              missing_original_data?(authorizer) do
           throw(
             {:error, authorizer,
              Ash.Error.Forbidden.InitialDataRequired.exception(
-               source: "check: #{check_module.describe(opts)} requires initial data"
+               source:
+                 "check: #{Ash.Policy.Check.describe(check_module, opts)} requires initial data"
              )}
           )
         else
-          case check_module.strict_check(authorizer.actor, authorizer, opts) do
+          case Ash.Policy.Check.strict_check(check_module, authorizer.actor, authorizer, opts) do
             {:ok, value} when is_boolean(value) or value == :unknown ->
               authorizer = %{
                 authorizer
@@ -316,7 +317,7 @@ defmodule Ash.Policy.Policy do
         Code.ensure_loaded!(check)
 
         if function_exported?(check, :simplify, 2) do
-          check.simplify(expr, context)
+          Ash.Policy.Check.simplify(check, expr, context)
         else
           expr
         end
@@ -332,7 +333,7 @@ defmodule Ash.Policy.Policy do
   def debug_expr(expr, label \\ "Expr") do
     expr
     |> Crux.Expression.to_string(fn
-      {check_module, check_opts} -> check_module.describe(check_opts)
+      {check_module, check_opts} -> Ash.Policy.Check.describe(check_module, check_opts)
       v -> Macro.escape(v)
     end)
     |> then(&"#{label}:\n\n#{&1}")
@@ -367,9 +368,14 @@ defmodule Ash.Policy.Policy do
           reduce: expression do
         acc ->
           cond do
-            not function_exported?(check, :implies?, 3) -> acc
-            check.implies?(left, right, check_context) -> b(acc and implies(left, right))
-            true -> acc
+            not function_exported?(check, :implies?, 3) ->
+              acc
+
+            Ash.Policy.Check.implies?(check, left, right, check_context) ->
+              b(acc and implies(left, right))
+
+            true ->
+              acc
           end
       end
 
@@ -414,11 +420,11 @@ defmodule Ash.Policy.Policy do
       end,
       conflicts?: fn {check, _otps} = left, right ->
         function_exported?(check, :conflicts?, 3) and
-          check.conflicts?(left, right, check_context)
+          Ash.Policy.Check.conflicts?(check, left, right, check_context)
       end,
       implies?: fn {check, _opts} = left, right ->
         function_exported?(check, :implies?, 3) and
-          check.implies?(left, right, check_context)
+          Ash.Policy.Check.implies?(check, left, right, check_context)
       end
     ]
   end

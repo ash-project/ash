@@ -1,0 +1,2211 @@
+{
+  "@context": {
+    "@vocab": "https://aalang.org/spec",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ex": "https://aalang.org/example/"
+  },
+  "@graph": [
+    {
+      "@id": "ex:Test_ClarificationMode_to_DiscussionMode_Transition_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ClarificationMode_to_DiscussionMode_Transition_HappyPath",
+        "description": "Test successful mode transition from Clarification to Discussion - ClarificationPersona1 should send state request to UnderstandingIndicatorsStateActor, verify overallConfidence >= 0.8, and allow transition",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in ClarificationMode with UnderstandingIndicatorsStateActor having overallConfidence = 0.85",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "ex:UnderstandingIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "overallConfidence"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:UnderstandingIndicatorsStateActor",
+              "to": "ex:ClarificationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "overallConfidence": 0.85
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "ex:DiscussionPersona1"
+            },
+            "payload": {
+              "action": "transitionToDiscussionMode",
+              "confidenceVerified": true
+            }
+          }
+        ],
+        "observedBehavior": {
+          "modeTransitions": [
+            {
+              "fromMode": "ex:ClarificationMode",
+              "toMode": "ex:DiscussionMode",
+              "trigger": "confidence threshold met"
+            }
+          ],
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "modeTransition",
+          "expected": "Transition occurs when overallConfidence >= 0.8"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["State request sent", "Confidence verified", "Transition message sent", "Mode transition occurs"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "ClarificationPersona1 enforces confidence threshold before allowing transition"
+        },
+        {
+          "type": "messageFormat",
+          "expected": "All messages follow AALang message format with proper routing graphs"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Mode transition maintains state consistency"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ClarificationMode_to_DiscussionMode_Transition_Blocked",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ClarificationMode_to_DiscussionMode_Transition_Blocked",
+        "description": "Test blocked mode transition when confidence is too low - ClarificationPersona1 should check confidence, find it below threshold, and prevent transition",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in ClarificationMode with UnderstandingIndicatorsStateActor having overallConfidence = 0.6",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "ex:UnderstandingIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "overallConfidence"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:UnderstandingIndicatorsStateActor",
+              "to": "ex:ClarificationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "overallConfidence": 0.6
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Cannot proceed to Discussion Mode: understanding confidence (0.6) is below required threshold (0.8). More clarification needed.",
+              "action": "continue_clarification"
+            }
+          }
+        ],
+        "observedBehavior": {
+          "modeTransitions": [],
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Mode transition should not occur when confidence < 0.8"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["State request sent", "Low confidence detected", "Transition blocked", "User notified"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "ClarificationPersona1 correctly blocks transition below confidence threshold"
+        },
+        {
+          "type": "contains",
+          "expected": "User message explains why transition is blocked"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Agent remains in ClarificationMode when transition is blocked"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_DiscussionMode_to_FormalizationMode_Transition_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_DiscussionMode_to_FormalizationMode_Transition_HappyPath",
+        "description": "Test successful mode transition from Discussion to Formalization - DiscussionPersona1 should check satisfaction indicators and allow transition when all conditions met",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in DiscussionMode with SatisfactionIndicatorsStateActor having discussionMode.satisfied=true, confident=true, consensus=true",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionPersona1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "discussionMode"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:SatisfactionIndicatorsStateActor",
+              "to": "ex:DiscussionPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "discussionMode": {
+                "satisfied": true,
+                "confident": true,
+                "consensus": true
+              }
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionPersona1",
+              "to": "ex:FormalizationPersona1"
+            },
+            "payload": {
+              "action": "transitionToFormalizationMode",
+              "satisfactionVerified": true
+            }
+          }
+        ],
+        "observedBehavior": {
+          "modeTransitions": [
+            {
+              "fromMode": "ex:DiscussionMode",
+              "toMode": "ex:FormalizationMode",
+              "trigger": "satisfaction requirements met"
+            }
+          ],
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "modeTransition",
+          "expected": "Transition occurs when all discussion satisfaction indicators are true"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["State request sent", "Satisfaction verified", "Transition message sent", "Mode transition occurs"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "DiscussionPersona1 enforces all satisfaction requirements (satisfied=true, confident=true, consensus=true)"
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Transition messages follow proper AALang format"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Mode transition preserves state consistency"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_DiscussionMode_to_FormalizationMode_Transition_Blocked",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_DiscussionMode_to_FormalizationMode_Transition_Blocked",
+        "description": "Test blocked mode transition when satisfaction requirements not met - DiscussionPersona1 should check indicators, find missing requirements, and prevent transition",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in DiscussionMode with SatisfactionIndicatorsStateActor having discussionMode.satisfied=true, confident=false, consensus=true",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionPersona1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "discussionMode"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:SatisfactionIndicatorsStateActor",
+              "to": "ex:DiscussionPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "discussionMode": {
+                "satisfied": true,
+                "confident": false,
+                "consensus": true
+              }
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Cannot proceed to Formalization Mode: discussion requirements not fully met (confident=false). Please continue discussion until all requirements are satisfied.",
+              "action": "continue_discussion"
+            }
+          }
+        ],
+        "observedBehavior": {
+          "modeTransitions": [],
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Mode transition should not occur when satisfaction requirements not met"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["State request sent", "Incomplete satisfaction detected", "Transition blocked", "User notified"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "DiscussionPersona1 correctly blocks transition when any satisfaction indicator is false"
+        },
+        {
+          "type": "contains",
+          "expected": "User message specifies which requirement is missing"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Agent remains in DiscussionMode when transition is blocked"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_FormalizationMode_to_GenerationMode_Transition_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_FormalizationMode_to_GenerationMode_Transition_HappyPath",
+        "description": "Test successful mode transition from Formalization to Generation - FormalizationPersona1 should check readiness and allow transition when both discussion and formalization are satisfied",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in FormalizationMode with SatisfactionIndicatorsStateActor having discussionMode.satisfied=true and formalizationMode.satisfied=true",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationPersona1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "generationReadiness"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:SatisfactionIndicatorsStateActor",
+              "to": "ex:FormalizationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "generationReadiness": {
+                "ready": true,
+                "discussionMode": {
+                  "satisfied": true,
+                  "confident": true,
+                  "consensus": true
+                },
+                "formalizationMode": {
+                  "satisfied": true,
+                  "confident": true,
+                  "consensus": true
+                }
+              }
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationPersona1",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "action": "transitionToGenerationMode",
+              "readinessVerified": true
+            }
+          }
+        ],
+        "observedBehavior": {
+          "modeTransitions": [
+            {
+              "fromMode": "ex:FormalizationMode",
+              "toMode": "ex:GenerationMode",
+              "trigger": "generation readiness confirmed"
+            }
+          ],
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "modeTransition",
+          "expected": "Transition occurs when discussionMode.satisfied=true AND formalizationMode.satisfied=true"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["Readiness request sent", "Readiness verified", "Transition message sent", "Mode transition occurs"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "FormalizationPersona1 enforces both discussion and formalization satisfaction requirements"
+        },
+        {
+          "type": "messageFormat",
+          "expected": "All transition messages follow proper AALang format"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Mode transition maintains state consistency across modes"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_FormalizationMode_to_GenerationMode_Transition_Skipped",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_FormalizationMode_to_GenerationMode_Transition_Skipped",
+        "description": "Test successful mode transition when formalization is skipped - FormalizationPersona1 should allow transition when discussion satisfied and formalization skipped",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in FormalizationMode with SatisfactionIndicatorsStateActor having discussionMode.satisfied=true and formalizationMode.skipped=true",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationPersona1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "generationReadiness"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:SatisfactionIndicatorsStateActor",
+              "to": "ex:FormalizationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "generationReadiness": {
+                "ready": true,
+                "discussionMode": {
+                  "satisfied": true,
+                  "confident": true,
+                  "consensus": true
+                },
+                "formalizationMode": {
+                  "skipped": true
+                }
+              }
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationPersona1",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "action": "transitionToGenerationMode",
+              "readinessVerified": true,
+              "formalizationSkipped": true
+            }
+          }
+        ],
+        "observedBehavior": {
+          "modeTransitions": [
+            {
+              "fromMode": "ex:FormalizationMode",
+              "toMode": "ex:GenerationMode",
+              "trigger": "formalization skipped, discussion satisfied"
+            }
+          ],
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "modeTransition",
+          "expected": "Transition occurs when discussionMode.satisfied=true AND formalizationMode.skipped=true"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["Readiness request sent", "Skipped formalization verified", "Transition message sent", "Mode transition occurs"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "FormalizationPersona1 allows transition when formalization is explicitly skipped"
+        },
+        {
+          "type": "hasProperty",
+          "expected": "Transition message includes formalizationSkipped flag"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Skipped formalization state is preserved during transition"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_GenerationMode_Readiness_Enforcement",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_GenerationMode_Readiness_Enforcement",
+        "description": "Test that Generation Mode enforces readiness requirements - GenerationPersona1 should refuse to generate without proper readiness verification",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in FormalizationMode with SatisfactionIndicatorsStateActor having incomplete readiness (discussion not satisfied)",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "generationReadiness"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:SatisfactionIndicatorsStateActor",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "generationReadiness": {
+                "ready": false,
+                "discussionMode": {
+                  "satisfied": false,
+                  "confident": true,
+                  "consensus": true
+                }
+              }
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Cannot generate product: Discussion and Formalization modes have not reached consensus and satisfaction. Please complete Formalization Mode analysis first, or user (Team Lead) must explicitly authorize skipping Formalization with 'skip formalization' command.",
+              "action": "refusal",
+              "missingRequirements": ["discussionMode.satisfied"]
+            }
+          }
+        ],
+        "observedBehavior": {
+          "modeTransitions": [],
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Generation should not occur without readiness verification"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["Readiness request sent", "Not ready detected", "Generation refused", "User notified"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "GenerationPersona1 enforces mandatory readiness requirements"
+        },
+        {
+          "type": "contains",
+          "expected": "Refusal message specifies missing requirements and skip option"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Agent remains in current mode when generation is refused"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ClarificationMode_ActorInteraction_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ClarificationMode_ActorInteraction_HappyPath",
+        "description": "Test successful actor interaction within ClarificationMode - ClarificationActor1 and ClarificationActor2 should communicate to resolve ambiguities",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in ClarificationMode with both Clarification actors active",
+      "teardown": "Reset ClarificationMode state",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationActor1",
+              "to": "ex:ClarificationActor2"
+            },
+            "payload": {
+              "action": "shareAmbiguityAnalysis",
+              "ambiguities": [
+                "Product type unclear: could be agent or tool",
+                "Missing requirements for core functionality"
+              ]
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationActor2",
+              "to": "ex:ClarificationActor1"
+            },
+            "payload": {
+              "action": "acknowledgeAmbiguities",
+              "additionalQuestions": [
+                "What specific functionality should the product provide?",
+                "Will this be used by end users or integrated into other systems?"
+              ]
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["ClarificationActor1 sends analysis", "ClarificationActor2 receives and responds", "Communication completes successfully"]
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Actor-to-actor messages follow AALang format"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Both actors can message each other within the same mode"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Clarification actors collaborate on ambiguity resolution"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Mode state remains consistent during actor interactions"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_DiscussionMode_ActorInteraction_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_DiscussionMode_ActorInteraction_HappyPath",
+        "description": "Test successful actor interaction within DiscussionMode - DiscussionActor1 and DiscussionActor2 should collaborate on problem decomposition",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in DiscussionMode with both Discussion actors active",
+      "teardown": "Reset DiscussionMode state",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionActor1",
+              "to": "ex:DiscussionActor2"
+            },
+            "payload": {
+              "action": "shareProblemDecomposition",
+              "proposedModes": ["ClarificationMode", "DiscussionMode", "FormalizationMode", "GenerationMode"],
+              "proposedActors": ["Senior/Junior pairs for each mode"],
+              "proposedStructure": "4-mode-8-actor pattern"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionActor2",
+              "to": "ex:DiscussionActor1"
+            },
+            "payload": {
+              "action": "reviewDecomposition",
+              "assessment": "agreed",
+              "additionalConsiderations": [
+                "Add state management actors for mode transitions",
+                "Consider edge cases in actor interactions"
+              ]
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["DiscussionActor1 proposes structure", "DiscussionActor2 reviews and responds", "Collaboration completes successfully"]
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Discussion actor messages follow proper format"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Discussion actors can communicate within DiscussionMode"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Discussion actors collaborate on problem decomposition and design"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "DiscussionMode state maintains consistency during actor interactions"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_GenerationMode_ActorInteraction_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_GenerationMode_ActorInteraction_HappyPath",
+        "description": "Test successful actor interaction within GenerationMode - GenerationActor1 and GenerationActor2 should collaborate on product generation",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in GenerationMode with both Generation actors active and readiness verified",
+      "teardown": "Reset GenerationMode state",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationActor1",
+              "to": "ex:GenerationActor2"
+            },
+            "payload": {
+              "action": "shareProductDraft",
+              "productStructure": {
+                "@context": "AALang context",
+                "@graph": ["LLMAgent node", "Mode nodes", "Actor nodes"]
+              },
+              "validationChecklist": {
+                "structureVerified": true,
+                "actorsFunctional": true,
+                "formatCorrect": true
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationActor2",
+              "to": "ex:GenerationActor1"
+            },
+            "payload": {
+              "action": "reviewProductDraft",
+              "assessment": "approved",
+              "finalProduct": {
+                "complete": true,
+                "attributionAdded": true,
+                "readyForOutput": true
+              }
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["GenerationActor1 shares draft", "GenerationActor2 reviews", "Product generation completes"]
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Generation actor messages follow AALang format"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Generation actors collaborate within GenerationMode"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Generation actors work together to create and validate products"
+        },
+        {
+          "type": "completeness",
+          "expected": "Product generation process reaches completion"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_FormalizationMode_ActorInteraction_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_FormalizationMode_ActorInteraction_HappyPath",
+        "description": "Test successful actor interaction within FormalizationMode - FormalizationActor1 and FormalizationActor2 should collaborate on design analysis and verification",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in FormalizationMode with both Formalization actors active",
+      "teardown": "Reset FormalizationMode state",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationActor1",
+              "to": "ex:FormalizationActor2"
+            },
+            "payload": {
+              "action": "collaborateAnalysis",
+              "analysisTask": "Verify AALang compliance of proposed agent structure",
+              "designElements": {
+                "structure": "4-mode-6-actor pattern",
+                "messaging": "AALang message format",
+                "stateManagement": "isolated state per mode"
+              }
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationActor2",
+              "to": "ex:FormalizationActor1"
+            },
+            "payload": {
+              "action": "analysisCollaborationComplete",
+              "verificationResults": [
+                "1. Mode structure validated - 4-mode pattern follows AALang specifications",
+                "2. Actor definitions confirmed - all actors have proper responsibilities and communication capabilities",
+                "3. Message format compliance verified - all communications use AALang message structure",
+                "4. State isolation confirmed - each mode maintains isolated state as required"
+              ],
+              "overallCompliance": "FULL_AALANG_COMPLIANT",
+              "recommendations": "Ready for generation with no modifications required"
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false,
+          "analysisCollaborationCompleted": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["FormalizationActor1 initiates collaboration", "FormalizationActor2 provides detailed verification", "Analysis collaboration completes successfully"]
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Actor-to-actor messages follow AALang format with proper routing graphs"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Both actors can communicate within FormalizationMode for collaborative analysis"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Formalization actors work together to ensure design correctness and compliance"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "FormalizationMode state remains consistent during actor collaboration"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductNameStateActor_Communication_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductNameStateActor_Communication_HappyPath",
+        "description": "Test successful communication with ProductNameStateActor - Actors should be able to set and retrieve product names through proper state management",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent with ProductNameStateActor in active state",
+      "teardown": "Reset ProductNameStateActor state",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationActor1",
+              "to": "ex:ProductNameStateActor"
+            },
+            "payload": {
+              "action": "setProductName",
+              "productName": "customer-support-bot",
+              "validationRequired": true
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:GenerationActor1",
+              "to": "ex:ProductNameStateActor"
+            },
+            "payload": {
+              "action": "getProductName",
+              "purpose": "file naming for generated product"
+            }
+          }
+        ],
+        "messageSequence": [0, 1]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductNameStateActor",
+              "to": "ex:ClarificationActor1"
+            },
+            "payload": {
+              "action": "nameSetConfirmation",
+              "productName": "customer-support-bot",
+              "validationStatus": "valid",
+              "filesystemSafe": true
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:ProductNameStateActor",
+              "to": "ex:GenerationActor1"
+            },
+            "payload": {
+              "action": "nameRetrievalResponse",
+              "productName": "customer-support-bot",
+              "available": true,
+              "lastUpdated": "timestamp"
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false,
+          "stateCommunicationSuccessful": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Product name set by ClarificationActor1", "Product name retrieved by GenerationActor1", "Both communications successful"]
+        },
+        {
+          "type": "messageFormat",
+          "expected": "State management communications follow proper request-response pattern"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "ProductNameStateActor accessible from multiple modes and actors"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Product name state maintained consistently across multiple accesses"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "ProductNameStateActor provides reliable name storage and retrieval across the GAB workflow"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_DebugModeStateActor_Communication_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_DebugModeStateActor_Communication_HappyPath",
+        "description": "Test successful communication with DebugModeStateActor - Actors should be able to activate debug mode and log debug events",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent with DebugModeStateActor available",
+      "teardown": "Reset DebugModeStateActor state",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationActor1",
+              "to": "ex:DebugModeStateActor"
+            },
+            "payload": {
+              "action": "activateDebugMode",
+              "reason": "Detailed analysis required for complex design validation",
+              "requestedBy": "FormalizationActor1"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationActor2",
+              "to": "ex:DebugModeStateActor"
+            },
+            "payload": {
+              "action": "logDebugEvent",
+              "eventType": "analysis_complete",
+              "details": "AALang compliance verification finished successfully",
+              "severity": "info"
+            }
+          }
+        ],
+        "messageSequence": [0, 1]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:DebugModeStateActor",
+              "to": "ex:FormalizationActor1"
+            },
+            "payload": {
+              "action": "debugModeActivated",
+              "status": "active",
+              "level": "standard",
+              "activationId": "debug_session_001"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DebugModeStateActor",
+              "to": "ex:FormalizationActor2"
+            },
+            "payload": {
+              "action": "debugEventLogged",
+              "eventId": "evt_001",
+              "loggedAt": "timestamp",
+              "sessionId": "debug_session_001"
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false,
+          "debugCommunicationSuccessful": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Debug mode activated", "Debug event logged", "Both operations confirmed"]
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Debug communications follow proper request-response pattern with session tracking"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "DebugModeStateActor accessible from all workflow actors for debugging needs"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Debug state and event log maintained consistently across multiple operations"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "DebugModeStateActor provides comprehensive debug state management and event logging"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_DecisionLogStateActor_Communication_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_DecisionLogStateActor_Communication_HappyPath",
+        "description": "Test successful communication with DecisionLogStateActor - Actors should be able to log decisions and retrieve decision history",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent with DecisionLogStateActor active",
+      "teardown": "Reset DecisionLogStateActor state",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionActor1",
+              "to": "ex:DecisionLogStateActor"
+            },
+            "payload": {
+              "action": "logDecision",
+              "decision": {
+                "type": "design_approach",
+                "choice": "4-mode-6-actor pattern",
+                "reason": "Best fits user requirements for chatbot with CRM integration",
+                "alternatives": ["3-mode pattern", "hierarchical actors"],
+                "confidence": 0.9
+              }
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationActor1",
+              "to": "ex:DecisionLogStateActor"
+            },
+            "payload": {
+              "action": "retrieveDecisions",
+              "filter": {
+                "type": "design_approach",
+                "actor": "DiscussionActor1"
+              }
+            }
+          }
+        ],
+        "messageSequence": [0, 1]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:DecisionLogStateActor",
+              "to": "ex:DiscussionActor1"
+            },
+            "payload": {
+              "action": "decisionLogged",
+              "decisionId": "dec_001",
+              "loggedAt": "timestamp",
+              "status": "recorded"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DecisionLogStateActor",
+              "to": "ex:FormalizationActor1"
+            },
+            "payload": {
+              "action": "decisionsRetrieved",
+              "results": [
+                {
+                  "id": "dec_001",
+                  "type": "design_approach",
+                  "choice": "4-mode-6-actor pattern",
+                  "reason": "Best fits user requirements for chatbot with CRM integration",
+                  "confidence": 0.9,
+                  "loggedAt": "timestamp"
+                }
+              ],
+              "resultCount": 1
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false,
+          "decisionTrackingSuccessful": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Decision logged by DiscussionActor1", "Decision retrieved by FormalizationActor1", "Both operations successful"]
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Decision log communications follow proper request-response pattern"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "DecisionLogStateActor accessible from all workflow actors for decision tracking"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "Decision history maintained consistently across logging and retrieval operations"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "DecisionLogStateActor provides reliable decision logging and history retrieval"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_CrossMode_StateAccess_Pattern",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_CrossMode_StateAccess_Pattern",
+        "description": "Test cross-mode state access patterns - State actors should be accessible from any mode, not just their 'primary' mode",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in DiscussionMode with all state actors accessible",
+      "teardown": "Reset all state actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionActor1",
+              "to": "ex:UnderstandingIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "overallConfidence"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionActor2",
+              "to": "ex:ProductNameStateActor"
+            },
+            "payload": {
+              "action": "getProductName",
+              "purpose": "consistency check"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionActor1",
+              "to": "ex:DebugModeStateActor"
+            },
+            "payload": {
+              "action": "logDebugEvent",
+              "eventType": "cross_mode_access_test",
+              "details": "Testing state access from DiscussionMode"
+            }
+          }
+        ],
+        "messageSequence": [0, 1, 2]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:UnderstandingIndicatorsStateActor",
+              "to": "ex:DiscussionActor1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "overallConfidence": 0.8,
+              "crossModeAccess": true
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:ProductNameStateActor",
+              "to": "ex:DiscussionActor2"
+            },
+            "payload": {
+              "action": "nameRetrievalResponse",
+              "productName": "test-product",
+              "crossModeAccess": true
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DebugModeStateActor",
+              "to": "ex:DiscussionActor1"
+            },
+            "payload": {
+              "action": "debugEventLogged",
+              "eventId": "cross_mode_test",
+              "crossModeAccess": true
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false,
+          "crossModeAccessSuccessful": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["UnderstandingIndicators accessed from DiscussionMode", "ProductName accessed from DiscussionMode", "DebugMode accessed from DiscussionMode", "All cross-mode accesses successful"]
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Cross-mode communications follow same format as within-mode communications"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "All state actors accessible from any mode, not restricted to 'primary' mode"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State actors maintain consistency regardless of accessing mode"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "State actors provide consistent access patterns across all GAB modes"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_Communication_Error_Handling",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_Communication_Error_Handling",
+        "description": "Test communication error handling - GAB should gracefully handle message routing failures and communication errors",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent with potential communication failure scenarios",
+      "teardown": "Reset communication state",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionActor1",
+              "to": "ex:NonExistentActor"
+            },
+            "payload": {
+              "action": "testMessage",
+              "content": "This should fail"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationActor1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "invalidAction",
+              "parameters": "malformed"
+            }
+          }
+        ],
+        "messageSequence": [0, 1]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "system",
+              "to": "ex:DiscussionActor1"
+            },
+            "payload": {
+              "error": "Message routing failed",
+              "reason": "Target actor 'ex:NonExistentActor' not found",
+              "errorType": "routing_failure",
+              "originalMessage": "preserved"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:SatisfactionIndicatorsStateActor",
+              "to": "ex:FormalizationActor1"
+            },
+            "payload": {
+              "error": "Action not supported",
+              "reason": "Unknown action 'invalidAction'",
+              "errorType": "invalid_action",
+              "supportedActions": ["updateSatisfaction", "requestState"]
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false,
+          "errorHandlingGraceful": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Invalid routing attempt", "Routing error returned", "Invalid action attempt", "Action error returned"]
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Error messages follow consistent format with error type and reason"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "System provides clear error information without crashing"
+        },
+        {
+          "type": "excludes",
+          "expected": "No undefined behavior or system crashes from communication errors"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GAB handles communication errors gracefully with informative error messages"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_GenerationMode_ReadinessGate_Enforcement_HappyPath",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_GenerationMode_ReadinessGate_Enforcement_HappyPath",
+        "description": "Test readiness gate enforcement before generation - GenerationMode should verify readiness requirements before allowing generation",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with discussionMode and formalizationMode satisfied",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "generationReadiness"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:SatisfactionIndicatorsStateActor",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "generationReadiness": {
+                "ready": true,
+                "discussionMode": {
+                  "satisfied": true,
+                  "confident": true,
+                  "consensus": true
+                },
+                "formalizationMode": {
+                  "satisfied": true,
+                  "confident": true,
+                  "consensus": true
+                }
+              }
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false,
+          "generationAllowed": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["State request sent", "Readiness verified", "Generation allowed"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "GenerationPersona1 enforces readiness gate before generating"
+        },
+        {
+          "type": "messageFormat",
+          "expected": "All messages follow AALang message format"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GenerationMode correctly enforces readiness gate"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_GenerationMode_ReadinessGate_Enforcement_Blocked",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_GenerationMode_ReadinessGate_Enforcement_Blocked",
+        "description": "Test blocking when readiness requirements not met - GenerationMode should block generation when requirements not satisfied",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with discussionMode satisfied but formalizationMode not satisfied and not skipped",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "generationReadiness"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:SatisfactionIndicatorsStateActor",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "generationReadiness": {
+                "ready": false,
+                "discussionMode": {
+                  "satisfied": true,
+                  "confident": true,
+                  "consensus": true
+                },
+                "formalizationMode": {
+                  "satisfied": false,
+                  "skipped": false
+                }
+              }
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "user"
+            },
+            "payload": {
+              "message": "Cannot generate product: Discussion and Formalization modes have not reached consensus and satisfaction",
+              "action": "complete_formalization"
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false,
+          "generationBlocked": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "excludes",
+          "expected": "Generation should not occur when readiness requirements not met"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["State request sent", "Readiness check failed", "Generation blocked", "User notified"]
+        },
+        {
+          "type": "contains",
+          "expected": "User message explains why generation is blocked"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GenerationMode correctly blocks generation when requirements not met"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_GenerationMode_ReadinessGate_FormalizationSkipped",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_GenerationMode_ReadinessGate_FormalizationSkipped",
+        "description": "Test readiness check when formalization is skipped - GenerationMode should allow generation when formalizationMode.skipped=true",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with discussionMode satisfied and formalizationMode skipped",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "generationReadiness"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:SatisfactionIndicatorsStateActor",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "generationReadiness": {
+                "ready": true,
+                "discussionMode": {
+                  "satisfied": true,
+                  "confident": true,
+                  "consensus": true
+                },
+                "formalizationMode": {
+                  "skipped": true
+                }
+              }
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false,
+          "generationAllowed": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Generation allowed when discussionMode satisfied and formalizationMode skipped"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GenerationMode correctly handles formalization skipped scenario"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_GenerationPersona1_to_GenerationPersona2_Collaboration",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_GenerationPersona1_to_GenerationPersona2_Collaboration",
+        "description": "Test collaboration between GenerationPersona1 and GenerationPersona2 - Personas should collaborate effectively during product generation",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with both GenerationPersona1 and GenerationPersona2 active",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:GenerationPersona2"
+            },
+            "payload": {
+              "action": "requestCollaboration",
+              "product": {
+                "@id": "ex:TestAgent",
+                "@type": "LLMAgent"
+              },
+              "topic": "product_verification"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona2",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "action": "collaborationResponse",
+              "feedback": "Product structure looks good",
+              "suggestions": ["Consider adding error handling"]
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "messageFormat",
+          "expected": "Collaboration messages follow AALang message format"
+        },
+        {
+          "type": "followsSequence",
+          "expected": ["GenerationPersona1 sends collaboration request", "GenerationPersona2 responds with feedback"]
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "GenerationPersona1 and GenerationPersona2 collaborate effectively"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_GenerationPersona1_to_GenerationPersona2_ConflictResolution",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_GenerationPersona1_to_GenerationPersona2_ConflictResolution",
+        "description": "Test conflict resolution when personas disagree - Personas should follow ex:PersonaConflictResolution protocol",
+        "type": "MessageFlowTest",
+        "priority": 1
+      },
+      "setup": "Initialize GAB agent in GenerationMode with conflicting opinions between personas",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:GenerationPersona2"
+            },
+            "payload": {
+              "action": "proposeApproach",
+              "approach": "strict_verification"
+            }
+          }
+        ]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona2",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "action": "alternativeApproach",
+              "approach": "flexible_verification",
+              "reason": "Strict may be too rigid"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:GenerationPersona2"
+            },
+            "payload": {
+              "action": "attemptResolution",
+              "rounds": 1
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona2",
+              "to": "user"
+            },
+            "payload": {
+              "action": "escalateToUser",
+              "conflict": "Verification approach disagreement",
+              "request": "Please decide which approach to use"
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false,
+          "waitingForUserResponse": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "followsSequence",
+          "expected": ["Alternative approach proposed", "Resolution attempted", "Escalation to user after 2-3 exchanges"]
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "Conflict resolution follows ex:PersonaConflictResolution protocol"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "Personas handle conflicts by attempting resolution then escalating"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_DebugModeStateActor_CrossModeCommunication",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_DebugModeStateActor_CrossModeCommunication",
+        "description": "Test debug mode state access from different modes - DebugModeStateActor should be accessible from all modes",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in ClarificationMode with DebugModeStateActor having debugMode=ON",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "ex:DebugModeStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "debugMode"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionPersona1",
+              "to": "ex:DebugModeStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "debugMode"
+            }
+          }
+        ],
+        "messageSequence": [0, 1]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:DebugModeStateActor",
+              "to": "ex:ClarificationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "debugMode": "ON"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DebugModeStateActor",
+              "to": "ex:DiscussionPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "debugMode": "ON"
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "satisfiesConstraint",
+          "expected": "DebugModeStateActor accessible from multiple modes"
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Cross-mode communication follows AALang message format"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "DebugModeStateActor handles cross-mode state requests correctly"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_DecisionLogStateActor_CrossModeCommunication",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_DecisionLogStateActor_CrossModeCommunication",
+        "description": "Test decision log state access from different modes - DecisionLogStateActor should be accessible from all modes",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in FormalizationMode with DecisionLogStateActor having decisionCount=5",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationPersona1",
+              "to": "ex:DecisionLogStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "decisionLog"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:DecisionLogStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "decisionLog"
+            }
+          }
+        ],
+        "messageSequence": [0, 1]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:DecisionLogStateActor",
+              "to": "ex:FormalizationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "decisionCount": 5
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DecisionLogStateActor",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "decisionCount": 5
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "satisfiesConstraint",
+          "expected": "DecisionLogStateActor accessible from multiple modes"
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Cross-mode communication follows AALang message format"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "DecisionLogStateActor handles cross-mode state requests correctly"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_ProductNameStateActor_CrossModeCommunication",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_ProductNameStateActor_CrossModeCommunication",
+        "description": "Test product name state access from all modes - ProductNameStateActor should be accessible from all four modes",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent in ClarificationMode with ProductNameStateActor having productName='test-product'",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "ex:ProductNameStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "productName"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionPersona1",
+              "to": "ex:ProductNameStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "productName"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:FormalizationPersona1",
+              "to": "ex:ProductNameStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "productName"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:GenerationPersona1",
+              "to": "ex:ProductNameStateActor"
+            },
+            "payload": {
+              "action": "requestState",
+              "requestType": "productName"
+            }
+          }
+        ],
+        "messageSequence": [0, 1, 2, 3]
+      },
+      "outputs": {
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:ProductNameStateActor",
+              "to": "ex:ClarificationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "productName": "test-product"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:ProductNameStateActor",
+              "to": "ex:DiscussionPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "productName": "test-product"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:ProductNameStateActor",
+              "to": "ex:FormalizationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "productName": "test-product"
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:ProductNameStateActor",
+              "to": "ex:GenerationPersona1"
+            },
+            "payload": {
+              "responseType": "stateResponse",
+              "productName": "test-product"
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "satisfiesConstraint",
+          "expected": "ProductNameStateActor accessible from all four modes"
+        },
+        {
+          "type": "messageFormat",
+          "expected": "Cross-mode communication follows AALang message format"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "ProductNameStateActor handles cross-mode state requests from all modes correctly"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_StateActor_ConflictResolution",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_StateActor_ConflictResolution",
+        "description": "Test state update conflict resolution - State actors should follow first-write-wins policy per ex:StateUpdateConflictResolution protocol",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent with UnderstandingIndicatorsStateActor having overallConfidence=0.7",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona1",
+              "to": "ex:UnderstandingIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "updateState",
+              "overallConfidence": 0.8
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:ClarificationPersona2",
+              "to": "ex:UnderstandingIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "updateState",
+              "overallConfidence": 0.9
+            }
+          }
+        ],
+        "messageSequence": [0, 1]
+      },
+      "outputs": {
+        "observedStateChanges": {
+          "mode": "ex:ClarificationModeState",
+          "stateAfter": {
+            "overallConfidence": 0.8
+          }
+        },
+        "observedMessages": [
+          {
+            "routingGraph": {
+              "from": "ex:UnderstandingIndicatorsStateActor",
+              "to": "ex:ClarificationPersona2"
+            },
+            "payload": {
+              "action": "stateUpdateConflict",
+              "error": "State update conflict: first-write-wins policy applied",
+              "currentValue": 0.8,
+              "rejectedValue": 0.9
+            }
+          }
+        ],
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "satisfiesConstraint",
+          "expected": "First write wins - first update (0.8) is accepted, second (0.9) is rejected"
+        },
+        {
+          "type": "contains",
+          "expected": "Conflict resolution message explains first-write-wins policy"
+        },
+        {
+          "type": "stateConsistency",
+          "expected": "State remains consistent after conflict resolution"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "State actors handle conflicts using first-write-wins policy"
+        }
+      ]
+    },
+    {
+      "@id": "ex:Test_StateActor_ConcurrentUpdates",
+      "@type": "Test",
+      "metadata": {
+        "name": "Test_StateActor_ConcurrentUpdates",
+        "description": "Test handling of concurrent state updates from multiple personas - State actors should handle concurrent updates correctly",
+        "type": "MessageFlowTest",
+        "priority": 2
+      },
+      "setup": "Initialize GAB agent with SatisfactionIndicatorsStateActor having discussionMode.satisfied=false",
+      "teardown": "Reset all mode states and actor states",
+      "inputs": {
+        "messages": [
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionPersona1",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "updateState",
+              "discussionMode": {
+                "satisfied": true
+              }
+            }
+          },
+          {
+            "routingGraph": {
+              "from": "ex:DiscussionPersona2",
+              "to": "ex:SatisfactionIndicatorsStateActor"
+            },
+            "payload": {
+              "action": "updateState",
+              "discussionMode": {
+                "confident": true
+              }
+            }
+          }
+        ],
+        "messageSequence": [0, 1]
+      },
+      "outputs": {
+        "observedStateChanges": {
+          "mode": "ex:DiscussionModeState",
+          "stateAfter": {
+            "discussionMode": {
+              "satisfied": true,
+              "confident": true
+            }
+          }
+        },
+        "observedBehavior": {
+          "messageAccepted": true,
+          "messageRejected": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "stateConsistency",
+          "expected": "Concurrent updates to different fields are both applied correctly"
+        },
+        {
+          "type": "satisfiesConstraint",
+          "expected": "State actor handles concurrent updates without corruption"
+        },
+        {
+          "type": "actorBehavior",
+          "expected": "State actors handle concurrent updates from multiple personas correctly"
+        }
+      ]
+    }
+  ]
+}

@@ -43,6 +43,8 @@ defmodule Ash.Tracer.Simple do
       }
       | spans
     ])
+
+    :ok
   end
 
   @impl true
@@ -59,6 +61,7 @@ defmodule Ash.Tracer.Simple do
     end
 
     send(context[:pid], {:span, span})
+    :ok
   end
 
   @impl true
@@ -69,6 +72,7 @@ defmodule Ash.Tracer.Simple do
   @impl true
   def set_span_context(context) do
     Process.put(:span_context, context)
+    :ok
   end
 
   @impl true
@@ -79,12 +83,15 @@ defmodule Ash.Tracer.Simple do
       :tracer_spans,
       [Map.update!(span, :metadata, &Map.merge(&1, metadata)) | spans]
     )
+
+    :ok
   end
 
   @impl true
   def set_error(error) do
     [span | spans] = Process.get(:tracer_spans, [])
     Process.put(:tracer_spans, [Map.put(span, :error, error) | spans])
+    :ok
   end
 
   def gather_spans do

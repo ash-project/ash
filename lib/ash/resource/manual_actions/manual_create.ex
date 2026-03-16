@@ -106,6 +106,54 @@ defmodule Ash.Resource.ManualCreate do
 
   @optional_callbacks [bulk_create: 3]
 
+  @doc false
+  @spec create(module(), Ash.Changeset.t() | term(), Keyword.t() | term(), Context.t() | term()) ::
+          {:ok, Ash.Resource.record()}
+          | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
+          | {:error, term()}
+  def create(module, changeset, opts, context) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :create,
+      [changeset, opts, context],
+      [{:ok, :_}, {:ok, :_, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "create/3"
+    )
+  end
+
+  @doc false
+  @spec bulk_create(module(), Enumerable.t(Ash.Changeset.t()), Keyword.t(), BulkContext.t()) ::
+          list(
+            :ok
+            | {:ok, Ash.Resource.record()}
+            | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
+            | {:ok, Ash.Resource.record(), [Ash.Notifier.Notification.t()]}
+            | {:error, Ash.Error.t()}
+            | {:notifications, list(Ash.Notifier.Notification.t())}
+          )
+  def bulk_create(module, changesets, opts, context) do
+    result = apply(module, :bulk_create, [changesets, opts, context])
+
+    if is_list(result) and Enum.all?(result, &valid_bulk_create_result?/1) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.bulk_create/3.
+
+        The callback #{inspect(__MODULE__)}.bulk_create/3 expects a list of :ok, {:ok, record}, {:ok, record, notifications}, {:error, error}, or {:notifications, list}.
+        """
+    end
+  end
+
+  defp valid_bulk_create_result?(:ok), do: true
+  defp valid_bulk_create_result?({:ok, _}), do: true
+  defp valid_bulk_create_result?({:ok, _, _}), do: true
+  defp valid_bulk_create_result?({:error, _}), do: true
+  defp valid_bulk_create_result?({:notifications, list}) when is_list(list), do: true
+  defp valid_bulk_create_result?(_), do: false
+
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.ManualCreate

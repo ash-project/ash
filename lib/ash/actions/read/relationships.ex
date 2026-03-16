@@ -487,24 +487,29 @@ defmodule Ash.Actions.Read.Relationships do
       last?,
       fn ->
         result =
-          module.load(records, opts, %Ash.Resource.ManualRelationship.Context{
-            relationship: relationship,
-            source_context: query.context,
-            query:
-              related_query
-              |> Ash.Query.sort(relationship.sort)
-              |> Ash.Query.do_filter(relationship.filter)
-              |> Map.put(:load, [])
-              |> Ash.Query.set_context(%{
-                accessing_from: %{source: relationship.source, name: relationship.name},
-                parent_stack: parent_stack
-              }),
-            actor: related_query.context[:private][:actor],
-            authorize?: related_query.context[:private][:authorize?],
-            tracer: related_query.context[:private][:tracer],
-            domain: related_query.domain,
-            tenant: related_query.tenant
-          })
+          Ash.Resource.ManualRelationship.load(
+            module,
+            records,
+            opts,
+            %Ash.Resource.ManualRelationship.Context{
+              relationship: relationship,
+              source_context: query.context,
+              query:
+                related_query
+                |> Ash.Query.sort(relationship.sort)
+                |> Ash.Query.do_filter(relationship.filter)
+                |> Map.put(:load, [])
+                |> Ash.Query.set_context(%{
+                  accessing_from: %{source: relationship.source, name: relationship.name},
+                  parent_stack: parent_stack
+                }),
+              actor: related_query.context[:private][:actor],
+              authorize?: related_query.context[:private][:authorize?],
+              tracer: related_query.context[:private][:tracer],
+              domain: related_query.domain,
+              tenant: related_query.tenant
+            }
+          )
           |> case do
             {:ok, result} -> {:ok, result}
             {:error, error} -> {:error, error}
@@ -1761,11 +1766,23 @@ defmodule Ash.Actions.Read.Relationships do
         false
 
       %Ash.Query.Calculation{} = calculation ->
-        expression = calculation.module.expression(calculation.opts, calculation.context)
+        expression =
+          Ash.Resource.Calculation.expression(
+            calculation.module,
+            calculation.opts,
+            calculation.context
+          )
+
         do_has_parent_expr?(expression)
 
       {%Ash.Query.Calculation{} = calculation, _} ->
-        expression = calculation.module.expression(calculation.opts, calculation.context)
+        expression =
+          Ash.Resource.Calculation.expression(
+            calculation.module,
+            calculation.opts,
+            calculation.context
+          )
+
         do_has_parent_expr?(expression)
     end)
   end
@@ -1798,8 +1815,8 @@ defmodule Ash.Actions.Read.Relationships do
               field: %Ash.Query.Calculation{module: module, opts: opts, context: context}
             }
           } ->
-            if module.has_expression?() do
-              module.expression(opts, context)
+            if Ash.Resource.Calculation.has_expression?(module) do
+              Ash.Resource.Calculation.expression(module, opts, context)
               |> do_has_parent_expr?(depth + 1)
             else
               false

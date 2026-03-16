@@ -890,8 +890,8 @@ defmodule Ash.Filter.Runtime do
         {:ok, result}
 
       :unknown ->
-        if module.has_expression?() do
-          expression = module.expression(opts, context)
+        if Ash.Resource.Calculation.has_expression?(module) do
+          expression = Ash.Resource.Calculation.expression(module, opts, context)
 
           expression =
             Ash.Expr.fill_template(
@@ -924,7 +924,7 @@ defmodule Ash.Filter.Runtime do
             # look like though.
 
             if record do
-              case module.calculate([record], opts, context) do
+              case Ash.Resource.Calculation.calculate(module, [record], opts, context) do
                 [result] ->
                   {:ok, result}
 

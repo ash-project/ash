@@ -80,9 +80,9 @@ defmodule Ash.Actions.Read.Calculations do
           source_context: opts[:context] || %{}
         }
 
-      if reuse_values? && module.has_expression?() do
+      if reuse_values? && Ash.Resource.Calculation.has_expression?(module) do
         expr =
-          case module.expression(calc_opts, calc_context) do
+          case Ash.Resource.Calculation.expression(module, calc_opts, calc_context) do
             {:ok, result} -> {:ok, result}
             {:error, error} -> {:error, error}
             result -> {:ok, result}
@@ -121,7 +121,8 @@ defmodule Ash.Actions.Read.Calculations do
                         with_trace(
                           fn ->
                             {:ok,
-                             calculation.module.calculate(
+                             Ash.Resource.Calculation.calculate(
+                               calculation.module,
                                [record],
                                calculation.opts,
                                calculation.context
@@ -166,9 +167,16 @@ defmodule Ash.Actions.Read.Calculations do
                        "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer does not support one-off calculations."}
 
                     {:error, error} ->
-                      if module.has_calculate?() do
+                      if Ash.Resource.Calculation.has_calculate?(module) do
                         case with_trace(
-                               fn -> module.calculate([record], calc_opts, calc_context) end,
+                               fn ->
+                                 Ash.Resource.Calculation.calculate(
+                                   module,
+                                   [record],
+                                   calc_opts,
+                                   calc_context
+                                 )
+                               end,
                                resource,
                                calculation,
                                opts
@@ -228,10 +236,17 @@ defmodule Ash.Actions.Read.Calculations do
             {:error, error} -> {:error, error}
           end
         else
-          if module.has_calculate?() do
+          if Ash.Resource.Calculation.has_calculate?(module) do
             record =
               if primary_key do
-                Ash.load(record, module.load(Ash.Query.new(resource), calc_opts, calc_context),
+                Ash.load(
+                  record,
+                  Ash.Resource.Calculation.load(
+                    module,
+                    Ash.Query.new(resource),
+                    calc_opts,
+                    calc_context
+                  ),
                   actor: opts[:actor],
                   domain: opts[:domain],
                   lazy?: reuse_values?,
@@ -248,7 +263,14 @@ defmodule Ash.Actions.Read.Calculations do
 
             with {:ok, record} <- record do
               case with_trace(
-                     fn -> module.calculate([record], calc_opts, calc_context) end,
+                     fn ->
+                       Ash.Resource.Calculation.calculate(
+                         module,
+                         [record],
+                         calc_opts,
+                         calc_context
+                       )
+                     end,
                      resource,
                      calculation,
                      opts
@@ -543,7 +565,7 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp run_calculate(records, module, opts, context, resource, calculation_name, run_opts) do
     with_trace(
-      fn -> module.calculate(records, opts, context) end,
+      fn -> Ash.Resource.Calculation.calculate(module, records, opts, context) end,
       resource,
       calculation_name,
       run_opts
@@ -858,7 +880,7 @@ defmodule Ash.Actions.Read.Calculations do
       {name, []} ->
         relationship = Ash.Resource.Info.relationship(ash_query.resource, name)
 
-        if calculation.module.strict_loads?() do
+        if Ash.Resource.Calculation.strict_loads?(calculation.module) do
           []
         else
           query = Ash.Query.new(relationship.destination)
@@ -969,7 +991,7 @@ defmodule Ash.Actions.Read.Calculations do
       |> Map.values()
       |> Enum.reduce_while({:ok, [], [], ash_query}, fn calculation,
                                                         {:ok, in_query, at_runtime, ash_query} ->
-        if calculation.module.has_expression?() do
+        if Ash.Resource.Calculation.has_expression?(calculation.module) do
           expression =
             calculation.opts
             |> Ash.Expr.fill_template(
@@ -978,7 +1000,9 @@ defmodule Ash.Actions.Read.Calculations do
               args: calculation.context.arguments,
               context: calculation.context.source_context
             )
-            |> calculation.module.expression(calculation.context)
+            |> then(
+              &Ash.Resource.Calculation.expression(calculation.module, &1, calculation.context)
+            )
             |> Ash.Expr.fill_template(
               actor: calculation.context.actor,
               tenant: ash_query.to_tenant,
@@ -1019,7 +1043,7 @@ defmodule Ash.Actions.Read.Calculations do
                     {:halt, {:error, error}}
                 end
               else
-                if calculation.module.has_calculate?() do
+                if Ash.Resource.Calculation.has_calculate?(calculation.module) do
                   {:cont, {:ok, in_query, [calculation | at_runtime], ash_query}}
                 else
                   {:cont,
@@ -1070,7 +1094,7 @@ defmodule Ash.Actions.Read.Calculations do
     end
     |> if do
       if reuse_values? && calculation.module != Ash.Resource.Calculation.Expression &&
-           calculation.module.has_calculate?() do
+           Ash.Resource.Calculation.has_calculate?(calculation.module) do
         {:ok, calculation}
       else
         Enum.reduce_while(initial_data, {:ok, []}, fn record, {:ok, results} ->
@@ -1139,7 +1163,7 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp should_be_in_expression?(calculation, expression \\ nil, ash_query) do
-    if calculation.module.has_expression?() do
+    if Ash.Resource.Calculation.has_expression?(calculation.module) do
       case Map.fetch(calculation.context, :should_be_in_expression?) do
         {:ok, value} ->
           {:ok, value}
@@ -1148,7 +1172,9 @@ defmodule Ash.Actions.Read.Calculations do
           expression =
             expression ||
               calculation.opts
-              |> calculation.module.expression(calculation.context)
+              |> then(
+                &Ash.Resource.Calculation.expression(calculation.module, &1, calculation.context)
+              )
               |> Ash.Expr.fill_template(
                 actor: calculation.context.actor,
                 tenant: ash_query.to_tenant,
@@ -1173,7 +1199,7 @@ defmodule Ash.Actions.Read.Calculations do
               expression
               |> Ash.Filter.used_calculations(ash_query.resource, :*)
               |> Enum.all?(fn %{module: module} ->
-                module.has_expression?()
+                Ash.Resource.Calculation.has_expression?(module)
               end)
               |> then(&{:ok, &1})
 
@@ -1204,7 +1230,7 @@ defmodule Ash.Actions.Read.Calculations do
     if {calculation.module, calculation.opts} in checked_calculations do
       query
     else
-      has_expression? = calculation.module.has_expression?()
+      has_expression? = Ash.Resource.Calculation.has_expression?(calculation.module)
 
       should_be_in_expression_result =
         if has_expression? do
@@ -1251,7 +1277,7 @@ defmodule Ash.Actions.Read.Calculations do
             calculation.name,
             calculation.load,
             calc_path,
-            calculation.module.strict_loads?(),
+            Ash.Resource.Calculation.strict_loads?(calculation.module),
             relationship_path,
             can_expression_calculation?,
             checked_calculations,
@@ -1994,8 +2020,12 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp find_equivalent_calculation(query, calculation, authorize?) do
     reusable? =
-      if authorize? && calculation.module.has_expression?() do
-        calculation.module.expression(calculation.opts, calculation.context)
+      if authorize? && Ash.Resource.Calculation.has_expression?(calculation.module) do
+        Ash.Resource.Calculation.expression(
+          calculation.module,
+          calculation.opts,
+          calculation.context
+        )
         |> Ash.Filter.list_refs(false, false, true, true)
         |> Enum.any?(&(&1.relationship_path != []))
         |> Kernel.not()

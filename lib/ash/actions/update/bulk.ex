@@ -323,7 +323,7 @@ defmodule Ash.Actions.Update.Bulk do
                   fn
                     %{change: {module, change_opts}} ->
                       module.has_after_batch?() &&
-                        module.batch_callbacks?(query, change_opts, context)
+                        Ash.Resource.Change.batch_callbacks?(module,query, change_opts, context)
 
                     _ ->
                       false
@@ -1105,7 +1105,7 @@ defmodule Ash.Actions.Update.Bulk do
                   change = Enum.at(all_changes, index)
                   {module, opts} = change.change
 
-                  case module.after_batch(records, opts, context) do
+                  case Ash.Resource.Change.after_batch(module, records, opts, context) do
                     :ok ->
                       {to_apply, additional_notifications}
 
@@ -1157,7 +1157,7 @@ defmodule Ash.Actions.Update.Bulk do
       |> Enum.filter(fn
         {%{change: {module, change_opts}}, _index} ->
           module.has_after_batch?() &&
-            module.batch_callbacks?(query, change_opts, context)
+            Ash.Resource.Change.batch_callbacks?(module,query, change_opts, context)
 
         _ ->
           false
@@ -2406,8 +2406,9 @@ defmodule Ash.Actions.Update.Bulk do
           case change_opts do
             {:templated, change_opts} ->
               if module.has_before_batch?() && module.has_batch_change?() &&
-                   module.batch_callbacks?(batch, change_opts, context) do
-                module.before_batch(
+                   Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context) do
+                Ash.Resource.Change.before_batch(
+                  module,
                   batch,
                   change_opts,
                   context
@@ -2419,7 +2420,7 @@ defmodule Ash.Actions.Update.Bulk do
             change_opts ->
               Enum.flat_map(batch, fn changeset ->
                 if module.has_before_batch?() && module.has_batch_change?() &&
-                     module.batch_callbacks?(batch, change_opts, context) do
+                     Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context) do
                   change_opts =
                     templated_opts(
                       change_opts,
@@ -2430,7 +2431,8 @@ defmodule Ash.Actions.Update.Bulk do
                       changeset
                     )
 
-                  module.before_batch(
+                  Ash.Resource.Change.before_batch(
+                    module,
                     [changeset],
                     change_opts,
                     context
@@ -2456,8 +2458,9 @@ defmodule Ash.Actions.Update.Bulk do
               {:templated, change_opts} ->
                 if module.has_before_batch?() &&
                      module.has_batch_change?() &&
-                     module.batch_callbacks?(matches, change_opts, context) do
-                  module.before_batch(
+                     Ash.Resource.Change.batch_callbacks?(module,matches, change_opts, context) do
+                  Ash.Resource.Change.before_batch(
+                    module,
                     matches,
                     change_opts,
                     context
@@ -2480,8 +2483,9 @@ defmodule Ash.Actions.Update.Bulk do
 
                   if module.has_before_batch?() &&
                        module.has_batch_change?() &&
-                       module.batch_callbacks?([changeset], change_opts, context) do
-                    module.before_batch(
+                       Ash.Resource.Change.batch_callbacks?(module,[changeset], change_opts, context) do
+                    Ash.Resource.Change.before_batch(
+                      module,
                       [changeset],
                       change_opts,
                       context
@@ -2695,21 +2699,26 @@ defmodule Ash.Actions.Update.Bulk do
                   end
 
                 if function_exported?(mod, :bulk_update, 3) do
-                  mod.bulk_update(batch, manual_opts, %Ash.Resource.ManualUpdate.BulkContext{
-                    actor: opts[:actor],
-                    select: opts[:select],
-                    source_context: source_context,
-                    batch_size: opts[:batch_size],
-                    authorize?: opts[:authorize?],
-                    tracer: opts[:tracer],
-                    domain: domain,
-                    return_records?:
-                      opts[:return_records?] || must_return_records? ||
-                        must_return_records_for_changes?,
-                    return_notifications?: opts[:return_notifications?] || false,
-                    return_errors?: opts[:return_errors?] || false,
-                    tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
-                  })
+                  Ash.Resource.ManualUpdate.bulk_update(
+                    mod,
+                    batch,
+                    manual_opts,
+                    %Ash.Resource.ManualUpdate.BulkContext{
+                      actor: opts[:actor],
+                      select: opts[:select],
+                      source_context: source_context,
+                      batch_size: opts[:batch_size],
+                      authorize?: opts[:authorize?],
+                      tracer: opts[:tracer],
+                      domain: domain,
+                      return_records?:
+                        opts[:return_records?] || must_return_records? ||
+                          must_return_records_for_changes?,
+                      return_notifications?: opts[:return_notifications?] || false,
+                      return_errors?: opts[:return_errors?] || false,
+                      tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
+                    }
+                  )
                 else
                   ctx = %Ash.Resource.ManualUpdate.Context{
                     actor: opts[:actor],
@@ -2725,7 +2734,7 @@ defmodule Ash.Actions.Update.Bulk do
                   [changeset] = batch
 
                   [
-                    mod.update(changeset, manual_opts, ctx)
+                    Ash.Resource.ManualUpdate.update(mod, changeset, manual_opts, ctx)
                     |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
                       changeset,
                       :bulk_update,
@@ -3240,8 +3249,9 @@ defmodule Ash.Actions.Update.Bulk do
             {:templated, change_opts} ->
               if module.has_after_batch?() &&
                    module.has_batch_change?() &&
-                   module.batch_callbacks?(changesets, change_opts, context) do
-                module.after_batch(
+                   Ash.Resource.Change.batch_callbacks?(module,changesets, change_opts, context) do
+                Ash.Resource.Change.after_batch(
+                  module,
                   results_for_callback,
                   change_opts,
                   context
@@ -3282,8 +3292,9 @@ defmodule Ash.Actions.Update.Bulk do
 
                 if module.has_after_batch?() &&
                      module.has_batch_change?() &&
-                     module.batch_callbacks?(changesets, change_opts, context) do
-                  module.after_batch(
+                     Ash.Resource.Change.batch_callbacks?(module,changesets, change_opts, context) do
+                  Ash.Resource.Change.after_batch(
+                    module,
                     [{changeset, record}],
                     change_opts,
                     context
@@ -3329,8 +3340,9 @@ defmodule Ash.Actions.Update.Bulk do
               {:templated, change_opts} ->
                 if module.has_after_batch?() &&
                      module.has_batch_change?() &&
-                     module.batch_callbacks?(changesets, change_opts, context) do
-                  module.after_batch(
+                     Ash.Resource.Change.batch_callbacks?(module,changesets, change_opts, context) do
+                  Ash.Resource.Change.after_batch(
+                    module,
                     matches_for_callback,
                     change_opts,
                     struct(
@@ -3371,7 +3383,7 @@ defmodule Ash.Actions.Update.Bulk do
                 Enum.flat_map(matches_for_callback, fn {changeset, record} = result ->
                   if module.has_after_batch?() &&
                        module.has_batch_change?() &&
-                       module.batch_callbacks?(changesets, change_opts, context) do
+                       Ash.Resource.Change.batch_callbacks?(module,changesets, change_opts, context) do
                     change_opts =
                       templated_opts(
                         change_opts,
@@ -3382,7 +3394,8 @@ defmodule Ash.Actions.Update.Bulk do
                         changeset
                       )
 
-                    module.after_batch(
+                    Ash.Resource.Change.after_batch(
+                      module,
                       [result],
                       change_opts,
                       struct(
@@ -3558,7 +3571,7 @@ defmodule Ash.Actions.Update.Bulk do
                         changeset
                       )
 
-                    {:ok, opts} = module.init(opts)
+                    {:ok, opts} = Ash.Resource.Validation.init(module, opts)
 
                     if change.only_when_valid? do
                       changeset.valid? &&
@@ -3600,7 +3613,7 @@ defmodule Ash.Actions.Update.Bulk do
                 end) ||
                 (module.has_after_batch?() &&
                    module.has_batch_change?() &&
-                   module.batch_callbacks?(batch, change_opts, context))
+                   Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context))
 
             match_indices =
               if Enum.empty?(non_matches) do
@@ -3644,7 +3657,7 @@ defmodule Ash.Actions.Update.Bulk do
                changeset
              )
 
-           {:ok, opts} = module.init(opts)
+           {:ok, opts} = Ash.Resource.Validation.init(module, opts)
 
            Ash.Resource.Validation.validate(
              module,
@@ -3663,7 +3676,7 @@ defmodule Ash.Actions.Update.Bulk do
             changeset
           )
 
-        {:ok, opts} = module.init(opts)
+        {:ok, opts} = Ash.Resource.Validation.init(module, opts)
 
         case Ash.Resource.Validation.validate(
                module,
@@ -3734,13 +3747,13 @@ defmodule Ash.Actions.Update.Bulk do
       {:templated, change_opts} ->
         cond do
           !must_be_atomic? && module.has_batch_change?() &&
-              module.batch_callbacks?(batch, change_opts, context) ->
-            {:ok, change_opts} = module.init(change_opts)
-            module.batch_change(batch, change_opts, context)
+              Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context) ->
+            {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
+            Ash.Resource.Change.batch_change(module, batch, change_opts, context)
 
           !must_be_atomic? && module.has_change?() ->
             Enum.map(batch, fn changeset ->
-              {:ok, change_opts} = module.init(change_opts)
+              {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
 
               Ash.Resource.Change.change(
                 module,
@@ -3805,7 +3818,7 @@ defmodule Ash.Actions.Update.Bulk do
         cond do
           !must_be_atomic? && module.has_batch_change?() ->
             Enum.flat_map(batch, fn changeset ->
-              if module.batch_callbacks?(batch, change_opts, context) do
+              if Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context) do
                 change_opts =
                   templated_opts(
                     change_opts,
@@ -3816,8 +3829,8 @@ defmodule Ash.Actions.Update.Bulk do
                     changeset
                   )
 
-                {:ok, change_opts} = module.init(change_opts)
-                module.batch_change(batch, change_opts, context)
+                {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
+                Ash.Resource.Change.batch_change(module, batch, change_opts, context)
               else
                 [
                   Ash.Resource.Change.change(
@@ -3842,7 +3855,7 @@ defmodule Ash.Actions.Update.Bulk do
                   changeset
                 )
 
-              {:ok, change_opts} = module.init(change_opts)
+              {:ok, change_opts} = Ash.Resource.Change.init(module, change_opts)
 
               Ash.Resource.Change.change(
                 module,

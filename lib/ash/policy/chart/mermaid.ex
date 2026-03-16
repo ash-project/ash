@@ -36,7 +36,7 @@ defmodule Ash.Policy.Chart.Mermaid do
                     {module, opts}
                 end
 
-              mod.describe(opts)
+              Ash.Policy.Check.describe(mod, opts)
             end)
             |> Enum.intersperse(" and ")
             |> Enum.join()
@@ -92,7 +92,7 @@ defmodule Ash.Policy.Chart.Mermaid do
                   {module, opts}
               end
 
-            mod.describe(opts)
+            Ash.Policy.Check.describe(mod, opts)
           end)
 
         last_policy? = policy_index == policy_count - 1
@@ -193,7 +193,7 @@ defmodule Ash.Policy.Chart.Mermaid do
                 "#{policy_index}_checks_#{check_index}--False-->#{false_dest}"
               end
 
-            description = check.check_module.describe(check.check_opts)
+            description = Ash.Policy.Check.describe(check.check_module, check.check_opts)
 
             description =
               if description && description != "" do

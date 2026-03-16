@@ -48,7 +48,7 @@ defmodule Ash.Reactor.AshStep do
           maybe_set_kw(acc, k, v)
         end)
 
-      module.run(arguments, context, options)
+      Ash.Reactor.Step.run(module, arguments, context, options)
     else
       case Keyword.fetch!(options, :run) do
         fun when is_function(fun, 1) ->
@@ -90,7 +90,7 @@ defmodule Ash.Reactor.AshStep do
           maybe_set_kw(acc, k, v)
         end)
 
-      module.compensate(reason, arguments, context, options)
+      Ash.Reactor.Step.compensate(module, reason, arguments, context, options)
     else
       case Keyword.fetch(options, :compensate) do
         {:ok, fun} when is_function(fun, 1) ->
@@ -135,7 +135,7 @@ defmodule Ash.Reactor.AshStep do
           maybe_set_kw(acc, k, v)
         end)
 
-      module.undo(value, arguments, context, options)
+      Ash.Reactor.Step.undo(module, value, arguments, context, options)
     else
       case Keyword.fetch(options, :undo) do
         {:ok, fun} when is_function(fun, 1) ->

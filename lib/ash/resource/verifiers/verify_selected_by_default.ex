@@ -13,7 +13,7 @@ defmodule Ash.Resource.Verifiers.VerifySelectedByDefault do
     resource = Verifier.get_persisted(dsl, :module)
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    if is_nil(data_layer) || data_layer.can?(resource, :select) do
+    if is_nil(data_layer) || Ash.DataLayer.can?(data_layer, resource, :select) do
       :ok
     else
       Enum.each(Ash.Resource.Info.attributes(dsl), fn attribute ->
