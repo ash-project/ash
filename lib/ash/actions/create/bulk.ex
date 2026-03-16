@@ -1863,7 +1863,9 @@ defmodule Ash.Actions.Create.Bulk do
                   )
 
                 invalid =
-                    Enum.find(validation.where, fn {where_mod, _} -> !where_mod.has_validate?() end) ->
+                    Enum.find(validation.where, fn {where_mod, _} ->
+                      !where_mod.has_validate?()
+                    end) ->
                   {invalid_mod, _} = invalid
 
                   Ash.Changeset.add_error(
@@ -1959,7 +1961,7 @@ defmodule Ash.Actions.Create.Bulk do
                 end) ||
                 (module.has_batch_change?() &&
                    module.has_after_batch?() &&
-                   Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context))
+                   Ash.Resource.Change.batch_callbacks?(module, batch, change_opts, context))
 
             %{
               state
@@ -2020,7 +2022,7 @@ defmodule Ash.Actions.Create.Bulk do
                   end) ||
                   (module.has_batch_change?() &&
                      module.has_after_batch?() &&
-                     Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context))
+                     Ash.Resource.Change.batch_callbacks?(module, batch, change_opts, context))
 
               %{
                 state
