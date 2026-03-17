@@ -23,6 +23,7 @@ defmodule Ash.Type.Float do
   ]
 
   import Ash.Expr
+  import Ash.Gettext
 
   @moduledoc """
   Represents a float (floating point number)
@@ -77,14 +78,17 @@ defmodule Ash.Type.Float do
       Enum.reduce(constraints, [], fn
         {:max, max}, errors ->
           if value > max do
-            [[message: "must be less than or equal to %{max}", max: max] | errors]
+            [[message: error_message("must be less than or equal to %{max}"), max: max] | errors]
           else
             errors
           end
 
         {:min, min}, errors ->
           if value < min do
-            [[message: "must be more than or equal to %{min}", min: min] | errors]
+            [
+              [message: error_message("must be greater than or equal to %{min}"), min: min]
+              | errors
+            ]
           else
             errors
           end
@@ -93,14 +97,23 @@ defmodule Ash.Type.Float do
           if value < less_than do
             errors
           else
-            [[message: "must be less than %{less_than}", less_than: less_than] | errors]
+            [
+              [message: error_message("must be less than %{less_than}"), less_than: less_than]
+              | errors
+            ]
           end
 
         {:greater_than, greater_than}, errors ->
           if value > greater_than do
             errors
           else
-            [[message: "must be more than %{greater_than}", greater_than: greater_than] | errors]
+            [
+              [
+                message: error_message("must be greater than %{greater_than}"),
+                greater_than: greater_than
+              ]
+              | errors
+            ]
           end
       end)
 
@@ -137,7 +150,7 @@ defmodule Ash.Type.Float do
             if ^expr > ^max do
               error(
                 Ash.Error.Changes.InvalidChanges,
-                message: "must be less than or equal to %{max}",
+                message: ^error_message("must be less than or equal to %{max}"),
                 vars: %{max: ^max}
               )
             else
@@ -150,7 +163,7 @@ defmodule Ash.Type.Float do
             if ^expr < ^min do
               error(
                 Ash.Error.Changes.InvalidChanges,
-                message: "must be greater than or equal to %{min}",
+                message: ^error_message("must be greater than or equal to %{min}"),
                 vars: %{min: ^min}
               )
             else
@@ -165,7 +178,7 @@ defmodule Ash.Type.Float do
             else
               error(
                 Ash.Error.Changes.InvalidChanges,
-                message: "must be greater than %{less_than}",
+                message: ^error_message("must be less than %{less_than}"),
                 vars: %{less_than: ^less_than}
               )
             end
@@ -178,7 +191,7 @@ defmodule Ash.Type.Float do
             else
               error(
                 Ash.Error.Changes.InvalidChanges,
-                message: "must be greater than %{greater_than}",
+                message: ^error_message("must be greater than %{greater_than}"),
                 vars: %{greater_than: ^greater_than}
               )
             end

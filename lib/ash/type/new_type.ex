@@ -139,6 +139,7 @@ defmodule Ash.Type.NewType do
       end
 
       use Ash.Type
+      import Ash.Gettext
 
       @behaviour Ash.Type.NewType
 
@@ -222,7 +223,9 @@ defmodule Ash.Type.NewType do
         |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
           case cast_input(item, constraints) do
             :error ->
-              {:halt, {:error, message: "invalid value at %{index}", index: index, path: [index]}}
+              {:halt,
+               {:error,
+                message: error_message("invalid value at %{index}"), index: index, path: [index]}}
 
             {:error, keyword} ->
               errors =

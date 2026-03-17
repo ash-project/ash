@@ -127,7 +127,7 @@ defmodule Type.KeywordTest do
     assert [
              %Ash.Error.Changes.InvalidAttribute{
                field: :bar,
-               message: "must be more than or equal to %{min}",
+               message: "must be greater than or equal to %{min}",
                private_vars: nil,
                value: [foo: "hello", bar: -1],
                bread_crumbs: [],
@@ -210,7 +210,7 @@ defmodule Type.KeywordTest do
            end)
 
     assert Enum.any?(errors, fn error ->
-             error.field == :bar && error.message == "must be more than or equal to %{min}"
+             error.field == :bar && error.message == "must be greater than or equal to %{min}"
            end)
   end
 
@@ -270,7 +270,7 @@ defmodule Type.KeywordTest do
 
     # Check for age minimum error
     assert Enum.any?(errors, fn error ->
-             error.field == :age && String.contains?(error.message, "more than")
+             error.field == :age && String.contains?(error.message, "greater than")
            end)
 
     # Check for email format error
@@ -339,7 +339,7 @@ defmodule Type.KeywordTest do
 
     # Check for positive integer constraint
     assert Enum.any?(errors, fn error ->
-             error.field == :positive_int && String.contains?(error.message, "more than")
+             error.field == :positive_int && String.contains?(error.message, "greater than")
            end)
 
     # Check for email format constraint
@@ -370,7 +370,7 @@ defmodule Type.KeywordTest do
           |> Enum.map(&(&1[:message] || to_string(&1)))
 
         assert Enum.any?(error_messages, &String.contains?(&1, "must be present"))
-        assert Enum.any?(error_messages, &String.contains?(&1, "more than"))
+        assert Enum.any?(error_messages, &String.contains?(&1, "greater than"))
 
       {:ok, _} ->
         flunk("Expected validation errors but got success")
@@ -404,7 +404,7 @@ defmodule Type.KeywordTest do
         assert Enum.any?(error_messages, &String.contains?(&1, "length"))
 
         # Check for count minimum constraint
-        assert Enum.any?(error_messages, &String.contains?(&1, "more than"))
+        assert Enum.any?(error_messages, &String.contains?(&1, "greater than"))
 
         # Check for email length constraint
         assert Enum.any?(error_messages, &String.contains?(&1, "length"))

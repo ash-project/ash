@@ -67,6 +67,7 @@ defmodule Ash.Type.Keyword do
   #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
+  import Ash.Gettext
 
   @impl true
   def constraints, do: @constraints
@@ -204,7 +205,7 @@ defmodule Ash.Type.Keyword do
 
           :error ->
             if field_constraints[:allow_nil?] == false do
-              field_error = [message: "field must be present", field: field]
+              field_error = [message: error_message("field must be present"), field: field]
               {errors_acc ++ [field_error], result_acc}
             else
               {errors_acc, result_acc}
@@ -232,7 +233,7 @@ defmodule Ash.Type.Keyword do
              ) do
           {:ok, nil} ->
             if field_constraints[:allow_nil?] == false do
-              {:error, [[message: "value must not be nil", field: field]]}
+              {:error, [[message: error_message("value must not be nil"), field: field]]}
             else
               {:ok, [{field, nil} | result]}
             end
@@ -252,7 +253,7 @@ defmodule Ash.Type.Keyword do
         {:error, [error]}
 
       :error ->
-        {:error, [[message: "invalid value", field: field]]}
+        {:error, [[message: error_message("invalid value"), field: field]]}
     end
   end
 
