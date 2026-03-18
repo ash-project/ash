@@ -110,8 +110,9 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
         {:unrelate, nil}
 
       :destroy when is_many_to_many ->
+        destroy = primary_action_name!(relationship.destination, :destroy)
         join_destroy = primary_action_name!(relationship.through, :destroy)
-        {:destroy, join_destroy}
+        {:destroy, destroy, join_destroy}
 
       :destroy ->
         destroy = primary_action_name!(relationship.destination, :destroy)
@@ -179,6 +180,9 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
 
       {:unrelate, _nil} ->
         nil
+
+      {:destroy, destroy, join_destroy} when relationship.type == :many_to_many ->
+        all([destination(destroy), join(join_destroy, :*)])
 
       {:destroy, join_destroy} when relationship.type == :many_to_many ->
         all(join(join_destroy, :*))

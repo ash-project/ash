@@ -64,6 +64,36 @@ defmodule Ash.Test.ManageRelationshipTest do
                )
       end
 
+      update :update_many_on_match_destroy do
+        require_atomic? false
+        argument :many_to_many_resources, {:array, :map}
+
+        change manage_relationship(:many_to_many_resources,
+                 on_no_match: :error,
+                 on_match: :destroy
+               )
+      end
+
+      update :update_many_on_match_destroy_join_only do
+        require_atomic? false
+        argument :many_to_many_resources, {:array, :map}
+
+        change manage_relationship(:many_to_many_resources,
+                 on_no_match: :error,
+                 on_match: {:destroy, :destroy_hard}
+               )
+      end
+
+      update :update_many_on_match_destroy_both do
+        require_atomic? false
+        argument :many_to_many_resources, {:array, :map}
+
+        change manage_relationship(:many_to_many_resources,
+                 on_no_match: :error,
+                 on_match: {:destroy, :destroy_hard, :destroy_hard}
+               )
+      end
+
       update :remove_other_resource do
         require_atomic? false
         argument :other_resource_id, :uuid
@@ -610,6 +640,104 @@ defmodule Ash.Test.ManageRelationshipTest do
     third = Enum.find(updated_parent.many_to_many_resources, &(&1.name == "third"))
     assert is_nil(third.archived_at)
     assert is_nil(hd(third.join_resources).archived_at)
+  end
+
+  test "on_match :destroy shorthand destroys both join and destination for many_to_many" do
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               many_to_many_resources: [%{name: "match_destroy_1"}, %{name: "match_destroy_2"}]
+             })
+             |> Ash.create!()
+             |> Ash.load([:many_to_many_resources])
+
+    first_id =
+      Enum.find(parent.many_to_many_resources, &(&1.name == "match_destroy_1")).id
+
+    join_count_before = Ash.read!(JoinResource) |> length()
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update_many_on_match_destroy, %{
+               many_to_many_resources: [%{id: first_id}]
+             })
+             |> Ash.update!()
+             |> Ash.load([:many_to_many_resources])
+
+    # matched destination record should be destroyed
+    assert Enum.find(updated_parent.many_to_many_resources, &(&1.name == "match_destroy_1")) ==
+             nil
+
+    # join record for matched item should be destroyed
+    join_count_after = Ash.read!(JoinResource) |> length()
+    assert join_count_after == join_count_before - 1
+  end
+
+  test "on_match {:destroy, action} 2-tuple only destroys join for many_to_many (backward compat)" do
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               many_to_many_resources: [%{name: "join_only_1"}, %{name: "join_only_2"}]
+             })
+             |> Ash.create!()
+             |> Ash.load([:many_to_many_resources])
+
+    first_id =
+      Enum.find(parent.many_to_many_resources, &(&1.name == "join_only_1")).id
+
+    join_count_before = Ash.read!(JoinResource) |> length()
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update_many_on_match_destroy_join_only, %{
+               many_to_many_resources: [%{id: first_id}]
+             })
+             |> Ash.update!()
+             |> Ash.load([:many_to_many_resources])
+
+    # destination record should still exist (only join destroyed)
+    assert Enum.find(updated_parent.many_to_many_resources, &(&1.name == "join_only_1")) == nil
+
+    # but the destination record itself still exists in the table
+    assert Ash.read!(ManyToManyResource) |> Enum.find(&(&1.name == "join_only_1")) != nil
+
+    # join record should be destroyed
+    join_count_after = Ash.read!(JoinResource) |> length()
+    assert join_count_after == join_count_before - 1
+  end
+
+  test "on_match {:destroy, dest_action, join_action} 3-tuple destroys both for many_to_many" do
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               many_to_many_resources: [%{name: "both_destroy_1"}, %{name: "both_destroy_2"}]
+             })
+             |> Ash.create!()
+             |> Ash.load([:many_to_many_resources])
+
+    first_id =
+      Enum.find(parent.many_to_many_resources, &(&1.name == "both_destroy_1")).id
+
+    join_count_before = Ash.read!(JoinResource) |> length()
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update_many_on_match_destroy_both, %{
+               many_to_many_resources: [%{id: first_id}]
+             })
+             |> Ash.update!()
+             |> Ash.load([:many_to_many_resources])
+
+    # matched destination record should be destroyed
+    assert Enum.find(updated_parent.many_to_many_resources, &(&1.name == "both_destroy_1")) ==
+             nil
+
+    # join record should also be destroyed
+    join_count_after = Ash.read!(JoinResource) |> length()
+    assert join_count_after == join_count_before - 1
   end
 
   test "removing non-existent relationship returns NotFound error" do
