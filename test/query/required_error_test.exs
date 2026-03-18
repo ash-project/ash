@@ -21,6 +21,34 @@ defmodule Ash.Test.Query.RequiredErrorTest do
              RequiredError.evaluate(%{arguments: ["hello", attribute]})
   end
 
+  test "required!/2 treats false as present" do
+    attribute = %{name: :title, resource: MyApp.Post}
+
+    assert {:known, false} =
+             RequiredError.evaluate(%{arguments: [false, attribute]})
+  end
+
+  test "required!/2 treats 0 as present" do
+    attribute = %{name: :title, resource: MyApp.Post}
+
+    assert {:known, 0} =
+             RequiredError.evaluate(%{arguments: [0, attribute]})
+  end
+
+  test "required!/2 treats empty string as present" do
+    attribute = %{name: :title, resource: MyApp.Post}
+
+    assert {:known, ""} =
+             RequiredError.evaluate(%{arguments: ["", attribute]})
+  end
+
+  test "required!/2 does not require attribute keys when value is non-nil" do
+    # Contract: required! only reads the attribute metadata when value is nil.
+    # If the value is non-nil, it should return the value without raising.
+    assert {:known, "hello"} =
+             RequiredError.evaluate(%{arguments: ["hello", %{resource: MyApp.Post}]})
+  end
+
   test "required!/2 accepts attribute maps with string name key" do
     attribute = %{"name" => :title, resource: MyApp.Post}
 
