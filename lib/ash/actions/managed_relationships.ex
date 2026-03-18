@@ -1294,6 +1294,7 @@ defmodule Ash.Actions.ManagedRelationships do
         return_notifications?: true,
         return_errors?: true,
         stop_on_error?: true,
+        sorted?: true,
         authorize?: opts[:authorize?],
         actor: actor,
         tenant: changeset.tenant,
