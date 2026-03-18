@@ -3,11 +3,11 @@ defmodule Ash.Query.Function.RequiredError do
   Returns the given value when it is present, or a required error when it is nil.
 
   Intended for required-attribute validation. It is usually used via an expression
-  like `expr(ash_required!(^value, ^attribute))`, where `attribute` is a map or
+  like `expr(required!(^value, ^attribute))`, where `attribute` is a map or
   struct that at least contains `:name` and `:resource`.
   """
 
-  use Ash.Query.Function, name: :ash_required!, predicate?: false
+  use Ash.Query.Function, name: :required!, predicate?: false
 
   @impl true
   def args, do: [[:any, :any]]
@@ -17,19 +17,19 @@ defmodule Ash.Query.Function.RequiredError do
     {:ok, %__MODULE__{arguments: [value_expr, attribute]}}
   end
 
-  def new(_), do: {:error, "ash_required! expects (value, attribute)"}
+  def new(_), do: {:error, "required! expects (value, attribute)"}
 
   @impl true
   def evaluate(%{arguments: [value, attribute]}) do
     if is_nil(value) do
       resource =
         Map.get(attribute, :resource) ||
-          raise("attribute must have :resource for ash_required!")
+          raise("attribute must have :resource for required!")
 
       field =
         Map.get(attribute, :name) ||
           Map.get(attribute, "name") ||
-          raise("attribute must have :name for ash_required!")
+          raise("attribute must have :name for required!")
 
       {:error,
        Ash.Error.Changes.Required.exception(
