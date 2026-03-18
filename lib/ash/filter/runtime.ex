@@ -906,7 +906,8 @@ defmodule Ash.Filter.Runtime do
             Ash.Filter.hydrate_refs(expression, %{
               resource: resource,
               public?: false,
-              parent_stack: parent_stack(parent)
+              parent_stack: parent_stack(parent),
+              source_context: context.source_context || %{}
             })
 
           with {:ok, hydrated} <- hydrated do
