@@ -682,7 +682,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 if key = opts[:order_is_key] do
                   Enum.sort_by(new_value, &Map.get(&1, key))
                 else
-                  Enum.reverse(new_value)
+                  sort_by_input_index(new_value)
                 end
               else
                 new_value
@@ -1021,10 +1021,10 @@ defmodule Ash.Actions.ManagedRelationships do
          notifications
        ) do
     Enum.reduce_while(lookups, {:ok, new_value, notifications, []}, fn
-      {input, input_index}, {:ok, new_value, all_notifications, creates} ->
+      {input, input_index}, {:ok, current_value, all_notifications, creates} ->
         case handle_create(
                record,
-               new_value,
+               current_value,
                relationship,
                input,
                changeset,
@@ -1034,6 +1034,8 @@ defmodule Ash.Actions.ManagedRelationships do
                opts
              ) do
           {:ok, new_value, notifs} ->
+            new_value = tag_input_index_if_prepended(new_value, current_value, input_index)
+
             {:cont, {:ok, new_value, notifs ++ all_notifications, creates}}
 
           {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
@@ -1085,6 +1087,8 @@ defmodule Ash.Actions.ManagedRelationships do
                  opts
                ) do
             {:ok, new_value, notifs} ->
+              new_value = tag_input_index_if_prepended(new_value, current_value, input_index)
+
               {:cont, {:ok, new_value, notifs ++ all_notifications}}
 
             {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
@@ -1133,8 +1137,8 @@ defmodule Ash.Actions.ManagedRelationships do
 
     # Handle struct inputs immediately (they don't need creation)
     new_value =
-      Enum.reduce(struct_inputs, new_value, fn {input, _}, acc ->
-        [input | acc]
+      Enum.reduce(struct_inputs, new_value, fn {input, input_index}, acc ->
+        [tag_input_index(input, input_index) | acc]
       end)
 
     # Check for belongs_to_manage_created context
@@ -1150,7 +1154,7 @@ defmodule Ash.Actions.ManagedRelationships do
         created =
           changeset.context[:private][:belongs_to_manage_created][relationship.name][input_index]
 
-        [created | acc]
+        [tag_input_index(created, input_index) | acc]
       end)
 
     if to_create == [] do
@@ -1226,6 +1230,8 @@ defmodule Ash.Actions.ManagedRelationships do
                opts
              ) do
           {:ok, new_value, notifs} ->
+            new_value = tag_input_index_if_prepended(new_value, current_value, input_index)
+
             {:cont, {:ok, new_value, notifs ++ all_notifications}}
 
           {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
@@ -1294,6 +1300,7 @@ defmodule Ash.Actions.ManagedRelationships do
         return_notifications?: true,
         return_errors?: true,
         stop_on_error?: true,
+        sorted?: true,
         authorize?: opts[:authorize?],
         actor: actor,
         tenant: changeset.tenant,
@@ -1306,7 +1313,12 @@ defmodule Ash.Actions.ManagedRelationships do
       %Ash.BulkResult{status: :success, records: records, notifications: bulk_notifications} ->
         debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
 
-        new_value = Enum.reduce(records || [], new_value, fn created, acc -> [created | acc] end)
+        new_value =
+          Enum.zip(records || [], to_create)
+          |> Enum.reduce(new_value, fn {created, {_, input_index}}, acc ->
+            [tag_input_index(created, input_index) | acc]
+          end)
+
         {:ok, new_value, (bulk_notifications || []) ++ notifications}
 
       %Ash.BulkResult{status: :error, errors: errors} ->
@@ -1376,19 +1388,19 @@ defmodule Ash.Actions.ManagedRelationships do
     {struct_inputs, map_inputs_with_joins} =
       Enum.zip(create_inputs, join_inputs_list)
       |> Enum.zip(to_create)
-      |> Enum.split_with(fn {{_input, _join}, {orig_input, _}} ->
+      |> Enum.split_with(fn {{_input, _join}, {orig_input, _input_index}} ->
         is_struct(orig_input, relationship.destination)
       end)
 
     # Struct inputs don't need creation
     already_created =
-      Enum.map(struct_inputs, fn {{_input, join_params}, {orig_input, _}} ->
-        {orig_input, join_params}
+      Enum.map(struct_inputs, fn {{_input, join_params}, {orig_input, input_index}} ->
+        {orig_input, join_params, input_index}
       end)
 
     inputs_to_bulk_create =
-      Enum.map(map_inputs_with_joins, fn {{input, join_params}, _} ->
-        {input, join_params}
+      Enum.map(map_inputs_with_joins, fn {{input, join_params}, {_, input_index}} ->
+        {input, join_params, input_index}
       end)
 
     if inputs_to_bulk_create == [] do
@@ -1406,7 +1418,8 @@ defmodule Ash.Actions.ManagedRelationships do
       )
     else
       # Bulk create destination records
-      bulk_inputs = Enum.map(inputs_to_bulk_create, fn {input, _} -> input end)
+      bulk_inputs =
+        Enum.map(inputs_to_bulk_create, fn {input, _join_params, _input_index} -> input end)
 
       bulk_context =
         Map.take(changeset.context, [:shared])
@@ -1442,13 +1455,12 @@ defmodule Ash.Actions.ManagedRelationships do
         } ->
           debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
 
-          # Pair created records with their join params
+          # Pair created records with their join params and input indexes
           created_with_joins =
-            Enum.zip(
-              created_records || [],
-              Enum.map(inputs_to_bulk_create, fn {_, join} -> join end)
-            )
-            |> Enum.map(fn {created, join_params} -> {created, join_params} end)
+            Enum.zip(created_records || [], inputs_to_bulk_create)
+            |> Enum.map(fn {created, {_, join_params, input_index}} ->
+              {created, join_params, input_index}
+            end)
 
           all_for_join = already_created ++ created_with_joins
 
@@ -1502,12 +1514,12 @@ defmodule Ash.Actions.ManagedRelationships do
       Ash.Resource.Info.relationship(relationship.source, relationship.join_relationship)
 
     join_inputs =
-      Enum.map(created_with_joins, fn {_created, join_params} ->
+      Enum.map(created_with_joins, fn {_created, join_params, _input_index} ->
         join_params
       end)
 
     destination_values =
-      Enum.map(created_with_joins, fn {created, _join_params} ->
+      Enum.map(created_with_joins, fn {created, _join_params, _input_index} ->
         Map.get(created, relationship.destination_attribute)
       end)
 
@@ -1563,7 +1575,11 @@ defmodule Ash.Actions.ManagedRelationships do
         %Ash.BulkResult{status: :success, notifications: join_notifications} ->
           debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
 
-          created_records = Enum.map(created_with_joins, fn {created, _} -> created end)
+          created_records =
+            Enum.map(created_with_joins, fn {created, _, input_index} ->
+              tag_input_index(created, input_index)
+            end)
+
           new_value = Enum.reduce(created_records, new_value, fn c, acc -> [c | acc] end)
           {:ok, new_value, (join_notifications || []) ++ notifications}
 
@@ -1589,7 +1605,8 @@ defmodule Ash.Actions.ManagedRelationships do
       # Fall back to individual join record creation
       Enum.zip(created_with_joins, destination_values)
       |> Enum.reduce_while({:ok, new_value, notifications}, fn
-        {{created, join_params}, dest_value}, {:ok, current_value, all_notifications} ->
+        {{created, join_params, input_index}, dest_value},
+        {:ok, current_value, all_notifications} ->
           relationship.through
           |> Ash.Changeset.new()
           |> Ash.Changeset.set_context(%{
@@ -1619,13 +1636,56 @@ defmodule Ash.Actions.ManagedRelationships do
           |> case do
             {:ok, _join_row, join_notifications} ->
               debug_log(relationship.name, changeset, :create, :ok, opts[:debug?])
-              {:cont, {:ok, [created | current_value], join_notifications ++ all_notifications}}
+
+              {:cont,
+               {:ok, [tag_input_index(created, input_index) | current_value],
+                join_notifications ++ all_notifications}}
 
             {:error, error} ->
               debug_log(relationship.name, changeset, :create, {:error, error}, opts[:debug?])
               {:halt, {:error, add_bread_crumb(error, relationship, :create)}}
           end
       end)
+    end
+  end
+
+  defp tag_input_index(record, input_index) do
+    Ash.Resource.put_metadata(record, :__manage_relationship_index__, input_index)
+  end
+
+  defp tag_input_index_if_prepended(new_value, current_value, input_index) do
+    case new_value do
+      [head | ^current_value] ->
+        [tag_input_index(head, input_index) | current_value]
+
+      _ ->
+        new_value
+    end
+  end
+
+  defp sort_by_input_index(records) do
+    case records do
+      [%{__metadata__: %{__manage_relationship_index__: _}} | _] ->
+        {managed, unmanaged} =
+          Enum.split_with(records, fn
+            %{__metadata__: metadata} -> is_map_key(metadata, :__manage_relationship_index__)
+            _ -> false
+          end)
+
+        sorted_managed =
+          managed
+          |> Enum.sort_by(& &1.__metadata__[:__manage_relationship_index__])
+          |> Enum.map(fn record ->
+            %{
+              record
+              | __metadata__: Map.delete(record.__metadata__, :__manage_relationship_index__)
+            }
+          end)
+
+        unmanaged ++ sorted_managed
+
+      _ ->
+        Enum.reverse(records)
     end
   end
 

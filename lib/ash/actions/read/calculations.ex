@@ -1001,8 +1001,7 @@ defmodule Ash.Actions.Read.Calculations do
                   calculation.context.tracer,
                   domain,
                   ash_query.resource,
-                  parent_stack:
-                    Ash.Actions.Read.parent_stack_from_context(ash_query.context),
+                  parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
                   source_context: ash_query.context
                 )
 
@@ -1187,8 +1186,7 @@ defmodule Ash.Actions.Read.Calculations do
                   calculation.context.tracer,
                   ash_query.domain,
                   ash_query.resource,
-                  parent_stack:
-                    Ash.Actions.Read.parent_stack_from_context(ash_query.context),
+                  parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
                   source_context: ash_query.context
                 )
 
