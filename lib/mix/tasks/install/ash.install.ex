@@ -240,6 +240,12 @@ if Code.ensure_loaded?(Igniter) do
               [:redact_sensitive_values_in_errors?],
               true
             )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:many_to_many_destroy_destination_on_match?],
+              true
+            )
           end)
         end
       )

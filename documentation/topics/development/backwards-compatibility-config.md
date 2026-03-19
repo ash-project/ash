@@ -252,3 +252,23 @@ When a field is marked `sensitive?: true`, its value in validation error structs
 replaced with a redacted placeholder via `Ash.Helpers.redact/1`. This applies to both
 the non-atomic (`validate/3`) and atomic (`atomic/3`) code paths across all built-in
 validations.
+
+## many_to_many_destroy_destination_on_match?
+
+```elixir
+config :ash, many_to_many_destroy_destination_on_match?: true
+```
+
+### Old Behavior
+
+When using `on_match: {:destroy, :action_name}` (2-tuple form) with a `many_to_many`
+relationship, only the join record was destroyed using the given action. The
+destination record was left intact, making it effectively the same as `:unrelate`.
+
+### New Behavior
+
+The 2-tuple `{:destroy, :action_name}` for `many_to_many` now destroys both
+the destination record (using the given action) and the join record (using the
+primary destroy action on the join resource). This makes the 2-tuple behavior
+consistent with the `:destroy` shorthand and the explicit 3-tuple
+`{:destroy, :dest_action, :join_action}`.

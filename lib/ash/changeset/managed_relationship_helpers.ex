@@ -114,6 +114,14 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
         join_destroy = primary_action_name!(relationship.through, :destroy)
         {:destroy, destroy, join_destroy}
 
+      {:destroy, action} when is_many_to_many ->
+        if Application.get_env(:ash, :many_to_many_destroy_destination_on_match?, false) do
+          join_destroy = primary_action_name!(relationship.through, :destroy)
+          {:destroy, action, join_destroy}
+        else
+          {:destroy, action}
+        end
+
       :destroy ->
         destroy = primary_action_name!(relationship.destination, :destroy)
         {:destroy, destroy}

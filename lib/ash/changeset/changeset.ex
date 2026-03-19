@@ -5656,7 +5656,9 @@ defmodule Ash.Changeset do
       * `{:update_join, :join_table_action_name, [:list, :of, :params]}` - pass specified params from input into a join resource update action
       * `:destroy` - destroys the record using primary destroy actions. For `many_to_many`, destroys both the join record and the destination record.
       * `{:destroy, :action_name}` - the record is destroyed using the specified action. The action should be:
-        * `many_to_many` - a destroy action on the join resource only (the destination record is NOT destroyed)
+        * `many_to_many` - by default, a destroy action on the join resource only (the destination record is NOT destroyed).
+          When `config :ash, many_to_many_destroy_destination_on_match?: true` is set, destroys both the destination record
+          (using the given action) and the join record (using the primary destroy action).
         * `has_many` - a destroy action on the destination resource
         * `has_one` - a destroy action on the destination resource
         * `belongs_to` - a destroy action on the destination resource

@@ -740,6 +740,44 @@ defmodule Ash.Test.ManageRelationshipTest do
     assert join_count_after == join_count_before - 1
   end
 
+  test "on_match {:destroy, action} 2-tuple destroys both when config enabled" do
+    Application.put_env(:ash, :many_to_many_destroy_destination_on_match?, true)
+
+    on_exit(fn ->
+      Application.delete_env(:ash, :many_to_many_destroy_destination_on_match?)
+    end)
+
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               many_to_many_resources: [%{name: "config_1"}, %{name: "config_2"}]
+             })
+             |> Ash.create!()
+             |> Ash.load([:many_to_many_resources])
+
+    first_id =
+      Enum.find(parent.many_to_many_resources, &(&1.name == "config_1")).id
+
+    join_count_before = Ash.read!(JoinResource) |> length()
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update_many_on_match_destroy_join_only, %{
+               many_to_many_resources: [%{id: first_id}]
+             })
+             |> Ash.update!()
+             |> Ash.load([:many_to_many_resources])
+
+    # destination record should be destroyed (config enabled)
+    assert Enum.find(updated_parent.many_to_many_resources, &(&1.name == "config_1")) == nil
+    assert Ash.read!(ManyToManyResource) |> Enum.find(&(&1.name == "config_1")) == nil
+
+    # join record should also be destroyed
+    join_count_after = Ash.read!(JoinResource) |> length()
+    assert join_count_after == join_count_before - 1
+  end
+
   test "removing non-existent relationship returns NotFound error" do
     parent =
       ParentResource
