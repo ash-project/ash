@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs/contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Query.Function.RequiredError do
   @moduledoc """
   Returns the given value when it is present, or a required error when it is nil.
