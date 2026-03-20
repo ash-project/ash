@@ -1959,7 +1959,7 @@ defmodule Ash.Actions.Create.Bulk do
                 end) ||
                 (module.has_batch_change?() &&
                    module.has_after_batch?() &&
-                   Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context))
+                   Ash.Resource.Change.batch_callbacks?(module, batch, change_opts, context))
 
             %{
               state
@@ -2020,7 +2020,7 @@ defmodule Ash.Actions.Create.Bulk do
                   end) ||
                   (module.has_batch_change?() &&
                      module.has_after_batch?() &&
-                     Ash.Resource.Change.batch_callbacks?(module,batch, change_opts, context))
+                     Ash.Resource.Change.batch_callbacks?(module, batch, change_opts, context))
 
               %{
                 state

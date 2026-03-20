@@ -688,11 +688,10 @@ defmodule Ash.Actions.Update do
   end
 
   defp validate_manual_action_return_result!(
-         {:ok, %resource{}, notifications} = result,
+         {:ok, %resource{}, %{notifications: _notifications}} = result,
          resource,
          _
-       )
-       when is_list(notifications) do
+       ) do
     result
   end
 

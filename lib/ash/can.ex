@@ -666,11 +666,6 @@ defmodule Ash.Can do
               {:authorized, authorizer_state} ->
                 {:cont, {true, query, [{authorizer, authorizer_state, context} | authorizers]}}
 
-              :forbidden ->
-                {:halt,
-                 {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state),
-                  {authorizer, authorizer_state, context}}}
-
               _ when not is_nil(context.action_input) ->
                 raise """
                 Cannot use filter or runtime checks with generic actions

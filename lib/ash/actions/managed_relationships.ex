@@ -963,28 +963,30 @@ defmodule Ash.Actions.ManagedRelationships do
              opts,
              notifications
            ),
-         creates <- additional_creates ++ creates,
-         # Batch creates
+         # Apply updates before batch-creating new related records. This preserves
+         # the relative ordering of already-present vs newly-created items for
+         # relationship lists backed by order-sensitive data layers (e.g. ETS).
          {:ok, new_value, notifications} <-
-           batch_creates(
-             creates,
+           process_updates(
+             updates,
              record,
              new_value,
              relationship,
              changeset,
              actor,
-             index,
+             pkeys,
              opts,
              notifications
            ) do
-      process_updates(
-        updates,
+      # Batch creates
+      batch_creates(
+        additional_creates ++ creates,
         record,
         new_value,
         relationship,
         changeset,
         actor,
-        pkeys,
+        index,
         opts,
         notifications
       )
@@ -1387,9 +1389,12 @@ defmodule Ash.Actions.ManagedRelationships do
       end)
 
     inputs_to_bulk_create =
-      Enum.map(map_inputs_with_joins, fn {{input, join_params}, _} ->
-        {input, join_params}
+      Enum.map(map_inputs_with_joins, fn {{input, join_params}, {_orig_input, input_index}} ->
+        {input, join_params, input_index}
       end)
+
+    input_indices_to_bulk_create =
+      Enum.map(inputs_to_bulk_create, fn {_, _, input_index} -> input_index end)
 
     if inputs_to_bulk_create == [] do
       # Only struct inputs - just create join records
@@ -1406,7 +1411,7 @@ defmodule Ash.Actions.ManagedRelationships do
       )
     else
       # Bulk create destination records
-      bulk_inputs = Enum.map(inputs_to_bulk_create, fn {input, _} -> input end)
+      bulk_inputs = Enum.map(inputs_to_bulk_create, fn {input, _, _} -> input end)
 
       bulk_context =
         Map.take(changeset.context, [:shared])
@@ -1446,7 +1451,7 @@ defmodule Ash.Actions.ManagedRelationships do
           created_with_joins =
             Enum.zip(
               created_records || [],
-              Enum.map(inputs_to_bulk_create, fn {_, join} -> join end)
+              Enum.map(inputs_to_bulk_create, fn {_, join, _} -> join end)
             )
             |> Enum.map(fn {created, join_params} -> {created, join_params} end)
 
@@ -1469,7 +1474,28 @@ defmodule Ash.Actions.ManagedRelationships do
           error = List.first(List.wrap(errors))
 
           if error do
-            {:error, add_bread_crumb(error, relationship, :create)}
+            # Bulk create errors don't carry the manage_relationship input index
+            # in a way AshPhoenix can route the nested errors. Reattach the
+            # index based on the position in the bulk inputs we sent.
+            bulk_index =
+              error
+              |> Map.get(:meta)
+              |> case do
+                %{bulk_create_index: idx} -> idx
+                _ -> nil
+              end || Map.get(error, :bulk_create_index) || 0
+
+            input_index = Enum.at(input_indices_to_bulk_create, bulk_index) || 0
+
+            relationship_error_key =
+              opts
+              |> Keyword.get(:meta, [])
+              |> Keyword.get(:id) || relationship.name
+
+            error
+            |> add_bread_crumb(relationship, :create)
+            |> Ash.Error.set_path([relationship_error_key, input_index])
+            |> then(&{:error, &1})
           else
             {:error,
              add_bread_crumb(

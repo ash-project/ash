@@ -372,9 +372,6 @@ defmodule Ash.Actions.Action do
 
             Received #{inspect(filter)} when authorizing #{inspect(input.resource)}.#{input.action.name}
             """
-
-          :forbidden ->
-            {:halt, {:error, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
         end
       end
     )

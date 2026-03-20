@@ -320,7 +320,8 @@ defmodule Ash.Actions.Destroy.Bulk do
 
               has_after_batch_hooks? =
                 Enum.any?(
-                  action.changes ++ Ash.Resource.Info.changes(atomic_changeset.resource, :destroy),
+                  action.changes ++
+                    Ash.Resource.Info.changes(atomic_changeset.resource, :destroy),
                   fn
                     %{change: {module, change_opts}} ->
                       module.has_after_batch?() &&

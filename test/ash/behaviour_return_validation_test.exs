@@ -31,9 +31,11 @@ defmodule Ash.BehaviourReturnValidationTest do
       actions do
         default_accept :*
         defaults [:read]
+
         create :other_action do
           # no change - we use this only to build a changeset
         end
+
         create :create_action do
           change ChangeReturnsWrong
         end
@@ -61,6 +63,7 @@ defmodule Ash.BehaviourReturnValidationTest do
           message = Exception.message(e)
           assert message =~ "change/3", "message should include callback name: #{message}"
           assert message =~ "ChangeReturnsWrong" or message =~ "change"
+
           assert message =~ "Ash.Changeset" or message =~ "changeset",
                  "message should describe expected return: #{message}"
       end
@@ -87,9 +90,11 @@ defmodule Ash.BehaviourReturnValidationTest do
       actions do
         default_accept :*
         defaults [:read]
+
         create :other_action do
           # no validation - we use this only to build a changeset
         end
+
         create :create_action do
           validate ValidationReturnsWrong
         end
@@ -127,6 +132,7 @@ defmodule Ash.BehaviourReturnValidationTest do
           message = Exception.message(e)
           assert message =~ "validate", "message should include callback name: #{message}"
           assert message =~ "ValidationReturnsWrong" or message =~ "validate"
+
           assert (message =~ ":ok" or message =~ "{:error") and
                    (message =~ "expected" or message =~ "expects"),
                  "message should describe expected return types: #{message}"
@@ -190,9 +196,12 @@ defmodule Ash.BehaviourReturnValidationTest do
       rescue
         e in [Ash.Error.Framework.InvalidReturnType] ->
           message = Exception.message(e)
+
           assert message =~ "initial_state/4",
                  "message should include callback name: #{message}"
+
           assert message =~ "AuthorizerReturnsWrongInitialState" or message =~ "initial_state"
+
           assert message =~ "map" or message =~ "state",
                  "message should describe expected return: #{message}"
       end
@@ -230,6 +239,7 @@ defmodule Ash.BehaviourReturnValidationTest do
           message = Exception.message(e)
           assert message =~ "strict_check/2", "message should include callback name: #{message}"
           assert message =~ "AuthorizerReturnsWrongStrictCheck" or message =~ "strict_check"
+
           assert message =~ "authorized" or message =~ "continue" or message =~ "expects",
                  "message should describe expected return shapes: #{message}"
       end

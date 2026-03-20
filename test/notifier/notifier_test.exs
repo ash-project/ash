@@ -36,6 +36,7 @@ defmodule Ash.Test.NotifierTest do
         Application.get_env(__MODULE__, :notifier_test_pid),
         {:load_notification, notification}
       )
+
       :ok
     end
   end
@@ -52,6 +53,7 @@ defmodule Ash.Test.NotifierTest do
         Application.get_env(__MODULE__, :notifier_test_pid),
         {:conflict_notifier_1, notification}
       )
+
       :ok
     end
   end
@@ -66,6 +68,7 @@ defmodule Ash.Test.NotifierTest do
         Application.get_env(__MODULE__, :notifier_test_pid),
         {:conflict_notifier_2, notification}
       )
+
       :ok
     end
   end

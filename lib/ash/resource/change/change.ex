@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Resource.Change do
-  @dialyzer {:nowarn_function, atomic: 4}
   @moduledoc """
   The behaviour for an action-specific resource change.
 
@@ -157,6 +156,7 @@ defmodule Ash.Resource.Change do
     end
   end
 
+  @dialyzer {:nowarn_function, valid_atomic_result?: 1}
   defp valid_atomic_result?(:ok), do: true
   defp valid_atomic_result?({:ok, %Ash.Changeset{}}), do: true
   defp valid_atomic_result?({:error, _}), do: true
