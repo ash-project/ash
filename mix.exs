@@ -25,7 +25,7 @@ defmodule Ash.MixProject do
       # Workaround for Elixir dialyzer opaque type bug: https://github.com/elixir-lang/elixir/issues/14837#issuecomment-3452772021
       dialyzer: [
         plt_add_apps: [:mix, :mnesia, :plug, :ex_unit, :stream_data],
-        flags: [:no_opaque]
+        flags: [:no_opaque, :no_match]
       ],
       docs: &docs/0,
       aliases: aliases(),

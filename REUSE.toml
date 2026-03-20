@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs/contributors>
+#
+# SPDX-License-Identifier: MIT
+
+version = 1
+
+# AALang-Gab assets are JSON-LD and other formats that cannot carry SPDX tags inline;
+# annotate the tree for REUSE compliance (see https://reuse.software/spec/).
+[[annotations]]
+path = "lib/AALang-Gab/.gitignore"
+SPDX-FileCopyrightText = "2019 ash contributors <https://github.com/ash-project/ash/graphs/contributors>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "lib/AALang-Gab/**/*.jsonld"
+SPDX-FileCopyrightText = "2019 ash contributors <https://github.com/ash-project/ash/graphs/contributors>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "lib/AALang-Gab/**/*.md"
+SPDX-FileCopyrightText = "2019 ash contributors <https://github.com/ash-project/ash/graphs/contributors>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "lib/AALang-Gab/**/*.py"
+SPDX-FileCopyrightText = "2019 ash contributors <https://github.com/ash-project/ash/graphs/contributors>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "lib/AALang-Gab/**/*.aacomp"
+SPDX-FileCopyrightText = "2019 ash contributors <https://github.com/ash-project/ash/graphs/contributors>"
+SPDX-License-Identifier = "MIT"

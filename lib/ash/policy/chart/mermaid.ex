@@ -196,7 +196,7 @@ defmodule Ash.Policy.Chart.Mermaid do
             description = Ash.Policy.Check.describe(check.check_module, check.check_opts)
 
             description =
-              if description && description != "" do
+              if description != "" do
                 "{#{quote_and_escape(description)}}"
               else
                 "{}"

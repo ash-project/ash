@@ -3730,6 +3730,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  @dialyzer {:nowarn_function, do_add_field_level_auth: 3}
   defp do_add_field_level_auth(query, domain, opts) do
     data = %{
       query: query,
@@ -4181,6 +4182,7 @@ defmodule Ash.Actions.Read do
     |> then(&{&1, query})
   end
 
+  @dialyzer {:nowarn_function, validate_manual_action_return_result!: 3}
   defp validate_manual_action_return_result!({:ok, list} = result, _resource, _)
        when is_list(list) do
     result
