@@ -630,6 +630,14 @@ defmodule Ash.Resource.Info do
     Extension.get_entities(resource, [:actions])
   end
 
+  @doc "Returns all public actions of a resource (actions with `public?: true`). Use for building public APIs; do not expose actions with `public?: false`."
+  @spec public_actions(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Actions.action()]
+  def public_actions(resource) do
+    resource
+    |> actions()
+    |> Enum.filter(& &1.public?)
+  end
+
   @doc "Returns the action with the matching name and type on the resource"
   @spec action(Spark.Dsl.t() | Ash.Resource.t(), atom(), Ash.Resource.Actions.action_type() | nil) ::
           Ash.Resource.Actions.action() | nil

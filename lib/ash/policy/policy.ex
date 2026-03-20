@@ -390,6 +390,7 @@ defmodule Ash.Policy.Policy do
                       Ash.Policy.Check.Static,
                       Ash.Policy.Check.Action,
                       Ash.Policy.Check.ActionType,
+                      Ash.Policy.Check.PrivateAction,
                       Ash.Policy.Check.ActorAbsent,
                       Ash.Policy.Check.ActorPresent
                     ]
