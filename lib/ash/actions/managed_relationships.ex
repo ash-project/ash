@@ -1487,10 +1487,8 @@ defmodule Ash.Actions.ManagedRelationships do
 
             input_index = Enum.at(input_indices_to_bulk_create, bulk_index) || 0
 
-            relationship_error_key =
-              opts
-              |> Keyword.get(:meta, [])
-              |> Keyword.get(:id) || relationship.name
+            # Use bracket access so both map and keyword-list `meta` work (see `set_error_path/4`).
+            relationship_error_key = opts[:meta][:id] || relationship.name
 
             error
             |> add_bread_crumb(relationship, :create)
