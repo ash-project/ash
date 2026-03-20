@@ -2355,6 +2355,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                       %{bulk_changeset_id: changeset_id}
                     end
 
+                  metadata =
+                    if changeset.to_tenant,
+                      do: Map.put(metadata, :tenant, changeset.to_tenant),
+                      else: metadata
+
                   {[Ash.Resource.set_metadata(result, metadata)],
                    Map.put(changeset_map, changeset_id, changeset)}
                 else
@@ -2396,6 +2401,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                 %{bulk_changeset_id: changeset_id}
               end
 
+            metadata =
+              if changeset.to_tenant,
+                do: Map.put(metadata, :tenant, changeset.to_tenant),
+                else: metadata
+
             {[Ash.Resource.set_metadata(result, metadata)],
              Map.put(changeset_map, changeset_id, changeset)}
           else
@@ -2417,6 +2427,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                     else
                       %{bulk_changeset_id: changeset_id}
                     end
+
+                  metadata =
+                    if changeset.to_tenant,
+                      do: Map.put(metadata, :tenant, changeset.to_tenant),
+                      else: metadata
 
                   {[Ash.Resource.set_metadata(result, metadata)],
                    Map.put(changeset_map, changeset_id, changeset)}

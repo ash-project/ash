@@ -2343,6 +2343,40 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       assert hd(updated_tag.related_tags).name == "related_tag"
     end
 
+    test "bulk_update sets tenant in __metadata__ on returned records" do
+      tenant = Ash.create!(Tenant, %{})
+      tag = Ash.create!(MultitenantTag, %{name: "test_tag"}, tenant: tenant)
+
+      assert %Ash.BulkResult{records: [updated_tag]} =
+               Ash.bulk_update!([tag], :update, %{name: "updated_tag"},
+                 resource: MultitenantTag,
+                 strategy: :stream,
+                 tenant: tenant,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert updated_tag.__metadata__.tenant == tenant.id
+    end
+
+    test "bulk_update sets tenant in __metadata__ on returned records with atomic strategy" do
+      tenant = Ash.create!(Tenant, %{})
+      tag = Ash.create!(MultitenantTag, %{name: "test_tag"}, tenant: tenant)
+
+      assert %Ash.BulkResult{records: [updated_tag]} =
+               Ash.bulk_update!([tag], :update, %{name: "updated_tag"},
+                 resource: MultitenantTag,
+                 strategy: :atomic,
+                 tenant: tenant,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert updated_tag.__metadata__.tenant == tenant.id
+    end
+
     test "ignored manage_relationship runs atomically and does not modify relationships" do
       related_post = Ash.create!(Post, %{title: "Related"})
 
