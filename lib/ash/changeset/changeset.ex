@@ -2763,24 +2763,34 @@ defmodule Ash.Changeset do
         if allow_nil? || not Ash.Expr.can_return_nil?(value) do
           value
         else
-          if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
-            expr(
-              if is_nil(type(^value, ^attribute.type, ^attribute.constraints)) do
-                error(
-                  ^Ash.Error.Changes.Required,
-                  %{
-                    field: ^attribute.name,
-                    type: ^:attribute,
-                    resource: ^changeset.resource
-                  }
+          cond do
+            Ash.DataLayer.data_layer_can?(changeset.resource, :required_error) ->
+              expr(
+                required!(
+                  type(^value, ^attribute.type, ^attribute.constraints),
+                  ^%{name: attribute.name, resource: changeset.resource}
                 )
-              else
-                ^value
-              end
-            )
-          else
-            {:not_atomic,
-             "Failed to validate expression #{inspect(value)}: data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error"}
+              )
+
+            Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) ->
+              expr(
+                if is_nil(type(^value, ^attribute.type, ^attribute.constraints)) do
+                  error(
+                    ^Ash.Error.Changes.Required,
+                    %{
+                      field: ^attribute.name,
+                      type: ^:attribute,
+                      resource: ^changeset.resource
+                    }
+                  )
+                else
+                  ^value
+                end
+              )
+
+            true ->
+              {:not_atomic,
+               "Failed to validate expression #{inspect(value)}: data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error"}
           end
         end
         |> case do

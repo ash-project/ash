@@ -87,6 +87,16 @@ The following functions are built in:
 - String interpolation | `"#{first_name} #{last_name}"`, is remapped to the equivalent usage of `<>`
 - `fragment/*` | Creates a fragment of a data layer expression. See the section on fragments below.
 - `error/2` | Raises an error with a given exception module and parameters. See the section on error expressions below.
+- `required!/2` | Returns the given value when present, or produces a required-attribute error when it is `nil`. Typically used as `expr(required!(^value, ^attribute))` where `attribute` has at least `:name` and `:resource`.
+
+## Required Error
+
+`required!/2` is a required-attribute validation function intended for use inside expressions (for example, `expr(required!(^value, ^attribute))`).
+
+When the data layer supports the `:required_error` capability, adapters can translate the expression so required-attribute validation happens on the data layer side (e.g. via SQL). The behavior is:
+
+- `required!(value, ...)` returns the `value` when it is not `nil`
+- `required!(nil, ...)` returns `Ash.Error.Changes.Required`
 
 ## Fragments
 
