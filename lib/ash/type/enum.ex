@@ -157,6 +157,7 @@ defmodule Ash.Type.Enum do
   defmacro __using__(opts) do
     quote location: :keep, generated: true, bind_quoted: [opts: opts] do
       use Ash.Type
+      import Ash.Gettext
 
       require Ash.Expr
 
@@ -277,7 +278,7 @@ defmodule Ash.Type.Enum do
               Ash.Expr.expr(
                 error(
                   Ash.Error.Changes.InvalidChanges,
-                  message: "must be one of %{values}",
+                  message: ^error_message("must be one of %{values}"),
                   vars: %{values: ^Enum.join(@values, ", ")}
                 )
               )
@@ -302,7 +303,7 @@ defmodule Ash.Type.Enum do
                else
                  error(
                    Ash.Error.Changes.InvalidChanges,
-                   message: "must be one of %{values}",
+                   message: ^error_message("must be one of %{values}"),
                    vars: %{values: ^Enum.join(@values, ", ")}
                  )
                end

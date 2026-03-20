@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.Changing do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   import Ash.Changeset
 
@@ -41,8 +42,6 @@ defmodule Ash.Resource.Validation.Changing do
         ]
       ]
   end
-
-  @default_error_message "must be changing"
 
   @impl Ash.Resource.Validation
   def init(opts) do
@@ -171,7 +170,7 @@ defmodule Ash.Resource.Validation.Changing do
                error(^InvalidAttribute, %{
                  field: ^field,
                  value: ^atomic_ref(field),
-                 message: ^(context.message || @default_error_message),
+                 message: ^(context.message || error_message("must be changing")),
                  vars: %{field: ^field}
                })
              )}
@@ -251,7 +250,7 @@ defmodule Ash.Resource.Validation.Changing do
   defp atomic_result(not_atomic, _changeset), do: not_atomic
 
   @impl Ash.Resource.Validation
-  def describe(_opts), do: [message: @default_error_message, vars: []]
+  def describe(_opts), do: [message: error_message("must be changing"), vars: []]
 
   defp exception(opts, context) do
     [field: opts[:field]]

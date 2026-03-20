@@ -38,6 +38,7 @@ defmodule Mix.Tasks.Ash.Codegen do
   @shortdoc "Runs all codegen tasks for any extension on any resource/domain in your application."
   @doc @shortdoc
   def run(argv) do
+    Mix.Task.reenable("compile")
     Mix.Task.run("compile")
 
     {name, argv} =

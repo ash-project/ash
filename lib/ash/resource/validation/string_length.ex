@@ -5,6 +5,7 @@
 defmodule Ash.Resource.Validation.StringLength do
   @moduledoc false
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidAttribute
   import Ash.Expr
@@ -68,7 +69,7 @@ defmodule Ash.Resource.Validation.StringLength do
                InvalidAttribute.exception(
                  value: Ash.Resource.Validation.maybe_redact(subject, opts[:attribute], value),
                  field: opts[:attribute],
-                 message: "could not be parsed"
+                 message: error_message("could not be parsed")
                )}
           end
 
@@ -108,7 +109,8 @@ defmodule Ash.Resource.Validation.StringLength do
                  %{
                    field: ^opts[:attribute],
                    value: ^error_value,
-                   message: ^(context.message || "must have length of at least %{min}"),
+                   message:
+                     ^(context.message || error_message("must have length of at least %{min}")),
                    vars: %{min: ^min}
                  }
                )
@@ -123,7 +125,8 @@ defmodule Ash.Resource.Validation.StringLength do
                  %{
                    field: ^opts[:attribute],
                    value: ^error_value,
-                   message: ^(context.message || "must have length of at most %{max}"),
+                   message:
+                     ^(context.message || error_message("must have length of at most %{max}")),
                    vars: %{max: ^max}
                  }
                )
@@ -138,7 +141,8 @@ defmodule Ash.Resource.Validation.StringLength do
                  %{
                    field: ^opts[:attribute],
                    value: ^error_value,
-                   message: ^(context.message || "must have length of exactly %{exact}"),
+                   message:
+                     ^(context.message || error_message("must have length of exactly %{exact}")),
                    vars: %{exact: ^exact}
                  }
                )
@@ -192,16 +196,19 @@ defmodule Ash.Resource.Validation.StringLength do
 
   @impl true
   def describe(%{exact: exact}),
-    do: [message: "must have length of exactly %{exact}", vars: [exact: exact]]
+    do: [message: error_message("must have length of exactly %{exact}"), vars: [exact: exact]]
 
   def describe(%{min: min, max: max}),
-    do: [message: "must have length of between %{min} and %{max}", vars: [min: min, max: max]]
+    do: [
+      message: error_message("must have length of between %{min} and %{max}"),
+      vars: [min: min, max: max]
+    ]
 
   def describe(%{min: min}),
-    do: [message: "must have length of at least %{min}", vars: [min: min]]
+    do: [message: error_message("must have length of at least %{min}"), vars: [min: min]]
 
   def describe(%{max: max}),
-    do: [message: "must have length of no more than %{max}", vars: [max: max]]
+    do: [message: error_message("must have length of no more than %{max}"), vars: [max: max]]
 
   def describe(_opts), do: [message: inspect(__MODULE__), vars: []]
 end

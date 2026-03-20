@@ -5,6 +5,7 @@
 defmodule Ash.Resource.Validation.PreFlightAuthorization do
   @moduledoc "Validates that the action is being run in a pre-flight authorization context (i.e. `Ash.can?/3`)."
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   @impl true
   def init(opts) do
@@ -33,6 +34,6 @@ defmodule Ash.Resource.Validation.PreFlightAuthorization do
 
   @impl true
   def describe(_opts) do
-    [message: "must be in a pre-flight authorization context", vars: %{}]
+    [message: error_message("must be in a pre-flight authorization context"), vars: %{}]
   end
 end

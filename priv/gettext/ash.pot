@@ -1,0 +1,364 @@
+## This file is a PO Template file.
+##
+## `msgid`s here are often extracted from source code.
+## Add new translations manually only if they're not extracted.
+##
+## Run `mix ash.gettext.extract` to refresh this file.
+## Run `mix ash.gen.gettext` in your app to copy this file.
+## Run `mix gettext.merge priv/gettext --locale LOCALE` to merge into a .po file.
+
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Domain: ash\n"
+
+#: lib/ash/type/tuple.ex:121
+msgid "Expected %{expected_length} elements, got %{value_length}"
+msgstr ""
+
+
+#: lib/ash/type/function.ex:38
+msgid "Expected a function of arity %{arity}"
+msgstr ""
+
+
+#: lib/ash/resource/change/cascade_destroy.ex:249
+#: lib/ash/resource/change/cascade_update.ex:181
+msgid "Relationship doesn't exist."
+msgstr ""
+
+
+#: lib/ash/resource/validation/action_is.ex:66
+msgid "action must be one of %{action}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:185
+#: lib/ash/resource/validation/present.ex:225
+msgid "at least %{at_least} of %{keys} must be present"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:198
+#: lib/ash/resource/validation/present.ex:228
+msgid "at most %{at_most} of %{keys} must be present"
+msgstr ""
+
+
+#: lib/ash/type/atom.ex:59
+msgid "atom must be one of %{atom_list}, got: %{value}"
+msgstr ""
+
+
+#: lib/ash/changeset/changeset.ex:3495
+msgid "cannot be changed"
+msgstr ""
+
+
+#: lib/ash/changeset/changeset.ex:5940
+msgid "cannot manage a manual relationship"
+msgstr ""
+
+
+#: lib/ash/changeset/changeset.ex:6030
+msgid "cannot provide structs that don't match the destination"
+msgstr ""
+
+
+#: lib/ash/resource/validation/confirm.ex:98
+#: lib/ash/resource/validation/confirm.ex:106
+msgid "confirmation did not match value"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:72
+msgid "could not be parsed"
+msgstr ""
+
+
+#: lib/ash/resource/change/relate_actor.ex:65
+msgid "could not relate to actor, as no actor was found (and :allow_nil? is false)"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:141
+#: lib/ash/resource/validation/present.ex:222
+msgid "exactly %{exactly} of %{keys} must be present"
+msgstr ""
+
+
+#: lib/ash/resource/validation/data_one_of.ex:85
+#: lib/ash/resource/validation/data_one_of.ex:95
+#: lib/ash/resource/validation/one_of.ex:102
+#: lib/ash/resource/validation/one_of.ex:113
+msgid "expected one of %{values}"
+msgstr ""
+
+
+#: lib/ash/type/keyword.ex:208
+#: lib/ash/type/map.ex:260
+#: lib/ash/type/struct.ex:437
+msgid "field must be present"
+msgstr ""
+
+
+#: lib/ash/type/keyword.ex:256
+#: lib/ash/type/map.ex:308
+#: lib/ash/type/struct.ex:506
+#: lib/ash/type/tuple.ex:258
+msgid "invalid value"
+msgstr ""
+
+
+#: lib/ash/type/new_type.ex:226
+#: lib/ash/type/type.ex:1859
+msgid "invalid value at %{index}"
+msgstr ""
+
+
+#: lib/ash/type/struct.ex:388
+#: lib/ash/type/struct.ex:402
+msgid "is required"
+msgstr ""
+
+
+#: lib/ash/type/ci_string.ex:184
+#: lib/ash/type/string.ex:119
+#: lib/ash/type/string.ex:133
+#: lib/ash/type/string.ex:240
+msgid "length must be greater than or equal to %{min}"
+msgstr ""
+
+
+#: lib/ash/type/ci_string.ex:176
+#: lib/ash/type/string.ex:106
+#: lib/ash/type/string.ex:140
+#: lib/ash/type/string.ex:232
+msgid "length must be less than or equal to %{max}"
+msgstr ""
+
+
+#: lib/ash/type/module.ex:65
+msgid "module %{module} does not implement the %{behaviour} behaviour"
+msgstr ""
+
+
+#: lib/ash/type/module.ex:84
+msgid "module %{module} does not implement the %{protocol} protocol"
+msgstr ""
+
+
+#: lib/ash/resource/validation/action_is.ex:71
+msgid "must be %{action}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:135
+#: lib/ash/resource/validation/present.ex:213
+msgid "must be absent"
+msgstr ""
+
+
+#: lib/ash/resource/validation/changing.ex:173
+#: lib/ash/resource/validation/changing.ex:253
+msgid "must be changing"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:192
+#: lib/ash/resource/validation/compare.ex:418
+msgid "must be equal to %{is_equal}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:140
+#: lib/ash/resource/validation/compare.ex:406
+#: lib/ash/type/decimal.ex:176
+#: lib/ash/type/decimal.ex:252
+#: lib/ash/type/float.ex:104
+#: lib/ash/type/float.ex:182
+msgid "must be greater than %{greater_than}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:166
+#: lib/ash/resource/validation/compare.ex:412
+msgid "must be greater than or equal to %{greater_than_or_equal_to}"
+msgstr ""
+
+
+#: lib/ash/type/decimal.ex:148
+#: lib/ash/type/decimal.ex:236
+#: lib/ash/type/float.ex:88
+#: lib/ash/type/float.ex:154
+#: lib/ash/type/integer.ex:65
+#: lib/ash/type/integer.ex:79
+#: lib/ash/type/integer.ex:131
+msgid "must be greater than or equal to %{min}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/attribute_in.ex:75
+#: lib/ash/resource/validation/attribute_in.ex:84
+msgid "must be in %{list}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/pre_flight_authorization.ex:37
+msgid "must be in a pre-flight authorization context"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:152
+#: lib/ash/resource/validation/compare.ex:409
+#: lib/ash/type/decimal.ex:163
+#: lib/ash/type/decimal.ex:245
+#: lib/ash/type/float.ex:97
+#: lib/ash/type/float.ex:169
+msgid "must be less than %{less_than}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:180
+#: lib/ash/resource/validation/compare.ex:415
+msgid "must be less than or equal to %{less_than_or_equal_to}"
+msgstr ""
+
+
+#: lib/ash/type/decimal.ex:135
+#: lib/ash/type/decimal.ex:229
+#: lib/ash/type/float.ex:81
+#: lib/ash/type/float.ex:141
+#: lib/ash/type/integer.ex:52
+#: lib/ash/type/integer.ex:86
+#: lib/ash/type/integer.ex:124
+msgid "must be less than or equal to %{max}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:216
+#: lib/ash/resource/validation/compare.ex:424
+msgid "must be nil"
+msgstr ""
+
+
+#: lib/ash/type/enum.ex:281
+#: lib/ash/type/enum.ex:306
+msgid "must be one of %{values}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:138
+#: lib/ash/resource/validation/present.ex:219
+msgid "must be present"
+msgstr ""
+
+
+#: lib/ash/resource/validation/argument_equals.ex:71
+#: lib/ash/resource/validation/argument_in.ex:71
+#: lib/ash/resource/validation/attribute_equals.ex:47
+#: lib/ash/resource/validation/attribute_equals.ex:84
+msgid "must equal %{value}"
+msgstr ""
+
+
+#: lib/ash/type/type.ex:1272
+msgid "must have %{max} or fewer items"
+msgstr ""
+
+
+#: lib/ash/type/type.ex:1265
+msgid "must have %{min} or more items"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:113
+#: lib/ash/resource/validation/string_length.ex:208
+msgid "must have length of at least %{min}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:129
+msgid "must have length of at most %{max}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:203
+msgid "must have length of between %{min} and %{max}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:145
+#: lib/ash/resource/validation/string_length.ex:199
+msgid "must have length of exactly %{exact}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/string_length.ex:211
+msgid "must have length of no more than %{max}"
+msgstr ""
+
+
+#: lib/ash/type/decimal.ex:202
+msgid "must have no more than %{precision} significant digits"
+msgstr ""
+
+
+#: lib/ash/type/decimal.ex:218
+msgid "must have no more than %{scale} decimal places"
+msgstr ""
+
+
+#: lib/ash/type/ci_string.ex:204
+#: lib/ash/type/string.ex:260
+msgid "must match the pattern %{regex}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:205
+#: lib/ash/resource/validation/compare.ex:421
+msgid "must not be equal to %{is_not_equal}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/compare.ex:227
+#: lib/ash/resource/validation/compare.ex:427
+msgid "must not be nil"
+msgstr ""
+
+
+#: lib/ash/resource/validation/present.ex:216
+msgid "must not be present"
+msgstr ""
+
+
+#: lib/ash/resource/validation/argument_does_not_equal.ex:72
+#: lib/ash/resource/validation/attribute_does_not_equal.ex:76
+#: lib/ash/resource/validation/attribute_does_not_equal.ex:85
+msgid "must not equal %{value}"
+msgstr ""
+
+
+#: lib/ash/resource/validation/function.ex:27
+msgid "must pass function %{function}"
+msgstr ""
+
+
+#: lib/ash/type/type.ex:1244
+msgid "no nil values"
+msgstr ""
+
+
+#: lib/ash/changeset/changeset.ex:5931
+msgid "relationship is not editable"
+msgstr ""
+
+
+#: lib/ash/type/keyword.ex:236
+#: lib/ash/type/map.ex:288
+#: lib/ash/type/struct.ex:465
+#: lib/ash/type/tuple.ex:235
+msgid "value must not be nil"
+msgstr ""
+

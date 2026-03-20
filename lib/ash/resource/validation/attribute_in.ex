@@ -19,6 +19,7 @@ defmodule Ash.Resource.Validation.AttributeIn do
   ]
 
   use Ash.Resource.Validation
+  import Ash.Gettext
   alias Ash.Error.Changes.InvalidAttribute
   import Ash.Expr
 
@@ -71,7 +72,7 @@ defmodule Ash.Resource.Validation.AttributeIn do
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^error_value,
-         message: ^(context.message || "must be in %{list}"),
+         message: ^(context.message || error_message("must be in %{list}")),
          vars: %{field: ^opts[:attribute], list: ^opts[:list]}
        })
      )}
@@ -80,7 +81,7 @@ defmodule Ash.Resource.Validation.AttributeIn do
   @impl true
   def describe(opts) do
     [
-      message: "must be in %{list}",
+      message: error_message("must be in %{list}"),
       vars: [field: opts[:attribute], list: opts[:list]]
     ]
   end

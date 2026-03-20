@@ -5,6 +5,7 @@
 defmodule Ash.Resource.Validation.ActionIs do
   @moduledoc "Validates that the action is the specified action."
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   @opt_schema [
     action: [
@@ -61,10 +62,13 @@ defmodule Ash.Resource.Validation.ActionIs do
   def describe(opts) do
     case opts[:action] do
       actions when is_list(actions) ->
-        [message: "action must be one of %{action}", vars: %{action: Enum.join(actions, ", ")}]
+        [
+          message: error_message("action must be one of %{action}"),
+          vars: %{action: Enum.join(actions, ", ")}
+        ]
 
       _ ->
-        [message: "must be %{action}", vars: %{action: opts[:action]}]
+        [message: error_message("must be %{action}"), vars: %{action: opts[:action]}]
     end
   end
 end

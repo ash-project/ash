@@ -1442,6 +1442,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp pre_template_all_changes(action, resource, :destroy, base, actor, tenant) do
     action.changes
+    |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
     |> then(fn changes ->
       if action.skip_global_validations? do
         changes
@@ -1449,7 +1450,6 @@ defmodule Ash.Actions.Destroy.Bulk do
         Enum.concat(changes, Ash.Resource.Info.validations(resource, action.type))
       end
     end)
-    |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
     |> Enum.map(fn
       %{change: {module, opts}} = change ->
         %{change | change: {module, pre_template(opts, base, actor, tenant)}}
@@ -2355,6 +2355,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                       %{bulk_changeset_id: changeset_id}
                     end
 
+                  metadata =
+                    if changeset.to_tenant,
+                      do: Map.put(metadata, :tenant, changeset.to_tenant),
+                      else: metadata
+
                   {[Ash.Resource.set_metadata(result, metadata)],
                    Map.put(changeset_map, changeset_id, changeset)}
                 else
@@ -2396,6 +2401,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                 %{bulk_changeset_id: changeset_id}
               end
 
+            metadata =
+              if changeset.to_tenant,
+                do: Map.put(metadata, :tenant, changeset.to_tenant),
+                else: metadata
+
             {[Ash.Resource.set_metadata(result, metadata)],
              Map.put(changeset_map, changeset_id, changeset)}
           else
@@ -2417,6 +2427,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                     else
                       %{bulk_changeset_id: changeset_id}
                     end
+
+                  metadata =
+                    if changeset.to_tenant,
+                      do: Map.put(metadata, :tenant, changeset.to_tenant),
+                      else: metadata
 
                   {[Ash.Resource.set_metadata(result, metadata)],
                    Map.put(changeset_map, changeset_id, changeset)}

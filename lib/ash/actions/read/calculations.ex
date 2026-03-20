@@ -985,16 +985,29 @@ defmodule Ash.Actions.Read.Calculations do
               args: calculation.context.arguments,
               context: calculation.context.source_context
             )
-            |> Ash.Actions.Read.add_calc_context_to_filter(
-              calculation.context.actor,
-              calculation.context.authorize?,
-              calculation.context.tenant,
-              calculation.context.tracer,
-              domain,
-              ash_query.resource,
-              parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
-              source_context: ash_query.context
-            )
+
+          expression =
+            case Ash.Filter.hydrate_refs(expression, %{
+                   resource: ash_query.resource,
+                   public?: false,
+                   source_context: ash_query.context
+                 }) do
+              {:ok, hydrated} ->
+                Ash.Actions.Read.add_calc_context_to_filter(
+                  hydrated,
+                  calculation.context.actor,
+                  calculation.context.authorize?,
+                  calculation.context.tenant,
+                  calculation.context.tracer,
+                  domain,
+                  ash_query.resource,
+                  parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
+                  source_context: ash_query.context
+                )
+
+              _ ->
+                expression
+            end
 
           case try_evaluate(
                  expression,
@@ -1155,21 +1168,28 @@ defmodule Ash.Actions.Read.Calculations do
                 args: calculation.context.arguments,
                 context: calculation.context.source_context
               )
-              |> Ash.Actions.Read.add_calc_context_to_filter(
-                calculation.context.actor,
-                calculation.context.authorize?,
-                calculation.context.tenant,
-                calculation.context.tracer,
-                ash_query.domain,
-                ash_query.resource,
-                parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
-                source_context: ash_query.context
-              )
 
           expression
-          |> Ash.Filter.hydrate_refs(%{resource: ash_query.resource, public?: false})
+          |> Ash.Filter.hydrate_refs(%{
+            resource: ash_query.resource,
+            public?: false,
+            source_context: ash_query.context
+          })
           |> case do
             {:ok, expression} ->
+              expression =
+                Ash.Actions.Read.add_calc_context_to_filter(
+                  expression,
+                  calculation.context.actor,
+                  calculation.context.authorize?,
+                  calculation.context.tenant,
+                  calculation.context.tracer,
+                  ash_query.domain,
+                  ash_query.resource,
+                  parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
+                  source_context: ash_query.context
+                )
+
               expression
               |> Ash.Filter.used_calculations(ash_query.resource, :*)
               |> Enum.all?(fn %{module: module} ->

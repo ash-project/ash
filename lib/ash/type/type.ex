@@ -34,6 +34,7 @@ defmodule Ash.Type do
   ]
 
   alias Ash.Type.Registry
+  import Ash.Gettext
 
   @doc_array_constraints Keyword.put(@array_constraints, :items,
                            type: :any,
@@ -1240,7 +1241,7 @@ defmodule Ash.Type do
       if remove_nil_items? do
         {rest, errors}
       else
-        {[item | rest], [[message: "no nil values", index: index] | errors]}
+        {[item | rest], [[message: error_message("no nil values"), index: index] | errors]}
       end
     else
       {[item | rest], errors}
@@ -1261,14 +1262,14 @@ defmodule Ash.Type do
     |> Enum.reduce([], fn
       {:min_length, min_length}, errors ->
         if length < min_length do
-          [message: "must have %{min} or more items", min: min_length]
+          [message: error_message("must have %{min} or more items"), min: min_length]
         else
           errors
         end
 
       {:max_length, max_length}, errors ->
         if length > max_length do
-          [message: "must have %{max} or fewer items", max: max_length]
+          [message: error_message("must have %{max} or fewer items"), max: max_length]
         else
           errors
         end
@@ -1855,7 +1856,9 @@ defmodule Ash.Type do
         |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
           case Ash.Type.cast_input(__MODULE__, item, single_constraints) do
             :error ->
-              {:halt, {:error, message: "invalid value at %{index}", index: index, path: [index]}}
+              {:halt,
+               {:error,
+                message: error_message("invalid value at %{index}"), index: index, path: [index]}}
 
             {:error, keyword} ->
               errors =

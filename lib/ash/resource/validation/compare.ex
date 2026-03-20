@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.Compare do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidAttribute
   import Ash.Expr
@@ -135,7 +136,8 @@ defmodule Ash.Resource.Validation.Compare do
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
                value: ^error_value,
-               message: ^(context.message || "must be greater than %{greater_than}"),
+               message:
+                 ^(context.message || error_message("must be greater than %{greater_than}")),
                vars: %{field: ^opts[:attribute], greater_than: ^atomic_value(value)}
              })
            )}
@@ -147,7 +149,7 @@ defmodule Ash.Resource.Validation.Compare do
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
                value: ^error_value,
-               message: ^(context.message || "must be less than %{less_than}"),
+               message: ^(context.message || error_message("must be less than %{less_than}")),
                vars: %{field: ^opts[:attribute], less_than: ^atomic_value(value)}
              })
            )}
@@ -161,7 +163,7 @@ defmodule Ash.Resource.Validation.Compare do
                value: ^error_value,
                message:
                  ^(context.message ||
-                     "must be greater than or equal to %{greater_than_or_equal_to}"),
+                     error_message("must be greater than or equal to %{greater_than_or_equal_to}")),
                vars: %{field: ^opts[:attribute], greater_than_or_equal_to: ^atomic_value(value)}
              })
            )}
@@ -174,7 +176,8 @@ defmodule Ash.Resource.Validation.Compare do
                field: ^opts[:attribute],
                value: ^error_value,
                message:
-                 ^(context.message || "must be less than or equal to %{less_than_or_equal_to}"),
+                 ^(context.message ||
+                     error_message("must be less than or equal to %{less_than_or_equal_to}")),
                vars: %{field: ^opts[:attribute], less_than_or_equal_to: ^atomic_value(value)}
              })
            )}
@@ -186,7 +189,7 @@ defmodule Ash.Resource.Validation.Compare do
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
                value: ^error_value,
-               message: ^(context.message || "must be equal to %{is_equal}"),
+               message: ^(context.message || error_message("must be equal to %{is_equal}")),
                vars: %{field: ^opts[:attribute], is_equal: ^atomic_value(value)}
              })
            )}
@@ -198,7 +201,8 @@ defmodule Ash.Resource.Validation.Compare do
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
                value: ^error_value,
-               message: ^(context.message || "must not be equal to %{is_not_equal}"),
+               message:
+                 ^(context.message || error_message("must not be equal to %{is_not_equal}")),
                vars: %{field: ^opts[:attribute], is_not_equal: ^atomic_value(value)}
              })
            )}
@@ -209,7 +213,7 @@ defmodule Ash.Resource.Validation.Compare do
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
                value: ^error_value,
-               message: ^(context.message || "must be nil"),
+               message: ^(context.message || error_message("must be nil")),
                vars: %{field: ^opts[:attribute]}
              })
            )}
@@ -220,7 +224,7 @@ defmodule Ash.Resource.Validation.Compare do
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
                value: ^error_value,
-               message: ^(context.message || "must not be nil"),
+               message: ^(context.message || error_message("must not be nil")),
                vars: %{field: ^opts[:attribute]}
              })
            )}
@@ -399,28 +403,28 @@ defmodule Ash.Resource.Validation.Compare do
     |> Enum.map_join(" and ", fn {key, value} ->
       case key do
         :greater_than ->
-          "must be greater than %{greater_than}"
+          error_message("must be greater than %{greater_than}")
 
         :less_than ->
-          "must be less than %{less_than}"
+          error_message("must be less than %{less_than}")
 
         :greater_than_or_equal_to ->
-          "must be greater than or equal to %{greater_than_or_equal_to}"
+          error_message("must be greater than or equal to %{greater_than_or_equal_to}")
 
         :less_than_or_equal_to ->
-          "must be less than or equal to %{less_than_or_equal_to}"
+          error_message("must be less than or equal to %{less_than_or_equal_to}")
 
         :is_equal ->
-          "must be equal to %{is_equal}"
+          error_message("must be equal to %{is_equal}")
 
         :is_not_equal ->
-          "must not be equal to %{is_not_equal}"
+          error_message("must not be equal to %{is_not_equal}")
 
         :is_nil when value == true ->
-          "must be nil"
+          error_message("must be nil")
 
         :is_nil when value == false ->
-          "must not be nil"
+          error_message("must not be nil")
       end
     end)
   end

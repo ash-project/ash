@@ -38,6 +38,7 @@ spark_locals_without_parens = [
   attribute: 1,
   attribute: 2,
   attribute: 3,
+  attribute_always_select?: 1,
   attribute_public?: 1,
   attribute_type: 1,
   attribute_writable?: 1,

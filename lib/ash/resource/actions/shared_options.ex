@@ -56,7 +56,7 @@ defmodule Ash.Resource.Actions.SharedOptions do
     action_select: [
       type: {:list, :atom},
       doc: """
-      A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes/notifiers, it defaults to the externally selected attributes. Keep in mind that action_select is applied *before* notifiers.
+      A list of attributes to select from the data layer result. Controls which attributes are present (vs %Ash.NotLoaded{}) on the record passed to after_action hooks, notifiers, and returned to the caller. Defaults to all attributes with select_by_default? true. Does not affect what's available to changes or validations.
       """
     ],
     require_attributes: [

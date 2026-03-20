@@ -928,7 +928,7 @@ defmodule Ash do
     scope: [
       type: :any,
       doc:
-        "A value that implements the `Ash.Scope.ToOpts` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
+        "A value that implements the `Ash.Scope.ToOpts` protocol. Provides a default tenant and deep merges context (explicit opts take precedence). The actor is always taken from the second argument to `can/3`. See `Ash.Scope` for more."
     ],
     context: [
       type: :map,

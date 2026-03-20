@@ -357,7 +357,7 @@ defmodule Ash.MixProject do
         "Zach Daniel <zach@zachdaniel.dev>"
       ],
       licenses: ["MIT"],
-      files: ~w(lib .formatter.exs mix.exs README* LICENSE*
+      files: ~w(lib priv .formatter.exs mix.exs README* LICENSE*
       CHANGELOG* usage-rules.md usage-rules),
       links: %{
         "GitHub" => "https://github.com/ash-project/ash",

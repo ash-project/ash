@@ -5,6 +5,7 @@
 defmodule Ash.Resource.Validation.Present do
   @moduledoc false
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.{InvalidAttribute, InvalidChanges}
   import Ash.Expr
@@ -131,13 +132,13 @@ defmodule Ash.Resource.Validation.Present do
               context.message
 
             exactly == 0 ->
-              "must be absent"
+              error_message("must be absent")
 
             attribute_count == 1 ->
-              "must be present"
+              error_message("must be present")
 
             true ->
-              "exactly %{exactly} of %{keys} must be present"
+              error_message("exactly %{exactly} of %{keys} must be present")
           end
 
         if attribute_count == 1 do
@@ -181,7 +182,7 @@ defmodule Ash.Resource.Validation.Present do
            error(^InvalidAttribute, %{
              field: ^Enum.at(opts[:attributes], 0),
              value: ^atomic_ref(Enum.at(opts[:attributes], 0)),
-             message: "at least %{at_least} of %{keys} must be present",
+             message: error_message("at least %{at_least} of %{keys} must be present"),
              vars: %{at_least: ^at_least, keys: ^Enum.join(opts[:attributes], ", ")}
            })
          )}
@@ -194,7 +195,7 @@ defmodule Ash.Resource.Validation.Present do
            error(^InvalidAttribute, %{
              field: ^Enum.at(opts[:attributes], 0),
              value: ^atomic_ref(Enum.at(opts[:attributes], 0)),
-             message: "at most %{at_most} of %{keys} must be present",
+             message: error_message("at most %{at_most} of %{keys} must be present"),
              vars: %{at_most: ^at_most, keys: ^Enum.join(opts[:attributes], ", ")}
            })
          )}
@@ -208,12 +209,23 @@ defmodule Ash.Resource.Validation.Present do
 
   defp message(opts) do
     cond do
-      opts[:exactly] == 0 -> "must be absent"
-      length(opts[:attributes]) == 1 and not is_nil(opts[:at_most]) -> "must not be present"
-      length(opts[:attributes]) == 1 -> "must be present"
-      not is_nil(opts[:exactly]) -> "exactly %{exactly} of %{keys} must be present"
-      not is_nil(opts[:at_least]) -> "at least %{at_least} of %{keys} must be present"
-      not is_nil(opts[:at_most]) -> "at most %{at_most} of %{keys} must be present"
+      opts[:exactly] == 0 ->
+        error_message("must be absent")
+
+      length(opts[:attributes]) == 1 and not is_nil(opts[:at_most]) ->
+        error_message("must not be present")
+
+      length(opts[:attributes]) == 1 ->
+        error_message("must be present")
+
+      not is_nil(opts[:exactly]) ->
+        error_message("exactly %{exactly} of %{keys} must be present")
+
+      not is_nil(opts[:at_least]) ->
+        error_message("at least %{at_least} of %{keys} must be present")
+
+      not is_nil(opts[:at_most]) ->
+        error_message("at most %{at_most} of %{keys} must be present")
     end
   end
 

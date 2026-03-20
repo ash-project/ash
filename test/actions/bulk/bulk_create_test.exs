@@ -101,6 +101,81 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule CopyTitleToStatusChange do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, _, _) do
+      title = Ash.Changeset.get_attribute(changeset, :title)
+      Ash.Changeset.force_change_attribute(changeset, :status, title)
+    end
+  end
+
+  defmodule ValidateStatusPresenceAndNotBad do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_attribute(changeset, :status) do
+        nil -> {:error, field: :status, message: "status must be set"}
+        "bad" -> {:error, field: :status, message: "status cannot be bad"}
+        _ -> :ok
+      end
+    end
+  end
+
+  defmodule ValidateStatusNotUgly do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_attribute(changeset, :status) do
+        nil -> {:error, field: :status, message: "status must be set by hook"}
+        "ugly" -> {:error, field: :status, message: "status cannot be ugly"}
+        _ -> :ok
+      end
+    end
+  end
+
+  defmodule PostWithBulkValidationOrdering do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read]
+
+      create :create do
+        primary? true
+        accept [:title]
+      end
+    end
+
+    changes do
+      change CopyTitleToStatusChange
+    end
+
+    validations do
+      validate ValidateStatusPresenceAndNotBad
+      validate ValidateStatusNotUgly, before_action?: true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :status, :string, public?: true
+    end
+  end
+
   defmodule Org do
     @moduledoc false
     use Ash.Resource,
@@ -192,6 +267,29 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     @impl true
     def atomic(_, _, _) do
       :ok
+    end
+  end
+
+  defmodule AtomicOnlyChange do
+    @moduledoc "A change that only implements atomic/3 — no change/3 or batch_change/3."
+    use Ash.Resource.Change
+
+    @impl true
+    def atomic(_changeset, opts, _context) do
+      value = opts[:expr]
+      attribute = opts[:attribute]
+
+      {:atomic_set, %{attribute => value}}
+    end
+  end
+
+  defmodule NotAtomicChange do
+    @moduledoc "A change that always returns {:not_atomic, reason} from atomic/3."
+    use Ash.Resource.Change
+
+    @impl true
+    def atomic(_changeset, _opts, _context) do
+      {:not_atomic, "this change cannot run atomically"}
     end
   end
 
@@ -342,6 +440,27 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
                  {:ok, result}
                end)
+      end
+
+      create :create_with_atomic_set do
+        accept [:title]
+
+        argument :title_suffix, :string, allow_nil?: false
+
+        change atomic_set(:title2, expr(^arg(:title_suffix) <> "_computed"))
+      end
+
+      create :create_with_atomic_only_change do
+        accept [:title]
+
+        argument :suffix, :string, allow_nil?: false
+
+        change {AtomicOnlyChange, attribute: :title2, expr: expr(^arg(:suffix) <> "_atomic_only")}
+      end
+
+      create :create_with_not_atomic_change do
+        accept [:title]
+        change NotAtomicChange
       end
     end
 
@@ -2388,6 +2507,120 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       assert [%{title: "success_1"}] = result.records
       assert_received {:notification, _}
       assert result.notifications == nil
+    end
+  end
+
+  describe "bulk_create global validation ordering" do
+    test "succeeds when global change sets status that passes both validations" do
+      assert %Ash.BulkResult{status: :success, records: [%{status: "good"}]} =
+               Ash.bulk_create(
+                 [%{title: "good"}],
+                 PostWithBulkValidationOrdering,
+                 :create,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+    end
+
+    test "regular global validation rejects with correct error" do
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_create(
+                 [%{title: "bad"}],
+                 PostWithBulkValidationOrdering,
+                 :create,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "status cannot be bad"
+    end
+
+    test "before_action? global validation rejects with correct error" do
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_create(
+                 [%{title: "ugly"}],
+                 PostWithBulkValidationOrdering,
+                 :create,
+                 return_errors?: true,
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "status cannot be ugly"
+    end
+  end
+
+  describe "atomic_set in bulk_create" do
+    test "atomic_set changes are applied to each record" do
+      org = Ash.create!(Org, %{})
+
+      assert %Ash.BulkResult{status: :success, records: records} =
+               Ash.bulk_create!(
+                 [
+                   %{title: "post1", title_suffix: "alpha"},
+                   %{title: "post2", title_suffix: "beta"}
+                 ],
+                 Post,
+                 :create_with_atomic_set,
+                 return_records?: true,
+                 authorize?: false,
+                 tenant: org.id
+               )
+
+      [record1, record2] = Enum.sort_by(records, & &1.title)
+      assert record1.title2 == "alpha_computed"
+      assert record2.title2 == "beta_computed"
+    end
+
+    test "atomic_set changes work with single record" do
+      org = Ash.create!(Org, %{})
+
+      assert %Ash.BulkResult{status: :success, records: [record]} =
+               Ash.bulk_create!(
+                 [%{title: "solo", title_suffix: "gamma"}],
+                 Post,
+                 :create_with_atomic_set,
+                 return_records?: true,
+                 authorize?: false,
+                 tenant: org.id
+               )
+
+      assert record.title2 == "gamma_computed"
+    end
+
+    test "atomic-only change module (no change/3) works in bulk_create" do
+      org = Ash.create!(Org, %{})
+
+      assert %Ash.BulkResult{status: :success, records: records} =
+               Ash.bulk_create!(
+                 [
+                   %{title: "post1", suffix: "foo"},
+                   %{title: "post2", suffix: "bar"}
+                 ],
+                 Post,
+                 :create_with_atomic_only_change,
+                 return_records?: true,
+                 authorize?: false,
+                 tenant: org.id
+               )
+
+      [record1, record2] = Enum.sort_by(records, & &1.title)
+      assert record1.title2 == "foo_atomic_only"
+      assert record2.title2 == "bar_atomic_only"
+    end
+
+    test "not_atomic change adds error to changeset in bulk_create" do
+      org = Ash.create!(Org, %{})
+
+      assert %Ash.BulkResult{status: :error, errors: [_ | _]} =
+               Ash.bulk_create(
+                 [%{title: "post1"}],
+                 Post,
+                 :create_with_not_atomic_change,
+                 return_errors?: true,
+                 authorize?: false,
+                 tenant: org.id
+               )
     end
   end
 end

@@ -389,6 +389,7 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp pre_template_all_changes(action, resource, :create, base, actor, tenant) do
     action.changes
+    |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
     |> then(fn changes ->
       if action.skip_global_validations? do
         changes
@@ -396,7 +397,6 @@ defmodule Ash.Actions.Create.Bulk do
         Enum.concat(changes, Ash.Resource.Info.validations(resource, action.type))
       end
     end)
-    |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
     |> Enum.map(fn
       %{change: {module, opts}} = change ->
         %{change | change: {module, pre_template(opts, base, actor, tenant)}}
@@ -1845,95 +1845,17 @@ defmodule Ash.Actions.Create.Bulk do
       fn
         {%{validation: {module, opts}} = validation, _change_index}, %{batch: batch} = state ->
           batch =
-            Enum.map(batch, fn changeset ->
-              cond do
-                !module.has_validate?() ->
-                  Ash.Changeset.add_error(
-                    changeset,
-                    Ash.Error.Framework.CanNotBeAtomic.exception(
-                      resource: changeset.resource,
-                      change: module,
-                      reason: "Create actions cannot be made atomic"
-                    )
-                  )
-
-                invalid =
-                    Enum.find(validation.where, fn {module, _} -> !module.has_validate?() end) ->
-                  {module, _} = invalid
-
-                  Ash.Changeset.add_error(
-                    changeset,
-                    Ash.Error.Framework.CanNotBeAtomic.exception(
-                      resource: changeset.resource,
-                      change: module,
-                      reason: "Create actions cannot be made atomic"
-                    )
-                  )
-
-                validation.only_when_valid? && !changeset.valid? ->
-                  changeset
-
-                Enum.all?(validation.where || [], fn {module, opts} ->
-                  opts =
-                      templated_opts(
-                        opts,
-                        actor,
-                        changeset.to_tenant,
-                        changeset.arguments,
-                        changeset.context,
-                        changeset
-                      )
-
-                  {:ok, opts} = module.init(opts)
-
-                  Ash.Resource.Validation.validate(
-                    module,
-                    changeset,
-                    opts,
-                    struct(Ash.Resource.Validation.Context, context)
-                  ) == :ok
-                end) ->
-                  opts =
-                    templated_opts(
-                      opts,
-                      actor,
-                      changeset.to_tenant,
-                      changeset.arguments,
-                      changeset.context,
-                      changeset
-                    )
-
-                  {:ok, opts} = module.init(opts)
-
-                  case Ash.Resource.Validation.validate(
-                         module,
-                         changeset,
-                         opts,
-                         struct(
-                           Ash.Resource.Validation.Context,
-                           Map.put(context, :message, validation.message)
-                         )
-                       ) do
-                    :ok ->
-                      changeset
-
-                    {:error, error} ->
-                      error = Ash.Error.to_ash_error(error)
-
-                      if validation.message do
-                        error =
-                          Ash.Error.override_validation_message(error, validation.message)
-
-                        Ash.Changeset.add_error(changeset, error)
-                      else
-                        Ash.Changeset.add_error(changeset, error)
-                      end
-                  end
-
-                true ->
-                  changeset
-              end
-            end)
+            if validation.before_action? do
+              Enum.map(batch, fn changeset ->
+                Ash.Changeset.before_action(changeset, fn changeset ->
+                  run_bulk_validation(changeset, validation, module, opts, context, actor)
+                end)
+              end)
+            else
+              Enum.map(batch, fn changeset ->
+                run_bulk_validation(changeset, validation, module, opts, context, actor)
+              end)
+            end
 
           %{
             state
@@ -1945,7 +1867,7 @@ defmodule Ash.Actions.Create.Bulk do
         {%{change: {module, change_opts}} = change, change_index}, %{batch: batch} = state ->
           # could track if any element in the batch is invalid, and if not use the fast version
           if Enum.empty?(change.where) && !change.only_when_valid? do
-            batch = batch_change(module, batch, change_opts, context, actor)
+            batch = batch_change(change, batch, context, actor)
 
             must_return_records? =
               state.must_return_records? ||
@@ -2006,7 +1928,7 @@ defmodule Ash.Actions.Create.Bulk do
                   changes: state.changes
               }
             else
-              matches = batch_change(module, matches, change_opts, context, actor)
+              matches = batch_change(change, matches, context, actor)
 
               must_return_records? =
                 state.must_return_records? ||
@@ -2035,73 +1957,208 @@ defmodule Ash.Actions.Create.Bulk do
     )
   end
 
-  defp batch_change(module, batch, change_opts, context, actor) do
+  defp run_bulk_validation(changeset, validation, module, opts, context, actor) do
+    cond do
+      !module.has_validate?() ->
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Framework.CanNotBeAtomic.exception(
+            resource: changeset.resource,
+            change: module,
+            reason: "Create actions cannot be made atomic"
+          )
+        )
+
+      invalid =
+          Enum.find(validation.where, fn {module, _} -> !module.has_validate?() end) ->
+        {module, _} = invalid
+
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Framework.CanNotBeAtomic.exception(
+            resource: changeset.resource,
+            change: module,
+            reason: "Create actions cannot be made atomic"
+          )
+        )
+
+      validation.only_when_valid? && !changeset.valid? ->
+        changeset
+
+      Enum.all?(validation.where || [], fn {module, opts} ->
+        opts =
+            templated_opts(
+              opts,
+              actor,
+              changeset.to_tenant,
+              changeset.arguments,
+              changeset.context,
+              changeset
+            )
+
+        {:ok, opts} = module.init(opts)
+
+        Ash.Resource.Validation.validate(
+          module,
+          changeset,
+          opts,
+          struct(Ash.Resource.Validation.Context, context)
+        ) == :ok
+      end) ->
+        opts =
+          templated_opts(
+            opts,
+            actor,
+            changeset.to_tenant,
+            changeset.arguments,
+            changeset.context,
+            changeset
+          )
+
+        {:ok, opts} = module.init(opts)
+
+        case Ash.Resource.Validation.validate(
+               module,
+               changeset,
+               opts,
+               struct(
+                 Ash.Resource.Validation.Context,
+                 Map.put(context, :message, validation.message)
+               )
+             ) do
+          :ok ->
+            changeset
+
+          {:error, error} ->
+            error = Ash.Error.to_ash_error(error)
+
+            error =
+              if validation.message do
+                Ash.Error.override_validation_message(error, validation.message)
+              else
+                error
+              end
+
+            Ash.Changeset.add_error(changeset, error)
+        end
+
+      true ->
+        changeset
+    end
+  end
+
+  defp batch_change(%{change: {module, change_opts}} = change, batch, context, actor) do
     case change_opts do
       {:templated, change_opts} ->
-        if module.has_batch_change?() do
-          module.batch_change(
-            batch,
-            change_opts,
-            struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
-          )
-        else
-          Enum.map(batch, fn changeset ->
-            {:ok, change_opts} = module.init(change_opts)
-
-            Ash.Resource.Change.change(
-              module,
-              changeset,
+        cond do
+          module.has_batch_change?() ->
+            module.batch_change(
+              batch,
               change_opts,
               struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
             )
-          end)
+
+          module.has_change?() ->
+            Enum.map(batch, fn changeset ->
+              {:ok, change_opts} = module.init(change_opts)
+
+              Ash.Resource.Change.change(
+                module,
+                changeset,
+                change_opts,
+                struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
+              )
+            end)
+
+          module.atomic?() ->
+            batch_atomic_change(batch, change, module, change_opts, context, actor)
+
+          true ->
+            raise "#{inspect(module)} must define at least one of `atomic/3`, `change/3` or `batch_change/3`"
         end
 
       change_opts ->
-        if module.has_batch_change?() do
-          batch
-          |> Enum.map(fn changeset ->
-            change_opts =
-              templated_opts(
+        cond do
+          module.has_batch_change?() ->
+            batch
+            |> Enum.map(fn changeset ->
+              change_opts =
+                templated_opts(
+                  change_opts,
+                  actor,
+                  changeset.to_tenant,
+                  changeset.arguments,
+                  changeset.context,
+                  changeset
+                )
+
+              {:ok, change_opts} = module.init(change_opts)
+
+              module.batch_change(
+                [changeset],
                 change_opts,
-                actor,
-                changeset.to_tenant,
-                changeset.arguments,
-                changeset.context,
-                changeset
+                struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
               )
+            end)
+            |> Enum.concat()
 
-            {:ok, change_opts} = module.init(change_opts)
+          module.has_change?() ->
+            Enum.map(batch, fn changeset ->
+              change_opts =
+                templated_opts(
+                  change_opts,
+                  actor,
+                  changeset.to_tenant,
+                  changeset.arguments,
+                  changeset.context,
+                  changeset
+                )
 
-            module.batch_change(
-              [changeset],
-              change_opts,
-              struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
-            )
-          end)
-          |> Enum.concat()
-        else
-          Enum.map(batch, fn changeset ->
-            change_opts =
-              templated_opts(
+              {:ok, change_opts} = module.init(change_opts)
+
+              Ash.Resource.Change.change(
+                module,
+                changeset,
                 change_opts,
-                actor,
-                changeset.to_tenant,
-                changeset.arguments,
-                changeset.context,
-                changeset
+                struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
               )
+            end)
 
-            {:ok, change_opts} = module.init(change_opts)
+          module.atomic?() ->
+            batch_atomic_change(batch, change, module, change_opts, context, actor)
 
-            Ash.Resource.Change.change(
-              module,
-              changeset,
-              change_opts,
-              struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
-            )
-          end)
+          true ->
+            raise "#{inspect(module)} must define at least one of `atomic/3`, `change/3` or `batch_change/3`"
         end
     end
+  end
+
+  defp batch_atomic_change(batch, change, module, change_opts, context, actor) do
+    Enum.map(batch, fn changeset ->
+      change = %{
+        change
+        | change:
+            {module,
+             templated_opts(
+               change_opts,
+               actor,
+               changeset.to_tenant,
+               changeset.arguments,
+               changeset.context,
+               changeset
+             )}
+      }
+
+      case Ash.Changeset.run_atomic_change(changeset, change, context) do
+        {:not_atomic, reason} ->
+          Ash.Changeset.add_error(
+            changeset,
+            "Could not be made atomic: #{inspect(reason)}"
+          )
+
+        changeset ->
+          changeset
+      end
+    end)
   end
 end

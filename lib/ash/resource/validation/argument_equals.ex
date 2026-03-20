@@ -19,6 +19,7 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
   ]
 
   use Ash.Resource.Validation
+  import Ash.Gettext
   alias Ash.Error.Changes.InvalidArgument
 
   opt_schema = @opt_schema
@@ -67,7 +68,7 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
   @impl true
   def describe(opts) do
     [
-      message: "must equal %{value}",
+      message: error_message("must equal %{value}"),
       vars: [field: opts[:argument], value: opts[:value]]
     ]
   end
