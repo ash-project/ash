@@ -425,7 +425,7 @@ defmodule Type.StructTest do
                private_vars: nil,
                value: %{:bar => "2", "foo" => ""},
                bread_crumbs: [],
-               vars: [],
+               vars: [{:value, nil}],
                path: [:metadata]
              }
            ] = changeset.errors
