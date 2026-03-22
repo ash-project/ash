@@ -464,7 +464,8 @@ defmodule Ash.Type.Struct do
              ) do
           {:ok, nil} ->
             if field_constraints[:allow_nil?] == false do
-              {:error, [[message: error_message("value must not be nil"), field: field, value: nil]]}
+              {:error,
+               [[message: error_message("value must not be nil"), field: field, value: nil]]}
             else
               {:ok, Map.put(result, field, nil)}
             end
