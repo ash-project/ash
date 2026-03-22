@@ -381,7 +381,9 @@ defmodule Ash.MixProject do
     [
       {:usage_rules, "~> 1.1", only: [:dev]},
       # DSLs
-      {:spark, "~> 2.3 and >= 2.3.14"},
+      # {:spark, "~> 2.3 and >= 2.3.14"},
+      {:spark,
+       git: "https://github.com/ash-project/spark.git", branch: "sort-persisters", override: true},
       # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.7"},
       # Used by the ETS data layer
