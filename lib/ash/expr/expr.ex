@@ -1655,10 +1655,54 @@ defmodule Ash.Expr do
           {_, type} -> {:ok, type}
         end
 
+      value when is_map(value) and not is_struct(value) and value != %{} ->
+        determine_map_type(value)
+
       _ ->
         :error
     end
   end
+
+  defp determine_map_type(map) do
+    if Enum.all?(map, fn {key, _} -> is_atom(key) end) do
+      Enum.reduce_while(map, {:ok, []}, fn {key, val_expr}, {:ok, acc} ->
+        case determine_type(val_expr) do
+          {:ok, {type, constraints}} ->
+            allow_nil? = expr_allow_nil?(val_expr)
+
+            {:cont,
+             {:ok, [{key, [type: type, constraints: constraints, allow_nil?: allow_nil?]} | acc]}}
+
+          :error ->
+            {:halt, :error}
+        end
+      end)
+      |> case do
+        {:ok, fields} ->
+          {:ok, {Ash.Type.Map, [fields: Enum.reverse(fields)]}}
+
+        :error ->
+          :error
+      end
+    else
+      :error
+    end
+  end
+
+  @doc false
+  def expr_allow_nil?(%{__struct__: Ash.Query.Ref, attribute: %{allow_nil?: allow_nil?}}),
+    do: allow_nil?
+
+  def expr_allow_nil?(%{__struct__: Ash.Query.Function.Type, arguments: [inner | _]}),
+    do: expr_allow_nil?(inner)
+
+  def expr_allow_nil?(%{__predicate__?: true}), do: false
+  def expr_allow_nil?(%{__struct__: Ash.Query.BooleanExpression}), do: false
+  def expr_allow_nil?(%{__struct__: Ash.Query.Not}), do: false
+  def expr_allow_nil?(%{__struct__: Ash.Query.Exists}), do: false
+  def expr_allow_nil?(%{__struct__: Ash.Query.Call, name: :count}), do: false
+  def expr_allow_nil?(%{__struct__: Ash.Query.Call, name: :exists}), do: false
+  def expr_allow_nil?(_), do: true
 
   defp determine_get_path_type(left, path) do
     path = List.wrap(path)
