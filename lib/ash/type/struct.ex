@@ -464,7 +464,7 @@ defmodule Ash.Type.Struct do
              ) do
           {:ok, nil} ->
             if field_constraints[:allow_nil?] == false do
-              {:error, [[message: error_message("value must not be nil"), field: field]]}
+              {:error, [[message: error_message("value must not be nil"), field: field, value: nil]]}
             else
               {:ok, Map.put(result, field, nil)}
             end
@@ -485,7 +485,7 @@ defmodule Ash.Type.Struct do
         end
 
       {:error, error} when is_binary(error) ->
-        {:error, [[message: error, field: field]]}
+        {:error, [[message: error, field: field, value: field_value]]}
 
       {:error, error} when is_list(error) ->
         if Keyword.keyword?(error) do
@@ -505,7 +505,7 @@ defmodule Ash.Type.Struct do
         {:error, error}
 
       :error ->
-        {:error, [[message: error_message("invalid value"), field: field]]}
+        {:error, [[message: error_message("invalid value"), field: field, value: field_value]]}
     end
   end
 
