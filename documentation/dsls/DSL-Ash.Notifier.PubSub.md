@@ -224,7 +224,7 @@ publish :assign, "assigned"
 | [`constraints`](#pub_sub-publish-constraints){: #pub_sub-publish-constraints } | `keyword` | `[]` | Constraints for the `returns` type. See `Ash.Type` for more. |
 | [`previous_values?`](#pub_sub-publish-previous_values?){: #pub_sub-publish-previous_values? } | `boolean` | `false` | Whether or not to publish messages with both the new values and the old values for referencing changed attributes |
 | [`filter`](#pub_sub-publish-filter){: #pub_sub-publish-filter } | `(any -> any)` |  | A filter for notifications. Receives a notification, and ignores it if the function returns a falsy value. |
-| [`transform`](#pub_sub-publish-transform){: #pub_sub-publish-transform } | `(any -> any)` |  | A transformer for notifications. Receives a notification, and returns a new value to be broadcasted. |
+| [`transform`](#pub_sub-publish-transform){: #pub_sub-publish-transform } | `(any -> any) \| atom` |  | A transformer for notifications. Either a function that receives a notification and returns a new value, or an atom naming a calculation on the resource whose result will be used as the broadcast value. |
 | [`public?`](#pub_sub-publish-public?){: #pub_sub-publish-public? } | `boolean` | `false` | Whether or not this publication is considered public. Extensions may use this. |
 | [`load`](#pub_sub-publish-load){: #pub_sub-publish-load } | `any` |  | A load statement to be applied before this publication's notification is dispatched. Loaded fields will be merged onto `notification.data`. |
 | [`dispatcher`](#pub_sub-publish-dispatcher){: #pub_sub-publish-dispatcher } | `atom` |  | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
@@ -276,7 +276,7 @@ publish_all "my_creates", :create, "created"
 | [`constraints`](#pub_sub-publish_all-constraints){: #pub_sub-publish_all-constraints } | `keyword` | `[]` | Constraints for the `returns` type. See `Ash.Type` for more. |
 | [`previous_values?`](#pub_sub-publish_all-previous_values?){: #pub_sub-publish_all-previous_values? } | `boolean` | `false` | Whether or not to publish messages with both the new values and the old values for referencing changed attributes |
 | [`filter`](#pub_sub-publish_all-filter){: #pub_sub-publish_all-filter } | `(any -> any)` |  | A filter for notifications. Receives a notification, and ignores it if the function returns a falsy value. |
-| [`transform`](#pub_sub-publish_all-transform){: #pub_sub-publish_all-transform } | `(any -> any)` |  | A transformer for notifications. Receives a notification, and returns a new value to be broadcasted. |
+| [`transform`](#pub_sub-publish_all-transform){: #pub_sub-publish_all-transform } | `(any -> any) \| atom` |  | A transformer for notifications. Either a function that receives a notification and returns a new value, or an atom naming a calculation on the resource whose result will be used as the broadcast value. |
 | [`public?`](#pub_sub-publish_all-public?){: #pub_sub-publish_all-public? } | `boolean` | `false` | Whether or not this publication is considered public. Extensions may use this. |
 | [`load`](#pub_sub-publish_all-load){: #pub_sub-publish_all-load } | `any` |  | A load statement to be applied before this publication's notification is dispatched. Loaded fields will be merged onto `notification.data`. |
 | [`dispatcher`](#pub_sub-publish_all-dispatcher){: #pub_sub-publish_all-dispatcher } | `atom` |  | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
