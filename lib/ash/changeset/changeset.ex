@@ -1233,7 +1233,8 @@ defmodule Ash.Changeset do
          {:atomic, condition} <-
            atomic_condition(where, changeset, context),
          {{:atomic, modified_changeset?, new_changeset, atomic_changes, validations,
-           create_atomics}, condition} <-
+           create_atomics},
+          condition} <-
            {atomic_with_changeset(
               Ash.Resource.Change.atomic(
                 module,

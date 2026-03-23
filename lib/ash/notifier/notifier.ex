@@ -6,7 +6,7 @@ defmodule Ash.Notifier do
   @moduledoc """
   A notifier is an extension that receives various events
   """
-  @callback notify(Ash.Notifier.Notification.t()) :: :ok
+  @callback notify(Ash.Notifier.Notification.t()) :: any()
   @callback requires_original_data?(Ash.Resource.t(), Ash.Resource.Actions.action()) :: boolean
 
   @doc """
@@ -29,16 +29,9 @@ defmodule Ash.Notifier do
   require Logger
 
   @doc false
-  @spec notify(module(), Ash.Notifier.Notification.t()) :: :ok
+  @spec notify(module(), Ash.Notifier.Notification.t()) :: any()
   def notify(notifier_module, notification) do
-    Ash.BehaviourHelpers.call_and_validate_return(
-      notifier_module,
-      :notify,
-      [notification],
-      [:ok],
-      behaviour: __MODULE__,
-      callback_name: "notify/1"
-    )
+    apply(notifier_module, :notify, [notification])
   end
 
   @doc false

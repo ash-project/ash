@@ -9,9 +9,9 @@ defmodule Ash.BehaviourHelpers do
   ## Behaviour invocation pattern
 
   Implementation modules (e.g. a module that `@behaviour Ash.Resource.Change`) should be invoked
-  **only through the behaviour’s public wrapper functions** (e.g. `Ash.Resource.Change.change/4`,
-  `Ash.Resource.Change.atomic/4`). Call sites must call `SomeBehaviour.callback(implementation_module, ...)`
-  rather than `implementation_module.callback(...)`.
+  **only through the behaviour module's public wrapper callbacks**. Call sites must call
+  `SomeBehaviour.callback(implementation_module, ...)` rather than
+  `implementation_module.callback(...)`.
 
   Those wrappers:
 
