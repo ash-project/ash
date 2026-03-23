@@ -1582,23 +1582,15 @@ defmodule Ash.Expr do
   def determine_type(value) do
     case value do
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type, constraints]} ->
-        if Ash.Type.ash_type?(type) do
-          if res = get_type({type, constraints}) do
-            {:ok, res}
-          else
-            :error
-          end
+        if res = get_type({type, constraints}) do
+          {:ok, res}
         else
           :error
         end
 
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type]} ->
-        if Ash.Type.ash_type?(type) do
-          if res = get_type({type, []}) do
-            {:ok, res}
-          else
-            :error
-          end
+        if res = get_type({type, []}) do
+          {:ok, res}
         else
           :error
         end

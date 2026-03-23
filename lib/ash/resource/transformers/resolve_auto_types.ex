@@ -74,6 +74,9 @@ defmodule Ash.Resource.Transformers.ResolveAutoTypes do
       expr = get_expression!(calc)
 
       case Ash.TypeResolver.ExprAnalyzer.resolve_type(module, dsl_state, expr) do
+        {:ok, type, constraints} ->
+          Ash.TypeResolver.register_known_field(module, calc.name, type, constraints)
+
         {:deps, deps} ->
           Ash.TypeResolver.register_auto(module, calc.name, calc, dsl_state, deps)
 

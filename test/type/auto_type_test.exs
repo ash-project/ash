@@ -4,10 +4,12 @@
 
 defmodule Ash.Test.Type.AutoTypeTest do
   @moduledoc false
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   require Ash.Query
   alias Ash.Test.Domain, as: Domain
+
+  # ── Shared types ──────────────────────────────────────────────────────
 
   defmodule Priority do
     @moduledoc false
@@ -63,6 +65,31 @@ defmodule Ash.Test.Type.AutoTypeTest do
     use Ash.Type.NewType, subtype_of: :string, constraints: [max_length: 255]
   end
 
+  # ── Resources ─────────────────────────────────────────────────────────
+
+  defmodule Author do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+      attribute :age, :integer, public?: true
+      attribute :rating, :float, public?: true
+      attribute :active, :boolean, public?: true
+    end
+  end
+
   defmodule Tag do
     use Ash.Resource,
       domain: Domain,
@@ -80,6 +107,7 @@ defmodule Ash.Test.Type.AutoTypeTest do
     attributes do
       uuid_primary_key :id
       attribute :label, :string, public?: true
+      attribute :score, :integer, public?: true
       attribute :post_id, :uuid, public?: true
     end
 
@@ -122,76 +150,34 @@ defmodule Ash.Test.Type.AutoTypeTest do
       attribute :all_metadata, {:array, Metadata}, public?: true
       attribute :all_priorities, {:array, Priority}, public?: true
       attribute :tags_list, {:array, :string}, public?: true
+      attribute :author_id, :uuid, public?: true
     end
 
     calculations do
-      calculate :title_calc, :auto, expr(title) do
-        public?(true)
-      end
+      # simple attribute refs
+      calculate :title_calc, :auto, expr(title), public?: true
+      calculate :score_calc, :auto, expr(score), public?: true
+      calculate :rating_calc, :auto, expr(rating), public?: true
+      calculate :active_calc, :auto, expr(active), public?: true
+      calculate :id_calc, :auto, expr(id), public?: true
+      calculate :amount_calc, :auto, expr(amount), public?: true
+      calculate :slug_calc, :auto, expr(slug), public?: true
+      calculate :published_at_calc, :auto, expr(published_at), public?: true
 
-      calculate :score_calc, :auto, expr(score) do
-        public?(true)
-      end
+      # complex type refs
+      calculate :priority_calc, :auto, expr(priority), public?: true
+      calculate :metadata_calc, :auto, expr(metadata), public?: true
+      calculate :content_calc, :auto, expr(content), public?: true
+      calculate :short_title_calc, :auto, expr(short_title), public?: true
 
-      calculate :rating_calc, :auto, expr(rating) do
-        public?(true)
-      end
+      # array type refs
+      calculate :all_metadata_calc, :auto, expr(all_metadata), public?: true
+      calculate :all_priorities_calc, :auto, expr(all_priorities), public?: true
+      calculate :tags_list_calc, :auto, expr(tags_list), public?: true
 
-      calculate :active_calc, :auto, expr(active) do
-        public?(true)
-      end
-
-      calculate :id_calc, :auto, expr(id) do
-        public?(true)
-      end
-
-      calculate :amount_calc, :auto, expr(amount) do
-        public?(true)
-      end
-
-      calculate :slug_calc, :auto, expr(slug) do
-        public?(true)
-      end
-
-      calculate :published_at_calc, :auto, expr(published_at) do
-        public?(true)
-      end
-
-      calculate :priority_calc, :auto, expr(priority) do
-        public?(true)
-      end
-
-      calculate :metadata_calc, :auto, expr(metadata) do
-        public?(true)
-      end
-
-      calculate :content_calc, :auto, expr(content) do
-        public?(true)
-      end
-
-      calculate :short_title_calc, :auto, expr(short_title) do
-        public?(true)
-      end
-
-      calculate :all_metadata_calc, :auto, expr(all_metadata) do
-        public?(true)
-      end
-
-      calculate :all_priorities_calc, :auto, expr(all_priorities) do
-        public?(true)
-      end
-
-      calculate :tags_list_calc, :auto, expr(tags_list) do
-        public?(true)
-      end
-
-      calculate :full_text, :auto, expr(title <> " " <> body) do
-        public?(true)
-      end
-
-      calculate :is_active, :auto, expr(active == true) do
-        public?(true)
-      end
+      # expressions
+      calculate :full_text, :auto, expr(title <> " " <> body), public?: true
+      calculate :is_active, :auto, expr(active == true), public?: true
 
       calculate :conditional_title,
                 :auto,
@@ -201,31 +187,42 @@ defmodule Ash.Test.Type.AutoTypeTest do
                   else
                     title <> ": " <> body
                   end
-                ) do
-        public?(true)
-      end
+                ),
+                public?: true
 
-      calculate :score_plus_one, :auto, expr(score + 1) do
-        public?(true)
-      end
+      calculate :score_plus_one, :auto, expr(score + 1), public?: true
 
-      calculate :has_tags, :auto, expr(exists(tags, true)) do
-        public?(true)
-      end
+      # type() wrapper
+      calculate :typed_score, :auto, expr(type(score, :integer)), public?: true
 
-      calculate :tag_count_calc, :auto, expr(count(tags)) do
-        public?(true)
-      end
+      # aggregates
+      calculate :has_tags, :auto, expr(exists(tags, true)), public?: true
+      calculate :tag_count, :auto, expr(count(tags)), public?: true
+      calculate :first_tag_label, :auto, expr(first(tags, field: :label)), public?: true
+      calculate :max_tag_score, :auto, expr(max(tags, field: :score)), public?: true
+      calculate :min_tag_score, :auto, expr(min(tags, field: :score)), public?: true
+      calculate :sum_tag_score, :auto, expr(sum(tags, field: :score)), public?: true
+      calculate :tag_labels, :auto, expr(list(tags, field: :label)), public?: true
 
-      calculate :card, :auto, expr(%{title: title, score: score, active: active}) do
-        public?(true)
-      end
+      # map literal
+      calculate :card, :auto, expr(%{title: title, score: score, active: active}), public?: true
+
+      # cross-resource ref
+      calculate :author_name, :auto, expr(author.name), public?: true
+
+      # auto calc referencing another auto calc (dependency chain)
+      calculate :score_calc_copy, :auto, expr(score_calc), public?: true
     end
 
     relationships do
       has_many :tags, Tag do
         public?(true)
         destination_attribute :post_id
+      end
+
+      belongs_to :author, Author do
+        public?(true)
+        attribute_writable? true
       end
     end
   end
@@ -251,13 +248,8 @@ defmodule Ash.Test.Type.AutoTypeTest do
     end
 
     calculations do
-      calculate :post_title, :auto, expr(post.title) do
-        public?(true)
-      end
-
-      calculate :post_priority, :auto, expr(post.priority) do
-        public?(true)
-      end
+      calculate :post_title, :auto, expr(post.title), public?: true
+      calculate :post_priority, :auto, expr(post.priority), public?: true
     end
 
     relationships do
@@ -268,7 +260,9 @@ defmodule Ash.Test.Type.AutoTypeTest do
     end
   end
 
-  describe "auto type resolution - simple attribute refs" do
+  # ── Type resolution tests ─────────────────────────────────────────────
+
+  describe "simple attribute refs" do
     test "string" do
       assert Ash.Resource.Info.calculation(Post, :title_calc).type == Ash.Type.String
     end
@@ -303,7 +297,7 @@ defmodule Ash.Test.Type.AutoTypeTest do
     end
   end
 
-  describe "auto type resolution - complex attribute refs" do
+  describe "complex type refs" do
     test "enum" do
       assert Ash.Resource.Info.calculation(Post, :priority_calc).type == Priority
     end
@@ -321,7 +315,7 @@ defmodule Ash.Test.Type.AutoTypeTest do
     end
   end
 
-  describe "auto type resolution - array attribute refs" do
+  describe "array type refs" do
     test "array of embedded resources" do
       assert Ash.Resource.Info.calculation(Post, :all_metadata_calc).type == {:array, Metadata}
     end
@@ -336,7 +330,7 @@ defmodule Ash.Test.Type.AutoTypeTest do
     end
   end
 
-  describe "auto type resolution - expressions" do
+  describe "expression type resolution" do
     test "string concatenation" do
       assert Ash.Resource.Info.calculation(Post, :full_text).type == Ash.Type.String
     end
@@ -353,12 +347,8 @@ defmodule Ash.Test.Type.AutoTypeTest do
       assert Ash.Resource.Info.calculation(Post, :score_plus_one).type == Ash.Type.Integer
     end
 
-    test "exists() -> boolean" do
-      assert Ash.Resource.Info.calculation(Post, :has_tags).type == Ash.Type.Boolean
-    end
-
-    test "count() aggregate -> integer" do
-      assert Ash.Resource.Info.calculation(Post, :tag_count_calc).type == Ash.Type.Integer
+    test "type() wrapper" do
+      assert Ash.Resource.Info.calculation(Post, :typed_score).type == Ash.Type.Integer
     end
 
     test "map literal resolves to Ash.Type.Map with field constraints" do
@@ -372,7 +362,37 @@ defmodule Ash.Test.Type.AutoTypeTest do
     end
   end
 
-  describe "auto type resolution - cross-resource refs" do
+  describe "aggregate type resolution" do
+    test "exists -> boolean" do
+      assert Ash.Resource.Info.calculation(Post, :has_tags).type == Ash.Type.Boolean
+    end
+
+    test "count -> integer" do
+      assert Ash.Resource.Info.calculation(Post, :tag_count).type == Ash.Type.Integer
+    end
+
+    test "first -> field type" do
+      assert Ash.Resource.Info.calculation(Post, :first_tag_label).type == Ash.Type.String
+    end
+
+    test "max -> field type" do
+      assert Ash.Resource.Info.calculation(Post, :max_tag_score).type == Ash.Type.Integer
+    end
+
+    test "min -> field type" do
+      assert Ash.Resource.Info.calculation(Post, :min_tag_score).type == Ash.Type.Integer
+    end
+
+    test "sum -> field type" do
+      assert Ash.Resource.Info.calculation(Post, :sum_tag_score).type == Ash.Type.Integer
+    end
+
+    test "list -> array of field type" do
+      assert Ash.Resource.Info.calculation(Post, :tag_labels).type == {:array, Ash.Type.String}
+    end
+  end
+
+  describe "cross-resource refs" do
     test "string attribute via relationship" do
       assert Ash.Resource.Info.calculation(Comment, :post_title).type == Ash.Type.String
     end
@@ -380,7 +400,19 @@ defmodule Ash.Test.Type.AutoTypeTest do
     test "enum attribute via relationship" do
       assert Ash.Resource.Info.calculation(Comment, :post_priority).type == Priority
     end
+
+    test "ref through belongs_to" do
+      assert Ash.Resource.Info.calculation(Post, :author_name).type == Ash.Type.String
+    end
   end
+
+  describe "dependency chain" do
+    test "auto calc referencing another auto calc resolves" do
+      assert Ash.Resource.Info.calculation(Post, :score_calc_copy).type == Ash.Type.Integer
+    end
+  end
+
+  # ── Runtime value tests ───────────────────────────────────────────────
 
   describe "runtime - simple types" do
     test "string" do
@@ -405,8 +437,7 @@ defmodule Ash.Test.Type.AutoTypeTest do
 
     test "uuid" do
       post = Ash.Seed.seed!(Post, %{title: "T", body: "B", score: 1, active: true})
-      loaded = Ash.load!(post, :id_calc)
-      assert loaded.id_calc == post.id
+      assert Ash.load!(post, :id_calc).id_calc == post.id
     end
 
     test "decimal" do
@@ -544,10 +575,117 @@ defmodule Ash.Test.Type.AutoTypeTest do
 
     test "enum attribute via relationship" do
       post =
-        Ash.Seed.seed!(Post, %{title: "T", body: "B", score: 1, active: true, priority: :critical})
+        Ash.Seed.seed!(Post, %{
+          title: "T",
+          body: "B",
+          score: 1,
+          active: true,
+          priority: :critical
+        })
 
       comment = Ash.Seed.seed!(Comment, %{text: "Urgent!", post_id: post.id})
       assert Ash.load!(comment, :post_priority).post_priority == :critical
+    end
+
+    test "ref through belongs_to" do
+      author = Ash.Seed.seed!(Author, %{name: "Alice", age: 30, rating: 4.5, active: true})
+      post = Ash.Seed.seed!(Post, %{title: "Test", score: 1, active: true, author_id: author.id})
+      assert Ash.load!(post, :author_name).author_name == "Alice"
+    end
+  end
+
+  describe "runtime - dependency chain" do
+    test "auto calc referencing another auto calc" do
+      post = Ash.Seed.seed!(Post, %{title: "T", body: "B", score: 7, active: true})
+      assert Ash.load!(post, :score_calc_copy).score_calc_copy == 7
+    end
+  end
+
+  # ── Error tests ───────────────────────────────────────────────────────
+
+  describe "errors" do
+    test "auto type with non-expression calculation raises" do
+      assert_raise Spark.Error.DslError,
+                   ~r/`:auto` type is only supported for expression calculations/,
+                   fn ->
+                     defmodule BadCalcResource do
+                       use Ash.Resource,
+                         domain: Domain,
+                         data_layer: Ash.DataLayer.Ets
+
+                       ets do
+                         private?(true)
+                       end
+
+                       actions do
+                         default_accept :*
+                         defaults [:read, create: :*]
+                       end
+
+                       attributes do
+                         uuid_primary_key :id
+                         attribute :title, :string, public?: true
+                       end
+
+                       calculations do
+                         calculate :bad_calc, :auto, fn records, _ ->
+                           Enum.map(records, fn _ -> "nope" end)
+                         end
+                       end
+                     end
+                   end
+    end
+  end
+
+  # ── TypeResolver GenServer tests ──────────────────────────────────────
+
+  describe "TypeResolver GenServer" do
+    alias Ash.TypeResolver
+
+    setup do
+      TypeResolver.shutdown()
+      :ok
+    end
+
+    test "ensure_started is idempotent" do
+      assert :ok = TypeResolver.ensure_started()
+      assert :ok = TypeResolver.ensure_started()
+      TypeResolver.shutdown()
+    end
+
+    test "resolves immediately when type is already known" do
+      TypeResolver.ensure_started()
+      TypeResolver.register_known_field(MyResource, :title, Ash.Type.String, [])
+      assert {:ok, Ash.Type.String, []} = TypeResolver.resolve(MyResource, :title)
+      TypeResolver.shutdown()
+    end
+
+    test "deadlock detection finds cycles" do
+      TypeResolver.ensure_started()
+
+      fake_calc_a = %Ash.Resource.Calculation{
+        name: :calc_a,
+        type: :auto,
+        calculation: {Ash.Resource.Calculation.Expression, expr: nil}
+      }
+
+      fake_calc_b = %Ash.Resource.Calculation{
+        name: :calc_b,
+        type: :auto,
+        calculation: {Ash.Resource.Calculation.Expression, expr: nil}
+      }
+
+      TypeResolver.register_auto(ResourceA, :calc_a, fake_calc_a, %{}, [{ResourceB, :calc_b}])
+      TypeResolver.register_auto(ResourceB, :calc_b, fake_calc_b, %{}, [{ResourceA, :calc_a}])
+
+      TypeResolver.done_registering(ResourceA)
+      TypeResolver.done_registering(ResourceB)
+
+      result = TypeResolver.resolve(ResourceA, :calc_a, 5_000)
+      assert {:error, message} = result
+      assert message =~ "Circular dependency"
+
+      TypeResolver.shutdown()
     end
   end
 end

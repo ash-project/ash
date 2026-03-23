@@ -184,7 +184,7 @@ The available aggregate kinds can also be seen in the `Ash.Query.Aggregate` modu
 
 ## Templates
 
-Most of the time, when you are using an expression, you will actually be creating a *template*. In this template, you have a few references that can be used, which will be replaced before the expression is evaluated. The following references are available:
+When creating expressions within DSL modules, you will typically be creating a *template*. In this template, you have a few references that can be used, which will be replaced before the expression is evaluated. The following references are available:
 
 ```elixir
 ^actor(:key) # equivalent to `get_in(actor || %{}, [:key])`
