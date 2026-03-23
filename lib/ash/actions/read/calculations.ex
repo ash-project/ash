@@ -206,7 +206,7 @@ defmodule Ash.Actions.Read.Calculations do
                      resource: opts[:resource],
                      context: opts[:context] || %{}
                    ) do
-                {:ok, record} -> {:ok, Map.get(record, calculation)}
+                {:ok, record} -> {:ok, get_calculation_value(record, resource, calculation)}
                 {:error, error} -> {:error, error}
               end
             end
@@ -224,7 +224,7 @@ defmodule Ash.Actions.Read.Calculations do
                  resource: opts[:resource],
                  context: opts[:context] || %{}
                ) do
-            {:ok, record} -> {:ok, Map.get(record, calculation)}
+            {:ok, record} -> {:ok, get_calculation_value(record, resource, calculation)}
             {:error, error} -> {:error, error}
           end
         else
@@ -2336,5 +2336,12 @@ defmodule Ash.Actions.Read.Calculations do
       Enum.any?(ash_query.context[:calculation_dependencies] || [], fn {_source, dest} ->
         name in dest
       end)
+  end
+
+  defp get_calculation_value(record, resource, calculation_name) do
+    case Ash.Resource.Info.calculation(resource, calculation_name) do
+      %{field?: false} -> Map.get(record.calculations, calculation_name)
+      _ -> Map.get(record, calculation_name)
+    end
   end
 end

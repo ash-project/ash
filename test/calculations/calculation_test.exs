@@ -1174,6 +1174,21 @@ defmodule Ash.Test.CalculationTest do
       user = Ash.load!(user, [:non_field_full_name])
       assert Ash.Resource.loaded?(user, :non_field_full_name)
     end
+
+    test "works with Ash.calculate", %{user1: user} do
+      assert {:ok, "zach daniel"} =
+               Ash.calculate(user, :non_field_full_name, domain: Domain)
+    end
+
+    test "works with Ash.calculate on resource (no record)" do
+      assert {:ok, result} =
+               Ash.calculate(User, :non_field_full_name,
+                 domain: Domain,
+                 refs: %{first_name: "zach", last_name: "daniel"}
+               )
+
+      assert result == "zach daniel"
+    end
   end
 
   test "calculations can depend on relationships directly" do
