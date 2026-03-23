@@ -13,7 +13,6 @@ defmodule Ash.Expr do
   @pass_through_funcs [:where, :or_where, :expr, :@]
   @aggregate_kinds Ash.Query.Aggregate.kinds()
 
-
   @doc """
   Evaluate an expression. See `eval/2` for more.
   """
