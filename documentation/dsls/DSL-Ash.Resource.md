@@ -3776,6 +3776,7 @@ end
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |
 | [`sortable?`](#calculations-calculate-sortable?){: #calculations-calculate-sortable? } | `boolean` | `true` | Whether or not the calculation can be referenced in sorts. |
+| [`field?`](#calculations-calculate-field?){: #calculations-calculate-field? } | `boolean` | `true` | Whether or not the calculation should create a field on the resource struct. When `false`, the calculation's value will always be stored in the `calculations` map on the record, and will not add a key to the resource struct. The calculation can still be loaded normally. |
 | [`multitenancy`](#calculations-calculate-multitenancy){: #calculations-calculate-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` |  | Configures multitenancy behavior for the calculation. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this calculation both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for nested resources. |
 
 

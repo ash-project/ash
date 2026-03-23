@@ -249,6 +249,6 @@ tokens) through error messages.
 ### New Behavior
 
 When a field is marked `sensitive?: true`, its value in validation error structs is
-replaced with a redacted placeholder via `Ash.Helpers.redact/1`. This applies to both
+replaced with a redacted placeholder. This applies to both
 the non-atomic (`validate/3`) and atomic (`atomic/3`) code paths across all built-in
 validations.
