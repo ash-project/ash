@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.21.1](https://github.com/ash-project/ash/compare/v3.21.0...v3.21.1) (2026-03-23)
+
+
+
+
+### Bug Fixes:
+
+* ensure that Ash.calculate works with non-field calculations by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.21.0](https://github.com/ash-project/ash/compare/v3.20.0...v3.21.0) (2026-03-23)
 
 
