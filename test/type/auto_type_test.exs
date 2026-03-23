@@ -392,6 +392,62 @@ defmodule Ash.Test.Type.AutoTypeTest do
     end
   end
 
+  describe "determine_type for aggregate expressions" do
+    test "Ash.Query.Aggregate struct with type set" do
+      agg = %Ash.Query.Aggregate{
+        name: :test_count,
+        kind: :count,
+        type: Ash.Type.Integer,
+        constraints: [],
+        relationship_path: [:tags],
+        resource: Post
+      }
+
+      assert {:ok, {Ash.Type.Integer, []}} = Ash.Expr.determine_type(agg)
+    end
+
+    test "Ash.Query.Aggregate struct with nil type falls back to kind" do
+      agg = %Ash.Query.Aggregate{
+        name: :test_count,
+        kind: :count,
+        type: nil,
+        constraints: [],
+        relationship_path: [:tags],
+        resource: Post
+      }
+
+      assert {:ok, {Ash.Type.Integer, []}} = Ash.Expr.determine_type(agg)
+    end
+
+    test "Ash.Query.Aggregate struct for exists with nil type" do
+      agg = %Ash.Query.Aggregate{
+        name: :test_exists,
+        kind: :exists,
+        type: nil,
+        constraints: [],
+        relationship_path: [:tags],
+        resource: Post
+      }
+
+      assert {:ok, {Ash.Type.Boolean, []}} = Ash.Expr.determine_type(agg)
+    end
+
+    test "Ash.Query.Call for count aggregate" do
+      call = %Ash.Query.Call{name: :count, args: [:tags]}
+      assert {:ok, {Ash.Type.Integer, []}} = Ash.Expr.determine_type(call)
+    end
+
+    test "Ash.Query.Call for exists aggregate" do
+      call = %Ash.Query.Call{name: :exists, args: [:tags, true]}
+      assert {:ok, {Ash.Type.Boolean, []}} = Ash.Expr.determine_type(call)
+    end
+
+    test "Ash.Query.Call for avg aggregate" do
+      call = %Ash.Query.Call{name: :avg, args: [:tags, [field: :score]]}
+      assert {:ok, {Ash.Type.Float, []}} = Ash.Expr.determine_type(call)
+    end
+  end
+
   describe "cross-resource refs" do
     test "string attribute via relationship" do
       assert Ash.Resource.Info.calculation(Comment, :post_title).type == Ash.Type.String
