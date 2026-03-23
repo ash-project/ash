@@ -1582,23 +1582,15 @@ defmodule Ash.Expr do
   def determine_type(value) do
     case value do
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type, constraints]} ->
-        if Ash.Type.ash_type?(type) do
-          if res = get_type({type, constraints}) do
-            {:ok, res}
-          else
-            :error
-          end
+        if res = get_type({type, constraints}) do
+          {:ok, res}
         else
           :error
         end
 
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type]} ->
-        if Ash.Type.ash_type?(type) do
-          if res = get_type({type, []}) do
-            {:ok, res}
-          else
-            :error
-          end
+        if res = get_type({type, []}) do
+          {:ok, res}
         else
           :error
         end
@@ -1655,8 +1647,37 @@ defmodule Ash.Expr do
           {_, type} -> {:ok, type}
         end
 
+      value when is_map(value) and not is_struct(value) and value != %{} ->
+        determine_map_type(value)
+
       _ ->
         :error
+    end
+  end
+
+  defp determine_map_type(map) do
+    if Enum.all?(map, fn {key, _} -> is_atom(key) end) do
+      Enum.reduce_while(map, {:ok, []}, fn {key, val_expr}, {:ok, acc} ->
+        case determine_type(val_expr) do
+          {:ok, {type, constraints}} ->
+            allow_nil? = can_return_nil?(val_expr)
+
+            {:cont,
+             {:ok, [{key, [type: type, constraints: constraints, allow_nil?: allow_nil?]} | acc]}}
+
+          :error ->
+            {:halt, :error}
+        end
+      end)
+      |> case do
+        {:ok, fields} ->
+          {:ok, {Ash.Type.Map, [fields: Enum.reverse(fields)]}}
+
+        :error ->
+          :error
+      end
+    else
+      :error
     end
   end
 
