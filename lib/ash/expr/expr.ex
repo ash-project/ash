@@ -1660,7 +1660,7 @@ defmodule Ash.Expr do
       Enum.reduce_while(map, {:ok, []}, fn {key, val_expr}, {:ok, acc} ->
         case determine_type(val_expr) do
           {:ok, {type, constraints}} ->
-            allow_nil? = expr_allow_nil?(val_expr)
+            allow_nil? = can_return_nil?(val_expr)
 
             {:cont,
              {:ok, [{key, [type: type, constraints: constraints, allow_nil?: allow_nil?]} | acc]}}
@@ -1680,21 +1680,6 @@ defmodule Ash.Expr do
       :error
     end
   end
-
-  @doc false
-  def expr_allow_nil?(%{__struct__: Ash.Query.Ref, attribute: %{allow_nil?: allow_nil?}}),
-    do: allow_nil?
-
-  def expr_allow_nil?(%{__struct__: Ash.Query.Function.Type, arguments: [inner | _]}),
-    do: expr_allow_nil?(inner)
-
-  def expr_allow_nil?(%{__predicate__?: true}), do: false
-  def expr_allow_nil?(%{__struct__: Ash.Query.BooleanExpression}), do: false
-  def expr_allow_nil?(%{__struct__: Ash.Query.Not}), do: false
-  def expr_allow_nil?(%{__struct__: Ash.Query.Exists}), do: false
-  def expr_allow_nil?(%{__struct__: Ash.Query.Call, name: :count}), do: false
-  def expr_allow_nil?(%{__struct__: Ash.Query.Call, name: :exists}), do: false
-  def expr_allow_nil?(_), do: true
 
   defp determine_get_path_type(left, path) do
     path = List.wrap(path)

@@ -431,25 +431,7 @@ defmodule Ash.Notifier.PubSub do
   end
 
   defp get_calculation_value(notification, calc_name) do
-    case notification.data do
-      %{calculations: %{^calc_name => value}} ->
-        value
-
-      data when is_map(data) ->
-        case Map.fetch(data, calc_name) do
-          {:ok, value} ->
-            value
-
-          :error ->
-            raise "PubSub transform references calculation `#{calc_name}`, " <>
-                    "but it was not loaded on the notification data. " <>
-                    "This is likely a bug in the PubSub notifier."
-        end
-
-      _ ->
-        raise "PubSub transform references calculation `#{calc_name}`, " <>
-                "but notification data is not a map: #{inspect(notification.data)}"
-    end
+    Map.get(notification.data.calculations, calc_name)
   end
 
   def to_payload(topic, event, notification, value) do

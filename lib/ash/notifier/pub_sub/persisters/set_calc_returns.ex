@@ -30,8 +30,7 @@ defmodule Ash.Notifier.PubSub.Persisters.SetCalcReturns do
                 dsl,
                 [:pub_sub],
                 updated,
-                &(&1.action == publication.action and &1.event == publication.event and
-                    &1.topic == publication.topic)
+                &(&1 == publication)
               )
 
             _ ->
