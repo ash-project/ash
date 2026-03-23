@@ -1657,6 +1657,7 @@ defmodule Ash.Resource.Dsl do
 
   @persisters [
     Ash.Resource.Transformers.CacheRelationships,
+    Ash.Resource.Transformers.ResolveAutoTypes,
     Ash.Resource.Transformers.CacheCalculations,
     Ash.Resource.Transformers.AttributesByName,
     Ash.Resource.Transformers.ValidationsAndChangesForType,

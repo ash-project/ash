@@ -88,6 +88,7 @@ defmodule Ash.Resource.Change.CascadeUpdate do
 
   """
   use Ash.Resource.Change
+  import Ash.Gettext
   require Ash.Query
 
   @doc false
@@ -177,7 +178,7 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         {:error,
          Ash.Error.Changes.InvalidRelationship.exception(
            relationship: opts.relationship,
-           message: "Relationship doesn't exist."
+           message: error_message("Relationship doesn't exist.")
          )}
 
       {_, false} ->

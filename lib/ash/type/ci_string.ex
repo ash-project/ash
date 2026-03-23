@@ -53,6 +53,7 @@ defmodule Ash.Type.CiString do
   #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
+  import Ash.Gettext
 
   @impl true
   def storage_type(_), do: :ci_string
@@ -172,7 +173,13 @@ defmodule Ash.Type.CiString do
     Enum.reduce(constraints, [], fn
       {:max_length, max_length}, errors ->
         if String.length(value) > max_length do
-          [[message: "length must be less than or equal to %{max}", max: max_length] | errors]
+          [
+            [
+              message: error_message("length must be less than or equal to %{max}"),
+              max: max_length
+            ]
+            | errors
+          ]
         else
           errors
         end
@@ -180,7 +187,10 @@ defmodule Ash.Type.CiString do
       {:min_length, min_length}, errors ->
         if String.length(value) < min_length do
           [
-            [message: "length must be greater than or equal to %{min}", min: min_length]
+            [
+              message: error_message("length must be greater than or equal to %{min}"),
+              min: min_length
+            ]
             | errors
           ]
         else
@@ -200,7 +210,10 @@ defmodule Ash.Type.CiString do
         if String.match?(value, regex) do
           errors
         else
-          [[message: "must match the pattern %{regex}", regex: inspect(regex)] | errors]
+          [
+            [message: error_message("must match the pattern %{regex}"), regex: inspect(regex)]
+            | errors
+          ]
         end
 
       _, errors ->

@@ -41,6 +41,7 @@ defmodule Ash.Type.String do
   #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
+  import Ash.Gettext
 
   require Ash.Expr
 
@@ -102,7 +103,7 @@ defmodule Ash.Type.String do
               if string_length(^expr) > ^max do
                 error(
                   Ash.Error.Changes.InvalidChanges,
-                  message: "length must be less than or equal to %{max}",
+                  message: ^error_message("length must be less than or equal to %{max}"),
                   vars: %{max: max}
                 )
               else
@@ -115,7 +116,7 @@ defmodule Ash.Type.String do
               if string_length(^expr) < ^min do
                 error(
                   Ash.Error.Changes.InvalidChanges,
-                  message: "length must be greater than or equal to %{min}",
+                  message: ^error_message("length must be greater than or equal to %{min}"),
                   vars: %{min: min}
                 )
               else
@@ -129,14 +130,14 @@ defmodule Ash.Type.String do
                 string_length(^expr) < ^min ->
                   error(
                     Ash.Error.Changes.InvalidChanges,
-                    message: "length must be greater than or equal to %{min}",
+                    message: ^error_message("length must be greater than or equal to %{min}"),
                     vars: %{min: min}
                   )
 
                 string_length(^expr) > ^max ->
                   error(
                     Ash.Error.Changes.InvalidChanges,
-                    message: "length must be less than or equal to %{max}",
+                    message: ^error_message("length must be less than or equal to %{max}"),
                     vars: %{max: max}
                   )
 
@@ -228,7 +229,13 @@ defmodule Ash.Type.String do
     Enum.reduce(constraints, [], fn
       {:max_length, max_length}, errors ->
         if String.length(value) > max_length do
-          [[message: "length must be less than or equal to %{max}", max: max_length] | errors]
+          [
+            [
+              message: error_message("length must be less than or equal to %{max}"),
+              max: max_length
+            ]
+            | errors
+          ]
         else
           errors
         end
@@ -236,7 +243,10 @@ defmodule Ash.Type.String do
       {:min_length, min_length}, errors ->
         if String.length(value) < min_length do
           [
-            [message: "length must be greater than or equal to %{min}", min: min_length]
+            [
+              message: error_message("length must be greater than or equal to %{min}"),
+              min: min_length
+            ]
             | errors
           ]
         else
@@ -256,7 +266,10 @@ defmodule Ash.Type.String do
         if Regex.match?(regex, value) do
           errors
         else
-          [[message: "must match the pattern %{regex}", regex: inspect(regex)] | errors]
+          [
+            [message: error_message("must match the pattern %{regex}"), regex: inspect(regex)]
+            | errors
+          ]
         end
 
       _, errors ->

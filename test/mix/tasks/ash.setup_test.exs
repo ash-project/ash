@@ -34,6 +34,13 @@ defmodule Mix.Tasks.Ash.SetupTest do
     def setup(_argv), do: :ok
   end
 
+  setup do
+    original_shell = Mix.shell()
+    Mix.shell(Mix.Shell.Process)
+    on_exit(fn -> Mix.shell(original_shell) end)
+    :ok
+  end
+
   describe "run/2 with no failures" do
     test "succeeds when compile and all extensions succeed" do
       compile_fn = fn -> :ok end

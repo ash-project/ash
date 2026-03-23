@@ -214,7 +214,7 @@ defmodule Ash.Actions.Read.Calculations do
                      resource: opts[:resource],
                      context: opts[:context] || %{}
                    ) do
-                {:ok, record} -> {:ok, Map.get(record, calculation)}
+                {:ok, record} -> {:ok, get_calculation_value(record, resource, calculation)}
                 {:error, error} -> {:error, error}
               end
             end
@@ -232,7 +232,7 @@ defmodule Ash.Actions.Read.Calculations do
                  resource: opts[:resource],
                  context: opts[:context] || %{}
                ) do
-            {:ok, record} -> {:ok, Map.get(record, calculation)}
+            {:ok, record} -> {:ok, get_calculation_value(record, resource, calculation)}
             {:error, error} -> {:error, error}
           end
         else
@@ -1009,16 +1009,29 @@ defmodule Ash.Actions.Read.Calculations do
               args: calculation.context.arguments,
               context: calculation.context.source_context
             )
-            |> Ash.Actions.Read.add_calc_context_to_filter(
-              calculation.context.actor,
-              calculation.context.authorize?,
-              calculation.context.tenant,
-              calculation.context.tracer,
-              domain,
-              ash_query.resource,
-              parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
-              source_context: ash_query.context
-            )
+
+          expression =
+            case Ash.Filter.hydrate_refs(expression, %{
+                   resource: ash_query.resource,
+                   public?: false,
+                   source_context: ash_query.context
+                 }) do
+              {:ok, hydrated} ->
+                Ash.Actions.Read.add_calc_context_to_filter(
+                  hydrated,
+                  calculation.context.actor,
+                  calculation.context.authorize?,
+                  calculation.context.tenant,
+                  calculation.context.tracer,
+                  domain,
+                  ash_query.resource,
+                  parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
+                  source_context: ash_query.context
+                )
+
+              _ ->
+                expression
+            end
 
           case try_evaluate(
                  expression,
@@ -1181,21 +1194,28 @@ defmodule Ash.Actions.Read.Calculations do
                 args: calculation.context.arguments,
                 context: calculation.context.source_context
               )
-              |> Ash.Actions.Read.add_calc_context_to_filter(
-                calculation.context.actor,
-                calculation.context.authorize?,
-                calculation.context.tenant,
-                calculation.context.tracer,
-                ash_query.domain,
-                ash_query.resource,
-                parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
-                source_context: ash_query.context
-              )
 
           expression
-          |> Ash.Filter.hydrate_refs(%{resource: ash_query.resource, public?: false})
+          |> Ash.Filter.hydrate_refs(%{
+            resource: ash_query.resource,
+            public?: false,
+            source_context: ash_query.context
+          })
           |> case do
             {:ok, expression} ->
+              expression =
+                Ash.Actions.Read.add_calc_context_to_filter(
+                  expression,
+                  calculation.context.actor,
+                  calculation.context.authorize?,
+                  calculation.context.tenant,
+                  calculation.context.tracer,
+                  ash_query.domain,
+                  ash_query.resource,
+                  parent_stack: Ash.Actions.Read.parent_stack_from_context(ash_query.context),
+                  source_context: ash_query.context
+                )
+
               expression
               |> Ash.Filter.used_calculations(ash_query.resource, :*)
               |> Enum.all?(fn %{module: module} ->
@@ -2346,5 +2366,12 @@ defmodule Ash.Actions.Read.Calculations do
       Enum.any?(ash_query.context[:calculation_dependencies] || [], fn {_source, dest} ->
         name in dest
       end)
+  end
+
+  defp get_calculation_value(record, resource, calculation_name) do
+    case Ash.Resource.Info.calculation(resource, calculation_name) do
+      %{field?: false} -> Map.get(record.calculations, calculation_name)
+      _ -> Map.get(record, calculation_name)
+    end
   end
 end

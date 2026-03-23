@@ -8,6 +8,101 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.21.1](https://github.com/ash-project/ash/compare/v3.21.0...v3.21.1) (2026-03-23)
+
+
+
+
+### Bug Fixes:
+
+* ensure that Ash.calculate works with non-field calculations by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.21.0](https://github.com/ash-project/ash/compare/v3.20.0...v3.21.0) (2026-03-23)
+
+
+
+
+### Features:
+
+* support `:auto` type in calculations (#2643) by [@zachdaniel](https://github.com/zachdaniel) [(#2643)](https://github.com/ash-project/ash/pull/2643)
+
+### Bug Fixes:
+
+* show value in invalid errors for Ash.TypedStruct by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* support calculations that don't add struct fields by [@zachdaniel](https://github.com/zachdaniel)
+
+* resolve expr aggregate types (#2644) by [@Torkan](https://github.com/Torkan) [(#2644)](https://github.com/ash-project/ash/pull/2644)
+
+* add --domain option to ash.gen.gettext for merging into existing pot files (#2640) by [@nallwhy](https://github.com/nallwhy) [(#2640)](https://github.com/ash-project/ash/pull/2640)
+
+## [v3.20.0](https://github.com/ash-project/ash/compare/v3.19.3...v3.20.0) (2026-03-20)
+
+
+
+
+### Features:
+
+* add `required!` expression shorthand (#2636) by dallingson [(#2636)](https://github.com/ash-project/ash/pull/2636)
+
+* add mix ash.gettext.extract for i18n support (#2615) by [@nallwhy](https://github.com/nallwhy) [(#2615)](https://github.com/ash-project/ash/pull/2615)
+
+* Add attribute_always_select? option to belongs_to relationships (#2627) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2627)](https://github.com/ash-project/ash/pull/2627)
+
+* redact sensitive values in built-in validation errors w/ backwards compatibility flag (#2608) by [@nallwhy](https://github.com/nallwhy) [(#2608)](https://github.com/ash-project/ash/pull/2608)
+
+### Bug Fixes:
+
+* ensure `__metadata__.tenant` is present in bulk action after hooks by [@zachdaniel](https://github.com/zachdaniel)
+
+* preserve input order in bulk manage_relationship (#2639) by [@nallwhy](https://github.com/nallwhy) [(#2639)](https://github.com/ash-project/ash/pull/2639)
+
+* support before_action? validations in bulk_create and bulk_update (#2634) by [@nallwhy](https://github.com/nallwhy) [(#2634)](https://github.com/ash-project/ash/pull/2634)
+
+* return {:not_atomic, ...} for before_action? validations in run_atomic_validation by [@nallwhy](https://github.com/nallwhy) [(#2634)](https://github.com/ash-project/ash/pull/2634)
+
+* support atomic-only changes in bulk_create (#2635) by [@barnabasJ](https://github.com/barnabasJ) [(#2635)](https://github.com/ash-project/ash/pull/2635)
+
+* honor scope option in Ash.can/can? (#2631) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2631)](https://github.com/ash-project/ash/pull/2631)
+
+* bulk create/update/destroy global validation ordering (#2628) by [@nallwhy](https://github.com/nallwhy) [(#2628)](https://github.com/ash-project/ash/pull/2628)
+
+* Preserve explicit select when merging duplicate relationship loads (#2626) by [@mikaelweiss](https://github.com/mikaelweiss) [(#2626)](https://github.com/ash-project/ash/pull/2626)
+
+* use inidividually overridden callbacks within array callbacks (#2610) by Jesse Williams [(#2610)](https://github.com/ash-project/ash/pull/2610)
+
+* add [] as fallback for modules = Application.spec(app, :modules) (#2620) by Torkild Gundersen Kjevik [(#2620)](https://github.com/ash-project/ash/pull/2620)
+
+* Add tenant for notification load (#2617) by Torkild Gundersen Kjevik [(#2617)](https://github.com/ash-project/ash/pull/2617)
+
+* propagate errors from cascade_update instead of silently swallowing them by [@zachdaniel](https://github.com/zachdaniel)
+
+* soft destroy with return_notifications? loses notifications (#2616) by [@nallwhy](https://github.com/nallwhy) [(#2616)](https://github.com/ash-project/ash/pull/2616)
+
+* don't nest `%Ash.Filter` expressions when combining join filters by [@zachdaniel](https://github.com/zachdaniel)
+
+* remove unreachable is_list guard in soft destroy path (#2613) by djgoku [(#2613)](https://github.com/ash-project/ash/pull/2613)
+
+* ensure stacked aggregates honor authorization rules while reading by [@zachdaniel](https://github.com/zachdaniel)
+
+* use Enum.member? instead of in-macro to mitigate 1.20-rc.2 compiler (#2612) by Torkild Gundersen Kjevik [(#2612)](https://github.com/ash-project/ash/pull/2612)
+
+### Improvements:
+
+* Allow marking actions as internal to prevent exposing them via APIs #1271 (#2629) by Dgoz101 [(#2629)](https://github.com/ash-project/ash/pull/2629)
+
+* expand gettext i18n support to types, changes, and changeset (#2637) by [@nallwhy](https://github.com/nallwhy) [(#2637)](https://github.com/ash-project/ash/pull/2637)
+
+* add filename and content_type functions to Ash.Type.File by [@zachdaniel](https://github.com/zachdaniel)
+
+* use bulk actions for managed relationship actions by [@zachdaniel](https://github.com/zachdaniel)
+
+* more informative errors on `ash.setup` failures (#2595) by celeste-wahlquist [(#2595)](https://github.com/ash-project/ash/pull/2595)
+
+* add generate/1 and bingenerate/1 accepting a DateTime to Ash.UUIDv7 (#2609) by [@nallwhy](https://github.com/nallwhy) [(#2609)](https://github.com/ash-project/ash/pull/2609)
+
 ## [v3.19.3](https://github.com/ash-project/ash/compare/v3.19.2...v3.19.3) (2026-03-04)
 
 

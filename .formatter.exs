@@ -137,6 +137,7 @@ spark_locals_without_parens = [
   field: 1,
   field: 2,
   field: 3,
+  field?: 1,
   field_names: 1,
   field_policy: 1,
   field_policy: 2,

@@ -25,6 +25,7 @@ defmodule Ash.Type.Atom do
   #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
+  import Ash.Gettext
 
   @impl true
   def storage_type(_), do: :string
@@ -55,7 +56,7 @@ defmodule Ash.Type.Atom do
           else
             [
               [
-                message: "atom must be one of %{atom_list}, got: %{value}",
+                message: error_message("atom must be one of %{atom_list}, got: %{value}"),
                 atom_list: Enum.join(atom_list, ", "),
                 value: value
               ]

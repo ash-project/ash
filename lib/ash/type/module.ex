@@ -24,6 +24,7 @@ defmodule Ash.Type.Module do
   #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
+  import Ash.Gettext
 
   @impl true
   def storage_type(_), do: :string
@@ -61,7 +62,8 @@ defmodule Ash.Type.Module do
     else
       Enum.concat(errors, [
         [
-          message: "module %{module} does not implement the %{behaviour} behaviour",
+          message:
+            error_message("module %{module} does not implement the %{behaviour} behaviour"),
           module: module,
           behaviour: behaviour
         ]
@@ -80,7 +82,7 @@ defmodule Ash.Type.Module do
     ArgumentError ->
       Enum.concat(errors, [
         [
-          message: "module %{module} does not implement the %{protocol} protocol",
+          message: error_message("module %{module} does not implement the %{protocol} protocol"),
           module: module,
           protocol: protocol
         ]

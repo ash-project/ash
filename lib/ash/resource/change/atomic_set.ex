@@ -6,8 +6,8 @@ defmodule Ash.Resource.Change.AtomicSet do
   @moduledoc """
   A change that sets an attribute using an expression evaluated in the data layer during create.
 
-  This is used by the `atomic_set/3` builtin change. Unlike `Ash.Resource.Change.Atomic`
-  (used by `atomic_update/3`), this is for setting values during the INSERT phase of create
+  This is used by the `atomic_set/3` builtin change. Unlike the change used by
+  `atomic_update/3`, this is for setting values during the INSERT phase of create
   actions, not for updating existing values.
 
   The expression cannot reference existing database values via `atomic_ref/1` since there

@@ -1255,4 +1255,38 @@ defmodule Ash.Test.ManageRelationshipTest do
       assert not is_nil(reloaded_other.archived_at)
     end
   end
+
+  describe "bulk manage_relationship input ordering" do
+    test "preserves input order when creates and updates are interleaved" do
+      parent =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{
+          name: "parent",
+          other_resources: [
+            %{required_attribute: "existing1"},
+            %{required_attribute: "existing2"}
+          ]
+        })
+        |> Ash.create!()
+
+      parent = Ash.load!(parent, :other_resources)
+      [e1, e2] = Enum.sort_by(parent.other_resources, & &1.required_attribute)
+
+      # Update with: [new1, existing1, new2, existing2]
+      updated =
+        parent
+        |> Ash.Changeset.for_update(:update, %{
+          other_resources: [
+            %{required_attribute: "new1"},
+            %{id: e1.id, required_attribute: "existing1"},
+            %{required_attribute: "new2"},
+            %{id: e2.id, required_attribute: "existing2"}
+          ]
+        })
+        |> Ash.update!()
+
+      names = Enum.map(updated.other_resources, & &1.required_attribute)
+      assert names == ["new1", "existing1", "new2", "existing2"]
+    end
+  end
 end

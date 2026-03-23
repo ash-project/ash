@@ -4132,7 +4132,18 @@ defmodule Ash.Filter do
             {:ok, %{ref | attribute: attribute, resource: related}}
 
           resource_calculation = calculation(context, attribute) ->
-            case Calculation.from_resource_calculation(context.resource, resource_calculation) do
+            from_resource_opts =
+              if context[:source_context] do
+                [source_context: context[:source_context]]
+              else
+                []
+              end
+
+            case Calculation.from_resource_calculation(
+                   context.resource,
+                   resource_calculation,
+                   from_resource_opts
+                 ) do
               {:ok, calculation} ->
                 calculation = %{calculation | load: calculation.name}
 

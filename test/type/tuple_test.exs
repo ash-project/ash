@@ -120,7 +120,7 @@ defmodule Ash.Type.TupleTest do
     assert [
              %Ash.Error.Changes.InvalidAttribute{
                field: :integer_min_0,
-               message: "must be more than or equal to %{min}",
+               message: "must be greater than or equal to %{min}",
                private_vars: nil,
                value: {"hello", -1},
                bread_crumbs: [],

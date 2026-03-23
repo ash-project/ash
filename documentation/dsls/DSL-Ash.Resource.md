@@ -963,6 +963,7 @@ end
 | [`transaction?`](#actions-action-transaction?){: #actions-action-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-action-touches_resources){: #actions-action-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-action-skip_unknown_inputs){: #actions-action-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
+| [`public?`](#actions-action-public?){: #actions-action-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 
 
 ### actions.action.argument
@@ -1149,6 +1150,7 @@ end
 | [`transaction?`](#actions-create-transaction?){: #actions-create-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-create-touches_resources){: #actions-create-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-create-skip_unknown_inputs){: #actions-create-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
+| [`public?`](#actions-create-public?){: #actions-create-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-create-accept){: #actions-create-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`action_select`](#actions-create-action_select){: #actions-create-action_select } | `list(atom)` |  | A list of attributes to select from the data layer result. Controls which attributes are present (vs %Ash.NotLoaded{}) on the record passed to after_action hooks, notifiers, and returned to the caller. Defaults to all attributes with select_by_default? true. Does not affect what's available to changes or validations. |
 | [`require_attributes`](#actions-create-require_attributes){: #actions-create-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -1397,6 +1399,7 @@ end
 | [`transaction?`](#actions-read-transaction?){: #actions-read-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-read-touches_resources){: #actions-read-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-read-skip_unknown_inputs){: #actions-read-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
+| [`public?`](#actions-read-public?){: #actions-read-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 
 
 ### actions.read.argument
@@ -1691,6 +1694,7 @@ update :flag_for_review, primary?: true
 | [`transaction?`](#actions-update-transaction?){: #actions-update-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-update-touches_resources){: #actions-update-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-update-skip_unknown_inputs){: #actions-update-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
+| [`public?`](#actions-update-public?){: #actions-update-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-update-accept){: #actions-update-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`action_select`](#actions-update-action_select){: #actions-update-action_select } | `list(atom)` |  | A list of attributes to select from the data layer result. Controls which attributes are present (vs %Ash.NotLoaded{}) on the record passed to after_action hooks, notifiers, and returned to the caller. Defaults to all attributes with select_by_default? true. Does not affect what's available to changes or validations. |
 | [`require_attributes`](#actions-update-require_attributes){: #actions-update-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -1938,6 +1942,7 @@ end
 | [`transaction?`](#actions-destroy-transaction?){: #actions-destroy-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-destroy-touches_resources){: #actions-destroy-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-destroy-skip_unknown_inputs){: #actions-destroy-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
+| [`public?`](#actions-destroy-public?){: #actions-destroy-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-destroy-accept){: #actions-destroy-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`action_select`](#actions-destroy-action_select){: #actions-destroy-action_select } | `list(atom)` |  | A list of attributes to select from the data layer result. Controls which attributes are present (vs %Ash.NotLoaded{}) on the record passed to after_action hooks, notifiers, and returned to the caller. Defaults to all attributes with select_by_default? true. Does not affect what's available to changes or validations. |
 | [`require_attributes`](#actions-destroy-require_attributes){: #actions-destroy-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -3771,6 +3776,7 @@ end
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |
 | [`sortable?`](#calculations-calculate-sortable?){: #calculations-calculate-sortable? } | `boolean` | `true` | Whether or not the calculation can be referenced in sorts. |
+| [`field?`](#calculations-calculate-field?){: #calculations-calculate-field? } | `boolean` | `true` | Whether or not the calculation should create a field on the resource struct. When `false`, the calculation's value will always be stored in the `calculations` map on the record, and will not add a key to the resource struct. The calculation can still be loaded normally. |
 | [`multitenancy`](#calculations-calculate-multitenancy){: #calculations-calculate-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` |  | Configures multitenancy behavior for the calculation. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this calculation both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for nested resources. |
 
 

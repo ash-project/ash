@@ -24,6 +24,31 @@ calculations do
 end
 ```
 
+#### Automatic type resolution
+
+For expression calculations, you can use `:auto` as the type and Ash will infer the type from the expression:
+
+```elixir
+calculations do
+  calculate :full_name, :auto, expr(first_name <> " " <> last_name)
+  # => resolves to :string
+
+  calculate :is_active, :auto, expr(active == true)
+  # => resolves to :boolean
+
+  calculate :score_plus_one, :auto, expr(score + 1)
+  # => resolves to :integer
+end
+```
+
+This works for attribute references, cross-resource references via relationships, operators, functions, aggregates, `if/else`, map literals, and calculations that reference other calculations (including other `:auto` calculations — dependencies are resolved automatically).
+
+If the type cannot be inferred, a compile-time error will be raised with guidance on how to fix it. You can always fall back to an explicit type or wrap sub-expressions with `type()` to help the resolver.
+
+> #### `:auto` requires an expression {: .warning}
+>
+> `:auto` is only supported for expression calculations (i.e. `expr(...)`). Module-based or function-based calculations must declare an explicit type.
+
 See the [Expressions guide](/documentation/topics/reference/expressions.md) for more.
 
 ### Module Calculations
