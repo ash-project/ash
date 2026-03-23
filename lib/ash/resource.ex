@@ -613,8 +613,18 @@ defmodule Ash.Resource do
     if opts[:strict?] && Enum.any?(resource_calculation.arguments) do
       false
     else
+      value =
+        if resource_calculation.field? do
+          Map.get(record, resource_calculation.name)
+        else
+          case Map.fetch(record.calculations, resource_calculation.name) do
+            {:ok, value} -> value
+            :error -> %Ash.NotLoaded{type: :calculation, field: resource_calculation.name}
+          end
+        end
+
       loaded_on_type?(
-        Map.get(record, resource_calculation.name),
+        value,
         rest,
         resource_calculation.type,
         resource_calculation.constraints,

@@ -14,6 +14,7 @@ defmodule Ash.Resource.Calculation do
             calculation: nil,
             constraints: [],
             description: nil,
+            field?: true,
             filterable?: true,
             sortable?: true,
             sensitive?: false,
@@ -93,6 +94,16 @@ defmodule Ash.Resource.Calculation do
       Whether or not the calculation can be referenced in sorts.
       """
     ],
+    field?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Whether or not the calculation should create a field on the resource struct.
+
+      When `false`, the calculation's value will always be stored in the `calculations` map on the record,
+      and will not add a key to the resource struct. The calculation can still be loaded normally.
+      """
+    ],
     multitenancy: [
       type: {:in, [:enforce, :allow_global, :bypass, :bypass_all]},
       doc: """
@@ -144,6 +155,7 @@ defmodule Ash.Resource.Calculation do
           constraints: keyword,
           async?: boolean,
           description: nil | String.t(),
+          field?: boolean,
           filterable?: boolean,
           load: keyword,
           sortable?: boolean,

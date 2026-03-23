@@ -115,7 +115,8 @@ defmodule Ash.Schema do
             end
 
             for calculation <- Ash.Resource.Info.calculations(__MODULE__),
-                calculation.name not in Ash.Resource.reserved_names() do
+                calculation.name not in Ash.Resource.reserved_names(),
+                calculation.field? do
               {mod, _} = calculation.calculation
 
               constraint_opts =
@@ -285,7 +286,8 @@ defmodule Ash.Schema do
             end
 
             for calculation <- Ash.Resource.Info.calculations(__MODULE__),
-                calculation.name not in Ash.Resource.reserved_names() do
+                calculation.name not in Ash.Resource.reserved_names(),
+                calculation.field? do
               {mod, _} = calculation.calculation
 
               constraint_opts =

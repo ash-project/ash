@@ -2281,7 +2281,11 @@ defmodule Ash.Query do
                 {value, nil}
 
               :error ->
-                {resource_calculation.name, resource_calculation.name}
+                if resource_calculation.field? do
+                  {resource_calculation.name, resource_calculation.name}
+                else
+                  {resource_calculation.name, nil}
+                end
             end
 
           is_map(args) ->
@@ -2290,11 +2294,19 @@ defmodule Ash.Query do
                 {value, nil}
 
               :error ->
-                {resource_calculation.name, resource_calculation.name}
+                if resource_calculation.field? do
+                  {resource_calculation.name, resource_calculation.name}
+                else
+                  {resource_calculation.name, nil}
+                end
             end
 
           true ->
-            {resource_calculation.name, resource_calculation.name}
+            if resource_calculation.field? do
+              {resource_calculation.name, resource_calculation.name}
+            else
+              {resource_calculation.name, nil}
+            end
         end
 
       case Calculation.from_resource_calculation(query.resource, resource_calculation,

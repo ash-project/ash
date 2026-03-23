@@ -857,6 +857,11 @@ defmodule Ash.Test.CalculationTest do
       end
 
       calculate :yob_string, :string, expr("Born in: " <> year_of_birth)
+
+      calculate :non_field_full_name, :string, expr(first_name <> " " <> last_name) do
+        public?(true)
+        field?(false)
+      end
     end
 
     aggregates do
@@ -1138,6 +1143,37 @@ defmodule Ash.Test.CalculationTest do
 
   test "loads dependencies", %{user1: user} do
     assert %{slug: "zach daniel123"} = Ash.load!(user, [:slug])
+  end
+
+  describe "field?: false calculations" do
+    test "do not add a key to the resource struct" do
+      refute Map.has_key?(%User{}, :non_field_full_name)
+    end
+
+    test "can be loaded and appear in the calculations map", %{user1: user} do
+      user = Ash.load!(user, [:non_field_full_name])
+      assert user.calculations[:non_field_full_name] == "zach daniel"
+    end
+
+    test "can be loaded via Ash.Query.load", %{user1: _user1} do
+      users =
+        User
+        |> Ash.Query.load(:non_field_full_name)
+        |> Ash.read!()
+
+      assert Enum.all?(users, fn user ->
+               is_binary(user.calculations[:non_field_full_name])
+             end)
+    end
+
+    test "Ash.Resource.loaded? returns false when not loaded", %{user1: user} do
+      refute Ash.Resource.loaded?(user, :non_field_full_name)
+    end
+
+    test "Ash.Resource.loaded? returns true when loaded", %{user1: user} do
+      user = Ash.load!(user, [:non_field_full_name])
+      assert Ash.Resource.loaded?(user, :non_field_full_name)
+    end
   end
 
   test "calculations can depend on relationships directly" do
