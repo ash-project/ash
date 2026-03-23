@@ -8,6 +8,27 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.21.0](https://github.com/ash-project/ash/compare/v3.20.0...v3.21.0) (2026-03-23)
+
+
+
+
+### Features:
+
+* support `:auto` type in calculations (#2643) by [@zachdaniel](https://github.com/zachdaniel) [(#2643)](https://github.com/ash-project/ash/pull/2643)
+
+### Bug Fixes:
+
+* show value in invalid errors for Ash.TypedStruct by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* support calculations that don't add struct fields by [@zachdaniel](https://github.com/zachdaniel)
+
+* resolve expr aggregate types (#2644) by [@Torkan](https://github.com/Torkan) [(#2644)](https://github.com/ash-project/ash/pull/2644)
+
+* add --domain option to ash.gen.gettext for merging into existing pot files (#2640) by [@nallwhy](https://github.com/nallwhy) [(#2640)](https://github.com/ash-project/ash/pull/2640)
+
 ## [v3.20.0](https://github.com/ash-project/ash/compare/v3.19.3...v3.20.0) (2026-03-20)
 
 
