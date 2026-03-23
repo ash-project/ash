@@ -102,8 +102,8 @@ jobs:
   report_mix_deps:
     name: "Report Mix Dependencies"
     runs-on: ubuntu-latest
-    # Only run this job for upstream main (forks often lack dependency submission permissions)
-    if: github.ref == 'refs/heads/main' && github.repository == 'ash-project/ash'
+    # Only run this job for ash-project org main branches
+    if: github.ref == 'refs/heads/main' && github.repository_owner == 'ash-project'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: erlef/mix-dependency-submission@fa3e8f349d00a32bf14eec1c7577d6564abe08d2 # v1.3.1
@@ -298,7 +298,7 @@ jobs:
     needs:
       - build-test
       - build-docs
-    if: ${{inputs.publish-docs && github.ref == 'refs/heads/main' && github.repository == 'ash-project/ash'}}
+    if: ${{inputs.publish-docs && github.ref == 'refs/heads/main' && github.repository_owner == 'ash-project'}}
     permissions:
       pages: write
       id-token: write
