@@ -11,6 +11,8 @@ defmodule Ash.Expr do
 
   @type t :: any
   @pass_through_funcs [:where, :or_where, :expr, :@]
+  @aggregate_kinds Ash.Query.Aggregate.kinds()
+
 
   @doc """
   Evaluate an expression. See `eval/2` for more.
@@ -1626,6 +1628,21 @@ defmodule Ash.Expr do
       %{__struct__: Ash.Query.Exists} ->
         {:ok, {Ash.Type.Boolean, []}}
 
+      %{__struct__: Ash.Query.Aggregate, type: type, constraints: constraints}
+      when not is_nil(type) ->
+        if Ash.Type.ash_type?(type) do
+          if res = get_type({type, constraints || []}) do
+            {:ok, res}
+          else
+            :error
+          end
+        else
+          :error
+        end
+
+      %{__struct__: Ash.Query.Aggregate, kind: kind, type: nil} ->
+        determine_aggregate_type_from_kind(kind, :any, [])
+
       %{__struct__: Ash.Query.Parent, expr: expr} ->
         determine_type(expr)
 
@@ -1649,6 +1666,10 @@ defmodule Ash.Expr do
 
       value when is_map(value) and not is_struct(value) and value != %{} ->
         determine_map_type(value)
+
+      %{__struct__: Ash.Query.Call, name: name, args: args}
+      when name in @aggregate_kinds ->
+        determine_inline_aggregate_type(name, args)
 
       _ ->
         :error
@@ -1678,6 +1699,36 @@ defmodule Ash.Expr do
       end
     else
       :error
+    end
+  end
+
+  defp determine_inline_aggregate_type(name, args) do
+    {field_type, field_constraints} = extract_aggregate_field_info(args)
+    determine_aggregate_type_from_kind(name, field_type, field_constraints)
+  end
+
+  defp extract_aggregate_field_info(args) do
+    with opts when is_list(opts) <- Enum.at(args, 1),
+         true <- Keyword.keyword?(opts),
+         %{type: type, constraints: constraints} when not is_nil(type) <-
+           Keyword.get(opts, :field) do
+      {type, constraints || []}
+    else
+      _ -> {:any, []}
+    end
+  end
+
+  defp determine_aggregate_type_from_kind(kind, field_type, field_constraints) do
+    case Ash.Query.Aggregate.kind_to_type(kind, field_type, field_constraints) do
+      {:ok, type, constraints} ->
+        if res = get_type({type, constraints}) do
+          {:ok, res}
+        else
+          :error
+        end
+
+      {:error, _} ->
+        :error
     end
   end
 
