@@ -49,7 +49,7 @@ defmodule Ash.Resource.Preparation do
         required: true
       ],
       on: [
-        type: {:wrap_list, {:in, [:read, :action]}},
+        type: {:wrap_list, {:in, [:read, :action, :create, :update, :destroy]}},
         default: [:read],
         doc: """
         The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions.
