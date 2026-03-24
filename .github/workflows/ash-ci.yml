@@ -8,7 +8,12 @@ on:
     secrets:
       HEX_API_KEY:
         required: false
+      OBAN_PRO_LICENSE_KEY:
+        required: false
     inputs:
+      oban-pro:
+        type: boolean
+        default: false
       release:
         type: boolean
         default: true
@@ -139,6 +144,18 @@ jobs:
           else
             echo "erlang ${{ inputs.erlang-version }}" > .tool-versions
           fi
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-hex-audit@59199173e18eee6748b65d01626ef82d51c6e963 # main
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
@@ -270,6 +287,16 @@ jobs:
             echo "erlang ${{ inputs.erlang-version }}" > .tool-versions
           fi
       - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - name: Set OS deps compile partition count
         run: echo "MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(($(lscpu -p | grep -v '^#' | sort -u -t, -k 2,4 | wc -l) / 2))" >> $GITHUB_ENV
       - uses: team-alembic/staple-actions/actions/mix-compile@04f27881d51ef973841fc40c549aefb7b52db7f7 # main
@@ -285,6 +312,18 @@ jobs:
       - spark-cheat-sheets
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-docs@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: dev
@@ -316,6 +355,18 @@ jobs:
     if: ${{inputs.conventional-commit}}
     steps:
       - uses: actions/checkout@v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/conventional-commit@main
         with:
           mix-env: test
@@ -327,6 +378,18 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-format@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
@@ -338,6 +401,18 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         if: ${{inputs.spark-formatter}}
         with:
@@ -351,6 +426,18 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         if: ${{inputs.spark-cheat-sheets}}
         with:
@@ -363,6 +450,18 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         if: ${{inputs.sobelow}}
         with:
@@ -375,6 +474,18 @@ jobs:
     if: ${{inputs.doctor}}
     steps:
       - uses: actions/checkout@v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-doctor@main
         with:
           mix-env: test
@@ -386,6 +497,18 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-credo@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
@@ -406,6 +529,18 @@ jobs:
     if: ${{inputs.codegen}}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
@@ -417,6 +552,18 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: test
@@ -439,6 +586,18 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
         if: github.event.pull_request.user.login == 'dependabot[bot]'
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro && github.event.pull_request.user.login == 'dependabot[bot]' }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro && github.event.pull_request.user.login == 'dependabot[bot]' }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           task: igniter.upgrade --git-ci --yes
@@ -477,6 +636,18 @@ jobs:
           - 3306:3306
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         if: ${{inputs.postgres && inputs.ash_postgres}}
         with:
@@ -568,6 +739,18 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-dialyzer@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: dev
@@ -588,6 +771,18 @@ jobs:
       - build-test
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        if: ${{ inputs.oban-pro }}
+      - name: Configure Oban Pro hex repo
+        if: ${{ inputs.oban-pro }}
+        run: |
+          mix local.hex --if-missing --force
+          mix hex.repo add oban https://repo.oban.pro --fetch-public-key SHA256:4/OSKi0NRF91QVVXlGAhb/BIMLnK8NHcx/EWs+aIWPc --auth-key $OBAN_PRO_LICENSE_KEY
+        shell: bash
+        env:
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
+          OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-compile@59199173e18eee6748b65d01626ef82d51c6e963 # main
         with:
           mix-env: dev
