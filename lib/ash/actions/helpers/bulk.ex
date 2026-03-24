@@ -273,6 +273,23 @@ defmodule Ash.Actions.Helpers.Bulk do
   end
 
   @doc """
+  Sets the error path to include the bulk operation index from the changeset context.
+
+  Extracts the index from bulk_create, bulk_update, or bulk_destroy context
+  and prepends it to the error's path.
+  """
+  def set_index_path(error, %{context: %{bulk_create: %{index: index}}}),
+    do: Ash.Error.set_path(error, [index])
+
+  def set_index_path(error, %{context: %{bulk_update: %{index: index}}}),
+    do: Ash.Error.set_path(error, [index])
+
+  def set_index_path(error, %{context: %{bulk_destroy: %{index: index}}}),
+    do: Ash.Error.set_path(error, [index])
+
+  def set_index_path(error, _changeset), do: error
+
+  @doc """
   Validates multitenancy requirements for bulk operations.
 
   Checks if tenant is required based on resource configuration, action settings,
