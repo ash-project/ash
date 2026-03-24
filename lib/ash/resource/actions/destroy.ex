@@ -12,6 +12,7 @@ defmodule Ash.Resource.Actions.Destroy do
     :description,
     :error_handler,
     :multitenancy,
+    extends: nil,
     manual: nil,
     require_atomic?: Application.compile_env(:ash, :require_atomic_by_default?, true),
     skip_unknown_inputs: [],

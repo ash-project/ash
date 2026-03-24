@@ -11,6 +11,11 @@ defmodule Ash.Resource.Actions.SharedOptions do
       required: true,
       doc: "The name of the action"
     ],
+    extends: [
+      type: :atom,
+      doc:
+        "The name of an action of the same type to extend. All configuration is inherited, with list fields concatenated (base first, then extending action) and scalar fields overridable."
+    ],
     primary?: [
       type: :boolean,
       default: false,

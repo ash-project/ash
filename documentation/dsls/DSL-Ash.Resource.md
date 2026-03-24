@@ -958,6 +958,7 @@ end
 | [`constraints`](#actions-action-constraints){: #actions-action-constraints } | `keyword` |  | Constraints for the return type. See `Ash.Type` for more. |
 | [`allow_nil?`](#actions-action-allow_nil?){: #actions-action-allow_nil? } | `boolean` | `false` | Whether or not the action can return nil. Unlike attributes & arguments, this defaults to `false`. |
 | [`run`](#actions-action-run){: #actions-action-run } | `(any, any -> any) \| module \| module` |  | Module may be an `Ash.Resource.Actions.Implementation` or `Reactor`. |
+| [`extends`](#actions-action-extends){: #actions-action-extends } | `atom` |  | The name of an action of the same type to extend. All configuration is inherited, with list fields concatenated (base first, then extending action) and scalar fields overridable. |
 | [`primary?`](#actions-action-primary?){: #actions-action-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-action-description){: #actions-action-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-action-transaction?){: #actions-action-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
@@ -1037,7 +1038,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#actions-action-prepare-on){: #actions-action-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`on`](#actions-action-prepare-on){: #actions-action-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#actions-action-prepare-where){: #actions-action-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#actions-action-prepare-only_when_valid?){: #actions-action-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
@@ -1145,6 +1146,7 @@ end
 | [`upsert_condition`](#actions-create-upsert_condition){: #actions-create-upsert_condition } | `any` |  | An expression to check if the record should be updated when there's a conflict. |
 | [`return_skipped_upsert?`](#actions-create-return_skipped_upsert?){: #actions-create-return_skipped_upsert? } | `boolean` |  | Returns the record that would have been upserted against but was skipped due to a filter or no fields being changed. How this works depends on the data layer. Keep in mind that read policies *are not applied* to the read of the record in question. |
 | [`multitenancy`](#actions-create-multitenancy){: #actions-create-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources. |
+| [`extends`](#actions-create-extends){: #actions-create-extends } | `atom` |  | The name of an action of the same type to extend. All configuration is inherited, with list fields concatenated (base first, then extending action) and scalar fields overridable. |
 | [`primary?`](#actions-create-primary?){: #actions-create-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-create-description){: #actions-create-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-create-transaction?){: #actions-create-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
@@ -1394,6 +1396,7 @@ end
 | [`timeout`](#actions-read-timeout){: #actions-read-timeout } | `pos_integer` |  | The maximum amount of time, in milliseconds, that the action is allowed to run for. Ignored if the data layer doesn't support transactions *and* async is disabled. |
 | [`multitenancy`](#actions-read-multitenancy){: #actions-read-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources. This is useful to change the behaviour of selected read action without the need of marking the whole resource with `global? true`. |
 | [`skip_global_validations?`](#actions-read-skip_global_validations?){: #actions-read-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
+| [`extends`](#actions-read-extends){: #actions-read-extends } | `atom` |  | The name of an action of the same type to extend. All configuration is inherited, with list fields concatenated (base first, then extending action) and scalar fields overridable. |
 | [`primary?`](#actions-read-primary?){: #actions-read-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-read-description){: #actions-read-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-read-transaction?){: #actions-read-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
@@ -1473,7 +1476,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#actions-read-prepare-on){: #actions-read-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`on`](#actions-read-prepare-on){: #actions-read-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#actions-read-prepare-where){: #actions-read-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#actions-read-prepare-only_when_valid?){: #actions-read-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
@@ -1689,6 +1692,7 @@ update :flag_for_review, primary?: true
 | [`atomic_upgrade?`](#actions-update-atomic_upgrade?){: #actions-update-atomic_upgrade? } | `boolean` | `false` | If set to `true`, atomic upgrades will be performed. Ignored if `required_atomic?` is `true`. See the update actions guide for more. |
 | [`atomic_upgrade_with`](#actions-update-atomic_upgrade_with){: #actions-update-atomic_upgrade_with } | `atom \| nil` |  | Configure the read action used when performing atomic upgrades. Defaults to the primary read action. |
 | [`multitenancy`](#actions-update-multitenancy){: #actions-update-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` | `:enforce` | This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources. |
+| [`extends`](#actions-update-extends){: #actions-update-extends } | `atom` |  | The name of an action of the same type to extend. All configuration is inherited, with list fields concatenated (base first, then extending action) and scalar fields overridable. |
 | [`primary?`](#actions-update-primary?){: #actions-update-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-update-description){: #actions-update-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-update-transaction?){: #actions-update-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
@@ -1937,6 +1941,7 @@ end
 | [`require_atomic?`](#actions-destroy-require_atomic?){: #actions-destroy-require_atomic? } | `boolean` | `true` | Require that the update be atomic. Only relevant if `soft?` is set to `true`. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more. |
 | [`atomic_upgrade?`](#actions-destroy-atomic_upgrade?){: #actions-destroy-atomic_upgrade? } | `boolean` | `false` | If set to `true`, atomic upgrades will be performed. See the update actions guide for more. |
 | [`atomic_upgrade_with`](#actions-destroy-atomic_upgrade_with){: #actions-destroy-atomic_upgrade_with } | `atom \| nil` |  | Configure the read action used when performing atomic upgrades. Defaults to the primary read action. |
+| [`extends`](#actions-destroy-extends){: #actions-destroy-extends } | `atom` |  | The name of an action of the same type to extend. All configuration is inherited, with list fields concatenated (base first, then extending action) and scalar fields overridable. |
 | [`primary?`](#actions-destroy-primary?){: #actions-destroy-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-destroy-description){: #actions-destroy-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-destroy-transaction?){: #actions-destroy-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
@@ -2699,7 +2704,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#preparations-prepare-on){: #preparations-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`on`](#preparations-prepare-on){: #preparations-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#preparations-prepare-where){: #preparations-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#preparations-prepare-only_when_valid?){: #preparations-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 

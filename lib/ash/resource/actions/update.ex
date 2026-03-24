@@ -11,6 +11,7 @@ defmodule Ash.Resource.Actions.Update do
     :description,
     :error_handler,
     :multitenancy,
+    extends: nil,
     accept: nil,
     require_attributes: [],
     allow_nil_input: [],

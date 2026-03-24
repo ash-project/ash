@@ -1637,6 +1637,7 @@ defmodule Ash.Resource.Dsl do
   ]
 
   @transformers [
+    Ash.Resource.Transformers.ExtendActions,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,

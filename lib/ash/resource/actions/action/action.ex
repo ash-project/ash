@@ -10,6 +10,7 @@ defmodule Ash.Resource.Actions.Action do
     :description,
     :returns,
     :run,
+    extends: nil,
     constraints: [],
     touches_resources: [],
     skip_unknown_inputs: [],

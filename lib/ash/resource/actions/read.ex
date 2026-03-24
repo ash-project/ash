@@ -7,6 +7,7 @@ defmodule Ash.Resource.Actions.Read do
 
   defstruct arguments: [],
             description: nil,
+            extends: nil,
             filter: nil,
             filters: [],
             get_by: nil,
