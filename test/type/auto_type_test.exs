@@ -11,6 +11,11 @@ defmodule Ash.Test.Type.AutoTypeTest do
 
   # ── Shared types ──────────────────────────────────────────────────────
 
+  defmodule PlainStruct do
+    @moduledoc false
+    defstruct [:name, :value]
+  end
+
   defmodule Priority do
     @moduledoc false
     use Ash.Type.Enum, values: [:low, :medium, :high, :critical]
@@ -207,6 +212,14 @@ defmodule Ash.Test.Type.AutoTypeTest do
       # map literal
       calculate :card, :auto, expr(%{title: title, score: score, active: active}), public?: true
 
+      # struct literal (plain struct - not an Ash.Type)
+      calculate :plain_struct_calc, :auto, expr(%PlainStruct{name: title, value: score}),
+        public?: true
+
+      # struct literal (Ash.Type - embedded resource)
+      calculate :address_struct_calc, :auto, expr(%Address{street: title, city: body, zip: "00000"}),
+        public?: true
+
       # cross-resource ref
       calculate :author_name, :auto, expr(author.name), public?: true
 
@@ -359,6 +372,17 @@ defmodule Ash.Test.Type.AutoTypeTest do
       assert Keyword.get(fields, :title)[:type] == Ash.Type.String
       assert Keyword.get(fields, :score)[:type] == Ash.Type.Integer
       assert Keyword.get(fields, :active)[:type] == Ash.Type.Boolean
+    end
+
+    test "plain struct literal resolves to Ash.Type.Struct with instance_of" do
+      calc = Ash.Resource.Info.calculation(Post, :plain_struct_calc)
+      assert calc.type == Ash.Type.Struct
+      assert calc.constraints[:instance_of] == PlainStruct
+    end
+
+    test "Ash.Type struct literal resolves to the type directly" do
+      calc = Ash.Resource.Info.calculation(Post, :address_struct_calc)
+      assert calc.type == Address
     end
   end
 
