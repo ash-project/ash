@@ -1329,9 +1329,7 @@ defmodule Ash.Actions.ManagedRelationships do
           error =
             error
             |> add_bread_crumb(relationship, :create)
-            |> Ash.Error.set_path(
-              opts[:error_path] || [opts[:meta][:id] || relationship.name]
-            )
+            |> Ash.Error.set_path(opts[:error_path] || [opts[:meta][:id] || relationship.name])
 
           {:error, error}
         else
@@ -1491,9 +1489,7 @@ defmodule Ash.Actions.ManagedRelationships do
             error =
               error
               |> add_bread_crumb(relationship, :create)
-              |> Ash.Error.set_path(
-                opts[:error_path] || [opts[:meta][:id] || relationship.name]
-              )
+              |> Ash.Error.set_path(opts[:error_path] || [opts[:meta][:id] || relationship.name])
 
             {:error, error}
           else
@@ -1605,9 +1601,7 @@ defmodule Ash.Actions.ManagedRelationships do
             error =
               error
               |> add_bread_crumb(relationship, :create)
-              |> Ash.Error.set_path(
-                opts[:error_path] || [opts[:meta][:id] || relationship.name]
-              )
+              |> Ash.Error.set_path(opts[:error_path] || [opts[:meta][:id] || relationship.name])
 
             {:error, error}
           else
