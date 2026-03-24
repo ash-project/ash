@@ -252,6 +252,22 @@ defmodule Ash.Test.ManageRelationshipTest do
 
         change manage_relationship(:parent_resource, on_match: :update)
       end
+
+      update :update_create_parent_in_hook do
+        require_atomic? false
+
+        change fn changeset, _context ->
+          Ash.Changeset.before_transaction(changeset, fn changeset ->
+            Ash.Changeset.manage_relationship(
+              changeset,
+              :parent_resource,
+              %{name: "created-in-hook"},
+              type: :create,
+              on_no_match: :create
+            )
+          end)
+        end
+      end
     end
 
     attributes do
@@ -1287,6 +1303,27 @@ defmodule Ash.Test.ManageRelationshipTest do
 
       names = Enum.map(updated.other_resources, & &1.required_attribute)
       assert names == ["new1", "existing1", "new2", "existing2"]
+    end
+  end
+
+  describe "manage_relationship called from before_transaction hook on update" do
+    test "creates related record via belongs_to when manage_relationship is called in before_transaction" do
+      related =
+        RelatedResource
+        |> Ash.Changeset.for_create(:create, %{required_attribute: "test"})
+        |> Ash.create!()
+
+      assert related.parent_resource_id == nil
+
+      updated =
+        related
+        |> Ash.Changeset.for_update(:update_create_parent_in_hook, %{})
+        |> Ash.update!()
+
+      assert updated.parent_resource_id != nil
+
+      {:ok, loaded} = Ash.load(updated, :parent_resource)
+      assert loaded.parent_resource.name == "created-in-hook"
     end
   end
 end
