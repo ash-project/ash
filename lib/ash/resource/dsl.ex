@@ -511,6 +511,29 @@ defmodule Ash.Resource.Dsl do
     args: [:validation]
   }
 
+  @pipe_through %Spark.Dsl.Entity{
+    name: :pipe_through,
+    describe: """
+    References one or more pipelines to apply to this action.
+    Pipeline entities are prepended before the action's own changes/preparations.
+    """,
+    examples: [
+      """
+      pipe_through [:change_state]
+      """,
+      """
+      pipe_through [:change_state], where: expr(^actor(:role) == :super_user)
+      """
+    ],
+    imports: [
+      Ash.Resource.Validation.Builtins,
+      Ash.Expr
+    ],
+    target: Ash.Resource.Actions.PipeThrough,
+    schema: Ash.Resource.Actions.PipeThrough.schema(),
+    args: [:names]
+  }
+
   @create %Spark.Dsl.Entity{
     name: :create,
     describe: """
