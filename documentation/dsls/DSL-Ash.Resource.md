@@ -1554,6 +1554,7 @@ Adds pagination options to a resource
 | [`max_page_size`](#actions-read-pagination-max_page_size){: #actions-read-pagination-max_page_size } | `pos_integer` | `250` | The maximum amount of records that can be requested in a single page |
 | [`stable_sort`](#actions-read-pagination-stable_sort){: #actions-read-pagination-stable_sort } | `any` |  | A stable sort statement to add to a query (after any existing sorts). Only added if the sort does not already contain a stable sort (sorting on fields that uniquely identify a record). Defaults to the primary key. |
 | [`required?`](#actions-read-pagination-required?){: #actions-read-pagination-required? } | `boolean` | `true` | Whether or not pagination can be disabled (by passing `page: false` to `Ash.Api.read!/2`, or by having `required?: false, default_limit: nil` set). Only relevant if some pagination configuration is supplied. |
+| [`paginate_by_default?`](#actions-read-pagination-paginate_by_default?){: #actions-read-pagination-paginate_by_default? } | `boolean` | `false` | Whether or not to paginate by default when pagination is not required and no page parameters are provided. |
 
 
 
