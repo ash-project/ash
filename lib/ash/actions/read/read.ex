@@ -3832,7 +3832,9 @@ defmodule Ash.Actions.Read do
           action.pagination.default_limit ->
         Keyword.put(page_opts, :limit, action.pagination.default_limit)
 
-      is_nil(page_opts) and action.pagination.required? and not relationship? ->
+      is_nil(page_opts) and
+        (action.pagination.required? or action.pagination.paginate_by_default?) and
+          not relationship? ->
         if action.pagination.default_limit do
           [limit: action.pagination.default_limit]
         else
