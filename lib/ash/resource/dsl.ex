@@ -562,6 +562,9 @@ defmodule Ash.Resource.Dsl do
         @action_change,
         @action_validate
       ],
+      pipe_through: [
+        @pipe_through
+      ],
       arguments: [
         @action_argument
       ],
@@ -619,6 +622,9 @@ defmodule Ash.Resource.Dsl do
       arguments: [
         @action_argument
       ],
+      pipe_through: [
+        @pipe_through
+      ],
       preparations: [
         @prepare,
         %{
@@ -668,6 +674,9 @@ defmodule Ash.Resource.Dsl do
       arguments: [
         @action_argument
       ],
+      pipe_through: [
+        @pipe_through
+      ],
       preparations: [
         @prepare,
         %{
@@ -708,6 +717,9 @@ defmodule Ash.Resource.Dsl do
       changes: [
         @action_change,
         @action_validate
+      ],
+      pipe_through: [
+        @pipe_through
       ],
       metadata: [
         @metadata
@@ -753,6 +765,9 @@ defmodule Ash.Resource.Dsl do
       changes: [
         @action_change,
         @action_validate
+      ],
+      pipe_through: [
+        @pipe_through
       ],
       metadata: [
         @metadata
