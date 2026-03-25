@@ -91,10 +91,35 @@ defmodule Ash.Resource.Validation do
               | {:not_atomic, String.t()}
               | {:error, term()}
 
+  @doc """
+  Replaces `validate/3` for batch actions, allowing to optimize validations for bulk actions.
+
+  Receives all changesets in the batch and returns them with errors added to any that
+  fail validation. Unlike `validate/3` which returns `:ok | {:error, term}`, this callback
+  returns the changesets directly (with errors already added via `Ash.Changeset.add_error/2`).
+  """
+  @callback batch_validate(
+              changesets :: [Ash.Changeset.t()],
+              opts :: Keyword.t(),
+              context :: Context.t()
+            ) ::
+              Enumerable.t(Ash.Changeset.t())
+
+  @doc """
+  Whether or not batch callbacks should be run (if they are defined). Defaults to `true`.
+  """
+  @callback batch_callbacks?(
+              changesets_or_query :: [Ash.Changeset.t()] | Ash.Query.t(),
+              opts :: Keyword.t(),
+              context :: Context.t()
+            ) ::
+              boolean
+
   @callback atomic?() :: boolean
   @callback has_validate?() :: boolean
+  @callback has_batch_validate?() :: boolean
 
-  @optional_callbacks describe: 1, validate: 3, atomic: 3
+  @optional_callbacks describe: 1, validate: 3, atomic: 3, batch_validate: 3
 
   @validation_type {:spark_function_behaviour, Ash.Resource.Validation,
                     Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 2}}
@@ -164,6 +189,9 @@ defmodule Ash.Resource.Validation do
       @impl true
       def supports(_opts), do: [Ash.Changeset]
 
+      @impl true
+      def batch_callbacks?(_, _, _), do: true
+
       defp with_description(keyword, opts) do
         if Kernel.function_exported?(__MODULE__, :describe, 1) do
           keyword ++ Ash.Resource.Validation.describe(__MODULE__, opts)
@@ -172,7 +200,7 @@ defmodule Ash.Resource.Validation do
         end
       end
 
-      defoverridable init: 1, supports: 1
+      defoverridable init: 1, supports: 1, batch_callbacks?: 3
     end
   end
 
@@ -185,6 +213,14 @@ defmodule Ash.Resource.Validation do
       else
         @impl true
         def has_validate?, do: false
+      end
+
+      if Module.defines?(__MODULE__, {:batch_validate, 3}, :def) do
+        @impl true
+        def has_batch_validate?, do: true
+      else
+        @impl true
+        def has_batch_validate?, do: false
       end
 
       if Module.defines?(__MODULE__, {:atomic, 3}, :def) do

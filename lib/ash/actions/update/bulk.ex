@@ -3545,7 +3545,8 @@ defmodule Ash.Actions.Update.Bulk do
       all_changes,
       %{must_return_records?: false, re_sort?: false, batch: batch, changes: %{}},
       fn
-        {%{validation: {module, _opts}} = validation, _change_index}, %{batch: batch} = state ->
+        {%{validation: {module, validation_opts}} = validation, _change_index},
+        %{batch: batch} = state ->
           validation_context =
             struct(
               Ash.Resource.Validation.Context,
@@ -3553,36 +3554,46 @@ defmodule Ash.Actions.Update.Bulk do
             )
 
           batch =
-            if module.has_validate?() &&
-                 Enum.all?(validation.where, fn {module, _opts} ->
-                   module.has_validate?()
-                 end) do
-              if validation.before_action? do
-                Enum.map(batch, fn changeset ->
-                  Ash.Changeset.before_action(changeset, fn changeset ->
-                    [changeset] =
-                      validate_batch_non_atomically(
-                        validation,
-                        [changeset],
-                        validation_context,
-                        actor
-                      )
-
-                    changeset
-                  end)
-                end)
-              else
-                validate_batch_non_atomically(validation, batch, validation_context, actor)
-              end
+            if module.has_batch_validate?() &&
+                 module.batch_callbacks?(batch, validation_opts, validation_context) do
+              Ash.Actions.Helpers.Bulk.run_batch_validation(
+                validation,
+                batch,
+                validation_context,
+                actor
+              )
             else
-              if module.atomic?() do
-                validate_batch_atomically(validation, batch, validation_context, context, actor)
-              else
-                raise """
-                Cannot use a non-atomic validation with an atomic condition.
+              if module.has_validate?() &&
+                   Enum.all?(validation.where, fn {module, _opts} ->
+                     module.has_validate?()
+                   end) do
+                if validation.before_action? do
+                  Enum.map(batch, fn changeset ->
+                    Ash.Changeset.before_action(changeset, fn changeset ->
+                      [changeset] =
+                        validate_batch_non_atomically(
+                          validation,
+                          [changeset],
+                          validation_context,
+                          actor
+                        )
 
-                Attempting to run action: `#{inspect(resource)}.#{action.name}`
-                """
+                      changeset
+                    end)
+                  end)
+                else
+                  validate_batch_non_atomically(validation, batch, validation_context, actor)
+                end
+              else
+                if module.atomic?() do
+                  validate_batch_atomically(validation, batch, validation_context, context, actor)
+                else
+                  raise """
+                  Cannot use a non-atomic validation with an atomic condition.
+
+                  Attempting to run action: `#{inspect(resource)}.#{action.name}`
+                  """
+                end
               end
             end
 
