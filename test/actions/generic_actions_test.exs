@@ -227,6 +227,23 @@ defmodule Ash.Test.Actions.GenericActionsTest do
         end
       end
 
+      action :return_nil_post, :struct do
+        constraints instance_of: __MODULE__
+        allow_nil? true
+
+        run fn _input, _ ->
+          {:ok, nil}
+        end
+      end
+
+      action :return_nil_post_not_allowed, :struct do
+        constraints instance_of: __MODULE__
+
+        run fn _input, _ ->
+          {:ok, nil}
+        end
+      end
+
       action :errors_out, :struct do
         run fn input, _ ->
           {:error, %Ash.Error.Unknown{}}
@@ -354,6 +371,14 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
 
       policy action(:return_post_with_author) do
+        authorize_if always()
+      end
+
+      policy action(:return_nil_post) do
+        authorize_if always()
+      end
+
+      policy action(:return_nil_post_not_allowed) do
         authorize_if always()
       end
 
@@ -1226,6 +1251,31 @@ defmodule Ash.Test.Actions.GenericActionsTest do
         |> Ash.ActionInput.for_action(:errors_out, %{})
         |> Ash.run_action!(load: [:author])
       end
+    end
+
+    test "it returns nil without error when action returns nil with load option and allow_nil?" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:return_nil_post, %{})
+        |> Ash.run_action!(load: [:author])
+
+      assert is_nil(result)
+    end
+
+    test "it returns nil without error when action returns nil without load and allow_nil?" do
+      result =
+        Post
+        |> Ash.ActionInput.for_action(:return_nil_post, %{})
+        |> Ash.run_action!()
+
+      assert is_nil(result)
+    end
+
+    test "it returns an error when action returns nil with allow_nil? false" do
+      assert {:error, %Ash.Error.Framework{}} =
+               Post
+               |> Ash.ActionInput.for_action(:return_nil_post_not_allowed, %{})
+               |> Ash.run_action()
     end
   end
 
