@@ -700,6 +700,19 @@ defmodule Ash.Actions.ManagedRelationships do
       {:error, error} ->
         {:error, set_error_path(error, relationship, 0, opts)}
     end
+  catch
+    {DBConnection, ref, error} ->
+      throw({DBConnection, ref, error})
+
+    {:rollback, value} ->
+      index =
+        case value do
+          %Ash.Changeset{context: %{bulk_create: %{index: i}}} -> i
+          _ -> 0
+        end
+
+      value = Ash.Error.to_ash_error(value)
+      throw({:rollback, set_error_path(value, relationship, index, opts)})
   end
 
   defp manage_relationship(
@@ -845,17 +858,18 @@ defmodule Ash.Actions.ManagedRelationships do
   end
 
   defp can_bulk_create?(relationship, opts) do
-    case opts[:on_no_match] do
-      {:create, _action_name} ->
-        relationship.type != :many_to_many &&
+    opts[:bulk?] == true &&
+      case opts[:on_no_match] do
+        {:create, _action_name} ->
+          relationship.type != :many_to_many &&
+            Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create)
+
+        {:create, _action_name, _join_action_name, _params} ->
           Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create)
 
-      {:create, _action_name, _join_action_name, _params} ->
-        Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create)
-
-      _ ->
-        false
-    end
+        _ ->
+          false
+      end
   end
 
   defp sequential_manage_relationship(
