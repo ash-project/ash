@@ -8,6 +8,19 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.21.2](https://github.com/ash-project/ash/compare/v3.21.1...v3.21.2) (2026-03-25)
+
+
+
+
+### Bug Fixes:
+
+* recompute changed? after setup_managed_belongs_to_relationships (#2647) by [@barnabasJ](https://github.com/barnabasJ) [(#2647)](https://github.com/ash-project/ash/pull/2647)
+
+### Improvements:
+
+* support structs in type inference by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.21.1](https://github.com/ash-project/ash/compare/v3.21.0...v3.21.1) (2026-03-23)
 
 
