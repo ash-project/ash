@@ -20,6 +20,9 @@ on:
       publish-docs:
         type: boolean
         default: true
+      unused-deps:
+        type: boolean
+        default: true
       spark-formatter:
         type: boolean
         default: true
@@ -548,6 +551,7 @@ jobs:
   unused-deps:
     name: mix deps.unlock --check-unused
     runs-on: ubuntu-latest
+    if: ${{inputs.unused_deps}}
     needs:
       - build-test
     steps:
