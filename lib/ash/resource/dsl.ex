@@ -1172,6 +1172,72 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @pipeline %Spark.Dsl.Entity{
+    name: :pipeline,
+    describe: """
+    Declares a reusable pipeline of changes, validations, and preparations
+    that can be referenced from multiple actions via `pipe_through`.
+    """,
+    examples: [
+      """
+      pipeline :change_state do
+        validate changing(:state)
+        change set_attribute(:score, 0)
+      end
+      """
+    ],
+    imports: [
+      Ash.Resource.Change.Builtins,
+      Ash.Resource.Validation.Builtins,
+      Ash.Resource.Preparation.Builtins,
+      Ash.Expr
+    ],
+    target: Ash.Resource.Pipeline,
+    schema: Ash.Resource.Pipeline.schema(),
+    entities: [
+      arguments: [
+        @action_argument
+      ],
+      changes: [
+        @action_change
+      ],
+      validations: [
+        @action_validate
+      ],
+      preparations: [
+        @prepare
+      ]
+    ],
+    args: [:name]
+  }
+
+  @pipelines %Spark.Dsl.Section{
+    name: :pipelines,
+    describe: """
+    Declare reusable pipelines of changes, validations, and preparations
+    that can be referenced from multiple actions via `pipe_through`.
+    """,
+    imports: [
+      Ash.Resource.Change.Builtins,
+      Ash.Resource.Validation.Builtins,
+      Ash.Resource.Preparation.Builtins,
+      Ash.Expr
+    ],
+    examples: [
+      """
+      pipelines do
+        pipeline :change_state do
+          validate changing(:state)
+          change set_attribute(:score, 0)
+        end
+      end
+      """
+    ],
+    entities: [
+      @pipeline
+    ]
+  }
+
   @join_filter %Spark.Dsl.Entity{
     name: :join_filter,
     describe: """
@@ -1669,12 +1735,14 @@ defmodule Ash.Resource.Dsl do
     @changes,
     @preparations,
     @validations,
+    @pipelines,
     @aggregates,
     @calculations,
     @multitenancy
   ]
 
   @transformers [
+    Ash.Resource.Transformers.ResolvePipelines,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,
