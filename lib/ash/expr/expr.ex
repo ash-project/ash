@@ -634,6 +634,15 @@ defmodule Ash.Expr do
     Enum.map(value, &do_expr(&1, escape?))
   end
 
+  def do_expr({:%, _, [struct_alias, {:%{}, _, fields}]}, escape?) do
+    struct_module = do_expr(struct_alias, false)
+
+    fields =
+      Enum.map(fields, fn {key, value} -> {do_expr(key, escape?), do_expr(value, escape?)} end)
+
+    {:%{}, [], [{:__struct__, struct_module} | fields]}
+  end
+
   def do_expr({:%{}, _, keys}, escape?) do
     {:%{}, [],
      Enum.map(keys, fn {key, value} -> {do_expr(key, escape?), do_expr(value, escape?)} end)}
@@ -1670,8 +1679,19 @@ defmodule Ash.Expr do
       when name in @aggregate_kinds ->
         determine_inline_aggregate_type(name, args)
 
+      %{__struct__: struct_module} when is_atom(struct_module) ->
+        determine_struct_type(struct_module)
+
       _ ->
         :error
+    end
+  end
+
+  defp determine_struct_type(struct_module) do
+    if Ash.Type.ash_type?(struct_module) do
+      {:ok, {struct_module, []}}
+    else
+      :error
     end
   end
 

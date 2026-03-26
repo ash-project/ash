@@ -471,8 +471,22 @@ defmodule Ash.Actions.Update do
                 {:error, error}
 
               {changeset, manage_instructions} ->
+                # Recompute changed? after setup_managed_belongs_to_relationships
+                # may have set FK attributes via force_change_attribute (e.g. when
+                # manage_relationship is called from before_transaction hooks on
+                # update actions). Without this, the changed? flag computed before
+                # the func callback would be false, causing the DB update to be
+                # skipped entirely.
+                changed? =
+                  Ash.Changeset.changing_attributes?(changeset) or
+                    not Enum.empty?(changeset.atomics)
+
                 changeset =
                   changeset
+                  |> Ash.Changeset.put_context(
+                    :changed?,
+                    changeset.context[:changed?] || changed?
+                  )
                   |> Ash.Changeset.require_values(
                     :update,
                     true

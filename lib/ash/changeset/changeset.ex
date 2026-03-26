@@ -5754,6 +5754,16 @@ defmodule Ash.Changeset do
       doc: """
       Logs queries executed by relationship.
       """
+    ],
+    bulk?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      When `true`, uses bulk create operations for managing has_many relationships instead of
+      creating records individually. This can be more efficient for large numbers of related
+      records, but error paths may not correctly identify which specific input caused a failure
+      when a constraint violation occurs during the batch insert.
+      """
     ]
   ]
 

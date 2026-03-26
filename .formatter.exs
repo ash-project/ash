@@ -223,6 +223,7 @@ spark_locals_without_parens = [
   on: 1,
   only_when_valid?: 1,
   page: 1,
+  paginate_by_default?: 1,
   pagination: 0,
   pagination: 1,
   parse_attribute: 1,

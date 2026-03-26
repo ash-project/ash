@@ -700,6 +700,19 @@ defmodule Ash.Actions.ManagedRelationships do
       {:error, error} ->
         {:error, set_error_path(error, relationship, 0, opts)}
     end
+  catch
+    {DBConnection, ref, error} ->
+      throw({DBConnection, ref, error})
+
+    {:rollback, value} ->
+      index =
+        case value do
+          %Ash.Changeset{context: %{bulk_create: %{index: i}}} -> i
+          _ -> 0
+        end
+
+      value = Ash.Error.to_ash_error(value)
+      throw({:rollback, set_error_path(value, relationship, index, opts)})
   end
 
   defp manage_relationship(
@@ -845,17 +858,18 @@ defmodule Ash.Actions.ManagedRelationships do
   end
 
   defp can_bulk_create?(relationship, opts) do
-    case opts[:on_no_match] do
-      {:create, _action_name} ->
-        relationship.type != :many_to_many &&
+    opts[:bulk?] == true &&
+      case opts[:on_no_match] do
+        {:create, _action_name} ->
+          relationship.type != :many_to_many &&
+            Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create)
+
+        {:create, _action_name, _join_action_name, _params} ->
           Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create)
 
-      {:create, _action_name, _join_action_name, _params} ->
-        Ash.DataLayer.data_layer_can?(relationship.destination, :bulk_create)
-
-      _ ->
-        false
-    end
+        _ ->
+          false
+      end
   end
 
   defp sequential_manage_relationship(
@@ -1328,7 +1342,12 @@ defmodule Ash.Actions.ManagedRelationships do
         error = List.first(List.wrap(errors))
 
         if error do
-          {:error, add_bread_crumb(error, relationship, :create)}
+          error =
+            error
+            |> add_bread_crumb(relationship, :create)
+            |> Ash.Error.set_path(opts[:error_path] || [opts[:meta][:id] || relationship.name])
+
+          {:error, error}
         else
           {:error,
            add_bread_crumb(
@@ -1486,26 +1505,12 @@ defmodule Ash.Actions.ManagedRelationships do
           error = List.first(List.wrap(errors))
 
           if error do
-            # Bulk create errors don't carry the manage_relationship input index
-            # in a way AshPhoenix can route the nested errors. Reattach the
-            # index based on the position in the bulk inputs we sent.
-            bulk_index =
+            error =
               error
-              |> Map.get(:meta)
-              |> case do
-                %{bulk_create_index: idx} -> idx
-                _ -> nil
-              end || Map.get(error, :bulk_create_index) || 0
+              |> add_bread_crumb(relationship, :create)
+              |> Ash.Error.set_path(opts[:error_path] || [opts[:meta][:id] || relationship.name])
 
-            input_index = Enum.at(input_indices_to_bulk_create, bulk_index) || 0
-
-            # Use bracket access so both map and keyword-list `meta` work (see `set_error_path/4`).
-            relationship_error_key = opts[:meta][:id] || relationship.name
-
-            error
-            |> add_bread_crumb(relationship, :create)
-            |> Ash.Error.set_path([relationship_error_key, input_index])
-            |> then(&{:error, &1})
+            {:error, error}
           else
             {:error,
              add_bread_crumb(
@@ -1612,7 +1617,12 @@ defmodule Ash.Actions.ManagedRelationships do
           error = List.first(List.wrap(errors))
 
           if error do
-            {:error, add_bread_crumb(error, relationship, :create)}
+            error =
+              error
+              |> add_bread_crumb(relationship, :create)
+              |> Ash.Error.set_path(opts[:error_path] || [opts[:meta][:id] || relationship.name])
+
+            {:error, error}
           else
             {:error,
              add_bread_crumb(

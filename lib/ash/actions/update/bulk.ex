@@ -3007,6 +3007,7 @@ defmodule Ash.Actions.Update.Bulk do
               {:error, error} ->
                 error_result =
                   error
+                  |> Ash.Actions.Helpers.Bulk.set_index_path(changeset)
                   |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
                   |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
                   |> Ash.Helpers.error()
@@ -3018,6 +3019,7 @@ defmodule Ash.Actions.Update.Bulk do
             e ->
               error_result =
                 e
+                |> Ash.Actions.Helpers.Bulk.set_index_path(changeset)
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
                 |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
                 |> Ash.Helpers.error()
@@ -3080,6 +3082,7 @@ defmodule Ash.Actions.Update.Bulk do
               {:error, error} ->
                 error_result =
                   error
+                  |> Ash.Actions.Helpers.Bulk.set_index_path(changeset)
                   |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
                   |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
                   |> Ash.Helpers.error()
@@ -3091,6 +3094,7 @@ defmodule Ash.Actions.Update.Bulk do
             e ->
               error_result =
                 e
+                |> Ash.Actions.Helpers.Bulk.set_index_path(changeset)
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
                 |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
                 |> Ash.Helpers.error()
@@ -3099,7 +3103,8 @@ defmodule Ash.Actions.Update.Bulk do
               {error_result, changeset_map}
           end
 
-        {:error_hooks_done, error, _changeset}, changeset_map ->
+        {:error_hooks_done, error, changeset}, changeset_map ->
+          error = Ash.Actions.Helpers.Bulk.set_index_path(error, changeset)
           {[{:error, error}], changeset_map}
       end)
 

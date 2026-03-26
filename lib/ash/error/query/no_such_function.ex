@@ -30,5 +30,9 @@ defmodule Ash.Error.Query.NoSuchFunction do
   end
 
   defp for_resource(message, nil), do: message
+
+  defp for_resource(message, dsl) when is_map(dsl),
+    do: message <> " for resource #{inspect(Spark.Dsl.Transformer.get_persisted(dsl, :module))}"
+
   defp for_resource(message, resource), do: message <> " for resource #{inspect(resource)}"
 end
