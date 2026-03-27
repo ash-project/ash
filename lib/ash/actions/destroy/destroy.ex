@@ -227,14 +227,19 @@ defmodule Ash.Actions.Destroy do
                 if result = changeset.context[:private][:action_result] do
                   result
                 else
-                  mod.destroy(changeset, action_opts, %Ash.Resource.ManualDestroy.Context{
-                    select: changeset.select,
-                    source_context: changeset.context,
-                    actor: opts[:actor],
-                    tenant: changeset.tenant,
-                    authorize?: opts[:authorize?],
-                    domain: changeset.domain
-                  })
+                  Ash.Resource.ManualDestroy.destroy(
+                    mod,
+                    changeset,
+                    action_opts,
+                    %Ash.Resource.ManualDestroy.Context{
+                      select: changeset.select,
+                      source_context: changeset.context,
+                      actor: opts[:actor],
+                      tenant: changeset.tenant,
+                      authorize?: opts[:authorize?],
+                      domain: changeset.domain
+                    }
+                  )
                   |> validate_manual_action_return_result!(changeset.resource, changeset.action)
                 end
               else

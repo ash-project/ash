@@ -121,7 +121,7 @@ defmodule Ash.Policy.Info do
     checks
     |> Enum.map_join("\n", fn
       %{type: type, check_module: check_module, check_opts: check_opts} ->
-        "#{type}: #{check_module.describe(check_opts)}"
+        "#{type}: #{Ash.Policy.Check.describe(check_module, check_opts)}"
     end)
     |> Kernel.<>("\n")
   end
@@ -129,7 +129,7 @@ defmodule Ash.Policy.Info do
   defp describe_conditions(conditions) do
     Enum.map_join(conditions, " and ", fn
       {check_module, check_opts} ->
-        check_module.describe(check_opts)
+        Ash.Policy.Check.describe(check_module, check_opts)
     end)
   end
 

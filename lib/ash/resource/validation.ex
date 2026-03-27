@@ -166,7 +166,7 @@ defmodule Ash.Resource.Validation do
 
       defp with_description(keyword, opts) do
         if Kernel.function_exported?(__MODULE__, :describe, 1) do
-          keyword ++ apply(__MODULE__, :describe, [opts])
+          keyword ++ Ash.Resource.Validation.describe(__MODULE__, opts)
         else
           keyword
         end
@@ -227,16 +227,98 @@ defmodule Ash.Resource.Validation do
      }}
   end
 
+  @doc false
+  @spec validate(
+          module(),
+          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t(),
+          Keyword.t(),
+          Context.t()
+        ) :: :ok | {:error, term()}
   def validate(module, changeset_query_or_input, opts, context) do
-    Ash.BehaviourHelpers.check_type!(
+    Ash.BehaviourHelpers.call_and_validate_return(
       module,
-      module.validate(changeset_query_or_input, opts, context),
-      [
-        :ok,
-        {:error, _}
-      ]
+      :validate,
+      [changeset_query_or_input, opts, context],
+      [:ok, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "validate/3"
     )
   end
+
+  @doc false
+  @spec describe(module(), Keyword.t() | map()) ::
+          String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
+  def describe(module, opts) do
+    result = apply(module, :describe, [opts])
+
+    if is_binary(result) or (is_list(result) and Keyword.keyword?(result)) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.describe/1.
+
+        The callback #{inspect(__MODULE__)}.describe/1 expects a String.t() or a keyword list of :message/:vars.
+        """
+    end
+  end
+
+  @doc false
+  @spec init(module(), Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
+  def init(module, opts) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :init,
+      [opts],
+      [{:ok, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "init/1"
+    )
+  end
+
+  @doc false
+  @spec atomic(
+          module(),
+          Ash.Changeset.t() | Ash.ActionInput.t(),
+          Keyword.t(),
+          Context.t()
+        ) ::
+          :ok
+          | {:atomic, list(atom()) | :*, Ash.Expr.t(), Ash.Expr.t()}
+          | [{:atomic, list(atom()) | :*, Ash.Expr.t(), Ash.Expr.t()}]
+          | {:not_atomic, String.t()}
+          | {:error, term()}
+  def atomic(module, changeset_query_or_input, opts, context) do
+    result = apply(module, :atomic, [changeset_query_or_input, opts, context])
+
+    if valid_atomic_result?(result) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.atomic/3.
+
+        The callback #{inspect(__MODULE__)}.atomic/3 expects one of the following return types:
+
+          :ok
+          {:atomic, involved_fields, condition_expr, error_expr}
+          [list of {:atomic, involved_fields, condition_expr, error_expr}]
+          {:not_atomic, String.t()}
+          {:error, term()}
+        """
+    end
+  end
+
+  defp valid_atomic_result?(:ok), do: true
+  defp valid_atomic_result?({:atomic, _, _, _}), do: true
+  defp valid_atomic_result?({:not_atomic, _}), do: true
+  defp valid_atomic_result?({:error, _}), do: true
+
+  defp valid_atomic_result?(list) when is_list(list) do
+    Enum.all?(list, &match?({:atomic, _, _, _}, &1))
+  end
+
+  defp valid_atomic_result?(_), do: false
 
   def opt_schema, do: @schema
   def action_schema, do: @action_schema

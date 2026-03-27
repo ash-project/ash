@@ -81,7 +81,7 @@ defmodule Ash.Actions.Helpers do
                     changeset
                   )
 
-                if mod.batch_callbacks?([changeset], change_opts, context) do
+                if Ash.Resource.Change.batch_callbacks?(mod, [changeset], change_opts, context) do
                   [%{change | change: {mod, change_opts}}]
                 else
                   []
@@ -97,7 +97,12 @@ defmodule Ash.Actions.Helpers do
             changeset =
               if mod.has_after_batch?() do
                 Ash.Changeset.after_action(changeset, fn changeset, result ->
-                  case mod.after_batch([{changeset, result}], change_opts, context) do
+                  case Ash.Resource.Change.after_batch(
+                         mod,
+                         [{changeset, result}],
+                         change_opts,
+                         context
+                       ) do
                     :ok ->
                       {:ok, result}
 
@@ -128,7 +133,7 @@ defmodule Ash.Actions.Helpers do
 
             if mod.has_before_batch?() do
               Ash.Changeset.before_action(changeset, fn changeset ->
-                mod.before_batch([changeset], change_opts, context)
+                Ash.Resource.Change.before_batch(mod, [changeset], change_opts, context)
                 |> Enum.reduce(
                   {changeset, []},
                   fn

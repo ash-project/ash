@@ -14,6 +14,7 @@ jobs:
   test-subprojects:
     runs-on: ubuntu-latest
     name: Subproject ${{matrix.project.org}}/${{matrix.project.name}} - OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+    if: ${{ github.repository == 'ash-project/ash' || matrix.project.name != 'ash_oban' }}
     strategy:
       fail-fast: false
       matrix:

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Error.Forbidden.Policy do
+  @dialyzer {:nowarn_function, describe: 5}
   @moduledoc "Raised when policy authorization for an action fails"
 
   require Logger
@@ -491,35 +492,53 @@ defmodule Ash.Error.Forbidden.Policy do
   end
 
   defp describe(mod, opts, resource, actor, subject) do
-    description = mod.describe(opts)
+    description = Ash.Policy.Check.describe(mod, opts)
 
     if subject && function_exported?(mod, :expand_description, 3) do
       authorizer =
-        %Ash.Policy.Authorizer{
-          subject: subject,
-          actor: actor,
-          resource: resource
-        }
-
-      key =
         case subject do
-          %Ash.Changeset{} -> :changeset
-          %Ash.Query{} -> :query
-          %Ash.ActionInput{} -> :action_input
+          %Ash.Changeset{} = subject ->
+            %Ash.Policy.Authorizer{
+              subject: subject,
+              actor: actor,
+              resource: resource
+            }
+            |> Map.put(:changeset, subject)
+
+          %Ash.Query{} = subject ->
+            %Ash.Policy.Authorizer{
+              subject: subject,
+              actor: actor,
+              resource: resource
+            }
+            |> Map.put(:query, subject)
+
+          %Ash.ActionInput{} = subject ->
+            %Ash.Policy.Authorizer{
+              subject: subject,
+              actor: actor,
+              resource: resource
+            }
+            |> Map.put(:action_input, subject)
+
+          _ ->
+            nil
         end
 
-      authorizer = Map.put(authorizer, key, subject)
+      if authorizer do
+        case Ash.Policy.Check.expand_description(mod, actor, authorizer, opts) do
+          {:ok, desc} ->
+            if Ash.Policy.Check.prefer_expanded_description?(mod) do
+              desc
+            else
+              description <> " | #{desc}"
+            end
 
-      case mod.expand_description(actor, authorizer, opts) do
-        {:ok, desc} ->
-          if mod.prefer_expanded_description?() do
-            desc
-          else
-            description <> " | #{desc}"
-          end
-
-        _ ->
-          description
+          _ ->
+            description
+        end
+      else
+        description
       end
     else
       description

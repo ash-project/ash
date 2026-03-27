@@ -264,9 +264,13 @@ defmodule Ash.Query.Calculation do
 
     def inspect(%{module: module, opts: calculation_opts, context: context}, _opts) do
       if context.arguments == %{} do
-        module.describe(calculation_opts)
+        Ash.Resource.Calculation.describe(module, calculation_opts)
       else
-        concat([module.describe(calculation_opts), " - ", inspect(context.arguments)])
+        concat([
+          Ash.Resource.Calculation.describe(module, calculation_opts),
+          " - ",
+          inspect(context.arguments)
+        ])
       end
     end
   end

@@ -11,6 +11,8 @@ defmodule Ash.Authorizer do
 
   Then you can extend a resource with `authorizers: [YourAuthorizer]`
   """
+  require Ash.BehaviourHelpers
+
   @type state :: map
   @type context :: map
   @callback initial_state(
@@ -49,67 +51,194 @@ defmodule Ash.Authorizer do
     end
   end
 
+  @doc false
+  @spec initial_state(
+          module(),
+          Ash.Resource.record(),
+          Ash.Resource.t(),
+          Ash.Resource.Actions.action(),
+          Ash.Domain.t()
+        ) :: state
   def initial_state(module, actor, resource, action, domain) do
-    module.initial_state(actor, resource, action, domain)
+    result = apply(module, :initial_state, [actor, resource, action, domain])
+
+    if is_map(result) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.initial_state/4.
+
+        The callback #{inspect(__MODULE__)}.initial_state/4 expects a map (state).
+        """
+    end
   end
 
+  @doc false
+  @spec exception(module(), atom(), state()) :: no_return
   def exception(module, reason, state) do
     if function_exported?(module, :exception, 2) do
-      module.exception(reason, state)
+      apply(module, :exception, [reason, state])
     else
       if reason == :must_pass_strict_check do
-        Ash.Error.Forbidden.MustPassStrictCheck.exception([])
+        raise Ash.Error.Forbidden.MustPassStrictCheck.exception([])
       else
-        Ash.Error.Forbidden.exception([])
+        raise Ash.Error.Forbidden.exception([])
       end
     end
   end
 
+  @doc false
+  @spec strict_check_context(module(), state()) :: [atom()]
   def strict_check_context(module, state) do
-    Enum.uniq(module.strict_check_context(state) ++ [:query, :changeset])
+    result = apply(module, :strict_check_context, [state])
+
+    if is_list(result) and Enum.all?(result, &is_atom/1) do
+      Enum.uniq(result ++ [:query, :changeset])
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.strict_check_context/1.
+
+        The callback #{inspect(__MODULE__)}.strict_check_context/1 expects a list of atoms.
+        """
+    end
   end
 
+  @doc false
+  @spec strict_check(module(), state(), context()) ::
+          {:authorized, state()}
+          | {:continue, state()}
+          | {:filter, Keyword.t()}
+          | {:filter, Keyword.t(), state()}
+          | {:filter_and_continue, Keyword.t(), state()}
+          | {:error, term()}
   def strict_check(module, state, context) do
-    module.strict_check(state, context)
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :strict_check,
+      [state, context],
+      [
+        {:authorized, :_},
+        {:continue, :_},
+        {:filter, :_},
+        {:filter, :_, :_},
+        {:filter_and_continue, :_, :_},
+        {:error, :_}
+      ],
+      behaviour: __MODULE__,
+      callback_name: "strict_check/2"
+    )
   end
 
+  @doc false
+  @spec add_calculations(module(), Ash.Query.t() | Ash.Changeset.t(), state(), context()) ::
+          {:ok, Ash.Query.t() | Ash.Changeset.t(), state()} | {:error, Ash.Error.t()}
   def add_calculations(module, query_or_changeset, state, context) do
     if function_exported?(module, :add_calculations, 3) do
-      module.add_calculations(query_or_changeset, state, context)
+      Ash.BehaviourHelpers.call_and_validate_return(
+        module,
+        :add_calculations,
+        [query_or_changeset, state, context],
+        [{:ok, :_, :_}, {:error, :_}],
+        behaviour: __MODULE__,
+        callback_name: "add_calculations/3"
+      )
     else
       {:ok, query_or_changeset, state}
     end
   end
 
+  @doc false
+  @spec alter_results(module(), state(), [Ash.Resource.record()], context()) ::
+          {:ok, [Ash.Resource.record()]} | {:error, Ash.Error.t()}
   def alter_results(module, state, records, context) do
     if function_exported?(module, :alter_results, 3) do
-      module.alter_results(state, records, context)
+      Ash.BehaviourHelpers.call_and_validate_return(
+        module,
+        :alter_results,
+        [state, records, context],
+        [{:ok, :_}, {:error, :_}],
+        behaviour: __MODULE__,
+        callback_name: "alter_results/3"
+      )
     else
       {:ok, records}
     end
   end
 
+  @doc false
+  @spec alter_filter(module(), state(), Ash.Filter.t(), context()) ::
+          {:ok, Ash.Filter.t()} | {:error, Ash.Error.t()}
   def alter_filter(module, state, filter, context) do
     if function_exported?(module, :alter_filter, 3) do
-      module.alter_filter(filter, state, context)
+      Ash.BehaviourHelpers.call_and_validate_return(
+        module,
+        :alter_filter,
+        [filter, state, context],
+        [{:ok, :_}, {:error, :_}],
+        behaviour: __MODULE__,
+        callback_name: "alter_filter/3"
+      )
     else
       {:ok, filter}
     end
   end
 
+  @doc false
+  @spec alter_sort(module(), state(), term(), context()) ::
+          {:ok, term()} | {:error, Ash.Error.t()}
   def alter_sort(module, state, sort, context) do
     if function_exported?(module, :alter_sort, 3) do
-      module.alter_sort(sort, state, context)
+      Ash.BehaviourHelpers.call_and_validate_return(
+        module,
+        :alter_sort,
+        [sort, state, context],
+        [{:ok, :_}, {:error, :_}],
+        behaviour: __MODULE__,
+        callback_name: "alter_sort/3"
+      )
     else
       {:ok, sort}
     end
   end
 
+  @doc false
+  @spec check_context(module(), state()) :: [atom()]
   def check_context(module, state) do
-    module.check_context(state)
+    result = apply(module, :check_context, [state])
+
+    if is_list(result) and Enum.all?(result, &is_atom/1) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.check_context/1.
+
+        The callback #{inspect(__MODULE__)}.check_context/1 expects a list of atoms.
+        """
+    end
   end
 
+  @doc false
+  @spec check(module(), state(), context()) ::
+          :authorized
+          | {:data, [Ash.Resource.record()]}
+          | {:error, :forbidden, state()}
+          | {:error, Ash.Error.t()}
   def check(module, state, context) do
-    module.check(state, context)
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :check,
+      [state, context],
+      [
+        :authorized,
+        {:data, :_},
+        {:error, :forbidden, :_},
+        {:error, :_}
+      ],
+      behaviour: __MODULE__,
+      callback_name: "check/2"
+    )
   end
 end

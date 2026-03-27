@@ -21,13 +21,26 @@ defmodule Ash.Resource.Actions.Implementation do
 
   require Ash.BehaviourHelpers
 
+  @doc false
+  @spec run(
+          module(),
+          Ash.ActionInput.t(),
+          Keyword.t(),
+          Ash.Resource.Actions.Implementation.Context.t()
+        ) ::
+          :ok
+          | {:ok, term()}
+          | {:ok, term(), [Ash.Notifier.Notification.t()]}
+          | {:error, term()}
   def run(module, action_input, opts, context) do
-    Ash.BehaviourHelpers.check_type!(module, module.run(action_input, opts, context), [
-      :ok,
-      {:ok, _},
-      {:ok, _, list} when is_list(list),
-      {:error, _}
-    ])
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :run,
+      [action_input, opts, context],
+      [:ok, {:ok, :_}, {:ok, :_, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "run/3"
+    )
   end
 
   defmodule Context do

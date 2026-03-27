@@ -508,26 +508,30 @@ defmodule Ash.Actions.Update do
                     else
                       changeset
                       |> Ash.Changeset.set_defaults(:update, true)
-                      |> mod.update(
-                        action_opts,
-                        %Ash.Resource.ManualUpdate.Context{
-                          select: changeset.select,
-                          actor: opts[:actor],
-                          source_context: changeset.context,
-                          tenant: changeset.tenant,
-                          authorize?: opts[:authorize?],
-                          domain: changeset.domain
-                        }
-                      )
-                      |> validate_manual_action_return_result!(
-                        changeset.resource,
-                        changeset.action
+                      |> then(fn cs ->
+                        Ash.Resource.ManualUpdate.update(
+                          mod,
+                          cs,
+                          action_opts,
+                          %Ash.Resource.ManualUpdate.Context{
+                            select: changeset.select,
+                            actor: opts[:actor],
+                            source_context: changeset.context,
+                            tenant: changeset.tenant,
+                            authorize?: opts[:authorize?],
+                            domain: changeset.domain
+                          }
+                        )
+                        |> validate_manual_action_return_result!(
+                          changeset.resource,
+                          changeset.action
+                        )
+                      end)
+                      |> manage_relationships(domain, changeset,
+                        actor: opts[:actor],
+                        authorize?: opts[:authorize?]
                       )
                     end
-                    |> manage_relationships(domain, changeset,
-                      actor: opts[:actor],
-                      authorize?: opts[:authorize?]
-                    )
                   else
                     cond do
                       result = changeset.context[:private][:action_result] ->
@@ -698,11 +702,10 @@ defmodule Ash.Actions.Update do
   end
 
   defp validate_manual_action_return_result!(
-         {:ok, %resource{}, notifications} = result,
+         {:ok, %resource{}, %{notifications: _notifications}} = result,
          resource,
          _
-       )
-       when is_list(notifications) do
+       ) do
     result
   end
 

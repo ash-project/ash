@@ -74,6 +74,28 @@ defmodule Ash.CustomExpression do
             ) ::
               {:ok, Ash.Expr.t()} | :unknown
 
+  @doc false
+  @spec expression(module(), module(), list()) :: {:ok, Ash.Expr.t()} | :unknown
+  def expression(module, data_layer, arguments) do
+    result = apply(module, :expression, [data_layer, arguments])
+
+    case result do
+      {:ok, _} ->
+        result
+
+      :unknown ->
+        result
+
+      _ ->
+        raise Ash.Error.Framework.InvalidReturnType,
+          message: """
+          Invalid value returned from #{inspect(module)}.expression/2.
+
+          The callback #{inspect(__MODULE__)}.expression/2 expects {:ok, Ash.Expr.t()} or :unknown.
+          """
+    end
+  end
+
   @callback name() :: atom
 
   @callback arguments() :: list(list(Ash.Type.t() | {Ash.Type.t(), Keyword.t()}))

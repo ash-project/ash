@@ -1020,7 +1020,7 @@ defmodule Ash.Changeset do
     resource
     |> Ash.Resource.Info.notifiers()
     |> Enum.filter(fn notifier ->
-      notifier.requires_original_data?(resource, action)
+      Ash.Notifier.requires_original_data?(notifier, resource, action)
     end)
     |> case do
       [] ->
@@ -1103,7 +1103,7 @@ defmodule Ash.Changeset do
           changeset
         )
 
-      {:ok, opts} = module.init(opts)
+      {:ok, opts} = Ash.Resource.Validation.init(module, opts)
 
       case Ash.Resource.Validation.validate(
              module,
@@ -1157,10 +1157,11 @@ defmodule Ash.Changeset do
          context,
          where_condition \\ nil
        ) do
-    case module.init(validation_opts) do
+    case Ash.Resource.Validation.init(module, validation_opts) do
       {:ok, validation_opts} ->
         case List.wrap(
-               module.atomic(
+               Ash.Resource.Validation.atomic(
+                 module,
                  changeset,
                  validation_opts,
                  struct(Ash.Resource.Validation.Context, Map.put(context, :message, message))
@@ -1228,13 +1229,18 @@ defmodule Ash.Changeset do
         changeset: changeset
       )
 
-    with {:ok, change_opts} <- module.init(change_opts),
+    with {:ok, change_opts} <- Ash.Resource.Change.init(module, change_opts),
          {:atomic, condition} <-
            atomic_condition(where, changeset, context),
          {{:atomic, modified_changeset?, new_changeset, atomic_changes, validations,
            create_atomics}, condition} <-
            {atomic_with_changeset(
-              module.atomic(changeset, change_opts, struct(Ash.Resource.Change.Context, context)),
+              Ash.Resource.Change.atomic(
+                module,
+                changeset,
+                change_opts,
+                struct(Ash.Resource.Change.Context, context)
+              ),
               changeset
             ), condition} do
       case condition do
@@ -1656,7 +1662,8 @@ defmodule Ash.Changeset do
 
     Enum.reduce_while(where, {:atomic, true}, fn {module, validation_opts},
                                                  {:atomic, condition_expr} ->
-      case module.atomic(
+      case Ash.Resource.Validation.atomic(
+             module,
              changeset,
              validation_opts,
              struct(Ash.Resource.Validation.Context, context_map)
@@ -3672,7 +3679,7 @@ defmodule Ash.Changeset do
                   change: inspect(module)
                 }
               end do
-                {:ok, opts} = module.init(opts)
+                {:ok, opts} = Ash.Resource.Change.init(module, opts)
 
                 Ash.Tracer.set_metadata(tracer, :change, metadata)
 
@@ -4276,7 +4283,7 @@ defmodule Ash.Changeset do
              changeset: changeset
            )
 
-         case module.init(opts) do
+         case Ash.Resource.Validation.init(module, opts) do
            {:ok, opts} ->
              Ash.Resource.Validation.validate(
                module,
@@ -4309,7 +4316,7 @@ defmodule Ash.Changeset do
               changeset: changeset
             )
 
-          case validation.module.init(opts) do
+          case Ash.Resource.Validation.init(validation.module, opts) do
             {:error, error} ->
               Ash.Changeset.add_error(changeset, error)
 

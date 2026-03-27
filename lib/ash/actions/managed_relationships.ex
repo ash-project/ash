@@ -977,28 +977,30 @@ defmodule Ash.Actions.ManagedRelationships do
              opts,
              notifications
            ),
-         creates <- additional_creates ++ creates,
-         # Batch creates
+         # Apply updates before batch-creating new related records. This preserves
+         # the relative ordering of already-present vs newly-created items for
+         # relationship lists backed by order-sensitive data layers (e.g. ETS).
          {:ok, new_value, notifications} <-
-           batch_creates(
-             creates,
+           process_updates(
+             updates,
              record,
              new_value,
              relationship,
              changeset,
              actor,
-             index,
+             pkeys,
              opts,
              notifications
            ) do
-      process_updates(
-        updates,
+      # Batch creates
+      batch_creates(
+        additional_creates ++ creates,
         record,
         new_value,
         relationship,
         changeset,
         actor,
-        pkeys,
+        index,
         opts,
         notifications
       )
@@ -1421,6 +1423,9 @@ defmodule Ash.Actions.ManagedRelationships do
       Enum.map(map_inputs_with_joins, fn {{input, join_params}, {_, input_index}} ->
         {input, join_params, input_index}
       end)
+
+    input_indices_to_bulk_create =
+      Enum.map(inputs_to_bulk_create, fn {_, _, input_index} -> input_index end)
 
     if inputs_to_bulk_create == [] do
       # Only struct inputs - just create join records
