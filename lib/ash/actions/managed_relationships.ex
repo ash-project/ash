@@ -1342,10 +1342,11 @@ defmodule Ash.Actions.ManagedRelationships do
         error = List.first(List.wrap(errors))
 
         if error do
+          {_, input_index} = List.first(to_create)
+
           error =
             error
-            |> add_bread_crumb(relationship, :create)
-            |> Ash.Error.set_path(opts[:error_path] || [opts[:meta][:id] || relationship.name])
+            |> set_error_path(relationship, input_index, opts)
 
           {:error, error}
         else
@@ -1505,10 +1506,11 @@ defmodule Ash.Actions.ManagedRelationships do
           error = List.first(List.wrap(errors))
 
           if error do
+            input_index = List.first(input_indices_to_bulk_create)
+
             error =
               error
-              |> add_bread_crumb(relationship, :create)
-              |> Ash.Error.set_path(opts[:error_path] || [opts[:meta][:id] || relationship.name])
+              |> set_error_path(relationship, input_index, opts)
 
             {:error, error}
           else
