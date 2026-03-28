@@ -472,6 +472,20 @@ defmodule Ash.Resource.Info do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :template, nil)
   end
 
+  @doc "Returns all pipelines of a resource"
+  @spec pipelines(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Pipeline.t())
+  def pipelines(resource) do
+    Extension.get_entities(resource, [:pipelines])
+  end
+
+  @doc "Get a pipeline by name"
+  @spec pipeline(Spark.Dsl.t() | Ash.Resource.t(), atom) :: Ash.Resource.Pipeline.t() | nil
+  def pipeline(resource, name) do
+    resource
+    |> pipelines()
+    |> Enum.find(&(&1.name == name))
+  end
+
   @doc "Returns all calculations of a resource"
   @spec calculations(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Calculation.t())
   def calculations(resource) do
