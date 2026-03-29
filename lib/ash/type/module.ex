@@ -102,16 +102,6 @@ defmodule Ash.Type.Module do
 
   def cast_input("", _), do: {:ok, nil}
 
-  def cast_input("Elixir." <> _ = value, _) do
-    module = Module.concat([value])
-
-    if Code.ensure_loaded?(module) do
-      {:ok, module}
-    else
-      :error
-    end
-  end
-
   def cast_input(value, _) when is_binary(value) do
     atom = String.to_existing_atom(value)
 
