@@ -8,6 +8,25 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.22.0](https://github.com/ash-project/ash/compare/v3.21.3...v3.22.0) (2026-03-29)
+
+
+
+
+### Features:
+
+* add batch_validate callback to Ash.Resource.Validation (#2650) by [@RylandBangerter85](https://github.com/RylandBangerter85)
+
+### Bug Fixes:
+
+* remove `Module.concat` from `Ash.Type.Module.cast_input/2` by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle nil return from generic actions with load option and enforce allow_nil? (#2649) by [@barnabasJ](https://github.com/barnabasJ) [(#2649)](https://github.com/ash-project/ash/pull/2649)
+
+### Improvements:
+
+* validate many callback returns (#2645) by celeste-wahlquist [(#2645)](https://github.com/ash-project/ash/pull/2645)
+
 ## [v3.21.3](https://github.com/ash-project/ash/compare/v3.21.2...v3.21.3) (2026-03-25)
 
 
