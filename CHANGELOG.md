@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.22.1](https://github.com/ash-project/ash/compare/v3.22.0...v3.22.1) (2026-03-29)
+
+
+
+
+### Bug Fixes:
+
+* just to be extra-safe also prevent when loading modules by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.22.0](https://github.com/ash-project/ash/compare/v3.21.3...v3.22.0) (2026-03-29)
 
 
