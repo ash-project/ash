@@ -21,7 +21,7 @@ defmodule Ash.Resource.Pipeline do
   @type t :: %__MODULE__{
           name: atom(),
           description: String.t() | nil,
-          accept: list(atom()),
+          accept: list(atom()) | :*,
           arguments: list(),
           changes: list(),
           validations: list(),

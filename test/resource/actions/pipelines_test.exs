@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs/contributors>
+#
+# SPDX-License-Identifier: MIT
+
 defmodule Ash.Test.Resource.Actions.PipelinesTest do
   @moduledoc false
   use ExUnit.Case, async: true
@@ -277,6 +281,54 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
         end
       end
     end
+
+    test "multiple pipelines with same arg name but different types — raises error" do
+      assert_raise Spark.Error.DslError, ~r/conflicting types/, fn ->
+        defresource PipelineArgConflict do
+          pipelines do
+            pipeline :a do
+              argument :reason, :string
+            end
+
+            pipeline :b do
+              argument :reason, :integer
+            end
+          end
+
+          actions do
+            create :conflict do
+              pipe_through [:a, :b]
+              accept [:name]
+            end
+          end
+        end
+      end
+    end
+
+    test "multiple pipelines with same arg name and same type — deduplicated" do
+      defresource PipelineArgDedup do
+        pipelines do
+          pipeline :a do
+            argument :reason, :string
+          end
+
+          pipeline :b do
+            argument :reason, :string
+          end
+        end
+
+        actions do
+          create :dedup do
+            pipe_through [:a, :b]
+            accept [:name]
+          end
+        end
+      end
+
+      action = Info.action(PipelineArgDedup, :dedup)
+      reason_args = Enum.filter(action.arguments, &(&1.name == :reason))
+      assert length(reason_args) == 1
+    end
   end
 
   describe "accept merge edge cases" do
@@ -320,6 +372,28 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
 
       action = Info.action(AcceptNil, :no_accept)
       assert action.accept == [:state]
+    end
+
+    test "pipeline accept :* sets action accept to :*" do
+      defresource PipelineAcceptStar do
+        pipelines do
+          pipeline :p do
+            accept :*
+          end
+        end
+
+        actions do
+          create :star do
+            pipe_through [:p]
+          end
+        end
+      end
+
+      action = Info.action(PipelineAcceptStar, :star)
+      # :* from pipeline is passed through, then DefaultAccept expands it
+      assert :name in action.accept
+      assert :score in action.accept
+      assert :state in action.accept
     end
 
     test "accept is deduplicated" do

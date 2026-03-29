@@ -75,12 +75,14 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
     end)
     |> case do
       {:ok, {entities, arguments, accept}} ->
+        merged_accept = merge_pipeline_accepts(accept)
+
         {:ok,
          apply_to_action(
            action,
            entities |> Enum.reverse() |> Enum.concat(),
            arguments |> Enum.reverse() |> Enum.concat(),
-           accept |> Enum.reverse() |> Enum.concat(),
+           merged_accept,
            dsl_state
          )}
 
@@ -104,17 +106,46 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
   defp merge_arguments(action, [], _dsl_state), do: action
 
   defp merge_arguments(action, pipeline_arguments, dsl_state) do
+    # Dedup pipeline arguments (multiple pipelines may define the same arg)
+    {deduped_pipeline_args, pipeline_conflicts} =
+      Enum.reduce(pipeline_arguments, {%{}, []}, fn arg, {seen, conflicts} ->
+        case Map.fetch(seen, arg.name) do
+          :error ->
+            {Map.put(seen, arg.name, arg), conflicts}
+
+          {:ok, existing} ->
+            if existing.type == arg.type do
+              # same type from different pipelines — keep first
+              {seen, conflicts}
+            else
+              {seen, [{arg.name, existing.type, arg.type} | conflicts]}
+            end
+        end
+      end)
+
+    if pipeline_conflicts != [] do
+      conflict_details =
+        Enum.map_join(pipeline_conflicts, ", ", fn {name, type1, type2} ->
+          "`#{name}` (#{inspect(type1)} vs #{inspect(type2)})"
+        end)
+
+      raise DslError,
+        module: Transformer.get_persisted(dsl_state, :module),
+        path: [:actions, action.type, action.name],
+        message: "Pipelines define argument(s) with conflicting types: #{conflict_details}"
+    end
+
+    # Check pipeline args against action args
     action_args_by_name = Map.new(action.arguments, &{&1.name, &1})
 
-    {new_args, conflicts} =
-      Enum.reduce(pipeline_arguments, {[], []}, fn pipeline_arg, {keep, conflicts} ->
+    {new_args, action_conflicts} =
+      Enum.reduce(deduped_pipeline_args, {[], []}, fn {_name, pipeline_arg}, {keep, conflicts} ->
         case Map.fetch(action_args_by_name, pipeline_arg.name) do
           :error ->
             {[pipeline_arg | keep], conflicts}
 
           {:ok, action_arg} ->
             if action_arg.type == pipeline_arg.type do
-              # same type — action's version wins, skip pipeline's
               {keep, conflicts}
             else
               {keep, [pipeline_arg | conflicts]}
@@ -122,10 +153,11 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
         end
       end)
 
-    if conflicts != [] do
+    if action_conflicts != [] do
       conflict_details =
-        Enum.map_join(conflicts, ", ", fn arg ->
+        Enum.map_join(action_conflicts, ", ", fn arg ->
           action_arg = action_args_by_name[arg.name]
+
           "`#{arg.name}` (pipeline: #{inspect(arg.type)}, action: #{inspect(action_arg.type)})"
         end)
 
@@ -139,9 +171,18 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
     Map.update!(action, :arguments, &(Enum.reverse(new_args) ++ &1))
   end
 
-  defp merge_accept(action, []), do: action
+  defp merge_pipeline_accepts(accept_lists) do
+    if Enum.any?(accept_lists, &(&1 == :*)) do
+      :*
+    else
+      accept_lists |> Enum.reverse() |> Enum.concat() |> Enum.uniq()
+    end
+  end
 
-  defp merge_accept(action, accept) do
+  defp merge_accept(action, []), do: action
+  defp merge_accept(action, :*), do: Map.put(action, :accept, :*)
+
+  defp merge_accept(action, accept) when is_list(accept) do
     case Map.get(action, :accept) do
       nil ->
         Map.put(action, :accept, accept)
