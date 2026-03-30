@@ -844,9 +844,9 @@ multiple actions of each type in a large application.
 ### Nested DSLs
  * [action](#actions-action)
    * argument
-   * pipe_through
    * prepare
    * validate
+   * pipe_through
  * [create](#actions-create)
    * change
    * validate
@@ -855,9 +855,9 @@ multiple actions of each type in a large application.
    * metadata
  * [read](#actions-read)
    * argument
-   * pipe_through
    * prepare
    * validate
+   * pipe_through
    * pagination
    * metadata
    * filter
@@ -931,9 +931,9 @@ For calling this action, see the `Ash.Domain` documentation.
 
 ### Nested DSLs
  * [argument](#actions-action-argument)
- * [pipe_through](#actions-action-pipe_through)
  * [prepare](#actions-action-prepare)
  * [validate](#actions-action-validate)
+ * [pipe_through](#actions-action-pipe_through)
 
 
 ### Examples
@@ -1014,50 +1014,6 @@ argument :password_confirmation, :string
 ### Introspection
 
 Target: `Ash.Resource.Actions.Argument`
-
-### actions.action.pipe_through
-```elixir
-pipe_through names
-```
-
-
-References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
-
-
-
-
-### Examples
-```
-pipe_through [:change_state]
-
-```
-
-```
-pipe_through [:change_state], where: expr(^actor(:role) == :super_user)
-
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#actions-action-pipe_through-names){: #actions-action-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`where`](#actions-action-pipe_through-where){: #actions-action-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Actions.PipeThrough`
 
 ### actions.action.prepare
 ```elixir
@@ -1145,6 +1101,50 @@ validate present([:first_name, :last_name], at_least: 1)
 ### Introspection
 
 Target: `Ash.Resource.Validation`
+
+### actions.action.pipe_through
+```elixir
+pipe_through names
+```
+
+
+References one or more pipelines to apply to this action.
+Pipeline entities are prepended before the action's own changes/preparations.
+
+
+
+
+### Examples
+```
+pipe_through [:change_state]
+
+```
+
+```
+pipe_through [:change_state], where: expr(^actor(:role) == :super_user)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#actions-action-pipe_through-names){: #actions-action-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#actions-action-pipe_through-where){: #actions-action-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.PipeThrough`
 
 
 
@@ -1456,9 +1456,9 @@ Declares a `read` action. For calling this action, see the `Ash.Domain` document
 
 ### Nested DSLs
  * [argument](#actions-read-argument)
- * [pipe_through](#actions-read-pipe_through)
  * [prepare](#actions-read-prepare)
  * [validate](#actions-read-validate)
+ * [pipe_through](#actions-read-pipe_through)
  * [pagination](#actions-read-pagination)
  * [metadata](#actions-read-metadata)
  * [filter](#actions-read-filter)
@@ -1540,50 +1540,6 @@ argument :password_confirmation, :string
 ### Introspection
 
 Target: `Ash.Resource.Actions.Argument`
-
-### actions.read.pipe_through
-```elixir
-pipe_through names
-```
-
-
-References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
-
-
-
-
-### Examples
-```
-pipe_through [:change_state]
-
-```
-
-```
-pipe_through [:change_state], where: expr(^actor(:role) == :super_user)
-
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#actions-read-pipe_through-names){: #actions-read-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`where`](#actions-read-pipe_through-where){: #actions-read-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Actions.PipeThrough`
 
 ### actions.read.prepare
 ```elixir
@@ -1671,6 +1627,50 @@ validate present([:first_name, :last_name], at_least: 1)
 ### Introspection
 
 Target: `Ash.Resource.Validation`
+
+### actions.read.pipe_through
+```elixir
+pipe_through names
+```
+
+
+References one or more pipelines to apply to this action.
+Pipeline entities are prepended before the action's own changes/preparations.
+
+
+
+
+### Examples
+```
+pipe_through [:change_state]
+
+```
+
+```
+pipe_through [:change_state], where: expr(^actor(:role) == :super_user)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#actions-read-pipe_through-names){: #actions-read-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#actions-read-pipe_through-where){: #actions-read-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.PipeThrough`
 
 ### actions.read.pagination
 

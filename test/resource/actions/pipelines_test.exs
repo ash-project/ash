@@ -160,6 +160,39 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
     end
   end
 
+  describe "pipe_through placement ordering" do
+    test "preserves declaration order — change, pipe_through, change" do
+      defresource PlacementBetween do
+        pipelines do
+          pipeline :p do
+            change set_attribute(:score, 1)
+          end
+        end
+
+        actions do
+          create :ordered do
+            accept [:name]
+            change set_attribute(:state, :before)
+            pipe_through [:p]
+            change set_attribute(:name, "after")
+          end
+        end
+      end
+
+      action = Info.action(PlacementBetween, :ordered)
+      [first, second, third] = action.changes
+
+      assert first.change ==
+               {Ash.Resource.Change.SetAttribute, value: :before, attribute: :state}
+
+      assert second.change ==
+               {Ash.Resource.Change.SetAttribute, value: 1, attribute: :score}
+
+      assert third.change ==
+               {Ash.Resource.Change.SetAttribute, value: "after", attribute: :name}
+    end
+  end
+
   describe "multiple pipe_through declarations" do
     test "each declaration's entities are appended in order with separate where" do
       defresource MultiPipeThrough do

@@ -560,9 +560,7 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate
-      ],
-      pipe_through: [
+        @action_validate,
         @pipe_through
       ],
       arguments: [
@@ -622,9 +620,6 @@ defmodule Ash.Resource.Dsl do
       arguments: [
         @action_argument
       ],
-      pipe_through: [
-        @pipe_through
-      ],
       preparations: [
         @prepare,
         %{
@@ -633,7 +628,8 @@ defmodule Ash.Resource.Dsl do
               @validate.schema
               |> Keyword.delete(:always_atomic?)
               |> Keyword.delete(:on)
-        }
+        },
+        @pipe_through
       ]
     ],
     args: [:name, {:optional, :returns}]
@@ -674,9 +670,6 @@ defmodule Ash.Resource.Dsl do
       arguments: [
         @action_argument
       ],
-      pipe_through: [
-        @pipe_through
-      ],
       preparations: [
         @prepare,
         %{
@@ -685,7 +678,8 @@ defmodule Ash.Resource.Dsl do
               @validate.schema
               |> Keyword.delete(:always_atomic?)
               |> Keyword.delete(:on)
-        }
+        },
+        @pipe_through
       ],
       pagination: [
         @pagination
@@ -716,9 +710,7 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate
-      ],
-      pipe_through: [
+        @action_validate,
         @pipe_through
       ],
       metadata: [
@@ -764,9 +756,7 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate
-      ],
-      pipe_through: [
+        @action_validate,
         @pipe_through
       ],
       metadata: [

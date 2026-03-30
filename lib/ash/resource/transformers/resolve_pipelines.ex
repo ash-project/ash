@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Resource.Transformers.ResolvePipelines do
-  @moduledoc "Resolves `pipe_through` on actions by injecting pipeline changes/preparations."
+  @moduledoc "Resolves `pipe_through` on actions by replacing PipeThrough entities with pipeline contents in-place."
   use Spark.Dsl.Transformer
 
+  alias Ash.Resource.Actions.PipeThrough
   alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
 
@@ -23,90 +24,80 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
 
     dsl_state
     |> Transformer.get_entities([:actions])
-    |> Enum.filter(&(&1.pipe_through != []))
     |> Enum.reduce_while({:ok, dsl_state}, fn action, {:ok, dsl_state} ->
-      case resolve_pipe_through(action, pipelines, dsl_state) do
-        {:ok, updated_action} ->
-          new_state =
-            Transformer.replace_entity(
-              dsl_state,
-              [:actions],
-              updated_action,
-              &(&1.name == action.name && &1.type == action.type)
-            )
+      field = entity_field(action.type)
+      entities = Map.get(action, field, [])
 
-          {:cont, {:ok, new_state}}
+      if Enum.any?(entities, &match?(%PipeThrough{}, &1)) do
+        updated_action = resolve_action(action, field, entities, pipelines, dsl_state)
 
-        {:error, error} ->
-          {:halt, {:error, error}}
+        new_state =
+          Transformer.replace_entity(
+            dsl_state,
+            [:actions],
+            updated_action,
+            &(&1.name == action.name && &1.type == action.type)
+          )
+
+        {:cont, {:ok, new_state}}
+      else
+        {:cont, {:ok, dsl_state}}
       end
     end)
   end
 
-  defp resolve_pipe_through(action, pipelines, dsl_state) do
-    # Flatten all pipe_through declarations into {name, where_conditions} pairs
-    pairs =
-      Enum.flat_map(action.pipe_through, fn %{names: names, where: where} ->
-        Enum.map(names, &{&1, where})
+  defp resolve_action(action, field, entities, pipelines, dsl_state) do
+    {expanded, arguments, accept} =
+      Enum.reduce(entities, {[], [], []}, fn
+        %PipeThrough{names: names, where: where}, {expanded, arguments, accept} ->
+          {new_entities, new_arguments, new_accept} =
+            expand_pipe_through(names, where, action, pipelines, dsl_state)
+
+          {expanded ++ new_entities, arguments ++ new_arguments, accept ++ new_accept}
+
+        entity, {expanded, arguments, accept} ->
+          {expanded ++ [entity], arguments, accept}
       end)
 
-    pairs
-    |> Enum.reduce_while({:ok, {[], [], []}}, fn {name, where},
-                                                 {:ok, {entities, arguments, accept}} ->
+    action
+    |> Map.put(field, expanded)
+    |> merge_arguments(arguments, dsl_state)
+    |> merge_accept(merge_pipeline_accepts(accept))
+  end
+
+  defp expand_pipe_through(names, where, action, pipelines, dsl_state) do
+    Enum.reduce(names, {[], [], []}, fn name, {entities, arguments, accept} ->
       case Map.fetch(pipelines, name) do
         {:ok, pipeline} ->
-          new_entities = collect_entities(action.type, pipeline, where, dsl_state)
+          pipeline_entities = collect_entities(action.type, pipeline, where, dsl_state)
 
-          {:cont,
-           {:ok,
-            {[new_entities | entities], [pipeline.arguments | arguments],
-             [pipeline.accept | accept]}}}
+          {entities ++ pipeline_entities, arguments ++ pipeline.arguments,
+           accept ++ List.wrap(if pipeline.accept == :*, do: [:*], else: pipeline.accept)}
 
         :error ->
-          {:halt,
-           {:error,
-            DslError.exception(
-              module: Transformer.get_persisted(dsl_state, :module),
-              path: [:actions, action.type],
-              message:
-                "Action `#{action.name}` references pipeline `#{name}` via `pipe_through`, but no pipeline named `#{name}` exists."
-            )}}
+          raise DslError,
+            module: Transformer.get_persisted(dsl_state, :module),
+            path: [:actions, action.type],
+            message:
+              "Action `#{action.name}` references pipeline `#{name}` via `pipe_through`, but no pipeline named `#{name}` exists."
       end
     end)
-    |> case do
-      {:ok, {entities, arguments, accept}} ->
-        merged_accept = merge_pipeline_accepts(accept)
-
-        {:ok,
-         apply_to_action(
-           action,
-           entities |> Enum.reverse() |> Enum.concat(),
-           arguments |> Enum.reverse() |> Enum.concat(),
-           merged_accept,
-           dsl_state
-         )}
-
-      {:error, error} ->
-        {:error, error}
-    end
   end
 
-  defp apply_to_action(action, entities, arguments, accept, dsl_state) do
-    action
-    |> prepend_entities(entities)
-    |> merge_arguments(arguments, dsl_state)
-    |> merge_accept(accept)
-  end
+  defp collect_entities(type, pipeline, where, dsl_state) do
+    subject = subject_for_type(type)
+    entities = source_entities(pipeline, type)
 
-  defp prepend_entities(action, entities) do
-    field = entity_field(action.type)
-    Map.update!(action, field, &(entities ++ &1))
+    Enum.each(entities, &validate_supports!(&1, subject, pipeline, dsl_state))
+
+    Enum.map(entities, fn entity ->
+      Map.update!(entity, :where, &(where ++ &1))
+    end)
   end
 
   defp merge_arguments(action, [], _dsl_state), do: action
 
   defp merge_arguments(action, pipeline_arguments, dsl_state) do
-    # Dedup pipeline arguments (multiple pipelines may define the same arg)
     {deduped_pipeline_args, pipeline_conflicts} =
       Enum.reduce(pipeline_arguments, {%{}, []}, fn arg, {seen, conflicts} ->
         case Map.fetch(seen, arg.name) do
@@ -115,7 +106,6 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
 
           {:ok, existing} ->
             if existing.type == arg.type do
-              # same type from different pipelines — keep first
               {seen, conflicts}
             else
               {seen, [{arg.name, existing.type, arg.type} | conflicts]}
@@ -135,7 +125,6 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
         message: "Pipelines define argument(s) with conflicting types: #{conflict_details}"
     end
 
-    # Check pipeline args against action args
     action_args_by_name = Map.new(action.arguments, &{&1.name, &1})
 
     {new_args, action_conflicts} =
@@ -172,10 +161,10 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
   end
 
   defp merge_pipeline_accepts(accept_lists) do
-    if Enum.any?(accept_lists, &(&1 == :*)) do
+    if :* in accept_lists do
       :*
     else
-      accept_lists |> Enum.reverse() |> Enum.concat() |> Enum.uniq()
+      Enum.uniq(accept_lists)
     end
   end
 
@@ -193,17 +182,6 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
       existing when is_list(existing) ->
         Map.put(action, :accept, Enum.uniq(accept ++ existing))
     end
-  end
-
-  defp collect_entities(type, pipeline, where, dsl_state) do
-    subject = subject_for_type(type)
-    entities = source_entities(pipeline, type)
-
-    Enum.each(entities, &validate_supports!(&1, subject, pipeline, dsl_state))
-
-    Enum.map(entities, fn entity ->
-      Map.update!(entity, :where, &(where ++ &1))
-    end)
   end
 
   defp validate_supports!(
