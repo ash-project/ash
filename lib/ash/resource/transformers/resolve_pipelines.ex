@@ -55,7 +55,7 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
                                                  {:ok, {entities, arguments, accept}} ->
       case Map.fetch(pipelines, name) do
         {:ok, pipeline} ->
-          new_entities = collect_entities(action.type, pipeline, where)
+          new_entities = collect_entities(action.type, pipeline, where, dsl_state)
 
           {:cont,
            {:ok,
@@ -195,19 +195,59 @@ defmodule Ash.Resource.Transformers.ResolvePipelines do
     end
   end
 
-  defp collect_entities(type, pipeline, where) do
-    source_entities(type, pipeline)
-    |> Enum.map(fn entity ->
+  defp collect_entities(type, pipeline, where, dsl_state) do
+    subject = subject_for_type(type)
+    entities = source_entities(pipeline, type)
+
+    Enum.each(entities, &validate_supports!(&1, subject, pipeline, dsl_state))
+
+    Enum.map(entities, fn entity ->
       Map.update!(entity, :where, &(where ++ &1))
     end)
   end
 
-  defp source_entities(type, pipeline) when type in [:create, :update, :destroy],
+  defp validate_supports!(
+         %Ash.Resource.Validation{module: module, opts: opts},
+         subject,
+         pipeline,
+         dsl_state
+       ) do
+    if subject not in module.supports(opts) do
+      raise DslError,
+        module: Transformer.get_persisted(dsl_state, :module),
+        path: [:pipelines, pipeline.name],
+        message:
+          "Validation `#{inspect(module)}` in pipeline `#{pipeline.name}` does not support `#{inspect(subject)}` (supported: #{inspect(module.supports(opts))})"
+    end
+  end
+
+  defp validate_supports!(
+         %Ash.Resource.Preparation{preparation: {module, opts}},
+         subject,
+         pipeline,
+         dsl_state
+       ) do
+    if subject not in module.supports(opts) do
+      raise DslError,
+        module: Transformer.get_persisted(dsl_state, :module),
+        path: [:pipelines, pipeline.name],
+        message:
+          "Preparation `#{inspect(module)}` in pipeline `#{pipeline.name}` does not support `#{inspect(subject)}` (supported: #{inspect(module.supports(opts))})"
+    end
+  end
+
+  defp validate_supports!(_entity, _subject, _pipeline, _dsl_state), do: :ok
+
+  defp source_entities(pipeline, type) when type in [:create, :update, :destroy],
     do: pipeline.changes ++ pipeline.validations
 
-  defp source_entities(type, pipeline) when type in [:read, :action],
+  defp source_entities(pipeline, type) when type in [:read, :action],
     do: pipeline.preparations ++ pipeline.validations
 
   defp entity_field(type) when type in [:create, :update, :destroy], do: :changes
   defp entity_field(type) when type in [:read, :action], do: :preparations
+
+  defp subject_for_type(type) when type in [:create, :update, :destroy], do: Ash.Changeset
+  defp subject_for_type(:read), do: Ash.Query
+  defp subject_for_type(:action), do: Ash.ActionInput
 end

@@ -431,6 +431,25 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
         end
       end
     end
+
+    test "raises error when validation does not support the action's subject type" do
+      assert_raise Spark.Error.DslError, ~r/does not support/, fn ->
+        defresource UnsupportedValidation do
+          pipelines do
+            pipeline :changeset_only do
+              # data_one_of only supports Ash.Changeset
+              validate {Ash.Resource.Validation.DataOneOf, attribute: :name, values: ["a", "b"]}
+            end
+          end
+
+          actions do
+            read :bad_read do
+              pipe_through [:changeset_only]
+            end
+          end
+        end
+      end
+    end
   end
 
   describe "introspection" do
