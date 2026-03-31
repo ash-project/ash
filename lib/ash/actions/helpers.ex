@@ -1018,7 +1018,8 @@ defmodule Ash.Actions.Helpers do
       end
     end)
     |> Map.new(fn attribute ->
-      {attribute.name, %Ash.NotLoaded{field: attribute.name, type: :attribute}}
+      {attribute.name,
+       %Ash.NotLoaded{field: attribute.name, type: :attribute, resource: resource}}
     end)
   end
 
