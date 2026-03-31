@@ -296,7 +296,8 @@ defmodule Ash.DataLayer do
               Ash.Resource.t()
             ) ::
               {:ok, data_layer_query()} | {:error, term}
-  @callback destroy(Ash.Resource.t(), Ash.Changeset.t()) :: :ok | {:error, term}
+  @callback destroy(Ash.Resource.t(), Ash.Changeset.t()) ::
+              :ok | {:error, term} | {:error, :no_rollback, term}
   @callback transaction(
               Ash.Resource.t(),
               (-> term),
@@ -857,13 +858,14 @@ defmodule Ash.DataLayer do
   end
 
   @doc false
-  @spec destroy(module(), Ash.Resource.t(), Ash.Changeset.t()) :: :ok | {:error, term}
+  @spec destroy(module(), Ash.Resource.t(), Ash.Changeset.t()) ::
+          :ok | {:error, term} | {:error, :no_rollback, term}
   def destroy(data_layer_module, resource, changeset) do
     Ash.BehaviourHelpers.call_and_validate_return(
       data_layer_module,
       :destroy,
       [resource, changeset],
-      [:ok, {:ok, :_}, {:error, :_}],
+      [:ok, {:error, :_}, {:error, :no_rollback, :_}],
       behaviour: __MODULE__,
       callback_name: "destroy/2"
     )

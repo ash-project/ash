@@ -607,6 +607,12 @@ defmodule Ash.Actions.Update do
                                        Map.take(record, Enum.to_list(attribute_names))
                                      )}
 
+                                  {:error, :no_rollback, error} ->
+                                    {:error, :no_rollback, error}
+
+                                  {:error, error} ->
+                                    {:error, error}
+
                                   _ ->
                                     {:error,
                                      Ash.Error.Changes.StaleRecord.exception(
