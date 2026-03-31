@@ -10,8 +10,6 @@ defmodule Ash.Resource.Pipeline do
   defstruct [
     :name,
     :description,
-    accept: [],
-    arguments: [],
     changes: [],
     validations: [],
     preparations: [],
@@ -21,8 +19,6 @@ defmodule Ash.Resource.Pipeline do
   @type t :: %__MODULE__{
           name: atom(),
           description: String.t() | nil,
-          accept: list(atom()) | :*,
-          arguments: list(),
           changes: list(),
           validations: list(),
           preparations: list(),
@@ -38,11 +34,6 @@ defmodule Ash.Resource.Pipeline do
     description: [
       type: :string,
       doc: "An optional description for the pipeline"
-    ],
-    accept: [
-      type: {:or, [{:wrap_list, :atom}, {:literal, :*}]},
-      default: [],
-      doc: "A list of attributes to accept. Merged with the action's own accept list."
     ]
   ]
 

@@ -1185,9 +1185,6 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Pipeline,
     schema: Ash.Resource.Pipeline.schema(),
     entities: [
-      arguments: [
-        @action_argument
-      ],
       changes: [
         @action_change
       ],

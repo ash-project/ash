@@ -26,13 +26,11 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
     end
   end
 
-  describe "full pipeline into create/update/destroy action" do
+  describe "full pipeline into CUD action" do
     setup do
       defresource FullCUD do
         pipelines do
           pipeline :full do
-            accept [:state]
-            argument :reason, :string
             change set_attribute(:score, 1)
             validate present(:name)
             prepare build(sort: [:name])
@@ -43,7 +41,6 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
           create :with_full do
             pipe_through [:full]
             accept [:name]
-            argument :note, :string
             change set_attribute(:state, :created)
           end
         end
@@ -53,8 +50,6 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
     end
 
     test "injects pipeline changes and validations into changes", %{action: action} do
-      # pipeline: 1 change + 1 validation, action: 1 change = 3 total
-
       assert [pipeline_change, pipeline_validation, action_change] = action.changes
 
       assert pipeline_change.change ==
@@ -71,24 +66,13 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
     test "does not inject preparations into CUD action", %{action: action} do
       refute Enum.any?(action.changes, &match?(%Ash.Resource.Preparation{}, &1))
     end
-
-    test "merges arguments (pipeline first, no duplicates)", %{action: action} do
-      arg_names = Enum.map(action.arguments, & &1.name)
-      assert arg_names == [:reason, :note]
-    end
-
-    test "merges accept (union, deduplicated)", %{action: action} do
-      assert action.accept == [:state, :name]
-    end
   end
 
-  describe "full pipeline into read/generic action" do
+  describe "full pipeline into read action" do
     setup do
       defresource FullRead do
         pipelines do
           pipeline :full do
-            accept [:state]
-            argument :reason, :string
             change set_attribute(:score, 1)
             validate present(:name)
             prepare build(sort: [:name])
@@ -98,7 +82,6 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
         actions do
           read :with_full do
             pipe_through [:full]
-            argument :note, :string
           end
         end
       end
@@ -118,10 +101,6 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
 
     test "does not inject changes into read action", %{action: action} do
       refute Enum.any?(action.preparations, &match?(%Ash.Resource.Change{}, &1))
-    end
-
-    test "merges arguments (pipeline first, no duplicates)", %{action: action} do
-      assert Enum.map(action.arguments, & &1.name) == [:reason, :note]
     end
   end
 
@@ -272,185 +251,6 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
     end
   end
 
-  describe "argument merge edge cases" do
-    test "same name and same type — action's version wins silently" do
-      defresource ArgSameType do
-        pipelines do
-          pipeline :defaults do
-            argument :reason, :string
-          end
-        end
-
-        actions do
-          create :override do
-            pipe_through [:defaults]
-            accept [:name]
-            argument :reason, :string
-          end
-        end
-      end
-
-      action = Info.action(ArgSameType, :override)
-      reason_args = Enum.filter(action.arguments, &(&1.name == :reason))
-      assert length(reason_args) == 1
-    end
-
-    test "same name but different type — raises error" do
-      assert_raise Spark.Error.DslError, ~r/redefines pipeline argument/, fn ->
-        defresource ArgConflict do
-          pipelines do
-            pipeline :defaults do
-              argument :reason, :string
-            end
-          end
-
-          actions do
-            create :conflict do
-              pipe_through [:defaults]
-              accept [:name]
-              argument :reason, :integer
-            end
-          end
-        end
-      end
-    end
-
-    test "multiple pipelines with same arg name but different types — raises error" do
-      assert_raise Spark.Error.DslError, ~r/conflicting types/, fn ->
-        defresource PipelineArgConflict do
-          pipelines do
-            pipeline :a do
-              argument :reason, :string
-            end
-
-            pipeline :b do
-              argument :reason, :integer
-            end
-          end
-
-          actions do
-            create :conflict do
-              pipe_through [:a, :b]
-              accept [:name]
-            end
-          end
-        end
-      end
-    end
-
-    test "multiple pipelines with same arg name and same type — deduplicated" do
-      defresource PipelineArgDedup do
-        pipelines do
-          pipeline :a do
-            argument :reason, :string
-          end
-
-          pipeline :b do
-            argument :reason, :string
-          end
-        end
-
-        actions do
-          create :dedup do
-            pipe_through [:a, :b]
-            accept [:name]
-          end
-        end
-      end
-
-      action = Info.action(PipelineArgDedup, :dedup)
-      reason_args = Enum.filter(action.arguments, &(&1.name == :reason))
-      assert length(reason_args) == 1
-    end
-  end
-
-  describe "accept merge edge cases" do
-    test "accept :* ignores pipeline accept" do
-      defresource AcceptStar do
-        pipelines do
-          pipeline :p do
-            accept [:state]
-          end
-        end
-
-        actions do
-          create :accept_all do
-            pipe_through [:p]
-            accept :*
-          end
-        end
-      end
-
-      action = Info.action(AcceptStar, :accept_all)
-      # :* is expanded by DefaultAccept — all public attrs should be present
-      assert :state in action.accept
-      assert :name in action.accept
-      assert :score in action.accept
-    end
-
-    test "nil action accept gets pipeline accept" do
-      defresource AcceptNil do
-        pipelines do
-          pipeline :p do
-            accept [:state]
-          end
-        end
-
-        actions do
-          create :no_accept do
-            pipe_through [:p]
-          end
-        end
-      end
-
-      action = Info.action(AcceptNil, :no_accept)
-      assert action.accept == [:state]
-    end
-
-    test "pipeline accept :* sets action accept to :*" do
-      defresource PipelineAcceptStar do
-        pipelines do
-          pipeline :p do
-            accept :*
-          end
-        end
-
-        actions do
-          create :star do
-            pipe_through [:p]
-          end
-        end
-      end
-
-      action = Info.action(PipelineAcceptStar, :star)
-      # :* from pipeline is passed through, then DefaultAccept expands it
-      assert :name in action.accept
-      assert :score in action.accept
-      assert :state in action.accept
-    end
-
-    test "accept is deduplicated" do
-      defresource AcceptDedup do
-        pipelines do
-          pipeline :p do
-            accept [:name]
-          end
-        end
-
-        actions do
-          create :dedup do
-            pipe_through [:p]
-            accept [:name, :score]
-          end
-        end
-      end
-
-      action = Info.action(AcceptDedup, :dedup)
-      name_count = Enum.count(action.accept, &(&1 == :name))
-      assert name_count == 1
-    end
-  end
-
   describe "error cases" do
     test "raises error for unknown pipeline" do
       assert_raise Spark.Error.DslError, ~r/no pipeline named `nonexistent` exists/, fn ->
@@ -470,7 +270,6 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
         defresource UnsupportedValidation do
           pipelines do
             pipeline :changeset_only do
-              # data_one_of only supports Ash.Changeset
               validate {Ash.Resource.Validation.DataOneOf, attribute: :name, values: ["a", "b"]}
             end
           end
@@ -490,7 +289,6 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
       defresource IntrospectPipelines do
         pipelines do
           pipeline :a do
-            argument :reason, :string
             change set_attribute(:score, 1)
           end
 
@@ -511,8 +309,6 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
       pipeline_a = Info.pipeline(IntrospectPipelines, :a)
       assert pipeline_a.name == :a
       assert length(pipeline_a.changes) == 1
-      assert length(pipeline_a.arguments) == 1
-      assert hd(pipeline_a.arguments).name == :reason
 
       assert Info.pipeline(IntrospectPipelines, :nonexistent) == nil
     end

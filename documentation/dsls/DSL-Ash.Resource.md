@@ -3024,7 +3024,6 @@ that can be referenced from multiple actions via `pipe_through`.
 
 ### Nested DSLs
  * [pipeline](#pipelines-pipeline)
-   * argument
    * change
    * validate
    * prepare
@@ -3055,7 +3054,6 @@ that can be referenced from multiple actions via `pipe_through`.
 
 
 ### Nested DSLs
- * [argument](#pipelines-pipeline-argument)
  * [change](#pipelines-pipeline-change)
  * [validate](#pipelines-pipeline-validate)
  * [prepare](#pipelines-pipeline-prepare)
@@ -3082,51 +3080,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`description`](#pipelines-pipeline-description){: #pipelines-pipeline-description } | `String.t` |  | An optional description for the pipeline |
-| [`accept`](#pipelines-pipeline-accept){: #pipelines-pipeline-accept } | `atom \| list(atom) \| :*` | `[]` | A list of attributes to accept. Merged with the action's own accept list. |
 
-
-### pipelines.pipeline.argument
-```elixir
-argument name, type
-```
-
-
-Declares an argument on the action
-
-
-
-
-### Examples
-```
-argument :password_confirmation, :string
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#pipelines-pipeline-argument-name){: #pipelines-pipeline-argument-name .spark-required} | `atom` |  | The name of the argument |
-| [`type`](#pipelines-pipeline-argument-type){: #pipelines-pipeline-argument-type .spark-required} | `module` |  | The type of the argument. See `Ash.Type` for more. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`description`](#pipelines-pipeline-argument-description){: #pipelines-pipeline-argument-description } | `String.t` |  | An optional description for the argument. |
-| [`constraints`](#pipelines-pipeline-argument-constraints){: #pipelines-pipeline-argument-constraints } | `keyword` | `[]` | Constraints to provide to the type when casting the value. For more information, see `Ash.Type`. |
-| [`allow_nil?`](#pipelines-pipeline-argument-allow_nil?){: #pipelines-pipeline-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
-| [`public?`](#pipelines-pipeline-argument-public?){: #pipelines-pipeline-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
-| [`sensitive?`](#pipelines-pipeline-argument-sensitive?){: #pipelines-pipeline-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
-| [`default`](#pipelines-pipeline-argument-default){: #pipelines-pipeline-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Actions.Argument`
 
 ### pipelines.pipeline.change
 ```elixir
