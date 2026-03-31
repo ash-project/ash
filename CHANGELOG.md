@@ -8,6 +8,21 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.22.2](https://github.com/ash-project/ash/compare/v3.22.1...v3.22.2) (2026-03-31)
+
+
+
+
+### Bug Fixes:
+
+* handle more `:no_rollback` cases in `Ash.DataLayer.destroy/2` by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle {:array, :same} in data layer and expression type resolution by [@zachdaniel](https://github.com/zachdaniel)
+
+* more specific types for `has` and `intersects` functions by [@zachdaniel](https://github.com/zachdaniel)
+
+* add test for `intersects` function type resolution with {:array, :same} by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.22.1](https://github.com/ash-project/ash/compare/v3.22.0...v3.22.1) (2026-03-29)
 
 
