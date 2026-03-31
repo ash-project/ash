@@ -20,7 +20,7 @@ defmodule Ash.Query.Function.Intersects do
   """
   use Ash.Query.Function, name: :intersects, predicate?: true
 
-  def args, do: [[{:array, :any}, {:array, :any}]]
+  def args, do: [[{:array, :any}, {:array, :same}]]
 
   def returns, do: [:boolean]
 

@@ -1312,7 +1312,7 @@ defmodule Ash.Expr do
                 case acc[:basis] do
                   nil ->
                     if vague_type == :any do
-                      acc = Map.update!(acc, :types, &[{:array, {type, constraints}} | &1])
+                      acc = Map.update!(acc, :types, &[{{:array, type}, items: constraints} | &1])
                       {:cont, Map.put(acc, :basis, {type, constraints})}
                     else
                       acc =
@@ -1334,7 +1334,7 @@ defmodule Ash.Expr do
 
                   {^type, matched_constraints} ->
                     {:cont,
-                     Map.update!(acc, :types, &[{:array, {type, matched_constraints}} | &1])}
+                     Map.update!(acc, :types, &[{{:array, type}, items: matched_constraints} | &1])}
 
                   _ ->
                     {:halt, :error}

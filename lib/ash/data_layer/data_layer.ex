@@ -863,7 +863,7 @@ defmodule Ash.DataLayer do
       data_layer_module,
       :destroy,
       [resource, changeset],
-      [:ok, {:error, :_}],
+      [:ok, {:ok, :_}, {:error, :_}],
       behaviour: __MODULE__,
       callback_name: "destroy/2"
     )

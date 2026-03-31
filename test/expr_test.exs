@@ -111,6 +111,24 @@ defmodule Ash.Test.ExprTest do
               {Ash.Type.UUID, []}} =
                determine_types(func, args, Ash.Type.UUID)
     end
+
+    test "intersects resolves {:array, :same} to match the {:array, :any} type" do
+      left = %Ash.Query.Aggregate{
+        name: :comment_ids,
+        type: {:array, Ash.Type.UUID},
+        constraints: [],
+        kind: :list,
+        relationship_path: [:comments],
+        field: :id
+      }
+
+      right = ["some-uuid-string"]
+
+      {types, _returns} =
+        determine_types(Ash.Query.Function.Intersects, [left, right], :boolean)
+
+      assert [{{:array, Ash.Type.UUID}, items: []}, {{:array, Ash.Type.UUID}, items: []}] = types
+    end
   end
 
   describe "string interpolation" do
