@@ -953,6 +953,19 @@ defmodule Ash.Type.Union do
   def dump_to_native(nil, _), do: {:ok, nil}
 
   def dump_to_native(%Ash.Union{value: value, type: type_name}, union_constraints) do
+    dump_union(value, type_name, union_constraints, &Ash.Type.dump_to_native/3)
+  end
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(%Ash.Union{value: value, type: type_name}, union_constraints) do
+    dump_union(value, type_name, union_constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(_, _), do: :error
+
+  defp dump_union(value, type_name, union_constraints, dump_fn) do
     type = union_constraints[:types][type_name][:type]
 
     if type do
@@ -960,7 +973,7 @@ defmodule Ash.Type.Union do
 
       case union_constraints[:storage] do
         :type_and_value ->
-          case Ash.Type.dump_to_native(type, value, constraints) do
+          case dump_fn.(type, value, constraints) do
             {:ok, value} ->
               {:ok, %{"type" => type_name, "value" => value}}
 
@@ -975,7 +988,7 @@ defmodule Ash.Type.Union do
             raise "Found a type without a tag when using the `:map_with_tag` storage constraint. Constraints: #{inspect(union_constraints)}"
           end
 
-          case Ash.Type.dump_to_native(
+          case dump_fn.(
                  type,
                  value,
                  constraints
