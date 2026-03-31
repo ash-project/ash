@@ -980,11 +980,32 @@ defmodule Ash.Changeset do
       {key, atomic}, expr ->
         atomic = strip_errors(atomic)
 
+        atomic_can_be_nil = Ash.Expr.can_return_nil?(atomic)
+        ref_can_be_nil = Ash.Resource.Info.attribute(changeset.resource, key).allow_nil?
+
+        is_distinct_from = Ash.Expr.expr(is_distinct_from(^atomic, ^ref(key)))
+
         checker =
-          if is_nil(atomic) do
-            Ash.Expr.expr(not is_nil(^ref(key)))
-          else
-            Ash.Expr.expr(^atomic != ^ref(key))
+          cond do
+            !atomic_can_be_nil and !ref_can_be_nil ->
+              Ash.Expr.expr(^atomic != ^ref(key))
+
+            Ash.DataLayer.data_layer_can?(changeset.resource, {:filter_expr, is_distinct_from}) ->
+              is_distinct_from
+
+            true ->
+              Ash.Expr.expr(
+                cond do
+                  is_nil(^atomic) and is_nil(^ref(key)) ->
+                    false
+
+                  is_nil(^atomic) or is_nil(^ref(key)) ->
+                    false
+
+                  true ->
+                    ^atomic != ^ref(key)
+                end
+              )
           end
 
         if is_nil(expr) do
