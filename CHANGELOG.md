@@ -8,6 +8,25 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.23.0](https://github.com/ash-project/ash/compare/v3.22.2...v3.23.0) (2026-03-31)
+
+
+
+
+### Features:
+
+* add pipelines DSL for reusable action logic composition (#2652) by [@nallwhy](https://github.com/nallwhy) [(#2652)](https://github.com/ash-project/ash/pull/2652)
+
+### Bug Fixes:
+
+* ensure that update timestamps are properly updated in atomic updates by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure `get_data` raises on data not available by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* Add resource metadata to Ash.NotLoaded struct (#2653) by [@nallwhy](https://github.com/nallwhy) [(#2653)](https://github.com/ash-project/ash/pull/2653)
+
 ## [v3.22.2](https://github.com/ash-project/ash/compare/v3.22.1...v3.22.2) (2026-03-31)
 
 
