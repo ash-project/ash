@@ -232,6 +232,15 @@ defmodule Ash.Resource do
             fields = @show_fields -- subtract_fields
 
             fun = fn field, opts ->
+              custom_options = Map.get(opts, :custom_options, [])
+
+              opts =
+                Map.put(
+                  opts,
+                  :custom_options,
+                  Keyword.put(custom_options, :in_resource?, true)
+                )
+
               Inspect.List.keyword({field, Map.get(record, field)}, opts)
             end
 
@@ -618,8 +627,15 @@ defmodule Ash.Resource do
           Map.get(record, resource_calculation.name)
         else
           case Map.fetch(record.calculations, resource_calculation.name) do
-            {:ok, value} -> value
-            :error -> %Ash.NotLoaded{type: :calculation, field: resource_calculation.name}
+            {:ok, value} ->
+              value
+
+            :error ->
+              %Ash.NotLoaded{
+                type: :calculation,
+                field: resource_calculation.name,
+                resource: record.__struct__
+              }
           end
         end
 

@@ -87,7 +87,12 @@ defmodule Ash.Schema do
               Module.put_attribute(
                 __MODULE__,
                 :ash_struct_fields,
-                {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+                {relationship.name,
+                 %Ash.NotLoaded{
+                   type: :relationship,
+                   field: relationship.name,
+                   resource: __MODULE__
+                 }}
               )
             end
 
@@ -110,7 +115,8 @@ defmodule Ash.Schema do
               Module.put_attribute(
                 __MODULE__,
                 :ash_struct_fields,
-                {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
+                {aggregate.name,
+                 %Ash.NotLoaded{type: :aggregate, field: aggregate.name, resource: __MODULE__}}
               )
             end
 
@@ -140,7 +146,8 @@ defmodule Ash.Schema do
               Module.put_attribute(
                 __MODULE__,
                 :ash_struct_fields,
-                {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+                {calculation.name,
+                 %Ash.NotLoaded{type: :calculation, field: calculation.name, resource: __MODULE__}}
               )
             end
 
@@ -258,7 +265,12 @@ defmodule Ash.Schema do
               Module.put_attribute(
                 __MODULE__,
                 :ash_struct_fields,
-                {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+                {relationship.name,
+                 %Ash.NotLoaded{
+                   type: :relationship,
+                   field: relationship.name,
+                   resource: __MODULE__
+                 }}
               )
             end
 
@@ -281,7 +293,8 @@ defmodule Ash.Schema do
               Module.put_attribute(
                 __MODULE__,
                 :ash_struct_fields,
-                {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
+                {aggregate.name,
+                 %Ash.NotLoaded{type: :aggregate, field: aggregate.name, resource: __MODULE__}}
               )
             end
 
@@ -311,7 +324,8 @@ defmodule Ash.Schema do
               Module.put_attribute(
                 __MODULE__,
                 :ash_struct_fields,
-                {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+                {calculation.name,
+                 %Ash.NotLoaded{type: :calculation, field: calculation.name, resource: __MODULE__}}
               )
             end
 
