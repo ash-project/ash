@@ -6,6 +6,7 @@ defmodule Type.StructTest do
   use ExUnit.Case, async: true
 
   alias Ash.Test.Domain, as: Domain
+  alias Ash.Test.DumpTestType
 
   defmodule Metadata do
     defstruct [:foo, :bar, not_nil_by_default: "foo"]
@@ -494,5 +495,125 @@ defmodule Type.StructTest do
     assert result.__meta__.state == :loaded
     assert result.name == "fred"
     assert result.title == "title"
+  end
+
+  describe "dump_to_embedded" do
+    defmodule DumpMetadata do
+      defstruct [:name, :val]
+    end
+
+    test "recursively calls dump_to_embedded on field types" do
+      constraints = [
+        instance_of: DumpMetadata,
+        fields: [
+          name: [type: :string],
+          val: [type: DumpTestType]
+        ]
+      ]
+
+      assert {:ok, %{name: "hello", val: "embedded:world"}} =
+               Ash.Type.dump_to_embedded(
+                 Ash.Type.Struct,
+                 %DumpMetadata{name: "hello", val: "world"},
+                 constraints
+               )
+    end
+
+    test "uses dump_to_embedded not dump_to_native on fields" do
+      constraints = [
+        instance_of: DumpMetadata,
+        fields: [
+          val: [type: DumpTestType]
+        ]
+      ]
+
+      value = %DumpMetadata{val: "test"}
+
+      {:ok, native_result} = Ash.Type.dump_to_native(Ash.Type.Struct, value, constraints)
+      {:ok, embedded_result} = Ash.Type.dump_to_embedded(Ash.Type.Struct, value, constraints)
+
+      assert native_result[:val] == "native:test"
+      assert embedded_result[:val] == "embedded:test"
+    end
+
+    test "handles nil" do
+      assert {:ok, nil} =
+               Ash.Type.dump_to_embedded(Ash.Type.Struct, nil, instance_of: DumpMetadata)
+    end
+
+    test "returns error without instance_of" do
+      assert :error =
+               Ash.Type.dump_to_embedded(
+                 Ash.Type.Struct,
+                 %DumpMetadata{name: "test"},
+                 fields: [name: [type: :string]]
+               )
+    end
+
+    test "returns error for non-map values" do
+      assert :error =
+               Ash.Type.dump_to_embedded(
+                 Ash.Type.Struct,
+                 "string",
+                 instance_of: DumpMetadata
+               )
+    end
+
+    test "handles missing fields gracefully" do
+      constraints = [
+        instance_of: DumpMetadata,
+        fields: [
+          name: [type: :string],
+          val: [type: DumpTestType]
+        ]
+      ]
+
+      assert {:ok, %{name: "hello"}} =
+               Ash.Type.dump_to_embedded(
+                 Ash.Type.Struct,
+                 %DumpMetadata{name: "hello", val: nil},
+                 constraints
+               )
+    end
+  end
+
+  describe "dump/cast round-trip" do
+    test "dump_to_native then cast_stored preserves data" do
+      constraints = [
+        instance_of: Metadata,
+        fields: [
+          foo: [type: :string],
+          bar: [type: :integer]
+        ]
+      ]
+
+      original = %Metadata{foo: "hello", bar: 42}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_native(Ash.Type.Struct, original, constraints)
+      assert {:ok, restored} = Ash.Type.cast_stored(Ash.Type.Struct, dumped, constraints)
+      assert restored.foo == original.foo
+      assert restored.bar == original.bar
+    end
+
+    test "dump_to_native then cast_stored with string keys round-trips" do
+      constraints = [
+        instance_of: Metadata,
+        fields: [
+          foo: [type: :string],
+          bar: [type: :integer]
+        ]
+      ]
+
+      original = %Metadata{foo: "hello", bar: 42}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_native(Ash.Type.Struct, original, constraints)
+
+      # Simulate stored data having string keys
+      string_keyed = Map.new(dumped, fn {k, v} -> {to_string(k), v} end)
+
+      assert {:ok, restored} = Ash.Type.cast_stored(Ash.Type.Struct, string_keyed, constraints)
+      assert restored.foo == original.foo
+      assert restored.bar == original.bar
+    end
   end
 end

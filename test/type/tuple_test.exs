@@ -6,6 +6,7 @@ defmodule Ash.Type.TupleTest do
   use ExUnit.Case, async: true
 
   alias Ash.Test.Domain, as: Domain
+  alias Ash.Test.DumpTestType
 
   defmodule TupleWithFields do
     use Ash.Type.NewType,
@@ -157,5 +158,153 @@ defmodule Ash.Type.TupleTest do
                path: [:metadata]
              }
            ] = changeset.errors
+  end
+
+  describe "dump_to_native" do
+    test "recursively dumps field types" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple,
+          fields: [
+            name: [type: DumpTestType],
+            count: [type: :integer]
+          ]
+        )
+
+      assert {:ok, %{name: "native:hello", count: 42}} =
+               Ash.Type.dump_to_native(Ash.Type.Tuple, {"hello", 42}, constraints)
+    end
+
+    test "handles nil" do
+      assert {:ok, nil} =
+               Ash.Type.dump_to_native(Ash.Type.Tuple, nil, fields: [foo: [type: :string]])
+    end
+
+    test "returns error for wrong tuple size" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple,
+          fields: [
+            a: [type: :string],
+            b: [type: :string]
+          ]
+        )
+
+      assert :error = Ash.Type.dump_to_native(Ash.Type.Tuple, {"only_one"}, constraints)
+    end
+
+    test "returns error for non-tuple values" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple, fields: [a: [type: :string]])
+
+      assert :error = Ash.Type.dump_to_native(Ash.Type.Tuple, "string", constraints)
+      assert :error = Ash.Type.dump_to_native(Ash.Type.Tuple, %{a: "map"}, constraints)
+    end
+
+    test "handles nil field values" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple,
+          fields: [
+            name: [type: :string],
+            age: [type: :integer]
+          ]
+        )
+
+      assert {:ok, %{name: nil, age: nil}} =
+               Ash.Type.dump_to_native(Ash.Type.Tuple, {nil, nil}, constraints)
+    end
+  end
+
+  describe "dump_to_embedded" do
+    test "recursively calls dump_to_embedded on field types" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple,
+          fields: [
+            name: [type: DumpTestType],
+            count: [type: :integer]
+          ]
+        )
+
+      assert {:ok, %{name: "embedded:hello", count: 42}} =
+               Ash.Type.dump_to_embedded(Ash.Type.Tuple, {"hello", 42}, constraints)
+    end
+
+    test "uses dump_to_embedded not dump_to_native on fields" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple,
+          fields: [
+            val: [type: DumpTestType]
+          ]
+        )
+
+      {:ok, native_result} =
+        Ash.Type.dump_to_native(Ash.Type.Tuple, {"test"}, constraints)
+
+      {:ok, embedded_result} =
+        Ash.Type.dump_to_embedded(Ash.Type.Tuple, {"test"}, constraints)
+
+      assert native_result[:val] == "native:test"
+      assert embedded_result[:val] == "embedded:test"
+    end
+
+    test "handles nil" do
+      assert {:ok, nil} =
+               Ash.Type.dump_to_embedded(Ash.Type.Tuple, nil, fields: [foo: [type: :string]])
+    end
+
+    test "returns error for non-tuple values" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple, fields: [a: [type: :string]])
+
+      assert :error = Ash.Type.dump_to_embedded(Ash.Type.Tuple, "string", constraints)
+    end
+
+    test "returns error for wrong tuple size" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple,
+          fields: [
+            a: [type: :string],
+            b: [type: :string]
+          ]
+        )
+
+      assert :error = Ash.Type.dump_to_embedded(Ash.Type.Tuple, {"only_one"}, constraints)
+    end
+  end
+
+  describe "dump/cast round-trip" do
+    test "dump_to_native then cast_stored preserves data" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple,
+          fields: [
+            name: [type: :string],
+            count: [type: :integer]
+          ]
+        )
+
+      original = {"hello", 42}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_native(Ash.Type.Tuple, original, constraints)
+      assert {:ok, restored} = Ash.Type.cast_stored(Ash.Type.Tuple, dumped, constraints)
+      assert restored == original
+    end
+
+    test "dump_to_native then cast_stored with string keys round-trips" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Tuple,
+          fields: [
+            name: [type: :string],
+            count: [type: :integer]
+          ]
+        )
+
+      original = {"hello", 42}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_native(Ash.Type.Tuple, original, constraints)
+
+      # Simulate stored data having string keys
+      string_keyed = Map.new(dumped, fn {k, v} -> {to_string(k), v} end)
+
+      assert {:ok, restored} = Ash.Type.cast_stored(Ash.Type.Tuple, string_keyed, constraints)
+      assert restored == original
+    end
   end
 end

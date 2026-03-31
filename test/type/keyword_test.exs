@@ -6,6 +6,7 @@ defmodule Type.KeywordTest do
   use ExUnit.Case, async: true
 
   alias Ash.Test.Domain, as: Domain
+  alias Ash.Test.DumpTestType
 
   defmodule Post do
     @moduledoc false
@@ -471,22 +472,246 @@ defmodule Type.KeywordTest do
     assert length(errors) > 1
   end
 
-  test "dump_to_native converts keyword list to map" do
-    keyword_list = [foo: "bar", baz: 42]
-    assert Ash.Type.Keyword.dump_to_native(keyword_list, []) == {:ok, %{foo: "bar", baz: 42}}
+  describe "cast_stored" do
+    test "recursively casts field types from stored map" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: :string],
+            count: [type: :integer]
+          ]
+        )
+
+      assert {:ok, [name: "hello", count: 42]} =
+               Ash.Type.cast_stored(
+                 Ash.Type.Keyword,
+                 %{"name" => "hello", "count" => 42},
+                 constraints
+               )
+    end
+
+    test "handles string keys in stored map" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            foo: [type: :string]
+          ]
+        )
+
+      assert {:ok, [foo: "bar"]} =
+               Ash.Type.cast_stored(Ash.Type.Keyword, %{"foo" => "bar"}, constraints)
+    end
+
+    test "handles atom keys in stored map" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            foo: [type: :string]
+          ]
+        )
+
+      assert {:ok, [foo: "bar"]} =
+               Ash.Type.cast_stored(Ash.Type.Keyword, %{foo: "bar"}, constraints)
+    end
+
+    test "skips missing fields" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: :string],
+            age: [type: :integer]
+          ]
+        )
+
+      assert {:ok, [name: "hello"]} =
+               Ash.Type.cast_stored(Ash.Type.Keyword, %{"name" => "hello"}, constraints)
+    end
+
+    test "handles nil" do
+      assert {:ok, nil} = Ash.Type.cast_stored(Ash.Type.Keyword, nil, fields: [])
+    end
+
+    test "without fields falls back to simple conversion" do
+      # Without field definitions, try_map_to_keyword can't know which keys to extract
+      assert {:ok, []} =
+               Ash.Type.cast_stored(Ash.Type.Keyword, %{foo: "bar"}, [])
+    end
   end
 
-  test "dump_to_native handles nil" do
-    assert Ash.Type.Keyword.dump_to_native(nil, []) == {:ok, nil}
+  describe "dump_to_native" do
+    test "recursively dumps field types from keyword list" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: DumpTestType],
+            count: [type: :integer]
+          ]
+        )
+
+      assert {:ok, %{name: "native:hello", count: 42}} =
+               Ash.Type.dump_to_native(
+                 Ash.Type.Keyword,
+                 [name: "hello", count: 42],
+                 constraints
+               )
+    end
+
+    test "recursively dumps field types from map input" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: DumpTestType]
+          ]
+        )
+
+      assert {:ok, %{name: "native:hello"}} =
+               Ash.Type.dump_to_native(Ash.Type.Keyword, %{name: "hello"}, constraints)
+    end
+
+    test "drops extra keys not in field definitions" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [name: [type: :string]]
+        )
+
+      assert {:ok, %{name: "hello"}} =
+               Ash.Type.dump_to_native(
+                 Ash.Type.Keyword,
+                 [name: "hello", extra: "dropped"],
+                 constraints
+               )
+    end
+
+    test "without fields converts keyword list to map" do
+      assert {:ok, %{foo: "bar", baz: 42}} =
+               Ash.Type.dump_to_native(Ash.Type.Keyword, [foo: "bar", baz: 42], [])
+    end
+
+    test "without fields passes through map as-is" do
+      assert {:ok, %{foo: "bar"}} =
+               Ash.Type.dump_to_native(Ash.Type.Keyword, %{foo: "bar"}, [])
+    end
+
+    test "handles nil" do
+      assert {:ok, nil} = Ash.Type.dump_to_native(Ash.Type.Keyword, nil, [])
+    end
+
+    test "returns error for invalid input" do
+      assert :error = Ash.Type.dump_to_native(Ash.Type.Keyword, "invalid", [])
+      assert :error = Ash.Type.dump_to_native(Ash.Type.Keyword, 123, [])
+    end
+
+    test "handles missing fields gracefully" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: :string],
+            age: [type: :integer]
+          ]
+        )
+
+      assert {:ok, %{name: "hello"}} =
+               Ash.Type.dump_to_native(Ash.Type.Keyword, [name: "hello"], constraints)
+    end
   end
 
-  test "dump_to_native handles maps" do
-    map = %{foo: "bar", baz: 42}
-    assert Ash.Type.Keyword.dump_to_native(map, []) == {:ok, map}
+  describe "dump_to_embedded" do
+    test "recursively calls dump_to_embedded on field types from keyword list" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: DumpTestType],
+            count: [type: :integer]
+          ]
+        )
+
+      assert {:ok, %{name: "embedded:hello", count: 42}} =
+               Ash.Type.dump_to_embedded(
+                 Ash.Type.Keyword,
+                 [name: "hello", count: 42],
+                 constraints
+               )
+    end
+
+    test "recursively calls dump_to_embedded on field types from map input" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: DumpTestType]
+          ]
+        )
+
+      assert {:ok, %{name: "embedded:hello"}} =
+               Ash.Type.dump_to_embedded(Ash.Type.Keyword, %{name: "hello"}, constraints)
+    end
+
+    test "uses dump_to_embedded not dump_to_native on fields" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            val: [type: DumpTestType]
+          ]
+        )
+
+      {:ok, native_result} =
+        Ash.Type.dump_to_native(Ash.Type.Keyword, [val: "test"], constraints)
+
+      {:ok, embedded_result} =
+        Ash.Type.dump_to_embedded(Ash.Type.Keyword, [val: "test"], constraints)
+
+      assert native_result[:val] == "native:test"
+      assert embedded_result[:val] == "embedded:test"
+    end
+
+    test "without fields converts keyword list to map" do
+      assert {:ok, %{foo: "bar"}} =
+               Ash.Type.dump_to_embedded(Ash.Type.Keyword, [foo: "bar"], [])
+    end
+
+    test "handles nil" do
+      assert {:ok, nil} = Ash.Type.dump_to_embedded(Ash.Type.Keyword, nil, [])
+    end
+
+    test "returns error for invalid input" do
+      assert :error = Ash.Type.dump_to_embedded(Ash.Type.Keyword, "invalid", [])
+    end
   end
 
-  test "dump_to_native returns error for invalid input" do
-    assert Ash.Type.Keyword.dump_to_native("invalid", []) == :error
-    assert Ash.Type.Keyword.dump_to_native(123, []) == :error
+  describe "dump/cast round-trip" do
+    test "dump_to_native then cast_stored preserves data" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: :string],
+            count: [type: :integer]
+          ]
+        )
+
+      original = [name: "hello", count: 42]
+
+      assert {:ok, dumped} = Ash.Type.dump_to_native(Ash.Type.Keyword, original, constraints)
+      assert {:ok, restored} = Ash.Type.cast_stored(Ash.Type.Keyword, dumped, constraints)
+      assert restored == original
+    end
+
+    test "dump_to_native then cast_stored with string keys round-trips" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: :string],
+            count: [type: :integer]
+          ]
+        )
+
+      original = [name: "hello", count: 42]
+
+      assert {:ok, dumped} = Ash.Type.dump_to_native(Ash.Type.Keyword, original, constraints)
+
+      # Simulate stored data having string keys
+      string_keyed = Map.new(dumped, fn {k, v} -> {to_string(k), v} end)
+
+      assert {:ok, restored} = Ash.Type.cast_stored(Ash.Type.Keyword, string_keyed, constraints)
+      assert restored == original
+    end
   end
 end
