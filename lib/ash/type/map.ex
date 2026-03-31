@@ -156,7 +156,7 @@ defmodule Ash.Type.Map do
 
   def cast_stored(value, constraints) when is_map(value) do
     if fields = constraints[:fields] do
-      nil_values = constraints[:preserve_nil_values?]
+      nil_values = constraints[:preserve_nil_values?] == true
 
       Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
         case fetch_field(value, key) do
@@ -186,8 +186,45 @@ defmodule Ash.Type.Map do
 
   @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
-  def dump_to_native(value, _) when is_map(value), do: {:ok, value}
+
+  def dump_to_native(value, constraints) when is_map(value) do
+    dump_fields(value, constraints, &Ash.Type.dump_to_native/3)
+  end
+
   def dump_to_native(_, _), do: :error
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(value, constraints) when is_map(value) do
+    dump_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(_, _), do: :error
+
+  defp dump_fields(value, constraints, dump_fn) do
+    if fields = constraints[:fields] do
+      nil_values = constraints[:preserve_nil_values?] == true
+
+      Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
+        case dump_field(value, key, config, dump_fn) do
+          {:ok, nil} when not nil_values -> {:cont, {:ok, acc}}
+          {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
+          :skip -> {:cont, {:ok, acc}}
+          other -> {:halt, other}
+        end
+      end)
+    else
+      {:ok, value}
+    end
+  end
+
+  defp dump_field(value, key, config, dump_fn) do
+    case fetch_field(value, key) do
+      {:ok, field_value} -> dump_fn.(config[:type], field_value, config[:constraints] || [])
+      :error -> :skip
+    end
+  end
 
   @impl true
   def apply_constraints(nil, _constraints), do: {:ok, nil}

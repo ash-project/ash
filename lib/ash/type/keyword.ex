@@ -151,18 +151,52 @@ defmodule Ash.Type.Keyword do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
-  def cast_stored(value, constraints) when is_map(value),
-    do: {:ok, try_map_to_keyword(value, constraints)}
+  def cast_stored(value, constraints) when is_map(value) do
+    if fields = constraints[:fields] do
+      fields
+      |> Enum.reduce_while({:ok, []}, fn {key, config}, {:ok, acc} ->
+        case cast_stored_field(value, key, config) do
+          {:ok, value} -> {:cont, {:ok, [{key, value} | acc]}}
+          :skip -> {:cont, {:ok, acc}}
+          other -> {:halt, other}
+        end
+      end)
+      |> case do
+        {:ok, keyword} -> {:ok, Enum.reverse(keyword)}
+        other -> other
+      end
+    else
+      {:ok, try_map_to_keyword(value, constraints)}
+    end
+  end
 
   def cast_stored(_, _), do: :error
 
   @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
-  def dump_to_native(value, _) when is_map(value), do: {:ok, value}
 
-  def dump_to_native(value, _) do
+  def dump_to_native(value, constraints) when is_map(value) do
+    dump_fields(value, constraints, &Ash.Type.dump_to_native/3)
+  end
+
+  def dump_to_native(value, constraints) do
     if Keyword.keyword?(value) do
-      {:ok, Map.new(value)}
+      dump_fields(value, constraints, &Ash.Type.dump_to_native/3)
+    else
+      :error
+    end
+  end
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(value, constraints) when is_map(value) do
+    dump_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(value, constraints) do
+    if Keyword.keyword?(value) do
+      dump_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
     else
       :error
     end
@@ -266,6 +300,46 @@ defmodule Ash.Type.Keyword do
   end
 
   defp fetch_field(_, _), do: :error
+
+  defp cast_stored_field(map, key, config) do
+    case fetch_map_field(map, key) do
+      {:ok, value} -> Ash.Type.cast_stored(config[:type], value, config[:constraints] || [])
+      :error -> :skip
+    end
+  end
+
+  defp dump_fields(value, constraints, dump_fn) do
+    if fields = constraints[:fields] do
+      Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
+        case dump_field(value, key, config, dump_fn) do
+          {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
+          :skip -> {:cont, {:ok, acc}}
+          other -> {:halt, other}
+        end
+      end)
+    else
+      {:ok, if(is_map(value), do: value, else: Map.new(value))}
+    end
+  end
+
+  defp dump_field(value, key, config, dump_fn) do
+    fetched =
+      if is_map(value),
+        do: fetch_map_field(value, key),
+        else: Keyword.fetch(value, key)
+
+    case fetched do
+      {:ok, field_value} -> dump_fn.(config[:type], field_value, config[:constraints] || [])
+      :error -> :skip
+    end
+  end
+
+  defp fetch_map_field(map, atom) when is_atom(atom) do
+    case Map.fetch(map, atom) do
+      {:ok, value} -> {:ok, value}
+      :error -> Map.fetch(map, to_string(atom))
+    end
+  end
 
   defp try_map_to_keyword(map, constraints) do
     constraints[:fields]

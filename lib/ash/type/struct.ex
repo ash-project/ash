@@ -242,21 +242,28 @@ defmodule Ash.Type.Struct do
   def dump_to_native(nil, _), do: {:ok, nil}
 
   def dump_to_native(value, constraints) when is_map(value) do
+    dump_struct_fields(value, constraints, &Ash.Type.dump_to_native/3)
+  end
+
+  def dump_to_native(_, _), do: :error
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(value, constraints) when is_map(value) do
+    dump_struct_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(_, _), do: :error
+
+  defp dump_struct_fields(value, constraints, dump_fn) do
     if fields = fields(constraints) do
       if constraints[:instance_of] do
         Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
-          case Map.fetch(value, key) do
-            {:ok, value} ->
-              case Ash.Type.dump_to_native(config[:type], value, config[:constraints] || []) do
-                {:ok, value} ->
-                  {:cont, {:ok, Map.put(acc, key, value)}}
-
-                other ->
-                  {:halt, other}
-              end
-
-            :error ->
-              {:cont, {:ok, acc}}
+          case dump_struct_field(value, key, config, dump_fn) do
+            {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
+            :skip -> {:cont, {:ok, acc}}
+            other -> {:halt, other}
           end
         end)
       else
@@ -267,7 +274,12 @@ defmodule Ash.Type.Struct do
     end
   end
 
-  def dump_to_native(_, _), do: :error
+  defp dump_struct_field(value, key, config, dump_fn) do
+    case Map.fetch(value, key) do
+      {:ok, field_value} -> dump_fn.(config[:type], field_value, config[:constraints] || [])
+      :error -> :skip
+    end
+  end
 
   @impl true
   def generator(constraints) do

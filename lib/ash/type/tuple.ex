@@ -157,21 +157,39 @@ defmodule Ash.Type.Tuple do
   def dump_to_native(nil, _), do: {:ok, nil}
 
   def dump_to_native(value, constraints) when is_tuple(value) do
+    dump_tuple_fields(value, constraints, &Ash.Type.dump_to_native/3)
+  end
+
+  def dump_to_native(_, _), do: :error
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(value, constraints) when is_tuple(value) do
+    dump_tuple_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(_, _), do: :error
+
+  defp dump_tuple_fields(value, constraints, dump_fn) do
     list = Tuple.to_list(value)
 
     if length(list) == length(constraints[:fields]) do
       list
       |> Enum.zip(constraints[:fields])
-      |> Map.new(fn {tuple_val, {key, _config}} ->
-        {key, tuple_val}
+      |> Enum.reduce_while({:ok, %{}}, fn {tuple_val, {key, config}}, {:ok, acc} ->
+        case dump_fn.(config[:type], tuple_val, config[:constraints] || []) do
+          {:ok, dumped} ->
+            {:cont, {:ok, Map.put(acc, key, dumped)}}
+
+          other ->
+            {:halt, other}
+        end
       end)
-      |> then(&{:ok, &1})
     else
       :error
     end
   end
-
-  def dump_to_native(_, _), do: :error
 
   @impl true
   def apply_constraints(nil, _), do: {:ok, nil}
