@@ -511,6 +511,29 @@ defmodule Ash.Resource.Dsl do
     args: [:validation]
   }
 
+  @pipe_through %Spark.Dsl.Entity{
+    name: :pipe_through,
+    describe: """
+    References one or more pipelines to apply to this action.
+    Pipeline entities are prepended before the action's own changes/preparations.
+    """,
+    examples: [
+      """
+      pipe_through [:change_state]
+      """,
+      """
+      pipe_through [:change_state], where: attribute_equals(:role, :super_user)
+      """
+    ],
+    imports: [
+      Ash.Resource.Validation.Builtins,
+      Ash.Expr
+    ],
+    target: Ash.Resource.Actions.PipeThrough,
+    schema: Ash.Resource.Actions.PipeThrough.schema(),
+    args: [:names]
+  }
+
   @create %Spark.Dsl.Entity{
     name: :create,
     describe: """
@@ -537,7 +560,8 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate
+        @action_validate,
+        @pipe_through
       ],
       arguments: [
         @action_argument
@@ -604,7 +628,8 @@ defmodule Ash.Resource.Dsl do
               @validate.schema
               |> Keyword.delete(:always_atomic?)
               |> Keyword.delete(:on)
-        }
+        },
+        @pipe_through
       ]
     ],
     args: [:name, {:optional, :returns}]
@@ -653,7 +678,8 @@ defmodule Ash.Resource.Dsl do
               @validate.schema
               |> Keyword.delete(:always_atomic?)
               |> Keyword.delete(:on)
-        }
+        },
+        @pipe_through
       ],
       pagination: [
         @pagination
@@ -684,7 +710,8 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate
+        @action_validate,
+        @pipe_through
       ],
       metadata: [
         @metadata
@@ -729,7 +756,8 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate
+        @action_validate,
+        @pipe_through
       ],
       metadata: [
         @metadata
@@ -1131,6 +1159,69 @@ defmodule Ash.Resource.Dsl do
     ],
     entities: [
       @prepare
+    ]
+  }
+
+  @pipeline %Spark.Dsl.Entity{
+    name: :pipeline,
+    describe: """
+    Declares a reusable pipeline of changes, validations, and preparations
+    that can be referenced from multiple actions via `pipe_through`.
+    """,
+    examples: [
+      """
+      pipeline :change_state do
+        validate changing(:state)
+        change set_attribute(:score, 0)
+      end
+      """
+    ],
+    imports: [
+      Ash.Resource.Change.Builtins,
+      Ash.Resource.Validation.Builtins,
+      Ash.Resource.Preparation.Builtins,
+      Ash.Expr
+    ],
+    target: Ash.Resource.Pipeline,
+    schema: Ash.Resource.Pipeline.schema(),
+    entities: [
+      changes: [
+        @action_change
+      ],
+      validations: [
+        @action_validate
+      ],
+      preparations: [
+        @prepare
+      ]
+    ],
+    args: [:name]
+  }
+
+  @pipelines %Spark.Dsl.Section{
+    name: :pipelines,
+    describe: """
+    Declare reusable pipelines of changes, validations, and preparations
+    that can be referenced from multiple actions via `pipe_through`.
+    """,
+    imports: [
+      Ash.Resource.Change.Builtins,
+      Ash.Resource.Validation.Builtins,
+      Ash.Resource.Preparation.Builtins,
+      Ash.Expr
+    ],
+    examples: [
+      """
+      pipelines do
+        pipeline :change_state do
+          validate changing(:state)
+          change set_attribute(:score, 0)
+        end
+      end
+      """
+    ],
+    entities: [
+      @pipeline
     ]
   }
 
@@ -1631,12 +1722,14 @@ defmodule Ash.Resource.Dsl do
     @changes,
     @preparations,
     @validations,
+    @pipelines,
     @aggregates,
     @calculations,
     @multitenancy
   ]
 
   @transformers [
+    Ash.Resource.Transformers.ResolvePipelines,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,

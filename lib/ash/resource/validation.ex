@@ -27,8 +27,8 @@ defmodule Ash.Resource.Validation do
     :description,
     :message,
     :before_action?,
-    :where,
     :always_atomic?,
+    where: [],
     on: [],
     __spark_metadata__: nil
   ]

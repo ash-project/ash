@@ -846,26 +846,31 @@ multiple actions of each type in a large application.
    * argument
    * prepare
    * validate
+   * pipe_through
  * [create](#actions-create)
    * change
    * validate
+   * pipe_through
    * argument
    * metadata
  * [read](#actions-read)
    * argument
    * prepare
    * validate
+   * pipe_through
    * pagination
    * metadata
    * filter
  * [update](#actions-update)
    * change
    * validate
+   * pipe_through
    * metadata
    * argument
  * [destroy](#actions-destroy)
    * change
    * validate
+   * pipe_through
    * metadata
    * argument
 
@@ -928,6 +933,7 @@ For calling this action, see the `Ash.Domain` documentation.
  * [argument](#actions-action-argument)
  * [prepare](#actions-action-prepare)
  * [validate](#actions-action-validate)
+ * [pipe_through](#actions-action-pipe_through)
 
 
 ### Examples
@@ -1096,6 +1102,50 @@ validate present([:first_name, :last_name], at_least: 1)
 
 Target: `Ash.Resource.Validation`
 
+### actions.action.pipe_through
+```elixir
+pipe_through names
+```
+
+
+References one or more pipelines to apply to this action.
+Pipeline entities are prepended before the action's own changes/preparations.
+
+
+
+
+### Examples
+```
+pipe_through [:change_state]
+
+```
+
+```
+pipe_through [:change_state], where: attribute_equals(:role, :super_user)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#actions-action-pipe_through-names){: #actions-action-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#actions-action-pipe_through-where){: #actions-action-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.PipeThrough`
+
 
 
 
@@ -1115,6 +1165,7 @@ Declares a `create` action. For calling this action, see the `Ash.Domain` docume
 ### Nested DSLs
  * [change](#actions-create-change)
  * [validate](#actions-create-validate)
+ * [pipe_through](#actions-create-pipe_through)
  * [argument](#actions-create-argument)
  * [metadata](#actions-create-metadata)
 
@@ -1252,6 +1303,50 @@ validate changing(:email)
 
 Target: `Ash.Resource.Validation`
 
+### actions.create.pipe_through
+```elixir
+pipe_through names
+```
+
+
+References one or more pipelines to apply to this action.
+Pipeline entities are prepended before the action's own changes/preparations.
+
+
+
+
+### Examples
+```
+pipe_through [:change_state]
+
+```
+
+```
+pipe_through [:change_state], where: attribute_equals(:role, :super_user)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#actions-create-pipe_through-names){: #actions-create-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#actions-create-pipe_through-where){: #actions-create-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.PipeThrough`
+
 ### actions.create.argument
 ```elixir
 argument name, type
@@ -1363,6 +1458,7 @@ Declares a `read` action. For calling this action, see the `Ash.Domain` document
  * [argument](#actions-read-argument)
  * [prepare](#actions-read-prepare)
  * [validate](#actions-read-validate)
+ * [pipe_through](#actions-read-pipe_through)
  * [pagination](#actions-read-pagination)
  * [metadata](#actions-read-metadata)
  * [filter](#actions-read-filter)
@@ -1532,6 +1628,50 @@ validate present([:first_name, :last_name], at_least: 1)
 
 Target: `Ash.Resource.Validation`
 
+### actions.read.pipe_through
+```elixir
+pipe_through names
+```
+
+
+References one or more pipelines to apply to this action.
+Pipeline entities are prepended before the action's own changes/preparations.
+
+
+
+
+### Examples
+```
+pipe_through [:change_state]
+
+```
+
+```
+pipe_through [:change_state], where: attribute_equals(:role, :super_user)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#actions-read-pipe_through-names){: #actions-read-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#actions-read-pipe_through-where){: #actions-read-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.PipeThrough`
+
 ### actions.read.pagination
 
 
@@ -1665,6 +1805,7 @@ Declares a `update` action. For calling this action, see the `Ash.Domain` docume
 ### Nested DSLs
  * [change](#actions-update-change)
  * [validate](#actions-update-validate)
+ * [pipe_through](#actions-update-pipe_through)
  * [metadata](#actions-update-metadata)
  * [argument](#actions-update-argument)
 
@@ -1797,6 +1938,50 @@ validate changing(:email)
 
 Target: `Ash.Resource.Validation`
 
+### actions.update.pipe_through
+```elixir
+pipe_through names
+```
+
+
+References one or more pipelines to apply to this action.
+Pipeline entities are prepended before the action's own changes/preparations.
+
+
+
+
+### Examples
+```
+pipe_through [:change_state]
+
+```
+
+```
+pipe_through [:change_state], where: attribute_equals(:role, :super_user)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#actions-update-pipe_through-names){: #actions-update-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#actions-update-pipe_through-where){: #actions-update-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.PipeThrough`
+
 ### actions.update.metadata
 ```elixir
 metadata name, type
@@ -1909,6 +2094,7 @@ See `Ash.Resource.Change.Builtins.cascade_destroy/2` for cascading destroy opera
 ### Nested DSLs
  * [change](#actions-destroy-change)
  * [validate](#actions-destroy-validate)
+ * [pipe_through](#actions-destroy-pipe_through)
  * [metadata](#actions-destroy-metadata)
  * [argument](#actions-destroy-argument)
 
@@ -2044,6 +2230,50 @@ validate changing(:email)
 ### Introspection
 
 Target: `Ash.Resource.Validation`
+
+### actions.destroy.pipe_through
+```elixir
+pipe_through names
+```
+
+
+References one or more pipelines to apply to this action.
+Pipeline entities are prepended before the action's own changes/preparations.
+
+
+
+
+### Examples
+```
+pipe_through [:change_state]
+
+```
+
+```
+pipe_through [:change_state], where: attribute_equals(:role, :super_user)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#actions-destroy-pipe_through-names){: #actions-destroy-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#actions-destroy-pipe_through-where){: #actions-destroy-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Actions.PipeThrough`
 
 ### actions.destroy.metadata
 ```elixir
@@ -2783,6 +3013,211 @@ validate present([:first_name, :last_name], at_least: 1)
 ### Introspection
 
 Target: `Ash.Resource.Validation`
+
+
+
+
+## pipelines
+Declare reusable pipelines of changes, validations, and preparations
+that can be referenced from multiple actions via `pipe_through`.
+
+
+### Nested DSLs
+ * [pipeline](#pipelines-pipeline)
+   * change
+   * validate
+   * prepare
+
+
+### Examples
+```
+pipelines do
+  pipeline :change_state do
+    validate changing(:state)
+    change set_attribute(:score, 0)
+  end
+end
+
+```
+
+
+
+
+### pipelines.pipeline
+```elixir
+pipeline name
+```
+
+
+Declares a reusable pipeline of changes, validations, and preparations
+that can be referenced from multiple actions via `pipe_through`.
+
+
+### Nested DSLs
+ * [change](#pipelines-pipeline-change)
+ * [validate](#pipelines-pipeline-validate)
+ * [prepare](#pipelines-pipeline-prepare)
+
+
+### Examples
+```
+pipeline :change_state do
+  validate changing(:state)
+  change set_attribute(:score, 0)
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#pipelines-pipeline-name){: #pipelines-pipeline-name .spark-required} | `atom` |  | The name of the pipeline |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#pipelines-pipeline-description){: #pipelines-pipeline-description } | `String.t` |  | An optional description for the pipeline |
+
+
+### pipelines.pipeline.change
+```elixir
+change change
+```
+
+
+A change to be applied to the changeset.
+
+See `Ash.Resource.Change` for more.
+
+
+
+
+### Examples
+```
+change relate_actor(:reporter)
+```
+
+```
+change {MyCustomChange, :foo}
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`change`](#pipelines-pipeline-change-change){: #pipelines-pipeline-change-change .spark-required} | `(any, any -> any) \| module` |  | The module and options for a change. Also accepts a function that takes the changeset and the context. See `Ash.Resource.Change.Builtins` for builtin changes. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`only_when_valid?`](#pipelines-pipeline-change-only_when_valid?){: #pipelines-pipeline-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
+| [`description`](#pipelines-pipeline-change-description){: #pipelines-pipeline-change-description } | `String.t` |  | An optional description for the change |
+| [`where`](#pipelines-pipeline-change-where){: #pipelines-pipeline-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
+| [`always_atomic?`](#pipelines-pipeline-change-always_atomic?){: #pipelines-pipeline-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Change`
+
+### pipelines.pipeline.validate
+```elixir
+validate validation
+```
+
+
+Declares a validation to be applied to the changeset.
+
+See `Ash.Resource.Validation.Builtins` or `Ash.Resource.Validation` for more.
+
+
+
+
+### Examples
+```
+validate changing(:email)
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`validation`](#pipelines-pipeline-validate-validation){: #pipelines-pipeline-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`where`](#pipelines-pipeline-validate-where){: #pipelines-pipeline-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| [`only_when_valid?`](#pipelines-pipeline-validate-only_when_valid?){: #pipelines-pipeline-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
+| [`message`](#pipelines-pipeline-validate-message){: #pipelines-pipeline-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
+| [`description`](#pipelines-pipeline-validate-description){: #pipelines-pipeline-validate-description } | `String.t` |  | An optional description for the validation |
+| [`before_action?`](#pipelines-pipeline-validate-before_action?){: #pipelines-pipeline-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
+| [`always_atomic?`](#pipelines-pipeline-validate-always_atomic?){: #pipelines-pipeline-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Validation`
+
+### pipelines.pipeline.prepare
+```elixir
+prepare preparation
+```
+
+
+Declares a preparation, which can be used to prepare a query for a read action.
+
+
+
+
+### Examples
+```
+prepare build(sort: [:foo, :bar])
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`preparation`](#pipelines-pipeline-prepare-preparation){: #pipelines-pipeline-prepare-preparation .spark-required} | `(any, any -> any) \| module` |  | The module and options for a preparation. Also accepts functions take the query and the context. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`on`](#pipelines-pipeline-prepare-on){: #pipelines-pipeline-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`where`](#pipelines-pipeline-prepare-where){: #pipelines-pipeline-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
+| [`only_when_valid?`](#pipelines-pipeline-prepare-only_when_valid?){: #pipelines-pipeline-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Preparation`
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Pipeline`
 
 
 
