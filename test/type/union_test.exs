@@ -7,6 +7,7 @@ defmodule Ash.Test.Filter.UnionTest do
   use ExUnit.Case, async: true
 
   alias Ash.Test.Domain, as: Domain
+  alias Ash.Test.DumpTestType
 
   defmodule Foo do
     use Ash.Resource, data_layer: :embedded
@@ -789,6 +790,97 @@ defmodule Ash.Test.Filter.UnionTest do
     test "handles nil" do
       assert {:ok, nil} =
                Ash.Type.cast_stored(Ash.Type.Union, nil, integration_constraints())
+    end
+  end
+
+  describe "dump_to_embedded" do
+    test "uses dump_to_embedded on inner value with type_and_value storage" do
+      constraints = [
+        types: [
+          custom: [type: DumpTestType]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      union = %Ash.Union{type: :custom, value: "hello"}
+
+      {:ok, native_result} = Ash.Type.dump_to_native(Ash.Type.Union, union, constraints)
+      {:ok, embedded_result} = Ash.Type.dump_to_embedded(Ash.Type.Union, union, constraints)
+
+      assert native_result["value"] == "native:hello"
+      assert embedded_result["value"] == "embedded:hello"
+    end
+
+    test "uses dump_to_embedded on inner value with map_with_tag storage" do
+      constraints = [
+        storage: :map_with_tag,
+        types: [
+          foo: [
+            type: :map,
+            tag: :type,
+            tag_value: :foo
+          ]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      union = %Ash.Union{type: :foo, value: %{type: :foo, data: "test"}}
+
+      {:ok, native_result} = Ash.Type.dump_to_native(Ash.Type.Union, union, constraints)
+      {:ok, embedded_result} = Ash.Type.dump_to_embedded(Ash.Type.Union, union, constraints)
+
+      # Both should produce maps - the tag should be preserved
+      assert is_map(native_result)
+      assert is_map(embedded_result)
+      assert native_result[:type] == :foo || native_result["type"] == :foo
+    end
+
+    test "handles nil" do
+      constraints = [
+        types: [
+          custom: [type: DumpTestType]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      assert {:ok, nil} = Ash.Type.dump_to_embedded(Ash.Type.Union, nil, constraints)
+    end
+
+    test "returns error for non-union values" do
+      constraints = [
+        types: [
+          custom: [type: DumpTestType]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      assert :error = Ash.Type.dump_to_embedded(Ash.Type.Union, "string", constraints)
+    end
+
+    test "round-trips through dump_to_embedded and cast_stored" do
+      constraints = [
+        types: [
+          int: [type: :integer],
+          string: [type: :string]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      union = %Ash.Union{type: :int, value: 42}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_embedded(Ash.Type.Union, union, constraints)
+      assert {:ok, restored} = Ash.Type.cast_stored(Ash.Type.Union, dumped, constraints)
+      assert %Ash.Union{type: :int, value: 42} = restored
     end
   end
 
