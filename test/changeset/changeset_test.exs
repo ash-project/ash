@@ -1642,4 +1642,27 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       refute is_nil(first_published_at)
     end
   end
+
+  describe "get_data/2" do
+    test "it returns the value from the changeset data" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "original"})
+        |> Ash.create!()
+
+      changeset = Ash.Changeset.for_update(post, :update, %{title: "updated"})
+      assert Ash.Changeset.get_data(changeset, :title) == "original"
+    end
+
+    test "it raises when original data is not available" do
+      changeset = %{
+        Ash.Changeset.new(Post)
+        | data: %Ash.Changeset.OriginalDataNotAvailable{}
+      }
+
+      assert_raise ArgumentError, ~r/Original data is not available/, fn ->
+        Ash.Changeset.get_data(changeset, :title)
+      end
+    end
+  end
 end

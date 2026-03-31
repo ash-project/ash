@@ -5391,7 +5391,19 @@ defmodule Ash.Changeset do
   @doc "Gets the original value for an attribute"
   @spec get_data(t, atom) :: term
   def get_data(changeset, attribute) do
-    Map.get(changeset.data, attribute)
+    case changeset.data do
+      %Ash.Changeset.OriginalDataNotAvailable{} ->
+        raise ArgumentError,
+              """
+              Original data is not available for this changeset. 
+
+              You are likely running an atomic update, meaning that the original data is not available. 
+              See the atomics guide for more.
+              """
+
+      data ->
+        Map.get(data, attribute)
+    end
   end
 
   @doc """
