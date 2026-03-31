@@ -1334,7 +1334,11 @@ defmodule Ash.Expr do
 
                   {^type, matched_constraints} ->
                     {:cont,
-                     Map.update!(acc, :types, &[{{:array, type}, items: matched_constraints} | &1])}
+                     Map.update!(
+                       acc,
+                       :types,
+                       &[{{:array, type}, items: matched_constraints} | &1]
+                     )}
 
                   _ ->
                     {:halt, :error}
