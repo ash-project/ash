@@ -1121,7 +1121,7 @@ pipe_through [:change_state]
 ```
 
 ```
-pipe_through [:change_state], where: expr(^actor(:role) == :super_user)
+pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 
 ```
 
@@ -1322,7 +1322,7 @@ pipe_through [:change_state]
 ```
 
 ```
-pipe_through [:change_state], where: expr(^actor(:role) == :super_user)
+pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 
 ```
 
@@ -1647,7 +1647,7 @@ pipe_through [:change_state]
 ```
 
 ```
-pipe_through [:change_state], where: expr(^actor(:role) == :super_user)
+pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 
 ```
 
@@ -1957,7 +1957,7 @@ pipe_through [:change_state]
 ```
 
 ```
-pipe_through [:change_state], where: expr(^actor(:role) == :super_user)
+pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 
 ```
 
@@ -2250,7 +2250,7 @@ pipe_through [:change_state]
 ```
 
 ```
-pipe_through [:change_state], where: expr(^actor(:role) == :super_user)
+pipe_through [:change_state], where: attribute_equals(:role, :super_user)
 
 ```
 
