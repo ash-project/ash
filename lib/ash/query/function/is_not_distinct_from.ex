@@ -13,7 +13,7 @@ defmodule Ash.Query.Function.IsNotDistinctFrom do
   """
   use Ash.Query.Function, name: :is_not_distinct_from, predicate?: true
 
-  def args, do: [[:any, :any]]
+  def args, do: [[:any, :same]]
 
   def returns, do: [:boolean]
 
