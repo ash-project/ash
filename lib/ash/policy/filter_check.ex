@@ -54,6 +54,8 @@ defmodule Ash.Policy.FilterCheck do
 
       def type, do: :filter
 
+      def init(opts), do: {:ok, opts}
+
       def requires_original_data?(_, _), do: false
 
       def eager_evaluate?, do: false
@@ -398,7 +400,8 @@ defmodule Ash.Policy.FilterCheck do
 
       def prefer_expanded_description?, do: false
 
-      defoverridable reject: 3,
+      defoverridable init: 1,
+                     reject: 3,
                      requires_original_data?: 2,
                      expand_description: 3,
                      prefer_expanded_description?: 0

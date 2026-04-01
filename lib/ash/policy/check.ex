@@ -23,7 +23,14 @@ defmodule Ash.Policy.Check do
 
   @doc false
   def transform(%{check: {check_module, opts}} = policy) do
-    {:ok, %{policy | check_module: check_module, check_opts: opts}}
+    case init(check_module, opts) do
+      {:ok, opts} ->
+        {:ok,
+         %{policy | check: {check_module, opts}, check_module: check_module, check_opts: opts}}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   @type context() :: %{resource: Ash.Resource.t()}
@@ -108,6 +115,14 @@ defmodule Ash.Policy.Check do
   when two checks cannot both be true at the same time.
   """
   @callback conflicts?(ref(), ref(), context()) :: boolean()
+
+  @doc """
+  Initialize and validate the opts for the check module.
+
+  This callback is called at compile time when the check is defined in a policy.
+  It allows checks to verify and normalize their options before they are used.
+  """
+  @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
 
   @optional_callbacks check: 4,
                       auto_filter: 3,
@@ -203,6 +218,19 @@ defmodule Ash.Policy.Check do
         The callback #{inspect(__MODULE__)}.describe/1 expects a String.t().
         """
     end
+  end
+
+  @doc false
+  @spec init(module(), Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
+  def init(module, opts) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :init,
+      [opts],
+      [{:ok, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "init/1"
+    )
   end
 
   @doc false
@@ -346,6 +374,7 @@ defmodule Ash.Policy.Check do
       require Ash.Query
 
       def type, do: :manual
+      def init(opts), do: {:ok, opts}
       def requires_original_data?(_, _), do: false
       def prefer_expanded_description?, do: false
       def eager_evaluate?, do: false
@@ -354,6 +383,7 @@ defmodule Ash.Policy.Check do
       def conflicts?(_, _, _context), do: false
 
       defoverridable type: 0,
+                     init: 1,
                      requires_original_data?: 2,
                      prefer_expanded_description?: 0,
                      eager_evaluate?: 0,

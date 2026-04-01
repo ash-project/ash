@@ -49,6 +49,8 @@ defmodule Ash.Policy.SimpleCheck do
 
       def type, do: :simple
 
+      def init(opts), do: {:ok, opts}
+
       def requires_original_data?(_, _), do: false
 
       @dialyzer {:nowarn_function, strict_check: 3}
@@ -63,7 +65,8 @@ defmodule Ash.Policy.SimpleCheck do
       def prefer_expanded_description?, do: false
       def eager_evaluate?, do: true
 
-      defoverridable requires_original_data?: 2,
+      defoverridable init: 1,
+                     requires_original_data?: 2,
                      prefer_expanded_description?: 0,
                      eager_evaluate?: 0
     end
