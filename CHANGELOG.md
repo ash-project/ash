@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.23.1](https://github.com/ash-project/ash/compare/v3.23.0...v3.23.1) (2026-04-01)
+
+
+
+
+### Bug Fixes:
+
+* ensure is/_not/_distinct_from cast parameters to the same type by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.23.0](https://github.com/ash-project/ash/compare/v3.22.2...v3.23.0) (2026-03-31)
 
 
