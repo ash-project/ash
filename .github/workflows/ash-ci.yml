@@ -350,7 +350,7 @@ jobs:
     steps:
       - name: Deploy to GitHub pages
         id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
   conventional-commit:
     name: mix git_ops.check_message
     runs-on: ubuntu-latest
@@ -583,7 +583,7 @@ jobs:
     steps:
       - name: Dependabot metadata
         id: dependabot-metadata
-        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2.5.0
+        uses: dependabot/fetch-metadata@ffa630c65fa7e0ecfa0625b5ceda64399aea1b36 # v3.0.0
         if: github.event.pull_request.user.login == 'dependabot[bot]'
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -869,7 +869,7 @@ jobs:
         shell: bash
         run: |
           rustup target add ${{ matrix.job.target }}
-      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
           prefix-key: v0-precomp
           shared-key: ${{ matrix.job.target }}-${{ matrix.nif }}
@@ -877,7 +877,7 @@ jobs:
             native/igniter_js
       - name: Build the project
         id: build-crate
-        uses: philss/rustler-precompiled-action@853ac56183f29a080304df3ff8a194b5bbdc24cc # v1.1.4
+        uses: philss/rustler-precompiled-action@67ed0cc2d6a423e4c4cd9ad651dcc6c90f802cdb # v1.1.5
         with:
           project-name: igniter_js
           project-version: ${{ env.PROJECT_VERSION }}
@@ -895,7 +895,7 @@ jobs:
           path: ${{ steps.build-crate.outputs.file-path }}
 
       - name: Publish archives and packages
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
         with:
           files: |
             ${{ steps.build-crate.outputs.file-path }}
