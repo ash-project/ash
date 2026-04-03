@@ -12,6 +12,7 @@ defmodule Ash.Expr do
   @type expression :: t() | term()
 
   def wrap(%__MODULE__{} = already), do: already
+  def wrap(nil), do: nil
   def wrap(expr), do: %__MODULE__{expr: expr}
 
   def unwrap(%__MODULE__{expr: inner}), do: inner

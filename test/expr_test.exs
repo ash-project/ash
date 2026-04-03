@@ -230,10 +230,14 @@ defmodule Ash.Test.ExprTest do
       assert %Ash.Expr{} = result
     end
 
-    test "expr/1 wraps non-expression values too" do
+    test "expr/1 wraps non-expression values" do
       x = 42
       result = expr(^x)
       assert %Ash.Expr{expr: 42} = result
+    end
+
+    test "expr/1 does not wrap nil" do
+      assert expr(^nil) == nil
     end
 
     test "expr?/1 returns true for %Ash.Expr{}" do
