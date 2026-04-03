@@ -2427,7 +2427,8 @@ defmodule Ash.Changeset do
   - `fully_atomic_changeset/4` for creating fully atomic changesets
   - `change_attribute/3` for regular (non-atomic) attribute changes
   """
-  @spec atomic_update(t(), atom(), {:atomic, Ash.Expr.expression()} | Ash.Expr.expression()) :: t()
+  @spec atomic_update(t(), atom(), {:atomic, Ash.Expr.expression()} | Ash.Expr.expression()) ::
+          t()
   def atomic_update(changeset, key, value, opts \\ [])
 
   def atomic_update(changeset, key, {:atomic, value}, _opts) do

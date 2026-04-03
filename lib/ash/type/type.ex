@@ -486,11 +486,15 @@ defmodule Ash.Type do
 
   """
   @callback cast_atomic(new_value :: Ash.Expr.expression(), constraints) ::
-              {:atomic, Ash.Expr.expression()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
+              {:atomic, Ash.Expr.expression()}
+              | {:error, Ash.Error.t()}
+              | {:not_atomic, String.t()}
 
   @doc "Casts a list of values within an expression. See `c:cast_atomic/2` for more."
   @callback cast_atomic_array(new_value :: Ash.Expr.expression(), constraints) ::
-              {:atomic, Ash.Expr.expression()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
+              {:atomic, Ash.Expr.expression()}
+              | {:error, Ash.Error.t()}
+              | {:not_atomic, String.t()}
 
   @doc "Applies type constraints within an expression."
   @callback apply_atomic_constraints(new_value :: Ash.Expr.expression(), constraints) ::

@@ -128,14 +128,18 @@ defmodule Ash.Resource.Change do
   @doc false
   @spec atomic(module(), Ash.Changeset.t(), Keyword.t(), Ash.Resource.Change.Context.t()) ::
           {:ok, Ash.Changeset.t()}
-          | {:atomic, %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
+          | {:atomic,
+             %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
           | {:atomic, Ash.Changeset.t(), %{optional(atom()) => Ash.Expr.expression()}}
           | {:atomic, Ash.Changeset.t(), %{optional(atom()) => Ash.Expr.expression()}, list()}
           | {:atomic, %{optional(atom()) => Ash.Expr.expression()}, list()}
-          | {:atomic_set, %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
+          | {:atomic_set,
+             %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
           | list(
-              {:atomic, %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
-              | {:atomic_set, %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
+              {:atomic,
+               %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
+              | {:atomic_set,
+                 %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
             )
           | {:not_atomic, String.t()}
           | :ok
@@ -408,22 +412,29 @@ defmodule Ash.Resource.Change do
   """
   @callback atomic(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: Context.t()) ::
               {:ok, Ash.Changeset.t()}
-              | {:atomic, %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
+              | {:atomic,
+                 %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
               | {:atomic, Ash.Changeset.t(), %{optional(atom()) => Ash.Expr.expression()}}
               | {:atomic, Ash.Changeset.t(), %{optional(atom()) => Ash.Expr.expression()},
                  list(
-                   {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.expression(),
-                    error_expr :: Ash.Expr.expression()}
+                   {:atomic, involved_fields :: list(atom) | :*,
+                    condition_expr :: Ash.Expr.expression(), error_expr :: Ash.Expr.expression()}
                  )}
               | {:atomic, %{optional(atom()) => Ash.Expr.expression()},
                  list(
-                   {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.expression(),
-                    error_expr :: Ash.Expr.expression()}
+                   {:atomic, involved_fields :: list(atom) | :*,
+                    condition_expr :: Ash.Expr.expression(), error_expr :: Ash.Expr.expression()}
                  )}
-              | {:atomic_set, %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
+              | {:atomic_set,
+                 %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
               | list(
-                  {:atomic, %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
-                  | {:atomic_set, %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
+                  {:atomic,
+                   %{optional(atom()) => Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}}}
+                  | {:atomic_set,
+                     %{
+                       optional(atom()) =>
+                         Ash.Expr.expression() | {:atomic, Ash.Expr.expression()}
+                     }}
                 )
               | {:not_atomic, String.t()}
               | :ok

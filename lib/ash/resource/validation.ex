@@ -82,11 +82,11 @@ defmodule Ash.Resource.Validation do
               context :: Context.t()
             ) ::
               :ok
-              | {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.expression(),
-                 error_expr :: Ash.Expr.expression()}
+              | {:atomic, involved_fields :: list(atom) | :*,
+                 condition_expr :: Ash.Expr.expression(), error_expr :: Ash.Expr.expression()}
               | [
-                  {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.expression(),
-                   error_expr :: Ash.Expr.expression()}
+                  {:atomic, involved_fields :: list(atom) | :*,
+                   condition_expr :: Ash.Expr.expression(), error_expr :: Ash.Expr.expression()}
                 ]
               | {:not_atomic, String.t()}
               | {:error, term()}
