@@ -112,7 +112,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             query =
               Ash.Query.for_read(
                 query,
-                Ash.Resource.Info.primary_action!(query.resource, :read).name,
+                Ash.Actions.Update.Bulk.get_read_action(query.resource, action, opts).name,
                 %{},
                 actor: opts[:actor],
                 tenant: opts[:tenant],

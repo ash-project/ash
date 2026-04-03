@@ -390,6 +390,64 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
   end
 
+  defmodule StrictPost do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:create]
+
+      read :read do
+        primary? true
+        pagination keyset?: true, required?: false
+      end
+
+      read :read_for_destroy do
+        pagination keyset?: true, required?: false
+      end
+
+      destroy :destroy do
+        primary? true
+      end
+
+      destroy :destroy_with_read_action do
+      end
+    end
+
+    policies do
+      default_access_type :strict
+
+      policy action(:create) do
+        authorize_if always()
+      end
+
+      policy action(:read_for_destroy) do
+        authorize_if always()
+      end
+
+      policy action(:destroy_with_read_action) do
+        authorize_if always()
+      end
+
+      policy action(:destroy) do
+        authorize_if always()
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
+    end
+  end
+
   setup do
     capture_log(fn ->
       Ash.DataLayer.Mnesia.start(Domain, [MnesiaPost])
@@ -1439,6 +1497,42 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                )
 
       assert Exception.message(error) =~ "status cannot be bad"
+    end
+  end
+
+  describe "read_action option" do
+    test "bulk_destroy respects read_action option when query is not pre-validated" do
+      StrictPost
+      |> Ash.Changeset.for_create(:create, %{title: "test"})
+      |> Ash.create!(authorize?: false)
+
+      # Build a query without __validated_for_action__ (as AshGraphql does via do_filter)
+      query = Ash.Query.do_filter(StrictPost, %{title: "test"})
+
+      # Primary :read is forbidden under strict access type,
+      # but :read_for_destroy is authorized
+      assert %Ash.BulkResult{status: :success} =
+               Ash.bulk_destroy(query, :destroy_with_read_action, %{},
+                 read_action: :read_for_destroy,
+                 authorize?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "bulk_destroy fails when read_action is not specified and primary read is forbidden" do
+      StrictPost
+      |> Ash.Changeset.for_create(:create, %{title: "test"})
+      |> Ash.create!(authorize?: false)
+
+      query = Ash.Query.do_filter(StrictPost, %{title: "test"})
+
+      # Without read_action, bulk_destroy should use the primary :read action
+      # which is forbidden under strict access type
+      assert %Ash.BulkResult{status: :error} =
+               Ash.bulk_destroy(query, :destroy_with_read_action, %{},
+                 authorize?: true,
+                 return_errors?: true
+               )
     end
   end
 end
