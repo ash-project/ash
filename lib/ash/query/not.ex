@@ -6,6 +6,8 @@ defmodule Ash.Query.Not do
   @moduledoc "Represents the negation of the contained expression"
   defstruct [:expression]
 
+  def new(%Ash.Expr{expr: inner}), do: new(inner)
+
   def new(nil), do: nil
 
   def new(%__MODULE__{expression: expression}), do: expression

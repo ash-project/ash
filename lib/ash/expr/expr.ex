@@ -348,6 +348,10 @@ defmodule Ash.Expr do
 
   def can_return_nil?(nil), do: true
 
+  def can_return_nil?(%__MODULE__{expr: inner}) do
+    can_return_nil?(inner)
+  end
+
   def can_return_nil?(%Ash.Query.BooleanExpression{left: left, right: right}) do
     can_return_nil?(left) || can_return_nil?(right)
   end
@@ -379,6 +383,10 @@ defmodule Ash.Expr do
   end
 
   @doc "Whether or not a given template contains an actor reference"
+  def template_references?(%__MODULE__{expr: inner}, pred) do
+    template_references?(inner, pred)
+  end
+
   def template_references?(%{__struct__: Ash.Filter, expression: expression}, pred) do
     template_references?(expression, pred)
   end
@@ -436,6 +444,17 @@ defmodule Ash.Expr do
   def template_references?(thing, pred), do: pred.(thing)
 
   @doc false
+  def walk_template(%__MODULE__{expr: inner} = wrapper, mapper) do
+    case mapper.(wrapper) do
+      ^wrapper ->
+        walked = walk_template(inner, mapper)
+        wrap(walked)
+
+      other ->
+        walk_template(other, mapper)
+    end
+  end
+
   def walk_template(filter, mapper) when is_list(filter) do
     case mapper.(filter) do
       ^filter ->

@@ -11,6 +11,9 @@ defmodule Ash.Query.BooleanExpression do
   alias Ash.Query.Operator.{Eq, In, NotEq}
   alias Ash.Query.Ref
 
+  def new(op, %Ash.Expr{expr: inner}, right), do: new(op, inner, right)
+  def new(op, left, %Ash.Expr{expr: inner}), do: new(op, left, inner)
+
   def new(_, nil, nil), do: false
   def new(:or, left, nil), do: left
   def new(:or, nil, right), do: right
@@ -35,6 +38,9 @@ defmodule Ash.Query.BooleanExpression do
   # We may want to go down this route some day, but for now we simply use this to combine
   # statements where possible, which helps with authorization logic that leverages the query.
   # For example, `x in [1, 2, 3] and x != 1` becomes `x in [2, 3]`
+  def optimized_new(op, %Ash.Expr{expr: inner}, right), do: optimized_new(op, inner, right)
+  def optimized_new(op, left, %Ash.Expr{expr: inner}), do: optimized_new(op, left, inner)
+
   def optimized_new(_, nil, nil), do: false
   def optimized_new(:and, false, _), do: false
   def optimized_new(:and, _, false), do: false

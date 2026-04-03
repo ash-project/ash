@@ -24,6 +24,7 @@ defmodule Ash.Expr.SAT do
   defp filter_to_expr(nil), do: nil
   defp filter_to_expr(false), do: false
   defp filter_to_expr(true), do: true
+  defp filter_to_expr(%Ash.Expr{expr: inner}), do: filter_to_expr(inner)
   defp filter_to_expr(%Filter{expression: expression}), do: filter_to_expr(expression)
   defp filter_to_expr(%{__predicate__?: _} = op_or_func), do: op_or_func
   defp filter_to_expr(%Ash.Query.Exists{} = exists), do: exists

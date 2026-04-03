@@ -2607,6 +2607,10 @@ defmodule Ash.Changeset do
     end
   end
 
+  defp check_for_exists_with_relationships(%Ash.Expr{expr: inner}) do
+    check_for_exists_with_relationships(inner)
+  end
+
   defp check_for_exists_with_relationships(%Ash.Query.Exists{path: path}) when path != [] do
     {:error, "atomic_set cannot use exists with relationships"}
   end
