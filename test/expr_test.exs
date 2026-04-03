@@ -28,9 +28,9 @@ defmodule Ash.Test.ExprTest do
 
   describe "fragments" do
     test "allow pure binary sigils" do
-      assert expr(fragment(~SQL"? > ?", 2, 1)) = expr(fragment("? > ?", 2, 1))
-      assert expr(fragment(~S"? > ?", 2, 1)) = expr(fragment("? > ?", 2, 1))
-      assert expr(fragment(~s"? > ?", 2, 1)) = expr(fragment("? > ?", 2, 1))
+      assert expr(fragment(~SQL"? > ?", 2, 1)) == expr(fragment("? > ?", 2, 1))
+      assert expr(fragment(~S"? > ?", 2, 1)) == expr(fragment("? > ?", 2, 1))
+      assert expr(fragment(~s"? > ?", 2, 1)) == expr(fragment("? > ?", 2, 1))
 
       injection_ast =
         quote do
@@ -200,7 +200,7 @@ defmodule Ash.Test.ExprTest do
       calc = calc(fragment("similarity(id, ?)", ^arg(:q)), type: :float)
 
       assert %Ash.Query.Call{name: :fragment, args: ["similarity(id, ?)", {:_arg, :q}]} =
-               calc.opts[:expr]
+               Ash.Expr.unwrap(calc.opts[:expr])
 
       # Use the same mapper pattern that fill_template uses for {:_arg, field}
       args = %{q: "test_value"}
@@ -220,7 +220,58 @@ defmodule Ash.Test.ExprTest do
 
       # The arg reference should now be resolved to the actual value
       assert %Ash.Query.Call{name: :fragment, args: ["similarity(id, ?)", "test_value"]} =
-               filled_calc.opts[:expr]
+               Ash.Expr.unwrap(filled_calc.opts[:expr])
+    end
+  end
+
+  describe "Ash.Expr struct" do
+    test "expr/1 returns %Ash.Expr{} for expression values" do
+      result = expr(1 + 2)
+      assert %Ash.Expr{} = result
+    end
+
+    test "expr/1 wraps non-expression values too" do
+      x = 42
+      result = expr(^x)
+      assert %Ash.Expr{expr: 42} = result
+    end
+
+    test "expr?/1 returns true for %Ash.Expr{}" do
+      result = expr(x > 1)
+      assert expr?(result)
+    end
+
+    test "wrap/1 prevents double-wrapping" do
+      result = expr(x > 1)
+      assert %Ash.Expr{} = result
+      double_wrapped = Ash.Expr.wrap(result)
+      assert double_wrapped === result
+    end
+
+    test "unwrap/1 extracts inner expression" do
+      result = expr(x > 1)
+      inner = Ash.Expr.unwrap(result)
+      assert %Ash.Query.Call{name: :>, operator?: true} = inner
+    end
+
+    test "unwrap/1 returns non-Ash.Expr values as-is" do
+      assert Ash.Expr.unwrap(42) == 42
+      assert Ash.Expr.unwrap(nil) == nil
+    end
+
+    test "Inspect protocol delegates to inner expression" do
+      result = expr(x > 1)
+      assert inspect(result) == inspect(Ash.Expr.unwrap(result))
+    end
+
+    test "eval works with %Ash.Expr{}" do
+      result = expr(1 + 2)
+      assert {:ok, 3} = Ash.Expr.eval(result)
+    end
+
+    test "where/2 returns %Ash.Expr{}" do
+      result = where(x > 1, y < 10)
+      assert %Ash.Expr{} = result
     end
   end
 end

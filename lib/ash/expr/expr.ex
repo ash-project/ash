@@ -145,21 +145,31 @@ defmodule Ash.Expr do
   end
 
   defmacro where(left, right) do
+    left_expr = do_expr(left)
+    right_expr = do_expr(right)
+
     quote do
-      Ash.Query.BooleanExpression.optimized_new(
-        :and,
-        Ash.Expr.expr(unquote(left)),
-        Ash.Expr.expr(unquote(right))
+      Ash.Expr.wrap(
+        Ash.Query.BooleanExpression.optimized_new(
+          :and,
+          unquote(left_expr),
+          unquote(right_expr)
+        )
       )
     end
   end
 
   defmacro or_where(left, right) do
+    left_expr = do_expr(left)
+    right_expr = do_expr(right)
+
     quote do
-      Ash.Query.BooleanExpression.optimized_new(
-        :or,
-        Ash.Expr.expr(unquote(left)),
-        Ash.Expr.expr(unquote(right))
+      Ash.Expr.wrap(
+        Ash.Query.BooleanExpression.optimized_new(
+          :or,
+          unquote(left_expr),
+          unquote(right_expr)
+        )
       )
     end
   end
@@ -210,7 +220,7 @@ defmodule Ash.Expr do
     expr = do_expr(body)
 
     quote location: :keep do
-      unquote(expr)
+      Ash.Expr.wrap(unquote(expr))
     end
   end
 
