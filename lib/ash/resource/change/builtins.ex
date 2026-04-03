@@ -14,7 +14,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   This ensures that only things matching the provided filter are updated or destroyed.
   """
-  @spec filter(expr :: Ash.Expr.t()) :: Ash.Resource.Change.ref()
+  @spec filter(expr :: Ash.Expr.expression()) :: Ash.Resource.Change.ref()
   def filter(filter) do
     {Ash.Resource.Change.Filter, filter: filter}
   end
@@ -201,7 +201,7 @@ defmodule Ash.Resource.Change.Builtins do
         ]
       end
   """
-  @spec atomic_set(attribute :: atom, expr :: Ash.Expr.t(), opts :: Keyword.t()) ::
+  @spec atomic_set(attribute :: atom, expr :: Ash.Expr.expression(), opts :: Keyword.t()) ::
           Ash.Resource.Change.ref()
   def atomic_set(attribute, expr, opts \\ []) do
     {Ash.Resource.Change.AtomicSet,
@@ -242,7 +242,7 @@ defmodule Ash.Resource.Change.Builtins do
         {:atomic, %{view_count: expr(view_count + 1)}}
       end
   """
-  @spec atomic_update(attribute :: atom, expr :: Ash.Expr.t(), opts :: Keyword.t()) ::
+  @spec atomic_update(attribute :: atom, expr :: Ash.Expr.expression(), opts :: Keyword.t()) ::
           Ash.Resource.Change.ref()
   def atomic_update(attribute, expr, opts \\ []) do
     {Ash.Resource.Change.Atomic,

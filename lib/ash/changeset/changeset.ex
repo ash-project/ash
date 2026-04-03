@@ -1676,7 +1676,7 @@ defmodule Ash.Changeset do
   # ugly because it can end up reading like "not is not equal to" but
   # ultimately produces the correct results.
   @spec atomic_condition([{module(), keyword()}], Ash.Changeset.t(), map() | struct()) ::
-          {:atomic, Ash.Expr.t() | boolean()} | {:not_atomic, String.t()}
+          {:atomic, Ash.Expr.expression() | boolean()} | {:not_atomic, String.t()}
   def atomic_condition(where, changeset, context) do
     # Handle both map and struct contexts (e.g., Ash.Resource.Change.Context)
     context_map = if is_struct(context), do: Map.from_struct(context), else: context
@@ -2427,7 +2427,7 @@ defmodule Ash.Changeset do
   - `fully_atomic_changeset/4` for creating fully atomic changesets
   - `change_attribute/3` for regular (non-atomic) attribute changes
   """
-  @spec atomic_update(t(), atom(), {:atomic, Ash.Expr.t()} | Ash.Expr.t()) :: t()
+  @spec atomic_update(t(), atom(), {:atomic, Ash.Expr.expression()} | Ash.Expr.expression()) :: t()
   def atomic_update(changeset, key, value, opts \\ [])
 
   def atomic_update(changeset, key, {:atomic, value}, _opts) do
@@ -2543,7 +2543,7 @@ defmodule Ash.Changeset do
     end)
   end
 
-  @spec atomic_set(t(), atom(), {:atomic, Ash.Expr.t()} | Ash.Expr.t()) :: t()
+  @spec atomic_set(t(), atom(), {:atomic, Ash.Expr.expression()} | Ash.Expr.expression()) :: t()
   def atomic_set(changeset, key, value, opts \\ [])
 
   def atomic_set(%{action_type: :update} = changeset, key, value, opts) do
@@ -7561,7 +7561,7 @@ defmodule Ash.Changeset do
 
   Used by optimistic locking. See `Ash.Resource.Change.Builtins.optimistic_lock/1` for more.
   """
-  @spec filter(t(), Ash.Expr.t()) :: t()
+  @spec filter(t(), Ash.Expr.expression()) :: t()
   def filter(changeset, expr) when expr in [nil, %{}, []] do
     changeset
   end

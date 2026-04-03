@@ -10,6 +10,7 @@ defmodule Ash.Expr do
   defdelegate to_sat_expression(resource, expression), to: Ash.Expr.SAT
 
   @type t :: any
+  @type expression :: term()
   @pass_through_funcs [:where, :or_where, :expr, :@]
   @aggregate_kinds Ash.Query.Aggregate.kinds()
 

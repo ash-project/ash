@@ -12,8 +12,8 @@ defmodule Ash.Expr.SAT do
   @dialyzer {:nowarn_function, overlap?: 2}
 
   @doc "Prepares a filter for comparison"
-  @spec to_sat_expression(Ash.Resource.t(), Ash.Expr.t()) ::
-          Crux.Expression.t(Ash.Expr.t())
+  @spec to_sat_expression(Ash.Resource.t(), Ash.Expr.expression()) ::
+          Crux.Expression.t(Ash.Expr.expression())
   def to_sat_expression(resource, expression) do
     expression
     |> consolidate_relationships(resource)

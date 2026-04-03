@@ -660,7 +660,7 @@ defmodule Ash.Filter do
   Use this when your attribute is configured with `filterable? :simple_equality`, and you want to
   to find the value that it is being filtered on with (if any).
   """
-  @spec fetch_simple_equality_predicate(Ash.Expr.t(), atom()) :: {:ok, term()} | :error
+  @spec fetch_simple_equality_predicate(Ash.Expr.expression(), atom()) :: {:ok, term()} | :error
   def fetch_simple_equality_predicate(expression, attribute) do
     expression
     |> find(&simple_eq?(&1, attribute), false)
