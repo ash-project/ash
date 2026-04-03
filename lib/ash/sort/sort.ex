@@ -35,7 +35,6 @@ defmodule Ash.Sort do
   Ash.Query.sort(query, [{Ash.Sort.expr_sort(author.full_name, :string), :desc_nils_first}])
   ```
   """
-  @spec expr_sort(Ash.Expr.t(), Ash.Type.t() | nil) :: Ash.Expr.t()
   defmacro expr_sort(expression, type \\ nil) do
     quote generated: true do
       require Ash.Expr

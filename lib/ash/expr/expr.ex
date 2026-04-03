@@ -6,11 +6,19 @@ defmodule Ash.Expr do
   @moduledoc "Tools to build Ash expressions"
   alias Ash.Query.{BooleanExpression, Not}
 
+  defstruct [:expr]
+
+  @type t :: %__MODULE__{expr: any()}
+  @type expression :: t() | term()
+
+  def wrap(%__MODULE__{} = already), do: already
+  def wrap(expr), do: %__MODULE__{expr: expr}
+
+  def unwrap(%__MODULE__{expr: inner}), do: inner
+  def unwrap(other), do: other
+
   @doc "Prepares a filter for comparison"
   defdelegate to_sat_expression(resource, expression), to: Ash.Expr.SAT
-
-  @type t :: any
-  @type expression :: term()
   @pass_through_funcs [:where, :or_where, :expr, :@]
   @aggregate_kinds Ash.Query.Aggregate.kinds()
 
@@ -50,6 +58,7 @@ defmodule Ash.Expr do
 
   @doc "Returns true if the value is or contains an expression"
   @spec expr?(term) :: boolean()
+  def expr?(%__MODULE__{}), do: true
   def expr?({:_actor, _}), do: true
   def expr?({:_arg, _}), do: true
   def expr?({:_ref, _, _}), do: true
@@ -135,7 +144,6 @@ defmodule Ash.Expr do
     )
   end
 
-  @spec where(Macro.t(), Macro.t()) :: t
   defmacro where(left, right) do
     quote do
       Ash.Query.BooleanExpression.optimized_new(
@@ -146,7 +154,6 @@ defmodule Ash.Expr do
     end
   end
 
-  @spec or_where(Macro.t(), Macro.t()) :: t
   defmacro or_where(left, right) do
     quote do
       Ash.Query.BooleanExpression.optimized_new(
@@ -169,7 +176,6 @@ defmodule Ash.Expr do
   ])
   ```
   """
-  @spec calc(Macro.t(), opts :: Keyword.t()) :: t()
   defmacro calc(expression, opts \\ []) do
     quote generated: true do
       require Ash.Expr
@@ -194,7 +200,6 @@ defmodule Ash.Expr do
   @doc """
   Creates an expression. See the [Expressions guide](/documentation/topics/reference/expressions.md) for more.
   """
-  @spec expr(Macro.t()) :: t()
   defmacro expr(do: body) do
     quote location: :keep do
       Ash.Expr.expr(unquote(body))
@@ -2001,4 +2006,10 @@ defmodule Ash.Expr do
 
   defp remove_pin({:^, _, [value]}), do: value
   defp remove_pin(value), do: value
+
+  defimpl Inspect do
+    def inspect(%Ash.Expr{expr: inner}, opts) do
+      Inspect.inspect(inner, opts)
+    end
+  end
 end
