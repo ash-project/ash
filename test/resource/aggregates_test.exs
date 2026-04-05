@@ -1039,6 +1039,8 @@ defmodule Ash.Test.Resource.AggregatesTest do
           has_many :comments, MixedAttributeComment,
             destination_attribute: :post_id,
             public?: true
+
+          has_many :comment_likes, MixedContextLike, through: [:comments, :likes]
         end
 
         aggregates do
@@ -1061,21 +1063,35 @@ defmodule Ash.Test.Resource.AggregatesTest do
         |> Ash.Changeset.for_create(:create, %{title: "Test"}, tenant: "tenant1")
         |> Ash.create!(domain: Domain)
 
-      _comment =
+      comment =
         MixedAttributeComment
         |> Ash.Changeset.for_create(:create, %{post_id: post.id}, tenant: "tenant1")
+        |> Ash.create!(domain: Domain)
+
+      _like =
+        MixedContextLike
+        |> Ash.Changeset.for_create(:create, %{comment_id: comment.id}, tenant: "tenant1")
         |> Ash.create!(domain: Domain)
 
       # Should work: bypass aggregate only uses [:comments] path (all attribute strategy)
       result =
         MixedAttributePost
         |> Ash.Query.filter(id == ^post.id)
-        |> Ash.Query.load([:comment_count_bypass, :like_count_normal])
+        |> Ash.Query.load([
+          :comment_count_bypass,
+          :like_count_normal,
+          :comment_likes,
+          comments: :likes
+        ])
         |> Ash.read!(domain: Domain, tenant: "tenant1")
 
       assert [loaded_post] = result
+      assert [loaded_comment] = loaded_post.comments
+      assert [like] = loaded_comment.likes
+      assert [comment_like] = loaded_post.comment_likes
       assert loaded_post.comment_count_bypass == 1
-      assert loaded_post.like_count_normal == 0
+      assert loaded_post.like_count_normal == 1
+      assert like.id == comment_like.id
     end
   end
 end
