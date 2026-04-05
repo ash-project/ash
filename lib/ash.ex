@@ -2889,7 +2889,13 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     %resource{} = record
     id = record |> Map.take(Ash.Resource.Info.primary_key(resource)) |> Enum.to_list()
-    opts = Keyword.put_new(opts, :tenant, Map.get(record.__metadata__, :tenant))
+
+    opts =
+      case Map.fetch(record.__metadata__, :tenant) do
+        {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
+
     get(resource, id, opts)
   end
 
@@ -3704,7 +3710,11 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_map_or_nil!(opts[:input])
 
-    opts = Keyword.put_new(opts, :tenant, Map.get(record.__metadata__, :tenant))
+    opts =
+      case Map.fetch(record.__metadata__, :tenant) do
+        {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
 
     changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_update_opts()))
     update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
@@ -3810,7 +3820,12 @@ defmodule Ash do
         record -> record
       end
 
-    opts = Keyword.put_new(opts, :tenant, Map.get(data.__metadata__, :tenant))
+    opts =
+      case Map.fetch(data.__metadata__, :tenant) do
+        {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
+
     Ash.Helpers.expect_options!(opts)
 
     changeset =
