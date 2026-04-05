@@ -3640,11 +3640,17 @@ defmodule Ash.Filter do
       if is_boolean(operator) do
         {:ok, operator}
       else
-        if can_filter_expr?(context, operator) do
-          {:ok, operator}
-        else
-          {:error,
-           "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the operator #{inspect(operator)}"}
+        case maybe_operator_expression(operator, context) do
+          {:ok, custom_expr} ->
+            {:ok, custom_expr}
+
+          :unknown ->
+            if can_filter_expr?(context, operator) do
+              {:ok, operator}
+            else
+              {:error,
+               "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the operator #{inspect(operator)}"}
+            end
         end
       end
     else
@@ -3990,6 +3996,67 @@ defmodule Ash.Filter do
       :ok
     end
   end
+
+  defp maybe_operator_expression(operator, context) when is_struct(operator) do
+    case Ash.Query.Operator.operator_expression(operator) do
+      {:ok, expr_module} ->
+        %{left: left, right: right} = operator
+        arguments = [left, right]
+        resource = context[:resource]
+
+        data_layer =
+          if resource do
+            Ash.Resource.Info.data_layer(resource)
+          else
+            Ash.DataLayer.Simple
+          end
+
+        with {:ok, expr} <- Ash.CustomExpression.expression(expr_module, data_layer, arguments),
+             {:ok, expr} <- hydrate_refs(expr, context) do
+          if data_layer == Ash.DataLayer.Simple do
+            {:ok,
+             %Ash.CustomExpression{
+               module: expr_module,
+               arguments: arguments,
+               expression: expr,
+               simple_expression: {:ok, expr}
+             }}
+          else
+            with {:ok, simple_expr} <-
+                   Ash.CustomExpression.expression(expr_module, Ash.DataLayer.Simple, arguments),
+                 {:ok, simple_expr} <- hydrate_refs(simple_expr, context) do
+              {:ok,
+               %Ash.CustomExpression{
+                 module: expr_module,
+                 arguments: arguments,
+                 expression: expr,
+                 simple_expression: {:ok, simple_expr}
+               }}
+            else
+              {:error, _error} ->
+                :unknown
+
+              :unknown ->
+                {:ok,
+                 %Ash.CustomExpression{
+                   module: expr_module,
+                   arguments: arguments,
+                   expression: expr,
+                   simple_expression: :unknown
+                 }}
+            end
+          end
+        else
+          :unknown -> :unknown
+          {:error, _} -> :unknown
+        end
+
+      :unknown ->
+        :unknown
+    end
+  end
+
+  defp maybe_operator_expression(_, _), do: :unknown
 
   def custom_expression(name, args) do
     with module when not is_nil(module) <- Enum.find(@custom_expressions, &(&1.name() == name)),
@@ -4929,12 +4996,20 @@ defmodule Ash.Filter do
                 if is_boolean(operator) do
                   {:cont, {:ok, operator}}
                 else
-                  if can_filter_expr?(context, operator) do
-                    {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
-                  else
-                    {:halt,
-                     {:error,
-                      "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the operator #{inspect(operator)}"}}
+                  case maybe_operator_expression(operator, context) do
+                    {:ok, custom_expr} ->
+                      {:cont,
+                       {:ok, BooleanExpression.optimized_new(:and, expression, custom_expr)}}
+
+                    :unknown ->
+                      if can_filter_expr?(context, operator) do
+                        {:cont,
+                         {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
+                      else
+                        {:halt,
+                         {:error,
+                          "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the operator #{inspect(operator)}"}}
+                      end
                   end
                 end
               else

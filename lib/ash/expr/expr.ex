@@ -1114,6 +1114,19 @@ defmodule Ash.Expr do
 
   def do_expr(other, _), do: other
 
+  @doc """
+  Determines the types for a given operator or function module and its arguments.
+
+  Given an operator or function module (e.g. `Ash.Query.Operator.In`), resolves the
+  concrete types of the arguments based on the module's declared type signatures and
+  any registered operator overloads. Returns `{resolved_types, return_type}` where
+  `resolved_types` is a list of `{type, constraints}` tuples (or `nil` for unresolvable
+  arguments) and `return_type` is the resolved return type.
+
+  This is the primary type resolution mechanism used by data layer expression compilers.
+  It performs actual type validation including coercion checks, unlike
+  `Ash.Type.determine_types/2` which only resolves vague types (`:same`/`:any`).
+  """
   def determine_types(mod, args, returns \\ nil, nested? \\ false)
 
   def determine_types(Ash.Query.Function.Type, [_, type], _returns, _nested?) do

@@ -76,39 +76,23 @@ defmodule Ash.Query.Operator do
     do_evaluate(op)
   end
 
-  defp do_evaluate(%mod{left: left, right: right} = op) do
-    overloads = operator_overloads(mod.operator()) || []
+  defp do_evaluate(%mod{} = op) do
+    case find_overload(op) do
+      {type_mod, _overload_types} ->
+        if function_exported?(type_mod, :evaluate_operator, 1) do
+          case type_mod.evaluate_operator(op) do
+            {:known, value} ->
+              {:known, value}
 
-    overloads
-    |> Enum.find_value(fn {types, mod} ->
-      case Ash.Type.determine_types([types], [left, right]) do
-        [] ->
-          nil
-
-        _types ->
-          mod =
-            case mod do
-              {_, mod} -> mod
-              mod -> mod
-            end
-
-          if function_exported?(mod, :evaluate_operator, 1) do
-            case mod.evaluate_operator(op) do
-              {:known, value} ->
-                {:known, value}
-
-              _ ->
-                nil
-            end
+            _ ->
+              mod.evaluate(op)
           end
-      end
-    end)
-    |> case do
+        else
+          mod.evaluate(op)
+        end
+
       nil ->
         mod.evaluate(op)
-
-      {:known, value} ->
-        {:known, value}
     end
   end
 
@@ -163,6 +147,52 @@ defmodule Ash.Query.Operator do
     end
   end
 
+  @doc """
+  Finds the matching overload for an operator based on the resolved types of its arguments.
+
+  Returns `{type_mod, overload_types}` or `nil`.
+  """
+  def find_overload(%mod{left: left, right: right} = _op) do
+    overloads = operator_overloads(mod.operator()) || %{}
+
+    if overloads == %{} do
+      nil
+    else
+      {resolved_types, _returns} = Ash.Expr.determine_types(mod, [left, right])
+
+      Enum.find_value(overloads, fn {overload_types, type_mod} ->
+        if overload_types_match?(overload_types, resolved_types) do
+          type_mod =
+            case type_mod do
+              {_, type_mod} -> type_mod
+              type_mod -> type_mod
+            end
+
+          {type_mod, overload_types}
+        end
+      end)
+    end
+  end
+
+  defp overload_types_match?(overload_types, resolved_types)
+       when is_list(overload_types) and is_list(resolved_types) and
+              length(overload_types) == length(resolved_types) do
+    overload_types
+    |> Enum.zip(resolved_types)
+    |> Enum.all?(fn
+      {_, nil} ->
+        false
+
+      {declared, {resolved, _constraints}} ->
+        Ash.Type.get_type(declared) == Ash.Type.get_type(resolved)
+
+      {declared, resolved} ->
+        Ash.Type.get_type(declared) == Ash.Type.get_type(resolved)
+    end)
+  end
+
+  defp overload_types_match?(_, _), do: false
+
   @doc "Get type overloads for the given operator"
   def operator_overloads(operator) do
     :ash
@@ -181,6 +211,30 @@ defmodule Ash.Query.Operator do
         acc
       end
     end)
+  end
+
+  @doc """
+  Finds a custom expression module for an overloaded operator, if one exists.
+
+  Checks all known types that define `operator_overloads/0` for the given operator,
+  and if any matching type also defines `operator_expression/1`, calls it with the
+  operator struct. Returns `{:ok, custom_expression_module}` or `:unknown`.
+  """
+  def operator_expression(op) do
+    case find_overload(op) do
+      {type_mod, _overload_types} ->
+        if function_exported?(type_mod, :operator_expression, 1) do
+          case type_mod.operator_expression(op) do
+            {:ok, expr_module} -> {:ok, expr_module}
+            :unknown -> :unknown
+          end
+        else
+          :unknown
+        end
+
+      nil ->
+        :unknown
+    end
   end
 
   @doc false

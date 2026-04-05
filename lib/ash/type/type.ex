@@ -333,6 +333,26 @@ defmodule Ash.Type do
   @callback evaluate_operator(term) :: {:known, term} | :unknown | {:error, term()}
 
   @doc """
+  Maps an overloaded operator to a custom expression module.
+
+  When defined, this allows an overloaded operator to be rewritten into a custom expression
+  that data layers can compile optimally. For example, an `in` operator on a range type could
+  be rewritten to use a native containment operator (`@>`) instead of expanding to `IN (1, 2, 3, ...)`.
+
+  Receives the operator struct and should return `{:ok, custom_expression_module}` where the module
+  implements `Ash.CustomExpression`, or `:unknown` to fall back to the default operator behavior.
+
+  ## Example
+
+      def operator_expression(%Ash.Query.Operator.In{}) do
+        {:ok, MyApp.Expressions.RangeContains}
+      end
+
+      def operator_expression(_), do: :unknown
+  """
+  @callback operator_expression(term) :: {:ok, module()} | :unknown
+
+  @doc """
   Useful for typed data layers (like ash_postgres) to instruct them not to attempt to cast input values.
 
   You generally won't need this, but it can be an escape hatch for certain cases.
@@ -642,7 +662,8 @@ defmodule Ash.Type do
     get_rewrites: 4,
     rewrite: 3,
     operator_overloads: 0,
-    evaluate_operator: 1
+    evaluate_operator: 1,
+    operator_expression: 1
   ]
 
   @builtin_types Registry.builtin_types()
@@ -2081,6 +2102,7 @@ defmodule Ash.Type do
     _ -> false
   end
 
+  @deprecated "Use Ash.Expr.determine_types/4 instead"
   @doc """
   Determine types for a given function or operator.
   """
