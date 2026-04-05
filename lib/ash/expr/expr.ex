@@ -6,10 +6,20 @@ defmodule Ash.Expr do
   @moduledoc "Tools to build Ash expressions"
   alias Ash.Query.{BooleanExpression, Not}
 
+  defstruct [:expr]
+
+  @type t :: %__MODULE__{expr: any()}
+  @type expression :: t() | term()
+
+  def wrap(%__MODULE__{} = already), do: already
+  def wrap(nil), do: nil
+  def wrap(expr), do: %__MODULE__{expr: expr}
+
+  def unwrap(%__MODULE__{expr: inner}), do: inner
+  def unwrap(other), do: other
+
   @doc "Prepares a filter for comparison"
   defdelegate to_sat_expression(resource, expression), to: Ash.Expr.SAT
-
-  @type t :: any
   @pass_through_funcs [:where, :or_where, :expr, :@]
   @aggregate_kinds Ash.Query.Aggregate.kinds()
 
@@ -49,6 +59,7 @@ defmodule Ash.Expr do
 
   @doc "Returns true if the value is or contains an expression"
   @spec expr?(term) :: boolean()
+  def expr?(%__MODULE__{}), do: true
   def expr?({:_actor, _}), do: true
   def expr?({:_arg, _}), do: true
   def expr?({:_ref, _, _}), do: true
@@ -134,24 +145,32 @@ defmodule Ash.Expr do
     )
   end
 
-  @spec where(Macro.t(), Macro.t()) :: t
   defmacro where(left, right) do
+    left_expr = do_expr(left)
+    right_expr = do_expr(right)
+
     quote do
-      Ash.Query.BooleanExpression.optimized_new(
-        :and,
-        Ash.Expr.expr(unquote(left)),
-        Ash.Expr.expr(unquote(right))
+      Ash.Expr.wrap(
+        Ash.Query.BooleanExpression.optimized_new(
+          :and,
+          unquote(left_expr),
+          unquote(right_expr)
+        )
       )
     end
   end
 
-  @spec or_where(Macro.t(), Macro.t()) :: t
   defmacro or_where(left, right) do
+    left_expr = do_expr(left)
+    right_expr = do_expr(right)
+
     quote do
-      Ash.Query.BooleanExpression.optimized_new(
-        :or,
-        Ash.Expr.expr(unquote(left)),
-        Ash.Expr.expr(unquote(right))
+      Ash.Expr.wrap(
+        Ash.Query.BooleanExpression.optimized_new(
+          :or,
+          unquote(left_expr),
+          unquote(right_expr)
+        )
       )
     end
   end
@@ -168,7 +187,6 @@ defmodule Ash.Expr do
   ])
   ```
   """
-  @spec calc(Macro.t(), opts :: Keyword.t()) :: t()
   defmacro calc(expression, opts \\ []) do
     quote generated: true do
       require Ash.Expr
@@ -193,7 +211,6 @@ defmodule Ash.Expr do
   @doc """
   Creates an expression. See the [Expressions guide](/documentation/topics/reference/expressions.md) for more.
   """
-  @spec expr(Macro.t()) :: t()
   defmacro expr(do: body) do
     quote location: :keep do
       Ash.Expr.expr(unquote(body))
@@ -204,7 +221,7 @@ defmodule Ash.Expr do
     expr = do_expr(body)
 
     quote location: :keep do
-      unquote(expr)
+      Ash.Expr.wrap(unquote(expr))
     end
   end
 
@@ -342,6 +359,10 @@ defmodule Ash.Expr do
 
   def can_return_nil?(nil), do: true
 
+  def can_return_nil?(%__MODULE__{expr: inner}) do
+    can_return_nil?(inner)
+  end
+
   def can_return_nil?(%Ash.Query.BooleanExpression{left: left, right: right}) do
     can_return_nil?(left) || can_return_nil?(right)
   end
@@ -373,6 +394,10 @@ defmodule Ash.Expr do
   end
 
   @doc "Whether or not a given template contains an actor reference"
+  def template_references?(%__MODULE__{expr: inner}, pred) do
+    template_references?(inner, pred)
+  end
+
   def template_references?(%{__struct__: Ash.Filter, expression: expression}, pred) do
     template_references?(expression, pred)
   end
@@ -430,6 +455,17 @@ defmodule Ash.Expr do
   def template_references?(thing, pred), do: pred.(thing)
 
   @doc false
+  def walk_template(%__MODULE__{expr: inner} = wrapper, mapper) do
+    case mapper.(wrapper) do
+      ^wrapper ->
+        walked = walk_template(inner, mapper)
+        wrap(walked)
+
+      other ->
+        walk_template(other, mapper)
+    end
+  end
+
   def walk_template(filter, mapper) when is_list(filter) do
     case mapper.(filter) do
       ^filter ->
@@ -2013,4 +2049,10 @@ defmodule Ash.Expr do
 
   defp remove_pin({:^, _, [value]}), do: value
   defp remove_pin(value), do: value
+
+  defimpl Inspect do
+    def inspect(%Ash.Expr{expr: inner}, opts) do
+      Inspect.inspect(inner, opts)
+    end
+  end
 end

@@ -505,16 +505,20 @@ defmodule Ash.Type do
   ```
 
   """
-  @callback cast_atomic(new_value :: Ash.Expr.t(), constraints) ::
-              {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
+  @callback cast_atomic(new_value :: Ash.Expr.expression(), constraints) ::
+              {:atomic, Ash.Expr.expression()}
+              | {:error, Ash.Error.t()}
+              | {:not_atomic, String.t()}
 
   @doc "Casts a list of values within an expression. See `c:cast_atomic/2` for more."
-  @callback cast_atomic_array(new_value :: Ash.Expr.t(), constraints) ::
-              {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
+  @callback cast_atomic_array(new_value :: Ash.Expr.expression(), constraints) ::
+              {:atomic, Ash.Expr.expression()}
+              | {:error, Ash.Error.t()}
+              | {:not_atomic, String.t()}
 
   @doc "Applies type constraints within an expression."
-  @callback apply_atomic_constraints(new_value :: Ash.Expr.t(), constraints) ::
-              :ok | {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
+  @callback apply_atomic_constraints(new_value :: Ash.Expr.expression(), constraints) ::
+              :ok | {:ok, Ash.Expr.expression()} | {:error, Ash.Error.t()}
 
   @doc """
   Whether or not a value with given constraints may support being cast atomic
@@ -524,8 +528,8 @@ defmodule Ash.Type do
   @callback may_support_atomic_update?(constraints) :: boolean
 
   @doc "Applies type constraints to a list of values within an expression. See `c:apply_atomic_constraints/2` for more."
-  @callback apply_atomic_constraints_array(new_value :: Ash.Expr.t(), constraints) ::
-              :ok | {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
+  @callback apply_atomic_constraints_array(new_value :: Ash.Expr.expression(), constraints) ::
+              :ok | {:ok, Ash.Expr.expression()} | {:error, Ash.Error.t()}
 
   @doc """
   Return true if the type is a composite type, meaning it is made up of one or more values. How this works is up to the data layer.
@@ -1353,7 +1357,7 @@ defmodule Ash.Type do
   This delegates to the underlying types implementation of `c:cast_atomic/2`.
   """
   @spec cast_atomic(t(), term, constraints()) ::
-          {:atomic, Ash.Expr.t()}
+          {:atomic, Ash.Expr.expression()}
           | {:ok, term}
           | {:error, Ash.Error.t()}
           | {:not_atomic, String.t()}
@@ -1400,7 +1404,7 @@ defmodule Ash.Type do
   This delegates to the underlying types implementation of `c:apply_atomic_constraints/2`.
   """
   @spec apply_atomic_constraints(t(), term, constraints()) ::
-          {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
+          {:ok, Ash.Expr.expression()} | {:error, Ash.Error.t()}
   def apply_atomic_constraints({:array, {:array, _}}, _term, _constraints),
     do: {:not_atomic, "cannot currently atomically update doubly nested arrays"}
 
