@@ -99,6 +99,10 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
         accept []
         change relate_actor(:owner)
       end
+
+      update :set_owner do
+        accept [:owner_id]
+      end
     end
 
     attributes do
@@ -403,6 +407,38 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       assert is_nil(author.score)
       assert DateTime.compare(author.updated_at, original_updated_at) == :eq
     end
+  end
+
+  test "atomic upgrade dumps belongs_to UUID to native format" do
+    owner =
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "owner"})
+      |> Ash.create!()
+
+    author =
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "fred"})
+      |> Ash.create!()
+
+    atomic_changeset =
+      Ash.Changeset.fully_atomic_changeset(
+        Author,
+        :set_owner,
+        %{owner_id: owner.id},
+        assume_casted?: true,
+        data: author
+      )
+
+    # Must be 16-byte binary (dump_to_native), not 36-char string (cast_input)
+    owner_id_atomic = Keyword.get(atomic_changeset.atomics, :owner_id)
+    assert byte_size(owner_id_atomic) == 16
+
+    updated =
+      author
+      |> Ash.Changeset.for_update(:set_owner, %{owner_id: owner.id})
+      |> Ash.update!()
+
+    assert updated.owner_id == owner.id
   end
 
   describe "increment/1" do
