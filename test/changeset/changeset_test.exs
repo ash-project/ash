@@ -859,6 +859,30 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                )
     end
 
+    test "upsert with many_to_many relationships can eager validate with eager_validate?" do
+      Category
+      |> Ash.Changeset.for_create(:create, %{name: "foo"})
+      |> Ash.create!()
+
+      assert %{valid?: false, errors: [%Ash.Error.Query.NotFound{}]} =
+               Post
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
+                 on_lookup: :relate,
+                 eager_validate?: true,
+                 use_identities: [:unique_name]
+               )
+
+      assert %{valid?: true} =
+               Post
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.manage_relationship(:categories, [%{name: "foo"}],
+                 on_lookup: :relate,
+                 eager_validate?: true,
+                 use_identities: [:unique_name]
+               )
+    end
+
     test "it creates related entities" do
       post1 = %{title: "title"}
       post2 = %{title: "title"}
