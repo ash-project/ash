@@ -5608,6 +5608,12 @@ defmodule Ash.Changeset do
       doc:
         "Validates that any referenced entities exist *before* the action is being performed, using the provided domain for the read."
     ],
+    eager_validate?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Validates that any referenced entities exist *before* the action is being performed, using the domain configured on the related resource."
+    ],
     on_no_match: [
       type: :any,
       default: :ignore,
@@ -6018,6 +6024,22 @@ defmodule Ash.Changeset do
         add_error(changeset, error)
 
       relationship ->
+        {opts, keyword_opts} =
+          if opts.eager_validate? && !opts.eager_validate_with do
+            domain = Ash.Resource.Info.domain(relationship.destination)
+
+            if !domain do
+              raise ArgumentError,
+                    "Cannot use `eager_validate?: true` because #{inspect(relationship.destination)} " <>
+                      "does not have a domain configured. Use `eager_validate_with: YourDomain` instead."
+            end
+
+            new_opts = %{opts | eager_validate_with: domain}
+            {new_opts, ManageRelationshipOpts.to_options(new_opts)}
+          else
+            {opts, keyword_opts}
+          end
+
         key =
           opts.value_is_key ||
             changeset.resource
