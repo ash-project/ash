@@ -695,6 +695,37 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Attach a filter statement to the query.
+
+  This is a non-macro alternative to `filter/2` that doesn't require
+  `require Ash.Query`. It accepts keyword/map style filters but not
+  expression syntax (use `filter/2` for expressions like `filter(title == "foo")`).
+
+  Passing `nil` is a no-op, which is useful for conditional filtering in pipelines.
+
+  The filter is applied as an "and" to any filters currently on the query.
+
+  ## Examples
+
+      # Keyword syntax
+      MyApp.Post
+      |> Ash.Query.where(published: true)
+
+      # Map syntax
+      MyApp.Post
+      |> Ash.Query.where(%{points: %{greater_than: 100}})
+
+  ## See also
+
+  - `filter/2` for expression-style filters
+  - `filter_input/3` for user-submitted filter data
+  """
+  @spec where(t() | Ash.Resource.t(), Keyword.t() | map() | nil) :: t()
+  def where(query, filter) do
+    do_filter(query, filter)
+  end
+
+  @doc """
   Creates a new query for the given resource.
 
   This is the starting point for building queries.  The query will automatically include the resource's base filter

@@ -508,6 +508,59 @@ defmodule Ash.Test.Filter.FilterTest do
     end
   end
 
+  describe "where/2" do
+    setup do
+      post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title1", contents: "contents1", points: 1})
+        |> Ash.create!()
+        |> strip_metadata()
+
+      post2 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title2", contents: "contents2", points: 2})
+        |> Ash.create!()
+        |> strip_metadata()
+
+      %{post1: post1, post2: post2}
+    end
+
+    test "filters with keyword syntax", %{post1: post1} do
+      assert [^post1] =
+               Post
+               |> Ash.Query.where(title: "title1")
+               |> Ash.read!()
+               |> strip_metadata()
+    end
+
+    test "filters with map syntax", %{post1: post1} do
+      assert [^post1] =
+               Post
+               |> Ash.Query.where(%{title: "title1"})
+               |> Ash.read!()
+               |> strip_metadata()
+    end
+
+    test "combines with existing filter using and", %{post1: post1} do
+      assert [^post1] =
+               Post
+               |> Ash.Query.where(title: [in: ["title1", "title2"]])
+               |> Ash.Query.where(points: [less_than: 2])
+               |> Ash.read!()
+               |> strip_metadata()
+    end
+
+    test "no-ops for nil" do
+      query = Post |> Ash.Query.where(nil)
+      assert query.filter == nil
+    end
+
+    test "no-ops for empty list" do
+      query = Post |> Ash.Query.where([])
+      assert query.filter == nil
+    end
+  end
+
   describe "embedded filters" do
     setup do
       Profile
