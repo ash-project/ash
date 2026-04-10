@@ -380,7 +380,7 @@ defmodule Ash.Type do
   would fail to cast. However, if used in the following expression: `expr(type(10, :string) <> " minutes")`
   the `10` would be "coerced" (using `to_string/1`) into `"10"`.
 
-  By default, coercion uses `cast_input/2` unless
+  By default, coercion uses `cast_input/2` unless the type overrides it with a custom implementation.
   """
   @callback coerce(term, constraints) ::
               {:ok, term} | Ash.Error.t()
