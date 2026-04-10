@@ -203,9 +203,7 @@ defmodule Ash.Query.Operator do
 
       if function_exported?(type, :operator_overloads, 0) do
         Map.merge(acc, type.operator_overloads()[operator] || %{}, fn _, left, right ->
-          Map.merge(left, right, fn _, left, right ->
-            List.wrap(left) ++ List.wrap(right)
-          end)
+          List.wrap(left) ++ List.wrap(right)
         end)
       else
         acc
