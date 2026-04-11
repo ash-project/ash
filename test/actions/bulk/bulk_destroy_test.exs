@@ -1303,6 +1303,39 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       end
     end
 
+    test "notification data preserves all attributes regardless of select option", %{
+      author: author
+    } do
+      posts = create_posts_with_author(author)
+
+      result =
+        Ash.bulk_destroy!(posts, :destroy, %{},
+          strategy: [:stream],
+          batch_size: 2,
+          return_notifications?: true,
+          return_records?: true,
+          authorize?: false,
+          select: [:id]
+        )
+
+      assert length(result.notifications) == 5
+
+      for notification <- result.notifications do
+        # Notification data should have all attributes, not just the ones in select
+        refute match?(%Ash.NotLoaded{}, notification.data.title),
+               "Expected title to be loaded in notification data, got #{inspect(notification.data.title)}"
+
+        refute match?(%Ash.NotLoaded{}, notification.data.author_id),
+               "Expected author_id to be loaded in notification data, got #{inspect(notification.data.author_id)}"
+      end
+
+      # But returned records should respect the select option
+      for record <- result.records do
+        assert match?(%Ash.NotLoaded{}, record.title),
+               "Expected title to be NotLoaded in returned records when select: [:id], got #{inspect(record.title)}"
+      end
+    end
+
     defp create_posts_for_partial_success_destroy(author) do
       posts =
         for title <- ["ok_1", "ok_2", "ok_3", "fail_4", "ok_5"] do

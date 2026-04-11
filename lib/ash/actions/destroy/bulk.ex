@@ -2506,10 +2506,12 @@ defmodule Ash.Actions.Destroy.Bulk do
       opts
     )
 
-    cleaned_records = Ash.Actions.Helpers.Bulk.clean_changeset_id_metadata(loaded_records)
+    cleaned_records =
+      loaded_records
+      |> Ash.Actions.Helpers.Bulk.clean_changeset_id_metadata()
 
     if opts[:return_records?] do
-      cleaned_records ++ errors
+      Ash.Actions.Helpers.select(cleaned_records, base_changeset) ++ errors
     else
       errors
     end
@@ -2590,7 +2592,6 @@ defmodule Ash.Actions.Destroy.Bulk do
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]
         )
-        |> Ash.Actions.Helpers.select(changeset)
 
       other ->
         other
