@@ -112,7 +112,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             query =
               Ash.Query.for_read(
                 query,
-                Ash.Resource.Info.primary_action!(query.resource, :read).name,
+                Ash.Actions.Update.Bulk.get_read_action(query.resource, action, opts).name,
                 %{},
                 actor: opts[:actor],
                 tenant: opts[:tenant],
@@ -320,11 +320,12 @@ defmodule Ash.Actions.Destroy.Bulk do
 
               has_after_batch_hooks? =
                 Enum.any?(
-                  action.changes ++ Ash.Resource.Info.changes(atomic_changeset.resource, :destroy),
+                  action.changes ++
+                    Ash.Resource.Info.changes(atomic_changeset.resource, :destroy),
                   fn
                     %{change: {module, change_opts}} ->
                       module.has_after_batch?() &&
-                        module.batch_callbacks?(query, change_opts, context)
+                        Ash.Resource.Change.batch_callbacks?(module, query, change_opts, context)
 
                     _ ->
                       false
@@ -1442,6 +1443,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp pre_template_all_changes(action, resource, :destroy, base, actor, tenant) do
     action.changes
+    |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
     |> then(fn changes ->
       if action.skip_global_validations? do
         changes
@@ -1449,7 +1451,6 @@ defmodule Ash.Actions.Destroy.Bulk do
         Enum.concat(changes, Ash.Resource.Info.validations(resource, action.type))
       end
     end)
-    |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
     |> Enum.map(fn
       %{change: {module, opts}} = change ->
         %{change | change: {module, pre_template(opts, base, actor, tenant)}}
@@ -1836,20 +1837,29 @@ defmodule Ash.Actions.Destroy.Bulk do
          argument_names,
          domain
        ) do
-    record
-    |> Ash.Changeset.new()
-    |> Map.put(:domain, domain)
-    |> Ash.Changeset.prepare_changeset_for_action(action, opts)
-    |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
-    |> Ash.Changeset.put_context(:bulk_destroy, %{index: index, ref: make_ref()})
-    |> Ash.Changeset.set_context(opts[:context] || %{})
-    |> handle_params(
-      Keyword.get(opts, :assume_casted?, false),
-      action,
-      opts,
-      input,
-      argument_names
-    )
+    changeset =
+      record
+      |> Ash.Changeset.new()
+      |> Map.put(:domain, domain)
+      |> Ash.Changeset.prepare_changeset_for_action(action, opts)
+      |> Ash.Changeset.set_private_arguments_for_action(opts[:private_arguments] || %{})
+      |> Ash.Changeset.put_context(:bulk_destroy, %{index: index, ref: make_ref()})
+      |> Ash.Changeset.set_context(opts[:context] || %{})
+
+    changeset =
+      handle_params(
+        changeset,
+        Keyword.get(opts, :assume_casted?, false),
+        action,
+        opts,
+        input,
+        argument_names
+      )
+
+    case opts[:transform_changeset] do
+      nil -> changeset
+      transform -> transform.(changeset)
+    end
   end
 
   defp handle_params(changeset, false, action, opts, input, _argument_names) do
@@ -2102,21 +2112,26 @@ defmodule Ash.Actions.Destroy.Bulk do
                   end
 
                 if function_exported?(mod, :bulk_destroy, 3) do
-                  mod.bulk_destroy(batch, manual_opts, %Ash.Resource.ManualDestroy.BulkContext{
-                    actor: opts[:actor],
-                    select: opts[:select],
-                    source_context: source_context,
-                    batch_size: opts[:batch_size],
-                    authorize?: opts[:authorize?],
-                    tracer: opts[:tracer],
-                    domain: domain,
-                    return_records?:
-                      opts[:return_records?] || must_return_records? ||
-                        must_return_records_for_changes?,
-                    return_notifications?: opts[:return_notifications?] || false,
-                    return_errors?: opts[:return_errors?] || false,
-                    tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
-                  })
+                  Ash.Resource.ManualDestroy.bulk_destroy(
+                    mod,
+                    batch,
+                    manual_opts,
+                    %Ash.Resource.ManualDestroy.BulkContext{
+                      actor: opts[:actor],
+                      select: opts[:select],
+                      source_context: source_context,
+                      batch_size: opts[:batch_size],
+                      authorize?: opts[:authorize?],
+                      tracer: opts[:tracer],
+                      domain: domain,
+                      return_records?:
+                        opts[:return_records?] || must_return_records? ||
+                          must_return_records_for_changes?,
+                      return_notifications?: opts[:return_notifications?] || false,
+                      return_errors?: opts[:return_errors?] || false,
+                      tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
+                    }
+                  )
                 else
                   ctx =
                     %Ash.Resource.ManualDestroy.Context{
@@ -2136,7 +2151,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                   [changeset] = batch
 
                   [
-                    mod.destroy(changeset, manual_opts, ctx)
+                    Ash.Resource.ManualDestroy.destroy(mod, changeset, manual_opts, ctx)
                     |> Ash.Actions.BulkManualActionHelpers.process_non_bulk_result(
                       changeset,
                       :bulk_destroy,
@@ -2346,6 +2361,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                       %{bulk_changeset_id: changeset_id}
                     end
 
+                  metadata =
+                    if changeset.to_tenant,
+                      do: Map.put(metadata, :tenant, changeset.to_tenant),
+                      else: metadata
+
                   {[Ash.Resource.set_metadata(result, metadata)],
                    Map.put(changeset_map, changeset_id, changeset)}
                 else
@@ -2355,6 +2375,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               {:error, error} ->
                 error_result =
                   error
+                  |> Ash.Actions.Helpers.Bulk.set_index_path(changeset)
                   |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
                   |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
                   |> Ash.Helpers.error()
@@ -2366,6 +2387,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             e ->
               error_result =
                 e
+                |> Ash.Actions.Helpers.Bulk.set_index_path(changeset)
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
                 |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
                 |> Ash.Helpers.error()
@@ -2386,6 +2408,11 @@ defmodule Ash.Actions.Destroy.Bulk do
               else
                 %{bulk_changeset_id: changeset_id}
               end
+
+            metadata =
+              if changeset.to_tenant,
+                do: Map.put(metadata, :tenant, changeset.to_tenant),
+                else: metadata
 
             {[Ash.Resource.set_metadata(result, metadata)],
              Map.put(changeset_map, changeset_id, changeset)}
@@ -2409,6 +2436,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                       %{bulk_changeset_id: changeset_id}
                     end
 
+                  metadata =
+                    if changeset.to_tenant,
+                      do: Map.put(metadata, :tenant, changeset.to_tenant),
+                      else: metadata
+
                   {[Ash.Resource.set_metadata(result, metadata)],
                    Map.put(changeset_map, changeset_id, changeset)}
                 else
@@ -2418,6 +2450,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               {:error, error} ->
                 error_result =
                   error
+                  |> Ash.Actions.Helpers.Bulk.set_index_path(changeset)
                   |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
                   |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
                   |> Ash.Helpers.error()
@@ -2429,6 +2462,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             e ->
               error_result =
                 e
+                |> Ash.Actions.Helpers.Bulk.set_index_path(changeset)
                 |> Ash.Actions.Helpers.Bulk.maybe_rollback(resource, opts)
                 |> Ash.Actions.Helpers.Bulk.maybe_stop_on_error(opts)
                 |> Ash.Helpers.error()
@@ -2437,7 +2471,8 @@ defmodule Ash.Actions.Destroy.Bulk do
               {error_result, changeset_map}
           end
 
-        {:error_hooks_done, error, _changeset}, changeset_map ->
+        {:error_hooks_done, error, changeset}, changeset_map ->
+          error = Ash.Actions.Helpers.Bulk.set_index_path(error, changeset)
           {[{:error, error}], changeset_map}
       end)
 
@@ -2533,9 +2568,20 @@ defmodule Ash.Actions.Destroy.Bulk do
            tracer: opts[:tracer]
          ) do
       {:ok, records} ->
+        load_query =
+          changeset.resource
+          |> Ash.Query.load(List.wrap(changeset.load))
+          |> Ash.Actions.Helpers.merge_notifier_calculations(
+            Ash.Notifier.notifier_calculation_query(
+              changeset.resource,
+              changeset.action,
+              changeset.context
+            )
+          )
+
         Ash.load(
           records,
-          List.wrap(changeset.load),
+          load_query,
           reuse_values?: true,
           tenant: opts[:tenant],
           action: Ash.Resource.Info.primary_action(changeset.resource, :read) || changeset.action,

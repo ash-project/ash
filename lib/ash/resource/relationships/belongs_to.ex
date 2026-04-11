@@ -28,6 +28,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :description,
     :attribute_writable?,
     :attribute_public?,
+    :attribute_always_select?,
     filters: [],
     filterable?: true,
     sortable?: true,
@@ -56,6 +57,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           writable?: boolean,
           attribute_writable?: boolean,
           attribute_public?: boolean,
+          attribute_always_select?: boolean,
           destination_attribute: atom,
           public?: boolean,
           filterable?: boolean,
@@ -100,6 +102,13 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                     Whether or not the generated attribute will be public. If not set, it will default to the relationship's `public?` setting.
                     """
                   ],
+                  attribute_always_select?: [
+                    type: :boolean,
+                    default: false,
+                    doc: """
+                    Whether or not the generated attribute will be always selected when reading from the database.
+                    """
+                  ],
                   define_attribute?: [
                     type: :boolean,
                     default: true,
@@ -127,6 +136,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           name: name,
           attribute_public?: attribute_public?,
           attribute_writable?: attribute_writable?,
+          attribute_always_select?: attribute_always_select?,
           writable?: writable?,
           public?: public?
         } = relationship
@@ -150,7 +160,8 @@ defmodule Ash.Resource.Relationships.BelongsTo do
        relationship
        | source_attribute: source_attribute || :"#{name}_id",
          attribute_public?: attribute_public?,
-         attribute_writable?: attribute_writable?
+         attribute_writable?: attribute_writable?,
+         attribute_always_select?: attribute_always_select?
      }
      |> Ash.Resource.Actions.Read.concat_filters()}
   end

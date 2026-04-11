@@ -24,6 +24,7 @@ defmodule Ash.Type.Function do
   """
 
   use Ash.Type
+  import Ash.Gettext
 
   @impl true
   def storage_type(_), do: :binary
@@ -34,7 +35,8 @@ defmodule Ash.Type.Function do
   @impl true
   def apply_constraints(term, constraints) do
     if constraints[:arity] && not is_function(term, constraints[:arity]) do
-      {:error, message: "Expected a function of arity %{arity}", arity: constraints[:arity]}
+      {:error,
+       message: error_message("Expected a function of arity %{arity}"), arity: constraints[:arity]}
     else
       {:ok, term}
     end

@@ -388,6 +388,7 @@ defmodule Ash.Changeset do
 
   require Ash.Tracer
   import Ash.Expr
+  import Ash.Gettext
   require Logger
 
   defmodule OriginalDataNotAvailable do
@@ -979,11 +980,32 @@ defmodule Ash.Changeset do
       {key, atomic}, expr ->
         atomic = strip_errors(atomic)
 
+        atomic_can_be_nil = Ash.Expr.can_return_nil?(atomic)
+        ref_can_be_nil = Ash.Resource.Info.attribute(changeset.resource, key).allow_nil?
+
+        is_distinct_from = Ash.Expr.expr(is_distinct_from(^atomic, ^ref(key)))
+
         checker =
-          if is_nil(atomic) do
-            Ash.Expr.expr(not is_nil(^ref(key)))
-          else
-            Ash.Expr.expr(^atomic != ^ref(key))
+          cond do
+            !atomic_can_be_nil and !ref_can_be_nil ->
+              Ash.Expr.expr(^atomic != ^ref(key))
+
+            Ash.DataLayer.data_layer_can?(changeset.resource, {:filter_expr, is_distinct_from}) ->
+              is_distinct_from
+
+            true ->
+              Ash.Expr.expr(
+                cond do
+                  is_nil(^atomic) and is_nil(^ref(key)) ->
+                    false
+
+                  is_nil(^atomic) or is_nil(^ref(key)) ->
+                    false
+
+                  true ->
+                    ^atomic != ^ref(key)
+                end
+              )
           end
 
         if is_nil(expr) do
@@ -1019,7 +1041,7 @@ defmodule Ash.Changeset do
     resource
     |> Ash.Resource.Info.notifiers()
     |> Enum.filter(fn notifier ->
-      notifier.requires_original_data?(resource, action)
+      Ash.Notifier.requires_original_data?(notifier, resource, action)
     end)
     |> case do
       [] ->
@@ -1102,7 +1124,7 @@ defmodule Ash.Changeset do
           changeset
         )
 
-      {:ok, opts} = module.init(opts)
+      {:ok, opts} = Ash.Resource.Validation.init(module, opts)
 
       case Ash.Resource.Validation.validate(
              module,
@@ -1130,16 +1152,22 @@ defmodule Ash.Changeset do
 
   @doc false
   def run_atomic_validation(changeset, %{where: where} = validation, context) do
-    with {:atomic, condition} <- atomic_condition(where, changeset, context) do
-      case condition do
-        false ->
-          changeset
+    if validation.before_action? do
+      {:not_atomic,
+       "before_action? validation `#{inspect(elem(validation.validation, 0))}` cannot be run atomically. " <>
+         "To use before_action? validations, set `require_atomic? false` or use `strategy: [:stream]`."}
+    else
+      with {:atomic, condition} <- atomic_condition(where, changeset, context) do
+        case condition do
+          false ->
+            changeset
 
-        true ->
-          do_run_atomic_validation(changeset, validation, context)
+          true ->
+            do_run_atomic_validation(changeset, validation, context)
 
-        where_condition ->
-          do_run_atomic_validation(changeset, validation, context, where_condition)
+          where_condition ->
+            do_run_atomic_validation(changeset, validation, context, where_condition)
+        end
       end
     end
   end
@@ -1150,10 +1178,11 @@ defmodule Ash.Changeset do
          context,
          where_condition \\ nil
        ) do
-    case module.init(validation_opts) do
+    case Ash.Resource.Validation.init(module, validation_opts) do
       {:ok, validation_opts} ->
         case List.wrap(
-               module.atomic(
+               Ash.Resource.Validation.atomic(
+                 module,
                  changeset,
                  validation_opts,
                  struct(Ash.Resource.Validation.Context, Map.put(context, :message, message))
@@ -1221,13 +1250,18 @@ defmodule Ash.Changeset do
         changeset: changeset
       )
 
-    with {:ok, change_opts} <- module.init(change_opts),
+    with {:ok, change_opts} <- Ash.Resource.Change.init(module, change_opts),
          {:atomic, condition} <-
            atomic_condition(where, changeset, context),
          {{:atomic, modified_changeset?, new_changeset, atomic_changes, validations,
            create_atomics}, condition} <-
            {atomic_with_changeset(
-              module.atomic(changeset, change_opts, struct(Ash.Resource.Change.Context, context)),
+              Ash.Resource.Change.atomic(
+                module,
+                changeset,
+                change_opts,
+                struct(Ash.Resource.Change.Context, context)
+              ),
               changeset
             ), condition} do
       case condition do
@@ -1649,7 +1683,8 @@ defmodule Ash.Changeset do
 
     Enum.reduce_while(where, {:atomic, true}, fn {module, validation_opts},
                                                  {:atomic, condition_expr} ->
-      case module.atomic(
+      case Ash.Resource.Validation.atomic(
+             module,
              changeset,
              validation_opts,
              struct(Ash.Resource.Validation.Context, context_map)
@@ -2756,24 +2791,34 @@ defmodule Ash.Changeset do
         if allow_nil? || not Ash.Expr.can_return_nil?(value) do
           value
         else
-          if Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) do
-            expr(
-              if is_nil(type(^value, ^attribute.type, ^attribute.constraints)) do
-                error(
-                  ^Ash.Error.Changes.Required,
-                  %{
-                    field: ^attribute.name,
-                    type: ^:attribute,
-                    resource: ^changeset.resource
-                  }
+          cond do
+            Ash.DataLayer.data_layer_can?(changeset.resource, :required_error) ->
+              expr(
+                required!(
+                  type(^value, ^attribute.type, ^attribute.constraints),
+                  ^%{name: attribute.name, resource: changeset.resource}
                 )
-              else
-                ^value
-              end
-            )
-          else
-            {:not_atomic,
-             "Failed to validate expression #{inspect(value)}: data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error"}
+              )
+
+            Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) ->
+              expr(
+                if is_nil(type(^value, ^attribute.type, ^attribute.constraints)) do
+                  error(
+                    ^Ash.Error.Changes.Required,
+                    %{
+                      field: ^attribute.name,
+                      type: ^:attribute,
+                      resource: ^changeset.resource
+                    }
+                  )
+                else
+                  ^value
+                end
+              )
+
+            true ->
+              {:not_atomic,
+               "Failed to validate expression #{inspect(value)}: data layer `#{Ash.DataLayer.data_layer(changeset.resource)}` does not support the expr_error"}
           end
         end
         |> case do
@@ -3491,7 +3536,7 @@ defmodule Ash.Changeset do
         changeset,
         InvalidAttribute.exception(
           field: key,
-          message: "cannot be changed",
+          message: error_message("cannot be changed"),
           value: changeset.attributes[key]
         )
       )
@@ -3655,7 +3700,7 @@ defmodule Ash.Changeset do
                   change: inspect(module)
                 }
               end do
-                {:ok, opts} = module.init(opts)
+                {:ok, opts} = Ash.Resource.Change.init(module, opts)
 
                 Ash.Tracer.set_metadata(tracer, :change, metadata)
 
@@ -4259,7 +4304,7 @@ defmodule Ash.Changeset do
              changeset: changeset
            )
 
-         case module.init(opts) do
+         case Ash.Resource.Validation.init(module, opts) do
            {:ok, opts} ->
              Ash.Resource.Validation.validate(
                module,
@@ -4292,7 +4337,7 @@ defmodule Ash.Changeset do
               changeset: changeset
             )
 
-          case validation.module.init(opts) do
+          case Ash.Resource.Validation.init(validation.module, opts) do
             {:error, error} ->
               Ash.Changeset.add_error(changeset, error)
 
@@ -5367,7 +5412,19 @@ defmodule Ash.Changeset do
   @doc "Gets the original value for an attribute"
   @spec get_data(t, atom) :: term
   def get_data(changeset, attribute) do
-    Map.get(changeset.data, attribute)
+    case changeset.data do
+      %Ash.Changeset.OriginalDataNotAvailable{} ->
+        raise ArgumentError,
+              """
+              Original data is not available for this changeset. 
+
+              You are likely running an atomic update, meaning that the original data is not available. 
+              See the atomics guide for more.
+              """
+
+      data ->
+        Map.get(data, attribute)
+    end
   end
 
   @doc """
@@ -5551,6 +5608,12 @@ defmodule Ash.Changeset do
       doc:
         "Validates that any referenced entities exist *before* the action is being performed, using the provided domain for the read."
     ],
+    eager_validate?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Validates that any referenced entities exist *before* the action is being performed, using the domain configured on the related resource."
+    ],
     on_no_match: [
       type: :any,
       default: :ignore,
@@ -5729,6 +5792,16 @@ defmodule Ash.Changeset do
       default: false,
       doc: """
       Logs queries executed by relationship.
+      """
+    ],
+    bulk?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      When `true`, uses bulk create operations for managing has_many relationships instead of
+      creating records individually. This can be more efficient for large numbers of related
+      records, but error paths may not correctly identify which specific input caused a failure
+      when a constraint violation occurs during the batch insert.
       """
     ]
   ]
@@ -5927,7 +6000,7 @@ defmodule Ash.Changeset do
         error =
           InvalidRelationship.exception(
             relationship: relationship.name,
-            message: "relationship is not editable"
+            message: error_message("relationship is not editable")
           )
 
         add_error(changeset, error)
@@ -5936,7 +6009,7 @@ defmodule Ash.Changeset do
         error =
           InvalidRelationship.exception(
             relationship: relationship.name,
-            message: "cannot manage a manual relationship"
+            message: error_message("cannot manage a manual relationship")
           )
 
         add_error(changeset, error)
@@ -5951,6 +6024,22 @@ defmodule Ash.Changeset do
         add_error(changeset, error)
 
       relationship ->
+        {opts, keyword_opts} =
+          if opts.eager_validate? && !opts.eager_validate_with do
+            domain = Ash.Resource.Info.domain(relationship.destination)
+
+            if !domain do
+              raise ArgumentError,
+                    "Cannot use `eager_validate?: true` because #{inspect(relationship.destination)} " <>
+                      "does not have a domain configured. Use `eager_validate_with: YourDomain` instead."
+            end
+
+            new_opts = %{opts | eager_validate_with: domain}
+            {new_opts, ManageRelationshipOpts.to_options(new_opts)}
+          else
+            {opts, keyword_opts}
+          end
+
         key =
           opts.value_is_key ||
             changeset.resource
@@ -6026,7 +6115,7 @@ defmodule Ash.Changeset do
               changeset,
               InvalidRelationship.exception(
                 relationship: relationship.name,
-                message: "cannot provide structs that don't match the destination"
+                message: error_message("cannot provide structs that don't match the destination")
               )
             )
           else

@@ -335,10 +335,8 @@ defmodule Ash.Actions.Update do
         changeset.resource,
         result,
         changeset.action,
-        changeset,
         instructions,
-        opts[:return_notifications?],
-        opts[:return_destroyed?]
+        opts[:return_notifications?]
       )
     end
     |> case do
@@ -403,25 +401,15 @@ defmodule Ash.Actions.Update do
          resource,
          result,
          action,
-         changeset,
          instructions,
-         return_notifications?,
-         return_destroyed?
+         return_notifications?
        ) do
     if return_notifications? do
-      if changeset.action_type == :destroy && !return_destroyed? do
-        {:ok, Map.get(instructions, :notifications, [])}
-      else
-        {:ok, result, Map.get(instructions, :notifications, [])}
-      end
+      {:ok, result, Map.get(instructions, :notifications, [])}
     else
       Helpers.warn_missed!(resource, action, instructions)
 
-      if changeset.action_type == :destroy && !return_destroyed? do
-        :ok
-      else
-        {:ok, result}
-      end
+      {:ok, result}
     end
   end
 
@@ -483,8 +471,22 @@ defmodule Ash.Actions.Update do
                 {:error, error}
 
               {changeset, manage_instructions} ->
+                # Recompute changed? after setup_managed_belongs_to_relationships
+                # may have set FK attributes via force_change_attribute (e.g. when
+                # manage_relationship is called from before_transaction hooks on
+                # update actions). Without this, the changed? flag computed before
+                # the func callback would be false, causing the DB update to be
+                # skipped entirely.
+                changed? =
+                  Ash.Changeset.changing_attributes?(changeset) or
+                    not Enum.empty?(changeset.atomics)
+
                 changeset =
                   changeset
+                  |> Ash.Changeset.put_context(
+                    :changed?,
+                    changeset.context[:changed?] || changed?
+                  )
                   |> Ash.Changeset.require_values(
                     :update,
                     true
@@ -506,26 +508,30 @@ defmodule Ash.Actions.Update do
                     else
                       changeset
                       |> Ash.Changeset.set_defaults(:update, true)
-                      |> mod.update(
-                        action_opts,
-                        %Ash.Resource.ManualUpdate.Context{
-                          select: changeset.select,
-                          actor: opts[:actor],
-                          source_context: changeset.context,
-                          tenant: changeset.tenant,
-                          authorize?: opts[:authorize?],
-                          domain: changeset.domain
-                        }
-                      )
-                      |> validate_manual_action_return_result!(
-                        changeset.resource,
-                        changeset.action
+                      |> then(fn cs ->
+                        Ash.Resource.ManualUpdate.update(
+                          mod,
+                          cs,
+                          action_opts,
+                          %Ash.Resource.ManualUpdate.Context{
+                            select: changeset.select,
+                            actor: opts[:actor],
+                            source_context: changeset.context,
+                            tenant: changeset.tenant,
+                            authorize?: opts[:authorize?],
+                            domain: changeset.domain
+                          }
+                        )
+                        |> validate_manual_action_return_result!(
+                          changeset.resource,
+                          changeset.action
+                        )
+                      end)
+                      |> manage_relationships(domain, changeset,
+                        actor: opts[:actor],
+                        authorize?: opts[:authorize?]
                       )
                     end
-                    |> manage_relationships(domain, changeset,
-                      actor: opts[:actor],
-                      authorize?: opts[:authorize?]
-                    )
                   else
                     cond do
                       result = changeset.context[:private][:action_result] ->
@@ -600,6 +606,12 @@ defmodule Ash.Actions.Update do
                                        changeset.data,
                                        Map.take(record, Enum.to_list(attribute_names))
                                      )}
+
+                                  {:error, :no_rollback, error} ->
+                                    {:error, :no_rollback, error}
+
+                                  {:error, error} ->
+                                    {:error, error}
 
                                   _ ->
                                     {:error,
@@ -696,11 +708,10 @@ defmodule Ash.Actions.Update do
   end
 
   defp validate_manual_action_return_result!(
-         {:ok, %resource{}, notifications} = result,
+         {:ok, %resource{}, %{notifications: _notifications}} = result,
          resource,
          _
-       )
-       when is_list(notifications) do
+       ) do
     result
   end
 

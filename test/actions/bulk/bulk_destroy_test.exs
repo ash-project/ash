@@ -17,6 +17,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
     def notify(notification) do
       send(self(), {:notification, notification})
+      :ok
     end
   end
 
@@ -106,6 +107,66 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     @impl true
     def atomic(_, _, _) do
       :ok
+    end
+  end
+
+  defmodule CopyTitleToStatusChange do
+    @moduledoc false
+    use Ash.Resource.Change
+
+    @impl true
+    def change(changeset, _, _) do
+      title = Ash.Changeset.get_attribute(changeset, :title)
+      Ash.Changeset.force_change_attribute(changeset, :status, title)
+    end
+  end
+
+  defmodule ValidateStatusPresenceAndNotBad do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(changeset, _, _) do
+      case Ash.Changeset.get_attribute(changeset, :status) do
+        nil -> {:error, field: :status, message: "status must be set"}
+        "bad" -> {:error, field: :status, message: "status cannot be bad"}
+        _ -> :ok
+      end
+    end
+  end
+
+  defmodule PostWithBulkValidationOrdering do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+
+      destroy :destroy do
+        primary? true
+        require_atomic? false
+      end
+    end
+
+    changes do
+      change CopyTitleToStatusChange, on: [:destroy]
+    end
+
+    validations do
+      validate ValidateStatusPresenceAndNotBad, on: [:destroy]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :status, :string, public?: true
     end
   end
 
@@ -326,6 +387,64 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, :create, :update]
+    end
+  end
+
+  defmodule StrictPost do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:create]
+
+      read :read do
+        primary? true
+        pagination keyset?: true, required?: false
+      end
+
+      read :read_for_destroy do
+        pagination keyset?: true, required?: false
+      end
+
+      destroy :destroy do
+        primary? true
+      end
+
+      destroy :destroy_with_read_action do
+      end
+    end
+
+    policies do
+      default_access_type :strict
+
+      policy action(:create) do
+        authorize_if always()
+      end
+
+      policy action(:read_for_destroy) do
+        authorize_if always()
+      end
+
+      policy action(:destroy_with_read_action) do
+        authorize_if always()
+      end
+
+      policy action(:destroy) do
+        authorize_if always()
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
     end
   end
 
@@ -1338,6 +1457,82 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       for notification <- result.notifications do
         assert %Author{name: "Test Author"} = notification.data.author
       end
+    end
+  end
+
+  describe "bulk_destroy global validation ordering" do
+    test "succeeds when global change sets status that passes validation" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "good"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :success} =
+               Ash.bulk_destroy(
+                 [post],
+                 :destroy,
+                 %{},
+                 resource: PostWithBulkValidationOrdering,
+                 return_errors?: true,
+                 strategy: :stream,
+                 authorize?: false
+               )
+    end
+
+    test "global validation rejects with correct error" do
+      post =
+        PostWithBulkValidationOrdering
+        |> Ash.Changeset.for_create(:create, %{title: "bad"})
+        |> Ash.create!()
+
+      assert %Ash.BulkResult{status: :error, errors: [error]} =
+               Ash.bulk_destroy(
+                 [post],
+                 :destroy,
+                 %{},
+                 resource: PostWithBulkValidationOrdering,
+                 return_errors?: true,
+                 strategy: :stream,
+                 authorize?: false
+               )
+
+      assert Exception.message(error) =~ "status cannot be bad"
+    end
+  end
+
+  describe "read_action option" do
+    test "bulk_destroy respects read_action option when query is not pre-validated" do
+      StrictPost
+      |> Ash.Changeset.for_create(:create, %{title: "test"})
+      |> Ash.create!(authorize?: false)
+
+      # Build a query without __validated_for_action__ (as AshGraphql does via do_filter)
+      query = Ash.Query.do_filter(StrictPost, %{title: "test"})
+
+      # Primary :read is forbidden under strict access type,
+      # but :read_for_destroy is authorized
+      assert %Ash.BulkResult{status: :success} =
+               Ash.bulk_destroy(query, :destroy_with_read_action, %{},
+                 read_action: :read_for_destroy,
+                 authorize?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "bulk_destroy fails when read_action is not specified and primary read is forbidden" do
+      StrictPost
+      |> Ash.Changeset.for_create(:create, %{title: "test"})
+      |> Ash.create!(authorize?: false)
+
+      query = Ash.Query.do_filter(StrictPost, %{title: "test"})
+
+      # Without read_action, bulk_destroy should use the primary :read action
+      # which is forbidden under strict access type
+      assert %Ash.BulkResult{status: :error} =
+               Ash.bulk_destroy(query, :destroy_with_read_action, %{},
+                 authorize?: true,
+                 return_errors?: true
+               )
     end
   end
 end

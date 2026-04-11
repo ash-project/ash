@@ -27,8 +27,8 @@ defmodule Ash.Resource.Validation do
     :description,
     :message,
     :before_action?,
-    :where,
     :always_atomic?,
+    where: [],
     on: [],
     __spark_metadata__: nil
   ]
@@ -91,10 +91,35 @@ defmodule Ash.Resource.Validation do
               | {:not_atomic, String.t()}
               | {:error, term()}
 
+  @doc """
+  Replaces `validate/3` for batch actions, allowing to optimize validations for bulk actions.
+
+  Receives all changesets in the batch and returns them with errors added to any that
+  fail validation. Unlike `validate/3` which returns `:ok | {:error, term}`, this callback
+  returns the changesets directly (with errors already added via `Ash.Changeset.add_error/2`).
+  """
+  @callback batch_validate(
+              changesets :: [Ash.Changeset.t()],
+              opts :: Keyword.t(),
+              context :: Context.t()
+            ) ::
+              Enumerable.t(Ash.Changeset.t())
+
+  @doc """
+  Whether or not batch callbacks should be run (if they are defined). Defaults to `true`.
+  """
+  @callback batch_callbacks?(
+              changesets_or_query :: [Ash.Changeset.t()] | Ash.Query.t(),
+              opts :: Keyword.t(),
+              context :: Context.t()
+            ) ::
+              boolean
+
   @callback atomic?() :: boolean
   @callback has_validate?() :: boolean
+  @callback has_batch_validate?() :: boolean
 
-  @optional_callbacks describe: 1, validate: 3, atomic: 3
+  @optional_callbacks describe: 1, validate: 3, atomic: 3, batch_validate: 3
 
   @validation_type {:spark_function_behaviour, Ash.Resource.Validation,
                     Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 2}}
@@ -164,15 +189,18 @@ defmodule Ash.Resource.Validation do
       @impl true
       def supports(_opts), do: [Ash.Changeset]
 
+      @impl true
+      def batch_callbacks?(_, _, _), do: true
+
       defp with_description(keyword, opts) do
         if Kernel.function_exported?(__MODULE__, :describe, 1) do
-          keyword ++ apply(__MODULE__, :describe, [opts])
+          keyword ++ Ash.Resource.Validation.describe(__MODULE__, opts)
         else
           keyword
         end
       end
 
-      defoverridable init: 1, supports: 1
+      defoverridable init: 1, supports: 1, batch_callbacks?: 3
     end
   end
 
@@ -185,6 +213,14 @@ defmodule Ash.Resource.Validation do
       else
         @impl true
         def has_validate?, do: false
+      end
+
+      if Module.defines?(__MODULE__, {:batch_validate, 3}, :def) do
+        @impl true
+        def has_batch_validate?, do: true
+      else
+        @impl true
+        def has_batch_validate?, do: false
       end
 
       if Module.defines?(__MODULE__, {:atomic, 3}, :def) do
@@ -227,18 +263,134 @@ defmodule Ash.Resource.Validation do
      }}
   end
 
+  @doc false
+  @spec validate(
+          module(),
+          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t(),
+          Keyword.t(),
+          Context.t()
+        ) :: :ok | {:error, term()}
   def validate(module, changeset_query_or_input, opts, context) do
-    Ash.BehaviourHelpers.check_type!(
+    Ash.BehaviourHelpers.call_and_validate_return(
       module,
-      module.validate(changeset_query_or_input, opts, context),
-      [
-        :ok,
-        {:error, _}
-      ]
+      :validate,
+      [changeset_query_or_input, opts, context],
+      [:ok, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "validate/3"
     )
   end
+
+  @doc false
+  @spec describe(module(), Keyword.t() | map()) ::
+          String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
+  def describe(module, opts) do
+    result = apply(module, :describe, [opts])
+
+    if is_binary(result) or (is_list(result) and Keyword.keyword?(result)) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.describe/1.
+
+        The callback #{inspect(__MODULE__)}.describe/1 expects a String.t() or a keyword list of :message/:vars.
+        """
+    end
+  end
+
+  @doc false
+  @spec init(module(), Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
+  def init(module, opts) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :init,
+      [opts],
+      [{:ok, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "init/1"
+    )
+  end
+
+  @doc false
+  @spec atomic(
+          module(),
+          Ash.Changeset.t() | Ash.ActionInput.t(),
+          Keyword.t(),
+          Context.t()
+        ) ::
+          :ok
+          | {:atomic, list(atom()) | :*, Ash.Expr.t(), Ash.Expr.t()}
+          | [{:atomic, list(atom()) | :*, Ash.Expr.t(), Ash.Expr.t()}]
+          | {:not_atomic, String.t()}
+          | {:error, term()}
+  def atomic(module, changeset_query_or_input, opts, context) do
+    result = apply(module, :atomic, [changeset_query_or_input, opts, context])
+
+    if valid_atomic_result?(result) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.atomic/3.
+
+        The callback #{inspect(__MODULE__)}.atomic/3 expects one of the following return types:
+
+          :ok
+          {:atomic, involved_fields, condition_expr, error_expr}
+          [list of {:atomic, involved_fields, condition_expr, error_expr}]
+          {:not_atomic, String.t()}
+          {:error, term()}
+        """
+    end
+  end
+
+  defp valid_atomic_result?(:ok), do: true
+  defp valid_atomic_result?({:atomic, _, _, _}), do: true
+  defp valid_atomic_result?({:not_atomic, _}), do: true
+  defp valid_atomic_result?({:error, _}), do: true
+
+  defp valid_atomic_result?(list) when is_list(list) do
+    Enum.all?(list, &match?({:atomic, _, _, _}, &1))
+  end
+
+  defp valid_atomic_result?(_), do: false
 
   def opt_schema, do: @schema
   def action_schema, do: @action_schema
   def validation_type, do: @validation_type
+
+  @doc false
+  def maybe_redact(subject, field, value) do
+    if should_redact?(subject, field) do
+      Ash.Helpers.redact(value)
+    else
+      value
+    end
+  end
+
+  @doc false
+  def should_redact?(subject, field) do
+    Application.get_env(:ash, :redact_sensitive_values_in_errors?, false) &&
+      sensitive?(subject, field)
+  end
+
+  @doc false
+  def sensitive?(subject, field) do
+    argument_sensitive? =
+      (subject.action.arguments || [])
+      |> Enum.find(&(&1.name == field))
+      |> case do
+        %{sensitive?: true} -> true
+        _ -> false
+      end
+
+    attribute_sensitive? =
+      case Ash.Resource.Info.attribute(subject.resource, field) do
+        %{sensitive?: true} -> true
+        _ -> false
+      end
+
+    argument_sensitive? or attribute_sensitive?
+  end
 end

@@ -6,7 +6,7 @@ defmodule Ash.Notifier do
   @moduledoc """
   A notifier is an extension that receives various events
   """
-  @callback notify(Ash.Notifier.Notification.t()) :: :ok
+  @callback notify(Ash.Notifier.Notification.t()) :: any()
   @callback requires_original_data?(Ash.Resource.t(), Ash.Resource.Actions.action()) :: boolean
 
   @doc """
@@ -26,6 +26,45 @@ defmodule Ash.Notifier do
   @optional_callbacks load: 2
 
   require Ash.Tracer
+  require Logger
+
+  @doc false
+  @spec notify(module(), Ash.Notifier.Notification.t()) :: any()
+  def notify(notifier_module, notification) do
+    apply(notifier_module, :notify, [notification])
+  end
+
+  @doc false
+  @spec requires_original_data?(module(), Ash.Resource.t(), Ash.Resource.Actions.action()) ::
+          boolean
+  def requires_original_data?(notifier_module, resource, action) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      notifier_module,
+      :requires_original_data?,
+      [resource, action],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "requires_original_data?/2"
+    )
+  end
+
+  @doc false
+  @spec load(module(), Ash.Resource.t(), Ash.Resource.Actions.action()) ::
+          atom() | [atom()] | Keyword.t()
+  def load(notifier_module, resource, action) do
+    result = apply(notifier_module, :load, [resource, action])
+    # Accept atom or list (load can return list of atoms, keyword list, or other load shapes)
+    if is_atom(result) or is_list(result) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(notifier_module)}.load/2.
+
+        The callback #{inspect(__MODULE__)}.load/2 expects an atom, list of atoms, or Keyword.t().
+        """
+    end
+  end
 
   defmacro __using__(_opts) do
     quote do
@@ -36,6 +75,103 @@ defmodule Ash.Notifier do
 
       defoverridable requires_original_data?: 2, load: 2
     end
+  end
+
+  @doc """
+  Builds a query with `NotifierDependencies` calculations for all notifiers
+  that implement `load/2` with non-empty load statements.
+
+  This is meant to be merged into the load that already happens in the action
+  pipeline, so that notifier dependencies are loaded in bulk (once per batch)
+  rather than per-notification at dispatch time.
+  """
+  @spec notifier_calculation_query(Ash.Resource.t(), Ash.Resource.Actions.action(), map()) ::
+          Ash.Query.t() | nil
+  def notifier_calculation_query(resource, action, source_context \\ %{}) do
+    notifiers = Ash.Resource.Info.notifiers(resource) ++ List.wrap(Map.get(action, :notifiers))
+
+    notifier_statements =
+      Enum.reduce(notifiers, %{}, fn notifier, acc ->
+        statement =
+          if function_exported?(notifier, :load, 2) do
+            load(notifier, resource, action)
+          else
+            []
+          end
+
+        case List.wrap(statement) do
+          [] -> acc
+          statement -> Map.put(acc, notifier, statement)
+        end
+      end)
+
+    if map_size(notifier_statements) == 0 do
+      nil
+    else
+      Enum.reduce(
+        notifier_statements,
+        Ash.Query.new(resource),
+        fn {notifier, statement}, query ->
+          Ash.Query.calculate(
+            query,
+            {Ash.Notifier.NotifierDependencies, notifier: notifier},
+            Ash.Type.Map,
+            {Ash.Notifier.NotifierDependencies, [statement: statement, notifier: notifier]},
+            %{},
+            [],
+            %{},
+            source_context: source_context
+          )
+        end
+      )
+    end
+  end
+
+  @doc """
+  Extracts pre-loaded notifier dependency data from a record's calculations
+  and builds the `notifier_data` map used by `enrich_notification/3`.
+
+  Returns `{notifier_statements, notifier_data}` where `notifier_data` maps
+  each notifier to `{statement, extra}`.
+  """
+  @spec extract_notifier_data(
+          Ash.Resource.record(),
+          [module()],
+          Ash.Resource.t(),
+          Ash.Resource.Actions.action()
+        ) ::
+          {map(), map()}
+  def extract_notifier_data(record, notifiers, resource, action) do
+    notifier_statements =
+      Enum.reduce(notifiers, %{}, fn notifier, acc ->
+        statement =
+          if function_exported?(notifier, :load, 2) do
+            load(notifier, resource, action)
+          else
+            []
+          end
+
+        case List.wrap(statement) do
+          [] -> acc
+          statement -> Map.put(acc, notifier, statement)
+        end
+      end)
+
+    calculations = Map.get(record, :calculations) || %{}
+
+    notifier_data =
+      Map.new(notifier_statements, fn {notifier, statement} ->
+        extra =
+          Map.get(
+            calculations,
+            {Ash.Notifier.NotifierDependencies, notifier: notifier},
+            %{}
+          )
+
+        {notifier, {statement, extra}}
+      end)
+
+    {notifier_statements, notifier_data}
   end
 
   @doc """
@@ -64,7 +200,17 @@ defmodule Ash.Notifier do
           allowed_notifiers -> Enum.uniq(List.wrap(allowed_notifiers))
         end
 
-      {notification, notifier_data} = load_notification_data(notification, notifiers)
+      {notification, notifier_data} =
+        if has_preloaded_notifier_data?(notification.data) do
+          # Data was pre-loaded in the action pipeline
+          {_statements, notifier_data} =
+            extract_notifier_data(notification.data, notifiers, resource, notification.action)
+
+          {notification, notifier_data}
+        else
+          # Fallback for manually-created notifications or paths that skip the pipeline
+          load_notification_data(notification, notifiers)
+        end
 
       for notifier <- notifiers do
         enriched = enrich_notification(notification, notifier, notifier_data)
@@ -77,15 +223,34 @@ defmodule Ash.Notifier do
     |> List.flatten()
   end
 
+  # Checks if the record already has NotifierDependencies calculations loaded
+  # (meaning the action pipeline pre-loaded them).
+  defp has_preloaded_notifier_data?(data) when is_struct(data) do
+    case Map.get(data, :calculations) do
+      calcs when is_map(calcs) and map_size(calcs) > 0 ->
+        Enum.any?(calcs, fn
+          {{Ash.Notifier.NotifierDependencies, _}, _} -> true
+          _ -> false
+        end)
+
+      _ ->
+        false
+    end
+  end
+
+  defp has_preloaded_notifier_data?(_), do: false
+
   # Builds one NotifierDependencies calculation per notifier that has a
   # non-empty load statement, then does a single Ash.load so the calculation
   # dependency resolver can deduplicate identical underlying loads.
+  # This is the fallback path for notifications that weren't pre-loaded
+  # in the action pipeline.
   defp load_notification_data(notification, notifiers) do
     notifier_statements =
       Enum.reduce(notifiers, %{}, fn notifier, acc ->
         statement =
           if function_exported?(notifier, :load, 2) do
-            notifier.load(notification.resource, notification.action)
+            load(notifier, notification.resource, notification.action)
           else
             []
           end
@@ -124,10 +289,15 @@ defmodule Ash.Notifier do
           end
         )
 
+      tenant =
+        get_in(notification, [Access.key(:changeset), Access.key(:tenant)]) ||
+          get_in(notification, [Access.key(:data), Access.key(:__metadata__), :tenant])
+
       case Ash.load(
              notification.data,
              query,
              domain: domain,
+             tenant: tenant,
              authorize?: false,
              context: %{private: %{internal?: true}}
            ) do
@@ -146,7 +316,12 @@ defmodule Ash.Notifier do
 
           {%{notification | data: loaded_data}, notifier_data}
 
-        {:error, _error} ->
+        {:error, error} ->
+          Logger.warning("""
+          Failed to load notification data for #{inspect(notification.resource)}.#{notification.action.name}: \
+          #{inspect(error)}
+          """)
+
           {notification, %{}}
       end
     end
@@ -241,7 +416,7 @@ defmodule Ash.Notifier do
       Ash.Tracer.set_metadata(tracer, :action, metadata)
 
       Ash.Tracer.telemetry_span [:ash, :notifier], metadata do
-        notifier.notify(notification)
+        notify(notifier, notification)
       end
     end
   end

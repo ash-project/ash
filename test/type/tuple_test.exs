@@ -120,7 +120,7 @@ defmodule Ash.Type.TupleTest do
     assert [
              %Ash.Error.Changes.InvalidAttribute{
                field: :integer_min_0,
-               message: "must be more than or equal to %{min}",
+               message: "must be greater than or equal to %{min}",
                private_vars: nil,
                value: {"hello", -1},
                bread_crumbs: [],
@@ -128,6 +128,10 @@ defmodule Ash.Type.TupleTest do
                path: [:metadata]
              }
            ] = changeset.errors
+  end
+
+  test "apply_constraints handles nil values" do
+    assert {:ok, nil} = Ash.Type.Tuple.apply_constraints(nil, fields: [foo: [type: :string]])
   end
 
   test "values are casted before checked" do

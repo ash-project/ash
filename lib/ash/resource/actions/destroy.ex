@@ -29,6 +29,7 @@ defmodule Ash.Resource.Actions.Destroy do
     changes: [],
     reject: [],
     transaction?: true,
+    public?: true,
     metadata: [],
     type: :destroy,
     __spark_metadata__: nil
@@ -53,6 +54,7 @@ defmodule Ash.Resource.Actions.Destroy do
           skip_global_validations?: boolean,
           touches_resources: list(atom),
           primary?: boolean,
+          public?: boolean,
           description: String.t() | nil,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }

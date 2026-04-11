@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.Function do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   @impl true
   def validate(changeset_query_or_input, [{:fun, {m, f, a}}], context) do
@@ -23,7 +24,7 @@ defmodule Ash.Resource.Validation.Function do
   @impl true
   def describe(opts) do
     [
-      message: "must pass function %{function}",
+      message: error_message("must pass function %{function}"),
       vars: [function: opts[:fun]]
     ]
   end

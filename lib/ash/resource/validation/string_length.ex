@@ -5,6 +5,7 @@
 defmodule Ash.Resource.Validation.StringLength do
   @moduledoc false
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidAttribute
   import Ash.Expr
@@ -59,22 +60,22 @@ defmodule Ash.Resource.Validation.StringLength do
         :ok
 
       value ->
-        value =
+        result =
           try do
             {:ok, to_string(value)}
           rescue
             _ ->
               {:error,
                InvalidAttribute.exception(
-                 value: value,
+                 value: Ash.Resource.Validation.maybe_redact(subject, opts[:attribute], value),
                  field: opts[:attribute],
-                 message: "could not be parsed"
+                 message: error_message("could not be parsed")
                )}
           end
 
-        case value do
-          {:ok, value} ->
-            do_validate(value, Enum.into(opts, %{}))
+        case result do
+          {:ok, str_value} ->
+            do_validate(subject, str_value, Enum.into(opts, %{}))
 
           {:error, error} ->
             {:error, error}
@@ -89,6 +90,13 @@ defmodule Ash.Resource.Validation.StringLength do
         validate(changeset, opts, context)
 
       :error ->
+        error_value =
+          if Ash.Resource.Validation.should_redact?(changeset, opts[:attribute]) do
+            Ash.Helpers.redact(nil)
+          else
+            atomic_ref(opts[:attribute])
+          end
+
         opts
         |> Keyword.delete(:attribute)
         |> Enum.map(fn
@@ -100,8 +108,9 @@ defmodule Ash.Resource.Validation.StringLength do
                  Ash.Error.Changes.InvalidAttribute,
                  %{
                    field: ^opts[:attribute],
-                   value: ^atomic_ref(opts[:attribute]),
-                   message: ^(context.message || "must have length of at least %{min}"),
+                   value: ^error_value,
+                   message:
+                     ^(context.message || error_message("must have length of at least %{min}")),
                    vars: %{min: ^min}
                  }
                )
@@ -115,8 +124,9 @@ defmodule Ash.Resource.Validation.StringLength do
                  Ash.Error.Changes.InvalidAttribute,
                  %{
                    field: ^opts[:attribute],
-                   value: ^atomic_ref(opts[:attribute]),
-                   message: ^(context.message || "must have length of at most %{max}"),
+                   value: ^error_value,
+                   message:
+                     ^(context.message || error_message("must have length of at most %{max}")),
                    vars: %{max: ^max}
                  }
                )
@@ -130,8 +140,9 @@ defmodule Ash.Resource.Validation.StringLength do
                  Ash.Error.Changes.InvalidAttribute,
                  %{
                    field: ^opts[:attribute],
-                   value: ^atomic_ref(opts[:attribute]),
-                   message: ^(context.message || "must have length of at most %{exact}"),
+                   value: ^error_value,
+                   message:
+                     ^(context.message || error_message("must have length of exactly %{exact}")),
                    vars: %{exact: ^exact}
                  }
                )
@@ -140,58 +151,64 @@ defmodule Ash.Resource.Validation.StringLength do
     end
   end
 
-  defp do_validate(value, %{exact: exact} = opts) do
+  defp do_validate(subject, value, %{exact: exact} = opts) do
     if String.length(value) == exact do
       :ok
     else
-      {:error, exception(value, opts)}
+      {:error, exception(subject, value, opts)}
     end
   end
 
-  defp do_validate(value, %{min: min, max: max} = opts) do
+  defp do_validate(subject, value, %{min: min, max: max} = opts) do
     string_length = String.length(value)
 
     if string_length >= min and string_length <= max do
       :ok
     else
-      {:error, exception(value, opts)}
+      {:error, exception(subject, value, opts)}
     end
   end
 
-  defp do_validate(value, %{min: min} = opts) do
+  defp do_validate(subject, value, %{min: min} = opts) do
     if String.length(value) >= min do
       :ok
     else
-      {:error, exception(value, opts)}
+      {:error, exception(subject, value, opts)}
     end
   end
 
-  defp do_validate(value, %{max: max} = opts) do
+  defp do_validate(subject, value, %{max: max} = opts) do
     if String.length(value) <= max do
       :ok
     else
-      {:error, exception(value, opts)}
+      {:error, exception(subject, value, opts)}
     end
   end
 
-  defp exception(value, opts) do
-    [value: value, field: opts[:attribute]]
+  defp exception(subject, value, opts) do
+    [
+      value: Ash.Resource.Validation.maybe_redact(subject, opts[:attribute], value),
+      field: opts[:attribute]
+    ]
     |> with_description(opts)
     |> InvalidAttribute.exception()
   end
 
   @impl true
   def describe(%{exact: exact}),
-    do: [message: "must have length of exactly %{exact}", vars: [exact: exact]]
+    do: [message: error_message("must have length of exactly %{exact}"), vars: [exact: exact]]
 
   def describe(%{min: min, max: max}),
-    do: [message: "must have length of between %{min} and %{max}", vars: [min: min, max: max]]
+    do: [
+      message: error_message("must have length of between %{min} and %{max}"),
+      vars: [min: min, max: max]
+    ]
 
   def describe(%{min: min}),
-    do: [message: "must have length of at least %{min}", vars: [min: min]]
+    do: [message: error_message("must have length of at least %{min}"), vars: [min: min]]
 
   def describe(%{max: max}),
-    do: [message: "must have length of no more than %{max}", vars: [max: max]]
+    do: [message: error_message("must have length of no more than %{max}"), vars: [max: max]]
 
   def describe(_opts), do: [message: inspect(__MODULE__), vars: []]
 end

@@ -1407,7 +1407,8 @@ defmodule Ash.Policy.Authorizer do
     |> Enum.map(fn scenario ->
       scenario
       |> Enum.filter(fn {{check_module, check_opts}, _} ->
-        check_module.type() == :filter && check_opts[:access_type] in [:filter, :runtime]
+        Ash.Policy.Check.type(check_module) == :filter &&
+          check_opts[:access_type] in [:filter, :runtime]
       end)
       |> Enum.reject(fn {{check_module, check_opts}, result} ->
         match?({:ok, ^result}, Policy.fetch_fact(authorizer.facts, {check_module, check_opts}))
@@ -1423,12 +1424,19 @@ defmodule Ash.Policy.Authorizer do
           {{check_module, check_opts}, true} ->
             result =
               try do
-                nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
+                nil_to_false(
+                  Ash.Policy.Check.auto_filter(
+                    check_module,
+                    authorizer.actor,
+                    authorizer,
+                    check_opts
+                  )
+                )
               rescue
                 e ->
                   reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
                             bread_crumbs:
-                              "Creating filter for check: #{check_module.describe(check_opts)} on resource: #{authorizer.resource}"
+                              "Creating filter for check: #{Ash.Policy.Check.describe(check_module, check_opts)} on resource: #{authorizer.resource}"
                           ),
                           __STACKTRACE__
               end
@@ -1444,13 +1452,23 @@ defmodule Ash.Policy.Authorizer do
               try do
                 if :erlang.function_exported(check_module, :auto_filter_not, 3) do
                   nil_to_false(
-                    check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+                    Ash.Policy.Check.auto_filter_not(
+                      check_module,
+                      authorizer.actor,
+                      authorizer,
+                      check_opts
+                    )
                   )
                 else
                   [
                     not:
                       nil_to_false(
-                        check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+                        Ash.Policy.Check.auto_filter(
+                          check_module,
+                          authorizer.actor,
+                          authorizer,
+                          check_opts
+                        )
                       )
                   ]
                 end
@@ -1458,7 +1476,7 @@ defmodule Ash.Policy.Authorizer do
                 e ->
                   reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
                             bread_crumbs:
-                              "Creating filter for check: #{check_module.describe(check_opts)} on resource: #{authorizer.resource}"
+                              "Creating filter for check: #{Ash.Policy.Check.describe(check_module, check_opts)} on resource: #{authorizer.resource}"
                           ),
                           __STACKTRACE__
               end
@@ -1495,7 +1513,7 @@ defmodule Ash.Policy.Authorizer do
   end
 
   def print_tuple_boolean({check, opts}) do
-    check.describe(opts)
+    Ash.Policy.Check.describe(check, opts)
   end
 
   def print_tuple_boolean(v) do
@@ -1512,7 +1530,7 @@ defmodule Ash.Policy.Authorizer do
     global_check_value =
       Enum.find_value(scenarios, fn scenario ->
         Enum.find(scenario, fn {{check_module, _opts} = check, value} ->
-          check_module.type() == :filter &&
+          Ash.Policy.Check.type(check_module) == :filter &&
             Enum.all?(scenarios, &(Map.fetch(&1, check) == {:ok, value}))
         end)
       end)
@@ -1530,14 +1548,30 @@ defmodule Ash.Policy.Authorizer do
       {{check_module, check_opts}, required_status} ->
         additional_filter =
           if required_status do
-            nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
+            nil_to_false(
+              Ash.Policy.Check.auto_filter(check_module, authorizer.actor, authorizer, check_opts)
+            )
           else
             if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-              nil_to_false(check_module.auto_filter_not(authorizer.actor, authorizer, check_opts))
+              nil_to_false(
+                Ash.Policy.Check.auto_filter_not(
+                  check_module,
+                  authorizer.actor,
+                  authorizer,
+                  check_opts
+                )
+              )
             else
               [
                 not:
-                  nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
+                  nil_to_false(
+                    Ash.Policy.Check.auto_filter(
+                      check_module,
+                      authorizer.actor,
+                      authorizer,
+                      check_opts
+                    )
+                  )
               ]
             end
           end
@@ -1707,14 +1741,20 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp check_fact({check_module, check_opts}, authorizer) do
-    if check_module.type() == :simple do
+    if Ash.Policy.Check.type(check_module) == :simple do
       raise "Assumption failed"
     else
       if authorizer.action.type == :read ||
            (Ash.DataLayer.data_layer_can?(authorizer.resource, :transact) &&
               Ash.DataLayer.in_transaction?(authorizer.resource)) do
         authorized_records =
-          check_module.check(authorizer.actor, authorizer.data, authorizer, check_opts)
+          Ash.Policy.Check.check(
+            check_module,
+            authorizer.actor,
+            authorizer.data,
+            authorizer,
+            check_opts
+          )
 
         pkey = Ash.Resource.Info.primary_key(authorizer.resource)
 

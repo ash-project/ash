@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.ArgumentDoesNotEqual do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidArgument
 
@@ -49,7 +50,10 @@ defmodule Ash.Resource.Validation.ArgumentDoesNotEqual do
 
     if value == opts[:value] do
       {:error,
-       [field: opts[:argument], value: value]
+       [
+         field: opts[:argument],
+         value: Ash.Resource.Validation.maybe_redact(subject, opts[:argument], value)
+       ]
        |> with_description(opts)
        |> InvalidArgument.exception()}
     else
@@ -65,7 +69,7 @@ defmodule Ash.Resource.Validation.ArgumentDoesNotEqual do
   @impl true
   def describe(opts) do
     [
-      message: "must not equal %{value}",
+      message: error_message("must not equal %{value}"),
       vars: [field: opts[:argument], value: opts[:value]]
     ]
   end

@@ -273,6 +273,23 @@ defmodule Ash.Actions.Helpers.Bulk do
   end
 
   @doc """
+  Sets the error path to include the bulk operation index from the changeset context.
+
+  Extracts the index from bulk_create, bulk_update, or bulk_destroy context
+  and prepends it to the error's path.
+  """
+  def set_index_path(error, %{context: %{bulk_create: %{index: index}}}),
+    do: Ash.Error.set_path(error, [index])
+
+  def set_index_path(error, %{context: %{bulk_update: %{index: index}}}),
+    do: Ash.Error.set_path(error, [index])
+
+  def set_index_path(error, %{context: %{bulk_destroy: %{index: index}}}),
+    do: Ash.Error.set_path(error, [index])
+
+  def set_index_path(error, _changeset), do: error
+
+  @doc """
   Validates multitenancy requirements for bulk operations.
 
   Checks if tenant is required based on resource configuration, action settings,
@@ -479,4 +496,74 @@ defmodule Ash.Actions.Helpers.Bulk do
   end
 
   def clean_changeset_id_metadata(other), do: other
+
+  @doc """
+  Runs batch validation for a validation that implements `batch_validate/3`.
+
+  Splits the batch into matching/non-matching changesets based on `where` and
+  `only_when_valid?` conditions, runs `batch_validate` on the matches, and
+  merges the results back together.
+  """
+  def run_batch_validation(
+        %{validation: {module, opts}} = validation,
+        batch,
+        validation_context,
+        actor
+      ) do
+    {matches, non_matches} =
+      if Enum.empty?(validation.where) && !validation.only_when_valid? do
+        {batch, []}
+      else
+        Enum.split_with(batch, fn changeset ->
+          applies_from_only_when_valid? =
+            if validation.only_when_valid?, do: changeset.valid?, else: true
+
+          applies_from_where? =
+            Enum.all?(validation.where || [], fn {where_module, where_opts} ->
+              where_opts =
+                Ash.Actions.Helpers.templated_opts(
+                  where_opts,
+                  actor,
+                  changeset.to_tenant,
+                  changeset.arguments,
+                  changeset.context,
+                  changeset
+                )
+
+              {:ok, where_opts} = where_module.init(where_opts)
+
+              Ash.Resource.Validation.validate(
+                where_module,
+                changeset,
+                where_opts,
+                validation_context
+              ) == :ok
+            end)
+
+          applies_from_where? and applies_from_only_when_valid?
+        end)
+      end
+
+    if Enum.empty?(matches) do
+      non_matches
+    else
+      opts =
+        case opts do
+          {:templated, opts} -> opts
+          opts -> opts
+        end
+
+      {:ok, opts} = module.init(opts)
+
+      validated =
+        module.batch_validate(
+          matches,
+          opts,
+          struct(validation_context, bulk?: true)
+        )
+        |> Enum.to_list()
+
+      Enum.concat(validated, non_matches)
+    end
+  end
 end

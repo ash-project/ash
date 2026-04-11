@@ -156,6 +156,9 @@ defmodule Ash.Query.Function do
       {arg, :same}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 
+      {arg, {:array, vague}}, {:ok, args} when vague in [:any, :same] ->
+        {:cont, {:ok, [arg | args]}}
+
       {%{__predicate__?: _} = arg, _}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 

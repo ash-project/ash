@@ -33,6 +33,7 @@ defmodule Ash.Type.Decimal do
   ]
 
   import Ash.Expr
+  import Ash.Gettext
 
   @moduledoc """
   Represents a decimal.
@@ -131,7 +132,7 @@ defmodule Ash.Type.Decimal do
               if ^expr > ^max do
                 error(
                   Ash.Error.Changes.InvalidChanges,
-                  message: "must be less than or equal to %{max}",
+                  message: ^error_message("must be less than or equal to %{max}"),
                   vars: %{max: ^max}
                 )
               else
@@ -144,7 +145,7 @@ defmodule Ash.Type.Decimal do
               if ^expr < ^min do
                 error(
                   Ash.Error.Changes.InvalidChanges,
-                  message: "must be greater than or equal to %{min}",
+                  message: ^error_message("must be greater than or equal to %{min}"),
                   vars: %{min: ^min}
                 )
               else
@@ -159,7 +160,7 @@ defmodule Ash.Type.Decimal do
               else
                 error(
                   Ash.Error.Changes.InvalidChanges,
-                  message: "must be less than %{less_than}",
+                  message: ^error_message("must be less than %{less_than}"),
                   vars: %{less_than: ^less_than}
                 )
               end
@@ -172,7 +173,7 @@ defmodule Ash.Type.Decimal do
               else
                 error(
                   Ash.Error.Changes.InvalidChanges,
-                  message: "must be greater than %{greater_than}",
+                  message: ^error_message("must be greater than %{greater_than}"),
                   vars: %{greater_than: ^greater_than}
                 )
               end
@@ -198,7 +199,7 @@ defmodule Ash.Type.Decimal do
           if count_significant_digits(value) > precision do
             [
               [
-                message: "must have no more than %{precision} significant digits",
+                message: error_message("must have no more than %{precision} significant digits"),
                 precision: precision
               ]
               | errors
@@ -214,7 +215,7 @@ defmodule Ash.Type.Decimal do
           if Decimal.scale(value) > scale do
             [
               [
-                message: "must have no more than %{scale} decimal places",
+                message: error_message("must have no more than %{scale} decimal places"),
                 scale: scale
               ]
               | errors
@@ -225,14 +226,17 @@ defmodule Ash.Type.Decimal do
 
         {:max, max}, errors ->
           if Decimal.compare(value, max) == :gt do
-            [[message: "must be less than or equal to %{max}", max: max] | errors]
+            [[message: error_message("must be less than or equal to %{max}"), max: max] | errors]
           else
             errors
           end
 
         {:min, min}, errors ->
           if Decimal.compare(value, min) == :lt do
-            [[message: "must be more than or equal to %{min}", min: min] | errors]
+            [
+              [message: error_message("must be greater than or equal to %{min}"), min: min]
+              | errors
+            ]
           else
             errors
           end
@@ -241,14 +245,23 @@ defmodule Ash.Type.Decimal do
           if Decimal.compare(value, less_than) == :lt do
             errors
           else
-            [[message: "must be less than %{less_than}", less_than: less_than] | errors]
+            [
+              [message: error_message("must be less than %{less_than}"), less_than: less_than]
+              | errors
+            ]
           end
 
         {:greater_than, greater_than}, errors ->
           if Decimal.compare(value, greater_than) == :gt do
             errors
           else
-            [[message: "must be more than %{greater_than}", greater_than: greater_than] | errors]
+            [
+              [
+                message: error_message("must be greater than %{greater_than}"),
+                greater_than: greater_than
+              ]
+              | errors
+            ]
           end
       end)
 

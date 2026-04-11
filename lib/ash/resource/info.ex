@@ -472,6 +472,20 @@ defmodule Ash.Resource.Info do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :template, nil)
   end
 
+  @doc "Returns all pipelines of a resource"
+  @spec pipelines(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Pipeline.t())
+  def pipelines(resource) do
+    Extension.get_entities(resource, [:pipelines])
+  end
+
+  @doc "Get a pipeline by name"
+  @spec pipeline(Spark.Dsl.t() | Ash.Resource.t(), atom) :: Ash.Resource.Pipeline.t() | nil
+  def pipeline(resource, name) do
+    resource
+    |> pipelines()
+    |> Enum.find(&(&1.name == name))
+  end
+
   @doc "Returns all calculations of a resource"
   @spec calculations(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Calculation.t())
   def calculations(resource) do
@@ -628,6 +642,14 @@ defmodule Ash.Resource.Info do
   @spec actions(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Actions.action()]
   def actions(resource) do
     Extension.get_entities(resource, [:actions])
+  end
+
+  @doc "Returns all public actions of a resource (actions with `public?: true`). Use for building public APIs; do not expose actions with `public?: false`."
+  @spec public_actions(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Actions.action()]
+  def public_actions(resource) do
+    resource
+    |> actions()
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "Returns the action with the matching name and type on the resource"

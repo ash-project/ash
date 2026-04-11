@@ -131,6 +131,7 @@ defmodule Ash.Tracer do
     end
   end
 
+  @spec stop_span(nil | module() | [module()]) :: :ok
   def stop_span(nil), do: :ok
 
   def stop_span(tracers) when is_list(tracers) do
@@ -138,17 +139,41 @@ defmodule Ash.Tracer do
   end
 
   def stop_span(tracer) do
-    tracer.stop_span()
+    result = apply(tracer, :stop_span, [])
+
+    if result == :ok do
+      :ok
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(tracer)}.stop_span/0.
+
+        The callback #{inspect(__MODULE__)}.stop_span/0 expects :ok.
+        """
+    end
   end
 
+  @spec trace_type?(module(), atom()) :: boolean()
   def trace_type?(tracer, type) do
     if function_exported?(tracer, :trace_type?, 1) do
-      tracer.trace_type?(type)
+      result = apply(tracer, :trace_type?, [type])
+
+      if is_boolean(result) do
+        result
+      else
+        raise Ash.Error.Framework.InvalidReturnType,
+          message: """
+          Invalid value returned from #{inspect(tracer)}.trace_type?/1.
+
+          The callback #{inspect(__MODULE__)}.trace_type?/1 expects a boolean.
+          """
+      end
     else
       true
     end
   end
 
+  @spec start_span(nil | module() | [module()], span_type(), String.t() | (-> String.t())) :: :ok
   def start_span(nil, _type, _name), do: :ok
 
   def start_span(tracers, type, name) when is_list(tracers) do
@@ -158,9 +183,21 @@ defmodule Ash.Tracer do
 
   def start_span(tracer, type, name) do
     name = resolve_lazy(name)
-    tracer.start_span(type, name)
+    result = apply(tracer, :start_span, [type, name])
+
+    if result == :ok do
+      :ok
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(tracer)}.start_span/2.
+
+        The callback #{inspect(__MODULE__)}.start_span/2 expects :ok.
+        """
+    end
   end
 
+  @spec set_handled_error(nil | module() | [module()], Exception.t(), Keyword.t()) :: :ok
   def set_handled_error(nil, _, _), do: :ok
 
   def set_handled_error(tracers, error, opts) when is_list(tracers) do
@@ -169,12 +206,24 @@ defmodule Ash.Tracer do
 
   def set_handled_error(tracer, error, opts) do
     if function_exported?(tracer, :set_handled_error, 2) do
-      tracer.set_handled_error(error, opts)
+      result = apply(tracer, :set_handled_error, [error, opts])
+
+      if result == :ok do
+        :ok
+      else
+        raise Ash.Error.Framework.InvalidReturnType,
+          message: """
+          Invalid value returned from #{inspect(tracer)}.set_handled_error/2.
+
+          The callback #{inspect(__MODULE__)}.set_handled_error/2 expects :ok.
+          """
+      end
     else
       :ok
     end
   end
 
+  @spec set_error(nil | module() | [module()], Exception.t(), Keyword.t()) :: :ok
   def set_error(nil, _, _), do: :ok
 
   def set_error(tracers, error, opts) when is_list(tracers) do
@@ -182,13 +231,26 @@ defmodule Ash.Tracer do
   end
 
   def set_error(tracer, error, opts) do
-    if function_exported?(tracer, :set_error, 2) do
-      tracer.set_error(error, opts)
+    result =
+      if function_exported?(tracer, :set_error, 2) do
+        apply(tracer, :set_error, [error, opts])
+      else
+        apply(tracer, :set_error, [error])
+      end
+
+    if result == :ok do
+      :ok
     else
-      tracer.set_error(error)
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(tracer)}.set_error/1 or set_error/2.
+
+        The callback #{inspect(__MODULE__)}.set_error expects :ok.
+        """
     end
   end
 
+  @spec set_error(nil | module() | [module()], Exception.t()) :: :ok
   def set_error(nil, _), do: :ok
 
   def set_error(tracers, error) when is_list(tracers) do
@@ -196,13 +258,26 @@ defmodule Ash.Tracer do
   end
 
   def set_error(tracer, error) do
-    if function_exported?(tracer, :set_error, 2) do
-      tracer.set_error(error, [])
+    result =
+      if function_exported?(tracer, :set_error, 2) do
+        apply(tracer, :set_error, [error, []])
+      else
+        apply(tracer, :set_error, [error])
+      end
+
+    if result == :ok do
+      :ok
     else
-      tracer.set_error(error)
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(tracer)}.set_error/1 or set_error/2.
+
+        The callback #{inspect(__MODULE__)}.set_error expects :ok.
+        """
     end
   end
 
+  @spec get_span_context(nil | module()) :: term()
   def get_span_context(nil), do: :ok
 
   def get_span_context(tracer) when is_list(tracer) do
@@ -210,9 +285,10 @@ defmodule Ash.Tracer do
   end
 
   def get_span_context(tracer) do
-    tracer.get_span_context()
+    apply(tracer, :get_span_context, [])
   end
 
+  @spec set_span_context(nil | module(), term()) :: :ok
   def set_span_context(nil, _), do: :ok
 
   def set_span_context(tracer, _context) when is_list(tracer) do
@@ -220,9 +296,22 @@ defmodule Ash.Tracer do
   end
 
   def set_span_context(tracer, context) do
-    tracer.set_span_context(context)
+    result = apply(tracer, :set_span_context, [context])
+
+    if result == :ok do
+      :ok
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(tracer)}.set_span_context/1.
+
+        The callback #{inspect(__MODULE__)}.set_span_context/1 expects :ok.
+        """
+    end
   end
 
+  @spec set_metadata(nil | module() | [module()], span_type(), metadata() | (-> metadata())) ::
+          :ok
   def set_metadata(nil, _type, _metadata), do: :ok
 
   def set_metadata(tracers, type, metadata) when is_list(tracers) do
@@ -230,14 +319,25 @@ defmodule Ash.Tracer do
 
     if !Enum.empty?(tracers) do
       metadata = resolve_lazy(metadata)
-      Enum.each(tracers, & &1.set_metadata(type, metadata))
+      Enum.each(tracers, &set_metadata(&1, type, metadata))
     end
   end
 
   def set_metadata(tracer, type, metadata) do
     if Ash.Tracer.trace_type?(tracer, type) do
       metadata = resolve_lazy(metadata)
-      tracer.set_metadata(type, metadata)
+      result = apply(tracer, :set_metadata, [type, metadata])
+
+      if result == :ok do
+        :ok
+      else
+        raise Ash.Error.Framework.InvalidReturnType,
+          message: """
+          Invalid value returned from #{inspect(tracer)}.set_metadata/2.
+
+          The callback #{inspect(__MODULE__)}.set_metadata/2 expects :ok.
+          """
+      end
     end
   end
 

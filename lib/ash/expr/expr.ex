@@ -11,6 +11,7 @@ defmodule Ash.Expr do
 
   @type t :: any
   @pass_through_funcs [:where, :or_where, :expr, :@]
+  @aggregate_kinds Ash.Query.Aggregate.kinds()
 
   @doc """
   Evaluate an expression. See `eval/2` for more.
@@ -633,6 +634,15 @@ defmodule Ash.Expr do
     Enum.map(value, &do_expr(&1, escape?))
   end
 
+  def do_expr({:%, _, [struct_alias, {:%{}, _, fields}]}, escape?) do
+    struct_module = do_expr(struct_alias, false)
+
+    fields =
+      Enum.map(fields, fn {key, value} -> {do_expr(key, escape?), do_expr(value, escape?)} end)
+
+    {:%{}, [], [{:__struct__, struct_module} | fields]}
+  end
+
   def do_expr({:%{}, _, keys}, escape?) do
     {:%{}, [],
      Enum.map(keys, fn {key, value} -> {do_expr(key, escape?), do_expr(value, escape?)} end)}
@@ -1104,6 +1114,19 @@ defmodule Ash.Expr do
 
   def do_expr(other, _), do: other
 
+  @doc """
+  Determines the types for a given operator or function module and its arguments.
+
+  Given an operator or function module (e.g. `Ash.Query.Operator.In`), resolves the
+  concrete types of the arguments based on the module's declared type signatures and
+  any registered operator overloads. Returns `{resolved_types, return_type}` where
+  `resolved_types` is a list of `{type, constraints}` tuples (or `nil` for unresolvable
+  arguments) and `return_type` is the resolved return type.
+
+  This is the primary type resolution mechanism used by data layer expression compilers.
+  It performs actual type validation including coercion checks, unlike
+  `Ash.Type.determine_types/2` which only resolves vague types (`:same`/`:any`).
+  """
   def determine_types(mod, args, returns \\ nil, nested? \\ false)
 
   def determine_types(Ash.Query.Function.Type, [_, type], _returns, _nested?) do
@@ -1302,7 +1325,7 @@ defmodule Ash.Expr do
                 case acc[:basis] do
                   nil ->
                     if vague_type == :any do
-                      acc = Map.update!(acc, :types, &[{:array, {type, constraints}} | &1])
+                      acc = Map.update!(acc, :types, &[{{:array, type}, items: constraints} | &1])
                       {:cont, Map.put(acc, :basis, {type, constraints})}
                     else
                       acc =
@@ -1324,7 +1347,11 @@ defmodule Ash.Expr do
 
                   {^type, matched_constraints} ->
                     {:cont,
-                     Map.update!(acc, :types, &[{:array, {type, matched_constraints}} | &1])}
+                     Map.update!(
+                       acc,
+                       :types,
+                       &[{{:array, type}, items: matched_constraints} | &1]
+                     )}
 
                   _ ->
                     {:halt, :error}
@@ -1582,23 +1609,15 @@ defmodule Ash.Expr do
   def determine_type(value) do
     case value do
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type, constraints]} ->
-        if Ash.Type.ash_type?(type) do
-          if res = get_type({type, constraints}) do
-            {:ok, res}
-          else
-            :error
-          end
+        if res = get_type({type, constraints}) do
+          {:ok, res}
         else
           :error
         end
 
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type]} ->
-        if Ash.Type.ash_type?(type) do
-          if res = get_type({type, []}) do
-            {:ok, res}
-          else
-            :error
-          end
+        if res = get_type({type, []}) do
+          {:ok, res}
         else
           :error
         end
@@ -1634,6 +1653,21 @@ defmodule Ash.Expr do
       %{__struct__: Ash.Query.Exists} ->
         {:ok, {Ash.Type.Boolean, []}}
 
+      %{__struct__: Ash.Query.Aggregate, type: type, constraints: constraints}
+      when not is_nil(type) ->
+        if Ash.Type.ash_type?(type) do
+          if res = get_type({type, constraints || []}) do
+            {:ok, res}
+          else
+            :error
+          end
+        else
+          :error
+        end
+
+      %{__struct__: Ash.Query.Aggregate, kind: kind, type: nil} ->
+        determine_aggregate_type_from_kind(kind, :any, [])
+
       %{__struct__: Ash.Query.Parent, expr: expr} ->
         determine_type(expr)
 
@@ -1655,7 +1689,81 @@ defmodule Ash.Expr do
           {_, type} -> {:ok, type}
         end
 
+      value when is_map(value) and not is_struct(value) and value != %{} ->
+        determine_map_type(value)
+
+      %{__struct__: Ash.Query.Call, name: name, args: args}
+      when name in @aggregate_kinds ->
+        determine_inline_aggregate_type(name, args)
+
+      %{__struct__: struct_module} when is_atom(struct_module) ->
+        determine_struct_type(struct_module)
+
       _ ->
+        :error
+    end
+  end
+
+  defp determine_struct_type(struct_module) do
+    if Ash.Type.ash_type?(struct_module) do
+      {:ok, {struct_module, []}}
+    else
+      :error
+    end
+  end
+
+  defp determine_map_type(map) do
+    if Enum.all?(map, fn {key, _} -> is_atom(key) end) do
+      Enum.reduce_while(map, {:ok, []}, fn {key, val_expr}, {:ok, acc} ->
+        case determine_type(val_expr) do
+          {:ok, {type, constraints}} ->
+            allow_nil? = can_return_nil?(val_expr)
+
+            {:cont,
+             {:ok, [{key, [type: type, constraints: constraints, allow_nil?: allow_nil?]} | acc]}}
+
+          :error ->
+            {:halt, :error}
+        end
+      end)
+      |> case do
+        {:ok, fields} ->
+          {:ok, {Ash.Type.Map, [fields: Enum.reverse(fields)]}}
+
+        :error ->
+          :error
+      end
+    else
+      :error
+    end
+  end
+
+  defp determine_inline_aggregate_type(name, args) do
+    {field_type, field_constraints} = extract_aggregate_field_info(args)
+    determine_aggregate_type_from_kind(name, field_type, field_constraints)
+  end
+
+  defp extract_aggregate_field_info(args) do
+    with opts when is_list(opts) <- Enum.at(args, 1),
+         true <- Keyword.keyword?(opts),
+         %{type: type, constraints: constraints} when not is_nil(type) <-
+           Keyword.get(opts, :field) do
+      {type, constraints || []}
+    else
+      _ -> {:any, []}
+    end
+  end
+
+  defp determine_aggregate_type_from_kind(kind, field_type, field_constraints) do
+    case Ash.Query.Aggregate.kind_to_type(kind, field_type, field_constraints) do
+      {:ok, type, constraints} ->
+        if res = get_type({type, constraints}) do
+          {:ok, res}
+        else
+          :error
+        end
+
+      {:error, _} ->
         :error
     end
   end

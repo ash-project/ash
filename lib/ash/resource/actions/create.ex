@@ -30,6 +30,7 @@ defmodule Ash.Resource.Actions.Create do
     reject: [],
     metadata: [],
     transaction?: true,
+    public?: true,
     type: :create,
     __spark_metadata__: nil
   ]
@@ -61,6 +62,7 @@ defmodule Ash.Resource.Actions.Create do
           arguments: list(Ash.Resource.Actions.Argument.t()),
           primary?: boolean,
           description: String.t() | nil,
+          public?: boolean,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 

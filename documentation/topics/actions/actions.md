@@ -239,6 +239,115 @@ Ticket
 
 That is the best of both worlds! These same lessons transfer to all action types (changeset-based, query-based, and generic actions) as well.
 
+## Pipelines
+
+Pipelines let you define reusable groups of changes, validations, and preparations that can be shared across multiple actions. Instead of duplicating the same logic in every action, you define it once in a `pipeline` and reference it with `pipe_through`.
+
+### Defining Pipelines
+
+Pipelines are declared in a top-level `pipelines` block on the resource. Each pipeline can contain `change`, `validate`, and `prepare` declarations, just like an action.
+
+```elixir
+pipelines do
+  pipeline :audited do
+    change set_attribute(:updated_by, actor(:id))
+    validate present(:updated_by)
+  end
+
+  pipeline :sorted_by_name do
+    prepare build(sort: [:name])
+  end
+end
+```
+
+### Using Pipelines in Actions
+
+Reference pipelines from any action using `pipe_through`:
+
+```elixir
+actions do
+  create :create do
+    accept [:name, :email]
+    pipe_through [:audited]
+  end
+
+  update :update do
+    accept [:name, :email]
+    pipe_through [:audited]
+  end
+
+  read :list do
+    pipe_through [:sorted_by_name]
+  end
+end
+```
+
+The pipeline's entities are expanded inline at compile time — the action behaves exactly as if you had written the changes, validations, and preparations directly.
+
+### How Entity Types Are Resolved
+
+Pipelines can contain changes, validations, and preparations, but not all of these apply to every action type:
+
+- **Create, Update, Destroy actions** receive the pipeline's `change` and `validate` entities. Preparations are ignored.
+- **Read and Generic actions** receive the pipeline's `prepare` and `validate` entities. Changes are ignored.
+
+This means you can define a pipeline with all three entity types and safely reference it from any action type — only the applicable entities will be included.
+
+### Ordering
+
+Pipeline entities are inserted **at the position of the `pipe_through` declaration** within the action. This gives you full control over ordering:
+
+```elixir
+create :create do
+  accept [:name]
+  change set_attribute(:state, :before)  # runs first
+  pipe_through [:my_pipeline]            # pipeline entities run second
+  change set_attribute(:name, "after")   # runs third
+end
+```
+
+When referencing multiple pipelines in a single `pipe_through`, their entities are appended in the order listed:
+
+```elixir
+pipe_through [:pipeline_a, :pipeline_b]
+# pipeline_a entities first, then pipeline_b entities
+```
+
+You can also use multiple `pipe_through` declarations in the same action:
+
+```elixir
+create :create do
+  pipe_through [:audit]
+  pipe_through [:guard], where: present(:name)
+  accept [:name]
+end
+```
+
+### Conditional Pipelines with `where`
+
+You can make a pipeline's entities conditional using the `where` option on `pipe_through`. The `where` conditions are prepended to each entity's existing `where` conditions:
+
+```elixir
+create :create do
+  accept [:name]
+  pipe_through [:premium_features], where: attribute_equals(:role, :premium)
+end
+```
+
+If a pipeline entity already has its own `where` condition, both conditions must pass for the entity to apply.
+
+### Introspection
+
+You can inspect pipelines at runtime using `Ash.Resource.Info`:
+
+```elixir
+# List all pipelines on a resource
+Ash.Resource.Info.pipelines(MyResource)
+
+# Get a specific pipeline by name
+Ash.Resource.Info.pipeline(MyResource, :audited)
+```
+
 ## Private Inputs
 
 The concept of a "private input" can be somewhat paradoxical, but it can be used by actions that require something provided by the "system",

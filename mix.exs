@@ -10,7 +10,7 @@ defmodule Ash.MixProject do
   A declarative, extensible framework for building Elixir applications.
   """
 
-  @version "3.19.1"
+  @version "3.23.1"
 
   def project do
     [
@@ -25,7 +25,7 @@ defmodule Ash.MixProject do
       # Workaround for Elixir dialyzer opaque type bug: https://github.com/elixir-lang/elixir/issues/14837#issuecomment-3452772021
       dialyzer: [
         plt_add_apps: [:mix, :mnesia, :plug, :ex_unit, :stream_data],
-        flags: [:no_opaque]
+        flags: [:no_opaque, :no_match]
       ],
       docs: &docs/0,
       aliases: aliases(),
@@ -357,7 +357,7 @@ defmodule Ash.MixProject do
         "Zach Daniel <zach@zachdaniel.dev>"
       ],
       licenses: ["MIT"],
-      files: ~w(lib .formatter.exs mix.exs README* LICENSE*
+      files: ~w(lib priv .formatter.exs mix.exs README* LICENSE*
       CHANGELOG* usage-rules.md usage-rules),
       links: %{
         "GitHub" => "https://github.com/ash-project/ash",
@@ -381,7 +381,7 @@ defmodule Ash.MixProject do
     [
       {:usage_rules, "~> 1.1", only: [:dev]},
       # DSLs
-      {:spark, "~> 2.3 and >= 2.3.14"},
+      {:spark, ">= 2.6.0"},
       # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.7"},
       # Used by the ETS data layer

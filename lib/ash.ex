@@ -565,6 +565,11 @@ defmodule Ash do
                              load: [
                                type: :any,
                                doc: "A load statement to apply on the resulting records."
+                             ],
+                             transform_changeset: [
+                               type: {:fun, 1},
+                               doc:
+                                 "A function that takes and returns a changeset, applied to each changeset after it is built but before validation. Used internally by managed relationships to set foreign keys and context."
                              ]
                            ]
                            |> Spark.Options.merge(
@@ -621,6 +626,11 @@ defmodule Ash do
                                 type: :any,
                                 doc:
                                   "A filter to apply to records. This is also applied to a stream of inputs."
+                              ],
+                              transform_changeset: [
+                                type: {:fun, 1},
+                                doc:
+                                  "A function that takes and returns a changeset, applied to each changeset after it is built but before validation. Used internally by managed relationships to set foreign keys and context."
                               ]
                             ]
                             |> Spark.Options.merge(
@@ -691,6 +701,11 @@ defmodule Ash do
                                default: true,
                                doc:
                                  "Whether or not to apply update defaults (like `updated_at` timestamps) on upsert. Only relevant when `upsert?: true` is set. Set to `false` to skip touching update_default fields when an upsert results in an update."
+                             ],
+                             transform_changeset: [
+                               type: {:fun, 1},
+                               doc:
+                                 "A function that takes and returns a changeset, applied to each changeset after it is built but before validation. Used internally by managed relationships to set foreign keys and context."
                              ]
                            ]
                            |> Spark.Options.merge(
@@ -913,7 +928,7 @@ defmodule Ash do
     scope: [
       type: :any,
       doc:
-        "A value that implements the `Ash.Scope.ToOpts` protocol. Will overwrite any actor, tenant or context provided. See `Ash.Context` for more."
+        "A value that implements the `Ash.Scope.ToOpts` protocol. Provides a default tenant and deep merges context (explicit opts take precedence). The actor is always taken from the second argument to `can/3`. See `Ash.Scope` for more."
     ],
     context: [
       type: :map,
@@ -2874,7 +2889,13 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     %resource{} = record
     id = record |> Map.take(Ash.Resource.Info.primary_key(resource)) |> Enum.to_list()
-    opts = Keyword.put_new(opts, :tenant, Map.get(record.__metadata__, :tenant))
+
+    opts =
+      case Map.fetch(record.__metadata__, :tenant) do
+        {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
+
     get(resource, id, opts)
   end
 
@@ -3689,7 +3710,11 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_map_or_nil!(opts[:input])
 
-    opts = Keyword.put_new(opts, :tenant, Map.get(record.__metadata__, :tenant))
+    opts =
+      case Map.fetch(record.__metadata__, :tenant) do
+        {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
 
     changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_update_opts()))
     update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
@@ -3795,7 +3820,12 @@ defmodule Ash do
         record -> record
       end
 
-    opts = Keyword.put_new(opts, :tenant, Map.get(data.__metadata__, :tenant))
+    opts =
+      case Map.fetch(data.__metadata__, :tenant) do
+        {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
+
     Ash.Helpers.expect_options!(opts)
 
     changeset =

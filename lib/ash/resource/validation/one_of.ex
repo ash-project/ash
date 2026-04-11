@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.OneOf do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidAttribute
   import Ash.Expr
@@ -64,7 +65,10 @@ defmodule Ash.Resource.Validation.OneOf do
           :ok
         else
           {:error,
-           [value: value, field: opts[:attribute]]
+           [
+             value: Ash.Resource.Validation.maybe_redact(subject, opts[:attribute], value),
+             field: opts[:attribute]
+           ]
            |> with_description(opts)
            |> InvalidAttribute.exception()}
         end
@@ -81,14 +85,21 @@ defmodule Ash.Resource.Validation.OneOf do
     else
       value = expr(^atomic_ref(opts[:attribute]))
 
+      error_value =
+        if Ash.Resource.Validation.should_redact?(changeset, opts[:attribute]) do
+          Ash.Helpers.redact(nil)
+        else
+          value
+        end
+
       {:atomic, [opts[:attribute]], expr(^value not in ^opts[:values]),
        expr(
          error(
            Ash.Error.Changes.InvalidAttribute,
            %{
              field: ^opts[:attribute],
-             value: ^value,
-             message: ^(context.message || "expected one of %{values}"),
+             value: ^error_value,
+             message: ^(context.message || error_message("expected one of %{values}")),
              vars: %{values: ^Enum.map_join(opts[:values], ", ", &to_string/1)}
            }
          )
@@ -99,7 +110,7 @@ defmodule Ash.Resource.Validation.OneOf do
   @impl true
   def describe(opts) do
     [
-      message: "expected one of %{values}",
+      message: error_message("expected one of %{values}"),
       vars: [values: Enum.map_join(opts[:values], ", ", &to_string/1)]
     ]
   end

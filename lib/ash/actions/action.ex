@@ -79,18 +79,7 @@ defmodule Ash.Actions.Action do
             end
           end)
 
-        result =
-          with {:ok, result, _} <-
-                 Ash.Actions.Helpers.load(result, input, domain,
-                   actor: opts[:actor],
-                   reuse_values?: true,
-                   action:
-                     Ash.Resource.Info.primary_action(input.resource, :read) || input.action,
-                   authorize?: opts[:authorize?],
-                   tracer: opts[:tracer]
-                 ) do
-            {:ok, result}
-          end
+        result = maybe_load(result, input, domain, opts)
 
         case result do
           {:error, error} ->
@@ -125,6 +114,35 @@ defmodule Ash.Actions.Action do
             other
         end
       end
+    end
+  end
+
+  defp validate_allow_nil(nil, %{action: %{allow_nil?: false}} = input, _in_transaction?) do
+    {:error,
+     Ash.Error.Framework.InvalidReturnType.exception(
+       message: """
+       Generic action #{inspect(input.resource)}.#{input.action.name} returned nil, \
+       but allow_nil? is set to false. Either return a value or set `allow_nil? true` \
+       on the action.
+       """
+     )}
+  end
+
+  defp validate_allow_nil(_result, _input, _in_transaction?), do: :ok
+
+  defp maybe_load(:ok, _input, _domain, _opts), do: :ok
+  defp maybe_load({:ok, nil}, _input, _domain, _opts), do: {:ok, nil}
+
+  defp maybe_load(result, input, domain, opts) do
+    with {:ok, result, _} <-
+           Ash.Actions.Helpers.load(result, input, domain,
+             actor: opts[:actor],
+             reuse_values?: true,
+             action: Ash.Resource.Info.primary_action(input.resource, :read) || input.action,
+             authorize?: opts[:authorize?],
+             tracer: opts[:tracer]
+           ) do
+      {:ok, result}
     end
   end
 
@@ -320,7 +338,8 @@ defmodule Ash.Actions.Action do
       :ok,
       fn authorizer, :ok ->
         authorizer_state =
-          authorizer.initial_state(
+          Ash.Authorizer.initial_state(
+            authorizer,
             actor,
             input.resource,
             input.action,
@@ -334,7 +353,7 @@ defmodule Ash.Actions.Action do
           changeset: nil
         }
 
-        case authorizer.strict_check(authorizer_state, context) do
+        case Ash.Authorizer.strict_check(authorizer, authorizer_state, context) do
           {:error, %{class: :forbidden} = e} when is_exception(e) ->
             {:halt, {:error, e}}
 
@@ -371,9 +390,6 @@ defmodule Ash.Actions.Action do
 
             Received #{inspect(filter)} when authorizing #{inspect(input.resource)}.#{input.action.name}
             """
-
-          :forbidden ->
-            {:halt, {:error, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
         end
       end
     )
@@ -408,11 +424,15 @@ defmodule Ash.Actions.Action do
 
           {:ok, result} ->
             if input.action.returns do
-              # Run after_action hooks
-              case Ash.ActionInput.run_after_actions(result, input, before_action_notifications) do
-                {:ok, result, _input, %{notifications: all_notifications}} ->
-                  {:ok, result, all_notifications}
-
+              with :ok <- validate_allow_nil(result, input, in_transaction?),
+                   {:ok, result, _input, %{notifications: all_notifications}} <-
+                     Ash.ActionInput.run_after_actions(
+                       result,
+                       input,
+                       before_action_notifications
+                     ) do
+                {:ok, result, all_notifications}
+              else
                 {:error, error} ->
                   if in_transaction? do
                     Ash.DataLayer.rollback([input.resource], error)
@@ -425,15 +445,15 @@ defmodule Ash.Actions.Action do
             end
 
           {:ok, result, notifications} ->
-            # Run after_action hooks
-            case Ash.ActionInput.run_after_actions(
-                   result,
-                   input,
-                   before_action_notifications ++ notifications
-                 ) do
-              {:ok, result, _input, %{notifications: all_notifications}} ->
-                {:ok, result, all_notifications}
-
+            with :ok <- validate_allow_nil(result, input, in_transaction?),
+                 {:ok, result, _input, %{notifications: all_notifications}} <-
+                   Ash.ActionInput.run_after_actions(
+                     result,
+                     input,
+                     before_action_notifications ++ notifications
+                   ) do
+              {:ok, result, all_notifications}
+            else
               {:error, error} ->
                 if in_transaction? do
                   Ash.DataLayer.rollback([input.resource], error)

@@ -111,6 +111,25 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  defmodule CheckWithInit do
+    use Ash.Policy.SimpleCheck
+
+    @impl true
+    def init(opts) do
+      if opts[:required_option] do
+        {:ok, Keyword.put(opts, :initialized, true)}
+      else
+        {:error, "required_option is required"}
+      end
+    end
+
+    @impl true
+    def describe(_opts), do: "check with init"
+
+    @impl true
+    def match?(_, _, opts), do: opts[:initialized] == true
+  end
+
   defmodule OldEnoughToDrink do
     use Ash.Policy.FilterCheck
 
@@ -479,6 +498,16 @@ defmodule Ash.Test.Policy.SimpleTest do
     tweet = Ash.create!(Ash.Changeset.for_create(Tweet, :create), authorize?: false)
     assert Ash.can?({tweet, :read}, %Scope{actor: admin})
     refute Ash.can?({tweet, :read}, %Scope{actor: user})
+  end
+
+  test "Ash.can and Ash.can? honor a provided scope in opts", %{admin: admin} do
+    context_record =
+      Context
+      |> Ash.Changeset.for_create(:create, %{name: "Foo"})
+      |> Ash.create!()
+
+    assert Ash.can?({context_record, :read}, admin, scope: %Scope{context: %{name: "Foo"}})
+    refute Ash.can?({context_record, :read}, admin, scope: %Scope{context: %{name: "Bar"}})
   end
 
   test "arguments can be referenced in expression policies", %{admin: admin, user: user} do
@@ -1103,6 +1132,74 @@ defmodule Ash.Test.Policy.SimpleTest do
         |> Enum.sort()
 
       assert super_admin_results == Enum.sort([public_record.id, confidential_record.id])
+    end
+  end
+
+  describe "check init/1 callback" do
+    test "init/1 is called and normalizes opts during compilation" do
+      # CheckWithInit sets :initialized to true when :required_option is provided.
+      # The resource ResourceWithCheckInit uses it with required_option: true,
+      # so the check should work and the opts should be normalized.
+      defmodule ResourceWithCheckInit do
+        use Ash.Resource,
+          domain: Ash.Test.Domain,
+          data_layer: Ash.DataLayer.Ets,
+          authorizers: [Ash.Policy.Authorizer]
+
+        ets do
+          private? true
+        end
+
+        attributes do
+          uuid_primary_key :id
+        end
+
+        actions do
+          defaults [:create, :read]
+        end
+
+        policies do
+          policy action_type(:read) do
+            authorize_if {CheckWithInit, required_option: true}
+          end
+
+          policy action_type(:create) do
+            authorize_if always()
+          end
+        end
+      end
+
+      actor = %{id: "test"}
+
+      ResourceWithCheckInit
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!(authorize?: false)
+
+      assert [_] = Ash.read!(ResourceWithCheckInit, actor: actor)
+    end
+
+    test "init/1 returning error prevents compilation" do
+      assert_raise Spark.Error.DslError, ~r/required_option is required/, fn ->
+        defmodule ResourceWithBadCheckInit do
+          use Ash.Resource,
+            domain: Ash.Test.Domain,
+            authorizers: [Ash.Policy.Authorizer]
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          policies do
+            policy action_type(:read) do
+              authorize_if {CheckWithInit, []}
+            end
+          end
+        end
+      end
     end
   end
 end

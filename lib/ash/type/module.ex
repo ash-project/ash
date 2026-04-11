@@ -24,6 +24,7 @@ defmodule Ash.Type.Module do
   #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
+  import Ash.Gettext
 
   @impl true
   def storage_type(_), do: :string
@@ -61,7 +62,8 @@ defmodule Ash.Type.Module do
     else
       Enum.concat(errors, [
         [
-          message: "module %{module} does not implement the %{behaviour} behaviour",
+          message:
+            error_message("module %{module} does not implement the %{behaviour} behaviour"),
           module: module,
           behaviour: behaviour
         ]
@@ -80,7 +82,7 @@ defmodule Ash.Type.Module do
     ArgumentError ->
       Enum.concat(errors, [
         [
-          message: "module %{module} does not implement the %{protocol} protocol",
+          message: error_message("module %{module} does not implement the %{protocol} protocol"),
           module: module,
           protocol: protocol
         ]
@@ -99,16 +101,6 @@ defmodule Ash.Type.Module do
   end
 
   def cast_input("", _), do: {:ok, nil}
-
-  def cast_input("Elixir." <> _ = value, _) do
-    module = Module.concat([value])
-
-    if Code.ensure_loaded?(module) do
-      {:ok, module}
-    else
-      :error
-    end
-  end
 
   def cast_input(value, _) when is_binary(value) do
     atom = String.to_existing_atom(value)
@@ -131,16 +123,6 @@ defmodule Ash.Type.Module do
   def cast_stored(value, _) when is_atom(value) do
     if Code.ensure_loaded?(value) do
       {:ok, value}
-    else
-      :error
-    end
-  end
-
-  def cast_stored("Elixir." <> _ = value, _) do
-    module = Module.concat([value])
-
-    if Code.ensure_loaded?(module) do
-      {:ok, module}
     else
       :error
     end

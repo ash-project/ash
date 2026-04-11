@@ -54,6 +54,31 @@ defmodule Ash.Test.UUIDv7Test do
     assert :error = Ash.UUIDv7.encode("error")
   end
 
+  test "generate/1 with a DateTime embeds the correct timestamp" do
+    dt = ~U[2024-04-11 00:00:00Z]
+    expected_ms = DateTime.to_unix(dt, :millisecond)
+
+    uuid = Ash.UUIDv7.generate(dt)
+    assert Ash.UUIDv7.extract_timestamp(uuid) == expected_ms
+  end
+
+  test "generate/1 with different DateTimes produces correctly ordered UUIDs" do
+    dt1 = ~U[2023-01-01 00:00:00Z]
+    dt2 = ~U[2024-01-01 00:00:00Z]
+    dt3 = ~U[2025-01-01 00:00:00Z]
+
+    uuids = [Ash.UUIDv7.generate(dt1), Ash.UUIDv7.generate(dt2), Ash.UUIDv7.generate(dt3)]
+    assert uuids == Enum.sort(uuids)
+  end
+
+  test "bingenerate/1 with a DateTime embeds the correct timestamp" do
+    dt = ~U[2024-04-11 00:00:00Z]
+    expected_ms = DateTime.to_unix(dt, :millisecond)
+
+    raw = Ash.UUIDv7.bingenerate(dt)
+    assert Ash.UUIDv7.extract_timestamp(raw) == expected_ms
+  end
+
   test "decode/1 is working" do
     hex_uuid = Ash.UUIDv7.generate()
     raw_uuid = Ash.UUIDv7.bingenerate()

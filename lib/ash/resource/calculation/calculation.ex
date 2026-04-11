@@ -14,6 +14,7 @@ defmodule Ash.Resource.Calculation do
             calculation: nil,
             constraints: [],
             description: nil,
+            field?: true,
             filterable?: true,
             sortable?: true,
             sensitive?: false,
@@ -93,6 +94,16 @@ defmodule Ash.Resource.Calculation do
       Whether or not the calculation can be referenced in sorts.
       """
     ],
+    field?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Whether or not the calculation should create a field on the resource struct.
+
+      When `false`, the calculation's value will always be stored in the `calculations` map on the record,
+      and will not add a key to the resource struct. The calculation can still be loaded normally.
+      """
+    ],
     multitenancy: [
       type: {:in, [:enforce, :allow_global, :bypass, :bypass_all]},
       doc: """
@@ -144,6 +155,7 @@ defmodule Ash.Resource.Calculation do
           constraints: keyword,
           async?: boolean,
           description: nil | String.t(),
+          field?: boolean,
           filterable?: boolean,
           load: keyword,
           sortable?: boolean,
@@ -215,12 +227,117 @@ defmodule Ash.Resource.Calculation do
 
   def schema, do: @schema
 
+  @doc false
   @spec init(module(), opts) :: {:ok, opts} | {:error, term}
   def init(module, opts) do
-    Ash.BehaviourHelpers.check_type!(module, module.init(opts), [
-      {:ok, opts},
-      {:error, error}
-    ])
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :init,
+      [opts],
+      [{:ok, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "init/1"
+    )
+  end
+
+  @doc false
+  @spec describe(module(), opts) :: String.t()
+  def describe(module, opts) do
+    result = apply(module, :describe, [opts])
+
+    if is_binary(result) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.describe/1.
+
+        The callback #{inspect(__MODULE__)}.describe/1 expects a String.t().
+        """
+    end
+  end
+
+  @doc false
+  @spec calculate(module(), [Ash.Resource.record()], opts, Context.t()) ::
+          {:ok, [term()]} | [term()] | {:error, term()} | :unknown
+  def calculate(module, records, opts, context) do
+    result = apply(module, :calculate, [records, opts, context])
+
+    if match?({:ok, _}, result) or is_list(result) or match?({:error, _}, result) or
+         result == :unknown do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.calculate/3.
+
+        The callback #{inspect(__MODULE__)}.calculate/3 expects {:ok, [term()]}, [term()], {:error, term()}, or :unknown.
+        """
+    end
+  end
+
+  @doc false
+  @spec expression(module(), opts, Context.t()) :: any()
+  def expression(module, opts, context) do
+    apply(module, :expression, [opts, context])
+  end
+
+  @doc false
+  @spec load(module(), Ash.Query.t(), opts, Context.t() | map()) ::
+          atom() | [atom()] | Keyword.t()
+  def load(module, query, opts, context) do
+    result = apply(module, :load, [query, opts, context])
+
+    # Accept atom or list (implementations may return list of atoms, keyword list, or list of refs)
+    if is_atom(result) or is_list(result) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.load/3.
+
+        The callback #{inspect(__MODULE__)}.load/3 expects an atom or a list.
+        """
+    end
+  end
+
+  @doc false
+  @spec has_expression?(module()) :: boolean()
+  def has_expression?(module) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :has_expression?,
+      [],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "has_expression?/0"
+    )
+  end
+
+  @doc false
+  @spec has_calculate?(module()) :: boolean()
+  def has_calculate?(module) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :has_calculate?,
+      [],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "has_calculate?/0"
+    )
+  end
+
+  @doc false
+  @spec strict_loads?(module()) :: boolean()
+  def strict_loads?(module) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :strict_loads?,
+      [],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "strict_loads?/0"
+    )
   end
 
   @doc false

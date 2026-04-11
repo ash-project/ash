@@ -43,6 +43,7 @@ config :ash, :custom_expressions, [Ash.Test.Expressions.JaroDistance]
 config :ash, :keep_read_action_loads_when_loading?, false
 config :ash, :read_action_after_action_hooks_in_order?, true
 config :ash, :bulk_actions_default_to_errors?, true
+config :ash, :redact_sensitive_values_in_errors?, true
 
 config :crux, :sat_testing, true
 config :ash, :no_join_mnesia_ets, :dynamic

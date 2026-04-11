@@ -1345,7 +1345,7 @@ defmodule Ash.ActionInput do
              context: input.context
            )
 
-         case module.init(opts) do
+         case Ash.Resource.Validation.init(module, opts) do
            {:ok, opts} ->
              Ash.Resource.Validation.validate(
                module,
@@ -1377,7 +1377,7 @@ defmodule Ash.ActionInput do
               context: input.context
             )
 
-          with {:ok, opts} <- validation.module.init(opts),
+          with {:ok, opts} <- Ash.Resource.Validation.init(validation.module, opts),
                :ok <-
                  Ash.Resource.Validation.validate(
                    validation.module,
@@ -1424,7 +1424,10 @@ defmodule Ash.ActionInput do
               add_error(input, validation.message)
 
             :error ->
-              add_error(input, validation.module.describe(validation.opts))
+              add_error(
+                input,
+                Ash.Resource.Validation.describe(validation.module, validation.opts)
+              )
           end
         end
       end
@@ -1463,7 +1466,7 @@ defmodule Ash.ActionInput do
              context: input.context
            )
 
-         case module.init(opts) do
+         case Ash.Resource.Validation.init(module, opts) do
            {:ok, opts} ->
              Ash.Resource.Validation.validate(
                module,
@@ -1486,7 +1489,7 @@ defmodule Ash.ActionInput do
         end do
           Ash.Tracer.set_metadata(tracer, :preparation, metadata)
 
-          {:ok, opts} = module.init(opts)
+          {:ok, opts} = Ash.Resource.Preparation.init(module, opts)
 
           opts =
             Ash.Expr.fill_template(

@@ -68,6 +68,7 @@ defmodule Ash.Type.Tuple do
   #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
+  import Ash.Gettext
 
   @impl true
   def constraints, do: @constraints
@@ -117,7 +118,7 @@ defmodule Ash.Type.Tuple do
       {:ok, value}
     else
       {:error,
-       message: "Expected %{expected_length} elements, got %{value_length}",
+       message: error_message("Expected %{expected_length} elements, got %{value_length}"),
        expected_length: field_length,
        value_length: value_length}
     end
@@ -173,6 +174,8 @@ defmodule Ash.Type.Tuple do
   def dump_to_native(_, _), do: :error
 
   @impl true
+  def apply_constraints(nil, _), do: {:ok, nil}
+
   def apply_constraints(value, constraints) do
     constraints[:fields]
     |> Enum.with_index()
@@ -229,7 +232,7 @@ defmodule Ash.Type.Tuple do
              ) do
           {:ok, nil} ->
             if field_constraints[:allow_nil?] == false do
-              {:error, [[message: "value must not be nil", field: field]]}
+              {:error, [[message: error_message("value must not be nil"), field: field]]}
             else
               {:ok, [nil | acc]}
             end
@@ -252,7 +255,7 @@ defmodule Ash.Type.Tuple do
         {:error, [error]}
 
       :error ->
-        {:error, [[message: "invalid value", field: field]]}
+        {:error, [[message: error_message("invalid value"), field: field]]}
     end
   end
 

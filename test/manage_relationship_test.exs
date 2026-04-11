@@ -252,6 +252,22 @@ defmodule Ash.Test.ManageRelationshipTest do
 
         change manage_relationship(:parent_resource, on_match: :update)
       end
+
+      update :update_create_parent_in_hook do
+        require_atomic? false
+
+        change fn changeset, _context ->
+          Ash.Changeset.before_transaction(changeset, fn changeset ->
+            Ash.Changeset.manage_relationship(
+              changeset,
+              :parent_resource,
+              %{name: "created-in-hook"},
+              type: :create,
+              on_no_match: :create
+            )
+          end)
+        end
+      end
     end
 
     attributes do
@@ -1253,6 +1269,61 @@ defmodule Ash.Test.ManageRelationshipTest do
       # Related resource should be soft-destroyed
       assert {:ok, reloaded_other} = Ash.get(OtherResource, other_id)
       assert not is_nil(reloaded_other.archived_at)
+    end
+  end
+
+  describe "bulk manage_relationship input ordering" do
+    test "preserves input order when creates and updates are interleaved" do
+      parent =
+        ParentResource
+        |> Ash.Changeset.for_create(:create, %{
+          name: "parent",
+          other_resources: [
+            %{required_attribute: "existing1"},
+            %{required_attribute: "existing2"}
+          ]
+        })
+        |> Ash.create!()
+
+      parent = Ash.load!(parent, :other_resources)
+      [e1, e2] = Enum.sort_by(parent.other_resources, & &1.required_attribute)
+
+      # Update with: [new1, existing1, new2, existing2]
+      updated =
+        parent
+        |> Ash.Changeset.for_update(:update, %{
+          other_resources: [
+            %{required_attribute: "new1"},
+            %{id: e1.id, required_attribute: "existing1"},
+            %{required_attribute: "new2"},
+            %{id: e2.id, required_attribute: "existing2"}
+          ]
+        })
+        |> Ash.update!()
+
+      names = Enum.map(updated.other_resources, & &1.required_attribute)
+      assert names == ["new1", "existing1", "new2", "existing2"]
+    end
+  end
+
+  describe "manage_relationship called from before_transaction hook on update" do
+    test "creates related record via belongs_to when manage_relationship is called in before_transaction" do
+      related =
+        RelatedResource
+        |> Ash.Changeset.for_create(:create, %{required_attribute: "test"})
+        |> Ash.create!()
+
+      assert related.parent_resource_id == nil
+
+      updated =
+        related
+        |> Ash.Changeset.for_update(:update_create_parent_in_hook, %{})
+        |> Ash.update!()
+
+      assert updated.parent_resource_id != nil
+
+      {:ok, loaded} = Ash.load(updated, :parent_resource)
+      assert loaded.parent_resource.name == "created-in-hook"
     end
   end
 end

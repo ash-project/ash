@@ -79,6 +79,59 @@ defmodule Ash.Type.File do
   end
 
   @doc """
+  Returns the filename of the file.
+
+  Not every implementation will support this operation. If the implementation
+  does not support this operation, then `{:error, :not_supported}` will be
+  returned.
+
+  ## Example
+
+      iex> path = "README.md"
+      ...> file = Ash.Type.File.from_path(path)
+      ...> Ash.Type.File.filename(file)
+      {:ok, "README.md"}
+
+  """
+  @spec filename(file :: t()) ::
+          {:ok, String.t()} | {:error, :not_supported | Implementation.error()}
+  def filename(%__MODULE__{implementation: implementation, source: source}) do
+    Code.ensure_loaded!(implementation)
+
+    if function_exported?(implementation, :filename, 1) do
+      implementation.filename(source)
+    else
+      {:error, :not_supported}
+    end
+  end
+
+  @doc """
+  Returns the MIME content type of the file.
+
+  Not every implementation will support this operation. If the implementation
+  does not support this operation, then `{:error, :not_supported}` will be
+  returned.
+
+  ## Example
+
+      iex> file = Ash.Type.File.from_path("photo.png")
+      ...> Ash.Type.File.content_type(file)
+      {:error, :not_supported}
+
+  """
+  @spec content_type(file :: t()) ::
+          {:ok, String.t()} | {:error, :not_supported | Implementation.error()}
+  def content_type(%__MODULE__{implementation: implementation, source: source}) do
+    Code.ensure_loaded!(implementation)
+
+    if function_exported?(implementation, :content_type, 1) do
+      implementation.content_type(source)
+    else
+      {:error, :not_supported}
+    end
+  end
+
+  @doc """
   Open the file with the given `modes`.
 
   This function will delegate to the `open/2` function on the `implementation`.

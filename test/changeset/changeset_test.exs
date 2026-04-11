@@ -859,6 +859,30 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                )
     end
 
+    test "upsert with many_to_many relationships can eager validate with eager_validate?" do
+      Category
+      |> Ash.Changeset.for_create(:create, %{name: "foo"})
+      |> Ash.create!()
+
+      assert %{valid?: false, errors: [%Ash.Error.Query.NotFound{}]} =
+               Post
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
+                 on_lookup: :relate,
+                 eager_validate?: true,
+                 use_identities: [:unique_name]
+               )
+
+      assert %{valid?: true} =
+               Post
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.manage_relationship(:categories, [%{name: "foo"}],
+                 on_lookup: :relate,
+                 eager_validate?: true,
+                 use_identities: [:unique_name]
+               )
+    end
+
     test "it creates related entities" do
       post1 = %{title: "title"}
       post2 = %{title: "title"}
@@ -1640,6 +1664,29 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                |> Ash.update()
 
       refute is_nil(first_published_at)
+    end
+  end
+
+  describe "get_data/2" do
+    test "it returns the value from the changeset data" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "original"})
+        |> Ash.create!()
+
+      changeset = Ash.Changeset.for_update(post, :update, %{title: "updated"})
+      assert Ash.Changeset.get_data(changeset, :title) == "original"
+    end
+
+    test "it raises when original data is not available" do
+      changeset = %{
+        Ash.Changeset.new(Post)
+        | data: %Ash.Changeset.OriginalDataNotAvailable{}
+      }
+
+      assert_raise ArgumentError, ~r/Original data is not available/, fn ->
+        Ash.Changeset.get_data(changeset, :title)
+      end
     end
   end
 end

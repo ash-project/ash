@@ -38,5 +38,25 @@ defmodule Ash.Type.File.Implementation do
   @callback open(file :: source(), modes :: [File.mode()]) ::
               {:ok, IO.device()} | {:error, error()}
 
-  @optional_callbacks [path: 1]
+  @doc """
+  Return the filename of the file.
+
+  See: `Ash.Type.File.filename/1`
+
+  This callback is optional. If the implementation cannot determine the
+  filename, this callback can be omitted.
+  """
+  @callback filename(file :: source()) :: {:ok, String.t()} | {:error, error()}
+
+  @doc """
+  Return the MIME content type of the file.
+
+  See: `Ash.Type.File.content_type/1`
+
+  This callback is optional. If the implementation cannot determine the
+  content type, this callback can be omitted.
+  """
+  @callback content_type(file :: source()) :: {:ok, String.t()} | {:error, error()}
+
+  @optional_callbacks [path: 1, filename: 1, content_type: 1]
 end

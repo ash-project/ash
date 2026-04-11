@@ -316,6 +316,168 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
   end
 
+  describe "sensitive value redaction in validation errors" do
+    defmodule SensitiveResource do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Domain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private? true
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, create: :*, update: :*]
+
+        create :create_with_sensitive_confirm do
+          argument :confirm_secret, :string, allow_nil?: false, sensitive?: true
+          validate confirm(:secret, :confirm_secret)
+        end
+
+        create :create_with_sensitive_one_of do
+          validate one_of(:secret, ["allowed1", "allowed2"])
+        end
+
+        create :create_with_sensitive_argument_equals do
+          argument :code, :string, allow_nil?: false, sensitive?: true
+          validate argument_equals(:code, "correct")
+        end
+
+        create :create_with_sensitive_argument_does_not_equal do
+          argument :code, :string, allow_nil?: false, sensitive?: true
+          validate argument_does_not_equal(:code, "forbidden")
+        end
+
+        create :create_with_sensitive_argument_in do
+          argument :code, :string, allow_nil?: false, sensitive?: true
+          validate argument_in(:code, ["a", "b", "c"])
+        end
+
+        create :create_with_sensitive_compare do
+          validate compare(:secret_number, greater_than: 10)
+        end
+
+        create :create_with_sensitive_string_length do
+          validate string_length(:secret, min: 5)
+        end
+
+        update :update_atomic_sensitive_one_of do
+          require_atomic? true
+          validate one_of(:secret, ["allowed1", "allowed2"])
+        end
+      end
+
+      attributes do
+        uuid_primary_key :id
+
+        attribute :secret, :string do
+          public?(true)
+          sensitive? true
+        end
+
+        attribute :secret_number, :integer do
+          public?(true)
+          sensitive? true
+        end
+      end
+    end
+
+    defp get_error(changeset) do
+      changeset.errors |> List.first()
+    end
+
+    test "confirm: redacts value when field is sensitive" do
+      error =
+        SensitiveResource
+        |> Ash.Changeset.for_create(:create_with_sensitive_confirm, %{
+          "secret" => "foo",
+          "confirm_secret" => "bar"
+        })
+        |> get_error()
+
+      assert error.value == "**redacted**"
+    end
+
+    test "one_of: redacts value when attribute is sensitive" do
+      error =
+        SensitiveResource
+        |> Ash.Changeset.for_create(:create_with_sensitive_one_of, %{"secret" => "invalid"})
+        |> get_error()
+
+      assert error.value == "**redacted**"
+    end
+
+    test "argument_equals: redacts value when argument is sensitive" do
+      error =
+        SensitiveResource
+        |> Ash.Changeset.for_create(:create_with_sensitive_argument_equals, %{"code" => "wrong"})
+        |> get_error()
+
+      assert error.value == "**redacted**"
+    end
+
+    test "argument_does_not_equal: redacts value when argument is sensitive" do
+      error =
+        SensitiveResource
+        |> Ash.Changeset.for_create(:create_with_sensitive_argument_does_not_equal, %{
+          "code" => "forbidden"
+        })
+        |> get_error()
+
+      assert error.value == "**redacted**"
+    end
+
+    test "argument_in: redacts value when argument is sensitive" do
+      error =
+        SensitiveResource
+        |> Ash.Changeset.for_create(:create_with_sensitive_argument_in, %{"code" => "z"})
+        |> get_error()
+
+      assert error.value == "**redacted**"
+    end
+
+    test "compare: redacts value when attribute is sensitive" do
+      error =
+        SensitiveResource
+        |> Ash.Changeset.for_create(:create_with_sensitive_compare, %{"secret_number" => 5})
+        |> get_error()
+
+      assert error.value == "**redacted**"
+    end
+
+    test "string_length: redacts value when attribute is sensitive" do
+      error =
+        SensitiveResource
+        |> Ash.Changeset.for_create(:create_with_sensitive_string_length, %{"secret" => "ab"})
+        |> get_error()
+
+      assert error.value == "**redacted**"
+    end
+
+    test "atomic: redacts value when attribute is sensitive" do
+      record =
+        SensitiveResource
+        |> Ash.Changeset.for_create(:create, %{secret: "bad_value"})
+        |> Ash.create!()
+
+      %Ash.BulkResult{errors: [%Ash.Error.Invalid{errors: errors}]} =
+        Ash.bulk_update([record], :update_atomic_sensitive_one_of, %{}, return_errors?: true)
+
+      assert Enum.any?(errors, &match?(%{value: "**redacted**"}, &1))
+    end
+
+    test "non-sensitive fields still show value" do
+      error =
+        Profile
+        |> Ash.Changeset.for_create(:create, %{status: "blart"})
+        |> get_error()
+
+      assert error.value == "blart"
+    end
+  end
+
   describe "conditional present validation with where clause" do
     defmodule Person do
       @moduledoc false

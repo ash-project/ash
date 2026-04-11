@@ -98,10 +98,194 @@ defmodule Ash.Resource.Change do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
   end
 
+  @doc false
+  @spec change(module(), Ash.Changeset.t(), Keyword.t(), Ash.Resource.Change.Context.t()) ::
+          Ash.Changeset.t()
   def change(module, changeset, opts, context) do
-    Ash.BehaviourHelpers.check_type!(module, module.change(changeset, opts, context), [
-      %Ash.Changeset{}
-    ])
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :change,
+      [changeset, opts, context],
+      [%Ash.Changeset{}],
+      behaviour: __MODULE__,
+      callback_name: "change/3"
+    )
+  end
+
+  @doc false
+  @spec init(module(), Keyword.t()) :: {:ok, Keyword.t()} | {:error, term()}
+  def init(module, opts) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :init,
+      [opts],
+      [{:ok, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "init/1"
+    )
+  end
+
+  @doc false
+  @spec atomic(module(), Ash.Changeset.t(), Keyword.t(), Ash.Resource.Change.Context.t()) ::
+          {:ok, Ash.Changeset.t()}
+          | {:atomic, %{optional(atom()) => Ash.Expr.t() | {:atomic, Ash.Expr.t()}}}
+          | {:atomic, Ash.Changeset.t(), %{optional(atom()) => Ash.Expr.t()}}
+          | {:atomic, Ash.Changeset.t(), %{optional(atom()) => Ash.Expr.t()}, list()}
+          | {:atomic, %{optional(atom()) => Ash.Expr.t()}, list()}
+          | {:atomic_set, %{optional(atom()) => Ash.Expr.t() | {:atomic, Ash.Expr.t()}}}
+          | list(
+              {:atomic, %{optional(atom()) => Ash.Expr.t() | {:atomic, Ash.Expr.t()}}}
+              | {:atomic_set, %{optional(atom()) => Ash.Expr.t() | {:atomic, Ash.Expr.t()}}}
+            )
+          | {:not_atomic, String.t()}
+          | :ok
+          | {:error, term()}
+  def atomic(module, changeset, opts, context) do
+    result = apply(module, :atomic, [changeset, opts, context])
+
+    if valid_atomic_result?(result) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.atomic/3.
+
+        The callback #{inspect(__MODULE__)}.atomic/3 expects one of: :ok, {:ok, Ash.Changeset.t()},
+        {:atomic, map}, {:atomic_set, map}, {:not_atomic, String.t()}, {:error, term()}, or a list of atomic/atomic_set tuples.
+        """
+    end
+  end
+
+  @dialyzer {:nowarn_function, valid_atomic_result?: 1}
+  defp valid_atomic_result?(:ok), do: true
+  defp valid_atomic_result?({:ok, %Ash.Changeset{}}), do: true
+  defp valid_atomic_result?({:error, _}), do: true
+  defp valid_atomic_result?({:not_atomic, s}) when is_binary(s), do: true
+  defp valid_atomic_result?({:atomic, map}) when is_map(map), do: true
+  defp valid_atomic_result?({:atomic_set, map}) when is_map(map), do: true
+  defp valid_atomic_result?({:atomic, %Ash.Changeset{}, map}) when is_map(map), do: true
+
+  defp valid_atomic_result?({:atomic, %Ash.Changeset{}, map, list})
+       when is_map(map) and is_list(list),
+       do: true
+
+  defp valid_atomic_result?({:atomic, map, list}) when is_map(map) and is_list(list), do: true
+
+  defp valid_atomic_result?(list) when is_list(list) do
+    Enum.all?(list, fn
+      {:atomic, m} when is_map(m) -> true
+      {:atomic_set, m} when is_map(m) -> true
+      _ -> false
+    end)
+  end
+
+  @doc false
+  @spec batch_change(module(), [Ash.Changeset.t()], Keyword.t(), Ash.Resource.Change.Context.t()) ::
+          [Ash.Changeset.t()]
+  def batch_change(module, changesets, opts, context) do
+    result = apply(module, :batch_change, [changesets, opts, context])
+    result_list = Enum.to_list(result)
+
+    if is_list(result_list) and
+         Enum.all?(result_list, &is_struct(&1, Ash.Changeset)) do
+      result_list
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.batch_change/3.
+
+        The callback #{inspect(__MODULE__)}.batch_change/3 expects one of the following return types:
+
+          Enumerable.t(Ash.Changeset.t()) (e.g. a list of changesets)
+        """
+    end
+  end
+
+  @doc false
+  @spec before_batch(module(), [Ash.Changeset.t()], Keyword.t(), Ash.Resource.Change.Context.t()) ::
+          [Ash.Changeset.t() | Ash.Notifier.Notification.t()]
+  def before_batch(module, changesets, opts, context) do
+    result = apply(module, :before_batch, [changesets, opts, context])
+    result_list = Enum.to_list(result)
+
+    if is_list(result_list) and
+         Enum.all?(result_list, fn
+           %Ash.Changeset{} -> true
+           %Ash.Notifier.Notification{} -> true
+           _ -> false
+         end) do
+      result_list
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.before_batch/3.
+
+        The callback #{inspect(__MODULE__)}.before_batch/3 expects one of the following return types:
+
+          Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t()) (e.g. a list of changesets and/or notifications)
+        """
+    end
+  end
+
+  @doc false
+  @spec after_batch(
+          module(),
+          [{Ash.Changeset.t(), Ash.Resource.record()}],
+          Keyword.t(),
+          Ash.Resource.Change.Context.t()
+        ) ::
+          :ok
+          | [
+              {:ok, Ash.Resource.record()}
+              | {:error, Ash.Error.t()}
+              | Ash.Notifier.Notification.t()
+            ]
+  def after_batch(module, changesets_and_results, opts, context) do
+    result = apply(module, :after_batch, [changesets_and_results, opts, context])
+
+    if result == :ok do
+      :ok
+    else
+      result_list = Enum.to_list(result)
+
+      if is_list(result_list) and
+           Enum.all?(result_list, fn
+             {:ok, _} -> true
+             {:error, _} -> true
+             %Ash.Notifier.Notification{} -> true
+             _ -> false
+           end) do
+        result_list
+      else
+        raise Ash.Error.Framework.InvalidReturnType,
+          message: """
+          Invalid value returned from #{inspect(module)}.after_batch/3.
+
+          The callback #{inspect(__MODULE__)}.after_batch/3 expects one of the following return types:
+
+            :ok
+            Enumerable.t({:ok, Ash.Resource.record()} | {:error, Ash.Error.t()} | Ash.Notifier.Notification.t())
+          """
+      end
+    end
+  end
+
+  @doc false
+  @spec batch_callbacks?(
+          module(),
+          any(),
+          Keyword.t(),
+          map()
+        ) :: boolean()
+  def batch_callbacks?(module, changesets_or_query, opts, context) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :batch_callbacks?,
+      [changesets_or_query, opts, context],
+      [true, false],
+      behaviour: __MODULE__,
+      callback_name: "batch_callbacks?/3"
+    )
   end
 
   defmodule Context do
@@ -315,7 +499,7 @@ defmodule Ash.Resource.Change do
               Ash.Changeset.before_action(changeset, fn changeset ->
                 {[changeset], notifications} =
                   Enum.split_with(
-                    apply(__MODULE__, :before_batch, [[changeset], opts, context]),
+                    Ash.Resource.Change.before_batch(__MODULE__, [changeset], opts, context),
                     fn
                       %Ash.Notifier.Notification{} ->
                         false
@@ -340,7 +524,7 @@ defmodule Ash.Resource.Change do
           if Module.defines?(__MODULE__, {:after_batch, 3}, :def) do
             defp simulate_after_batch(changeset, opts, context) do
               Ash.Changeset.after_action(changeset, fn changeset, result ->
-                apply(__MODULE__, :after_batch, [[{changeset, result}], opts, context])
+                Ash.Resource.Change.after_batch(__MODULE__, [{changeset, result}], opts, context)
                 |> then(fn
                   :ok -> [{:ok, result}]
                   other -> other

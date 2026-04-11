@@ -20,7 +20,7 @@ defmodule Ash.Resource.Verifiers.ValidateActionTypesSupported do
       data_layer = Verifier.get_persisted(dsl_state, :data_layer)
       resource = Verifier.get_persisted(dsl_state, :module)
 
-      if !(data_layer && data_layer.can?(resource, action.type)) do
+      if !(data_layer && Ash.DataLayer.can?(data_layer, resource, action.type)) do
         message = """
         `#{inspect(data_layer)}` does not support `#{action.type}` actions on this resource.
 

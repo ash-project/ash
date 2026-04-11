@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidAttribute
   import Ash.Expr
@@ -47,7 +48,10 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
 
     if Comp.equal?(value, opts[:value]) do
       {:error,
-       [field: opts[:attribute], value: value]
+       [
+         field: opts[:attribute],
+         value: Ash.Resource.Validation.maybe_redact(changeset, opts[:attribute], value)
+       ]
        |> with_description(opts)
        |> InvalidAttribute.exception()}
     else
@@ -56,13 +60,20 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
   end
 
   @impl true
-  def atomic(_changeset, opts, context) do
+  def atomic(changeset, opts, context) do
+    error_value =
+      if Ash.Resource.Validation.should_redact?(changeset, opts[:attribute]) do
+        Ash.Helpers.redact(nil)
+      else
+        atomic_ref(opts[:attribute])
+      end
+
     {:atomic, [opts[:attribute]], expr(^atomic_ref(opts[:attribute]) == ^opts[:value]),
      expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
-         value: ^atomic_ref(opts[:attribute]),
-         message: ^(context.message || "must not equal %{value}"),
+         value: ^error_value,
+         message: ^(context.message || error_message("must not equal %{value}")),
          vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })
      )}
@@ -71,7 +82,7 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
   @impl true
   def describe(opts) do
     [
-      message: "must not equal %{value}",
+      message: error_message("must not equal %{value}"),
       vars: [field: opts[:attribute], value: opts[:value]]
     ]
   end

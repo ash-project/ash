@@ -5,6 +5,7 @@
 defmodule Ash.Resource.Change.RelateActor do
   @moduledoc false
   use Ash.Resource.Change
+  import Ash.Gettext
   alias Ash.Changeset
   alias Ash.Error.Changes.InvalidRelationship
 
@@ -61,7 +62,10 @@ defmodule Ash.Resource.Change.RelateActor do
           changeset,
           InvalidRelationship.exception(
             relationship: relationship.name,
-            message: "could not relate to actor, as no actor was found (and :allow_nil? is false)"
+            message:
+              error_message(
+                "could not relate to actor, as no actor was found (and :allow_nil? is false)"
+              )
           )
         )
 

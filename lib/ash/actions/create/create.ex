@@ -377,18 +377,23 @@ defmodule Ash.Actions.Create do
                     if result = changeset.context[:private][:action_result] do
                       result
                     else
-                      mod.create(changeset, action_opts, %Ash.Resource.ManualCreate.Context{
-                        select: opts[:select],
-                        actor: opts[:actor],
-                        source_context: changeset.context,
-                        tenant: changeset.tenant,
-                        tracer: opts[:tracer],
-                        authorize?: opts[:authorize?],
-                        domain: changeset.domain,
-                        upsert?: opts[:upsert?],
-                        upsert_keys: upsert_keys,
-                        upsert_fields: changeset.context[:private][:upsert_fields]
-                      })
+                      Ash.Resource.ManualCreate.create(
+                        mod,
+                        changeset,
+                        action_opts,
+                        %Ash.Resource.ManualCreate.Context{
+                          select: opts[:select],
+                          actor: opts[:actor],
+                          source_context: changeset.context,
+                          tenant: changeset.tenant,
+                          tracer: opts[:tracer],
+                          authorize?: opts[:authorize?],
+                          domain: changeset.domain,
+                          upsert?: opts[:upsert?],
+                          upsert_keys: upsert_keys,
+                          upsert_fields: changeset.context[:private][:upsert_fields]
+                        }
+                      )
                       |> validate_manual_action_return_result!(
                         changeset.resource,
                         changeset.action
@@ -583,11 +588,10 @@ defmodule Ash.Actions.Create do
   end
 
   defp validate_manual_action_return_result!(
-         {:ok, %resource{}, notifications} = result,
+         {:ok, %resource{}, %{notifications: _notifications}} = result,
          resource,
          _
-       )
-       when is_list(notifications) do
+       ) do
     result
   end
 

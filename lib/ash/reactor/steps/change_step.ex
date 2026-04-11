@@ -77,7 +77,7 @@ defmodule Ash.Reactor.ChangeStep do
         changeset: changeset
       )
 
-    with {:ok, opts} <- module.init(opts) do
+    with {:ok, opts} <- Ash.Resource.Change.init(module, opts) do
       {:ok, Ash.Resource.Change.change(module, changeset, opts, context)}
     end
   end

@@ -108,6 +108,7 @@ defmodule Ash.Type.Struct do
   """
 
   use Ash.Type
+  import Ash.Gettext
 
   @impl true
   def constraints, do: @constraints
@@ -165,7 +166,9 @@ defmodule Ash.Type.Struct do
         if instance_of && Ash.Resource.Info.resource?(instance_of) do
           instance_of
           |> Ash.Resource.Info.attributes()
-          |> Map.new(&{&1.name, [type: &1.type, constraints: &1.constraints]})
+          |> Map.new(
+            &{&1.name, [type: &1.type, constraints: &1.constraints, allow_nil?: &1.allow_nil?]}
+          )
         end
     end
   end
@@ -283,8 +286,14 @@ defmodule Ash.Type.Struct do
   def apply_constraints(nil, _constraints), do: {:ok, nil}
 
   def apply_constraints(value, constraints) do
-    with {:ok, value} <- handle_fields(value, constraints) do
-      handle_instance_of(value, constraints)
+    instance_of = constraints[:instance_of]
+
+    if instance_of && !constraints[:fields] && is_struct(value, instance_of) do
+      {:ok, value}
+    else
+      with {:ok, value} <- handle_fields(value, constraints) do
+        handle_instance_of(value, constraints)
+      end
     end
   end
 
@@ -376,7 +385,8 @@ defmodule Ash.Type.Struct do
                        {:ok, casted} <-
                          Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
                     if is_nil(casted) and attribute.allow_nil? == false do
-                      {:halt, {:error, field: attribute.name, message: "is required"}}
+                      {:halt,
+                       {:error, field: attribute.name, message: error_message("is required")}}
                     else
                       {:cont, {:ok, Map.put(record, attribute.name, casted)}}
                     end
@@ -390,7 +400,8 @@ defmodule Ash.Type.Struct do
 
                 :error ->
                   if attribute.allow_nil? == false do
-                    {:halt, {:error, field: attribute.name, message: "is required"}}
+                    {:halt,
+                     {:error, field: attribute.name, message: error_message("is required")}}
                   else
                     {:cont, {:ok, record}}
                   end
@@ -425,7 +436,7 @@ defmodule Ash.Type.Struct do
 
           :error ->
             if field_constraints[:allow_nil?] == false do
-              field_error = [message: "field must be present", field: field]
+              field_error = [message: error_message("field must be present"), field: field]
               {errors_acc ++ [field_error], result_acc}
             else
               {errors_acc, result_acc}
@@ -453,7 +464,8 @@ defmodule Ash.Type.Struct do
              ) do
           {:ok, nil} ->
             if field_constraints[:allow_nil?] == false do
-              {:error, [[message: "value must not be nil", field: field]]}
+              {:error,
+               [[message: error_message("value must not be nil"), field: field, value: nil]]}
             else
               {:ok, Map.put(result, field, nil)}
             end
@@ -474,7 +486,7 @@ defmodule Ash.Type.Struct do
         end
 
       {:error, error} when is_binary(error) ->
-        {:error, [[message: error, field: field]]}
+        {:error, [[message: error, field: field, value: field_value]]}
 
       {:error, error} when is_list(error) ->
         if Keyword.keyword?(error) do
@@ -494,7 +506,7 @@ defmodule Ash.Type.Struct do
         {:error, error}
 
       :error ->
-        {:error, [[message: "invalid value", field: field]]}
+        {:error, [[message: error_message("invalid value"), field: field, value: field_value]]}
     end
   end
 

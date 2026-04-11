@@ -34,6 +34,7 @@ defmodule Ash.Type do
   ]
 
   alias Ash.Type.Registry
+  import Ash.Gettext
 
   @doc_array_constraints Keyword.put(@array_constraints, :items,
                            type: :any,
@@ -332,6 +333,26 @@ defmodule Ash.Type do
   @callback evaluate_operator(term) :: {:known, term} | :unknown | {:error, term()}
 
   @doc """
+  Maps an overloaded operator to a custom expression module.
+
+  When defined, this allows an overloaded operator to be rewritten into a custom expression
+  that data layers can compile optimally. For example, an `in` operator on a range type could
+  be rewritten to use a native containment operator (`@>`) instead of expanding to `IN (1, 2, 3, ...)`.
+
+  Receives the operator struct and should return `{:ok, custom_expression_module}` where the module
+  implements `Ash.CustomExpression`, or `:unknown` to fall back to the default operator behavior.
+
+  ## Example
+
+      def operator_expression(%Ash.Query.Operator.In{}) do
+        {:ok, MyApp.Expressions.RangeContains}
+      end
+
+      def operator_expression(_), do: :unknown
+  """
+  @callback operator_expression(term) :: {:ok, module()} | :unknown
+
+  @doc """
   Useful for typed data layers (like ash_postgres) to instruct them not to attempt to cast input values.
 
   You generally won't need this, but it can be an escape hatch for certain cases.
@@ -359,7 +380,7 @@ defmodule Ash.Type do
   would fail to cast. However, if used in the following expression: `expr(type(10, :string) <> " minutes")`
   the `10` would be "coerced" (using `to_string/1`) into `"10"`.
 
-  By default, coercion uses `cast_input/2` unless
+  By default, coercion uses `cast_input/2` unless the type overrides it with a custom implementation.
   """
   @callback coerce(term, constraints) ::
               {:ok, term} | Ash.Error.t()
@@ -641,7 +662,8 @@ defmodule Ash.Type do
     get_rewrites: 4,
     rewrite: 3,
     operator_overloads: 0,
-    evaluate_operator: 1
+    evaluate_operator: 1,
+    operator_expression: 1
   ]
 
   @builtin_types Registry.builtin_types()
@@ -1240,7 +1262,7 @@ defmodule Ash.Type do
       if remove_nil_items? do
         {rest, errors}
       else
-        {[item | rest], [[message: "no nil values", index: index] | errors]}
+        {[item | rest], [[message: error_message("no nil values"), index: index] | errors]}
       end
     else
       {[item | rest], errors}
@@ -1261,14 +1283,14 @@ defmodule Ash.Type do
     |> Enum.reduce([], fn
       {:min_length, min_length}, errors ->
         if length < min_length do
-          [message: "must have %{min} or more items", min: min_length]
+          [message: error_message("must have %{min} or more items"), min: min_length]
         else
           errors
         end
 
       {:max_length, max_length}, errors ->
         if length > max_length do
-          [message: "must have %{max} or fewer items", max: max_length]
+          [message: error_message("must have %{max} or fewer items"), max: max_length]
         else
           errors
         end
@@ -1855,7 +1877,9 @@ defmodule Ash.Type do
         |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
           case Ash.Type.cast_input(__MODULE__, item, single_constraints) do
             :error ->
-              {:halt, {:error, message: "invalid value at %{index}", index: index, path: [index]}}
+              {:halt,
+               {:error,
+                message: error_message("invalid value at %{index}"), index: index, path: [index]}}
 
             {:error, keyword} ->
               errors =
@@ -2078,6 +2102,7 @@ defmodule Ash.Type do
     _ -> false
   end
 
+  @deprecated "Use Ash.Expr.determine_types/4 instead"
   @doc """
   Determine types for a given function or operator.
   """
@@ -2187,6 +2212,10 @@ defmodule Ash.Type do
   defp vagueness(_), do: 0
 
   @doc false
+  def set_type_transformation(%{type: :auto} = thing) do
+    {:ok, thing}
+  end
+
   def set_type_transformation(%{type: original_type, constraints: constraints} = thing) do
     type = get_type!(original_type)
 

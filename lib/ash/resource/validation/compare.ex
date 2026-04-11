@@ -6,6 +6,7 @@ defmodule Ash.Resource.Validation.Compare do
   @moduledoc false
 
   use Ash.Resource.Validation
+  import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidAttribute
   import Ash.Expr
@@ -90,7 +91,7 @@ defmodule Ash.Resource.Validation.Compare do
     case value do
       {:ok, nil} ->
         if opts[:is_nil] == false do
-          invalid_attribute_error(opts, nil)
+          invalid_attribute_error(subject, opts, nil)
         else
           :ok
         end
@@ -110,6 +111,13 @@ defmodule Ash.Resource.Validation.Compare do
       #    Map.has_key?(changeset.attributes, opts[:attribute])) do
       validate(changeset, opts, context)
     else
+      error_value =
+        if Ash.Resource.Validation.should_redact?(changeset, opts[:attribute]) do
+          Ash.Helpers.redact(nil)
+        else
+          atomic_ref(opts[:attribute])
+        end
+
       opts
       |> Keyword.take([
         :greater_than,
@@ -127,8 +135,9 @@ defmodule Ash.Resource.Validation.Compare do
            expr(
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
-               message: ^(context.message || "must be greater than %{greater_than}"),
+               value: ^error_value,
+               message:
+                 ^(context.message || error_message("must be greater than %{greater_than}")),
                vars: %{field: ^opts[:attribute], greater_than: ^atomic_value(value)}
              })
            )}
@@ -139,8 +148,8 @@ defmodule Ash.Resource.Validation.Compare do
            expr(
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
-               message: ^(context.message || "must be less than %{less_than}"),
+               value: ^error_value,
+               message: ^(context.message || error_message("must be less than %{less_than}")),
                vars: %{field: ^opts[:attribute], less_than: ^atomic_value(value)}
              })
            )}
@@ -151,10 +160,10 @@ defmodule Ash.Resource.Validation.Compare do
            expr(
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
+               value: ^error_value,
                message:
                  ^(context.message ||
-                     "must be greater than or equal to %{greater_than_or_equal_to}"),
+                     error_message("must be greater than or equal to %{greater_than_or_equal_to}")),
                vars: %{field: ^opts[:attribute], greater_than_or_equal_to: ^atomic_value(value)}
              })
            )}
@@ -165,9 +174,10 @@ defmodule Ash.Resource.Validation.Compare do
            expr(
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
+               value: ^error_value,
                message:
-                 ^(context.message || "must be less than or equal to %{less_than_or_equal_to}"),
+                 ^(context.message ||
+                     error_message("must be less than or equal to %{less_than_or_equal_to}")),
                vars: %{field: ^opts[:attribute], less_than_or_equal_to: ^atomic_value(value)}
              })
            )}
@@ -178,8 +188,8 @@ defmodule Ash.Resource.Validation.Compare do
            expr(
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
-               message: ^(context.message || "must be equal to %{is_equal}"),
+               value: ^error_value,
+               message: ^(context.message || error_message("must be equal to %{is_equal}")),
                vars: %{field: ^opts[:attribute], is_equal: ^atomic_value(value)}
              })
            )}
@@ -190,8 +200,9 @@ defmodule Ash.Resource.Validation.Compare do
            expr(
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
-               message: ^(context.message || "must not be equal to %{is_not_equal}"),
+               value: ^error_value,
+               message:
+                 ^(context.message || error_message("must not be equal to %{is_not_equal}")),
                vars: %{field: ^opts[:attribute], is_not_equal: ^atomic_value(value)}
              })
            )}
@@ -201,8 +212,8 @@ defmodule Ash.Resource.Validation.Compare do
            expr(
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
-               message: ^(context.message || "must be nil"),
+               value: ^error_value,
+               message: ^(context.message || error_message("must be nil")),
                vars: %{field: ^opts[:attribute]}
              })
            )}
@@ -212,8 +223,8 @@ defmodule Ash.Resource.Validation.Compare do
            expr(
              error(^InvalidAttribute, %{
                field: ^opts[:attribute],
-               value: ^atomic_ref(opts[:attribute]),
-               message: ^(context.message || "must not be nil"),
+               value: ^error_value,
+               message: ^(context.message || error_message("must not be nil")),
                vars: %{field: ^opts[:attribute]}
              })
            )}
@@ -248,19 +259,19 @@ defmodule Ash.Resource.Validation.Compare do
     ]
   end
 
-  defp validate_value(changeset, opts, value) do
+  defp validate_value(subject, opts, value) do
     cond do
       opts[:is_nil] == true && !is_nil(value) ->
-        invalid_attribute_error(opts, value)
+        invalid_attribute_error(subject, opts, value)
 
       opts[:is_nil] == false && is_nil(value) ->
-        invalid_attribute_error(opts, value)
+        invalid_attribute_error(subject, opts, value)
 
       is_nil(value) ->
         :ok
 
       true ->
-        validate_comparisons(changeset, opts, value)
+        validate_comparisons(subject, opts, value)
     end
   end
 
@@ -277,27 +288,27 @@ defmodule Ash.Resource.Validation.Compare do
     |> Enum.find_value(fn
       {:greater_than, attribute} ->
         attribute_val = normalize_value(attribute_value(subject, attribute))
-        compare_values(value, attribute_val, &Comp.greater_than?/2, opts)
+        compare_values(subject, value, attribute_val, &Comp.greater_than?/2, opts)
 
       {:greater_than_or_equal_to, attribute} ->
         attribute_val = normalize_value(attribute_value(subject, attribute))
-        compare_values(value, attribute_val, &Comp.greater_or_equal?/2, opts)
+        compare_values(subject, value, attribute_val, &Comp.greater_or_equal?/2, opts)
 
       {:less_than, attribute} ->
         attribute_val = normalize_value(attribute_value(subject, attribute))
-        compare_values(value, attribute_val, &Comp.less_than?/2, opts)
+        compare_values(subject, value, attribute_val, &Comp.less_than?/2, opts)
 
       {:less_than_or_equal_to, attribute} ->
         attribute_val = normalize_value(attribute_value(subject, attribute))
-        compare_values(value, attribute_val, &Comp.less_or_equal?/2, opts)
+        compare_values(subject, value, attribute_val, &Comp.less_or_equal?/2, opts)
 
       {:is_equal, attribute} ->
         attribute_val = normalize_value(attribute_value(subject, attribute))
-        compare_values(value, attribute_val, &Comp.equal?/2, opts)
+        compare_values(subject, value, attribute_val, &Comp.equal?/2, opts)
 
       {:is_not_equal, attribute} ->
         attribute_val = normalize_value(attribute_value(subject, attribute))
-        compare_values(value, attribute_val, &Comp.not_equal?/2, opts)
+        compare_values(subject, value, attribute_val, &Comp.not_equal?/2, opts)
     end) || :ok
   end
 
@@ -308,9 +319,9 @@ defmodule Ash.Resource.Validation.Compare do
     end
   end
 
-  defp compare_values(value, compare_to, comparison_fn, opts) do
+  defp compare_values(subject, value, compare_to, comparison_fn, opts) do
     if !comparison_fn.(value, compare_to) do
-      invalid_attribute_error(opts, value)
+      invalid_attribute_error(subject, opts, value)
     end
   end
 
@@ -361,7 +372,7 @@ defmodule Ash.Resource.Validation.Compare do
 
   defp atomic_value(attribute), do: attribute
 
-  defp invalid_attribute_error(opts, attribute_value) do
+  defp invalid_attribute_error(subject, opts, attribute_value) do
     value =
       if is_function(attribute_value) do
         attribute_value.()
@@ -372,7 +383,7 @@ defmodule Ash.Resource.Validation.Compare do
     {:error,
      [
        field: opts[:attribute],
-       value: value
+       value: Ash.Resource.Validation.maybe_redact(subject, opts[:attribute], value)
      ]
      |> with_description(opts)
      |> InvalidAttribute.exception()}
@@ -392,28 +403,28 @@ defmodule Ash.Resource.Validation.Compare do
     |> Enum.map_join(" and ", fn {key, value} ->
       case key do
         :greater_than ->
-          "must be greater than %{greater_than}"
+          error_message("must be greater than %{greater_than}")
 
         :less_than ->
-          "must be less than %{less_than}"
+          error_message("must be less than %{less_than}")
 
         :greater_than_or_equal_to ->
-          "must be greater than or equal to %{greater_than_or_equal_to}"
+          error_message("must be greater than or equal to %{greater_than_or_equal_to}")
 
         :less_than_or_equal_to ->
-          "must be less than or equal to %{less_than_or_equal_to}"
+          error_message("must be less than or equal to %{less_than_or_equal_to}")
 
         :is_equal ->
-          "must be equal to %{is_equal}"
+          error_message("must be equal to %{is_equal}")
 
         :is_not_equal ->
-          "must not be equal to %{is_not_equal}"
+          error_message("must not be equal to %{is_not_equal}")
 
         :is_nil when value == true ->
-          "must be nil"
+          error_message("must be nil")
 
         :is_nil when value == false ->
-          "must not be nil"
+          error_message("must not be nil")
       end
     end)
   end

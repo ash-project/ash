@@ -32,7 +32,7 @@ defmodule Ash.Resource.Validation.Negate do
          {validation, validation_opts} = opts[:validation],
          {:module, validation} <- Code.ensure_compiled(validation),
          true <- function_exported?(validation, :describe, 1),
-         {:ok, validation_opts} <- validation.init(validation_opts) do
+         {:ok, validation_opts} <- Ash.Resource.Validation.init(validation, validation_opts) do
       opts = Keyword.put(opts, :validation, {validation, validation_opts})
       {:ok, opts}
     else
@@ -61,7 +61,7 @@ defmodule Ash.Resource.Validation.Negate do
   def validate(subject, opts, context) do
     {validation, validation_opts} = opts[:validation]
 
-    case validation.validate(subject, validation_opts, context) do
+    case Ash.Resource.Validation.validate(validation, subject, validation_opts, context) do
       {:error, _} ->
         :ok
 
@@ -81,7 +81,7 @@ defmodule Ash.Resource.Validation.Negate do
       if context.message do
         {context.message, []}
       else
-        case validation.describe(validation_opts) do
+        case Ash.Resource.Validation.describe(validation, validation_opts) do
           message when is_binary(message) ->
             {message, []}
 
@@ -90,7 +90,7 @@ defmodule Ash.Resource.Validation.Negate do
         end
       end
 
-    case validation.atomic(changeset, validation_opts, context) do
+    case Ash.Resource.Validation.atomic(validation, changeset, validation_opts, context) do
       list when is_list(list) ->
         Enum.map(list, &negate_atomic(&1, message, vars))
 
@@ -126,7 +126,7 @@ defmodule Ash.Resource.Validation.Negate do
   def describe(opts) do
     {validation, validation_opts} = opts[:validation]
 
-    case validation.describe(validation_opts) do
+    case Ash.Resource.Validation.describe(validation, validation_opts) do
       message when is_binary(message) ->
         [message: message, vars: []]
 

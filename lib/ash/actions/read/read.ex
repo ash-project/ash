@@ -552,7 +552,7 @@ defmodule Ash.Actions.Read do
       case query.action.manual do
         {module, opts} ->
           if module.has_load_relationships?() do
-            module.load_relationships(query, data, opts, context, lazy?)
+            Ash.Resource.ManualRead.load_relationships(module, query, data, opts, context, lazy?)
           else
             Ash.Actions.Read.Relationships.load(
               data,
@@ -2027,9 +2027,14 @@ defmodule Ash.Actions.Read do
 
           case aggregate.field do
             %Ash.Query.Calculation{} = calculation ->
-              if calculation.module.has_expression?() and
+              if Ash.Resource.Calculation.has_expression?(calculation.module) and
                    Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
-                expression = calculation.module.expression(calculation.opts, calculation.context)
+                expression =
+                  Ash.Resource.Calculation.expression(
+                    calculation.module,
+                    calculation.opts,
+                    calculation.context
+                  )
 
                 expression =
                   Ash.Expr.fill_template(
@@ -2471,9 +2476,10 @@ defmodule Ash.Actions.Read do
       } = ref ->
         calc = add_calc_context(calc, actor, authorize?, tenant, tracer, domain, resource, opts)
 
-        if Keyword.get(opts, :expand?, false) && calc.module.has_expression?() do
+        if Keyword.get(opts, :expand?, false) &&
+             Ash.Resource.Calculation.has_expression?(calc.module) do
           expr =
-            case calc.module.expression(calc.opts, calc.context) do
+            case Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context) do
               %Ash.Query.Function.Type{} = expr ->
                 expr
 
@@ -2622,11 +2628,11 @@ defmodule Ash.Actions.Read do
   defp should_expand_expression?(struct, calc, opts) do
     struct == Ash.Query.Calculation &&
       Keyword.get(opts, :expand?, true) &&
-      calc.module.has_expression?()
+      Ash.Resource.Calculation.has_expression?(calc.module)
   end
 
   defp expand_expression(calc, resource, parent_stack, first_combination) do
-    calc.module.expression(calc.opts, calc.context)
+    Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context)
     |> case do
       %Ash.Query.Function.Type{} = expr ->
         expr
@@ -3521,7 +3527,10 @@ defmodule Ash.Actions.Read do
 
         case Map.fetch(path_filters, {last_relationship.source, last_relationship.name, action}) do
           {:ok, filter} ->
+            filter = unwrap_filter_expression(filter)
+
             Map.update(current_join_filters, path, filter, fn current_filter ->
+              current_filter = unwrap_filter_expression(current_filter)
               Ash.Query.BooleanExpression.new(:and, current_filter, filter)
             end)
 
@@ -3531,6 +3540,9 @@ defmodule Ash.Actions.Read do
       end)
     end
   end
+
+  defp unwrap_filter_expression(%Ash.Filter{expression: expression}), do: expression
+  defp unwrap_filter_expression(other), do: other
 
   defp maybe_await(%Task{} = task, timeout) do
     case Task.await(task, timeout) do
@@ -3718,6 +3730,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  @dialyzer {:nowarn_function, do_add_field_level_auth: 3}
   defp do_add_field_level_auth(query, domain, opts) do
     data = %{
       query: query,
@@ -3826,7 +3839,9 @@ defmodule Ash.Actions.Read do
           action.pagination.default_limit ->
         Keyword.put(page_opts, :limit, action.pagination.default_limit)
 
-      is_nil(page_opts) and action.pagination.required? and not relationship? ->
+      is_nil(page_opts) and
+        (action.pagination.required? or action.pagination.paginate_by_default?) and
+          not relationship? ->
         if action.pagination.default_limit do
           [limit: action.pagination.default_limit]
         else
@@ -4119,8 +4134,7 @@ defmodule Ash.Actions.Read do
          load_attributes?
        ) do
     {result, query} =
-      query
-      |> mod.read(data_layer_query, opts, context)
+      Ash.Resource.ManualRead.read(mod, query, data_layer_query, opts, context)
       |> case do
         {:ok, result, extra_info} ->
           query =
@@ -4170,6 +4184,7 @@ defmodule Ash.Actions.Read do
     |> then(&{&1, query})
   end
 
+  @dialyzer {:nowarn_function, validate_manual_action_return_result!: 3}
   defp validate_manual_action_return_result!({:ok, list} = result, _resource, _)
        when is_list(list) do
     result
@@ -4201,7 +4216,12 @@ defmodule Ash.Actions.Read do
        ) do
     Enum.reduce_while(calculations_to_add, {:ok, []}, fn calculation, {:ok, calculations} ->
       if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
-        expression = calculation.module.expression(calculation.opts, calculation.context)
+        expression =
+          Ash.Resource.Calculation.expression(
+            calculation.module,
+            calculation.opts,
+            calculation.context
+          )
 
         expression =
           Ash.Expr.fill_template(
@@ -4579,9 +4599,9 @@ defmodule Ash.Actions.Read do
 
     related_resource = Ash.Resource.Info.related(agg.resource, agg.relationship_path)
 
-    if calc.module.has_expression?() do
+    if Ash.Resource.Calculation.has_expression?(calc.module) do
       expr =
-        case calc.module.expression(calc.opts, calc.context) do
+        case Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context) do
           %Ash.Query.Function.Type{} = expr ->
             expr
 
@@ -4651,22 +4671,38 @@ defmodule Ash.Actions.Read do
       )
 
     if authorize? && field.authorize? do
+      related_resource = Ash.Resource.Info.related(agg.resource, agg.relationship_path)
+
+      field_path_filters =
+        case Ash.Filter.relationship_filters(
+               domain,
+               field.query,
+               actor,
+               tenant,
+               [field],
+               authorize?,
+               path_filters
+             ) do
+          {:ok, filters} -> filters
+          _ -> path_filters
+        end
+
       {:ok,
        authorize_aggregate(
          field,
-         path_filters,
+         field_path_filters,
          actor,
          authorize?,
          tenant,
          tracer,
          domain,
-         agg.resource,
+         related_resource,
          ref_path,
          [agg.resource | parent_stack],
          source_context
        )}
     else
-      {:ok, agg}
+      {:ok, field}
     end
   end
 

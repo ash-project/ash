@@ -32,7 +32,7 @@ defmodule Ash.Test.Type.IntegerTest do
     end
 
     test "invalid values" do
-      assert {:error, [[message: "must be more than or equal to %{min}", min: 2]]} =
+      assert {:error, [[message: "must be greater than or equal to %{min}", min: 2]]} =
                Ash.Type.Integer.apply_constraints(1, min: 2, max: 4)
 
       assert {:error, [[message: "must be less than or equal to %{max}", max: 4]]} =

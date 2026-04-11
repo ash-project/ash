@@ -64,6 +64,14 @@ defmodule Ash.Actions.PaginationTest do
         pagination offset?: true, countable: true, required?: false
       end
 
+      read :paginate_by_default do
+        pagination offset?: true,
+                   countable: true,
+                   required?: false,
+                   paginate_by_default?: true,
+                   default_limit: 3
+      end
+
       read :offset_countable_by_default do
         pagination offset?: true, countable: :by_default, required?: false
       end
@@ -307,6 +315,14 @@ defmodule Ash.Actions.PaginationTest do
                |> Ash.read!(page: [offset: 1, limit: 1, count: true])
 
       assert %{results: [%{name: "3"}]} = Ash.page!(page, :self)
+    end
+
+    test "paginate_by_default? applies default limit when no page opts" do
+      assert %Ash.Page.Offset{results: results} =
+               User
+               |> Ash.read!(action: :paginate_by_default)
+
+      assert Enum.count(results) == 3
     end
   end
 

@@ -94,6 +94,54 @@ defmodule Ash.Resource.ManualDestroy do
 
   @optional_callbacks [bulk_destroy: 3]
 
+  @doc false
+  @spec destroy(module(), Ash.Changeset.t() | term(), Keyword.t() | term(), Context.t() | term()) ::
+          {:ok, Ash.Resource.record()}
+          | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          | {:error, term()}
+  def destroy(module, changeset, opts, context) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      module,
+      :destroy,
+      [changeset, opts, context],
+      [{:ok, :_}, {:ok, :_, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "destroy/3"
+    )
+  end
+
+  @doc false
+  @spec bulk_destroy(module(), Enumerable.t(Ash.Changeset.t()), Keyword.t(), BulkContext.t()) ::
+          list(
+            :ok
+            | {:ok, Ash.Resource.record()}
+            | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
+            | {:ok, Ash.Resource.record(), [Ash.Notifier.Notification.t()]}
+            | {:error, Ash.Error.t()}
+            | {:notifications, list(Ash.Notifier.Notification.t())}
+          )
+  def bulk_destroy(module, changesets, opts, context) do
+    result = apply(module, :bulk_destroy, [changesets, opts, context])
+
+    if is_list(result) and Enum.all?(result, &valid_bulk_destroy_result?/1) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(module)}.bulk_destroy/3.
+
+        The callback #{inspect(__MODULE__)}.bulk_destroy/3 expects a list of :ok, {:ok, record}, {:ok, record, notifications}, {:error, error}, or {:notifications, list}.
+        """
+    end
+  end
+
+  defp valid_bulk_destroy_result?(:ok), do: true
+  defp valid_bulk_destroy_result?({:ok, _}), do: true
+  defp valid_bulk_destroy_result?({:ok, _, _}), do: true
+  defp valid_bulk_destroy_result?({:error, _}), do: true
+  defp valid_bulk_destroy_result?({:notifications, list}) when is_list(list), do: true
+  defp valid_bulk_destroy_result?(_), do: false
+
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.ManualDestroy

@@ -416,6 +416,7 @@ defmodule Ash.Test.AshTest do
 
     def notify(notification) do
       send(self(), {:notification, notification})
+      :ok
     end
   end
 

@@ -17,7 +17,7 @@ defmodule Ash.Query.Function.Has do
   """
   use Ash.Query.Function, name: :has, predicate?: true
 
-  def args, do: [[{:array, :any}, :any]]
+  def args, do: [[{:array, :any}, :same]]
 
   def returns, do: [:boolean]
 

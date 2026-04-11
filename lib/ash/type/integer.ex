@@ -23,6 +23,7 @@ defmodule Ash.Type.Integer do
   #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
+  import Ash.Gettext
 
   require Ash.Expr
 
@@ -48,7 +49,7 @@ defmodule Ash.Type.Integer do
             if ^expr > ^max do
               error(
                 Ash.Error.Changes.InvalidChanges,
-                message: "must be less than or equal to %{max}",
+                message: ^error_message("must be less than or equal to %{max}"),
                 vars: %{max: ^max}
               )
             else
@@ -61,7 +62,7 @@ defmodule Ash.Type.Integer do
             if ^expr < ^min do
               error(
                 Ash.Error.Changes.InvalidChanges,
-                message: "must be greater than or equal to %{min}",
+                message: ^error_message("must be greater than or equal to %{min}"),
                 vars: %{min: ^min}
               )
             else
@@ -75,14 +76,14 @@ defmodule Ash.Type.Integer do
               ^expr < ^min ->
                 error(
                   Ash.Error.Changes.InvalidChanges,
-                  message: "must be greater than or equal to %{min}",
+                  message: ^error_message("must be greater than or equal to %{min}"),
                   vars: %{min: ^min}
                 )
 
               ^expr > ^max ->
                 error(
                   Ash.Error.Changes.InvalidChanges,
-                  message: "must be less than or equal to %{max}",
+                  message: ^error_message("must be less than or equal to %{max}"),
                   vars: %{max: ^max}
                 )
 
@@ -120,14 +121,17 @@ defmodule Ash.Type.Integer do
       Enum.reduce(constraints, [], fn
         {:max, max}, errors ->
           if value > max do
-            [[message: "must be less than or equal to %{max}", max: max] | errors]
+            [[message: error_message("must be less than or equal to %{max}"), max: max] | errors]
           else
             errors
           end
 
         {:min, min}, errors ->
           if value < min do
-            [[message: "must be more than or equal to %{min}", min: min] | errors]
+            [
+              [message: error_message("must be greater than or equal to %{min}"), min: min]
+              | errors
+            ]
           else
             errors
           end

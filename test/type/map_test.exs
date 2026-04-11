@@ -201,7 +201,7 @@ defmodule Ash.Type.MapTest do
     assert [
              %Ash.Error.Changes.InvalidAttribute{
                field: :integer_min_0,
-               message: "must be more than or equal to %{min}",
+               message: "must be greater than or equal to %{min}",
                private_vars: nil,
                value: %{integer_min_0: -1, foo: "hello"},
                bread_crumbs: [],
@@ -297,7 +297,7 @@ defmodule Ash.Type.MapTest do
 
     # Check that we have both errors
     assert Enum.any?(errors, fn error ->
-             error.field == :integer_min_0 && String.contains?(error.message, "more than")
+             error.field == :integer_min_0 && String.contains?(error.message, "greater than")
            end)
 
     assert Enum.any?(errors, fn error ->
@@ -332,7 +332,7 @@ defmodule Ash.Type.MapTest do
            end)
 
     assert Enum.any?(errors, fn error ->
-             error.field == :integer_min_0 && String.contains?(error.message, "more than")
+             error.field == :integer_min_0 && String.contains?(error.message, "greater than")
            end)
 
     # We should also get the string length error
@@ -368,7 +368,7 @@ defmodule Ash.Type.MapTest do
 
     # Check for integer minimum error
     assert Enum.any?(errors, fn error ->
-             error.field == :integer_min_0 && String.contains?(error.message, "more than")
+             error.field == :integer_min_0 && String.contains?(error.message, "greater than")
            end)
 
     # Check for string minimum length error
@@ -410,7 +410,7 @@ defmodule Ash.Type.MapTest do
           |> Enum.map(&(&1[:message] || to_string(&1)))
 
         assert Enum.any?(error_messages, &String.contains?(&1, "must be present"))
-        assert Enum.any?(error_messages, &String.contains?(&1, "more than"))
+        assert Enum.any?(error_messages, &String.contains?(&1, "greater than"))
         assert Enum.any?(error_messages, &String.contains?(&1, "length"))
 
       {:ok, _} ->

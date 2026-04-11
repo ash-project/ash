@@ -799,8 +799,13 @@ defmodule Ash.Filter do
         false
     end)
     |> Enum.flat_map(fn %{attribute: calculation} = calculation_ref ->
-      if calculation.module.has_expression?() do
-        expression = calculation.module.expression(calculation.opts, calculation.context)
+      if Ash.Resource.Calculation.has_expression?(calculation.module) do
+        expression =
+          Ash.Resource.Calculation.expression(
+            calculation.module,
+            calculation.opts,
+            calculation.context
+          )
 
         case hydrate_refs(expression, %{
                resource: Ash.Resource.Info.related(resource, calculation_ref.relationship_path),
@@ -2223,8 +2228,8 @@ defmodule Ash.Filter do
          with_references?,
          expand_aggregates?
        ) do
-    if module.has_expression?() do
-      expression = module.expression(opts, context)
+    if Ash.Resource.Calculation.has_expression?(module) do
+      expression = Ash.Resource.Calculation.expression(module, opts, context)
 
       case hydrate_refs(expression, %{
              resource: resource,
@@ -2758,8 +2763,8 @@ defmodule Ash.Filter do
         attribute: %Calculation{module: module, opts: opts, context: context},
         relationship_path: calc_relationship_path
       } = ref ->
-        if expand_calculations? && module.has_expression?() do
-          expression = module.expression(opts, context)
+        if expand_calculations? && Ash.Resource.Calculation.has_expression?(module) do
+          expression = Ash.Resource.Calculation.expression(module, opts, context)
 
           case hydrate_refs(expression, %{
                  resource: ref.resource,
@@ -3501,7 +3506,7 @@ defmodule Ash.Filter do
         true
 
       data_layer = context[:data_layer] ->
-        data_layer.can?(context.resource, {:filter_expr, expr})
+        Ash.DataLayer.can?(data_layer, context.resource, {:filter_expr, expr})
 
       true ->
         Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, expr})
@@ -3641,11 +3646,17 @@ defmodule Ash.Filter do
       if is_boolean(operator) do
         {:ok, operator}
       else
-        if can_filter_expr?(context, operator) do
-          {:ok, operator}
-        else
-          {:error,
-           "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the operator #{inspect(operator)}"}
+        case maybe_operator_expression(operator, context) do
+          {:ok, custom_expr} ->
+            {:ok, custom_expr}
+
+          :unknown ->
+            if can_filter_expr?(context, operator) do
+              {:ok, operator}
+            else
+              {:error,
+               "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the operator #{inspect(operator)}"}
+            end
         end
       end
     else
@@ -3818,7 +3829,7 @@ defmodule Ash.Filter do
             Ash.DataLayer.Simple
           end
 
-        with {:ok, expr} <- module.expression(data_layer, arguments),
+        with {:ok, expr} <- Ash.CustomExpression.expression(module, data_layer, arguments),
              {:ok, expr} <- hydrate_refs(expr, context) do
           if data_layer == Ash.DataLayer.Simple do
             {:ok,
@@ -3828,7 +3839,8 @@ defmodule Ash.Filter do
                simple_expression: {:ok, expr}
              }}
           else
-            with {:ok, simple_expr} <- module.expression(Ash.DataLayer.Simple, arguments),
+            with {:ok, simple_expr} <-
+                   Ash.CustomExpression.expression(module, Ash.DataLayer.Simple, arguments),
                  {:ok, simple_expr} <- hydrate_refs(simple_expr, context) do
               {:ok,
                %Ash.CustomExpression{
@@ -3991,6 +4003,67 @@ defmodule Ash.Filter do
     end
   end
 
+  defp maybe_operator_expression(operator, context) when is_struct(operator) do
+    case Ash.Query.Operator.operator_expression(operator) do
+      {:ok, expr_module} ->
+        %{left: left, right: right} = operator
+        arguments = [left, right]
+        resource = context[:resource]
+
+        data_layer =
+          if resource do
+            Ash.Resource.Info.data_layer(resource)
+          else
+            Ash.DataLayer.Simple
+          end
+
+        with {:ok, expr} <- Ash.CustomExpression.expression(expr_module, data_layer, arguments),
+             {:ok, expr} <- hydrate_refs(expr, context) do
+          if data_layer == Ash.DataLayer.Simple do
+            {:ok,
+             %Ash.CustomExpression{
+               module: expr_module,
+               arguments: arguments,
+               expression: expr,
+               simple_expression: {:ok, expr}
+             }}
+          else
+            with {:ok, simple_expr} <-
+                   Ash.CustomExpression.expression(expr_module, Ash.DataLayer.Simple, arguments),
+                 {:ok, simple_expr} <- hydrate_refs(simple_expr, context) do
+              {:ok,
+               %Ash.CustomExpression{
+                 module: expr_module,
+                 arguments: arguments,
+                 expression: expr,
+                 simple_expression: {:ok, simple_expr}
+               }}
+            else
+              {:error, _error} ->
+                :unknown
+
+              :unknown ->
+                {:ok,
+                 %Ash.CustomExpression{
+                   module: expr_module,
+                   arguments: arguments,
+                   expression: expr,
+                   simple_expression: :unknown
+                 }}
+            end
+          end
+        else
+          :unknown -> :unknown
+          {:error, _} -> :unknown
+        end
+
+      :unknown ->
+        :unknown
+    end
+  end
+
+  defp maybe_operator_expression(_, _), do: :unknown
+
   def custom_expression(name, args) do
     with module when not is_nil(module) <- Enum.find(@custom_expressions, &(&1.name() == name)),
          args when not is_nil(args) <-
@@ -4132,7 +4205,18 @@ defmodule Ash.Filter do
             {:ok, %{ref | attribute: attribute, resource: related}}
 
           resource_calculation = calculation(context, attribute) ->
-            case Calculation.from_resource_calculation(context.resource, resource_calculation) do
+            from_resource_opts =
+              if context[:source_context] do
+                [source_context: context[:source_context]]
+              else
+                []
+              end
+
+            case Calculation.from_resource_calculation(
+                   context.resource,
+                   resource_calculation,
+                   from_resource_opts
+                 ) do
               {:ok, calculation} ->
                 calculation = %{calculation | load: calculation.name}
 
@@ -4918,12 +5002,20 @@ defmodule Ash.Filter do
                 if is_boolean(operator) do
                   {:cont, {:ok, operator}}
                 else
-                  if can_filter_expr?(context, operator) do
-                    {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
-                  else
-                    {:halt,
-                     {:error,
-                      "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the operator #{inspect(operator)}"}}
+                  case maybe_operator_expression(operator, context) do
+                    {:ok, custom_expr} ->
+                      {:cont,
+                       {:ok, BooleanExpression.optimized_new(:and, expression, custom_expr)}}
+
+                    :unknown ->
+                      if can_filter_expr?(context, operator) do
+                        {:cont,
+                         {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
+                      else
+                        {:halt,
+                         {:error,
+                          "data layer `#{inspect(context[:data_layer] || Ash.DataLayer.data_layer(context.resource))}` does not support the operator #{inspect(operator)}"}}
+                      end
                   end
                 end
               else

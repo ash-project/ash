@@ -30,6 +30,7 @@ defmodule Ash.Resource.Actions.Update do
     reject: [],
     metadata: [],
     transaction?: true,
+    public?: true,
     touches_resources: [],
     type: :update,
     __spark_metadata__: nil
@@ -53,6 +54,7 @@ defmodule Ash.Resource.Actions.Update do
           delay_global_validations?: boolean,
           skip_global_validations?: boolean,
           primary?: boolean,
+          public?: boolean,
           touches_resources: list(atom),
           description: String.t() | nil,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()

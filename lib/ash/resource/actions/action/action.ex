@@ -19,6 +19,7 @@ defmodule Ash.Resource.Actions.Action do
     transaction?: false,
     primary?: false,
     skip_global_validations?: false,
+    public?: true,
     type: :action,
     __spark_metadata__: nil
   ]
@@ -36,6 +37,7 @@ defmodule Ash.Resource.Actions.Action do
           returns: Ash.Type.t() | nil,
           primary?: boolean,
           transaction?: boolean,
+          public?: boolean,
           preparations: [Ash.Resource.Preparation.t()],
           skip_global_validations?: boolean,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()

@@ -21,6 +21,7 @@ defmodule Ash.Resource.Actions.Read do
             pagination: nil,
             preparations: [],
             primary?: nil,
+            public?: true,
             touches_resources: [],
             timeout: nil,
             transaction?: false,
@@ -44,6 +45,7 @@ defmodule Ash.Resource.Actions.Read do
           name: atom,
           pagination: any,
           primary?: boolean,
+          public?: boolean,
           touches_resources: [atom],
           timeout: pos_integer() | nil,
           transaction?: boolean,
@@ -147,6 +149,12 @@ defmodule Ash.Resource.Actions.Read do
       doc:
         "Whether or not pagination can be disabled (by passing `page: false` to `Ash.Api.read!/2`, or by having `required?: false, default_limit: nil` set). Only relevant if some pagination configuration is supplied.",
       default: true
+    ],
+    paginate_by_default?: [
+      type: :boolean,
+      doc:
+        "Whether or not to paginate by default when pagination is not required and no page parameters are provided.",
+      default: false
     ]
   ]
 
@@ -158,6 +166,7 @@ defmodule Ash.Resource.Actions.Read do
       countable: false,
       stable_sort: nil,
       required?: false,
+      paginate_by_default?: false,
       keyset?: false,
       offset?: false,
       __spark_metadata__: nil

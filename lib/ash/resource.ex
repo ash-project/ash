@@ -232,6 +232,15 @@ defmodule Ash.Resource do
             fields = @show_fields -- subtract_fields
 
             fun = fn field, opts ->
+              custom_options = Map.get(opts, :custom_options, [])
+
+              opts =
+                Map.put(
+                  opts,
+                  :custom_options,
+                  Keyword.put(custom_options, :in_resource?, true)
+                )
+
               Inspect.List.keyword({field, Map.get(record, field)}, opts)
             end
 
@@ -376,7 +385,7 @@ defmodule Ash.Resource do
       @spec input(values :: map | Keyword.t()) :: map | no_return
       def input(opts) do
         Map.new(opts, fn {key, value} ->
-          if key in @all_arguments || key in @all_attributes do
+          if Enum.member?(@all_arguments, key) || Enum.member?(@all_attributes, key) do
             {key, value}
           else
             raise KeyError, key: key
@@ -613,8 +622,25 @@ defmodule Ash.Resource do
     if opts[:strict?] && Enum.any?(resource_calculation.arguments) do
       false
     else
+      value =
+        if resource_calculation.field? do
+          Map.get(record, resource_calculation.name)
+        else
+          case Map.fetch(record.calculations, resource_calculation.name) do
+            {:ok, value} ->
+              value
+
+            :error ->
+              %Ash.NotLoaded{
+                type: :calculation,
+                field: resource_calculation.name,
+                resource: record.__struct__
+              }
+          end
+        end
+
       loaded_on_type?(
-        Map.get(record, resource_calculation.name),
+        value,
         rest,
         resource_calculation.type,
         resource_calculation.constraints,

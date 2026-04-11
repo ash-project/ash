@@ -19,6 +19,7 @@ defmodule Ash.Resource.Validation.ArgumentIn do
   ]
 
   use Ash.Resource.Validation
+  import Ash.Gettext
   alias Ash.Error.Changes.InvalidArgument
 
   opt_schema = @opt_schema
@@ -50,7 +51,10 @@ defmodule Ash.Resource.Validation.ArgumentIn do
       :ok
     else
       {:error,
-       [value: value, field: opts[:argument]]
+       [
+         value: Ash.Resource.Validation.maybe_redact(subject, opts[:argument], value),
+         field: opts[:argument]
+       ]
        |> with_description(opts)
        |> InvalidArgument.exception()}
     end
@@ -64,7 +68,7 @@ defmodule Ash.Resource.Validation.ArgumentIn do
   @impl true
   def describe(opts) do
     [
-      message: "must equal %{value}",
+      message: error_message("must equal %{value}"),
       vars: [field: opts[:argument], value: opts[:value]]
     ]
   end

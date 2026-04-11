@@ -338,6 +338,73 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
              |> with_conditional_validation_fn.()
   end
 
+  describe "update_timestamp with nullable atomic changes" do
+    test "update_timestamp is updated when atomically changing a nullable attribute from nil to a value" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "fred"})
+        |> Ash.create!()
+
+      assert is_nil(author.score)
+      original_updated_at = author.updated_at
+
+      [author] =
+        Author
+        |> Ash.Query.filter(id == ^author.id)
+        |> Ash.bulk_update!(:update, %{score: 10},
+          return_records?: true,
+          strategy: :atomic
+        )
+        |> Map.get(:records)
+
+      assert author.score == 10
+      assert DateTime.compare(author.updated_at, original_updated_at) != :eq
+    end
+
+    test "update_timestamp is updated when atomically changing a nullable attribute from a value to nil" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "fred", score: 5})
+        |> Ash.create!()
+
+      original_updated_at = author.updated_at
+
+      [author] =
+        Author
+        |> Ash.Query.filter(id == ^author.id)
+        |> Ash.bulk_update!(:update, %{score: nil},
+          return_records?: true,
+          strategy: :atomic
+        )
+        |> Map.get(:records)
+
+      assert is_nil(author.score)
+      assert DateTime.compare(author.updated_at, original_updated_at) != :eq
+    end
+
+    test "update_timestamp is not updated when atomically setting a nullable attribute to its current nil value" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "fred"})
+        |> Ash.create!()
+
+      assert is_nil(author.score)
+      original_updated_at = author.updated_at
+
+      [author] =
+        Author
+        |> Ash.Query.filter(id == ^author.id)
+        |> Ash.bulk_update!(:update, %{score: nil},
+          return_records?: true,
+          strategy: :atomic
+        )
+        |> Map.get(:records)
+
+      assert is_nil(author.score)
+      assert DateTime.compare(author.updated_at, original_updated_at) == :eq
+    end
+  end
+
   describe "increment/1" do
     test "it increments the value, honoring overflow" do
       author =

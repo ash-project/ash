@@ -20,6 +20,20 @@ defmodule Type.StructTest do
     end
   end
 
+  defmodule EmbeddedWithTuple do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :name, :string, allow_nil?: false, public?: true
+
+      attribute :metadata, :tuple do
+        allow_nil? true
+        public? true
+        constraints fields: [key: [type: :string]]
+      end
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -225,7 +239,7 @@ defmodule Type.StructTest do
     assert [
              %Ash.Error.Changes.InvalidAttribute{
                field: :bar,
-               message: "must be more than or equal to %{min}",
+               message: "must be greater than or equal to %{min}",
                private_vars: nil,
                value: %{bar: -1, foo: "hello"},
                bread_crumbs: [],
@@ -260,7 +274,7 @@ defmodule Type.StructTest do
            end)
 
     assert Enum.any?(errors, fn error ->
-             error.field == :bar && error.message == "must be more than or equal to %{min}"
+             error.field == :bar && error.message == "must be greater than or equal to %{min}"
            end)
   end
 
@@ -330,7 +344,7 @@ defmodule Type.StructTest do
 
     # Check for age minimum error
     assert Enum.any?(errors, fn error ->
-             error.field == :age && String.contains?(error.message, "more than")
+             error.field == :age && String.contains?(error.message, "greater than")
            end)
 
     # Check for email format error
@@ -362,7 +376,7 @@ defmodule Type.StructTest do
           |> Enum.map(&(&1[:message] || to_string(&1)))
 
         assert Enum.any?(error_messages, &String.contains?(&1, "must be present"))
-        assert Enum.any?(error_messages, &String.contains?(&1, "more than"))
+        assert Enum.any?(error_messages, &String.contains?(&1, "greater than"))
 
       {:ok, _} ->
         flunk("Expected validation errors but got success")
@@ -411,7 +425,7 @@ defmodule Type.StructTest do
                private_vars: nil,
                value: %{:bar => "2", "foo" => ""},
                bread_crumbs: [],
-               vars: [],
+               vars: [{:value, nil}],
                path: [:metadata]
              }
            ] = changeset.errors
@@ -441,5 +455,44 @@ defmodule Type.StructTest do
       |> Ash.Changeset.for_create(:create, %{dummy_metadata: nil})
 
     assert changeset.valid?
+  end
+
+  test "instance_of with nullable tuple fields handles nil values" do
+    # When a resource has a nullable tuple attribute and we use instance_of
+    # without explicit fields, nil tuple values should not crash apply_constraints
+    constraints = [instance_of: EmbeddedWithTuple]
+
+    assert {:ok, %EmbeddedWithTuple{name: "test", metadata: nil}} =
+             Ash.Type.apply_constraints(Ash.Type.Struct, %{name: "test"}, constraints)
+  end
+
+  test "instance_of auto-derived fields propagate allow_nil?" do
+    # When using instance_of with an Ash resource and no explicit fields,
+    # the auto-derived fields from attributes should include allow_nil?
+    constraints = [instance_of: Embedded]
+
+    # Missing required fields should be rejected
+    assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Struct, %{}, constraints)
+
+    # Providing required fields should succeed
+    assert {:ok, %Embedded{name: "fred", title: "title"}} =
+             Ash.Type.apply_constraints(
+               Ash.Type.Struct,
+               %{name: "fred", title: "title"},
+               constraints
+             )
+  end
+
+  test "apply_constraints preserves __meta__ state for already valid struct instances" do
+    loaded_struct = %Embedded{name: "fred", title: "title"}
+    loaded_struct = Ecto.put_meta(loaded_struct, state: :loaded)
+    assert loaded_struct.__meta__.state == :loaded
+
+    assert {:ok, result} =
+             Ash.Type.apply_constraints(Ash.Type.Struct, loaded_struct, instance_of: Embedded)
+
+    assert result.__meta__.state == :loaded
+    assert result.name == "fred"
+    assert result.title == "title"
   end
 end

@@ -87,6 +87,15 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
                  copy_inputs: [:name]
                )
       end
+
+      update :update_with_cascade_validation do
+        require_atomic? false
+
+        change cascade_update(:posts,
+                 action: :update_with_validation,
+                 copy_inputs: [:name]
+               )
+      end
     end
 
     relationships do
@@ -166,6 +175,13 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
       end
 
       update :no_notification_update do
+      end
+
+      update :update_with_validation do
+        require_atomic? false
+
+        validate compare(:name, is_not_equal: "invalid"),
+          message: "name cannot be invalid"
       end
     end
 
@@ -423,6 +439,28 @@ defmodule Ash.Test.Resource.Change.CascadeUpdate do
     assert ^name = a.name
     assert ^name = p.name
     assert ^name = p2.name
+  end
+
+  test "cascade update propagates errors from the cascaded action" do
+    author = Author.create!(%{})
+    Post.create!(%{author_id: author.id})
+
+    assert_raise Ash.Error.Invalid, ~r/name cannot be invalid/, fn ->
+      author
+      |> Ash.Changeset.for_update(:update_with_cascade_validation, %{name: "invalid"})
+      |> Ash.update!()
+    end
+  end
+
+  test "cascade update propagates errors from the cascaded action in bulk" do
+    author = Author.create!(%{})
+    Post.create!(%{author_id: author.id})
+
+    assert_raise Ash.Error.Invalid, ~r/name cannot be invalid/, fn ->
+      Ash.bulk_update!([author], :update_with_cascade_validation, %{name: "invalid"},
+        return_errors?: true
+      )
+    end
   end
 
   test "uses read_action option in fallback path for many_to_many relationships" do

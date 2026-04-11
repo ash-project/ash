@@ -66,6 +66,22 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
              ] = Ash.Resource.Info.attributes(Post)
     end
 
+    test "it creates an attribute that honors attribute_always_select?" do
+      defposts do
+        relationships do
+          belongs_to :foobar, FooBar, attribute_always_select?: true
+        end
+      end
+
+      assert [
+               _,
+               %Ash.Resource.Attribute{
+                 name: :foobar_id,
+                 always_select?: true
+               }
+             ] = Ash.Resource.Info.attributes(Post)
+    end
+
     test "it creates a relationship" do
       defposts do
         relationships do

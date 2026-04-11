@@ -71,6 +71,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
 
       attribute :title, :string do
         public?(true)
+        allow_nil?(false)
       end
     end
 
@@ -99,6 +100,36 @@ defmodule Ash.Test.Actions.ManyToManyTest do
         linked_posts: [%{title: "foo"}, %{title: "bar"}]
       })
       |> Ash.create!()
+    end
+  end
+
+  describe "error paths" do
+    test "errors from managed relationship creates include relationship path" do
+      assert {:error, error} =
+               Post
+               |> Ash.Changeset.for_create(:create, %{
+                 title: "valid",
+                 linked_posts: [%{}]
+               })
+               |> Ash.create()
+
+      [inner_error] = error.errors
+
+      assert inner_error.path == [:linked_posts, 0]
+    end
+
+    test "errors from managed relationship creates include correct index" do
+      assert {:error, error} =
+               Post
+               |> Ash.Changeset.for_create(:create, %{
+                 title: "valid",
+                 linked_posts: [%{title: "valid"}, %{}]
+               })
+               |> Ash.create()
+
+      [inner_error] = error.errors
+
+      assert inner_error.path == [:linked_posts, 1]
     end
   end
 end

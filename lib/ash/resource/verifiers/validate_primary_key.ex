@@ -25,7 +25,7 @@ defmodule Ash.Resource.Verifiers.ValidatePrimaryKey do
         data_layer = Verifier.get_persisted(dsl_state, :data_layer)
         resource = Verifier.get_persisted(dsl_state, :module)
 
-        if data_layer && data_layer.can?(resource, :composite_primary_key) do
+        if data_layer && Ash.DataLayer.can?(data_layer, resource, :composite_primary_key) do
           :ok
         else
           # Find the second primary key attribute (the one causing the composite key issue)
