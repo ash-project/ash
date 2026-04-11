@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 - Use validations to validate changesets before execution
 - Prefer domain code interfaces to call actions instead of directly building queries/changesets and calling functions in the `Ash` module
 - A resource could be *only generic actions*. This can be useful when you are using a resource only to model behavior.
+- Instead of defining functions in the domain, you should be defining actions and exposing them through code interface calls in the domain. Use standard actions when they fit what you're doing and generic actions when you need arbitrary functionality.
 
 ## Error Handling
 
