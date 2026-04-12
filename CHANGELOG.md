@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.24.1](https://github.com/ash-project/ash/compare/v3.24.0...v3.24.1) (2026-04-12)
+
+
+
+
+### Bug Fixes:
+
+* ensure policie son intermediate resources are respected in `through` by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't apply relationship filters to the source query on `through` by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.24.0](https://github.com/ash-project/ash/compare/v3.23.1...v3.24.0) (2026-04-12)
 
 
