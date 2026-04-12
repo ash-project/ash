@@ -270,13 +270,20 @@ defmodule Ash.Type.Keyword do
   defp try_map_to_keyword(map, constraints) do
     constraints[:fields]
     |> Kernel.||([])
-    |> Enum.flat_map(fn {key, _} ->
+    |> Enum.flat_map(fn {key, field_constraints} ->
       with :error <- Map.fetch(map, key),
            :error <- Map.fetch(map, to_string(key)) do
         []
       else
         {:ok, value} ->
-          [{key, value}]
+          if type = field_constraints[:type] do
+            case Ash.Type.cast_stored(type, value, field_constraints[:constraints] || []) do
+              {:ok, cast_value} -> [{key, cast_value}]
+              _ -> []
+            end
+          else
+            [{key, value}]
+          end
       end
     end)
   end
