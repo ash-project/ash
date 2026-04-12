@@ -16,10 +16,25 @@ defmodule Ash.Resource.Verifiers.ValidateThroughRelationships do
   def verify(dsl) do
     module = Verifier.get_persisted(dsl, :module)
 
-    dsl
-    |> Ash.Resource.Info.relationships()
-    |> Enum.filter(&is_non_empty_list(&1))
-    |> Enum.each(&validate_through_path(&1.source, &1.through, &1, module))
+    through_relationships =
+      dsl
+      |> Ash.Resource.Info.relationships()
+      |> Enum.filter(&is_non_empty_list(&1))
+
+    if through_relationships != [] &&
+         not Ash.DataLayer.data_layer_can?(dsl, :through_relationship) do
+      raise Spark.Error.DslError,
+        module: module,
+        path: [:relationships],
+        message: """
+        The data layer for `#{inspect(module)}` does not support `through` relationships.
+
+        Through relationships require data layer support. If you are using `ash_postgres`,
+        make sure you have a version that includes through relationship support.
+        """
+    end
+
+    Enum.each(through_relationships, &validate_through_path(&1.source, &1.through, &1, module))
   end
 
   defp validate_through_path(resource, [step | rest], relationship, module) do
