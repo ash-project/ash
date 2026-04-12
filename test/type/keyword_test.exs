@@ -471,6 +471,19 @@ defmodule Type.KeywordTest do
     assert length(errors) > 1
   end
 
+  test "cast_stored casts atom field values from stored strings to atoms" do
+    constraints = [
+      fields: [
+        status: [type: :atom]
+      ]
+    ]
+
+    stored = %{"status" => "active"}
+
+    assert {:ok, keyword} = Ash.Type.Keyword.cast_stored(stored, constraints)
+    assert keyword[:status] == :active
+  end
+
   test "dump_to_native converts keyword list to map" do
     keyword_list = [foo: "bar", baz: 42]
     assert Ash.Type.Keyword.dump_to_native(keyword_list, []) == {:ok, %{foo: "bar", baz: 42}}
