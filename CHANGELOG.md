@@ -8,6 +8,37 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.24.0](https://github.com/ash-project/ash/compare/v3.23.1...v3.24.0) (2026-04-12)
+
+
+
+
+### Features:
+
+* Relationship Through (#2567) by Kenneth Kostrešević [(#2567)](https://github.com/ash-project/ash/pull/2567)
+
+* add eager_validate? option to manage_relationship/4 (#2663) by [@nallwhy](https://github.com/nallwhy) [(#2663)](https://github.com/ash-project/ash/pull/2663)
+
+### Bug Fixes:
+
+* cast_stored on Keyword type now casts field values through their declared types (#2673) by [@matt-beanland](https://github.com/matt-beanland) [(#2673)](https://github.com/ash-project/ash/pull/2673)
+
+* ensure notifications have all data regardless of select option by [@zachdaniel](https://github.com/zachdaniel)
+
+* complete truncated doc for Ash.Type.coerce/2 by [@zachdaniel](https://github.com/zachdaniel)
+
+* merge operator overloads properly (they are not nested maps) by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't globally set tenant from record metadata when its not present by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure we use the provided read action in bulk destroy by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* usage rules steer towards code interface and actions (#2672) by Kenneth Kostrešević [(#2672)](https://github.com/ash-project/ash/pull/2672)
+
+* support operator overloads that rewrite to custom expressions by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.23.1](https://github.com/ash-project/ash/compare/v3.23.0...v3.23.1) (2026-04-01)
 
 
