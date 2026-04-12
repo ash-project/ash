@@ -277,6 +277,12 @@ defmodule Ash.Resource.Dsl do
         source_attribute :text
         destination_attribute :word_text
       end
+      """,
+      """
+      # Through relationship - traverse a path of existing relationships
+      has_many :linked_posts, Post do
+        through [:post_links, :destination]
+      end
       """
     ],
     target: Ash.Resource.Relationships.HasMany,

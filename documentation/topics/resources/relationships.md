@@ -279,6 +279,95 @@ filtering and loading.
 
 See the docs for more: `d:Ash.Resource.Dsl.relationships.many_to_many`
 
+### Through Relationships
+
+The `through` option on `has_many` and `has_one` relationships allows you to
+traverse a path of existing relationships to reach a final destination resource.
+This is useful when you want to expose a shortcut to related data that is
+reachable by following a chain of relationships.
+
+> ### Not to be confused with `many_to_many` through {: .info}
+>
+> The `through` option on `many_to_many` specifies a **join resource** (a module).
+> The `through` option on `has_many`/`has_one` specifies a **path of relationship
+> names** (a list of atoms). They are different features that happen to share the
+> same option name.
+
+#### Example
+
+Consider a `Post` resource that links to other posts via a `PostLink` join
+resource. You can define the intermediate relationships and then define a
+through relationship that traverses them:
+
+```elixir
+defmodule MyApp.Post do
+  use Ash.Resource, ...
+
+  relationships do
+    # The intermediate relationship to the join resource
+    has_many :post_links, MyApp.PostLink do
+      destination_attribute :source_id
+    end
+
+    # A through relationship that follows post_links -> destination
+    has_many :linked_posts, MyApp.Post do
+      through [:post_links, :destination]
+    end
+  end
+end
+
+defmodule MyApp.PostLink do
+  use Ash.Resource, ...
+
+  relationships do
+    belongs_to :source, MyApp.Post
+    belongs_to :destination, MyApp.Post
+  end
+end
+```
+
+Now you can load linked posts directly:
+
+```elixir
+post = Ash.load!(post, :linked_posts)
+# post.linked_posts => [%Post{...}, %Post{...}]
+```
+
+#### `has_one` with through
+
+You can also use `through` with `has_one` to get just the first record reachable
+by following the path:
+
+```elixir
+has_one :first_linked_post, MyApp.Post do
+  through [:post_links, :destination]
+  sort title: :asc
+end
+```
+
+#### Key characteristics
+
+- **Read-only**: Through relationships cannot be used with `manage_relationship`.
+  They are strictly for loading, filtering, and aggregating. If you try to use
+  `manage_relationship` on a through relationship, you will get a compile-time
+  error.
+- **Authorization**: Policies on intermediate resources in the path are respected.
+  If the actor cannot read a record at any step in the path, it will be excluded
+  from the results.
+- **Sorting**: You can use `sort` and `default_sort` on through relationships.
+  The sort applies to the final result set.
+- **Filtering and aggregates**: Through relationships support filtering and
+  aggregates just like regular relationships.
+- **Cross-domain**: The relationships in the path can span different domains.
+  Each step uses the domain configured on its respective relationship.
+- **No depth limit**: Paths can be any length, e.g. `through: [:a, :b, :c, :d]`.
+  Intermediate relationships can themselves have through paths, which are expanded
+  recursively.
+- **Data layer support required**: The data layer must support the
+  `:through_relationship` capability. The built-in ETS and Mnesia data layers
+  support it. If you are using `ash_postgres`, make sure you have a version that
+  includes through relationship support.
+
 ## Loading related data
 
 There are two ways to load relationships:

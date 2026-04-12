@@ -534,6 +534,14 @@ end
 
 ```
 
+```
+# Through relationship - traverse a path of existing relationships
+has_many :linked_posts, Post do
+  through [:post_links, :destination]
+end
+
+```
+
 
 
 ### Arguments
