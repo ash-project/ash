@@ -145,6 +145,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, {:atomic, :update}), do: true
   def can?(_, {:atomic, :upsert}), do: true
   def can?(_, {:atomic, :create}), do: true
+  def can?(_, :through_relationship), do: true
 
   def can?(_, _), do: false
 
