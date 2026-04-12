@@ -121,7 +121,9 @@ defmodule Ash.Test.Actions.ThroughTest do
         destination_attribute_on_join_resource :destination_id
       end
 
-      has_many :through_linked_posts, __MODULE__, through: [:post_links, :destination]
+      has_many :through_linked_posts, __MODULE__,
+        through: [:post_links, :destination],
+        public?: true
     end
   end
 
@@ -218,6 +220,62 @@ defmodule Ash.Test.Actions.ThroughTest do
                    fn ->
                      Ash.load!(post, :source_posts)
                    end
+    end
+
+    test "filtering on a through relationship respects policies on the intermediate resource" do
+      source =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "source"})
+        |> Ash.create!()
+
+      visible_dest =
+        Post |> Ash.Changeset.for_create(:create, %{title: "visible_target"}) |> Ash.create!()
+
+      hidden_dest =
+        Post |> Ash.Changeset.for_create(:create, %{title: "hidden_target"}) |> Ash.create!()
+
+      PostLink
+      |> Ash.Changeset.for_create(:create, %{
+        source_id: source.id,
+        destination_id: visible_dest.id,
+        visible: true
+      })
+      |> Ash.create!()
+
+      PostLink
+      |> Ash.Changeset.for_create(:create, %{
+        source_id: source.id,
+        destination_id: hidden_dest.id,
+        visible: false
+      })
+      |> Ash.create!()
+
+      # Without authorization, both through links are visible in filter
+      result =
+        Post
+        |> Ash.Query.filter_input(through_linked_posts: [title: [eq: "hidden_target"]])
+        |> Ash.read!(authorize?: false)
+
+      assert length(result) == 1
+      assert hd(result).id == source.id
+
+      # With authorization, the invisible PostLink is filtered out,
+      # so we can't reach hidden_target through it
+      result =
+        Post
+        |> Ash.Query.filter_input(through_linked_posts: [title: [eq: "hidden_target"]])
+        |> Ash.read!(authorize?: true, actor: %{})
+
+      assert result == []
+
+      # With authorization, visible_target is still reachable
+      result =
+        Post
+        |> Ash.Query.filter_input(through_linked_posts: [title: [eq: "visible_target"]])
+        |> Ash.read!(authorize?: true, actor: %{})
+
+      assert length(result) == 1
+      assert hd(result).id == source.id
     end
 
     test "loading a through relationship respects policies on the intermediate resource" do

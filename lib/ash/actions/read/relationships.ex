@@ -363,7 +363,6 @@ defmodule Ash.Actions.Read.Relationships do
                     current_resource
                     |> Ash.Query.new()
                     |> Ash.Query.set_tenant(source_query.tenant)
-                    |> Ash.Query.do_filter(relationship.filter)
                     |> Ash.Query.set_context(%{
                       accessing_from: %{
                         source: current_resource,

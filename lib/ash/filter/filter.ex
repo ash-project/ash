@@ -3470,9 +3470,17 @@ defmodule Ash.Filter do
 
   defp add_expression_part_relationship(rel, nested_statement, context, expression) do
     context =
-      context
-      |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
-      |> Map.put(:resource, rel.destination)
+      case Map.get(rel, :through) do
+        through when is_list(through) ->
+          context
+          |> Map.update!(:relationship_path, fn path -> path ++ through end)
+          |> Map.put(:resource, rel.destination)
+
+        _ ->
+          context
+          |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
+          |> Map.put(:resource, rel.destination)
+      end
 
     if is_list(nested_statement) || is_map(nested_statement) do
       case parse_expression(nested_statement, context) do
