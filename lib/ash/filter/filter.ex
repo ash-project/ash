@@ -4611,7 +4611,18 @@ defmodule Ash.Filter do
         %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists,
         context
       ) do
-    new_resource = Ash.Resource.Info.related(context[:resource], at_path ++ path)
+    expanded_at_path = expand_through_path_names(context[:resource], at_path)
+
+    at_path_resource =
+      if expanded_at_path == [] do
+        context[:resource]
+      else
+        Ash.Resource.Info.related(context[:resource], expanded_at_path)
+      end
+
+    expanded_path = expand_through_path_names(at_path_resource, path)
+
+    new_resource = Ash.Resource.Info.related(context[:resource], expanded_at_path ++ expanded_path)
 
     if new_resource do
       context = %{
@@ -4626,14 +4637,14 @@ defmodule Ash.Filter do
 
       case do_hydrate_refs(expr, context) do
         {:ok, expr} ->
-          {:ok, %{exists | expr: expr}}
+          {:ok, %{exists | expr: expr, at_path: expanded_at_path, path: expanded_path}}
 
         other ->
           other
       end
     else
       {:error,
-       "No related resource at path #{inspect(at_path ++ path)} for #{inspect(context[:resource])}"}
+       "No related resource at path #{inspect(expanded_at_path ++ expanded_path)} for #{inspect(context[:resource])}"}
     end
   end
 
@@ -5211,6 +5222,12 @@ defmodule Ash.Filter do
       _ ->
         expand_through_path(relationship.destination, rest, [relationship | acc])
     end
+  end
+
+  defp expand_through_path_names(resource, path) do
+    resource
+    |> expand_through_path(path)
+    |> Enum.map(& &1.name)
   end
 
   defp last_relationship(resource, list) do

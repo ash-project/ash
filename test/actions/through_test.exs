@@ -278,6 +278,43 @@ defmodule Ash.Test.Actions.ThroughTest do
       assert hd(result).id == source.id
     end
 
+    test "exists filter works with a through relationship" do
+      require Ash.Query
+
+      source =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "source"})
+        |> Ash.create!()
+
+      dest =
+        Post |> Ash.Changeset.for_create(:create, %{title: "target"}) |> Ash.create!()
+
+      PostLink
+      |> Ash.Changeset.for_create(:create, %{
+        source_id: source.id,
+        destination_id: dest.id,
+        visible: true
+      })
+      |> Ash.create!()
+
+      # exists on a through relationship should expand the path
+      result =
+        Post
+        |> Ash.Query.filter(exists(through_linked_posts, title == "target"))
+        |> Ash.read!(authorize?: false)
+
+      assert length(result) == 1
+      assert hd(result).id == source.id
+
+      # Should return empty when no match
+      result =
+        Post
+        |> Ash.Query.filter(exists(through_linked_posts, title == "nonexistent"))
+        |> Ash.read!(authorize?: false)
+
+      assert result == []
+    end
+
     test "loading a through relationship respects policies on the intermediate resource" do
       source =
         Post
