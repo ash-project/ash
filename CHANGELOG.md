@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.24.2](https://github.com/ash-project/ash/compare/v3.24.1...v3.24.2) (2026-04-13)
+
+
+
+
+### Bug Fixes:
+
+* expand the paths in `exists` filters by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.24.1](https://github.com/ash-project/ash/compare/v3.24.0...v3.24.1) (2026-04-12)
 
 
