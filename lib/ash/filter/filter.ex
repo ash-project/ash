@@ -4622,7 +4622,8 @@ defmodule Ash.Filter do
 
     expanded_path = expand_through_path_names(at_path_resource, path)
 
-    new_resource = Ash.Resource.Info.related(context[:resource], expanded_at_path ++ expanded_path)
+    new_resource =
+      Ash.Resource.Info.related(context[:resource], expanded_at_path ++ expanded_path)
 
     if new_resource do
       context = %{
