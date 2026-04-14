@@ -244,9 +244,12 @@ if Code.ensure_loaded?(Plug.Conn) do
     @spec update_context(Conn.t(), (nil | map() -> nil | map())) ::
             Conn.t()
     def update_context(conn, callback) do
-      get_context(conn)
-      |> callback.()
-      |> set_context()
+      new_context =
+        conn
+        |> get_context()
+        |> callback.()
+
+      set_context(conn, new_context)
     end
   end
 else
