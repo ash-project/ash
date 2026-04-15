@@ -1966,7 +1966,7 @@ defmodule Ash.Policy.Authorizer do
                  {check.check_module, check.check_opts}
                ) do
             {:ok, false, updated_auth} ->
-              {:cont, {:forbidden, updated_auth}}
+              {:halt, {:forbidden, updated_auth}}
 
             {:ok, _, updated_auth} ->
               {:cont, {status, updated_auth}}

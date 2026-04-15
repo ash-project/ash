@@ -78,6 +78,28 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  defmodule ResourceWithForbidUnlessAndAuthorizeIf do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      authorizers: [Ash.Policy.Authorizer]
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:create, :read]
+    end
+
+    policies do
+      policy action_type(:read) do
+        access_type :strict
+        forbid_unless actor_attribute_equals(:role, :admin)
+        authorize_if actor_attribute_equals(:has_read_permission, true)
+      end
+    end
+  end
+
   defmodule ResourceWithAnImpossibleCreatePolicy do
     use Ash.Resource,
       domain: Ash.Test.Domain,
@@ -396,6 +418,20 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert message =~ "Actor: %{id: \"#{actor_id}\"}"
     assert message =~ "authorize if: is old enough to drink | age > 21 | ? | 🔎"
     assert message =~ "authorize if: id == \"#{actor_id}\" | ? | 🔎"
+  end
+
+  test "Ash.can? returns false when forbid_unless denies and authorize_if would pass" do
+    # Actor is NOT admin but DOES have read permission.
+    # forbid_unless :role == :admin should deny before authorize_if is considered.
+    actor = %{role: :viewer, has_read_permission: true}
+
+    refute Ash.can?({ResourceWithForbidUnlessAndAuthorizeIf, :read}, actor)
+  end
+
+  test "Ash.can? returns true when both forbid_unless and authorize_if pass" do
+    actor = %{role: :admin, has_read_permission: true}
+
+    assert Ash.can?({ResourceWithForbidUnlessAndAuthorizeIf, :read}, actor)
   end
 
   test "strict read policies do not result in a filter" do
