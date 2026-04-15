@@ -1357,9 +1357,23 @@ defmodule Ash.Actions.Read do
         end)
       end)
 
+    # Ensure loadable attributes are included in load_through for cleanup,
+    # even if they weren't explicitly in the query's load_through.
+    # This matches what load_through_attributes does dynamically.
+    attribute_load_through =
+      resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.filter(fn %{name: name, type: type, constraints: constraints} ->
+        Ash.Type.can_load?(type, constraints) && (is_nil(query.select) || name in query.select)
+      end)
+      |> Enum.map(& &1.name)
+      |> Enum.reduce(query.load_through[:attribute] || %{}, fn name, acc ->
+        Map.put_new(acc, name, [])
+      end)
+
     records =
       Enum.reduce(
-        query.load_through[:attribute] || %{},
+        attribute_load_through,
         records,
         fn {attr_name, further_load}, records ->
           attribute = Ash.Resource.Info.attribute(resource, attr_name)
