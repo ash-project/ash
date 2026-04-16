@@ -235,6 +235,46 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  defmodule ActionOverrides do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+
+      create :create do
+        primary? true
+        allow_nil_input [:required_attr]
+        require_attributes [:defaulted_attr]
+      end
+
+      defaults [:read, :destroy, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :required_attr, :string do
+        public?(true)
+        allow_nil? false
+      end
+
+      attribute :defaulted_attr, :string do
+        public?(true)
+        default "default value"
+      end
+
+      attribute :regular_required, :string do
+        public?(true)
+        allow_nil? false
+      end
+    end
+  end
+
   defmodule Generator do
     use Ash.Generator
 
@@ -678,6 +718,124 @@ defmodule Ash.Test.GeneratorTest do
       assert %Author{} =
                Ash.Generator.seed_generator(%Author{}, overrides: @meta_generator)
                |> Ash.Generator.generate()
+    end
+  end
+
+  describe "seed_generator generate_rest?" do
+    test "default behavior still generates all attributes" do
+      result =
+        Ash.Generator.seed_generator({Author, %{meta: %{}}})
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+    end
+
+    test "generate_rest?: true generates all attributes" do
+      result =
+        Ash.Generator.seed_generator({Author, %{meta: %{}}}, generate_rest?: true)
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+    end
+
+    test "generate_rest?: false only generates listed attributes" do
+      result =
+        Ash.Generator.seed_generator(
+          {Author, %{meta: %{key: "value"}}},
+          generate_rest?: false
+        )
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+      assert result.meta == %{key: "value"}
+      assert result.metadata == nil
+    end
+
+    test "generate_rest?: false applies resource defaults" do
+      result =
+        Ash.Generator.seed_generator(
+          {Author, %{meta: %{}}},
+          generate_rest?: false
+        )
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+      assert result.name == "Fred"
+    end
+
+    test "generate_rest?: false raises for missing required attributes" do
+      assert_raise ArgumentError,
+                   ~r/Attribute :meta .* is required/,
+                   fn ->
+                     Ash.Generator.seed_generator(
+                       {Author, %{}},
+                       generate_rest?: false
+                     )
+                     |> Ash.Generator.generate()
+                   end
+    end
+
+    test "generate_rest?: false works with overrides" do
+      result =
+        Ash.Generator.seed_generator(
+          {Author, %{meta: %{}}},
+          generate_rest?: false,
+          overrides: %{name: "Custom Name"}
+        )
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+      assert result.name == "Custom Name"
+    end
+
+    test "generate_rest?: false works with uses" do
+      result =
+        Ash.Generator.seed_generator(
+          fn uses -> {Author, %{meta: %{}, name: uses.name}} end,
+          generate_rest?: false,
+          uses: %{name: StreamData.constant("Generated Name")}
+        )
+        |> Ash.Generator.generate()
+
+      assert %Author{} = result
+      assert result.name == "Generated Name"
+      assert result.metadata == nil
+    end
+
+    test "generate_rest?: false respects primary action's allow_nil_input" do
+      result =
+        Ash.Generator.seed_generator(
+          {ActionOverrides, %{defaulted_attr: "x", regular_required: "y"}},
+          generate_rest?: false
+        )
+        |> Ash.Generator.generate()
+
+      assert %ActionOverrides{} = result
+      assert result.required_attr == nil
+    end
+
+    test "generate_rest?: false respects primary action's require_attributes" do
+      assert_raise ArgumentError,
+                   ~r/Attribute :defaulted_attr .* is required/,
+                   fn ->
+                     Ash.Generator.seed_generator(
+                       {ActionOverrides, %{regular_required: "y"}},
+                       generate_rest?: false
+                     )
+                     |> Ash.Generator.generate()
+                   end
+    end
+
+    test "generate_rest?: false still raises for resource-level required attrs not in overrides" do
+      assert_raise ArgumentError,
+                   ~r/Attribute :regular_required .* is required/,
+                   fn ->
+                     Ash.Generator.seed_generator(
+                       {ActionOverrides, %{defaulted_attr: "x"}},
+                       generate_rest?: false
+                     )
+                     |> Ash.Generator.generate()
+                   end
     end
   end
 
