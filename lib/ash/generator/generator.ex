@@ -453,14 +453,7 @@ defmodule Ash.Generator do
           {resource, attributes} ->
             merged = Map.merge(attributes, Map.new(opts[:overrides] || %{}))
 
-            if opts[:generate_rest?] == false do
-              validate_required_attributes(resource, merged, :create)
-
-              merged
-              |> to_generators()
-              |> Map.put(:__will_be_struct__, resource)
-              |> StreamData.fixed_map()
-            else
+            if Keyword.get(opts, :generate_rest?, true) do
               resource
               |> Ash.Resource.Info.attributes()
               |> Enum.reject(&(!&1.writable? && &1.generated?))
@@ -472,6 +465,13 @@ defmodule Ash.Generator do
                 :create,
                 []
               )
+            else
+              validate_required_attributes(resource, merged, :create)
+
+              merged
+              |> to_generators()
+              |> Map.put(:__will_be_struct__, resource)
+              |> StreamData.fixed_map()
             end
         end
       end)
@@ -515,10 +515,7 @@ defmodule Ash.Generator do
         {_resource, attributes} ->
           merged = Map.merge(attributes, Map.new(opts[:overrides] || %{}))
 
-          if opts[:generate_rest?] == false do
-            validate_required_attributes(resource, merged, :create)
-            merged |> to_generators() |> StreamData.fixed_map()
-          else
+          if Keyword.get(opts, :generate_rest?, true) do
             resource
             |> Ash.Resource.Info.attributes()
             |> Enum.reject(&(!&1.writable? && &1.generated?))
@@ -528,6 +525,9 @@ defmodule Ash.Generator do
               :create,
               []
             )
+          else
+            validate_required_attributes(resource, merged, :create)
+            merged |> to_generators() |> StreamData.fixed_map()
           end
       end
       |> StreamData.map(fn keys ->
