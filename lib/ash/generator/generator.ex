@@ -1142,6 +1142,10 @@ defmodule Ash.Generator do
   end
 
   defp validate_required_attributes(resource, generators, action_type) do
+    action = Ash.Resource.Info.primary_action(resource, action_type)
+    allow_nil_input = (action && Map.get(action, :allow_nil_input)) || []
+    require_attributes = (action && Map.get(action, :require_attributes)) || []
+
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(&(!&1.writable? && &1.generated?))
@@ -1149,10 +1153,19 @@ defmodule Ash.Generator do
       default =
         if action_type == :create, do: attribute.default, else: attribute.update_default
 
-      if !attribute.allow_nil? && is_nil(default) && !Map.has_key?(generators, attribute.name) do
+      required? =
+        cond do
+          attribute.name in allow_nil_input -> false
+          attribute.name in require_attributes -> true
+          attribute.allow_nil? -> false
+          !is_nil(default) -> false
+          true -> true
+        end
+
+      if required? && !Map.has_key?(generators, attribute.name) do
         raise ArgumentError,
               "Attribute #{inspect(attribute.name)} on #{inspect(resource)} is required " <>
-                "(allow_nil?: false) and has no default, but no generator was provided. " <>
+                "and has no default, but no generator was provided. " <>
                 "Add a generator for this attribute or set generate_rest?: true."
       end
     end)
