@@ -458,9 +458,7 @@ defmodule Ash.Generator do
               |> Ash.Resource.Info.attributes()
               |> Enum.reject(&(!&1.writable? && &1.generated?))
               |> generate_attributes(
-                to_generators(
-                  Map.put(merged, :__will_be_struct__, resource)
-                ),
+                to_generators(Map.put(merged, :__will_be_struct__, resource)),
                 false,
                 :create,
                 []
