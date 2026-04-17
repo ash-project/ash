@@ -8,6 +8,25 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.24.3](https://github.com/ash-project/ash/compare/v3.24.2...v3.24.3) (2026-04-17)
+
+
+
+
+### Bug Fixes:
+
+* fixes for embedded resources within unions (#2676) by Jesse Williams [(#2676)](https://github.com/ash-project/ash/pull/2676)
+
+* Policy Authorizer strict checking forbid_unless (#2678) by Mike Buhot [(#2678)](https://github.com/ash-project/ash/pull/2678)
+
+* compile error (#2675) by Jesse Williams [(#2675)](https://github.com/ash-project/ash/pull/2675)
+
+* do not ignore missing context on `Ash.PlugHelpers.update_context/2` (#2674) by Maciej Malecki [(#2674)](https://github.com/ash-project/ash/pull/2674)
+
+### Improvements:
+
+* add generate_rest? option to seed_generator (#2591) by robesris [(#2591)](https://github.com/ash-project/ash/pull/2591)
+
 ## [v3.24.2](https://github.com/ash-project/ash/compare/v3.24.1...v3.24.2) (2026-04-13)
 
 
