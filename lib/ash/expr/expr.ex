@@ -1728,7 +1728,10 @@ defmodule Ash.Expr do
       end)
       |> case do
         {:ok, fields} ->
-          {:ok, {Ash.Type.Map, [fields: Enum.reverse(fields)]}}
+          # Maps aren't ordered — sort by the atom's string name so the
+          # output is stable across compiles for codegen consumers.
+          stable_fields = Enum.sort_by(fields, fn {key, _} -> Atom.to_string(key) end)
+          {:ok, {Ash.Type.Map, [fields: stable_fields]}}
 
         :error ->
           :error
