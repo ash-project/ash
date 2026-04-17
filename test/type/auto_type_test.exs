@@ -212,6 +212,10 @@ defmodule Ash.Test.Type.AutoTypeTest do
       # map literal
       calculate :card, :auto, expr(%{title: title, score: score, active: active}), public?: true
 
+      # map literal with source keys deliberately not in alphabetic order —
+      # used to assert deterministic (alphabetic-by-atom-name) field ordering.
+      calculate :ordered_card, :auto, expr(%{z: title, a: score, m: active}), public?: true
+
       # struct literal (Ash.Type - embedded resource)
       calculate :address_struct_calc,
                 :auto,
@@ -369,6 +373,16 @@ defmodule Ash.Test.Type.AutoTypeTest do
       assert Keyword.get(fields, :title)[:type] == Ash.Type.String
       assert Keyword.get(fields, :score)[:type] == Ash.Type.Integer
       assert Keyword.get(fields, :active)[:type] == Ash.Type.Boolean
+    end
+
+    test "map literal produces deterministic (alphabetic) field order" do
+      # `:ordered_card` has source keys z, a, m — the test guards against
+      # relying on Erlang map iteration order for small flatmaps, which is
+      # driven by internal atom term ordering and varies between BEAM loads.
+      calc = Ash.Resource.Info.calculation(Post, :ordered_card)
+      fields = calc.constraints[:fields]
+
+      assert Keyword.keys(fields) == [:a, :m, :z]
     end
 
     test "Ash.Type struct literal resolves to the type directly" do
