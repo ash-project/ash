@@ -63,7 +63,7 @@ defmodule Ash.Can do
 
   You should prefer to use `Ash.can/3` over this module, directly.
 
-  Note: `is_maybe` is set to `true`, if not set.
+  Note: `maybe_is` is set to `:maybe`, if not set.
   """
   @spec can(subject(), Ash.Domain.t(), Ash.actor() | Ash.Scope.t(), Keyword.t()) ::
           {:ok, boolean() | :maybe}
