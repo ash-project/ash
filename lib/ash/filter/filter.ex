@@ -3886,7 +3886,7 @@ defmodule Ash.Filter do
              {:func, function_module} when not is_nil(function_module) <-
                {:func, get_function(name, context.resource, context.public?)},
              {:ok, function} <- Function.new(function_module, args) do
-          if Ash.Expr.expr?(function) && !match?(%{__predicate__?: _}, function) do
+          if Ash.Expr.expr?(function) and not is_struct(function, function_module) do
             hydrate_refs(function, context)
           else
             if can_filter_expr?(context, function) do

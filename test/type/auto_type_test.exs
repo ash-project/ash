@@ -686,6 +686,61 @@ defmodule Ash.Test.Type.AutoTypeTest do
     end
   end
 
+  # ── Regression: is_nil with non-ETS data layers ───────────────────────
+  #
+  # is_nil(attr) as a standalone expression in an :auto calculation used to
+  # crash with `key :arguments not found in: is_nil(attr)` because
+  # Function.IsNil.new/1 delegates to Operator.IsNil which produces an
+  # operator struct (left/right) instead of a function struct (arguments).
+  # When the data layer does NOT support {:filter_expr, _}, resolve_call
+  # tried to access .arguments on the operator, causing a KeyError.
+  # ETS masks this because it accepts all filter expressions.
+
+  defmodule MinimalDataLayer do
+    @moduledoc false
+    use Spark.Dsl.Extension, sections: []
+    @behaviour Ash.DataLayer
+
+    @impl true
+    def can?(_, :read), do: true
+    def can?(_, :nested_expressions), do: true
+    def can?(_, {:filter_expr, _}), do: false
+    def can?(_, _), do: false
+
+    @impl true
+    def resource_to_query(resource, _), do: %{resource: resource}
+
+    @impl true
+    def run_query(_, _), do: {:ok, []}
+  end
+
+  describe "is_nil with data layer that does not support filter_expr" do
+    test "auto type resolves to boolean" do
+      defmodule MinimalResource do
+        use Ash.Resource,
+          domain: Ash.Test.Domain,
+          data_layer: MinimalDataLayer
+
+        actions do
+          default_accept :*
+          defaults [:read]
+        end
+
+        attributes do
+          uuid_primary_key :id
+          attribute :score, :integer, public?: true
+        end
+
+        calculations do
+          calculate :is_score_nil, :auto, expr(is_nil(score)), public?: true
+        end
+      end
+
+      assert Ash.Resource.Info.calculation(MinimalResource, :is_score_nil).type ==
+               Ash.Type.Boolean
+    end
+  end
+
   # ── Error tests ───────────────────────────────────────────────────────
 
   describe "errors" do
