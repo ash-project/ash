@@ -914,7 +914,10 @@ defmodule Ash.Type do
   """
   @spec storage_type(t()) :: Ecto.Type.t()
   def storage_type(type, constraints \\ [])
-  def storage_type({:array, type}, constraints), do: {:array, storage_type(type, constraints)}
+
+  def storage_type({:array, type}, constraints),
+    do: {:array, storage_type(type, item_constraints(constraints))}
+
   def storage_type(type, constraints), do: type.storage_type(constraints)
 
   @doc """

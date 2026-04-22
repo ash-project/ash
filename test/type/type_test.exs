@@ -8,6 +8,17 @@ defmodule Ash.Test.Type.TypeTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  defmodule StorageByConstraint do
+    @moduledoc false
+    use Ash.Type
+
+    def storage_type(constraints), do: if(constraints[:as_binary], do: :binary, else: :string)
+
+    def cast_input(value, _), do: {:ok, value}
+    def cast_stored(value, _), do: {:ok, value}
+    def dump_to_native(value, _), do: {:ok, value}
+  end
+
   defmodule PostTitle do
     @moduledoc false
     use Ash.Type
@@ -89,6 +100,14 @@ defmodule Ash.Test.Type.TypeTest do
       |> Ash.Changeset.for_create(:create, %{title: "foobarbazbuzbiz", post_type: :text})
       |> Ash.create!()
     end)
+  end
+
+  test "storage_type/2 forwards item constraints to inner type for array types" do
+    assert {:array, :binary} =
+             Ash.Type.storage_type({:array, StorageByConstraint}, items: [as_binary: true])
+
+    assert {:array, :string} =
+             Ash.Type.storage_type({:array, StorageByConstraint}, [])
   end
 
   test "returns error for invalid keys" do
