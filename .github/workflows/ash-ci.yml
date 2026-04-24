@@ -900,7 +900,7 @@ jobs:
           files: |
             ${{ steps.build-crate.outputs.file-path }}
         if: startsWith(github.ref, 'refs/tags/v')
-  release:
+  hex_publish:
     permissions:
       contents: write
     needs:
@@ -920,20 +920,54 @@ jobs:
       - build-dev
     if: ${{ inputs.release && always() && !failure() && !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
-    name: Release
+    name: Hex Publish
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: team-alembic/staple-actions/actions/mix-task@59199173e18eee6748b65d01626ef82d51c6e963 # main
         if: ${{inputs.rustler-precompiled-module}}
         with:
           task: rustler_precompiled.download ${{inputs.rustler-precompiled-module}} --only-local --all --print
-      - name: Extract release notes from CHANGELOG.md
-        id: extract-notes
+      - uses: team-alembic/staple-actions/actions/mix-hex-publish@59199173e18eee6748b65d01626ef82d51c6e963 # main
+        with:
+          mix-env: dev
+          hex-api-key: ${{secrets.HEX_API_KEY}}
+  github_release:
+    permissions:
+      contents: write
+    needs:
+      - hex_publish
+    if: ${{ inputs.release && always() && !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    name: GitHub Release
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: team-alembic/staple-actions/actions/install-elixir@59199173e18eee6748b65d01626ef82d51c6e963 # main
+      - name: Check if version exists on Hex
+        id: hex-check
+        env:
+          PACKAGE: ${{ github.event.repository.name }}
+          HEX_HOME: ${{ runner.temp }}/.hex
+          MIX_HOME: ${{ runner.temp }}/.mix
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           VERSION=${TAG_NAME#v}
 
-          # Extract the section for this version from CHANGELOG.md
+          mix local.hex --if-missing --force
+          echo "Checking hex.pm for $PACKAGE@$VERSION"
+          if mix hex.info "$PACKAGE" "$VERSION" > /dev/null 2>&1; then
+            echo "Version $VERSION is on hex — will create GitHub release"
+            echo "on_hex=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version $VERSION is NOT on hex — skipping GitHub release"
+            echo "on_hex=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Extract release notes from CHANGELOG.md
+        id: extract-notes
+        if: ${{ steps.hex-check.outputs.on_hex == 'true' }}
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+
           awk -v version="$VERSION" '
             /^## \[v?[0-9]/ {
               if (found) exit
@@ -948,7 +982,6 @@ jobs:
             }
           ' CHANGELOG.md > release_notes.md
 
-          # Check if notes were found
           if [ -s release_notes.md ]; then
             echo "has_notes=true" >> $GITHUB_OUTPUT
             echo "Release notes extracted for version $VERSION"
@@ -956,49 +989,15 @@ jobs:
             echo "has_notes=false" >> $GITHUB_OUTPUT
             echo "No release notes found for version $VERSION, will use auto-generated notes"
           fi
-      - name: Create draft prerelease with changelog notes
-        if: ${{ (contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-pre')) && steps.extract-notes.outputs.has_notes == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          gh release create \
-            --repo ${{ github.repository }} \
-            --title ${GITHUB_REF#refs/tags/} \
-            --prerelease \
-            --notes-file release_notes.md \
-            ${GITHUB_REF#refs/tags/}
-      - name: Create draft prerelease with generated notes
-        if: ${{ (contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-pre')) && steps.extract-notes.outputs.has_notes != 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          gh release create \
-            --repo ${{ github.repository }} \
-            --title ${GITHUB_REF#refs/tags/} \
-            --prerelease \
-            --generate-notes \
-            ${GITHUB_REF#refs/tags/}
-      - name: Create release with changelog notes
-        if: ${{ (!contains(github.ref, '-rc') && !contains(github.ref, '-beta') && !contains(github.ref, '-alpha') && !contains(github.ref, '-pre')) && steps.extract-notes.outputs.has_notes == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          gh release create \
-            --repo ${{ github.repository }} \
-            --title ${GITHUB_REF#refs/tags/} \
-            --notes-file release_notes.md \
-            ${GITHUB_REF#refs/tags/}
-      - name: Create release with generated notes
-        if: ${{ (!contains(github.ref, '-rc') && !contains(github.ref, '-beta') && !contains(github.ref, '-alpha') && !contains(github.ref, '-pre')) && steps.extract-notes.outputs.has_notes != 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          gh release create \
-            --repo ${{ github.repository }} \
-            --title ${GITHUB_REF#refs/tags/} \
-            --generate-notes \
-            ${GITHUB_REF#refs/tags/}
-      - uses: team-alembic/staple-actions/actions/mix-hex-publish@59199173e18eee6748b65d01626ef82d51c6e963 # main
+      - name: Create or update release with changelog notes
+        if: ${{ steps.hex-check.outputs.on_hex == 'true' && steps.extract-notes.outputs.has_notes == 'true' }}
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
         with:
-          mix-env: dev
-          hex-api-key: ${{secrets.HEX_API_KEY}}
+          body_path: release_notes.md
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-pre') }}
+      - name: Create or update release with generated notes
+        if: ${{ steps.hex-check.outputs.on_hex == 'true' && steps.extract-notes.outputs.has_notes != 'true' }}
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
+        with:
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-pre') }}
