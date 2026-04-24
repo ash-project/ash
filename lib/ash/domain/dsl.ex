@@ -190,7 +190,8 @@ defmodule Ash.Domain.Dsl do
   ]
 
   @transformers [
-    Ash.Domain.Transformers.SetInterfaceExcludeInputs
+    Ash.Domain.Transformers.SetInterfaceExcludeInputs,
+    Ash.Domain.Transformers.DedupResources
   ]
 
   @moduledoc false

@@ -141,4 +141,60 @@ defmodule Ash.Test.Resource.DomainTest do
              |> Ash.Changeset.for_create(:create)
              |> Ash.create!()
   end
+
+  describe "fragment-provided resources" do
+    defmodule FragmentResource do
+      use Ash.Resource,
+        domain: Ash.Test.Resource.DomainTest.FragmentDomain,
+        data_layer: Ash.DataLayer.Ets
+
+      actions do
+        action :first_action, :string do
+          run fn _input, _context -> {:ok, "first"} end
+        end
+
+        action :second_action, :string do
+          run fn _input, _context -> {:ok, "second"} end
+        end
+      end
+
+      attributes do
+        uuid_primary_key :id
+      end
+    end
+
+    defmodule FragmentDomainFragment do
+      use Spark.Dsl.Fragment, of: Ash.Domain
+
+      resources do
+        resource Ash.Test.Resource.DomainTest.FragmentResource do
+          define :second_action
+        end
+      end
+    end
+
+    defmodule FragmentDomain do
+      use Ash.Domain, fragments: [FragmentDomainFragment]
+
+      resources do
+        resource FragmentResource do
+          define :first_action
+        end
+      end
+    end
+
+    test "resources declared in both the domain and a fragment are deduplicated" do
+      assert Ash.Domain.Info.resources(FragmentDomain) == [FragmentResource]
+    end
+
+    test "code interfaces from both the domain and the fragment are preserved" do
+      definitions =
+        FragmentDomain
+        |> Ash.Domain.Info.resource_references()
+        |> Enum.find(&(&1.resource == FragmentResource))
+        |> Map.fetch!(:definitions)
+
+      assert Enum.map(definitions, & &1.name) |> Enum.sort() == [:first_action, :second_action]
+    end
+  end
 end
