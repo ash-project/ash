@@ -277,12 +277,6 @@ defmodule Ash.Resource.Dsl do
         source_attribute :text
         destination_attribute :word_text
       end
-      """,
-      """
-      # Through relationship - traverse a path of existing relationships
-      has_many :linked_posts, Post do
-        through [:post_links, :destination]
-      end
       """
     ],
     target: Ash.Resource.Relationships.HasMany,
@@ -517,29 +511,6 @@ defmodule Ash.Resource.Dsl do
     args: [:validation]
   }
 
-  @pipe_through %Spark.Dsl.Entity{
-    name: :pipe_through,
-    describe: """
-    References one or more pipelines to apply to this action.
-    Pipeline entities are prepended before the action's own changes/preparations.
-    """,
-    examples: [
-      """
-      pipe_through [:change_state]
-      """,
-      """
-      pipe_through [:change_state], where: attribute_equals(:role, :super_user)
-      """
-    ],
-    imports: [
-      Ash.Resource.Validation.Builtins,
-      Ash.Expr
-    ],
-    target: Ash.Resource.Actions.PipeThrough,
-    schema: Ash.Resource.Actions.PipeThrough.schema(),
-    args: [:names]
-  }
-
   @create %Spark.Dsl.Entity{
     name: :create,
     describe: """
@@ -566,8 +537,7 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate,
-        @pipe_through
+        @action_validate
       ],
       arguments: [
         @action_argument
@@ -634,8 +604,7 @@ defmodule Ash.Resource.Dsl do
               @validate.schema
               |> Keyword.delete(:always_atomic?)
               |> Keyword.delete(:on)
-        },
-        @pipe_through
+        }
       ]
     ],
     args: [:name, {:optional, :returns}]
@@ -684,8 +653,7 @@ defmodule Ash.Resource.Dsl do
               @validate.schema
               |> Keyword.delete(:always_atomic?)
               |> Keyword.delete(:on)
-        },
-        @pipe_through
+        }
       ],
       pagination: [
         @pagination
@@ -716,8 +684,7 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate,
-        @pipe_through
+        @action_validate
       ],
       metadata: [
         @metadata
@@ -762,8 +729,7 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate,
-        @pipe_through
+        @action_validate
       ],
       metadata: [
         @metadata
@@ -1168,69 +1134,6 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
-  @pipeline %Spark.Dsl.Entity{
-    name: :pipeline,
-    describe: """
-    Declares a reusable pipeline of changes, validations, and preparations
-    that can be referenced from multiple actions via `pipe_through`.
-    """,
-    examples: [
-      """
-      pipeline :change_state do
-        validate changing(:state)
-        change set_attribute(:score, 0)
-      end
-      """
-    ],
-    imports: [
-      Ash.Resource.Change.Builtins,
-      Ash.Resource.Validation.Builtins,
-      Ash.Resource.Preparation.Builtins,
-      Ash.Expr
-    ],
-    target: Ash.Resource.Pipeline,
-    schema: Ash.Resource.Pipeline.schema(),
-    entities: [
-      changes: [
-        @action_change
-      ],
-      validations: [
-        @action_validate
-      ],
-      preparations: [
-        @prepare
-      ]
-    ],
-    args: [:name]
-  }
-
-  @pipelines %Spark.Dsl.Section{
-    name: :pipelines,
-    describe: """
-    Declare reusable pipelines of changes, validations, and preparations
-    that can be referenced from multiple actions via `pipe_through`.
-    """,
-    imports: [
-      Ash.Resource.Change.Builtins,
-      Ash.Resource.Validation.Builtins,
-      Ash.Resource.Preparation.Builtins,
-      Ash.Expr
-    ],
-    examples: [
-      """
-      pipelines do
-        pipeline :change_state do
-          validate changing(:state)
-          change set_attribute(:score, 0)
-        end
-      end
-      """
-    ],
-    entities: [
-      @pipeline
-    ]
-  }
-
   @join_filter %Spark.Dsl.Entity{
     name: :join_filter,
     describe: """
@@ -1279,12 +1182,16 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     entities: [
+      filters: [@filter],
       join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path],
     schema:
-      Keyword.put(Keyword.delete(Ash.Resource.Aggregate.schema(), :sort), :uniq?,
+      Ash.Resource.Aggregate.schema()
+      |> Keyword.delete(:sort)
+      |> Keyword.delete(:filter)
+      |> Keyword.put(:uniq?,
         type: :boolean,
         doc: "Whether or not to count unique values only",
         default: false
@@ -1312,12 +1219,15 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     entities: [
+      filters: [@filter],
       join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
     schema:
-      Keyword.put(Ash.Resource.Aggregate.schema(), :include_nil?,
+      Ash.Resource.Aggregate.schema()
+      |> Keyword.delete(:filter)
+      |> Keyword.put(:include_nil?,
         type: :boolean,
         default: false,
         doc:
@@ -1344,11 +1254,12 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     entities: [
+      filters: [@filter],
       join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
-    schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort),
+    schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort) |> Keyword.delete(:filter),
     transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :max]
   }
@@ -1370,11 +1281,12 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     entities: [
+      filters: [@filter],
       join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
-    schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort),
+    schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort) |> Keyword.delete(:filter),
     transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :min]
   }
@@ -1396,11 +1308,12 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     entities: [
+      filters: [@filter],
       join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
-    schema: Keyword.delete(Ash.Resource.Aggregate.schema(), :sort),
+    schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort) |> Keyword.delete(:filter),
     transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :sum]
   }
@@ -1422,11 +1335,12 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     entities: [
+      filters: [@filter],
       join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
-    schema: Keyword.delete(Ash.Resource.Aggregate.schema(), :sort),
+    schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort) |> Keyword.delete(:filter),
     transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :avg]
   }
@@ -1446,11 +1360,13 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     entities: [
+      filters: [@filter],
       join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path],
-    schema: Keyword.drop(Ash.Resource.Aggregate.schema(), [:sort, :field]),
+    schema:
+      Ash.Resource.Aggregate.schema() |> Keyword.drop([:sort, :field]) |> Keyword.delete(:filter),
     transform: {Ash.Resource.Aggregate, :transform, []},
     auto_set_fields: [kind: :exists]
   }
@@ -1476,10 +1392,12 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :type],
     entities: [
+      filters: [@filter],
       join_filters: [@join_filter]
     ],
     schema:
       Ash.Resource.Aggregate.schema()
+      |> Keyword.delete(:filter)
       |> Keyword.put(:type,
         type: :module,
         required: true,
@@ -1512,12 +1430,14 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     entities: [
+      filters: [@filter],
       join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
     schema:
       Ash.Resource.Aggregate.schema()
+      |> Keyword.delete(:filter)
       |> Keyword.put(:uniq?,
         type: :boolean,
         doc: "Whether or not to count unique values only",
@@ -1728,14 +1648,12 @@ defmodule Ash.Resource.Dsl do
     @changes,
     @preparations,
     @validations,
-    @pipelines,
     @aggregates,
     @calculations,
     @multitenancy
   ]
 
   @transformers [
-    Ash.Resource.Transformers.ResolvePipelines,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,
@@ -1756,7 +1674,6 @@ defmodule Ash.Resource.Dsl do
 
   @persisters [
     Ash.Resource.Transformers.CacheRelationships,
-    Ash.Resource.Transformers.ResolveAutoTypes,
     Ash.Resource.Transformers.CacheCalculations,
     Ash.Resource.Transformers.AttributesByName,
     Ash.Resource.Transformers.ValidationsAndChangesForType,
@@ -1774,7 +1691,6 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.VerifyFilterExpressions,
     Ash.Resource.Verifiers.ValidateAggregateField,
     Ash.Resource.Verifiers.ValidateRelationshipAttributes,
-    Ash.Resource.Verifiers.ValidateThroughRelationships,
     Ash.Resource.Verifiers.NoReservedFieldNames,
     Ash.Resource.Verifiers.ValidateAccept,
     Ash.Resource.Verifiers.ValidateActionTypesSupported,

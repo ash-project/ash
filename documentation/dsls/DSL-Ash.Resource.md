@@ -442,12 +442,10 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`manual`](#relationships-has_one-manual){: #relationships-has_one-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. Setting this will automatically set `no_attributes?` to `true`. |
+| [`manual`](#relationships-has_one-manual){: #relationships-has_one-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. |
 | [`no_attributes?`](#relationships-has_one-no_attributes?){: #relationships-has_one-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
-| [`through`](#relationships-has_one-through){: #relationships-has_one-through } | `atom \| list(atom)` |  | A list of relationship names to traverse. The result will be the first record reachable by following the relationships in order. |
 | [`allow_nil?`](#relationships-has_one-allow_nil?){: #relationships-has_one-allow_nil? } | `boolean` | `true` | Marks the relationship as required. Has no effect on validations, but can inform extensions that there will always be a related entity. |
 | [`from_many?`](#relationships-has_one-from_many?){: #relationships-has_one-from_many? } | `boolean` | `false` | Signal that this relationship is actually a `has_many` where the first record is given via the `sort`. This will allow data layers to properly deduplicate when necessary. |
-| [`offset`](#relationships-has_one-offset){: #relationships-has_one-offset } | `non_neg_integer` |  | An offset to skip entries when loading the relationship. Implies `from_many?: true`. |
 | [`description`](#relationships-has_one-description){: #relationships-has_one-description } | `String.t` |  | An optional description for the relationship |
 | [`destination_attribute`](#relationships-has_one-destination_attribute){: #relationships-has_one-destination_attribute } | `atom` |  | The attribute on the related resource that should match the `source_attribute` configured on this resource. |
 | [`validate_destination_attribute?`](#relationships-has_one-validate_destination_attribute?){: #relationships-has_one-validate_destination_attribute? } | `boolean` | `true` | Whether or not to validate that the destination field exists on the destination resource |
@@ -534,14 +532,6 @@ end
 
 ```
 
-```
-# Through relationship - traverse a path of existing relationships
-has_many :linked_posts, Post do
-  through [:post_links, :destination]
-end
-
-```
-
 
 
 ### Arguments
@@ -554,11 +544,9 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`manual`](#relationships-has_many-manual){: #relationships-has_many-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. Setting this will automatically set `no_attributes?` to `true`. |
+| [`manual`](#relationships-has_many-manual){: #relationships-has_many-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. |
 | [`no_attributes?`](#relationships-has_many-no_attributes?){: #relationships-has_many-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
-| [`through`](#relationships-has_many-through){: #relationships-has_many-through } | `atom \| list(atom)` |  | A list of relationship names to traverse. The result will be all records reachable by following the relationships in order. For example, `through: [:classrooms, :teachers]` would load all teachers from all classrooms. |
 | [`limit`](#relationships-has_many-limit){: #relationships-has_many-limit } | `integer` |  | An integer to limit entries from loaded relationship. |
-| [`offset`](#relationships-has_many-offset){: #relationships-has_many-offset } | `non_neg_integer` |  | An offset to skip entries when loading the relationship. |
 | [`description`](#relationships-has_many-description){: #relationships-has_many-description } | `String.t` |  | An optional description for the relationship |
 | [`destination_attribute`](#relationships-has_many-destination_attribute){: #relationships-has_many-destination_attribute } | `atom` |  | The attribute on the related resource that should match the `source_attribute` configured on this resource. |
 | [`validate_destination_attribute?`](#relationships-has_many-validate_destination_attribute?){: #relationships-has_many-validate_destination_attribute? } | `boolean` | `true` | Whether or not to validate that the destination field exists on the destination resource |
@@ -774,7 +762,6 @@ end
 | [`allow_nil?`](#relationships-belongs_to-allow_nil?){: #relationships-belongs_to-allow_nil? } | `boolean` | `true` | Whether this relationship must always be present, e.g: must be included on creation, and never removed (it may be modified). The generated attribute will not allow nil values. |
 | [`attribute_writable?`](#relationships-belongs_to-attribute_writable?){: #relationships-belongs_to-attribute_writable? } | `boolean` |  | Whether the generated attribute will be marked as writable. If not set, it will default to the relationship's `writable?` setting. |
 | [`attribute_public?`](#relationships-belongs_to-attribute_public?){: #relationships-belongs_to-attribute_public? } | `boolean` |  | Whether or not the generated attribute will be public. If not set, it will default to the relationship's `public?` setting. |
-| [`attribute_always_select?`](#relationships-belongs_to-attribute_always_select?){: #relationships-belongs_to-attribute_always_select? } | `boolean` | `false` | Whether or not the generated attribute will be always selected when reading from the database. |
 | [`define_attribute?`](#relationships-belongs_to-define_attribute?){: #relationships-belongs_to-define_attribute? } | `boolean` | `true` | If set to `false` an attribute is not created on the resource for this relationship, and one must be manually added in `attributes`, invalidating many other options. |
 | [`attribute_type`](#relationships-belongs_to-attribute_type){: #relationships-belongs_to-attribute_type } | `any` | `:uuid` | The type of the generated created attribute. See `Ash.Type` for more. |
 | [`description`](#relationships-belongs_to-description){: #relationships-belongs_to-description } | `String.t` |  | An optional description for the relationship |
@@ -856,31 +843,26 @@ multiple actions of each type in a large application.
    * argument
    * prepare
    * validate
-   * pipe_through
  * [create](#actions-create)
    * change
    * validate
-   * pipe_through
    * argument
    * metadata
  * [read](#actions-read)
    * argument
    * prepare
    * validate
-   * pipe_through
    * pagination
    * metadata
    * filter
  * [update](#actions-update)
    * change
    * validate
-   * pipe_through
    * metadata
    * argument
  * [destroy](#actions-destroy)
    * change
    * validate
-   * pipe_through
    * metadata
    * argument
 
@@ -943,7 +925,6 @@ For calling this action, see the `Ash.Domain` documentation.
  * [argument](#actions-action-argument)
  * [prepare](#actions-action-prepare)
  * [validate](#actions-action-validate)
- * [pipe_through](#actions-action-pipe_through)
 
 
 ### Examples
@@ -979,7 +960,6 @@ end
 | [`transaction?`](#actions-action-transaction?){: #actions-action-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-action-touches_resources){: #actions-action-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-action-skip_unknown_inputs){: #actions-action-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-action-public?){: #actions-action-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 
 
 ### actions.action.argument
@@ -1053,7 +1033,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#actions-action-prepare-on){: #actions-action-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`on`](#actions-action-prepare-on){: #actions-action-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#actions-action-prepare-where){: #actions-action-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#actions-action-prepare-only_when_valid?){: #actions-action-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
@@ -1112,50 +1092,6 @@ validate present([:first_name, :last_name], at_least: 1)
 
 Target: `Ash.Resource.Validation`
 
-### actions.action.pipe_through
-```elixir
-pipe_through names
-```
-
-
-References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
-
-
-
-
-### Examples
-```
-pipe_through [:change_state]
-
-```
-
-```
-pipe_through [:change_state], where: attribute_equals(:role, :super_user)
-
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#actions-action-pipe_through-names){: #actions-action-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`where`](#actions-action-pipe_through-where){: #actions-action-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Actions.PipeThrough`
-
 
 
 
@@ -1175,7 +1111,6 @@ Declares a `create` action. For calling this action, see the `Ash.Domain` docume
 ### Nested DSLs
  * [change](#actions-create-change)
  * [validate](#actions-create-validate)
- * [pipe_through](#actions-create-pipe_through)
  * [argument](#actions-create-argument)
  * [metadata](#actions-create-metadata)
 
@@ -1211,9 +1146,8 @@ end
 | [`transaction?`](#actions-create-transaction?){: #actions-create-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-create-touches_resources){: #actions-create-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-create-skip_unknown_inputs){: #actions-create-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-create-public?){: #actions-create-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-create-accept){: #actions-create-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
-| [`action_select`](#actions-create-action_select){: #actions-create-action_select } | `list(atom)` |  | A list of attributes to select from the data layer result. Controls which attributes are present (vs %Ash.NotLoaded{}) on the record passed to after_action hooks, notifiers, and returned to the caller. Defaults to all attributes with select_by_default? true. Does not affect what's available to changes or validations. |
+| [`action_select`](#actions-create-action_select){: #actions-create-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes/notifiers, it defaults to the externally selected attributes. Keep in mind that action_select is applied *before* notifiers. |
 | [`require_attributes`](#actions-create-require_attributes){: #actions-create-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`allow_nil_input`](#actions-create-allow_nil_input){: #actions-create-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
 | [`delay_global_validations?`](#actions-create-delay_global_validations?){: #actions-create-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
@@ -1312,50 +1246,6 @@ validate changing(:email)
 ### Introspection
 
 Target: `Ash.Resource.Validation`
-
-### actions.create.pipe_through
-```elixir
-pipe_through names
-```
-
-
-References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
-
-
-
-
-### Examples
-```
-pipe_through [:change_state]
-
-```
-
-```
-pipe_through [:change_state], where: attribute_equals(:role, :super_user)
-
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#actions-create-pipe_through-names){: #actions-create-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`where`](#actions-create-pipe_through-where){: #actions-create-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Actions.PipeThrough`
 
 ### actions.create.argument
 ```elixir
@@ -1468,7 +1358,6 @@ Declares a `read` action. For calling this action, see the `Ash.Domain` document
  * [argument](#actions-read-argument)
  * [prepare](#actions-read-prepare)
  * [validate](#actions-read-validate)
- * [pipe_through](#actions-read-pipe_through)
  * [pagination](#actions-read-pagination)
  * [metadata](#actions-read-metadata)
  * [filter](#actions-read-filter)
@@ -1505,7 +1394,6 @@ end
 | [`transaction?`](#actions-read-transaction?){: #actions-read-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-read-touches_resources){: #actions-read-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-read-skip_unknown_inputs){: #actions-read-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-read-public?){: #actions-read-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 
 
 ### actions.read.argument
@@ -1579,7 +1467,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#actions-read-prepare-on){: #actions-read-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`on`](#actions-read-prepare-on){: #actions-read-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#actions-read-prepare-where){: #actions-read-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#actions-read-prepare-only_when_valid?){: #actions-read-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
@@ -1638,50 +1526,6 @@ validate present([:first_name, :last_name], at_least: 1)
 
 Target: `Ash.Resource.Validation`
 
-### actions.read.pipe_through
-```elixir
-pipe_through names
-```
-
-
-References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
-
-
-
-
-### Examples
-```
-pipe_through [:change_state]
-
-```
-
-```
-pipe_through [:change_state], where: attribute_equals(:role, :super_user)
-
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#actions-read-pipe_through-names){: #actions-read-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`where`](#actions-read-pipe_through-where){: #actions-read-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Actions.PipeThrough`
-
 ### actions.read.pagination
 
 
@@ -1704,7 +1548,6 @@ Adds pagination options to a resource
 | [`max_page_size`](#actions-read-pagination-max_page_size){: #actions-read-pagination-max_page_size } | `pos_integer` | `250` | The maximum amount of records that can be requested in a single page |
 | [`stable_sort`](#actions-read-pagination-stable_sort){: #actions-read-pagination-stable_sort } | `any` |  | A stable sort statement to add to a query (after any existing sorts). Only added if the sort does not already contain a stable sort (sorting on fields that uniquely identify a record). Defaults to the primary key. |
 | [`required?`](#actions-read-pagination-required?){: #actions-read-pagination-required? } | `boolean` | `true` | Whether or not pagination can be disabled (by passing `page: false` to `Ash.Api.read!/2`, or by having `required?: false, default_limit: nil` set). Only relevant if some pagination configuration is supplied. |
-| [`paginate_by_default?`](#actions-read-pagination-paginate_by_default?){: #actions-read-pagination-paginate_by_default? } | `boolean` | `false` | Whether or not to paginate by default when pagination is not required and no page parameters are provided. |
 
 
 
@@ -1815,7 +1658,6 @@ Declares a `update` action. For calling this action, see the `Ash.Domain` docume
 ### Nested DSLs
  * [change](#actions-update-change)
  * [validate](#actions-update-validate)
- * [pipe_through](#actions-update-pipe_through)
  * [metadata](#actions-update-metadata)
  * [argument](#actions-update-argument)
 
@@ -1846,9 +1688,8 @@ update :flag_for_review, primary?: true
 | [`transaction?`](#actions-update-transaction?){: #actions-update-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-update-touches_resources){: #actions-update-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-update-skip_unknown_inputs){: #actions-update-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-update-public?){: #actions-update-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-update-accept){: #actions-update-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
-| [`action_select`](#actions-update-action_select){: #actions-update-action_select } | `list(atom)` |  | A list of attributes to select from the data layer result. Controls which attributes are present (vs %Ash.NotLoaded{}) on the record passed to after_action hooks, notifiers, and returned to the caller. Defaults to all attributes with select_by_default? true. Does not affect what's available to changes or validations. |
+| [`action_select`](#actions-update-action_select){: #actions-update-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes/notifiers, it defaults to the externally selected attributes. Keep in mind that action_select is applied *before* notifiers. |
 | [`require_attributes`](#actions-update-require_attributes){: #actions-update-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`allow_nil_input`](#actions-update-allow_nil_input){: #actions-update-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
 | [`delay_global_validations?`](#actions-update-delay_global_validations?){: #actions-update-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
@@ -1947,50 +1788,6 @@ validate changing(:email)
 ### Introspection
 
 Target: `Ash.Resource.Validation`
-
-### actions.update.pipe_through
-```elixir
-pipe_through names
-```
-
-
-References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
-
-
-
-
-### Examples
-```
-pipe_through [:change_state]
-
-```
-
-```
-pipe_through [:change_state], where: attribute_equals(:role, :super_user)
-
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#actions-update-pipe_through-names){: #actions-update-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`where`](#actions-update-pipe_through-where){: #actions-update-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Actions.PipeThrough`
 
 ### actions.update.metadata
 ```elixir
@@ -2104,7 +1901,6 @@ See `Ash.Resource.Change.Builtins.cascade_destroy/2` for cascading destroy opera
 ### Nested DSLs
  * [change](#actions-destroy-change)
  * [validate](#actions-destroy-validate)
- * [pipe_through](#actions-destroy-pipe_through)
  * [metadata](#actions-destroy-metadata)
  * [argument](#actions-destroy-argument)
 
@@ -2139,9 +1935,8 @@ end
 | [`transaction?`](#actions-destroy-transaction?){: #actions-destroy-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-destroy-touches_resources){: #actions-destroy-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`skip_unknown_inputs`](#actions-destroy-skip_unknown_inputs){: #actions-destroy-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
-| [`public?`](#actions-destroy-public?){: #actions-destroy-public? } | `boolean` | `true` | Whether the action is part of the resource's public API. When `false`, the action is internal-only and must not be exposed by API extensions (e.g. AshGraphql, AshJsonApi). Use `bypass private_action?() do authorize_if always() end` in policies to allow internal callers. Defaults to `true`. |
 | [`accept`](#actions-destroy-accept){: #actions-destroy-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
-| [`action_select`](#actions-destroy-action_select){: #actions-destroy-action_select } | `list(atom)` |  | A list of attributes to select from the data layer result. Controls which attributes are present (vs %Ash.NotLoaded{}) on the record passed to after_action hooks, notifiers, and returned to the caller. Defaults to all attributes with select_by_default? true. Does not affect what's available to changes or validations. |
+| [`action_select`](#actions-destroy-action_select){: #actions-destroy-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes/notifiers, it defaults to the externally selected attributes. Keep in mind that action_select is applied *before* notifiers. |
 | [`require_attributes`](#actions-destroy-require_attributes){: #actions-destroy-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`allow_nil_input`](#actions-destroy-allow_nil_input){: #actions-destroy-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
 | [`delay_global_validations?`](#actions-destroy-delay_global_validations?){: #actions-destroy-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
@@ -2240,50 +2035,6 @@ validate changing(:email)
 ### Introspection
 
 Target: `Ash.Resource.Validation`
-
-### actions.destroy.pipe_through
-```elixir
-pipe_through names
-```
-
-
-References one or more pipelines to apply to this action.
-Pipeline entities are prepended before the action's own changes/preparations.
-
-
-
-
-### Examples
-```
-pipe_through [:change_state]
-
-```
-
-```
-pipe_through [:change_state], where: attribute_equals(:role, :super_user)
-
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#actions-destroy-pipe_through-names){: #actions-destroy-pipe_through-names .spark-required} | `atom \| list(atom)` |  | The pipeline name(s) to pipe through. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`where`](#actions-destroy-pipe_through-where){: #actions-destroy-pipe_through-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that must pass for this pipeline to apply. If any fail, the pipeline's entities are skipped. |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Actions.PipeThrough`
 
 ### actions.destroy.metadata
 ```elixir
@@ -2940,7 +2691,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#preparations-prepare-on){: #preparations-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`on`](#preparations-prepare-on){: #preparations-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#preparations-prepare-where){: #preparations-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#preparations-prepare-only_when_valid?){: #preparations-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
@@ -3027,211 +2778,6 @@ Target: `Ash.Resource.Validation`
 
 
 
-## pipelines
-Declare reusable pipelines of changes, validations, and preparations
-that can be referenced from multiple actions via `pipe_through`.
-
-
-### Nested DSLs
- * [pipeline](#pipelines-pipeline)
-   * change
-   * validate
-   * prepare
-
-
-### Examples
-```
-pipelines do
-  pipeline :change_state do
-    validate changing(:state)
-    change set_attribute(:score, 0)
-  end
-end
-
-```
-
-
-
-
-### pipelines.pipeline
-```elixir
-pipeline name
-```
-
-
-Declares a reusable pipeline of changes, validations, and preparations
-that can be referenced from multiple actions via `pipe_through`.
-
-
-### Nested DSLs
- * [change](#pipelines-pipeline-change)
- * [validate](#pipelines-pipeline-validate)
- * [prepare](#pipelines-pipeline-prepare)
-
-
-### Examples
-```
-pipeline :change_state do
-  validate changing(:state)
-  change set_attribute(:score, 0)
-end
-
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#pipelines-pipeline-name){: #pipelines-pipeline-name .spark-required} | `atom` |  | The name of the pipeline |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`description`](#pipelines-pipeline-description){: #pipelines-pipeline-description } | `String.t` |  | An optional description for the pipeline |
-
-
-### pipelines.pipeline.change
-```elixir
-change change
-```
-
-
-A change to be applied to the changeset.
-
-See `Ash.Resource.Change` for more.
-
-
-
-
-### Examples
-```
-change relate_actor(:reporter)
-```
-
-```
-change {MyCustomChange, :foo}
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`change`](#pipelines-pipeline-change-change){: #pipelines-pipeline-change-change .spark-required} | `(any, any -> any) \| module` |  | The module and options for a change. Also accepts a function that takes the changeset and the context. See `Ash.Resource.Change.Builtins` for builtin changes. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`only_when_valid?`](#pipelines-pipeline-change-only_when_valid?){: #pipelines-pipeline-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
-| [`description`](#pipelines-pipeline-change-description){: #pipelines-pipeline-change-description } | `String.t` |  | An optional description for the change |
-| [`where`](#pipelines-pipeline-change-where){: #pipelines-pipeline-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
-| [`always_atomic?`](#pipelines-pipeline-change-always_atomic?){: #pipelines-pipeline-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Change`
-
-### pipelines.pipeline.validate
-```elixir
-validate validation
-```
-
-
-Declares a validation to be applied to the changeset.
-
-See `Ash.Resource.Validation.Builtins` or `Ash.Resource.Validation` for more.
-
-
-
-
-### Examples
-```
-validate changing(:email)
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`validation`](#pipelines-pipeline-validate-validation){: #pipelines-pipeline-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`where`](#pipelines-pipeline-validate-where){: #pipelines-pipeline-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
-| [`only_when_valid?`](#pipelines-pipeline-validate-only_when_valid?){: #pipelines-pipeline-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changesets. Useful for expensive validations or validations that depend on valid data. |
-| [`message`](#pipelines-pipeline-validate-message){: #pipelines-pipeline-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
-| [`description`](#pipelines-pipeline-validate-description){: #pipelines-pipeline-validate-description } | `String.t` |  | An optional description for the validation |
-| [`before_action?`](#pipelines-pipeline-validate-before_action?){: #pipelines-pipeline-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
-| [`always_atomic?`](#pipelines-pipeline-validate-always_atomic?){: #pipelines-pipeline-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Validation`
-
-### pipelines.pipeline.prepare
-```elixir
-prepare preparation
-```
-
-
-Declares a preparation, which can be used to prepare a query for a read action.
-
-
-
-
-### Examples
-```
-prepare build(sort: [:foo, :bar])
-
-```
-
-
-
-### Arguments
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`preparation`](#pipelines-pipeline-prepare-preparation){: #pipelines-pipeline-prepare-preparation .spark-required} | `(any, any -> any) \| module` |  | The module and options for a preparation. Also accepts functions take the query and the context. |
-### Options
-
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`on`](#pipelines-pipeline-prepare-on){: #pipelines-pipeline-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
-| [`where`](#pipelines-pipeline-prepare-where){: #pipelines-pipeline-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
-| [`only_when_valid?`](#pipelines-pipeline-prepare-only_when_valid?){: #pipelines-pipeline-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
-
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Preparation`
-
-
-
-
-### Introspection
-
-Target: `Ash.Resource.Pipeline`
-
-
-
-
 ## aggregates
 Declare named aggregates on the resource.
 
@@ -3243,22 +2789,31 @@ See the [aggregates guide](/documentation/topics/resources/aggregates.md) for mo
 
 ### Nested DSLs
  * [count](#aggregates-count)
+   * filter
    * join_filter
  * [exists](#aggregates-exists)
+   * filter
    * join_filter
  * [first](#aggregates-first)
+   * filter
    * join_filter
  * [sum](#aggregates-sum)
+   * filter
    * join_filter
  * [list](#aggregates-list)
+   * filter
    * join_filter
  * [max](#aggregates-max)
+   * filter
    * join_filter
  * [min](#aggregates-min)
+   * filter
    * join_filter
  * [avg](#aggregates-avg)
+   * filter
    * join_filter
  * [custom](#aggregates-custom)
+   * filter
    * join_filter
 
 
@@ -3291,6 +2846,7 @@ See the [aggregates guide](/documentation/topics/resources/aggregates.md) for mo
 
 
 ### Nested DSLs
+ * [filter](#aggregates-count-filter)
  * [join_filter](#aggregates-count-join_filter)
 
 
@@ -3324,7 +2880,6 @@ end
 | [`uniq?`](#aggregates-count-uniq?){: #aggregates-count-uniq? } | `boolean` | `false` | Whether or not to count unique values only |
 | [`read_action`](#aggregates-count-read_action){: #aggregates-count-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`field`](#aggregates-count-field){: #aggregates-count-field } | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
-| [`filter`](#aggregates-count-filter){: #aggregates-count-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-count-description){: #aggregates-count-description } | `String.t` |  | An optional description for the aggregate |
 | [`default`](#aggregates-count-default){: #aggregates-count-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-count-public?){: #aggregates-count-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
@@ -3334,6 +2889,40 @@ end
 | [`authorize?`](#aggregates-count-authorize?){: #aggregates-count-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 | [`multitenancy`](#aggregates-count-multitenancy){: #aggregates-count-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
+
+### aggregates.count.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#aggregates-count-filter-filter){: #aggregates-count-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 ### aggregates.count.join_filter
 ```elixir
@@ -3391,6 +2980,7 @@ See the [aggregates guide](/documentation/topics/resources/aggregates.md) for mo
 
 
 ### Nested DSLs
+ * [filter](#aggregates-exists-filter)
  * [join_filter](#aggregates-exists-join_filter)
 
 
@@ -3413,7 +3003,6 @@ exists :has_ticket, :assigned_tickets
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`read_action`](#aggregates-exists-read_action){: #aggregates-exists-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
-| [`filter`](#aggregates-exists-filter){: #aggregates-exists-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-exists-description){: #aggregates-exists-description } | `String.t` |  | An optional description for the aggregate |
 | [`default`](#aggregates-exists-default){: #aggregates-exists-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-exists-public?){: #aggregates-exists-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
@@ -3423,6 +3012,40 @@ exists :has_ticket, :assigned_tickets
 | [`authorize?`](#aggregates-exists-authorize?){: #aggregates-exists-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 | [`multitenancy`](#aggregates-exists-multitenancy){: #aggregates-exists-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
+
+### aggregates.exists.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#aggregates-exists-filter-filter){: #aggregates-exists-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 ### aggregates.exists.join_filter
 ```elixir
@@ -3481,6 +3104,7 @@ See the [aggregates guide](/documentation/topics/resources/aggregates.md) for mo
 
 
 ### Nested DSLs
+ * [filter](#aggregates-first-filter)
  * [join_filter](#aggregates-first-join_filter)
 
 
@@ -3508,7 +3132,6 @@ end
 |------|------|---------|------|
 | [`include_nil?`](#aggregates-first-include_nil?){: #aggregates-first-include_nil? } | `boolean` | `false` | Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates. |
 | [`read_action`](#aggregates-first-read_action){: #aggregates-first-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
-| [`filter`](#aggregates-first-filter){: #aggregates-first-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`sort`](#aggregates-first-sort){: #aggregates-first-sort } | `any` |  | A sort to be applied to the aggregate |
 | [`description`](#aggregates-first-description){: #aggregates-first-description } | `String.t` |  | An optional description for the aggregate |
 | [`default`](#aggregates-first-default){: #aggregates-first-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
@@ -3519,6 +3142,40 @@ end
 | [`authorize?`](#aggregates-first-authorize?){: #aggregates-first-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 | [`multitenancy`](#aggregates-first-multitenancy){: #aggregates-first-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
+
+### aggregates.first.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#aggregates-first-filter-filter){: #aggregates-first-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 ### aggregates.first.join_filter
 ```elixir
@@ -3576,6 +3233,7 @@ See the [aggregates guide](/documentation/topics/resources/aggregates.md) for mo
 
 
 ### Nested DSLs
+ * [filter](#aggregates-sum-filter)
  * [join_filter](#aggregates-sum-join_filter)
 
 
@@ -3601,7 +3259,6 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`read_action`](#aggregates-sum-read_action){: #aggregates-sum-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
-| [`filter`](#aggregates-sum-filter){: #aggregates-sum-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-sum-description){: #aggregates-sum-description } | `String.t` |  | An optional description for the aggregate |
 | [`default`](#aggregates-sum-default){: #aggregates-sum-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-sum-public?){: #aggregates-sum-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
@@ -3611,6 +3268,40 @@ end
 | [`authorize?`](#aggregates-sum-authorize?){: #aggregates-sum-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 | [`multitenancy`](#aggregates-sum-multitenancy){: #aggregates-sum-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
+
+### aggregates.sum.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#aggregates-sum-filter-filter){: #aggregates-sum-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 ### aggregates.sum.join_filter
 ```elixir
@@ -3669,6 +3360,7 @@ See the [aggregates guide](/documentation/topics/resources/aggregates.md) for mo
 
 
 ### Nested DSLs
+ * [filter](#aggregates-list-filter)
  * [join_filter](#aggregates-list-join_filter)
 
 
@@ -3696,7 +3388,6 @@ end
 | [`include_nil?`](#aggregates-list-include_nil?){: #aggregates-list-include_nil? } | `boolean` | `false` | Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates. |
 | [`uniq?`](#aggregates-list-uniq?){: #aggregates-list-uniq? } | `boolean` | `false` | Whether or not to count unique values only |
 | [`read_action`](#aggregates-list-read_action){: #aggregates-list-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
-| [`filter`](#aggregates-list-filter){: #aggregates-list-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`sort`](#aggregates-list-sort){: #aggregates-list-sort } | `any` |  | A sort to be applied to the aggregate |
 | [`description`](#aggregates-list-description){: #aggregates-list-description } | `String.t` |  | An optional description for the aggregate |
 | [`default`](#aggregates-list-default){: #aggregates-list-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
@@ -3707,6 +3398,40 @@ end
 | [`authorize?`](#aggregates-list-authorize?){: #aggregates-list-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 | [`multitenancy`](#aggregates-list-multitenancy){: #aggregates-list-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
+
+### aggregates.list.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#aggregates-list-filter-filter){: #aggregates-list-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 ### aggregates.list.join_filter
 ```elixir
@@ -3764,6 +3489,7 @@ See the [aggregates guide](/documentation/topics/resources/aggregates.md) for mo
 
 
 ### Nested DSLs
+ * [filter](#aggregates-max-filter)
  * [join_filter](#aggregates-max-join_filter)
 
 
@@ -3789,7 +3515,6 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`read_action`](#aggregates-max-read_action){: #aggregates-max-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
-| [`filter`](#aggregates-max-filter){: #aggregates-max-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-max-description){: #aggregates-max-description } | `String.t` |  | An optional description for the aggregate |
 | [`default`](#aggregates-max-default){: #aggregates-max-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-max-public?){: #aggregates-max-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
@@ -3799,6 +3524,40 @@ end
 | [`authorize?`](#aggregates-max-authorize?){: #aggregates-max-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 | [`multitenancy`](#aggregates-max-multitenancy){: #aggregates-max-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
+
+### aggregates.max.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#aggregates-max-filter-filter){: #aggregates-max-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 ### aggregates.max.join_filter
 ```elixir
@@ -3856,6 +3615,7 @@ See the [aggregates guide](/documentation/topics/resources/aggregates.md) for mo
 
 
 ### Nested DSLs
+ * [filter](#aggregates-min-filter)
  * [join_filter](#aggregates-min-join_filter)
 
 
@@ -3881,7 +3641,6 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`read_action`](#aggregates-min-read_action){: #aggregates-min-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
-| [`filter`](#aggregates-min-filter){: #aggregates-min-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-min-description){: #aggregates-min-description } | `String.t` |  | An optional description for the aggregate |
 | [`default`](#aggregates-min-default){: #aggregates-min-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-min-public?){: #aggregates-min-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
@@ -3891,6 +3650,40 @@ end
 | [`authorize?`](#aggregates-min-authorize?){: #aggregates-min-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 | [`multitenancy`](#aggregates-min-multitenancy){: #aggregates-min-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
+
+### aggregates.min.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#aggregates-min-filter-filter){: #aggregates-min-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 ### aggregates.min.join_filter
 ```elixir
@@ -3948,6 +3741,7 @@ See the [aggregates guide](/documentation/topics/resources/aggregates.md) for mo
 
 
 ### Nested DSLs
+ * [filter](#aggregates-avg-filter)
  * [join_filter](#aggregates-avg-join_filter)
 
 
@@ -3973,7 +3767,6 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`read_action`](#aggregates-avg-read_action){: #aggregates-avg-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
-| [`filter`](#aggregates-avg-filter){: #aggregates-avg-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-avg-description){: #aggregates-avg-description } | `String.t` |  | An optional description for the aggregate |
 | [`default`](#aggregates-avg-default){: #aggregates-avg-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-avg-public?){: #aggregates-avg-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
@@ -3983,6 +3776,40 @@ end
 | [`authorize?`](#aggregates-avg-authorize?){: #aggregates-avg-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 | [`multitenancy`](#aggregates-avg-multitenancy){: #aggregates-avg-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
+
+### aggregates.avg.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#aggregates-avg-filter-filter){: #aggregates-avg-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 ### aggregates.avg.join_filter
 ```elixir
@@ -4042,6 +3869,7 @@ See the relevant data layer documentation and the [aggregates guide](/documentat
 
 
 ### Nested DSLs
+ * [filter](#aggregates-custom-filter)
  * [join_filter](#aggregates-custom-join_filter)
 
 
@@ -4069,7 +3897,6 @@ end
 | [`implementation`](#aggregates-custom-implementation){: #aggregates-custom-implementation .spark-required} | `module` |  | The module that implements the relevant data layer callbacks |
 | [`read_action`](#aggregates-custom-read_action){: #aggregates-custom-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`field`](#aggregates-custom-field){: #aggregates-custom-field } | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
-| [`filter`](#aggregates-custom-filter){: #aggregates-custom-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`sort`](#aggregates-custom-sort){: #aggregates-custom-sort } | `any` |  | A sort to be applied to the aggregate |
 | [`description`](#aggregates-custom-description){: #aggregates-custom-description } | `String.t` |  | An optional description for the aggregate |
 | [`default`](#aggregates-custom-default){: #aggregates-custom-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
@@ -4080,6 +3907,40 @@ end
 | [`authorize?`](#aggregates-custom-authorize?){: #aggregates-custom-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 | [`multitenancy`](#aggregates-custom-multitenancy){: #aggregates-custom-multitenancy } | `:bypass` |  | Configures multitenancy behavior for the aggregate. * `:bypass` - Aggregate data across all tenants, ignoring the tenant context even if it's set. |
 
+
+### aggregates.custom.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#aggregates-custom-filter-filter){: #aggregates-custom-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 ### aggregates.custom.join_filter
 ```elixir
@@ -4222,8 +4083,6 @@ end
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |
 | [`sortable?`](#calculations-calculate-sortable?){: #calculations-calculate-sortable? } | `boolean` | `true` | Whether or not the calculation can be referenced in sorts. |
-| [`field?`](#calculations-calculate-field?){: #calculations-calculate-field? } | `boolean` | `true` | Whether or not the calculation should create a field on the resource struct. When `false`, the calculation's value will always be stored in the `calculations` map on the record, and will not add a key to the resource struct. The calculation can still be loaded normally. |
-| [`multitenancy`](#calculations-calculate-multitenancy){: #calculations-calculate-multitenancy } | `:enforce \| :allow_global \| :bypass \| :bypass_all` |  | Configures multitenancy behavior for the calculation. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this calculation both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for nested resources. |
 
 
 ### calculations.calculate.argument
