@@ -1700,6 +1700,7 @@ Adds pagination options to a resource
 |------|------|---------|------|
 | [`keyset?`](#actions-read-pagination-keyset?){: #actions-read-pagination-keyset? } | `boolean` | `false` | Whether or not keyset based pagination is supported |
 | [`offset?`](#actions-read-pagination-offset?){: #actions-read-pagination-offset? } | `boolean` | `false` | Whether or not offset based pagination is supported |
+| [`via_data_layer?`](#actions-read-pagination-via_data_layer?){: #actions-read-pagination-via_data_layer? } | `true \| false \| :data_layer_default` | `:data_layer_default` | Whether or not the pagination should be handled by the data layer. Use `:data_layer_default` to let the data layer decide |
 | [`default_limit`](#actions-read-pagination-default_limit){: #actions-read-pagination-default_limit } | `pos_integer` |  | The default page size to apply, if one is not supplied |
 | [`countable`](#actions-read-pagination-countable){: #actions-read-pagination-countable } | `true \| false \| :by_default` | `true` | Whether not a returned page will have a full count of all records. Use `:by_default` to do it automatically. |
 | [`max_page_size`](#actions-read-pagination-max_page_size){: #actions-read-pagination-max_page_size } | `pos_integer` | `250` | The maximum amount of records that can be requested in a single page |
