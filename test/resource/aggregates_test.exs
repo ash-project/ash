@@ -1145,24 +1145,24 @@ defmodule Ash.Test.Resource.AggregatesTest do
 
       aggregates do
         count :approved_comments, :comments do
-          filter [status: :approved]
-          filter [rating: [greater_than: 3]]
+          filter status: :approved
+          filter rating: [greater_than: 3]
         end
 
         count :strict_comments, :comments do
-          filter [status: :approved]
-          filter [rating: [greater_than: 5]]
-          filter [author_name: "Alice"]
+          filter status: :approved
+          filter rating: [greater_than: 5]
+          filter author_name: "Alice"
         end
 
         count :single_filter_comments, :comments do
-          filter [status: :approved]
+          filter status: :approved
         end
 
         count :matching_comments, :comments do
-          filter [status: :approved]
-          filter [rating: [greater_than: 3]]
-          filter [author_name: "Alice"]
+          filter status: :approved
+          filter rating: [greater_than: 3]
+          filter author_name: "Alice"
         end
       end
     end
@@ -1178,24 +1178,30 @@ defmodule Ash.Test.Resource.AggregatesTest do
     end
 
     test "aggregates support multiple filter lines" do
-      assert Enum.any?(Ash.Resource.Info.aggregates(MultiFilterPost), &(&1.name == :approved_comments))
+      assert Enum.any?(
+               Ash.Resource.Info.aggregates(MultiFilterPost),
+               &(&1.name == :approved_comments)
+             )
     end
 
     test "multiple filters are combined with AND" do
-      aggregate = Enum.find(Ash.Resource.Info.aggregates(MultiFilterPost), &(&1.name == :strict_comments))
+      aggregate =
+        Enum.find(Ash.Resource.Info.aggregates(MultiFilterPost), &(&1.name == :strict_comments))
 
       assert %Ash.Query.BooleanExpression{op: :and} = aggregate.filter
     end
 
     test "backward compatibility: single filter option still works" do
       aggregate =
-        Enum.find(Ash.Resource.Info.aggregates(MultiFilterPost), &(&1.name == :single_filter_comments))
+        Enum.find(
+          Ash.Resource.Info.aggregates(MultiFilterPost),
+          &(&1.name == :single_filter_comments)
+        )
 
       assert aggregate.filter
     end
 
     test "multiple filters actually filter results correctly" do
-
       post =
         MultiFilterPost
         |> Ash.Changeset.for_create(:create, %{})
