@@ -11,7 +11,6 @@ defmodule Ash.Authorizer do
 
   Then you can extend a resource with `authorizers: [YourAuthorizer]`
   """
-  require Ash.BehaviourHelpers
 
   @type state :: map
   @type context :: map

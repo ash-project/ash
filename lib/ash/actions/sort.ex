@@ -175,7 +175,6 @@ defmodule Ash.Actions.Sort do
     |> maybe_rekey(results, resource, Keyword.get(opts, :rekey?, true))
   end
 
-  defp do_runtime_distinct([], _resource, _empty, _), do: []
   defp do_runtime_distinct(results, _resource, empty, _) when empty in [nil, []], do: results
   defp do_runtime_distinct([single_result], _resource, _, _), do: [single_result]
 

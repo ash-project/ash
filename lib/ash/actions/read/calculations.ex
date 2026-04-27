@@ -320,13 +320,10 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp replace_refs(expr, opts) do
     Ash.Filter.map(expr, fn
-      %Ash.Query.Ref{relationship_path: path, attribute: %Ash.Resource.Attribute{} = attribute} ->
-        name =
-          case attribute do
-            %{name: name} -> name
-            name -> name
-          end
-
+      %Ash.Query.Ref{
+        relationship_path: path,
+        attribute: %Ash.Resource.Attribute{name: name}
+      } ->
         Ash.Expr.get_path(opts[:record] || %{}, path ++ [name])
 
       %Ash.Query.Exists{expr: expr} = exists ->
@@ -815,7 +812,7 @@ defmodule Ash.Actions.Read.Calculations do
     end
   end
 
-  defp update_at_path(nil, [], _), do: nil
+  defp update_at_path(nil, _, _), do: nil
   defp update_at_path(%Ash.NotLoaded{} = value, _, _), do: value
   defp update_at_path(%Ash.ForbiddenField{} = value, _, _), do: value
 
@@ -830,6 +827,8 @@ defmodule Ash.Actions.Read.Calculations do
   defp update_at_path(record, [key | rest], func) do
     Map.update!(record, key, &update_at_path(&1, rest, func))
   end
+
+  defp update_at_path(value, _, _), do: value
 
   defp load_through_calculation_rewrites(ash_query, calculation, path) do
     ash_query.load_through[:calculations]

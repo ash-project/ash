@@ -250,14 +250,6 @@ defmodule Ash.DataLayer.Ets do
   end
 
   def can?(_, :nested_expressions), do: true
-  def can?(_, {:query_aggregate, :count}), do: true
-  def can?(_, {:query_aggregate, :first}), do: true
-  def can?(_, {:query_aggregate, :sum}), do: true
-  def can?(_, {:query_aggregate, :list}), do: true
-  def can?(_, {:query_aggregate, :max}), do: true
-  def can?(_, {:query_aggregate, :min}), do: true
-  def can?(_, {:query_aggregate, :avg}), do: true
-  def can?(_, {:query_aggregate, :exists}), do: true
   def can?(_, :expr_error), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, {:atomic, :update}), do: true

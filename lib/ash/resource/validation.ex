@@ -33,8 +33,6 @@ defmodule Ash.Resource.Validation do
     __spark_metadata__: nil
   ]
 
-  require Ash.BehaviourHelpers
-
   @type t :: %__MODULE__{
           validation: {atom(), list(atom())},
           module: atom(),

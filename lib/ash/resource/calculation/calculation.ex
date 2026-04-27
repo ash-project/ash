@@ -7,8 +7,6 @@ defmodule Ash.Resource.Calculation do
   The behaviour for defining a module calculation, and the struct for storing a defined calculation.
   """
 
-  require Ash.BehaviourHelpers
-
   defstruct allow_nil?: true,
             arguments: [],
             calculation: nil,

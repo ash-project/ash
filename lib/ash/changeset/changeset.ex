@@ -2050,7 +2050,7 @@ defmodule Ash.Changeset do
 
     upsert_condition =
       case opts[:upsert_condition] do
-        nil -> action && action.upsert_condition
+        nil -> action.upsert_condition
         other -> other
       end
 
@@ -2070,13 +2070,13 @@ defmodule Ash.Changeset do
     changeset
     |> set_context(%{
       private: %{
-        upsert?: opts[:upsert?] || (action && action.upsert?) || false,
+        upsert?: opts[:upsert?] || action.upsert? || false,
         return_skipped_upsert?:
-          opts[:return_skipped_upsert?] || (action && action.return_skipped_upsert?) || false,
-        upsert_identity: opts[:upsert_identity] || (action && action.upsert_identity),
+          opts[:return_skipped_upsert?] || action.return_skipped_upsert? || false,
+        upsert_identity: opts[:upsert_identity] || action.upsert_identity,
         upsert_fields:
           expand_upsert_fields(
-            opts[:upsert_fields] || (action && action.upsert_fields),
+            opts[:upsert_fields] || action.upsert_fields,
             changeset.resource
           ),
         upsert_condition: upsert_condition
@@ -2258,83 +2258,79 @@ defmodule Ash.Changeset do
     changeset = %{changeset | domain: domain}
 
     if changeset.valid? do
-      if action do
-        try do
-          if action.soft? do
-            do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
-          else
-            {changeset, opts} =
-              Ash.Actions.Helpers.set_context_and_get_opts(
-                domain,
-                changeset,
-                opts
-              )
+      try do
+        if action.soft? do
+          do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
+        else
+          {changeset, opts} =
+            Ash.Actions.Helpers.set_context_and_get_opts(
+              domain,
+              changeset,
+              opts
+            )
 
-            name =
-              fn ->
-                "changeset:" <>
-                  Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
-              end
+          name =
+            fn ->
+              "changeset:" <>
+                Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
+            end
 
-            Ash.Tracer.span :changeset,
-                            name,
-                            opts[:tracer] do
-              Ash.Tracer.telemetry_span [:ash, :changeset], fn ->
+          Ash.Tracer.span :changeset,
+                          name,
+                          opts[:tracer] do
+            Ash.Tracer.telemetry_span [:ash, :changeset], fn ->
+              %{
+                resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
+              }
+            end do
+              metadata = fn ->
                 %{
-                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
+                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                  resource: changeset.resource,
+                  actor: opts[:actor],
+                  tenant: opts[:tenant],
+                  action: action.name,
+                  authorize?: opts[:authorize?]
                 }
-              end do
-                metadata = fn ->
-                  %{
-                    resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-                    resource: changeset.resource,
-                    actor: opts[:actor],
-                    tenant: opts[:tenant],
-                    action: action.name,
-                    authorize?: opts[:authorize?]
-                  }
-                end
-
-                Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
-
-                changeset
-                |> Map.put(:action, action)
-                |> set_private_arguments_for_action(opts[:private_arguments] || %{})
-                |> handle_errors(action.error_handler)
-                |> set_actor(opts)
-                |> set_authorize(opts)
-                |> set_tracer(opts)
-                |> load(opts[:load])
-                |> set_tenant(opts[:tenant] || changeset.tenant)
-                |> cast_params(action, params, opts)
-                |> set_argument_defaults(action)
-                |> require_arguments(action)
-                |> validate_attributes_accepted(action)
-                |> run_action_changes(
-                  action,
-                  opts[:actor],
-                  opts[:authorize?],
-                  opts[:tracer],
-                  metadata
-                )
-                |> add_validations(opts[:tracer], metadata, opts[:actor])
-                |> mark_validated(action.name)
-                |> Map.put(:__validated_for_action__, action.name)
               end
+
+              Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
+
+              changeset
+              |> Map.put(:action, action)
+              |> set_private_arguments_for_action(opts[:private_arguments] || %{})
+              |> handle_errors(action.error_handler)
+              |> set_actor(opts)
+              |> set_authorize(opts)
+              |> set_tracer(opts)
+              |> load(opts[:load])
+              |> set_tenant(opts[:tenant] || changeset.tenant)
+              |> cast_params(action, params, opts)
+              |> set_argument_defaults(action)
+              |> require_arguments(action)
+              |> validate_attributes_accepted(action)
+              |> run_action_changes(
+                action,
+                opts[:actor],
+                opts[:authorize?],
+                opts[:tracer],
+                metadata
+              )
+              |> add_validations(opts[:tracer], metadata, opts[:actor])
+              |> mark_validated(action.name)
+              |> Map.put(:__validated_for_action__, action.name)
             end
           end
-        rescue
-          e ->
-            reraise Ash.Error.to_error_class(e,
-                      stacktrace: __STACKTRACE__,
-                      bread_crumbs: [
-                        "building changeset for #{inspect(changeset.resource)}.#{action.name}"
-                      ]
-                    ),
-                    __STACKTRACE__
         end
-      else
-        raise_no_action(changeset.resource, action_or_name, :destroy)
+      rescue
+        e ->
+          reraise Ash.Error.to_error_class(e,
+                    stacktrace: __STACKTRACE__,
+                    bread_crumbs: [
+                      "building changeset for #{inspect(changeset.resource)}.#{action.name}"
+                    ]
+                  ),
+                  __STACKTRACE__
       end
     else
       changeset
@@ -2635,12 +2631,6 @@ defmodule Ash.Changeset do
 
   defp check_for_exists_with_relationships(%Ash.Query.Not{expression: expr}) do
     check_for_exists_with_relationships(expr)
-  end
-
-  defp check_for_exists_with_relationships(%Ash.Query.BooleanExpression{left: left, right: right}) do
-    with :ok <- check_for_exists_with_relationships(left) do
-      check_for_exists_with_relationships(right)
-    end
   end
 
   defp check_for_exists_with_relationships(list) when is_list(list) do
@@ -3230,15 +3220,6 @@ defmodule Ash.Changeset do
          identity,
          domain
        ) do
-    do_validate_identity(changeset, identity, domain)
-  end
-
-  defp validate_identity(
-         %{action: %{type: type}} = changeset,
-         identity,
-         domain
-       )
-       when type in [:create, :update] do
     do_validate_identity(changeset, identity, domain)
   end
 

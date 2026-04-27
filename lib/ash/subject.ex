@@ -202,7 +202,7 @@ defmodule Ash.Subject do
     * `default` - The default value to return if the argument is not found
   """
   @spec get_argument(subject :: t(), argument :: atom() | String.t(), default :: term()) :: term()
-  def get_argument(subject, argument, default \\ nil) do
+  def get_argument(subject, argument, default) do
     case fetch_argument(subject, argument) do
       {:ok, value} -> value
       :error -> default

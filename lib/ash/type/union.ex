@@ -1085,7 +1085,7 @@ defmodule Ash.Type.Union do
         end,
         fn
           %Ash.Union{value: value} = union ->
-            {:union_value, value, Map.get(union, :__index__)}
+            {:union_value, value, :maps.get(:__index__, union, nil)}
 
           other ->
             other

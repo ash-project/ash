@@ -410,16 +410,8 @@ defmodule Ash.Filter.Runtime do
            resolve_expr(left, record, parent, resource, unknown_on_unknown_refs?),
          {:ok, right_resolved} <-
            resolve_expr(right, record, parent, resource, unknown_on_unknown_refs?) do
-      cond do
-        is_nil(left_resolved) ->
-          {:ok, nil}
-
-        is_nil(right_resolved) ->
-          {:ok, nil}
-
-        true ->
-          {:ok, !!left_resolved and !!right_resolved}
-      end
+      _ = left_resolved
+      if is_nil(right_resolved), do: {:ok, nil}, else: {:ok, !!right_resolved}
     end
   end
 
@@ -434,15 +426,10 @@ defmodule Ash.Filter.Runtime do
            resolve_expr(left, record, parent, resource, unknown_on_unknown_refs?),
          {:ok, right_resolved} <-
            resolve_expr(right, record, parent, resource, unknown_on_unknown_refs?) do
-      cond do
-        left_resolved ->
-          {:ok, !!left_resolved}
-
-        is_nil(right_resolved) ->
-          {:ok, right_resolved}
-
-        true ->
-          {:ok, !!right_resolved}
+      if is_nil(right_resolved) do
+        {:ok, right_resolved}
+      else
+        {:ok, !!right_resolved}
       end
     end
   end
@@ -1086,9 +1073,6 @@ defmodule Ash.Filter.Runtime do
     end
     |> or_default(attribute)
   end
-
-  defp resolve_ref(_value, _record, _, _, true), do: :unknown
-  defp resolve_ref(_value, _record, _, _, _), do: {:ok, nil}
 
   defp or_default({:ok, nil}, %Ash.Resource.Aggregate{default: default})
        when not is_nil(default) do

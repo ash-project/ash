@@ -61,7 +61,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   def run(domain, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
-    action_name = if is_atom(action), do: action, else: action.name
+    action_name = action.name
 
     Ash.Tracer.span :bulk_destroy,
                     fn ->
@@ -470,24 +470,6 @@ defmodule Ash.Actions.Destroy.Bulk do
       not_atomic_reason ||
         if :atomic_batches not in opts[:strategy],
           do: "Cannot perform atomic destroys on an enumerable of inputs"
-
-    action =
-      case action do
-        nil ->
-          Ash.Resource.Info.primary_action!(resource, :update)
-
-        name when is_atom(name) ->
-          action = Ash.Resource.Info.action(resource, action)
-
-          if !action do
-            raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: name, type: :update
-          end
-
-          action
-
-        action ->
-          action
-      end
 
     if opts[:transaction] == :all && opts[:return_stream?] do
       raise ArgumentError,

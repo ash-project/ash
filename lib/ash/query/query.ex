@@ -2543,67 +2543,11 @@ defmodule Ash.Query do
           Enum.find(calculation.arguments, fn arg -> arg.name == key end)
         end
 
-      value = Ash.Type.Helpers.handle_indexed_maps(argument.type, value)
+      if argument do
+        value = Ash.Type.Helpers.handle_indexed_maps(argument.type, value)
 
-      cond do
-        !argument ->
-          error_calc =
-            case calculation do
-              %{calc_name: calc_name} ->
-                calc_name
-
-              %Ash.Resource.Calculation{name: name} ->
-                name
-
-              calc ->
-                calc
-            end
-
-          {:halt,
-           {:error,
-            Ash.Error.Invalid.NoSuchInput.exception(
-              calculation: error_calc,
-              input: key,
-              inputs: Enum.map(calculation.arguments, & &1.name)
-            )}}
-
-        Ash.Expr.expr?(value) && argument.allow_expr? && allow_expr? ->
-          {:cont,
-           {:ok,
-            Map.put(
-              arg_values,
-              argument.name,
-              %Ash.Query.Function.Type{
-                arguments: [value, argument.type, argument.constraints]
-              }
-            )}}
-
-        Ash.Expr.expr?(value) ->
-          {:halt,
-           {:error,
-            InvalidCalculationArgument.exception(
-              field: argument.name,
-              calculation: calculation.name,
-              message: "does not support expressions",
-              value: value
-            )}}
-
-        is_nil(value) && argument.allow_nil? ->
-          {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
-
-        is_nil(value) && is_nil(argument.default) ->
-          {:halt,
-           {:error,
-            InvalidCalculationArgument.exception(
-              field: argument.name,
-              calculation: calculation.name,
-              message: "is required",
-              value: value
-            )}}
-
-        is_nil(Map.get(args, argument.name, Map.get(args, to_string(argument.name)))) &&
-            not is_nil(value) ->
-          if has_one_expr? do
+        cond do
+          Ash.Expr.expr?(value) && argument.allow_expr? && allow_expr? ->
             {:cont,
              {:ok,
               Map.put(
@@ -2613,20 +2557,32 @@ defmodule Ash.Query do
                   arguments: [value, argument.type, argument.constraints]
                 }
               )}}
-          else
-            {:cont,
-             {:ok,
-              Map.put(
-                arg_values,
-                argument.name,
-                value
-              )}}
-          end
 
-        true ->
-          with {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
-               {:ok, casted} <-
-                 Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
+          Ash.Expr.expr?(value) ->
+            {:halt,
+             {:error,
+              InvalidCalculationArgument.exception(
+                field: argument.name,
+                calculation: calculation.name,
+                message: "does not support expressions",
+                value: value
+              )}}
+
+          is_nil(value) && argument.allow_nil? ->
+            {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
+
+          is_nil(value) && is_nil(argument.default) ->
+            {:halt,
+             {:error,
+              InvalidCalculationArgument.exception(
+                field: argument.name,
+                calculation: calculation.name,
+                message: "is required",
+                value: value
+              )}}
+
+          is_nil(Map.get(args, argument.name, Map.get(args, to_string(argument.name)))) &&
+              not is_nil(value) ->
             if has_one_expr? do
               {:cont,
                {:ok,
@@ -2638,48 +2594,93 @@ defmodule Ash.Query do
                   }
                 )}}
             else
-              cond do
-                is_nil(casted) && argument.allow_nil? ->
-                  {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
-
-                is_nil(casted) && is_nil(argument.default) ->
-                  {:halt,
-                   {:error,
-                    InvalidCalculationArgument.exception(
-                      field: argument.name,
-                      calculation: calculation.name,
-                      message: "is required",
-                      value: value
-                    )}}
-
-                is_nil(Map.get(args, argument.name, Map.get(args, to_string(argument.name)))) &&
-                    not is_nil(value) ->
-                  {:cont,
-                   {:ok,
-                    Map.put(
-                      arg_values,
-                      argument.name,
-                      value
-                    )}}
-
-                true ->
-                  {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
-              end
-            end
-          else
-            {:error, error} when is_binary(error) ->
-              {:halt,
-               {:error,
-                InvalidCalculationArgument.exception(
-                  field: argument.name,
-                  calculation: calculation.name,
-                  message: error,
-                  value: value
+              {:cont,
+               {:ok,
+                Map.put(
+                  arg_values,
+                  argument.name,
+                  value
                 )}}
+            end
 
-            {:error, error} ->
-              {:halt, {:error, Ash.Error.to_ash_error(error)}}
+          true ->
+            with {:ok, casted} <- Ash.Type.cast_input(argument.type, value, argument.constraints),
+                 {:ok, casted} <-
+                   Ash.Type.apply_constraints(argument.type, casted, argument.constraints) do
+              if has_one_expr? do
+                {:cont,
+                 {:ok,
+                  Map.put(
+                    arg_values,
+                    argument.name,
+                    %Ash.Query.Function.Type{
+                      arguments: [value, argument.type, argument.constraints]
+                    }
+                  )}}
+              else
+                cond do
+                  is_nil(casted) && argument.allow_nil? ->
+                    {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
+
+                  is_nil(casted) && is_nil(argument.default) ->
+                    {:halt,
+                     {:error,
+                      InvalidCalculationArgument.exception(
+                        field: argument.name,
+                        calculation: calculation.name,
+                        message: "is required",
+                        value: value
+                      )}}
+
+                  is_nil(Map.get(args, argument.name, Map.get(args, to_string(argument.name)))) &&
+                      not is_nil(value) ->
+                    {:cont,
+                     {:ok,
+                      Map.put(
+                        arg_values,
+                        argument.name,
+                        value
+                      )}}
+
+                  true ->
+                    {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
+                end
+              end
+            else
+              {:error, error} when is_binary(error) ->
+                {:halt,
+                 {:error,
+                  InvalidCalculationArgument.exception(
+                    field: argument.name,
+                    calculation: calculation.name,
+                    message: error,
+                    value: value
+                  )}}
+
+              {:error, error} ->
+                {:halt, {:error, Ash.Error.to_ash_error(error)}}
+            end
+        end
+      else
+        error_calc =
+          case calculation do
+            %{calc_name: calc_name} ->
+              calc_name
+
+            %Ash.Resource.Calculation{name: name} ->
+              name
+
+            calc ->
+              calc
           end
+
+        {:halt,
+         {:error,
+          Ash.Error.Invalid.NoSuchInput.exception(
+            calculation: error_calc,
+            input: key,
+            inputs: Enum.map(calculation.arguments, & &1.name)
+          )}}
       end
     end)
     |> set_defaults(calculation)

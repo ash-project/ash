@@ -4793,22 +4793,6 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp aggregate_field_with_related_filters(
-         aggregate,
-         _path_filters,
-         _actor,
-         _authorize?,
-         _tenant,
-         _tracer,
-         _domain,
-         _ref_path,
-         _parent_stack,
-         _source_context
-       )
-       when is_atom(aggregate.field) do
-    {:ok, aggregate.field}
-  end
-
   defp resource_aggregate_to_query_aggregate(resource, resource_aggregate, opts) do
     {agg_related_resource, aggregate_opts} =
       if Map.get(resource_aggregate, :related?, true) do

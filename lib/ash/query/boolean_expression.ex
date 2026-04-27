@@ -210,9 +210,7 @@ defmodule Ash.Query.BooleanExpression do
     do_new(op, left, right)
   end
 
-  defp simplify?(%NotEq{} = left, %In{} = right), do: simplify?(right, left)
   defp simplify?(%NotEq{} = left, %Eq{} = right), do: simplify?(right, left)
-  defp simplify?(%Eq{} = left, %In{} = right), do: simplify?(right, left)
 
   defp simplify?(%Eq{right: %Ref{}}, _), do: false
   defp simplify?(_, %Eq{right: %Ref{}}), do: false

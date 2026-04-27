@@ -131,8 +131,6 @@ defmodule Ash.Policy.Check do
                       implies?: 3,
                       conflicts?: 3
 
-  require Ash.BehaviourHelpers
-
   @doc false
   @spec strict_check(module(), actor(), authorizer(), options()) ::
           {:ok, boolean() | :unknown} | {:error, term()}

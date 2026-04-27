@@ -1441,50 +1441,39 @@ defmodule Ash.Policy.Authorizer do
                           __STACKTRACE__
               end
 
-            if is_nil(result) do
-              false
-            else
-              result
-            end
+            result
 
           {{check_module, check_opts}, false} ->
-            result =
-              try do
-                if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-                  nil_to_false(
-                    Ash.Policy.Check.auto_filter_not(
-                      check_module,
-                      authorizer.actor,
-                      authorizer,
-                      check_opts
-                    )
+            try do
+              if :erlang.function_exported(check_module, :auto_filter_not, 3) do
+                nil_to_false(
+                  Ash.Policy.Check.auto_filter_not(
+                    check_module,
+                    authorizer.actor,
+                    authorizer,
+                    check_opts
                   )
-                else
-                  [
-                    not:
-                      nil_to_false(
-                        Ash.Policy.Check.auto_filter(
-                          check_module,
-                          authorizer.actor,
-                          authorizer,
-                          check_opts
-                        )
+                )
+              else
+                [
+                  not:
+                    nil_to_false(
+                      Ash.Policy.Check.auto_filter(
+                        check_module,
+                        authorizer.actor,
+                        authorizer,
+                        check_opts
                       )
-                  ]
-                end
-              rescue
-                e ->
-                  reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                            bread_crumbs:
-                              "Creating filter for check: #{Ash.Policy.Check.describe(check_module, check_opts)} on resource: #{authorizer.resource}"
-                          ),
-                          __STACKTRACE__
+                    )
+                ]
               end
-
-            if is_nil(result) do
-              false
-            else
-              result
+            rescue
+              e ->
+                reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
+                          bread_crumbs:
+                            "Creating filter for check: #{Ash.Policy.Check.describe(check_module, check_opts)} on resource: #{authorizer.resource}"
+                        ),
+                        __STACKTRACE__
             end
         end)
         |> case do

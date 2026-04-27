@@ -229,20 +229,6 @@ defmodule Ash.Actions.Read.Stream do
     end
   end
 
-  def stream_strategy(query, nil, :full_read) do
-    if Ash.DataLayer.data_layer_can?(query.resource, :limit) &&
-         Ash.DataLayer.data_layer_can?(query.resource, :offset) do
-      :full_read
-    else
-      {:error,
-       Ash.Error.Invalid.NonStreamableAction.exception(
-         resource: query.resource,
-         action: query.action,
-         type: :keyset
-       )}
-    end
-  end
-
   defp can_offset?(query) do
     not requires_keyset_pagination?(query) and
       (can_pagination_offset?(query) || can_limit_offset?(query))

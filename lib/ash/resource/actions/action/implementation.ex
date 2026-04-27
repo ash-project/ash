@@ -19,8 +19,6 @@ defmodule Ash.Resource.Actions.Implementation do
   ```
   """
 
-  require Ash.BehaviourHelpers
-
   @doc false
   @spec run(
           module(),
