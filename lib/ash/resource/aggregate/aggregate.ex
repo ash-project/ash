@@ -173,6 +173,7 @@ defmodule Ash.Resource.Aggregate do
     {:ok, concat_filters(aggregate)}
   end
 
+  # Combines multiple filter entities with AND, matching read actions behavior.
   defp concat_filters(%{filters: []} = aggregate), do: aggregate
 
   defp concat_filters(%{filters: [first | rest]} = aggregate) do
