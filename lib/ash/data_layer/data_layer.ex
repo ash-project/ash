@@ -105,6 +105,7 @@ defmodule Ash.DataLayer do
           | :destroy
           | :limit
           | :offset
+          | :keyset
           | :transact
           | :filter
           | :composite_type

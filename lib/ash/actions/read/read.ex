@@ -2983,7 +2983,13 @@ defmodule Ash.Actions.Read do
         data
       end
 
-    more? = not Enum.empty?(rest)
+    more? =
+      if Ash.DataLayer.data_layer_can?(original_query.resource, :keyset) do
+        last_record = List.last(data)
+        not is_nil(last_record) && not is_nil(last_record.__metadata__[:keyset])
+      else
+        not Enum.empty?(rest)
+      end
 
     if page_opts[:offset] do
       Ash.Page.Offset.new(data, count, original_query, more?, opts)
@@ -3011,13 +3017,18 @@ defmodule Ash.Actions.Read do
   end
 
   defp add_keysets(original_query, data, sort) do
-    if Enum.any?(
-         Ash.Resource.Info.actions(original_query.resource),
-         &(&1.type == :read && &1.pagination && &1.pagination.keyset?)
-       ) do
-      Ash.Page.Keyset.data_with_keyset(data, original_query.resource, sort)
-    else
-      data
+    cond do
+      Ash.DataLayer.data_layer_can?(original_query.resource, :keyset) ->
+        data
+
+      Enum.any?(
+        Ash.Resource.Info.actions(original_query.resource),
+        &(&1.type == :read && &1.pagination && &1.pagination.keyset?)
+      ) ->
+        Ash.Page.Keyset.data_with_keyset(data, original_query.resource, sort)
+
+      true ->
+        data
     end
   end
 
@@ -3974,45 +3985,57 @@ defmodule Ash.Actions.Read do
   end
 
   defp keyset_pagination(query, pagination, opts) do
-    limited = Ash.Query.limit(query, limit(query, opts[:limit], query.limit, pagination) + 1)
+    if Ash.DataLayer.data_layer_can?(query.resource, :keyset) do
+      limited = Ash.Query.limit(query, limit(query, opts[:limit], query.limit, pagination))
 
-    if opts[:before] || opts[:after] do
-      reversed =
-        if opts[:before] do
-          reversed_sort = Ash.Sort.reverse(limited.sort)
-          max_index = Enum.count(reversed_sort) - 1
+      context = %{
+        data_layer: %{
+          keyset_opts: opts
+        }
+      }
 
-          inverted_sort_input_indices = Enum.map(query.sort_input_indices, &(max_index - &1))
-
-          limited
-          |> Ash.Query.unset(:sort)
-          |> Map.put(:sort, reversed_sort)
-          |> Map.put(:sort_input_indices, inverted_sort_input_indices)
-        else
-          limited
-        end
-
-      after_or_before =
-        if opts[:before] do
-          :before
-        else
-          :after
-        end
-
-      case Ash.Page.Keyset.filter(
-             query,
-             opts[:before] || opts[:after],
-             query.sort,
-             after_or_before
-           ) do
-        {:ok, filter} ->
-          {:ok, Ash.Query.do_filter(reversed, filter)}
-
-        {:error, error} ->
-          {:error, error}
-      end
+      {:ok, Ash.Query.set_context(limited, context)}
     else
-      {:ok, limited}
+      limited = Ash.Query.limit(query, limit(query, opts[:limit], query.limit, pagination) + 1)
+
+      if opts[:before] || opts[:after] do
+        reversed =
+          if opts[:before] do
+            reversed_sort = Ash.Sort.reverse(limited.sort)
+            max_index = Enum.count(reversed_sort) - 1
+
+            inverted_sort_input_indices = Enum.map(query.sort_input_indices, &(max_index - &1))
+
+            limited
+            |> Ash.Query.unset(:sort)
+            |> Map.put(:sort, reversed_sort)
+            |> Map.put(:sort_input_indices, inverted_sort_input_indices)
+          else
+            limited
+          end
+
+        after_or_before =
+          if opts[:before] do
+            :before
+          else
+            :after
+          end
+
+        case Ash.Page.Keyset.filter(
+               query,
+               opts[:before] || opts[:after],
+               query.sort,
+               after_or_before
+             ) do
+          {:ok, filter} ->
+            {:ok, Ash.Query.do_filter(reversed, filter)}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      else
+        {:ok, limited}
+      end
     end
   end
 
