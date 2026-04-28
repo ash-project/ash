@@ -887,13 +887,13 @@ defmodule Ash.Actions.ManagedRelationships do
        ) do
     inputs
     |> Stream.with_index()
-    |> Enum.reduce_while(
-      {:ok, new_value, notifications},
-      fn {input, input_index}, {:ok, new_value, all_notifications} ->
+    |> Enum.reduce(
+      {:ok, new_value, notifications, []},
+      fn {input, input_index}, {status, current_value, all_notifications, errors} ->
         try do
           case handle_input(
                  record,
-                 new_value,
+                 current_value,
                  original_value,
                  relationship,
                  input,
@@ -903,14 +903,16 @@ defmodule Ash.Actions.ManagedRelationships do
                  index,
                  opts
                ) do
-            {:ok, new_value, notifications} ->
-              {:cont, {:ok, new_value, notifications ++ all_notifications}}
+            {:ok, next_value, notifications} ->
+              {status, next_value, notifications ++ all_notifications, errors}
 
             {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-              {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
+              {:error, current_value, all_notifications,
+               [add_bread_crumb(error, relationship, :manage) | errors]}
 
             {:error, error} ->
-              {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
+              {:error, current_value, all_notifications,
+               [set_error_path(error, relationship, input_index, opts) | errors]}
           end
         catch
           {DBConnection, ref, error} ->
@@ -918,6 +920,13 @@ defmodule Ash.Actions.ManagedRelationships do
         end
       end
     )
+    |> case do
+      {:ok, final_value, final_notifs, []} ->
+        {:ok, final_value, final_notifs}
+
+      {:error, _value, _notifs, errors} ->
+        {:error, Enum.reverse(errors)}
+    end
   end
 
   defp bulk_manage_relationship(
@@ -1036,8 +1045,8 @@ defmodule Ash.Actions.ManagedRelationships do
          opts,
          notifications
        ) do
-    Enum.reduce_while(lookups, {:ok, new_value, notifications, []}, fn
-      {input, input_index}, {:ok, current_value, all_notifications, creates} ->
+    Enum.reduce(lookups, {:ok, new_value, notifications, [], []}, fn
+      {input, input_index}, {status, current_value, all_notifications, creates, errors} ->
         case handle_create(
                record,
                current_value,
@@ -1049,18 +1058,26 @@ defmodule Ash.Actions.ManagedRelationships do
                _pkeys = pkeys(relationship, opts),
                opts
              ) do
-          {:ok, new_value, notifs} ->
-            new_value = tag_input_index_if_prepended(new_value, current_value, input_index)
-
-            {:cont, {:ok, new_value, notifs ++ all_notifications, creates}}
+          {:ok, next_value, notifs} ->
+            next_value = tag_input_index_if_prepended(next_value, current_value, input_index)
+            {status, next_value, notifs ++ all_notifications, creates, errors}
 
           {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-            {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
+            {:error, current_value, all_notifications, creates,
+             [add_bread_crumb(error, relationship, :manage) | errors]}
 
           {:error, error} ->
-            {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
+            {:error, current_value, all_notifications, creates,
+             [set_error_path(error, relationship, input_index, opts) | errors]}
         end
     end)
+    |> case do
+      {:ok, final_value, final_notifs, creates, []} ->
+        {:ok, final_value, final_notifs, creates}
+
+      {:error, _value, _notifs, _creates, errors} ->
+        {:error, Enum.reverse(errors)}
+    end
   end
 
   defp process_updates(
@@ -1088,8 +1105,8 @@ defmodule Ash.Actions.ManagedRelationships do
          opts,
          notifications
        ) do
-    Enum.reduce_while(updates, {:ok, new_value, notifications}, fn
-      {input, input_index, match}, {:ok, current_value, all_notifications} ->
+    Enum.reduce(updates, {:ok, new_value, notifications, []}, fn
+      {input, input_index, match}, {status, current_value, all_notifications, errors} ->
         try do
           case handle_update(
                  record,
@@ -1102,22 +1119,30 @@ defmodule Ash.Actions.ManagedRelationships do
                  pkeys,
                  opts
                ) do
-            {:ok, new_value, notifs} ->
-              new_value = tag_input_index_if_prepended(new_value, current_value, input_index)
-
-              {:cont, {:ok, new_value, notifs ++ all_notifications}}
+            {:ok, next_value, notifs} ->
+              next_value = tag_input_index_if_prepended(next_value, current_value, input_index)
+              {status, next_value, notifs ++ all_notifications, errors}
 
             {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-              {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
+              {:error, current_value, all_notifications,
+               [add_bread_crumb(error, relationship, :manage) | errors]}
 
             {:error, error} ->
-              {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
+              {:error, current_value, all_notifications,
+               [set_error_path(error, relationship, input_index, opts) | errors]}
           end
         catch
           {DBConnection, ref, error} ->
             throw({DBConnection, ref, set_error_path(error, relationship, input_index, opts)})
         end
     end)
+    |> case do
+      {:ok, final_value, final_notifs, []} ->
+        {:ok, final_value, final_notifs}
+
+      {:error, _value, _notifs, errors} ->
+        {:error, Enum.reverse(errors)}
+    end
   end
 
   defp batch_creates(
@@ -1233,8 +1258,8 @@ defmodule Ash.Actions.ManagedRelationships do
          opts,
          notifications
        ) do
-    Enum.reduce_while(creates, {:ok, new_value, notifications}, fn
-      {input, input_index}, {:ok, current_value, all_notifications} ->
+    Enum.reduce(creates, {:ok, new_value, notifications, []}, fn
+      {input, input_index}, {status, current_value, all_notifications, errors} ->
         case do_handle_create(
                record,
                current_value,
@@ -1245,18 +1270,26 @@ defmodule Ash.Actions.ManagedRelationships do
                index,
                opts
              ) do
-          {:ok, new_value, notifs} ->
-            new_value = tag_input_index_if_prepended(new_value, current_value, input_index)
-
-            {:cont, {:ok, new_value, notifs ++ all_notifications}}
+          {:ok, next_value, notifs} ->
+            next_value = tag_input_index_if_prepended(next_value, current_value, input_index)
+            {status, next_value, notifs ++ all_notifications, errors}
 
           {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-            {:halt, {:error, add_bread_crumb(error, relationship, :manage)}}
+            {:error, current_value, all_notifications,
+             [add_bread_crumb(error, relationship, :manage) | errors]}
 
           {:error, error} ->
-            {:halt, {:error, set_error_path(error, relationship, input_index, opts)}}
+            {:error, current_value, all_notifications,
+             [set_error_path(error, relationship, input_index, opts) | errors]}
         end
     end)
+    |> case do
+      {:ok, final_value, final_notifs, []} ->
+        {:ok, final_value, final_notifs}
+
+      {:error, _value, _notifs, errors} ->
+        {:error, Enum.reverse(errors)}
+    end
   end
 
   defp do_batch_create(
