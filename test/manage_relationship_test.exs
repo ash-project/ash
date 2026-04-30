@@ -26,6 +26,12 @@ defmodule Ash.Test.ManageRelationshipTest do
         change manage_relationship(:many_to_many_resources, type: :direct_control)
       end
 
+      create :debug_error_return_from_manage_relationship do
+        accept [:name]
+        argument :other_resources, {:array, :map}
+        change manage_relationship(:other_resources, type: :direct_control)
+      end
+
       create :create_ordered do
         accept [:name]
         argument :other_resources, {:array, :map}
@@ -370,6 +376,39 @@ defmodule Ash.Test.ManageRelationshipTest do
         join_relationship :join_resources
       end
     end
+  end
+
+  test "debug_error_return_from_manage_relationship returns the error" do
+    assert {:error,
+            %Ash.Error.Invalid{
+              errors: [
+                %Ash.Error.Changes.Required{
+                  field: :required_attribute,
+                  type: :attribute,
+                  path: [:other_resources, 0]
+                },
+                %Ash.Error.Changes.Required{
+                  field: :required_attribute,
+                  type: :attribute,
+                  path: [:other_resources, 1]
+                }
+              ]
+            }} =
+             ParentResource
+             |> Ash.Changeset.for_create(:debug_error_return_from_manage_relationship, %{
+               name: "Test Parent Resource",
+               other_resources: [
+                 %{
+                   required_attribute: nil,
+                   order: 0
+                 },
+                 %{
+                   required_attribute: nil,
+                   order: 1
+                 }
+               ]
+             })
+             |> Ash.create()
   end
 
   test "errors have the proper path set on them" do
