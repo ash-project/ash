@@ -8,6 +8,21 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.24.4](https://github.com/ash-project/ash/compare/v3.24.3...v3.24.4) (2026-05-01)
+
+
+
+
+### Bug Fixes:
+
+* eager error evaluation in manage_relationship validation (#2687) by [@RetroDev256](https://github.com/RetroDev256) [(#2687)](https://github.com/ash-project/ash/pull/2687)
+
+* dedup resource declarations in domains by [@zachdaniel](https://github.com/zachdaniel)
+
+* Handle calculations on data layers that disallow filters (#2682) by [@Munksgaard](https://github.com/Munksgaard) [(#2682)](https://github.com/ash-project/ash/pull/2682)
+
+* array storage type item constraints (#2681) by JVMartyns [(#2681)](https://github.com/ash-project/ash/pull/2681)
+
 ## [v3.24.3](https://github.com/ash-project/ash/compare/v3.24.2...v3.24.3) (2026-04-17)
 
 
