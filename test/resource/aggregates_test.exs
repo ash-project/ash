@@ -1094,4 +1094,145 @@ defmodule Ash.Test.Resource.AggregatesTest do
       assert like.id == comment_like.id
     end
   end
+
+  describe "multiple filters" do
+    defmodule FilterableComment do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.Resource.AggregatesTest.MultiFilterDomain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private? true
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :post_id, :uuid, allow_nil?: false, public?: true
+        attribute :status, :atom, constraints: [one_of: [:approved, :pending]], public?: true
+        attribute :rating, :integer, public?: true
+        attribute :author_name, :string, public?: true
+      end
+
+      actions do
+        default_accept :*
+        defaults [:create, :read]
+      end
+    end
+
+    defmodule MultiFilterPost do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.Resource.AggregatesTest.MultiFilterDomain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private? true
+      end
+
+      attributes do
+        uuid_primary_key :id
+      end
+
+      actions do
+        default_accept :*
+        defaults [:create, :read]
+      end
+
+      relationships do
+        has_many :comments, FilterableComment, destination_attribute: :post_id
+      end
+
+      aggregates do
+        count :approved_comments, :comments do
+          filter status: :approved
+          filter rating: [greater_than: 3]
+        end
+
+        count :strict_comments, :comments do
+          filter status: :approved
+          filter rating: [greater_than: 5]
+          filter author_name: "Alice"
+        end
+
+        count :single_filter_comments, :comments do
+          filter status: :approved
+        end
+
+        count :matching_comments, :comments do
+          filter status: :approved
+          filter rating: [greater_than: 3]
+          filter author_name: "Alice"
+        end
+      end
+    end
+
+    defmodule MultiFilterDomain do
+      @moduledoc false
+      use Ash.Domain
+
+      resources do
+        resource FilterableComment
+        resource MultiFilterPost
+      end
+    end
+
+    test "aggregates support multiple filter lines" do
+      assert Enum.any?(
+               Ash.Resource.Info.aggregates(MultiFilterPost),
+               &(&1.name == :approved_comments)
+             )
+    end
+
+    test "multiple filters are combined with AND" do
+      aggregate =
+        Enum.find(Ash.Resource.Info.aggregates(MultiFilterPost), &(&1.name == :strict_comments))
+
+      assert %Ash.Query.BooleanExpression{op: :and} = aggregate.filter
+    end
+
+    test "backward compatibility: single filter option still works" do
+      aggregate =
+        Enum.find(
+          Ash.Resource.Info.aggregates(MultiFilterPost),
+          &(&1.name == :single_filter_comments)
+        )
+
+      assert aggregate.filter
+    end
+
+    test "multiple filters actually filter results correctly" do
+      post =
+        MultiFilterPost
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!(domain: Ash.Test.Resource.AggregatesTest.MultiFilterDomain)
+
+      FilterableComment
+      |> Ash.Changeset.for_create(:create, %{
+        post_id: post.id,
+        status: :approved,
+        rating: 5,
+        author_name: "Alice"
+      })
+      |> Ash.create!(domain: Ash.Test.Resource.AggregatesTest.MultiFilterDomain)
+
+      FilterableComment
+      |> Ash.Changeset.for_create(:create, %{
+        post_id: post.id,
+        status: :approved,
+        rating: 2,
+        author_name: "Alice"
+      })
+      |> Ash.create!(domain: Ash.Test.Resource.AggregatesTest.MultiFilterDomain)
+
+      loaded =
+        MultiFilterPost
+        |> Ash.Query.filter(id == ^post.id)
+        |> Ash.Query.load(:matching_comments)
+        |> Ash.read!(domain: Ash.Test.Resource.AggregatesTest.MultiFilterDomain)
+        |> List.first()
+
+      assert loaded.matching_comments == 1
+    end
+  end
 end
