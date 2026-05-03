@@ -43,10 +43,12 @@ defmodule Ash.Filter do
     Round,
     StartOfDay,
     StringDowncase,
+    StringEndsWith,
     StringJoin,
     StringLength,
     StringPosition,
     StringSplit,
+    StringStartsWith,
     StringTrim,
     Today,
     Type
@@ -94,10 +96,12 @@ defmodule Ash.Filter do
     Type,
     StartOfDay,
     StringDowncase,
+    StringEndsWith,
     StringJoin,
     StringLength,
     StringPosition,
     StringSplit,
+    StringStartsWith,
     StringTrim
   ]
 

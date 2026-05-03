@@ -1,0 +1,71 @@
+# SPDX-FileCopyrightText: 2019 ash contributors <https://github.com/ash-project/ash/graphs/contributors>
+#
+# SPDX-License-Identifier: MIT
+
+defmodule Ash.Query.Function.StringStartsWith do
+  @moduledoc """
+  Returns true if the first string starts with the second.
+
+  Case insensitive strings are accounted for on either side.
+
+     string_starts_with?("foo", "fo")
+     true
+
+     string_starts_with?(%Ash.CiString{string: "foo"}, "FoO")
+     false
+
+     string_starts_with?(%Ash.CiString{string: "foo"}, "Fo")
+     true
+  """
+  use Ash.Query.Function, name: :string_starts_with?, predicate?: true
+
+  alias Ash.CiString
+
+  def args,
+    do: [
+      [:string, :string],
+      [:string, :ci_string],
+      [:ci_string, :string],
+      [:ci_string, :ci_string]
+    ]
+
+  def returns, do: [:boolean, :boolean, :boolean, :boolean]
+
+  def evaluate(%{arguments: [nil, _]}), do: {:known, false}
+  def evaluate(%{arguments: [_, nil]}), do: {:known, false}
+
+  def evaluate(%{arguments: [%CiString{} = left, %CiString{} = right]}) do
+    {:known,
+     String.starts_with?(
+       CiString.to_comparable_string(left),
+       CiString.to_comparable_string(right)
+     )}
+  end
+
+  def evaluate(%{arguments: [left, %CiString{} = right]}) when is_binary(left) do
+    {:known,
+     left
+     |> CiString.to_comparable_string()
+     |> String.starts_with?(CiString.to_comparable_string(right))}
+  end
+
+  def evaluate(%{arguments: [%CiString{} = left, right]}) when is_binary(right) do
+    {:known,
+     String.starts_with?(
+       CiString.to_comparable_string(left),
+       CiString.to_comparable_string(right)
+     )}
+  end
+
+  def evaluate(%{arguments: [left, right]}) when is_binary(left) and is_binary(right) do
+    {:known, String.starts_with?(left, right)}
+  end
+
+  def evaluate(_other) do
+    :unknown
+  end
+
+  def can_return_nil?(%{arguments: arguments}) do
+    Enum.any?(arguments, &Ash.Expr.can_return_nil?/1)
+  end
+end
