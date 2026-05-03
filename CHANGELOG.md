@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.24.5](https://github.com/ash-project/ash/compare/v3.24.4...v3.24.5) (2026-05-03)
+
+
+
+
+### Improvements:
+
+* add `string_starts_with?` function by [@zachdaniel](https://github.com/zachdaniel)
+
+* add `string_ends_with?` function by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.24.4](https://github.com/ash-project/ash/compare/v3.24.3...v3.24.4) (2026-05-01)
 
 
