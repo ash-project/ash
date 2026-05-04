@@ -27,6 +27,7 @@ defmodule Ash.Tracer do
           | :after_transaction
           | :after_action
           | {:custom, atom()}
+          | term()
 
   @type metadata() :: %{
           domain: nil | module(),
@@ -35,7 +36,7 @@ defmodule Ash.Tracer do
           tenant: term(),
           action: atom(),
           authorize?: boolean()
-        }
+        } | map()
 
   @type t :: module
 
