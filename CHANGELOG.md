@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.24.6](https://github.com/ash-project/ash/compare/v3.24.5...v3.24.6) (2026-05-04)
+
+
+
+
+### Bug Fixes:
+
+* don't use question marks in function names by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.24.5](https://github.com/ash-project/ash/compare/v3.24.4...v3.24.5) (2026-05-03)
 
 
