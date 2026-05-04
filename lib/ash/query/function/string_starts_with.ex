@@ -8,16 +8,16 @@ defmodule Ash.Query.Function.StringStartsWith do
 
   Case insensitive strings are accounted for on either side.
 
-     string_starts_with?("foo", "fo")
+     string_starts_with("foo", "fo")
      true
 
-     string_starts_with?(%Ash.CiString{string: "foo"}, "FoO")
+     string_starts_with(%Ash.CiString{string: "foo"}, "FoO")
      false
 
-     string_starts_with?(%Ash.CiString{string: "foo"}, "Fo")
+     string_starts_with(%Ash.CiString{string: "foo"}, "Fo")
      true
   """
-  use Ash.Query.Function, name: :string_starts_with?, predicate?: true
+  use Ash.Query.Function, name: :string_starts_with, predicate?: true
 
   alias Ash.CiString
 

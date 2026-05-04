@@ -8,16 +8,16 @@ defmodule Ash.Query.Function.StringEndsWith do
 
   Case insensitive strings are accounted for on either side.
 
-     string_ends_with?("foo", "oo")
+     string_ends_with("foo", "oo")
      true
 
-     string_ends_with?(%Ash.CiString{string: "foo"}, "OO")
+     string_ends_with(%Ash.CiString{string: "foo"}, "OO")
      true
 
-     string_ends_with?("foo", %Ash.CiString{string: "OO"})
+     string_ends_with("foo", %Ash.CiString{string: "OO"})
      true
   """
-  use Ash.Query.Function, name: :string_ends_with?, predicate?: true
+  use Ash.Query.Function, name: :string_ends_with, predicate?: true
 
   alias Ash.CiString
 
