@@ -664,7 +664,7 @@ defmodule Ash.Filter do
   Use this when your attribute is configured with `filterable? :simple_equality`, and you want to
   to find the value that it is being filtered on with (if any).
   """
-  @spec fetch_simple_equality_predicate(Ash.Expr.t(), atom()) :: {:ok, term()} | :error
+  @spec fetch_simple_equality_predicate(Ash.Expr.expression(), atom()) :: {:ok, term()} | :error
   def fetch_simple_equality_predicate(expression, attribute) do
     expression
     |> find(&simple_eq?(&1, attribute), false)
@@ -698,6 +698,10 @@ defmodule Ash.Filter do
   @doc "Find an expression inside of a filter that matches the provided predicate"
   def find(expr, pred, ors? \\ true, ands? \\ true, structures? \\ false) do
     do_find(expr, pred, false, ors?, ands?, structures?)
+  end
+
+  defp do_find(%Ash.Expr{expr: inner}, pred, value?, ors?, ands?, structures?) do
+    do_find(inner, pred, value?, ors?, ands?, structures?)
   end
 
   defp do_find(expr, pred, value?, ors?, ands?, structures?) do
@@ -758,6 +762,9 @@ defmodule Ash.Filter do
   end
 
   defp get_predicates(expr, skip_invalid?, acc \\ [])
+
+  defp get_predicates(%Ash.Expr{expr: inner}, skip_invalid?, acc),
+    do: get_predicates(inner, skip_invalid?, acc)
 
   defp get_predicates(true, _skip_invalid?, acc), do: acc
   defp get_predicates(false, _, _), do: false
@@ -1560,6 +1567,9 @@ defmodule Ash.Filter do
       {:halt, expr} ->
         expr
 
+      %Ash.Expr{expr: inner} = wrapper ->
+        %{wrapper | expr: map(inner, func)}
+
       value when is_tuple(value) ->
         value
         |> Tuple.to_list()
@@ -1642,6 +1652,9 @@ defmodule Ash.Filter do
 
   defp do_flat_map(expression, func) do
     case expression do
+      %Ash.Expr{expr: inner} ->
+        flat_map(inner, func)
+
       %BooleanExpression{left: left, right: right} ->
         func.(expression) ++ flat_map(left, func) ++ flat_map(right, func)
 
@@ -1701,6 +1714,9 @@ defmodule Ash.Filter do
 
   def update_aggregates(expression, resource, mapper, nested_path, parent_paths) do
     case expression do
+      %Ash.Expr{expr: inner} ->
+        update_aggregates(inner, resource, mapper, nested_path, parent_paths)
+
       {key, value} when is_atom(key) ->
         {key, update_aggregates(value, resource, mapper, nested_path, parent_paths)}
 
@@ -1786,6 +1802,15 @@ defmodule Ash.Filter do
 
   def run_other_data_layer_filters(_, _, filter, _tenant) when filter in [nil, true, false],
     do: {:ok, filter}
+
+  defp do_run_other_data_layer_filters(
+         %Ash.Expr{expr: inner},
+         domain,
+         resource,
+         tenant
+       ) do
+    do_run_other_data_layer_filters(inner, domain, resource, tenant)
+  end
 
   defp do_run_other_data_layer_filters(
          %BooleanExpression{op: op, left: left, right: right},
@@ -1876,6 +1901,10 @@ defmodule Ash.Filter do
 
   defp do_run_other_data_layer_filters(other, _domain, _resource, _data), do: {:ok, other}
 
+  defp split_expression_by_relationship_path(%Ash.Expr{expr: inner}, path) do
+    split_expression_by_relationship_path(inner, path)
+  end
+
   defp split_expression_by_relationship_path(%{expression: expression}, path) do
     split_expression_by_relationship_path(expression, path)
   end
@@ -1934,6 +1963,10 @@ defmodule Ash.Filter do
     else
       {nil, predicate}
     end
+  end
+
+  defp scope_refs(%Ash.Expr{expr: inner}, path) do
+    scope_refs(inner, path)
   end
 
   defp scope_refs(%BooleanExpression{left: left, right: right} = expr, path) do
@@ -2220,6 +2253,15 @@ defmodule Ash.Filter do
       |> Enum.uniq()
       |> Enum.map(fn {path} -> path end)
     end
+  end
+
+  defp do_relationship_paths(
+         %Ash.Expr{expr: inner},
+         include_exists?,
+         with_references?,
+         expand_aggregates?
+       ) do
+    do_relationship_paths(inner, include_exists?, with_references?, expand_aggregates?)
   end
 
   defp do_relationship_paths(
@@ -2661,6 +2703,16 @@ defmodule Ash.Filter do
   end
 
   defp do_list_refs(
+         %Ash.Expr{expr: inner},
+         no_longer_simple?,
+         in_an_eq?,
+         expand_calculations?,
+         expand_get_path?
+       ) do
+    do_list_refs(inner, no_longer_simple?, in_an_eq?, expand_calculations?, expand_get_path?)
+  end
+
+  defp do_list_refs(
          {key, value},
          no_longer_simple?,
          in_an_eq?,
@@ -2806,6 +2858,9 @@ defmodule Ash.Filter do
 
   def list_predicates(expression) do
     case expression do
+      %Ash.Expr{expr: inner} ->
+        list_predicates(inner)
+
       %BooleanExpression{left: left, right: right} ->
         list_predicates(left) ++ list_predicates(right)
 
@@ -2909,6 +2964,9 @@ defmodule Ash.Filter do
     end
   end
 
+  defp parse_expression(%Ash.Expr{expr: inner}, context),
+    do: parse_expression(inner, context)
+
   defp parse_expression(%__MODULE__{expression: expression}, context),
     do: {:ok, move_to_relationship_path(expression, context[:relationship_path] || [])}
 
@@ -2929,6 +2987,10 @@ defmodule Ash.Filter do
   end
 
   defp add_expression_part(boolean, context, expression, could_be_function? \\ true)
+
+  defp add_expression_part(%Ash.Expr{expr: inner}, context, expression, could_be_function?) do
+    add_expression_part(inner, context, expression, could_be_function?)
+  end
 
   defp add_expression_part(boolean, context, nil, _) do
     add_expression_part(boolean, context, true)
@@ -4095,6 +4157,10 @@ defmodule Ash.Filter do
       |> Map.put_new(:public?, false)
 
     do_hydrate_refs(value, context)
+  end
+
+  def do_hydrate_refs(%Ash.Expr{expr: inner}, context) do
+    do_hydrate_refs(inner, context)
   end
 
   def do_hydrate_refs(%__MODULE__{expression: expression} = filter, context) do

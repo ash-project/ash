@@ -364,6 +364,10 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
+  defp resolve_expr(%Ash.Expr{expr: inner}, record, parent, resource, unknown_on_unknown_refs?) do
+    resolve_expr(inner, record, parent, resource, unknown_on_unknown_refs?)
+  end
+
   defp resolve_expr({:_actor, _}, _, _, _, _), do: :unknown
   defp resolve_expr({:_arg, _}, _, _, _, _), do: :unknown
   defp resolve_expr({:_ref, _}, _, _, _, _), do: :unknown
