@@ -387,7 +387,7 @@ defmodule Ash.MixProject do
       # Used by the ETS data layer
       {:ets, "~> 0.8"},
       # Data & types
-      {:decimal, "~> 2.0"},
+      {:decimal, "~> 2.0 or ~> 3.0"},
       {:jason, ">= 1.0.0"},
       # Observability
       {:telemetry, "~> 1.1"},
