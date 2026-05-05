@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.24.7](https://github.com/ash-project/ash/compare/v3.24.6...v3.24.7) (2026-05-05)
+
+
+
+
+### Improvements:
+
+* support Decimal 3.0 by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.24.6](https://github.com/ash-project/ash/compare/v3.24.5...v3.24.6) (2026-05-04)
 
 
