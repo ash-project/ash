@@ -194,7 +194,7 @@ defmodule Ash.DataLayer do
           upsert?: boolean,
           action_select: list(atom),
           upsert_keys: nil | list(atom),
-          upsert_condition: Ash.Expr.t() | nil,
+          upsert_condition: Ash.Expr.expression() | nil,
           return_skipped_upsert?: boolean,
           identity: Ash.Resource.Identity.t() | nil,
           select: list(atom),
@@ -211,7 +211,7 @@ defmodule Ash.DataLayer do
   @type bulk_update_options :: %{
           return_records?: boolean,
           action_select: list(atom),
-          calculations: list({Ash.Query.Calculation.t(), Ash.Expr.t()}),
+          calculations: list({Ash.Query.Calculation.t(), Ash.Expr.expression()}),
           select: list(atom),
           tenant: term()
         }
@@ -309,7 +309,7 @@ defmodule Ash.DataLayer do
   @callback in_transaction?(Ash.Resource.t()) :: boolean
   @callback source(Ash.Resource.t()) :: String.t()
   @callback rollback(Ash.Resource.t(), term) :: no_return
-  @callback calculate(Ash.Resource.t(), list(Ash.Expr.t()), context :: map) ::
+  @callback calculate(Ash.Resource.t(), list(Ash.Expr.expression()), context :: map) ::
               {:ok, term} | {:error, term}
   @callback prefer_transaction?(Ash.Resource.t()) :: boolean
   @callback prefer_transaction_for_atomic_updates?(Ash.Resource.t()) :: boolean
@@ -398,14 +398,14 @@ defmodule Ash.DataLayer do
     Ash.DataLayer.functions(resource)
   end
 
-  @spec calculate(Ash.Resource.t(), list(Ash.Expr.t()), context :: map) ::
+  @spec calculate(Ash.Resource.t(), list(Ash.Expr.expression()), context :: map) ::
           {:ok, list(term)} | {:error, Ash.Error.t()}
   def calculate(resource, exprs, context) do
     calculate(Ash.DataLayer.data_layer(resource), resource, exprs, context)
   end
 
   @doc false
-  @spec calculate(module(), Ash.Resource.t(), list(Ash.Expr.t()), map()) ::
+  @spec calculate(module(), Ash.Resource.t(), list(Ash.Expr.expression()), map()) ::
           {:ok, list(term)} | {:error, Ash.Error.t()}
   def calculate(data_layer_module, resource, exprs, context) do
     Ash.BehaviourHelpers.call_and_validate_return(

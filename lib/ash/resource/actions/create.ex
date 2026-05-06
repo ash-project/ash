@@ -57,7 +57,7 @@ defmodule Ash.Resource.Actions.Create do
             | :replace_all
             | {:replace, list(atom)}
             | {:replace_all_except, list(atom)},
-          upsert_condition: Ash.Expr.t() | nil,
+          upsert_condition: Ash.Expr.expression() | nil,
           touches_resources: list(atom),
           arguments: list(Ash.Resource.Actions.Argument.t()),
           primary?: boolean,

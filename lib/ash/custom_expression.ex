@@ -70,12 +70,12 @@ defmodule Ash.CustomExpression do
 
   @callback expression(
               data_layer :: Ash.DataLayer.t(),
-              arguments :: list(Ash.Expr.t())
+              arguments :: list(Ash.Expr.expression())
             ) ::
-              {:ok, Ash.Expr.t()} | :unknown
+              {:ok, Ash.Expr.expression()} | :unknown
 
   @doc false
-  @spec expression(module(), module(), list()) :: {:ok, Ash.Expr.t()} | :unknown
+  @spec expression(module(), module(), list()) :: {:ok, Ash.Expr.expression()} | :unknown
   def expression(module, data_layer, arguments) do
     result = apply(module, :expression, [data_layer, arguments])
 

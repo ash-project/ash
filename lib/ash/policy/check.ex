@@ -56,7 +56,7 @@ defmodule Ash.Policy.Check do
 
   Return a keyword list filter that will be applied to the query being made, and will scope the results to match the rule
   """
-  @callback auto_filter(actor(), authorizer(), options()) :: Keyword.t() | Ash.Expr.t()
+  @callback auto_filter(actor(), authorizer(), options()) :: Keyword.t() | Ash.Expr.expression()
   @doc """
   An optional callback, that allows the check to work with policies set to `access_type :runtime`
 
@@ -167,7 +167,7 @@ defmodule Ash.Policy.Check do
 
   @doc false
   @spec auto_filter(module(), actor(), authorizer(), options()) ::
-          Keyword.t() | Ash.Expr.t() | nil
+          Keyword.t() | Ash.Expr.expression() | nil
   def auto_filter(module, actor, authorizer, opts) do
     result = apply(module, :auto_filter, [actor, authorizer, opts])
 
@@ -186,7 +186,7 @@ defmodule Ash.Policy.Check do
 
   @doc false
   @spec auto_filter_not(module(), actor(), authorizer(), options()) ::
-          Keyword.t() | Ash.Expr.t() | nil
+          Keyword.t() | Ash.Expr.expression() | nil
   def auto_filter_not(module, actor, authorizer, opts) do
     result = apply(module, :auto_filter_not, [actor, authorizer, opts])
 

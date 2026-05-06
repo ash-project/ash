@@ -73,7 +73,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
           allow_stream_with: :keyset | :offset | :full_read,
           assume_casted?: boolean,
           async?: boolean,
-          atomic_update: %{optional(atom) => Ash.Expr.t()},
+          atomic_update: %{optional(atom) => Ash.Expr.expression()},
           authorize_changeset_with: :filter | :error,
           authorize_query_with: :filter | :error,
           authorize_query?: boolean,

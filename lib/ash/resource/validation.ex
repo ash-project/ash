@@ -82,11 +82,11 @@ defmodule Ash.Resource.Validation do
               context :: Context.t()
             ) ::
               :ok
-              | {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.t(),
-                 error_expr :: Ash.Expr.t()}
+              | {:atomic, involved_fields :: list(atom) | :*,
+                 condition_expr :: Ash.Expr.expression(), error_expr :: Ash.Expr.expression()}
               | [
-                  {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.t(),
-                   error_expr :: Ash.Expr.t()}
+                  {:atomic, involved_fields :: list(atom) | :*,
+                   condition_expr :: Ash.Expr.expression(), error_expr :: Ash.Expr.expression()}
                 ]
               | {:not_atomic, String.t()}
               | {:error, term()}
@@ -320,8 +320,8 @@ defmodule Ash.Resource.Validation do
           Context.t()
         ) ::
           :ok
-          | {:atomic, list(atom()) | :*, Ash.Expr.t(), Ash.Expr.t()}
-          | [{:atomic, list(atom()) | :*, Ash.Expr.t(), Ash.Expr.t()}]
+          | {:atomic, list(atom()) | :*, Ash.Expr.expression(), Ash.Expr.expression()}
+          | [{:atomic, list(atom()) | :*, Ash.Expr.expression(), Ash.Expr.expression()}]
           | {:not_atomic, String.t()}
           | {:error, term()}
   def atomic(module, changeset_query_or_input, opts, context) do

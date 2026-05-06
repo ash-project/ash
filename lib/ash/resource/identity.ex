@@ -99,7 +99,7 @@ defmodule Ash.Resource.Identity do
           name: atom(),
           keys: list(atom()),
           description: String.t() | nil,
-          where: nil | Ash.Expr.t(),
+          where: nil | Ash.Expr.expression(),
           nils_distinct?: boolean(),
           all_tenants?: boolean(),
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()

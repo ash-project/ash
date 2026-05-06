@@ -8,7 +8,7 @@ defmodule Ash.Query.Combination do
   """
 
   @type t :: %__MODULE__{
-          filter: Ash.Expr.t(),
+          filter: Ash.Expr.expression(),
           sort: Ash.Sort.t(),
           limit: pos_integer() | nil,
           offset: pos_integer() | nil,

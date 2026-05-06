@@ -622,14 +622,14 @@ defmodule Ash.Test.Resource.UnrelatedExistsTest do
           )
         )
 
-      assert %Ash.Query.Exists{related?: false} = expr_ast
+      assert %Ash.Expr{expr: %Ash.Query.Exists{related?: false} = exists_ast} = expr_ast
 
       assert %Ash.Query.BooleanExpression{
                right: %Ash.Query.Exists{
                  related?: false,
                  resource: Ash.Test.Resource.UnrelatedExistsTest.Report
                }
-             } = expr_ast.expr
+             } = exists_ast.expr
     end
 
     test "unrelated exists with aggregate comparisons" do

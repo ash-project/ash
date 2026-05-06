@@ -40,8 +40,8 @@ defmodule Ash.Policy.FilterCheck do
           optional(any) => any
         }
 
-  @callback filter(actor :: term, context(), options()) :: Keyword.t() | Ash.Expr.t()
-  @callback reject(actor :: term, context(), options()) :: Keyword.t() | Ash.Expr.t()
+  @callback filter(actor :: term, context(), options()) :: Keyword.t() | Ash.Expr.expression()
+  @callback reject(actor :: term, context(), options()) :: Keyword.t() | Ash.Expr.expression()
   @optional_callbacks [reject: 3]
 
   defmacro __using__(_) do

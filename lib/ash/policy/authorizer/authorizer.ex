@@ -795,7 +795,7 @@ defmodule Ash.Policy.Authorizer do
         {nil,
          %Ash.Query.Calculation{module: Ash.Resource.Calculation.Expression, opts: opts} = calc} ->
           field_and_path =
-            case opts[:expr] do
+            case Ash.Expr.unwrap(opts[:expr]) do
               %Ash.Query.Function.Type{arguments: [%Ash.Query.Ref{} = ref | _]} ->
                 {ref.relationship_path, ref.attribute.name}
 
@@ -970,6 +970,9 @@ defmodule Ash.Policy.Authorizer do
 
   defp replace_refs(expression, acc) do
     case expression do
+      %Ash.Expr{expr: inner} ->
+        replace_refs(inner, acc)
+
       %Ash.Query.BooleanExpression{op: op, left: left, right: right} ->
         {left, acc} = replace_refs(left, acc)
         {right, acc} = replace_refs(right, acc)
