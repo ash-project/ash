@@ -29,14 +29,16 @@ defmodule Ash.Tracer do
           | {:custom, atom()}
           | term()
 
-  @type metadata() :: %{
-          domain: nil | module(),
-          resource: nil | module(),
-          actor: term(),
-          tenant: term(),
-          action: atom(),
-          authorize?: boolean()
-        } | map()
+  @type metadata() ::
+          %{
+            domain: nil | module(),
+            resource: nil | module(),
+            actor: term(),
+            tenant: term(),
+            action: atom(),
+            authorize?: boolean()
+          }
+          | map()
 
   @type t :: module
 
