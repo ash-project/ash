@@ -229,6 +229,100 @@ defmodule Ash.Test.ErrorTest do
       assert cs_child_error_1.bread_crumbs == ["some higher context", "some context"]
       assert cs_child_error_2.bread_crumbs == ["some higher context", "some other context"]
     end
+
+    # Regression test for `remove_required_if_other_errors_exist/1`. The dedupe
+    # is meant to keep one Required error per `{field, path}` group when a
+    # group has duplicates, but instead only returned the last error.
+    test "keeps one Required error per field when every Required error is duplicated" do
+      errors = [
+        %Ash.Error.Changes.Required{
+          field: :a,
+          type: :attribute,
+          resource: TestResource,
+          path: []
+        },
+        %Ash.Error.Changes.Required{
+          field: :b,
+          type: :attribute,
+          resource: TestResource,
+          path: []
+        },
+        %Ash.Error.Changes.Required{
+          field: :a,
+          type: :attribute,
+          resource: TestResource,
+          path: [],
+          bread_crumbs: ["dup"]
+        },
+        %Ash.Error.Changes.Required{
+          field: :b,
+          type: :attribute,
+          resource: TestResource,
+          path: [],
+          bread_crumbs: ["dup"]
+        }
+      ]
+
+      class = Ash.Error.to_error_class(errors)
+      fields = class.errors |> Enum.map(& &1.field) |> Enum.sort()
+
+      assert fields == [:a, :b]
+    end
+
+    # Same accumulator-replacement bug, broader consequence. The reduce seeds
+    # its accumulator with the non-Required errors, so replacing it on each
+    # iteration also dropped them.
+    test "preserves non-Required errors alongside duplicated Required errors" do
+      errors = [
+        %Ash.Error.Changes.Required{
+          field: :a,
+          type: :attribute,
+          resource: TestResource,
+          path: []
+        },
+        %Ash.Error.Changes.Required{
+          field: :b,
+          type: :attribute,
+          resource: TestResource,
+          path: []
+        },
+        %Ash.Error.Changes.Required{
+          field: :a,
+          type: :attribute,
+          resource: TestResource,
+          path: [],
+          bread_crumbs: ["dup"]
+        },
+        %Ash.Error.Changes.Required{
+          field: :b,
+          type: :attribute,
+          resource: TestResource,
+          path: [],
+          bread_crumbs: ["dup"]
+        },
+        Ash.Error.Changes.InvalidAttribute.exception(
+          field: :c,
+          message: "must have length of exactly %{exact}",
+          private_vars: [exact: 5]
+        )
+      ]
+
+      class = Ash.Error.to_error_class(errors)
+
+      required_fields =
+        class.errors
+        |> Enum.filter(&match?(%Ash.Error.Changes.Required{}, &1))
+        |> Enum.map(& &1.field)
+        |> Enum.sort()
+
+      invalid_attribute_fields =
+        class.errors
+        |> Enum.filter(&match?(%Ash.Error.Changes.InvalidAttribute{}, &1))
+        |> Enum.map(& &1.field)
+
+      assert required_fields == [:a, :b]
+      assert invalid_attribute_fields == [:c]
+    end
   end
 
   describe "to_ash_error" do

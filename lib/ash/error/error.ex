@@ -157,7 +157,7 @@ defmodule Ash.Error do
            end) do
           errors
         else
-          [Enum.max_by(required_errors, &Enum.count(&1.bread_crumbs))]
+          [Enum.max_by(required_errors, &Enum.count(&1.bread_crumbs)) | errors]
         end
       end)
 
