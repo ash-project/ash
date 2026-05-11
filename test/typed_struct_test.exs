@@ -390,6 +390,90 @@ defmodule Ash.TypedStructTest do
     end
   end
 
+  describe "typespec generation" do
+    test "ash_type_to_typespec maps built-in types correctly" do
+      # Primitives
+      assert {:integer, [], Elixir} = Ash.TypedStruct.ash_type_to_typespec(Ash.Type.Integer)
+      assert {:float, [], Elixir} = Ash.TypedStruct.ash_type_to_typespec(Ash.Type.Float)
+      assert {:boolean, [], Elixir} = Ash.TypedStruct.ash_type_to_typespec(Ash.Type.Boolean)
+      assert {:atom, [], Elixir} = Ash.TypedStruct.ash_type_to_typespec(Ash.Type.Atom)
+      assert {:map, [], Elixir} = Ash.TypedStruct.ash_type_to_typespec(Ash.Type.Map)
+      assert {:binary, [], Elixir} = Ash.TypedStruct.ash_type_to_typespec(Ash.Type.Binary)
+      assert {:term, [], Elixir} = Ash.TypedStruct.ash_type_to_typespec(Ash.Type.Term)
+
+      # String-like
+      string_t = Ash.TypedStruct.ash_type_to_typespec(Ash.Type.String)
+      assert Macro.to_string(string_t) == "String.t()"
+
+      uuid_t = Ash.TypedStruct.ash_type_to_typespec(Ash.Type.UUID)
+      assert Macro.to_string(uuid_t) == "String.t()"
+
+      # Date/time
+      assert Macro.to_string(Ash.TypedStruct.ash_type_to_typespec(Ash.Type.Date)) == "Date.t()"
+
+      assert Macro.to_string(Ash.TypedStruct.ash_type_to_typespec(Ash.Type.UtcDatetime)) ==
+               "DateTime.t()"
+
+      assert Macro.to_string(Ash.TypedStruct.ash_type_to_typespec(Ash.Type.Decimal)) ==
+               "Decimal.t()"
+    end
+
+    test "ash_type_to_typespec handles arrays" do
+      array_spec = Ash.TypedStruct.ash_type_to_typespec({:array, Ash.Type.String})
+      assert Macro.to_string(array_spec) == "[String.t()]"
+
+      nested = Ash.TypedStruct.ash_type_to_typespec({:array, {:array, Ash.Type.Integer}})
+      assert Macro.to_string(nested) =~ "integer"
+    end
+
+    test "ash_type_to_typespec falls back to Module.t() for unknown types" do
+      spec = Ash.TypedStruct.ash_type_to_typespec(MyApp.CustomType)
+      assert Macro.to_string(spec) == "MyApp.CustomType.t()"
+    end
+
+    test "build_typespec_ast generates correct struct typespec" do
+      fields = [
+        %Ash.TypedStruct.Field{
+          name: :name,
+          type: Ash.Type.String,
+          allow_nil?: true,
+          constraints: [],
+          default: nil
+        },
+        %Ash.TypedStruct.Field{
+          name: :age,
+          type: Ash.Type.Integer,
+          allow_nil?: false,
+          constraints: [],
+          default: nil
+        }
+      ]
+
+      ast = Ash.TypedStruct.build_typespec_ast(fields)
+      type_string = Macro.to_string(quote(do: @type(t :: unquote(ast))))
+
+      assert type_string =~ "name: String.t() | nil"
+      assert type_string =~ "age: integer"
+      refute type_string =~ "age: integer | nil"
+    end
+
+    test "user-defined @type t is not overridden" do
+      # This compiles without error, proving the guard works —
+      # without it, defining @type t twice would raise Kernel.TypespecError
+      id = System.unique_integer([:positive])
+
+      Code.compile_string("""
+      defmodule CustomTsGuardTest#{id} do
+        @type t :: %__MODULE__{name: binary()}
+        use Ash.TypedStruct
+        typed_struct do
+          field :name, :string
+        end
+      end
+      """)
+    end
+  end
+
   describe "typed struct introspection" do
     test "field names can be introspected in order" do
       assert Ash.TypedStruct.Info.field_names(UserStruct) == [:id, :name, :email, :age, :active]

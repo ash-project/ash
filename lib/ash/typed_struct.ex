@@ -193,13 +193,16 @@ defmodule Ash.TypedStruct do
             instance_of: module
           ]
 
+        typespec_ast = Ash.TypedStruct.build_typespec_ast(fields)
+
         # sobelow_skip ["RCE.CodeModule"]
         Code.eval_quoted(
           Ash.TypedStruct.__define_typed_struct__(
             enforce_keys,
             fields_with_defaults,
             map_constraints,
-            defaults
+            defaults,
+            typespec_ast
             # map_required_fields_match
           ),
           [],
@@ -217,7 +220,8 @@ defmodule Ash.TypedStruct do
         enforce_keys,
         fields_with_defaults,
         map_constraints,
-        defaults
+        defaults,
+        typespec_ast
         # map_required_fields_match
       ) do
     keyed_defaults =
@@ -226,6 +230,10 @@ defmodule Ash.TypedStruct do
       end)
 
     quote do
+      if !Kernel.Typespec.defines_type?(__MODULE__, {:t, 0}) do
+        @type t :: unquote(typespec_ast)
+      end
+
       @enforce_keys unquote(enforce_keys)
       defstruct unquote(Macro.escape(fields_with_defaults))
 
@@ -326,6 +334,87 @@ defmodule Ash.TypedStruct do
 
       defoverridable new: 1
     end
+  end
+
+  @doc false
+  def build_typespec_ast(fields) do
+    field_types =
+      Enum.map(fields, fn field ->
+        base_type = ash_type_to_typespec(field.type)
+
+        type_ast =
+          if field.allow_nil? != false do
+            {:|, [], [base_type, nil]}
+          else
+            base_type
+          end
+
+        {field.name, type_ast}
+      end)
+
+    {:%, [],
+     [
+       {:__MODULE__, [], Elixir},
+       {:%{}, [], field_types}
+     ]}
+  end
+
+  @primitive_typespecs %{
+    Ash.Type.Integer => :integer,
+    Ash.Type.Float => :float,
+    Ash.Type.Boolean => :boolean,
+    Ash.Type.Atom => :atom,
+    Ash.Type.Map => :map,
+    Ash.Type.Binary => :binary,
+    Ash.Type.Term => :term,
+    Ash.Type.Keyword => :keyword,
+    Ash.Type.Tuple => :tuple,
+    Ash.Type.Module => :module,
+    Ash.Type.UrlEncodedBinary => :binary,
+    Ash.Type.Struct => :struct,
+    Ash.Type.Union => :term,
+    Ash.Type.Function => :term,
+    Ash.Type.DurationName => :atom
+  }
+
+  @remote_typespecs %{
+    Ash.Type.String => [:String],
+    Ash.Type.UUID => [:String],
+    Ash.Type.UUIDv7 => [:String],
+    Ash.Type.Decimal => [:Decimal],
+    Ash.Type.Date => [:Date],
+    Ash.Type.Time => [:Time],
+    Ash.Type.TimeUsec => [:Time],
+    Ash.Type.NaiveDatetime => [:NaiveDateTime],
+    Ash.Type.UtcDatetime => [:DateTime],
+    Ash.Type.UtcDatetimeUsec => [:DateTime],
+    Ash.Type.DateTime => [:DateTime],
+    Ash.Type.Duration => [:Duration],
+    Ash.Type.CiString => [:Ash, :CiString],
+    Ash.Type.Vector => [:Ash, :Vector],
+    Ash.Type.File => [:Ash, :Type, :File]
+  }
+
+  @doc false
+  def ash_type_to_typespec({:array, inner_type}) do
+    [ash_type_to_typespec(inner_type)]
+  end
+
+  for {type, primitive} <- @primitive_typespecs do
+    def ash_type_to_typespec(unquote(type)), do: {unquote(primitive), [], Elixir}
+  end
+
+  for {type, module_parts} <- @remote_typespecs do
+    def ash_type_to_typespec(unquote(type)), do: remote_type(unquote(module_parts), :t)
+  end
+
+  def ash_type_to_typespec(module) when is_atom(module) do
+    parts = module |> Module.split() |> Enum.map(&String.to_atom/1)
+    remote_type(parts, :t)
+  end
+
+  defp remote_type(module_parts, func_name) do
+    {{:., [], [{:__aliases__, [alias: false], module_parts}, func_name]}, [], []}
   end
 
   use Spark.Dsl, default_extensions: [extensions: [Dsl]]
