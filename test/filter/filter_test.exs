@@ -550,6 +550,16 @@ defmodule Ash.Test.Filter.FilterTest do
                |> strip_metadata()
     end
 
+    test "filters with expression syntax via Ash.Expr.expr/1", %{post2: post2} do
+      import Ash.Expr
+
+      assert [^post2] =
+               Post
+               |> Ash.Query.where(expr(points > 1))
+               |> Ash.read!()
+               |> strip_metadata()
+    end
+
     test "no-ops for nil" do
       query = Post |> Ash.Query.where(nil)
       assert query.filter == nil

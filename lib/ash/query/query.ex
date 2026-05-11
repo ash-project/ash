@@ -698,8 +698,10 @@ defmodule Ash.Query do
   Attach a filter statement to the query.
 
   This is a non-macro alternative to `filter/2` that doesn't require
-  `require Ash.Query`. It accepts keyword/map style filters but not
-  expression syntax (use `filter/2` for expressions like `filter(title == "foo")`).
+  `require Ash.Query`. It accepts keyword/map style filters by default,
+  and also accepts expressions when the caller wraps them with
+  `Ash.Expr.expr/1` (e.g. via `import Ash.Expr`), so a single function
+  handles both expression and non-expression filters.
 
   Passing `nil` is a no-op, which is useful for conditional filtering in pipelines.
 
@@ -715,12 +717,18 @@ defmodule Ash.Query do
       MyApp.Post
       |> Ash.Query.where(%{points: %{greater_than: 100}})
 
+      # Expression syntax (requires `Ash.Expr.expr/1`)
+      import Ash.Expr
+
+      MyApp.Post
+      |> Ash.Query.where(expr(points > 100))
+
   ## See also
 
-  - `filter/2` for expression-style filters
+  - `filter/2` for the macro form that wraps bare expressions automatically
   - `filter_input/3` for user-submitted filter data
   """
-  @spec where(t() | Ash.Resource.t(), Keyword.t() | map() | nil) :: t()
+  @spec where(t() | Ash.Resource.t(), term()) :: t()
   def where(query, filter) do
     do_filter(query, filter)
   end
