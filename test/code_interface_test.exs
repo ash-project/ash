@@ -494,6 +494,47 @@ defmodule Ash.Test.CodeInterfaceTest do
 
       assert %Ash.BulkResult{status: :success} = User.bulk_create!([], [])
     end
+
+    test "create code interface adds a hint when params are passed as a lone keyword list" do
+      error =
+        assert_raise Spark.Options.ValidationError, fn ->
+          User.insert(first_name: "fred")
+        end
+
+      message = Exception.message(error)
+      assert message =~ "unknown options"
+      assert message =~ "`:first_name` is an input"
+      assert message =~ "Ash.Test.CodeInterfaceTest.User.insert/2"
+      assert message =~ "Ash.Test.CodeInterfaceTest.User.insert(%{:first_name => value}, [])"
+      assert message =~ "Pass inputs as a map in the params argument"
+      assert message =~ "Hint:"
+    end
+
+    test "bang create code interface hint uses the bang function name" do
+      error =
+        assert_raise Spark.Options.ValidationError, fn ->
+          User.insert!(first_name: "fred")
+        end
+
+      message = Exception.message(error)
+      assert message =~ "unknown options"
+      assert message =~ "`:first_name` is an input"
+      assert message =~ "Ash.Test.CodeInterfaceTest.User.insert!/2"
+      assert message =~ "Ash.Test.CodeInterfaceTest.User.insert!(%{:first_name => value}, [])"
+      assert message =~ "Hint:"
+    end
+
+    test "create code interface does not add a hint for non-input unknown options" do
+      error =
+        assert_raise Spark.Options.ValidationError, fn ->
+          User.insert(not_an_input: true)
+        end
+
+      message = Exception.message(error)
+      assert message =~ "unknown options"
+      refute message =~ "Hint:"
+      refute message =~ "Pass inputs as a map in the params argument"
+    end
   end
 
   describe "update actions" do
@@ -514,6 +555,25 @@ defmodule Ash.Test.CodeInterfaceTest do
 
       assert {:ok, _record} = User.update(bob, %{first_name: "bob_updated"}, context: @context)
       assert _record = User.update!(bob, %{first_name: "bob_updated"}, context: @context)
+    end
+
+    test "update code interface hint includes the record argument" do
+      bob = User.create!("bob", context: @context)
+
+      error =
+        assert_raise Spark.Options.ValidationError, fn ->
+          User.update(bob, first_name: "fred")
+        end
+
+      message = Exception.message(error)
+      assert message =~ "unknown options"
+      assert message =~ "`:first_name` is an input"
+      assert message =~ "Ash.Test.CodeInterfaceTest.User.update/3"
+
+      assert message =~
+               "Ash.Test.CodeInterfaceTest.User.update(record, %{:first_name => value}, [])"
+
+      assert message =~ "Hint:"
     end
 
     test "can take a query" do
