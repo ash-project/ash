@@ -284,3 +284,28 @@ Finished in 0.08 seconds (0.00s async, 0.08s sync)
 ```
 %{total: 7, failures: 0, excluded: 0, skipped: 0}
 ```
+
+## Testing AshPostgres
+
+Previous examples above use Ash.DataLayer.Ets for testing. This will not work if we use
+AshPostgres, and will need a different setup. We will use DataCase when we have to work
+with AshPostgres, as will be shown in the following tests and examples:
+
+
+```elixir
+# test/my_app/accounts_test.exs
+defmodule MyApp.AccountsTest do
+  use MyApp.DataCase
+
+  test "creates a user" do
+    assert {:ok, user} =
+             MyApp.Accounts.User
+             |> Ash.Changeset.for_create(:create, %{name: "James"})
+             |> Ash.create()
+
+    assert user.name == "James"
+  end
+end
+```
+
+For additional explanation about AshPostgres and DataCase usage, check (/documentation/development/testing.md)
