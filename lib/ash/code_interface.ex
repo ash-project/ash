@@ -1631,7 +1631,7 @@ defmodule Ash.CodeInterface do
          error.key != nil do
       inputs = Ash.Resource.Info.action_inputs(resource, action_name)
 
-      if MapSet.size(inputs) > 0 && MapSet.member?(inputs, error.key) do
+      if MapSet.member?(inputs, error.key) do
         example_args =
           if action_type in [:update, :destroy] && require_reference? do
             "record, %{#{inspect(error.key)} => value}, []"
