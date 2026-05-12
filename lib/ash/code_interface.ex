@@ -649,6 +649,9 @@ defmodule Ash.CodeInterface do
 
         resolve_params_and_opts =
           quote do
+            # Used in opts validation error hints so messages name the exact code interface function.
+            {function_name, function_arity} = __ENV__.function
+
             {params, opts, arg_params, filter_params, custom_input_errors} =
               Ash.CodeInterface.resolve_params_and_opts(
                 params_or_opts,
@@ -659,7 +662,12 @@ defmodule Ash.CodeInterface do
                 unquote(interface.exclude_inputs || []),
                 unquote(resource),
                 unquote(interface.name),
-                unquote(Enum.count(interface.args || []) + 2),
+                unquote(action.name),
+                unquote(action.type),
+                unquote(interface.require_reference?),
+                __MODULE__,
+                function_name,
+                function_arity,
                 unquote(custom_inputs),
                 unquote(filter_params)
               )
@@ -1599,6 +1607,58 @@ defmodule Ash.CodeInterface do
     end
   end
 
+  # Hint when attributes are passed as opts (e.g. `insert(first_name: "x")` vs a params map).
+  # Spark uses the same ValidationError and `:key` for every opts failure; only the
+  # "unknown options" message prefix isolates this case (no separate reason field on the struct).
+  defp code_interface_unknown_options_error?(%Spark.Options.ValidationError{message: message})
+       when is_binary(message) do
+    String.starts_with?(message, "unknown options")
+  end
+
+  defp code_interface_unknown_options_error?(_), do: false
+
+  defp enhance_code_interface_opts_validation_error(
+         %Spark.Options.ValidationError{} = error,
+         resource,
+         action_name,
+         action_type,
+         require_reference?,
+         interface_module,
+         function_name,
+         arity
+       ) do
+    if code_interface_unknown_options_error?(error) && is_atom(error.key) &&
+         error.key != nil do
+      inputs = Ash.Resource.Info.action_inputs(resource, action_name)
+
+      if MapSet.member?(inputs, error.key) do
+        example_args =
+          if action_type in [:update, :destroy] && require_reference? do
+            "record, %{#{inspect(error.key)} => value}, []"
+          else
+            "%{#{inspect(error.key)} => value}, []"
+          end
+
+        hint = """
+
+        Hint: `#{inspect(error.key)}` is an input for the #{inspect(action_name)} action on #{inspect(resource)}, but it was given as an option to `#{inspect(interface_module)}.#{function_name}/#{arity}`.
+
+        Pass inputs as a map in the params argument, for example:
+
+            #{inspect(interface_module)}.#{function_name}(#{example_args})
+
+        Put framework options (`:actor`, `:tenant`, `:authorize?`, etc.) in the second argument.
+        """
+
+        %Spark.Options.ValidationError{error | message: error.message <> hint}
+      else
+        error
+      end
+    else
+      error
+    end
+  end
+
   def resolve_params_and_opts(
         params_or_opts,
         opts,
@@ -1608,6 +1668,11 @@ defmodule Ash.CodeInterface do
         exclude_inputs,
         resource,
         interface_name,
+        action_name,
+        action_type,
+        require_reference?,
+        interface_module,
+        function_name,
         arity,
         custom_inputs,
         filter_params
@@ -1623,10 +1688,28 @@ defmodule Ash.CodeInterface do
               static_options -> static_options
             end
 
-          opts
-          |> Ash.CodeInterface.merge_default_opts(default_options)
-          |> interface_options.validate!()
-          |> interface_options.to_options()
+          # Enrich only unknown-options + known input keys; see `enhance_code_interface_opts_validation_error/8`.
+          try do
+            opts
+            |> Ash.CodeInterface.merge_default_opts(default_options)
+            |> interface_options.validate!()
+            |> interface_options.to_options()
+          rescue
+            error in [Spark.Options.ValidationError] ->
+              error =
+                enhance_code_interface_opts_validation_error(
+                  error,
+                  resource,
+                  action_name,
+                  action_type,
+                  require_reference?,
+                  interface_module,
+                  function_name,
+                  arity
+                )
+
+              reraise error, __STACKTRACE__
+          end
         end
       )
 
