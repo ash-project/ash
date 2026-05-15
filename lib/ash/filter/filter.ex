@@ -1543,6 +1543,31 @@ defmodule Ash.Filter do
     add_ref_to_relevant_paths({rest, ref}, new_acc, new_trail)
   end
 
+  @doc false
+  # Rewrites references inside an `exists/2` predicate so that fields of the
+  # embedded resource currently being iterated are represented as
+  # `Ash.Query.EmbeddedArrayElementField` markers. SQL data layers translate
+  # these markers into per-element JSONB extractions (e.g.,
+  # `jsonb_extract_path_text(elem, 'field')::type`).
+  #
+  # Only refs whose `relationship_path` is empty and whose attribute belongs
+  # to `embedded_resource` are rewritten — outer-scope refs (e.g., via
+  # `parent/1`) are left intact.
+  def rewrite_for_embedded_array_scope(expr, embedded_resource) when is_atom(embedded_resource) do
+    map(expr, fn
+      %Ref{relationship_path: [], attribute: %Ash.Resource.Attribute{} = attr, resource: resource}
+      when resource == embedded_resource ->
+        %Ash.Query.EmbeddedArrayElementField{
+          field: attr.name,
+          type: attr.type,
+          constraints: attr.constraints || []
+        }
+
+      other ->
+        other
+    end)
+  end
+
   def map(%__MODULE__{expression: nil} = filter, _) do
     filter
   end
