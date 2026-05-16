@@ -360,6 +360,12 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
+      def cast_from_embedded(value, constraints) do
+        constraints = subtype_constraints(constraints)
+        Ash.Type.cast_from_embedded(unquote(subtype_of), value, constraints)
+      end
+
+      @impl Ash.Type
       def composite?(constraints) do
         constraints = subtype_constraints(constraints)
         unquote(subtype_of).composite?(constraints)
@@ -386,6 +392,41 @@ defmodule Ash.Type.NewType do
 
               error ->
                 {:halt, Ash.Helpers.error_with_context(error, index: index)}
+            end
+          end)
+        end
+      end
+
+      @impl Ash.Type
+      def cast_from_embedded_array(term, constraints) do
+        if is_nil(term) do
+          {:ok, nil}
+        else
+          term
+          |> Enum.with_index()
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+            case cast_from_embedded(item, constraints) do
+              :error ->
+                {:halt, {:error, index: index}}
+
+              {:error, keyword} ->
+                errors =
+                  keyword
+                  |> List.wrap()
+                  |> Ash.Helpers.flatten_preserving_keywords()
+                  |> Enum.map(fn
+                    string when is_binary(string) ->
+                      [message: string, index: index]
+
+                    vars ->
+                      Keyword.put(vars, :index, index)
+                  end)
+
+                {:halt, {:error, errors}}
+
+              {:ok, value} ->
+                {:cont, {:ok, [value | casted]}}
             end
           end)
         end
@@ -658,6 +699,8 @@ defmodule Ash.Type.NewType do
                      constraints: 0,
                      dump_to_embedded_array: 2,
                      dump_to_embedded: 2,
+                     cast_from_embedded: 2,
+                     cast_from_embedded_array: 2,
                      dump_to_native_array: 2,
                      dump_to_native: 2,
                      generator: 1,

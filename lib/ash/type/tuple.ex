@@ -130,10 +130,43 @@ defmodule Ash.Type.Tuple do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, constraints) when is_map(value) do
+    cast_tuple_fields(value, constraints, &Ash.Type.cast_stored/3)
+  end
+
+  def cast_stored(_, _), do: :error
+
+  @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+
+  def dump_to_native(value, constraints) when is_tuple(value) do
+    dump_tuple_fields(value, constraints, &Ash.Type.dump_to_native/3)
+  end
+
+  def dump_to_native(_, _), do: :error
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(value, constraints) when is_tuple(value) do
+    dump_tuple_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(_, _), do: :error
+
+  @impl true
+  def cast_from_embedded(nil, _), do: {:ok, nil}
+
+  def cast_from_embedded(value, constraints) when is_map(value) do
+    cast_tuple_fields(value, constraints, &Ash.Type.cast_from_embedded/3)
+  end
+
+  def cast_from_embedded(_, _), do: :error
+
+  defp cast_tuple_fields(value, constraints, cast_fn) do
     Enum.reduce_while(constraints[:fields], {:ok, []}, fn {key, config}, {:ok, acc} ->
       case fetch_field(value, key) do
         {:ok, value} ->
-          case Ash.Type.cast_stored(config[:type], value, config[:constraints] || []) do
+          case cast_fn.(config[:type], value, config[:constraints] || []) do
             {:ok, value} ->
               {:cont, {:ok, [value | acc]}}
 
@@ -151,27 +184,25 @@ defmodule Ash.Type.Tuple do
     end
   end
 
-  def cast_stored(_, _), do: :error
-
-  @impl true
-  def dump_to_native(nil, _), do: {:ok, nil}
-
-  def dump_to_native(value, constraints) when is_tuple(value) do
+  defp dump_tuple_fields(value, constraints, dump_fn) do
     list = Tuple.to_list(value)
 
     if length(list) == length(constraints[:fields]) do
       list
       |> Enum.zip(constraints[:fields])
-      |> Map.new(fn {tuple_val, {key, _config}} ->
-        {key, tuple_val}
+      |> Enum.reduce_while({:ok, %{}}, fn {tuple_val, {key, config}}, {:ok, acc} ->
+        case dump_fn.(config[:type], tuple_val, config[:constraints] || []) do
+          {:ok, dumped} ->
+            {:cont, {:ok, Map.put(acc, key, dumped)}}
+
+          other ->
+            {:halt, other}
+        end
       end)
-      |> then(&{:ok, &1})
     else
       :error
     end
   end
-
-  def dump_to_native(_, _), do: :error
 
   @impl true
   def apply_constraints(nil, _), do: {:ok, nil}

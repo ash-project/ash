@@ -429,6 +429,16 @@ defmodule Ash.Type do
   """
   @callback dump_to_embedded_array(list(term), constraints) :: {:ok, term} | error()
 
+  @doc "Cast a value from a JSON-safe embedded format back to an Elixir value. The reverse of `c:dump_to_embedded/2`."
+  @callback cast_from_embedded(term, constraints) :: {:ok, term} | error()
+
+  @doc """
+  Cast a list of values from a JSON-safe embedded format back to a list of valid instances of the type.
+
+  If not defined, `c:cast_from_embedded/2` is called for each item.
+  """
+  @callback cast_from_embedded_array(list(term), constraints) :: {:ok, term} | error()
+
   @doc "React to a changing value. This could be used, for example, to have a type like `:strictly_increasing_integer`."
   @callback handle_change(old_term :: term, new_term :: term, constraints) ::
               {:ok, term} | error()
@@ -656,6 +666,8 @@ defmodule Ash.Type do
     array_constraints: 0,
     dump_to_embedded: 2,
     dump_to_embedded_array: 2,
+    cast_from_embedded: 2,
+    cast_from_embedded_array: 2,
     include_source: 2,
     load: 4,
     merge_load: 4,
@@ -1454,6 +1466,35 @@ defmodule Ash.Type do
   end
 
   @doc """
+  Casts a value from a JSON-safe embedded format back to an Elixir value.
+
+  This is the reverse of `dump_to_embedded/3`.
+  """
+  @spec cast_from_embedded(t(), term, constraints | nil) ::
+          {:ok, term} | {:error, keyword()} | :error
+  def cast_from_embedded(type, term, constraints \\ [])
+
+  def cast_from_embedded({:array, {:array, type}}, term, constraints) do
+    if is_nil(term) do
+      {:ok, nil}
+    else
+      map_while_ok(term, &cast_from_embedded({:array, type}, &1, item_constraints(constraints)))
+    end
+  end
+
+  def cast_from_embedded({:array, type}, term, constraints) do
+    type = Ash.Type.get_type(type)
+
+    type.cast_from_embedded_array(term, item_constraints(constraints))
+  end
+
+  def cast_from_embedded(type, term, constraints) do
+    type = get_type(type)
+
+    type.cast_from_embedded(term, constraints)
+  end
+
+  @doc """
   Determines if two values of a given type are equal.
 
   Maps to `Ecto.Type.equal?/3`
@@ -1864,6 +1905,11 @@ defmodule Ash.Type do
       end
 
       @impl true
+      def cast_from_embedded(value, constraints) do
+        cast_stored(value, constraints)
+      end
+
+      @impl true
       def loaded?(_, _, _, _), do: false
 
       @impl true
@@ -1995,6 +2041,41 @@ defmodule Ash.Type do
       end
 
       @impl true
+      def cast_from_embedded_array(term, single_constraints) do
+        if is_nil(term) do
+          {:ok, nil}
+        else
+          term
+          |> Enum.with_index()
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+            case Ash.Type.cast_from_embedded(__MODULE__, item, single_constraints) do
+              :error ->
+                {:halt, {:error, index: index}}
+
+              {:error, keyword} ->
+                errors =
+                  keyword
+                  |> List.wrap()
+                  |> Ash.Helpers.flatten_preserving_keywords()
+                  |> Enum.map(fn
+                    string when is_binary(string) ->
+                      [message: string, index: index]
+
+                    vars ->
+                      Keyword.put(vars, :index, index)
+                  end)
+
+                {:halt, {:error, errors}}
+
+              {:ok, value} ->
+                {:cont, {:ok, [value | casted]}}
+            end
+          end)
+        end
+      end
+
+      @impl true
       def apply_atomic_constraints(new_value, _constraints) do
         {:ok, new_value}
       end
@@ -2085,6 +2166,8 @@ defmodule Ash.Type do
                      dump_to_native_array: 2,
                      dump_to_embedded: 2,
                      dump_to_embedded_array: 2,
+                     cast_from_embedded: 2,
+                     cast_from_embedded_array: 2,
                      matches_type?: 2,
                      embedded?: 0,
                      ecto_type: 0,
