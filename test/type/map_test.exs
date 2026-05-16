@@ -651,6 +651,92 @@ defmodule Ash.Type.MapTest do
     end
   end
 
+  describe "cast_from_embedded" do
+    test "recursively calls cast_from_embedded on field types" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map,
+          fields: [
+            name: [type: DumpTestType],
+            count: [type: :integer]
+          ]
+        )
+
+      assert {:ok, %{name: "hello", count: 42}} =
+               Ash.Type.cast_from_embedded(
+                 Ash.Type.Map,
+                 %{name: "embedded:hello", count: 42},
+                 constraints
+               )
+    end
+
+    test "uses cast_from_embedded not cast_stored on fields" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map,
+          fields: [
+            val: [type: DumpTestType]
+          ]
+        )
+
+      # DumpTestType.cast_stored only strips "native:", DumpTestType.cast_from_embedded
+      # only strips "embedded:" — so the prefix tells us which callback ran on the field.
+      {:ok, from_stored} =
+        Ash.Type.cast_stored(Ash.Type.Map, %{val: "embedded:test"}, constraints)
+
+      {:ok, from_embedded} =
+        Ash.Type.cast_from_embedded(Ash.Type.Map, %{val: "embedded:test"}, constraints)
+
+      assert from_stored.val == "embedded:test"
+      assert from_embedded.val == "test"
+    end
+
+    test "without fields returns map as-is" do
+      assert {:ok, %{anything: "goes"}} =
+               Ash.Type.cast_from_embedded(Ash.Type.Map, %{anything: "goes"}, [])
+    end
+
+    test "handles nil" do
+      assert {:ok, nil} = Ash.Type.cast_from_embedded(Ash.Type.Map, nil, [])
+    end
+
+    test "respects preserve_nil_values?" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map,
+          fields: [name: [type: :string]],
+          preserve_nil_values?: true
+        )
+
+      assert {:ok, %{name: nil}} =
+               Ash.Type.cast_from_embedded(Ash.Type.Map, %{name: nil}, constraints)
+
+      {:ok, constraints_no_nil} =
+        Ash.Type.init(Ash.Type.Map,
+          fields: [name: [type: :string]],
+          preserve_nil_values?: false
+        )
+
+      assert {:ok, %{}} =
+               Ash.Type.cast_from_embedded(Ash.Type.Map, %{name: nil}, constraints_no_nil)
+    end
+
+    test "honors string keys in field lookup" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map,
+          fields: [name: [type: DumpTestType]]
+        )
+
+      assert {:ok, %{name: "hello"}} =
+               Ash.Type.cast_from_embedded(
+                 Ash.Type.Map,
+                 %{"name" => "embedded:hello"},
+                 constraints
+               )
+    end
+
+    test "returns error for non-map values" do
+      assert :error = Ash.Type.cast_from_embedded(Ash.Type.Map, "string", [])
+    end
+  end
+
   describe "dump/cast round-trip" do
     test "dump_to_native then cast_stored preserves data" do
       {:ok, constraints} =
@@ -685,6 +771,43 @@ defmodule Ash.Type.MapTest do
       string_keyed = Map.new(dumped, fn {k, v} -> {to_string(k), v} end)
 
       assert {:ok, restored} = Ash.Type.cast_stored(Ash.Type.Map, string_keyed, constraints)
+      assert restored == original
+    end
+
+    test "dump_to_embedded then cast_from_embedded preserves data" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map,
+          fields: [
+            name: [type: :string],
+            count: [type: :integer]
+          ]
+        )
+
+      original = %{name: "hello", count: 42}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_embedded(Ash.Type.Map, original, constraints)
+      assert {:ok, restored} = Ash.Type.cast_from_embedded(Ash.Type.Map, dumped, constraints)
+      assert restored == original
+    end
+
+    test "dump_to_embedded then cast_from_embedded with string keys round-trips" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map,
+          fields: [
+            name: [type: :string],
+            count: [type: :integer]
+          ]
+        )
+
+      original = %{name: "hello", count: 42}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_embedded(Ash.Type.Map, original, constraints)
+
+      string_keyed = Map.new(dumped, fn {k, v} -> {to_string(k), v} end)
+
+      assert {:ok, restored} =
+               Ash.Type.cast_from_embedded(Ash.Type.Map, string_keyed, constraints)
+
       assert restored == original
     end
   end

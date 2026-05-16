@@ -155,31 +155,7 @@ defmodule Ash.Type.Map do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, constraints) when is_map(value) do
-    if fields = constraints[:fields] do
-      nil_values = constraints[:preserve_nil_values?] == true
-
-      Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
-        case fetch_field(value, key) do
-          {:ok, value} ->
-            case Ash.Type.cast_stored(config[:type], value, config[:constraints] || []) do
-              {:ok, value} ->
-                if is_nil(value) && !nil_values do
-                  {:cont, {:ok, acc}}
-                else
-                  {:cont, {:ok, Map.put(acc, key, value)}}
-                end
-
-              other ->
-                {:halt, other}
-            end
-
-          :error ->
-            {:cont, {:ok, acc}}
-        end
-      end)
-    else
-      {:ok, value}
-    end
+    cast_fields(value, constraints, &Ash.Type.cast_stored/3)
   end
 
   def cast_stored(_, _), do: :error
@@ -202,6 +178,15 @@ defmodule Ash.Type.Map do
 
   def dump_to_embedded(_, _), do: :error
 
+  @impl true
+  def cast_from_embedded(nil, _), do: {:ok, nil}
+
+  def cast_from_embedded(value, constraints) when is_map(value) do
+    cast_fields(value, constraints, &Ash.Type.cast_from_embedded/3)
+  end
+
+  def cast_from_embedded(_, _), do: :error
+
   defp dump_fields(value, constraints, dump_fn) do
     if fields = constraints[:fields] do
       nil_values = constraints[:preserve_nil_values?] == true
@@ -223,6 +208,34 @@ defmodule Ash.Type.Map do
     case fetch_field(value, key) do
       {:ok, field_value} -> dump_fn.(config[:type], field_value, config[:constraints] || [])
       :error -> :skip
+    end
+  end
+
+  defp cast_fields(value, constraints, cast_fn) do
+    if fields = constraints[:fields] do
+      nil_values = constraints[:preserve_nil_values?] == true
+
+      Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
+        case fetch_field(value, key) do
+          {:ok, value} ->
+            case cast_fn.(config[:type], value, config[:constraints] || []) do
+              {:ok, value} ->
+                if is_nil(value) && !nil_values do
+                  {:cont, {:ok, acc}}
+                else
+                  {:cont, {:ok, Map.put(acc, key, value)}}
+                end
+
+              other ->
+                {:halt, other}
+            end
+
+          :error ->
+            {:cont, {:ok, acc}}
+        end
+      end)
+    else
+      {:ok, value}
     end
   end
 

@@ -577,6 +577,62 @@ defmodule Type.StructTest do
     end
   end
 
+  describe "cast_from_embedded" do
+    test "recursively calls cast_from_embedded on field types" do
+      constraints = [
+        instance_of: Metadata,
+        fields: [
+          foo: [type: DumpTestType],
+          bar: [type: :integer]
+        ]
+      ]
+
+      assert {:ok, restored} =
+               Ash.Type.cast_from_embedded(
+                 Ash.Type.Struct,
+                 %{foo: "embedded:hello", bar: 42},
+                 constraints
+               )
+
+      assert restored.foo == "hello"
+      assert restored.bar == 42
+    end
+
+    test "handles nil" do
+      assert {:ok, nil} =
+               Ash.Type.cast_from_embedded(Ash.Type.Struct, nil, instance_of: Metadata)
+    end
+
+    test "returns error for non-map values" do
+      assert :error =
+               Ash.Type.cast_from_embedded(
+                 Ash.Type.Struct,
+                 "string",
+                 instance_of: Metadata
+               )
+    end
+
+    test "handles string keys" do
+      constraints = [
+        instance_of: Metadata,
+        fields: [
+          foo: [type: DumpTestType],
+          bar: [type: :integer]
+        ]
+      ]
+
+      assert {:ok, restored} =
+               Ash.Type.cast_from_embedded(
+                 Ash.Type.Struct,
+                 %{"foo" => "embedded:hello", "bar" => 42},
+                 constraints
+               )
+
+      assert restored.foo == "hello"
+      assert restored.bar == 42
+    end
+  end
+
   describe "dump/cast round-trip" do
     test "dump_to_native then cast_stored preserves data" do
       constraints = [
@@ -612,6 +668,45 @@ defmodule Type.StructTest do
       string_keyed = Map.new(dumped, fn {k, v} -> {to_string(k), v} end)
 
       assert {:ok, restored} = Ash.Type.cast_stored(Ash.Type.Struct, string_keyed, constraints)
+      assert restored.foo == original.foo
+      assert restored.bar == original.bar
+    end
+
+    test "dump_to_embedded then cast_from_embedded preserves data" do
+      constraints = [
+        instance_of: Metadata,
+        fields: [
+          foo: [type: :string],
+          bar: [type: :integer]
+        ]
+      ]
+
+      original = %Metadata{foo: "hello", bar: 42}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_embedded(Ash.Type.Struct, original, constraints)
+      assert {:ok, restored} = Ash.Type.cast_from_embedded(Ash.Type.Struct, dumped, constraints)
+      assert restored.foo == original.foo
+      assert restored.bar == original.bar
+    end
+
+    test "dump_to_embedded then cast_from_embedded with string keys round-trips" do
+      constraints = [
+        instance_of: Metadata,
+        fields: [
+          foo: [type: :string],
+          bar: [type: :integer]
+        ]
+      ]
+
+      original = %Metadata{foo: "hello", bar: 42}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_embedded(Ash.Type.Struct, original, constraints)
+
+      string_keyed = Map.new(dumped, fn {k, v} -> {to_string(k), v} end)
+
+      assert {:ok, restored} =
+               Ash.Type.cast_from_embedded(Ash.Type.Struct, string_keyed, constraints)
+
       assert restored.foo == original.foo
       assert restored.bar == original.bar
     end

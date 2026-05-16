@@ -884,6 +884,89 @@ defmodule Ash.Test.Filter.UnionTest do
     end
   end
 
+  describe "cast_from_embedded" do
+    test "uses cast_from_embedded on inner value with type_and_value storage" do
+      constraints = [
+        types: [
+          custom: [type: DumpTestType]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      embedded_value = %{"type" => "custom", "value" => "embedded:hello"}
+
+      assert {:ok, %Ash.Union{type: :custom, value: "hello"}} =
+               Ash.Type.cast_from_embedded(Ash.Type.Union, embedded_value, constraints)
+    end
+
+    test "uses cast_from_embedded on inner value with map_with_tag storage" do
+      constraints = [
+        storage: :map_with_tag,
+        types: [
+          foo: [
+            type: :map,
+            tag: :type,
+            tag_value: :foo
+          ]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      embedded_value = %{"type" => "foo", "data" => "test"}
+
+      assert {:ok, %Ash.Union{type: :foo}} =
+               Ash.Type.cast_from_embedded(Ash.Type.Union, embedded_value, constraints)
+    end
+
+    test "handles nil" do
+      constraints = [
+        types: [
+          custom: [type: DumpTestType]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      assert {:ok, nil} = Ash.Type.cast_from_embedded(Ash.Type.Union, nil, constraints)
+    end
+
+    test "returns error for non-map values" do
+      constraints = [
+        types: [
+          custom: [type: DumpTestType]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      assert :error = Ash.Type.cast_from_embedded(Ash.Type.Union, "string", constraints)
+    end
+
+    test "round-trips through dump_to_embedded and cast_from_embedded" do
+      constraints = [
+        types: [
+          int: [type: :integer],
+          string: [type: :string]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      union = %Ash.Union{type: :int, value: 42}
+
+      assert {:ok, dumped} = Ash.Type.dump_to_embedded(Ash.Type.Union, union, constraints)
+      assert {:ok, restored} = Ash.Type.cast_from_embedded(Ash.Type.Union, dumped, constraints)
+      assert %Ash.Union{type: :int, value: 42} = restored
+    end
+  end
+
   test "it fails when attempting to define a resource using a union with invalid constraints" do
     assert_raise Spark.Error.DslError, ~r/required :second option not found/, fn ->
       defmodule FailingExampleMissingSecond do

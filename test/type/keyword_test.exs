@@ -690,6 +690,49 @@ defmodule Type.KeywordTest do
     end
   end
 
+  describe "cast_from_embedded" do
+    test "recursively calls cast_from_embedded on field types" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: DumpTestType],
+            count: [type: :integer]
+          ]
+        )
+
+      assert {:ok, [name: "hello", count: 42]} =
+               Ash.Type.cast_from_embedded(
+                 Ash.Type.Keyword,
+                 %{name: "embedded:hello", count: 42},
+                 constraints
+               )
+    end
+
+    test "handles string keys" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: DumpTestType]
+          ]
+        )
+
+      assert {:ok, [name: "hello"]} =
+               Ash.Type.cast_from_embedded(
+                 Ash.Type.Keyword,
+                 %{"name" => "embedded:hello"},
+                 constraints
+               )
+    end
+
+    test "handles nil" do
+      assert {:ok, nil} = Ash.Type.cast_from_embedded(Ash.Type.Keyword, nil, [])
+    end
+
+    test "returns error for non-map values" do
+      assert :error = Ash.Type.cast_from_embedded(Ash.Type.Keyword, "string", [])
+    end
+  end
+
   describe "dump/cast round-trip" do
     test "dump_to_native then cast_stored preserves data" do
       {:ok, constraints} =
@@ -724,6 +767,43 @@ defmodule Type.KeywordTest do
       string_keyed = Map.new(dumped, fn {k, v} -> {to_string(k), v} end)
 
       assert {:ok, restored} = Ash.Type.cast_stored(Ash.Type.Keyword, string_keyed, constraints)
+      assert restored == original
+    end
+
+    test "dump_to_embedded then cast_from_embedded preserves data" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: :string],
+            count: [type: :integer]
+          ]
+        )
+
+      original = [name: "hello", count: 42]
+
+      assert {:ok, dumped} = Ash.Type.dump_to_embedded(Ash.Type.Keyword, original, constraints)
+      assert {:ok, restored} = Ash.Type.cast_from_embedded(Ash.Type.Keyword, dumped, constraints)
+      assert restored == original
+    end
+
+    test "dump_to_embedded then cast_from_embedded with string keys round-trips" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            name: [type: :string],
+            count: [type: :integer]
+          ]
+        )
+
+      original = [name: "hello", count: 42]
+
+      assert {:ok, dumped} = Ash.Type.dump_to_embedded(Ash.Type.Keyword, original, constraints)
+
+      string_keyed = Map.new(dumped, fn {k, v} -> {to_string(k), v} end)
+
+      assert {:ok, restored} =
+               Ash.Type.cast_from_embedded(Ash.Type.Keyword, string_keyed, constraints)
+
       assert restored == original
     end
   end

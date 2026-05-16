@@ -882,6 +882,37 @@ defmodule Ash.Type.Union do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, constraints) when is_map(value) do
+    cast_union(value, constraints, &Ash.Type.cast_stored/3)
+  end
+
+  def cast_stored(_, _), do: :error
+
+  @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+
+  def dump_to_native(%Ash.Union{value: value, type: type_name}, union_constraints) do
+    dump_union(value, type_name, union_constraints, &Ash.Type.dump_to_native/3)
+  end
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(%Ash.Union{value: value, type: type_name}, union_constraints) do
+    dump_union(value, type_name, union_constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(_, _), do: :error
+
+  @impl true
+  def cast_from_embedded(nil, _), do: {:ok, nil}
+
+  def cast_from_embedded(value, constraints) when is_map(value) do
+    cast_union(value, constraints, &Ash.Type.cast_from_embedded/3)
+  end
+
+  def cast_from_embedded(_, _), do: :error
+
+  defp cast_union(value, constraints, cast_fn) do
     types = constraints[:types] || []
 
     case constraints[:storage] do
@@ -897,13 +928,9 @@ defmodule Ash.Type.Union do
 
             case Keyword.fetch(types, type) do
               {:ok, config} ->
-                case Ash.Type.cast_stored(config[:type], value, config[:constraints]) do
+                case cast_fn.(config[:type], value, config[:constraints]) do
                   {:ok, casted_value} ->
-                    {:ok,
-                     %Ash.Union{
-                       value: casted_value,
-                       type: type
-                     }}
+                    {:ok, %Ash.Union{value: casted_value, type: type}}
 
                   other ->
                     other
@@ -931,13 +958,9 @@ defmodule Ash.Type.Union do
             :error
 
           {type_name, config} ->
-            case Ash.Type.cast_stored(config[:type], value, config[:constraints]) do
+            case cast_fn.(config[:type], value, config[:constraints]) do
               {:ok, casted_value} ->
-                {:ok,
-                 %Ash.Union{
-                   value: casted_value,
-                   type: type_name
-                 }}
+                {:ok, %Ash.Union{value: casted_value, type: type_name}}
 
               other ->
                 other
@@ -945,24 +968,6 @@ defmodule Ash.Type.Union do
         end
     end
   end
-
-  def cast_stored(_, _), do: :error
-
-  @impl true
-  def dump_to_native(nil, _), do: {:ok, nil}
-
-  def dump_to_native(%Ash.Union{value: value, type: type_name}, union_constraints) do
-    dump_union(value, type_name, union_constraints, &Ash.Type.dump_to_native/3)
-  end
-
-  @impl true
-  def dump_to_embedded(nil, _), do: {:ok, nil}
-
-  def dump_to_embedded(%Ash.Union{value: value, type: type_name}, union_constraints) do
-    dump_union(value, type_name, union_constraints, &Ash.Type.dump_to_embedded/3)
-  end
-
-  def dump_to_embedded(_, _), do: :error
 
   defp dump_union(value, type_name, union_constraints, dump_fn) do
     type = union_constraints[:types][type_name][:type]

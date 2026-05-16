@@ -152,22 +152,7 @@ defmodule Ash.Type.Keyword do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, constraints) when is_map(value) do
-    if fields = constraints[:fields] do
-      fields
-      |> Enum.reduce_while({:ok, []}, fn {key, config}, {:ok, acc} ->
-        case cast_stored_field(value, key, config) do
-          {:ok, value} -> {:cont, {:ok, [{key, value} | acc]}}
-          :skip -> {:cont, {:ok, acc}}
-          other -> {:halt, other}
-        end
-      end)
-      |> case do
-        {:ok, keyword} -> {:ok, Enum.reverse(keyword)}
-        other -> other
-      end
-    else
-      {:ok, try_map_to_keyword(value, constraints)}
-    end
+    cast_keyword_fields(value, constraints, &Ash.Type.cast_stored/3)
   end
 
   def cast_stored(_, _), do: :error
@@ -201,6 +186,15 @@ defmodule Ash.Type.Keyword do
       :error
     end
   end
+
+  @impl true
+  def cast_from_embedded(nil, _), do: {:ok, nil}
+
+  def cast_from_embedded(value, constraints) when is_map(value) do
+    cast_keyword_fields(value, constraints, &Ash.Type.cast_from_embedded/3)
+  end
+
+  def cast_from_embedded(_, _), do: :error
 
   @impl true
   def apply_constraints(value, constraints) do
@@ -301,9 +295,28 @@ defmodule Ash.Type.Keyword do
 
   defp fetch_field(_, _), do: :error
 
-  defp cast_stored_field(map, key, config) do
+  defp cast_keyword_fields(value, constraints, cast_fn) do
+    if fields = constraints[:fields] do
+      fields
+      |> Enum.reduce_while({:ok, []}, fn {key, config}, {:ok, acc} ->
+        case cast_keyword_field(value, key, config, cast_fn) do
+          {:ok, value} -> {:cont, {:ok, [{key, value} | acc]}}
+          :skip -> {:cont, {:ok, acc}}
+          other -> {:halt, other}
+        end
+      end)
+      |> case do
+        {:ok, keyword} -> {:ok, Enum.reverse(keyword)}
+        other -> other
+      end
+    else
+      {:ok, try_map_to_keyword(value, constraints)}
+    end
+  end
+
+  defp cast_keyword_field(map, key, config, cast_fn) do
     case fetch_map_field(map, key) do
-      {:ok, value} -> Ash.Type.cast_stored(config[:type], value, config[:constraints] || [])
+      {:ok, value} -> cast_fn.(config[:type], value, config[:constraints] || [])
       :error -> :skip
     end
   end

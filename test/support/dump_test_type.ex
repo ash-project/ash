@@ -19,8 +19,11 @@ defmodule Ash.Test.DumpTestType do
 
   @impl true
   def cast_stored("native:" <> value, _), do: {:ok, value}
-  def cast_stored("embedded:" <> value, _), do: {:ok, value}
   def cast_stored(value, _), do: {:ok, value}
+
+  @impl true
+  def cast_from_embedded("embedded:" <> value, _), do: {:ok, value}
+  def cast_from_embedded(value, _), do: {:ok, value}
 
   @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
