@@ -35,7 +35,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
   in depth-first discovery order (dependencies before dependents).
   """
   @spec find_reachable([atom() | {atom(), [atom()]}], keyword()) :: {[atom()], [atom()]}
-  def find_reachable(resource_entries, visibility_opts \\ []) do
+  def find_reachable(resource_entries, opts \\ []) do
     {resources, types, _visited} =
       Enum.reduce(resource_entries, {[], [], MapSet.new()}, fn entry,
                                                                {resources, types, visited} ->
@@ -49,7 +49,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
               resource,
               MapSet.put(visited, resource),
               action_names,
-              visibility_opts
+              opts
             )
 
           {
@@ -70,13 +70,13 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
     do: {resource, nil}
 
   # action_names: nil means "traverse all public actions", list means "only these actions"
-  defp traverse_resource(resource, visited, action_names, visibility_opts) do
+  defp traverse_resource(resource, visited, action_names, opts) do
     if is_resource?(resource) do
       # Traverse fields (respecting visibility options)
-      fields = get_fields(resource, visibility_opts)
+      fields = get_fields(resource, opts)
 
       # Traverse relationships (respecting visibility options)
-      relationships = get_relationships(resource, visibility_opts)
+      relationships = get_relationships(resource, opts)
 
       # Walk fields
       {field_resources, field_types, visited} =
@@ -84,7 +84,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
           {type, constraints} = get_field_type_and_constraints(field)
 
           {found_r, found_t, new_visited} =
-            traverse_type(type, constraints, visited, visibility_opts)
+            traverse_type(type, constraints, visited, opts)
 
           {resources ++ found_r, types ++ found_t, new_visited}
         end)
@@ -103,7 +103,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
               new_visited = MapSet.put(visited, destination)
               # Discovered resources only traverse fields/relationships, not action arguments
               {found_r, found_t, newer_visited} =
-                traverse_resource(destination, new_visited, [], visibility_opts)
+                traverse_resource(destination, new_visited, [], opts)
 
               {
                 resources ++ found_r ++ [destination],
@@ -122,7 +122,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
           rel_resources,
           rel_types,
           visited,
-          visibility_opts
+          opts
         )
 
       {arg_resources, arg_types, visited}
@@ -137,10 +137,10 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
          resources,
          types,
          visited,
-         visibility_opts
+         opts
        ) do
     actions = get_actions_to_traverse(resource, action_names)
-    include_private_args? = Keyword.get(visibility_opts, :include_private_arguments?, false)
+    include_private_args? = Keyword.get(opts, :include_private_arguments?, false)
 
     Enum.reduce(actions, {resources, types, visited}, fn action, {resources, types, visited} ->
       args =
@@ -156,7 +156,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
           {type, constraints} = {arg.type, arg.constraints || []}
 
           {found_r, found_t, new_visited} =
-            traverse_type(type, constraints, visited, visibility_opts)
+            traverse_type(type, constraints, visited, opts)
 
           {resources ++ found_r, types ++ found_t, new_visited}
         end)
@@ -164,14 +164,14 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
       # Walk return type (generic actions declare a custom return type via :returns;
       # CRUD actions return the resource itself, which is already reachable)
       {resources, types, visited} =
-        traverse_action_returns(action, resources, types, visited, visibility_opts)
+        traverse_action_returns(action, resources, types, visited, opts)
 
       # Walk metadata field types (custom types in metadata fields need to be reachable)
-      traverse_action_metadata(action, resources, types, visited, visibility_opts)
+      traverse_action_metadata(action, resources, types, visited, opts)
     end)
   end
 
-  defp traverse_action_returns(action, resources, types, visited, visibility_opts) do
+  defp traverse_action_returns(action, resources, types, visited, opts) do
     case Map.get(action, :returns) do
       nil ->
         {resources, types, visited}
@@ -180,13 +180,13 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
         return_constraints = Map.get(action, :constraints) || []
 
         {found_r, found_t, new_visited} =
-          traverse_type(return_type, return_constraints, visited, visibility_opts)
+          traverse_type(return_type, return_constraints, visited, opts)
 
         {resources ++ found_r, types ++ found_t, new_visited}
     end
   end
 
-  defp traverse_action_metadata(action, resources, types, visited, visibility_opts) do
+  defp traverse_action_metadata(action, resources, types, visited, opts) do
     metadata = Map.get(action, :metadata) || []
 
     Enum.reduce(metadata, {resources, types, visited}, fn meta, {resources, types, visited} ->
@@ -195,7 +195,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
 
       if meta_type do
         {found_r, found_t, new_visited} =
-          traverse_type(meta_type, meta_constraints, visited, visibility_opts)
+          traverse_type(meta_type, meta_constraints, visited, opts)
 
         {resources ++ found_r, types ++ found_t, new_visited}
       else
@@ -219,7 +219,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
     end)
   end
 
-  defp traverse_type(type, constraints, visited, visibility_opts) when is_list(constraints) do
+  defp traverse_type(type, constraints, visited, opts) when is_list(constraints) do
     {unwrapped_type, unwrapped_constraints} = TypeResolver.unwrap_new_type(type, constraints)
 
     # Detect named type modules: NewTypes (type differs after unwrap) or enums
@@ -232,7 +232,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
       visited = if is_named, do: MapSet.put(visited, type), else: visited
 
       {found_r, found_t, visited} =
-        traverse_unwrapped_type(unwrapped_type, unwrapped_constraints, visited, visibility_opts)
+        traverse_unwrapped_type(unwrapped_type, unwrapped_constraints, visited, opts)
 
       if is_named do
         {found_r, [type | found_t], visited}
@@ -242,23 +242,23 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
     end
   end
 
-  defp traverse_type(_type, _constraints, visited, _visibility_opts) do
+  defp traverse_type(_type, _constraints, visited, _opts) do
     {[], [], visited}
   end
 
-  defp traverse_unwrapped_type(unwrapped_type, constraints, visited, visibility_opts) do
+  defp traverse_unwrapped_type(unwrapped_type, constraints, visited, opts) do
     case unwrapped_type do
       {:array, inner_type} ->
         items_constraints = Keyword.get(constraints, :items, [])
-        traverse_type(inner_type, items_constraints, visited, visibility_opts)
+        traverse_type(inner_type, items_constraints, visited, opts)
 
       Ash.Type.Struct ->
         instance_of = Keyword.get(constraints, :instance_of)
 
         if instance_of && is_resource?(instance_of) do
-          traverse_resource_ref(instance_of, visited, visibility_opts)
+          traverse_resource_ref(instance_of, visited, opts)
         else
-          traverse_field_constraints(constraints, visited, visibility_opts)
+          traverse_field_constraints(constraints, visited, opts)
         end
 
       Ash.Type.Union ->
@@ -271,7 +271,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
 
           if member_type do
             {found_r, found_t, new_visited} =
-              traverse_type(member_type, member_constraints, visited, visibility_opts)
+              traverse_type(member_type, member_constraints, visited, opts)
 
             {resources ++ found_r, types ++ found_t, new_visited}
           else
@@ -280,15 +280,15 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
         end)
 
       type when type in [Ash.Type.Map, Ash.Type.Keyword, Ash.Type.Tuple] ->
-        traverse_field_constraints(constraints, visited, visibility_opts)
+        traverse_field_constraints(constraints, visited, opts)
 
       type when is_atom(type) ->
         cond do
           is_resource?(type) ->
-            traverse_resource_ref(type, visited, visibility_opts)
+            traverse_resource_ref(type, visited, opts)
 
           Code.ensure_loaded?(type) == true ->
-            traverse_field_constraints(constraints, visited, visibility_opts)
+            traverse_field_constraints(constraints, visited, opts)
 
           true ->
             {[], [], visited}
@@ -299,20 +299,20 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
     end
   end
 
-  defp traverse_resource_ref(resource, visited, visibility_opts) do
+  defp traverse_resource_ref(resource, visited, opts) do
     if MapSet.member?(visited, resource) do
       {[], [], visited}
     else
       new_visited = MapSet.put(visited, resource)
       # Discovered resources only traverse fields/relationships, not action arguments
       {found_r, found_t, newer_visited} =
-        traverse_resource(resource, new_visited, [], visibility_opts)
+        traverse_resource(resource, new_visited, [], opts)
 
       {found_r ++ [resource], found_t, newer_visited}
     end
   end
 
-  defp traverse_field_constraints(constraints, visited, visibility_opts) do
+  defp traverse_field_constraints(constraints, visited, opts) do
     fields = Keyword.get(constraints, :fields)
 
     if fields && is_list(fields) do
@@ -322,7 +322,7 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
 
         if field_type do
           {found_r, found_t, new_visited} =
-            traverse_type(field_type, field_constraints, visited, visibility_opts)
+            traverse_type(field_type, field_constraints, visited, opts)
 
           {resources ++ found_r, types ++ found_t, new_visited}
         else
@@ -334,10 +334,10 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
     end
   end
 
-  defp get_fields(resource, visibility_opts) do
-    include_private_attrs? = Keyword.get(visibility_opts, :include_private_attributes?, false)
-    include_private_calcs? = Keyword.get(visibility_opts, :include_private_calculations?, false)
-    include_private_aggs? = Keyword.get(visibility_opts, :include_private_aggregates?, false)
+  defp get_fields(resource, opts) do
+    include_private_attrs? = Keyword.get(opts, :include_private_attributes?, false)
+    include_private_calcs? = Keyword.get(opts, :include_private_calculations?, false)
+    include_private_aggs? = Keyword.get(opts, :include_private_aggregates?, false)
 
     # If all three are the same (all public or all include-private), fetch in one call
     if include_private_attrs? == include_private_calcs? and
@@ -370,8 +370,8 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
     end
   end
 
-  defp get_relationships(resource, visibility_opts) do
-    if Keyword.get(visibility_opts, :include_private_relationships?, false) do
+  defp get_relationships(resource, opts) do
+    if Keyword.get(opts, :include_private_relationships?, false) do
       Ash.Resource.Info.relationships(resource)
     else
       Ash.Resource.Info.public_relationships(resource)

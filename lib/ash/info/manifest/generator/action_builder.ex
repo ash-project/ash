@@ -13,31 +13,31 @@ defmodule Ash.Info.Manifest.Generator.ActionBuilder do
   @doc """
   Build an `%Ash.Info.Manifest.Action{}` from an Ash action struct.
 
-  ## Visibility Options
+  ## Options
 
     * `:include_private_arguments?` - Include private arguments (default: `false`)
   """
   @spec build(atom(), struct(), keyword()) :: Action.t()
-  def build(resource, action, visibility_opts \\ []) do
+  def build(resource, action, opts \\ []) do
     %Action{
       name: action.name,
       type: action.type,
       description: Map.get(action, :description),
       primary?: Map.get(action, :primary?, false),
       get?: Map.get(action, :get?, false),
-      arguments: build_arguments(action, visibility_opts),
-      accept: build_accept(action),
-      require_attributes: build_require_attributes(action),
-      allow_nil_input: build_allow_nil_input(action),
+      arguments: build_arguments(action, opts),
+      accept: Map.get(action, :accept),
+      require_attributes: Map.get(action, :require_attributes),
+      allow_nil_input: Map.get(action, :allow_nil_input),
       metadata: build_metadata(resource, action),
       returns: build_returns(action),
       pagination: build_pagination(action)
     }
   end
 
-  defp build_arguments(action, visibility_opts) do
+  defp build_arguments(action, opts) do
     args =
-      if Keyword.get(visibility_opts, :include_private_arguments?, false) do
+      if Keyword.get(opts, :include_private_arguments?, false) do
         action.arguments
       else
         Enum.filter(action.arguments, & &1.public?)
@@ -55,27 +55,6 @@ defmodule Ash.Info.Manifest.Generator.ActionBuilder do
       description: Map.get(arg, :description),
       sensitive?: Map.get(arg, :sensitive?, false)
     }
-  end
-
-  defp build_accept(action) do
-    case Map.get(action, :accept) do
-      nil -> nil
-      accept when is_list(accept) -> accept
-    end
-  end
-
-  defp build_require_attributes(action) do
-    case Map.get(action, :require_attributes) do
-      nil -> nil
-      attrs when is_list(attrs) -> attrs
-    end
-  end
-
-  defp build_allow_nil_input(action) do
-    case Map.get(action, :allow_nil_input) do
-      nil -> nil
-      attrs when is_list(attrs) -> attrs
-    end
   end
 
   defp build_metadata(_resource, action) do

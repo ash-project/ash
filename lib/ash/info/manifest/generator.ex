@@ -53,7 +53,7 @@ defmodule Ash.Info.Manifest.Generator do
       check (e.g. for extensions that intentionally expose private
       attributes to internal callers).
   """
-  @visibility_keys [
+  @build_opt_keys [
     :include_private_attributes?,
     :include_private_calculations?,
     :include_private_aggregates?,
@@ -66,8 +66,8 @@ defmodule Ash.Info.Manifest.Generator do
     otp_app = Keyword.fetch!(opts, :otp_app)
     action_filter = Keyword.get(opts, :action_entrypoints)
     overrides = Keyword.get(opts, :overrides, [])
-    visibility_opts = Keyword.take(opts, @visibility_keys)
     enforce_public_accept? = Keyword.get(opts, :enforce_public_accept?, true)
+    build_opts = Keyword.take(opts, @build_opt_keys)
 
     always_opts = Keyword.get(overrides, :always, [])
     always_resources = Keyword.get(always_opts, :resources, [])
@@ -98,7 +98,7 @@ defmodule Ash.Info.Manifest.Generator do
 
     # Run reachability analysis
     {reachable_resources, standalone_types} =
-      Reachability.find_reachable(reachability_entries, visibility_opts)
+      Reachability.find_reachable(reachability_entries, build_opts)
 
     # Merge always-resources and always-types into reachability results
     reachable_resources = Enum.uniq(reachable_resources ++ always_resources)
@@ -109,7 +109,7 @@ defmodule Ash.Info.Manifest.Generator do
       reachable_resources
       |> Enum.sort_by(&Module.split/1)
       |> Enum.map(fn resource ->
-        ResourceBuilder.build(resource, visibility_opts)
+        ResourceBuilder.build(resource, build_opts)
       end)
 
     # Build entrypoints — one per normalized entry (not per unique action)
@@ -117,7 +117,7 @@ defmodule Ash.Info.Manifest.Generator do
       build_entrypoints(
         normalized_entries,
         resource_action_map,
-        visibility_opts,
+        build_opts,
         enforce_public_accept?
       )
 
@@ -181,7 +181,7 @@ defmodule Ash.Info.Manifest.Generator do
   end
 
   # When no filter: one entrypoint per action on each resource
-  defp build_entrypoints(nil, resource_action_map, visibility_opts, enforce_public_accept?) do
+  defp build_entrypoints(nil, resource_action_map, opts, enforce_public_accept?) do
     resource_action_map
     |> Enum.flat_map(fn {resource, _action_names} ->
       resource
@@ -191,7 +191,7 @@ defmodule Ash.Info.Manifest.Generator do
 
         %Ash.Info.Manifest.Entrypoint{
           resource: resource,
-          action: ActionBuilder.build(resource, action, visibility_opts)
+          action: ActionBuilder.build(resource, action, opts)
         }
       end)
     end)
@@ -202,7 +202,7 @@ defmodule Ash.Info.Manifest.Generator do
   defp build_entrypoints(
          normalized_entries,
          _resource_action_map,
-         visibility_opts,
+         opts,
          enforce_public_accept?
        ) do
     normalized_entries
@@ -217,7 +217,7 @@ defmodule Ash.Info.Manifest.Generator do
           [
             %Ash.Info.Manifest.Entrypoint{
               resource: resource,
-              action: ActionBuilder.build(resource, action, visibility_opts),
+              action: ActionBuilder.build(resource, action, opts),
               config: config
             }
           ]

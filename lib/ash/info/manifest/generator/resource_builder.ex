@@ -15,7 +15,7 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
 
   Resources are pure type/shape definitions — actions live in entrypoints.
 
-  ## Visibility Options
+  ## Options
 
     * `:include_private_attributes?` - Include private attributes (default: `false`)
     * `:include_private_calculations?` - Include private calculations (default: `false`)
@@ -23,31 +23,31 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
     * `:include_private_relationships?` - Include private relationships (default: `false`)
   """
   @spec build(atom(), keyword()) :: Resource.t()
-  def build(resource, visibility_opts \\ []) do
+  def build(resource, opts \\ []) do
     %Resource{
       name: resource_name(resource),
       module: resource,
       embedded?: Ash.Resource.Info.embedded?(resource),
       primary_key: Ash.Resource.Info.primary_key(resource),
       description: Ash.Resource.Info.description(resource),
-      fields: build_fields(resource, visibility_opts),
-      relationships: build_relationships(resource, visibility_opts),
+      fields: build_fields(resource, opts),
+      relationships: build_relationships(resource, opts),
       identities: build_identities(resource),
       multitenancy: build_multitenancy(resource)
     }
   end
 
-  defp build_fields(resource, visibility_opts) do
-    attributes = build_attributes(resource, visibility_opts)
-    calculations = build_calculations(resource, visibility_opts)
-    aggregates = build_aggregates(resource, visibility_opts)
+  defp build_fields(resource, opts) do
+    attributes = build_attributes(resource, opts)
+    calculations = build_calculations(resource, opts)
+    aggregates = build_aggregates(resource, opts)
 
     Map.new(attributes ++ calculations ++ aggregates, fn field -> {field.name, field} end)
   end
 
-  defp build_attributes(resource, visibility_opts) do
+  defp build_attributes(resource, opts) do
     resource
-    |> get_attributes(visibility_opts)
+    |> get_attributes(opts)
     |> Enum.map(fn attr ->
       %Field{
         name: attr.name,
@@ -66,9 +66,9 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
     end)
   end
 
-  defp build_calculations(resource, visibility_opts) do
+  defp build_calculations(resource, opts) do
     resource
-    |> get_calculations(visibility_opts)
+    |> get_calculations(opts)
     |> Enum.filter(fn calc -> Map.get(calc, :field?, true) end)
     |> Enum.map(fn calc ->
       arguments =
@@ -101,9 +101,9 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
     end)
   end
 
-  defp build_aggregates(resource, visibility_opts) do
+  defp build_aggregates(resource, opts) do
     resource
-    |> get_aggregates(visibility_opts)
+    |> get_aggregates(opts)
     |> Enum.map(fn aggregate ->
       {type, constraints} = resolve_aggregate_type(resource, aggregate)
 
@@ -145,9 +145,9 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
     end
   end
 
-  defp build_relationships(resource, visibility_opts) do
+  defp build_relationships(resource, opts) do
     resource
-    |> get_relationships(visibility_opts)
+    |> get_relationships(opts)
     |> Map.new(fn rel ->
       relationship = %Relationship{
         name: rel.name,
@@ -195,32 +195,32 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
     end
   end
 
-  defp get_attributes(resource, visibility_opts) do
-    if Keyword.get(visibility_opts, :include_private_attributes?, false) do
+  defp get_attributes(resource, opts) do
+    if Keyword.get(opts, :include_private_attributes?, false) do
       Ash.Resource.Info.attributes(resource)
     else
       Ash.Resource.Info.public_attributes(resource)
     end
   end
 
-  defp get_calculations(resource, visibility_opts) do
-    if Keyword.get(visibility_opts, :include_private_calculations?, false) do
+  defp get_calculations(resource, opts) do
+    if Keyword.get(opts, :include_private_calculations?, false) do
       Ash.Resource.Info.calculations(resource)
     else
       Ash.Resource.Info.public_calculations(resource)
     end
   end
 
-  defp get_aggregates(resource, visibility_opts) do
-    if Keyword.get(visibility_opts, :include_private_aggregates?, false) do
+  defp get_aggregates(resource, opts) do
+    if Keyword.get(opts, :include_private_aggregates?, false) do
       Ash.Resource.Info.aggregates(resource)
     else
       Ash.Resource.Info.public_aggregates(resource)
     end
   end
 
-  defp get_relationships(resource, visibility_opts) do
-    if Keyword.get(visibility_opts, :include_private_relationships?, false) do
+  defp get_relationships(resource, opts) do
+    if Keyword.get(opts, :include_private_relationships?, false) do
       Ash.Resource.Info.relationships(resource)
     else
       Ash.Resource.Info.public_relationships(resource)
