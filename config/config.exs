@@ -60,4 +60,11 @@ if config_env() == :test do
   config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 
   config :ash, Ash.Type.UUIDv7, match_v4_uuids?: true
+
+  # Manifest tests use a dedicated otp_app so the generator only walks
+  # the manifest test domain — the other :ash test domains predate the
+  # `enforce_public_accept?` invariant and would fail validation.
+  config :ash_manifest_test, :ash_domains, [
+    Ash.Test.Manifest.Domain
+  ]
 end
