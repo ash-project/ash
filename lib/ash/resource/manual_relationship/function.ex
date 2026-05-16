@@ -5,7 +5,7 @@
 defmodule Ash.Resource.ManualRelationship.Function do
   @moduledoc false
 
-  def select(_opts), do: []
+  def select(_opts), do: :*
 
   def load(records, [fun: {m, f, a}], context) do
     apply(m, f, [records, context | a])
