@@ -1514,7 +1514,10 @@ defmodule Ash.Actions.Read do
       else
         case Ash.Resource.Info.relationship(query.resource, name) do
           %{manual: {module, opts}} ->
-            module.select(opts)
+            case module.select(opts) do
+              :* -> query.resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
+              fields -> fields
+            end
 
           %{no_attributes?: true} ->
             []
