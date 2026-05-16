@@ -92,9 +92,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                                     action: action_name
                                   }
                                 end do
-        opts = set_strategy(opts, query.resource)
-
-        opts = select(opts, query.resource)
+        opts =
+          opts
+          |> set_strategy(query.resource)
+          |> select(query.resource)
+          |> Keyword.put(:context, query.context)
 
         opts =
           if opts[:return_notifications?] do
