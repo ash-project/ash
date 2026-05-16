@@ -48,7 +48,7 @@ DataCase is a reusable setup module that automatically imports everything necess
 For a practical look at writing tests, see [the how-to guide](/documentation/how-to/test-resources.livemd).
 
 For a further explanation on how the sandbox works:
-See [Ecto.Adapters.SQL.Sandbox](https://hexdocs.pm/ecto_sql/Ecto.Adapters.SQL.Sandbox.html)
+See [Ash-Postgres guide](https://hexdocs.pm/ash_postgres/readme.html)
 
 ## Missed notifications
 
