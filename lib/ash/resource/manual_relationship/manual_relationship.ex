@@ -32,7 +32,7 @@ defmodule Ash.Resource.ManualRelationship do
           }
   end
 
-  @callback select(opts :: Keyword.t()) :: list(atom)
+  @callback select(opts :: Keyword.t()) :: list(atom) | :*
 
   @callback load(
               list(Ash.Resource.record()),

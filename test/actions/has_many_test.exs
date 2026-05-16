@@ -192,6 +192,36 @@ defmodule Ash.Test.Actions.HasManyTest do
         public? true
         domain OtherDomain
       end
+
+      has_many :inline_fn_comments, Comment do
+        manual fn records, %{query: query, actor: actor, authorize?: authorize?} ->
+          post_ids = Enum.map(records, & &1.id)
+
+          {:ok,
+           query
+           |> Ash.Query.filter(post_id in ^post_ids)
+           |> Ash.read!(actor: actor, authorize?: authorize?)
+           |> Enum.group_by(& &1.post_id)}
+        end
+      end
+
+      has_many :inline_filtered_fn_comments, Comment do
+        manual fn records, %{query: query, actor: actor, authorize?: authorize?} ->
+          # Uses record.likes to filter — only returns comments for posts with integer likes
+          post_ids =
+            records
+            |> Enum.filter(fn record ->
+              is_integer(record.likes)
+            end)
+            |> Enum.map(& &1.id)
+
+          {:ok,
+           query
+           |> Ash.Query.filter(post_id in ^post_ids)
+           |> Ash.read!(actor: actor, authorize?: authorize?)
+           |> Enum.group_by(& &1.post_id)}
+        end
+      end
     end
   end
 
@@ -392,6 +422,37 @@ defmodule Ash.Test.Actions.HasManyTest do
           |> Ash.Query.limit(1)
       )
     end
+  end
+
+  test "manual relationship defined with an inline anonymous function loads" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "buz"})
+      |> Ash.create!()
+
+    post =
+      post
+      |> Ash.Changeset.for_update(:add_comment, %{comment: %{content: "meow"}})
+      |> Ash.update!()
+      |> Ash.load!([:inline_fn_comments])
+
+    assert length(post.inline_fn_comments) == 1
+  end
+
+  test "inline anonymous function manual relationship receives all source fields (:* select)" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "buz", likes: 1337})
+      |> Ash.create!()
+
+    post =
+      post
+      |> Ash.Changeset.for_update(:add_comment, %{comment: %{content: "meow"}})
+      |> Ash.Changeset.deselect(:likes)
+      |> Ash.update!()
+      |> Ash.load!([:inline_filtered_fn_comments])
+
+    assert length(post.inline_filtered_fn_comments) == 1
   end
 
   test "manual relationships can return a list" do
