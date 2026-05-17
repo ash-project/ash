@@ -25,7 +25,14 @@ defmodule Ash.Info.Manifest.Field do
           # For calculations only
           arguments: [Ash.Info.Manifest.Argument.t()] | nil,
           # For aggregates only
-          aggregate_kind: atom() | nil
+          aggregate_kind: atom() | nil,
+          # Resolved at generation time; nil iff filterable? == false.
+          # Each entry carries the operator/function/expression name plus its
+          # pre-resolved right-hand-side type — consumers don't need to walk
+          # signatures again.
+          filter_operators: [Ash.Info.Manifest.ApplicableOperator.t()] | nil,
+          filter_functions: [Ash.Info.Manifest.ApplicableFunction.t()] | nil,
+          filter_custom_expressions: [Ash.Info.Manifest.ApplicableCustomExpression.t()] | nil
         }
 
   defstruct [
@@ -42,6 +49,9 @@ defmodule Ash.Info.Manifest.Field do
     :sensitive?,
     :select_by_default?,
     :arguments,
-    :aggregate_kind
+    :aggregate_kind,
+    :filter_operators,
+    :filter_functions,
+    :filter_custom_expressions
   ]
 end

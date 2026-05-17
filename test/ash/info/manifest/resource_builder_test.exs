@@ -84,6 +84,27 @@ defmodule Ash.Test.Info.Manifest.Generator.ResourceBuilderTest do
       assert comment_count.aggregate_kind == :count
     end
 
+    test "aggregate allow_nil? reflects result nullability, not include_nil?" do
+      resource = ResourceBuilder.build(Ash.Test.Manifest.Todo)
+
+      # :count, :exists, :list aggregates never return nil
+      assert resource.fields[:comment_count].allow_nil? == false
+      assert resource.fields[:helpful_comment_count].allow_nil? == false
+      assert resource.fields[:has_comments].allow_nil? == false
+      assert resource.fields[:comment_authors].allow_nil? == false
+      assert resource.fields[:recent_comment_ids].allow_nil? == false
+      assert resource.fields[:weighted_scores].allow_nil? == false
+
+      # :first, :max, :avg, :sum aggregates can return nil on empty relationship
+      assert resource.fields[:latest_comment_content].allow_nil? == true
+      assert resource.fields[:highest_rating].allow_nil? == true
+      assert resource.fields[:average_rating].allow_nil? == true
+      assert resource.fields[:latest_comment_id].allow_nil? == true
+      assert resource.fields[:total_weighted_score].allow_nil? == true
+      assert resource.fields[:first_weighted_score].allow_nil? == true
+      assert resource.fields[:max_weighted_score].allow_nil? == true
+    end
+
     test "includes relationships" do
       assert Map.has_key?(ResourceBuilder.build(Ash.Test.Manifest.Todo).relationships, :user)
       assert Map.has_key?(ResourceBuilder.build(Ash.Test.Manifest.Todo).relationships, :comments)
@@ -115,6 +136,110 @@ defmodule Ash.Test.Info.Manifest.Generator.ResourceBuilderTest do
       if resource.multitenancy do
         assert is_atom(resource.multitenancy.strategy)
       end
+    end
+  end
+
+  describe "build/3 with filter capabilities — per-field operator resolution" do
+    alias Ash.Info.Manifest.Generator.CapabilitiesBuilder
+
+    setup do
+      {filter_caps, _} = CapabilitiesBuilder.build()
+
+      resource = ResourceBuilder.build(Ash.Test.Manifest.Todo, [], filter_caps)
+      {:ok, resource: resource}
+    end
+
+    test "filterable attribute fields carry filter_operators and filter_functions lists",
+         %{resource: resource} do
+      title = resource.fields[:title]
+      assert is_list(title.filter_operators)
+      assert is_list(title.filter_functions)
+      assert Enum.any?(title.filter_operators, &(&1.name == :==))
+    end
+
+    test "non-filterable fields carry nil filter_operators / filter_functions",
+         %{resource: resource} do
+      Enum.each(resource.fields, fn {_name, field} ->
+        if field.filterable? == false do
+          assert field.filter_operators == nil
+          assert field.filter_functions == nil
+          assert field.filter_custom_expressions == nil
+        end
+      end)
+    end
+
+    test "filterable fields carry a list of filter_custom_expressions",
+         %{resource: resource} do
+      title = resource.fields[:title]
+      assert is_list(title.filter_custom_expressions)
+    end
+
+    test "calculation fields get operator lists from their declared type",
+         %{resource: resource} do
+      # is_overdue is :boolean — gets eq/neq/in/is_nil
+      is_overdue = resource.fields[:is_overdue]
+
+      if is_overdue && is_overdue.filterable? do
+        names = Enum.map(is_overdue.filter_operators, & &1.name)
+        assert :== in names
+        assert :is_nil in names
+      end
+    end
+
+    test "aggregate fields get operator lists from their resolved type",
+         %{resource: resource} do
+      aggregates = resource.fields |> Map.values() |> Enum.filter(&(&1.kind == :aggregate))
+
+      Enum.each(aggregates, fn agg ->
+        if agg.filterable? do
+          assert is_list(agg.filter_operators)
+        end
+      end)
+    end
+
+    test "filter_operators entries are %ApplicableOperator{} records with name + rhs",
+         %{resource: resource} do
+      title = resource.fields[:title]
+
+      alias Ash.Info.Manifest.ApplicableOperator
+      assert Enum.all?(title.filter_operators, &match?(%ApplicableOperator{}, &1))
+
+      eq = Enum.find(title.filter_operators, &(&1.name == :==))
+      assert eq.rhs == :same
+
+      in_op = Enum.find(title.filter_operators, &(&1.name == :in))
+      assert in_op.rhs == {:array, :same}
+    end
+  end
+
+  describe "build/2 with no capabilities passed (backwards compat)" do
+    test "filter_operators and filter_functions remain nil" do
+      resource = ResourceBuilder.build(Ash.Test.Manifest.Todo, [])
+      title = resource.fields[:title]
+      assert title.filter_operators == nil
+      assert title.filter_functions == nil
+      assert title.filter_custom_expressions == nil
+    end
+  end
+
+  describe "build/2 relationship filterable?/sortable? carry source flags" do
+    test "relationships default to filterable? and sortable? true" do
+      resource = ResourceBuilder.build(Ash.Test.Manifest.Todo)
+
+      user = resource.relationships[:user]
+      assert user.filterable? == true
+      assert user.sortable? == true
+
+      comments = resource.relationships[:comments]
+      assert comments.filterable? == true
+      assert comments.sortable? == true
+    end
+
+    test "cardinality is exposed so consumers can derive filter/sort shape" do
+      resource = ResourceBuilder.build(Ash.Test.Manifest.Todo)
+
+      assert resource.relationships[:user].cardinality == :one
+      assert resource.relationships[:comments].cardinality == :many
     end
   end
 end

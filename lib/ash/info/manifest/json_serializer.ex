@@ -37,7 +37,96 @@ defmodule Ash.Info.Manifest.JsonSerializer do
       "types" => Enum.map(spec.types, &serialize_type/1),
       "entrypoints" => Enum.map(spec.entrypoints, &serialize_entrypoint/1)
     }
+    |> put_if_present(
+      "filter_capabilities",
+      serialize_filter_capabilities(spec.filter_capabilities)
+    )
+    |> put_if_present(
+      "sort_capabilities",
+      serialize_sort_capabilities(spec.sort_capabilities)
+    )
   end
+
+  defp serialize_filter_capabilities(nil), do: nil
+
+  defp serialize_filter_capabilities(%Ash.Info.Manifest.FilterCapabilities{} = caps) do
+    %{
+      "operators" => Enum.map(caps.operators, &serialize_operator/1),
+      "functions" => Enum.map(caps.functions, &serialize_function/1),
+      "custom_expressions" => Enum.map(caps.custom_expressions, &serialize_custom_expression/1),
+      "boolean_connectives" => Enum.map(caps.boolean_connectives, &to_string/1),
+      "predicate_operators" => Enum.map(caps.predicate_operators, &to_string/1),
+      "predicate_functions" => Enum.map(caps.predicate_functions, &to_string/1),
+      "predicate_custom_expressions" => Enum.map(caps.predicate_custom_expressions, &to_string/1)
+    }
+  end
+
+  defp serialize_sort_capabilities(nil), do: nil
+
+  defp serialize_sort_capabilities(%Ash.Info.Manifest.SortCapabilities{} = caps) do
+    %{"directions" => Enum.map(caps.directions, &to_string/1)}
+  end
+
+  defp serialize_operator(%Ash.Info.Manifest.Operator{} = op) do
+    %{
+      "name" => to_string(op.name),
+      "module" => module_to_string(op.module),
+      "aliases" => Enum.map(op.aliases || [], &to_string/1),
+      "predicate" => op.predicate?,
+      "signatures" => Enum.map(op.signatures || [], &serialize_signature/1),
+      "returns" => serialize_returns(op.returns)
+    }
+    |> put_if_present("description", op.description)
+  end
+
+  defp serialize_function(%Ash.Info.Manifest.Function{} = fun) do
+    %{
+      "name" => to_string(fun.name),
+      "module" => module_to_string(fun.module),
+      "predicate" => fun.predicate?,
+      "signatures" => serialize_function_signatures(fun.signatures),
+      "returns" => serialize_returns(fun.returns)
+    }
+    |> put_if_present("description", fun.description)
+    |> put_if_present("data_layer_module", module_to_string(fun.data_layer_module))
+  end
+
+  defp serialize_custom_expression(%Ash.Info.Manifest.CustomExpression{} = ce) do
+    %{
+      "name" => to_string(ce.name),
+      "module" => module_to_string(ce.module),
+      "predicate" => ce.predicate?,
+      "signatures" => Enum.map(ce.signatures || [], &serialize_signature/1)
+    }
+    |> put_if_present("description", ce.description)
+  end
+
+  defp serialize_function_signatures(:var_args), do: "var_args"
+
+  defp serialize_function_signatures(sigs) when is_list(sigs),
+    do: Enum.map(sigs, &serialize_signature/1)
+
+  defp serialize_signature(%Ash.Info.Manifest.ArgumentSignature{args: args}) do
+    %{"args" => Enum.map(args, &serialize_arg_spec/1)}
+  end
+
+  defp serialize_arg_spec(%{kind: kind} = arg) do
+    %{"kind" => to_string(kind)}
+    |> put_if_present("builtin", serialize_atom(arg[:builtin]))
+    |> put_if_present("type_ref", module_to_string(arg[:type_ref]))
+    |> put_if_present("of", serialize_arg_of(arg[:of]))
+    |> put_if_present(
+      "constraints",
+      if(arg[:constraints] in [nil, []], do: nil, else: inspect(arg[:constraints]))
+    )
+  end
+
+  defp serialize_arg_of(nil), do: nil
+  defp serialize_arg_of(%{kind: _} = inner), do: serialize_arg_spec(inner)
+
+  defp serialize_returns(:unknown), do: "unknown"
+  defp serialize_returns(nil), do: nil
+  defp serialize_returns(%{kind: _} = arg), do: serialize_arg_spec(arg)
 
   defp serialize_resource(%Ash.Info.Manifest.Resource{} = resource) do
     %{
@@ -78,6 +167,49 @@ defmodule Ash.Info.Manifest.JsonSerializer do
     |> put_if_present("description", field.description)
     |> put_if_present("arguments", serialize_arguments_list(field.arguments))
     |> put_if_present("aggregate_kind", serialize_atom(field.aggregate_kind))
+    |> put_if_present("filter_operators", serialize_applicable_list(field.filter_operators))
+    |> put_if_present("filter_functions", serialize_applicable_list(field.filter_functions))
+    |> put_if_present(
+      "filter_custom_expressions",
+      serialize_applicable_list(field.filter_custom_expressions)
+    )
+  end
+
+  defp serialize_applicable_list(nil), do: nil
+
+  defp serialize_applicable_list(list) when is_list(list) do
+    Enum.map(list, &serialize_applicable/1)
+  end
+
+  defp serialize_applicable(%Ash.Info.Manifest.ApplicableOperator{name: name, rhs: rhs}) do
+    %{"name" => to_string(name), "rhs" => serialize_rhs(rhs)}
+  end
+
+  defp serialize_applicable(%Ash.Info.Manifest.ApplicableFunction{name: name, rhs: rhs}) do
+    %{"name" => to_string(name), "rhs" => serialize_rhs(rhs)}
+  end
+
+  defp serialize_applicable(%Ash.Info.Manifest.ApplicableCustomExpression{
+         name: name,
+         rhs: rhs
+       }) do
+    %{"name" => to_string(name), "rhs" => serialize_rhs(rhs)}
+  end
+
+  defp serialize_rhs(:same), do: "same"
+  defp serialize_rhs(:any), do: "any"
+
+  defp serialize_rhs({:concrete, ref}) when is_atom(ref),
+    do: %{"concrete" => concrete_ref(ref)}
+
+  defp serialize_rhs({:array, inner}), do: %{"array" => serialize_rhs(inner)}
+  defp serialize_rhs(_), do: "any"
+
+  defp concrete_ref(ref) do
+    case Atom.to_string(ref) do
+      "Elixir." <> _ -> module_to_string(ref)
+      other -> other
+    end
   end
 
   defp serialize_relationship(%Ash.Info.Manifest.Relationship{} = rel) do

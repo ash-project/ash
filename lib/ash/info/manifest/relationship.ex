@@ -5,6 +5,13 @@
 defmodule Ash.Info.Manifest.Relationship do
   @moduledoc """
   Represents a resource relationship in the API specification.
+
+  `filterable?` / `sortable?` say *whether* the relationship participates in
+  filter/sort inputs. The *shape* of the operation (dot-traversal vs.
+  existential quantifier, single-record sort vs. none) is derivable from
+  `cardinality`: `:one` relationships can be dot-traversed and sorted by;
+  `:many` relationships need an `exists`-style predicate for filters and have
+  no well-defined whole-set ordering for sorts.
   """
 
   @type relationship_type :: :has_many | :has_one | :belongs_to | :many_to_many

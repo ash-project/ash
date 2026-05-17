@@ -9,6 +9,15 @@ defmodule Ash.Info.Manifest do
   Given a list of `{resource, action_name}` tuples or an OTP app, traverses the
   type graph to find all reachable resources and types, producing structured IR
   (Elixir structs) that can also be serialized to JSON.
+
+  ## Operator canonical name vs. alias
+
+  `%Operator{}.name` is the user-facing symbol that appears in
+  `Ash.Query.filter` expressions (e.g. `:==`, `:<`, `:in`). The
+  `%Operator{}.aliases` list carries internal/legacy module-derived names
+  (e.g. `:eq`, `:less_than`) for backward-compatible rendering. New code
+  should prefer `name`; alias-substitution is for tools that historically
+  rendered the module-derived spelling.
   """
 
   alias Ash.Info.Manifest.{Entrypoint, Resource}
@@ -18,7 +27,9 @@ defmodule Ash.Info.Manifest do
   @type t :: %__MODULE__{
           resources: [Resource.t()],
           types: [Ash.Info.Manifest.Type.t()],
-          entrypoints: [Entrypoint.t()]
+          entrypoints: [Entrypoint.t()],
+          filter_capabilities: Ash.Info.Manifest.FilterCapabilities.t() | nil,
+          sort_capabilities: Ash.Info.Manifest.SortCapabilities.t() | nil
         }
 
   @type resource_lookup :: %{atom() => Resource.t()}
@@ -27,7 +38,9 @@ defmodule Ash.Info.Manifest do
 
   defstruct resources: [],
             types: [],
-            entrypoints: []
+            entrypoints: [],
+            filter_capabilities: nil,
+            sort_capabilities: nil
 
   @doc """
   The schema version of the manifest's JSON serialization format.
@@ -193,6 +206,102 @@ defmodule Ash.Info.Manifest do
     case Map.get(resource_lookup, resource_module) do
       %Resource{primary_key: pk} -> pk
       nil -> []
+    end
+  end
+
+  @doc """
+  Builds an operator lookup map from the spec, keyed by operator name atom.
+
+  Returns an empty map when `filter_capabilities` is `nil`.
+  """
+  @spec operator_lookup(t()) :: %{atom() => Ash.Info.Manifest.Operator.t()}
+  def operator_lookup(%__MODULE__{filter_capabilities: nil}), do: %{}
+
+  def operator_lookup(%__MODULE__{filter_capabilities: %{operators: operators}}) do
+    Map.new(operators, fn op -> {op.name, op} end)
+  end
+
+  @doc """
+  Builds a function lookup map from the spec, keyed by function name atom.
+  """
+  @spec function_lookup(t()) :: %{atom() => Ash.Info.Manifest.Function.t()}
+  def function_lookup(%__MODULE__{filter_capabilities: nil}), do: %{}
+
+  def function_lookup(%__MODULE__{filter_capabilities: %{functions: functions}}) do
+    Map.new(functions, fn fun -> {fun.name, fun} end)
+  end
+
+  @doc """
+  Builds a custom-expression lookup map from the spec, keyed by expression name atom.
+  """
+  @spec custom_expression_lookup(t()) :: %{atom() => Ash.Info.Manifest.CustomExpression.t()}
+  def custom_expression_lookup(%__MODULE__{filter_capabilities: nil}), do: %{}
+
+  def custom_expression_lookup(%__MODULE__{
+        filter_capabilities: %{custom_expressions: custom_expressions}
+      }) do
+    Map.new(custom_expressions, fn ce -> {ce.name, ce} end)
+  end
+
+  @doc """
+  Returns the resolved `%ApplicableOperator{}` list for `{resource_module, field_name}`.
+
+  Returns `[]` when the field exists but is not filterable. Raises if the
+  resource or field is unknown.
+  """
+  @spec applicable_filter_operators(t(), {atom(), atom()}) ::
+          [Ash.Info.Manifest.ApplicableOperator.t()]
+  def applicable_filter_operators(%__MODULE__{} = manifest, {resource_module, field_name}) do
+    case lookup_field!(manifest, resource_module, field_name) do
+      %{filter_operators: nil} -> []
+      %{filter_operators: list} when is_list(list) -> list
+    end
+  end
+
+  @doc """
+  Returns the resolved `%ApplicableFunction{}` list for `{resource_module, field_name}`.
+  See `applicable_filter_operators/2` for behavior.
+  """
+  @spec applicable_filter_functions(t(), {atom(), atom()}) ::
+          [Ash.Info.Manifest.ApplicableFunction.t()]
+  def applicable_filter_functions(%__MODULE__{} = manifest, {resource_module, field_name}) do
+    case lookup_field!(manifest, resource_module, field_name) do
+      %{filter_functions: nil} -> []
+      %{filter_functions: list} when is_list(list) -> list
+    end
+  end
+
+  @doc """
+  Returns the resolved `%ApplicableCustomExpression{}` list for `{resource_module, field_name}`.
+  See `applicable_filter_operators/2` for behavior.
+  """
+  @spec applicable_filter_custom_expressions(t(), {atom(), atom()}) ::
+          [Ash.Info.Manifest.ApplicableCustomExpression.t()]
+  def applicable_filter_custom_expressions(
+        %__MODULE__{} = manifest,
+        {resource_module, field_name}
+      ) do
+    case lookup_field!(manifest, resource_module, field_name) do
+      %{filter_custom_expressions: nil} -> []
+      %{filter_custom_expressions: list} when is_list(list) -> list
+    end
+  end
+
+  defp lookup_field!(manifest, resource_module, field_name) do
+    lookup = resource_lookup(manifest)
+
+    resource =
+      case Map.get(lookup, resource_module) do
+        %Resource{} = r -> r
+        nil -> raise "Resource #{inspect(resource_module)} not found in manifest"
+      end
+
+    case Resource.get_field(resource, field_name) do
+      %Ash.Info.Manifest.Field{} = field ->
+        field
+
+      nil ->
+        raise "Field #{inspect(field_name)} not found on resource #{inspect(resource_module)}"
     end
   end
 end

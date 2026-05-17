@@ -14,7 +14,14 @@ defmodule Ash.Info.Manifest.Generator do
   5. Produce `%Ash.Info.Manifest{}`
   """
 
-  alias Ash.Info.Manifest.Generator.{ActionBuilder, Reachability, ResourceBuilder, TypeResolver}
+  alias Ash.Info.Manifest.Generator.{
+    ActionBuilder,
+    CapabilitiesBuilder,
+    Reachability,
+    ResourceBuilder,
+    TypeResolver
+  }
+
   alias Ash.Info.Manifest.Validators
 
   @doc """
@@ -104,12 +111,17 @@ defmodule Ash.Info.Manifest.Generator do
     reachable_resources = Enum.uniq(reachable_resources ++ always_resources)
     standalone_types = Enum.uniq(standalone_types ++ always_types)
 
+    data_layer_modules = collect_data_layer_modules(reachable_resources)
+
+    {filter_capabilities, sort_capabilities} =
+      CapabilitiesBuilder.build(data_layer_modules: data_layer_modules)
+
     # Build resource specs (no actions — those live in entrypoints)
     resources =
       reachable_resources
       |> Enum.sort_by(&Module.split/1)
       |> Enum.map(fn resource ->
-        ResourceBuilder.build(resource, build_opts)
+        ResourceBuilder.build(resource, build_opts, filter_capabilities)
       end)
 
     # Build entrypoints — one per normalized entry (not per unique action)
@@ -139,8 +151,20 @@ defmodule Ash.Info.Manifest.Generator do
      %Ash.Info.Manifest{
        resources: resources,
        types: types,
-       entrypoints: entrypoints
+       entrypoints: entrypoints,
+       filter_capabilities: filter_capabilities,
+       sort_capabilities: sort_capabilities
      }}
+  end
+
+  # Distinct data-layer modules across reachable resources, in a stable order
+  # (sorted by module split). `nil` data layers are filtered out.
+  defp collect_data_layer_modules(resources) do
+    resources
+    |> Enum.map(&Ash.DataLayer.data_layer/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.sort_by(&Module.split/1)
   end
 
   # Normalizes action_filter entries into {resource, action_name, config} triples.
