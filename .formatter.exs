@@ -128,6 +128,7 @@ spark_locals_without_parens = [
   eager_check?: 1,
   eager_check_with: 1,
   error_handler: 1,
+  error_message: 1,
   event: 1,
   except: 1,
   exclude_inputs: 1,

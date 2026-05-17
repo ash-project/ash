@@ -149,6 +149,7 @@ See the [policies guide](/documentation/topics/security/policies.md) for more.
 |------|------|---------|------|
 | [`description`](#policies-policy-description){: #policies-policy-description } | `String.t` |  | A description for the policy, used when explaining authorization results |
 | [`access_type`](#policies-policy-access_type){: #policies-policy-access_type } | `:strict \| :filter \| :runtime` |  | Determines how the policy is applied. See the guide for more. |
+| [`error_message`](#policies-policy-error_message){: #policies-policy-error_message } | `String.t \| (any, any -> any)` |  | A custom error message to surface when this policy is the reason a request is forbidden. Either a string, or a 2-arity function `(subject, context) -> String.t() \| Exception.t()`. Returning an exception struct replaces the default `Ash.Error.Forbidden.Policy` entirely; returning a string sets the message on the default error. `subject` is the changeset/query/action input being authorized; `context` is a map of `:resource`, `:action`, `:actor`, `:domain`, and `:tenant`. Only takes effect when the policy is the one responsible for denying the request — the framework re-evaluates policies to identify which one failed and uses its `error_message`. If multiple policies contributed to the denial, the first one in source order whose state is `:forbidden` wins, falling back to the first whose state is `:unknown` (i.e. didn't authorize). |
 
 
 ### policies.policy.authorize_if
@@ -431,6 +432,7 @@ See the [policies guide](/documentation/topics/security/policies.md) for more.
 |------|------|---------|------|
 | [`description`](#policies-policy_group-policy-description){: #policies-policy_group-policy-description } | `String.t` |  | A description for the policy, used when explaining authorization results |
 | [`access_type`](#policies-policy_group-policy-access_type){: #policies-policy_group-policy-access_type } | `:strict \| :filter \| :runtime` |  | Determines how the policy is applied. See the guide for more. |
+| [`error_message`](#policies-policy_group-policy-error_message){: #policies-policy_group-policy-error_message } | `String.t \| (any, any -> any)` |  | A custom error message to surface when this policy is the reason a request is forbidden. Either a string, or a 2-arity function `(subject, context) -> String.t() \| Exception.t()`. Returning an exception struct replaces the default `Ash.Error.Forbidden.Policy` entirely; returning a string sets the message on the default error. `subject` is the changeset/query/action input being authorized; `context` is a map of `:resource`, `:action`, `:actor`, `:domain`, and `:tenant`. Only takes effect when the policy is the one responsible for denying the request — the framework re-evaluates policies to identify which one failed and uses its `error_message`. If multiple policies contributed to the denial, the first one in source order whose state is `:forbidden` wins, falling back to the first whose state is `:unknown` (i.e. didn't authorize). |
 
 
 ### policies.policy_group.policy.authorize_if
@@ -635,6 +637,7 @@ A policy that, if passed, will skip all following policies. If failed, authoriza
 |------|------|---------|------|
 | [`description`](#policies-bypass-description){: #policies-bypass-description } | `String.t` |  | A description for the policy, used when explaining authorization results |
 | [`access_type`](#policies-bypass-access_type){: #policies-bypass-access_type } | `:strict \| :filter \| :runtime` |  | Determines how the policy is applied. See the guide for more. |
+| [`error_message`](#policies-bypass-error_message){: #policies-bypass-error_message } | `String.t \| (any, any -> any)` |  | A custom error message to surface when this policy is the reason a request is forbidden. Either a string, or a 2-arity function `(subject, context) -> String.t() \| Exception.t()`. Returning an exception struct replaces the default `Ash.Error.Forbidden.Policy` entirely; returning a string sets the message on the default error. `subject` is the changeset/query/action input being authorized; `context` is a map of `:resource`, `:action`, `:actor`, `:domain`, and `:tenant`. Only takes effect when the policy is the one responsible for denying the request — the framework re-evaluates policies to identify which one failed and uses its `error_message`. If multiple policies contributed to the denial, the first one in source order whose state is `:forbidden` wins, falling back to the first whose state is `:unknown` (i.e. didn't authorize). |
 
 
 ### policies.bypass.authorize_if

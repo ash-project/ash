@@ -47,28 +47,28 @@ defmodule Ash.Test.Policy.ErrorMessageTest do
 
     policies do
       policy action(:requires_admin) do
-        error_message "only admins can do this"
+        error_message("only admins can do this")
         authorize_if actor_attribute_equals(:is_admin, true)
       end
 
       policy action(:explicit_forbid) do
-        error_message "explicit deny"
+        error_message("explicit deny")
         forbid_if actor_attribute_equals(:banned, true)
         authorize_if always()
       end
 
       policy action(:dynamic_string) do
-        error_message fn _subject, context ->
+        error_message(fn _subject, context ->
           "actor #{inspect(context.actor)} can't do that"
-        end
+        end)
 
         authorize_if actor_attribute_equals(:is_admin, true)
       end
 
       policy action(:returns_exception) do
-        error_message fn _subject, context ->
+        error_message(fn _subject, context ->
           CustomForbidden.exception(where: context.action.name)
-        end
+        end)
 
         authorize_if actor_attribute_equals(:is_admin, true)
       end
@@ -77,12 +77,12 @@ defmodule Ash.Test.Policy.ErrorMessageTest do
       # second policy explicitly forbids (state :forbidden).
       # Responsible policy should be the explicit-forbid one.
       policy action(:multi_policy_prefers_forbid) do
-        error_message "first: needs admin"
+        error_message("first: needs admin")
         authorize_if actor_attribute_equals(:is_admin, true)
       end
 
       policy action(:multi_policy_prefers_forbid) do
-        error_message "second: explicit deny"
+        error_message("second: explicit deny")
         forbid_if actor_attribute_equals(:banned, true)
         authorize_if always()
       end
