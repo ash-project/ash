@@ -106,6 +106,7 @@ defmodule Ash.MixProject do
         "documentation/topics/advanced/timeouts.md",
         "documentation/topics/advanced/multitenancy.md",
         "documentation/topics/advanced/writing-extensions.md",
+        "documentation/topics/advanced/code-generation.md",
         "documentation/moved/upgrade.md",
         "documentation/topics/security/actors-and-authorization.md",
         "documentation/topics/security/sensitive-data.md",
