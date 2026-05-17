@@ -51,6 +51,9 @@ defmodule Ash.Info.Manifest.Generator do
     * `:include_private_aggregates?` - Include private aggregates (default: `false`)
     * `:include_private_relationships?` - Include private relationships (default: `false`)
     * `:include_private_arguments?` - Include private action arguments (default: `false`)
+    * `:include_private_actions?` - Include private actions (default: `false`).
+      Private actions (`public? false`) are omitted from `entrypoints` even
+      when explicitly named in `:action_entrypoints`.
 
   ## Enforcement Options
 
@@ -65,7 +68,8 @@ defmodule Ash.Info.Manifest.Generator do
     :include_private_calculations?,
     :include_private_aggregates?,
     :include_private_relationships?,
-    :include_private_arguments?
+    :include_private_arguments?,
+    :include_private_actions?
   ]
 
   @spec generate(keyword()) :: {:ok, Ash.Info.Manifest.t()} | {:error, term()}
@@ -206,10 +210,13 @@ defmodule Ash.Info.Manifest.Generator do
 
   # When no filter: one entrypoint per action on each resource
   defp build_entrypoints(nil, resource_action_map, opts, enforce_public_accept?) do
+    include_private? = Keyword.get(opts, :include_private_actions?, false)
+
     resource_action_map
     |> Enum.flat_map(fn {resource, _action_names} ->
       resource
       |> Ash.Resource.Info.actions()
+      |> Enum.filter(&include_action?(&1, include_private?))
       |> Enum.map(fn action ->
         if enforce_public_accept?, do: Validators.validate_entrypoint!(resource, action)
 
@@ -229,24 +236,29 @@ defmodule Ash.Info.Manifest.Generator do
          opts,
          enforce_public_accept?
        ) do
+    include_private? = Keyword.get(opts, :include_private_actions?, false)
+
     normalized_entries
     |> Enum.flat_map(fn {resource, action_name, config} ->
-      case Ash.Resource.Info.action(resource, action_name) do
-        nil ->
-          []
+      with %{} = action <- Ash.Resource.Info.action(resource, action_name),
+           true <- include_action?(action, include_private?) do
+        if enforce_public_accept?, do: Validators.validate_entrypoint!(resource, action)
 
-        action ->
-          if enforce_public_accept?, do: Validators.validate_entrypoint!(resource, action)
-
-          [
-            %Ash.Info.Manifest.Entrypoint{
-              resource: resource,
-              action: ActionBuilder.build(resource, action, opts),
-              config: config
-            }
-          ]
+        [
+          %Ash.Info.Manifest.Entrypoint{
+            resource: resource,
+            action: ActionBuilder.build(resource, action, opts),
+            config: config
+          }
+        ]
+      else
+        _ -> []
       end
     end)
     |> Enum.sort_by(fn e -> {Module.split(e.resource), e.action.name} end)
+  end
+
+  defp include_action?(action, include_private?) do
+    include_private? || Map.get(action, :public?, true)
   end
 end

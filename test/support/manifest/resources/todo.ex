@@ -819,5 +819,11 @@ defmodule Ash.Test.Manifest.Todo do
         {:ok, results}
       end
     end
+
+    # Private action — exercises the `:include_private_actions?` opt. Should
+    # not appear in entrypoints by default.
+    read :internal_reconcile do
+      public? false
+    end
   end
 end

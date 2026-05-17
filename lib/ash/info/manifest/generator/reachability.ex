@@ -30,6 +30,10 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
     * `:include_private_aggregates?` - Traverse private aggregates (default: `false`)
     * `:include_private_relationships?` - Traverse private relationships (default: `false`)
     * `:include_private_arguments?` - Traverse private action arguments (default: `false`)
+    * `:include_private_actions?` - Traverse private actions (default: `false`).
+      Private actions are skipped during reachability even when their names are
+      explicitly listed, so types referenced only from them don't end up in the
+      manifest.
 
   Returns `{reachable_resources, standalone_types}` where both are lists of modules
   in depth-first discovery order (dependencies before dependents).
@@ -139,7 +143,11 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
          visited,
          opts
        ) do
-    actions = get_actions_to_traverse(resource, action_names)
+    actions =
+      resource
+      |> get_actions_to_traverse(action_names)
+      |> filter_private_actions(opts)
+
     include_private_args? = Keyword.get(opts, :include_private_arguments?, false)
 
     Enum.reduce(actions, {resources, types, visited}, fn action, {resources, types, visited} ->
@@ -217,6 +225,14 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
         action -> [action]
       end
     end)
+  end
+
+  defp filter_private_actions(actions, opts) do
+    if Keyword.get(opts, :include_private_actions?, false) do
+      actions
+    else
+      Enum.filter(actions, &Map.get(&1, :public?, true))
+    end
   end
 
   defp traverse_type(type, constraints, visited, opts) when is_list(constraints) do

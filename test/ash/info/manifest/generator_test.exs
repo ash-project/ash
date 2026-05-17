@@ -114,6 +114,53 @@ defmodule Ash.Test.Info.Manifest.GeneratorTest do
     end
   end
 
+  describe "private actions" do
+    test "are excluded from entrypoints by default" do
+      {:ok, spec} = Ash.Info.Manifest.generate(otp_app: :ash_manifest_test)
+
+      refute Enum.any?(spec.entrypoints, fn e ->
+               e.resource == Ash.Test.Manifest.Todo and
+                 e.action.name == :internal_reconcile
+             end)
+    end
+
+    test "are excluded even when explicitly requested via action_entrypoints" do
+      {:ok, spec} =
+        Ash.Info.Manifest.generate(
+          otp_app: :ash_manifest_test,
+          action_entrypoints: [{Ash.Test.Manifest.Todo, :internal_reconcile}]
+        )
+
+      refute Enum.any?(spec.entrypoints, fn e ->
+               e.action.name == :internal_reconcile
+             end)
+    end
+
+    test "are included when :include_private_actions? is true" do
+      {:ok, spec} =
+        Ash.Info.Manifest.generate(
+          otp_app: :ash_manifest_test,
+          include_private_actions?: true
+        )
+
+      assert Enum.any?(spec.entrypoints, fn e ->
+               e.resource == Ash.Test.Manifest.Todo and
+                 e.action.name == :internal_reconcile
+             end)
+    end
+
+    test ":include_private_actions? works alongside explicit action_entrypoints" do
+      {:ok, spec} =
+        Ash.Info.Manifest.generate(
+          otp_app: :ash_manifest_test,
+          action_entrypoints: [{Ash.Test.Manifest.Todo, :internal_reconcile}],
+          include_private_actions?: true
+        )
+
+      assert [%{action: %{name: :internal_reconcile}}] = spec.entrypoints
+    end
+  end
+
   describe "overrides" do
     # Use NoRelationshipsResource as a narrow entrypoint — it has no relationships
     # and only primitive fields (id, name), so its reachable set is minimal.
