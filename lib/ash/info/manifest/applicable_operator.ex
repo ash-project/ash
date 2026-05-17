@@ -12,9 +12,9 @@ defmodule Ash.Info.Manifest.ApplicableOperator do
     * `:same` — RHS is the same type as the field (e.g. `field == field_value`).
     * `:any` — RHS is untyped; the renderer chooses (typically maps to the
       renderer's `any`/`unknown`).
-    * `{:concrete, type_ref}` — RHS is a specific Ash type. `type_ref` is
-      either a builtin atom (e.g. `:string`, `:boolean`) or a module
-      (e.g. `Ash.Type.UUID`).
+    * `{:concrete, type_module}` — RHS is a specific Ash type module. Short-name
+      aliases are resolved through `Ash.Type.get_type/1`, so this is always a
+      module (e.g. `Ash.Type.String`, `Ash.Type.UUID`, never `:string`).
     * `{:array, rhs}` — RHS is an array whose element RHS is the nested value.
 
   ## Examples
@@ -26,19 +26,20 @@ defmodule Ash.Info.Manifest.ApplicableOperator do
       iex> %Ash.Info.Manifest.ApplicableOperator{name: :in, rhs: {:array, :same}}
 
       iex> # `:is_nil` — RHS is always a boolean
-      iex> %Ash.Info.Manifest.ApplicableOperator{name: :is_nil, rhs: {:concrete, :boolean}}
+      iex> %Ash.Info.Manifest.ApplicableOperator{name: :is_nil, rhs: {:concrete, Ash.Type.Boolean}}
   """
 
   @type rhs ::
           :same
           | :any
-          | {:concrete, atom() | module()}
+          | {:concrete, module()}
           | {:array, rhs()}
 
   @type t :: %__MODULE__{
           name: atom(),
-          rhs: rhs()
+          rhs: rhs(),
+          custom: map()
         }
 
-  defstruct [:name, :rhs]
+  defstruct [:name, :rhs, custom: %{}]
 end

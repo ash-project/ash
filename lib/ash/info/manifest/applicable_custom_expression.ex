@@ -12,8 +12,9 @@ defmodule Ash.Info.Manifest.ApplicableCustomExpression do
 
   @type t :: %__MODULE__{
           name: atom(),
-          rhs: Ash.Info.Manifest.ApplicableOperator.rhs()
+          rhs: Ash.Info.Manifest.ApplicableOperator.rhs(),
+          custom: map()
         }
 
-  defstruct [:name, :rhs]
+  defstruct [:name, :rhs, custom: %{}]
 end

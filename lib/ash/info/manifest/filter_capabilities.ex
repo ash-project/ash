@@ -21,7 +21,8 @@ defmodule Ash.Info.Manifest.FilterCapabilities do
           boolean_connectives: [atom()],
           predicate_operators: [atom()],
           predicate_functions: [atom()],
-          predicate_custom_expressions: [atom()]
+          predicate_custom_expressions: [atom()],
+          custom: map()
         }
 
   defstruct operators: [],
@@ -30,5 +31,6 @@ defmodule Ash.Info.Manifest.FilterCapabilities do
             boolean_connectives: [:and, :or, :not],
             predicate_operators: [],
             predicate_functions: [],
-            predicate_custom_expressions: []
+            predicate_custom_expressions: [],
+            custom: %{}
 end

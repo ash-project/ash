@@ -11,13 +11,15 @@ defmodule Ash.Info.Manifest.Metadata do
           name: atom(),
           type: Ash.Info.Manifest.Type.t(),
           allow_nil?: boolean(),
-          description: String.t() | nil
+          description: String.t() | nil,
+          custom: map()
         }
 
   defstruct [
     :name,
     :type,
     :allow_nil?,
-    :description
+    :description,
+    custom: %{}
   ]
 end

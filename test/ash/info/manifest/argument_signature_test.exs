@@ -8,11 +8,11 @@ defmodule Ash.Test.Info.Manifest.ArgumentSignatureTest do
   alias Ash.Info.Manifest.ArgumentSignature
 
   describe "from_ash_signature/1" do
-    test "normalizes a builtin-atom signature" do
+    test "normalizes a short-name signature to its canonical module" do
       assert %ArgumentSignature{
                args: [
-                 %{kind: :concrete, builtin: :string, type_ref: nil, constraints: []},
-                 %{kind: :concrete, builtin: :string, type_ref: nil, constraints: []}
+                 %{kind: :concrete, type_ref: Ash.Type.String, constraints: []},
+                 %{kind: :concrete, type_ref: Ash.Type.String, constraints: []}
                ]
              } = ArgumentSignature.from_ash_signature([:string, :string])
     end
@@ -20,8 +20,8 @@ defmodule Ash.Test.Info.Manifest.ArgumentSignatureTest do
     test "normalizes :same and :any sentinels" do
       assert %ArgumentSignature{
                args: [
-                 %{kind: :same, builtin: nil, type_ref: nil, constraints: []},
-                 %{kind: :any, builtin: nil, type_ref: nil, constraints: []}
+                 %{kind: :same, type_ref: nil, constraints: []},
+                 %{kind: :any, type_ref: nil, constraints: []}
                ]
              } = ArgumentSignature.from_ash_signature([:same, :any])
     end
@@ -29,7 +29,7 @@ defmodule Ash.Test.Info.Manifest.ArgumentSignatureTest do
     test "normalizes module-only entries" do
       assert %ArgumentSignature{
                args: [
-                 %{kind: :concrete, builtin: nil, type_ref: Ash.Type.Integer, constraints: []}
+                 %{kind: :concrete, type_ref: Ash.Type.Integer, constraints: []}
                ]
              } = ArgumentSignature.from_ash_signature([Ash.Type.Integer])
     end
@@ -39,7 +39,6 @@ defmodule Ash.Test.Info.Manifest.ArgumentSignatureTest do
                args: [
                  %{
                    kind: :concrete,
-                   builtin: nil,
                    type_ref: Ash.Type.String,
                    constraints: [min_length: 1]
                  }
@@ -52,10 +51,9 @@ defmodule Ash.Test.Info.Manifest.ArgumentSignatureTest do
                args: [
                  %{
                    kind: :array,
-                   builtin: nil,
                    type_ref: nil,
                    constraints: [],
-                   of: %{kind: :concrete, builtin: :integer}
+                   of: %{kind: :concrete, type_ref: Ash.Type.Integer}
                  }
                ]
              } = ArgumentSignature.from_ash_signature([{:array, :integer}])
@@ -77,7 +75,7 @@ defmodule Ash.Test.Info.Manifest.ArgumentSignatureTest do
                args: [
                  %{
                    kind: :array,
-                   of: %{kind: :array, of: %{kind: :concrete, builtin: :integer}}
+                   of: %{kind: :array, of: %{kind: :concrete, type_ref: Ash.Type.Integer}}
                  }
                ]
              } = ArgumentSignature.from_ash_signature([{:array, {:array, :integer}}])

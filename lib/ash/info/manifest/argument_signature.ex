@@ -9,27 +9,29 @@ defmodule Ash.Info.Manifest.ArgumentSignature do
   One signature represents one accepted argument shape. The `args` list is the
   ordered list of arg specs; each arg spec has a `kind`:
 
-    * `:concrete` — a specific type (`builtin` atom or `type_ref` module).
+    * `:concrete` — a specific type module in `type_ref`.
     * `:same` — same type as the field being filtered (or the first arg).
     * `:any` — any type accepted.
     * `:array` — an array whose inner element spec is in `of`.
     * `:ref` — fallback for shapes we don't structurally model yet.
 
   Use `from_ash_signature/1` to normalize the raw shape returned by an Ash
-  operator's `types/0` or a function's `args/0` callback.
+  operator's `types/0` or a function's `args/0` callback. Short-name atoms
+  like `:string` are resolved through `Ash.Type.get_type/1` so that the
+  resulting `type_ref` is always the canonical type module — consumers never
+  see short-name aliases.
   """
 
   @type arg_spec :: %{
           required(:kind) => :concrete | :same | :any | :array | :ref,
-          required(:builtin) => atom() | nil,
           required(:type_ref) => module() | nil,
           required(:constraints) => keyword(),
           optional(:of) => arg_spec()
         }
 
-  @type t :: %__MODULE__{args: [arg_spec()]}
+  @type t :: %__MODULE__{args: [arg_spec()], custom: map()}
 
-  defstruct args: []
+  defstruct args: [], custom: %{}
 
   @doc """
   Normalize a raw signature from an Ash operator/function/custom expression callback.
@@ -53,15 +55,11 @@ defmodule Ash.Info.Manifest.ArgumentSignature do
   def normalize_arg(:any), do: spec(:any)
 
   def normalize_arg(atom) when is_atom(atom) do
-    if builtin_type?(atom) do
-      spec(:concrete, builtin: atom)
-    else
-      spec(:concrete, type_ref: atom)
-    end
+    spec(:concrete, type_ref: Ash.Type.get_type(atom))
   end
 
   def normalize_arg({module, constraints}) when is_atom(module) and is_list(constraints) do
-    spec(:concrete, type_ref: module, constraints: constraints)
+    spec(:concrete, type_ref: Ash.Type.get_type(module), constraints: constraints)
   end
 
   def normalize_arg({:array, inner}), do: spec(:array, of: normalize_arg(inner))
@@ -70,7 +68,6 @@ defmodule Ash.Info.Manifest.ArgumentSignature do
   defp spec(kind, opts \\ []) do
     base = %{
       kind: kind,
-      builtin: Keyword.get(opts, :builtin),
       type_ref: Keyword.get(opts, :type_ref),
       constraints: Keyword.get(opts, :constraints, [])
     }
@@ -78,15 +75,6 @@ defmodule Ash.Info.Manifest.ArgumentSignature do
     case Keyword.fetch(opts, :of) do
       {:ok, of} -> Map.put(base, :of, of)
       :error -> base
-    end
-  end
-
-  # Heuristic: lowercase, non-Elixir atom is a builtin (`:string`, `:integer`, ...).
-  # Modules start with uppercase (`Ash.Type.Integer`).
-  defp builtin_type?(atom) do
-    case Atom.to_string(atom) do
-      "Elixir." <> _ -> false
-      _ -> true
     end
   end
 end

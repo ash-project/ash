@@ -112,7 +112,6 @@ defmodule Ash.Info.Manifest.JsonSerializer do
 
   defp serialize_arg_spec(%{kind: kind} = arg) do
     %{"kind" => to_string(kind)}
-    |> put_if_present("builtin", serialize_atom(arg[:builtin]))
     |> put_if_present("type_ref", module_to_string(arg[:type_ref]))
     |> put_if_present("of", serialize_arg_of(arg[:of]))
     |> put_if_present(
@@ -200,17 +199,10 @@ defmodule Ash.Info.Manifest.JsonSerializer do
   defp serialize_rhs(:any), do: "any"
 
   defp serialize_rhs({:concrete, ref}) when is_atom(ref),
-    do: %{"concrete" => concrete_ref(ref)}
+    do: %{"concrete" => module_to_string(ref)}
 
   defp serialize_rhs({:array, inner}), do: %{"array" => serialize_rhs(inner)}
   defp serialize_rhs(_), do: "any"
-
-  defp concrete_ref(ref) do
-    case Atom.to_string(ref) do
-      "Elixir." <> _ -> module_to_string(ref)
-      other -> other
-    end
-  end
 
   defp serialize_relationship(%Ash.Info.Manifest.Relationship{} = rel) do
     %{

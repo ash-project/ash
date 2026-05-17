@@ -123,9 +123,9 @@ defmodule Ash.Test.Info.Manifest.Generator.CapabilitiesBuilderTest do
       assert jaro.predicate? == false
       assert [%ArgumentSignature{args: [a, b]}] = jaro.signatures
       assert a.kind == :concrete
-      assert a.builtin == :string
+      assert a.type_ref == Ash.Type.String
       assert b.kind == :concrete
-      assert b.builtin == :string
+      assert b.type_ref == Ash.Type.String
     end
 
     test "predicate_operators is the names of predicate? operators" do

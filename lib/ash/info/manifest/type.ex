@@ -66,7 +66,8 @@ defmodule Ash.Info.Manifest.Type do
           # For :array
           item_type: t() | nil,
           # For :tuple
-          element_types: [%{name: atom(), type: t(), allow_nil?: boolean()}] | nil
+          element_types: [%{name: atom(), type: t(), allow_nil?: boolean()}] | nil,
+          custom: map()
         }
 
   defstruct [
@@ -81,7 +82,8 @@ defmodule Ash.Info.Manifest.Type do
     :fields,
     :instance_of,
     :item_type,
-    :element_types
+    :element_types,
+    custom: %{}
   ]
 
   @doc """

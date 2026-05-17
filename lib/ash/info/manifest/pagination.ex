@@ -13,7 +13,8 @@ defmodule Ash.Info.Manifest.Pagination do
           required?: boolean(),
           countable?: boolean(),
           default_limit: non_neg_integer() | nil,
-          max_page_size: non_neg_integer() | nil
+          max_page_size: non_neg_integer() | nil,
+          custom: map()
         }
 
   defstruct [
@@ -22,6 +23,7 @@ defmodule Ash.Info.Manifest.Pagination do
     :required?,
     :countable?,
     :default_limit,
-    :max_page_size
+    :max_page_size,
+    custom: %{}
   ]
 end

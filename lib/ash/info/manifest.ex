@@ -29,7 +29,8 @@ defmodule Ash.Info.Manifest do
           types: [Ash.Info.Manifest.Type.t()],
           entrypoints: [Entrypoint.t()],
           filter_capabilities: Ash.Info.Manifest.FilterCapabilities.t() | nil,
-          sort_capabilities: Ash.Info.Manifest.SortCapabilities.t() | nil
+          sort_capabilities: Ash.Info.Manifest.SortCapabilities.t() | nil,
+          custom: map()
         }
 
   @type resource_lookup :: %{atom() => Resource.t()}
@@ -40,7 +41,8 @@ defmodule Ash.Info.Manifest do
             types: [],
             entrypoints: [],
             filter_capabilities: nil,
-            sort_capabilities: nil
+            sort_capabilities: nil,
+            custom: %{}
 
   @doc """
   The schema version of the manifest's JSON serialization format.

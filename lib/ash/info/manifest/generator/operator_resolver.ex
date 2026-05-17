@@ -175,10 +175,7 @@ defmodule Ash.Info.Manifest.Generator.OperatorResolver do
   defp arg_to_rhs(%{kind: :same}), do: :same
   defp arg_to_rhs(%{kind: :any}), do: :any
 
-  defp arg_to_rhs(%{kind: :concrete, builtin: builtin, type_ref: nil}) when not is_nil(builtin),
-    do: {:concrete, builtin}
-
-  defp arg_to_rhs(%{kind: :concrete, builtin: nil, type_ref: module}) when not is_nil(module),
+  defp arg_to_rhs(%{kind: :concrete, type_ref: module}) when not is_nil(module),
     do: {:concrete, module}
 
   defp arg_to_rhs(%{kind: :array, of: inner}), do: {:array, arg_to_rhs(inner)}
@@ -200,19 +197,9 @@ defmodule Ash.Info.Manifest.Generator.OperatorResolver do
     arg_matches_type?(inner_spec, item_type)
   end
 
-  defp arg_matches_type?(%{kind: :concrete, builtin: builtin, type_ref: nil}, %Type{
-         kind: kind
-       })
-       when not is_nil(builtin) do
-    builtin == kind
-  end
-
-  defp arg_matches_type?(%{kind: :concrete, type_ref: module, builtin: nil}, %Type{
-         module: module
-       })
-       when not is_nil(module) do
-    true
-  end
+  defp arg_matches_type?(%{kind: :concrete, type_ref: module}, %Type{module: module})
+       when not is_nil(module),
+       do: true
 
   defp arg_matches_type?(_, _), do: false
 

@@ -27,7 +27,8 @@ defmodule Ash.Info.Manifest.Function do
           signatures: [ArgumentSignature.t()] | :var_args,
           returns: ArgumentSignature.arg_spec() | :unknown,
           description: String.t() | nil,
-          data_layer_module: module() | nil
+          data_layer_module: module() | nil,
+          custom: map()
         }
 
   defstruct [
@@ -37,6 +38,7 @@ defmodule Ash.Info.Manifest.Function do
     :signatures,
     :returns,
     :description,
-    :data_layer_module
+    :data_layer_module,
+    custom: %{}
   ]
 end

@@ -24,7 +24,8 @@ defmodule Ash.Info.Manifest.Relationship do
           allow_nil?: boolean(),
           description: String.t() | nil,
           filterable?: boolean(),
-          sortable?: boolean()
+          sortable?: boolean(),
+          custom: map()
         }
 
   defstruct [
@@ -35,6 +36,7 @@ defmodule Ash.Info.Manifest.Relationship do
     :allow_nil?,
     :description,
     :filterable?,
-    :sortable?
+    :sortable?,
+    custom: %{}
   ]
 end

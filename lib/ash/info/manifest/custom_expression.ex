@@ -18,8 +18,9 @@ defmodule Ash.Info.Manifest.CustomExpression do
           module: module(),
           predicate?: boolean(),
           signatures: [ArgumentSignature.t()],
-          description: String.t() | nil
+          description: String.t() | nil,
+          custom: map()
         }
 
-  defstruct [:name, :module, :predicate?, :signatures, :description]
+  defstruct [:name, :module, :predicate?, :signatures, :description, custom: %{}]
 end

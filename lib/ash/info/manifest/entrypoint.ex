@@ -17,8 +17,9 @@ defmodule Ash.Info.Manifest.Entrypoint do
   @type t :: %__MODULE__{
           resource: atom(),
           action: Ash.Info.Manifest.Action.t(),
-          config: map()
+          config: map(),
+          custom: map()
         }
 
-  defstruct [:resource, :action, config: %{}]
+  defstruct [:resource, :action, config: %{}, custom: %{}]
 end

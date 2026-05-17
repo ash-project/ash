@@ -33,8 +33,18 @@ defmodule Ash.Info.Manifest.Operator do
           predicate?: boolean(),
           signatures: [ArgumentSignature.t()],
           returns: ArgumentSignature.arg_spec() | :unknown,
-          description: String.t() | nil
+          description: String.t() | nil,
+          custom: map()
         }
 
-  defstruct [:name, :module, :aliases, :predicate?, :signatures, :returns, :description]
+  defstruct [
+    :name,
+    :module,
+    :aliases,
+    :predicate?,
+    :signatures,
+    :returns,
+    :description,
+    custom: %{}
+  ]
 end

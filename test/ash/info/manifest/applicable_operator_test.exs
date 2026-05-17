@@ -18,12 +18,12 @@ defmodule Ash.Test.Info.Manifest.ApplicableOperatorTest do
       assert %ApplicableOperator{rhs: :any} = %ApplicableOperator{name: :is_nil, rhs: :any}
     end
 
-    test "rhs can be a concrete builtin atom" do
-      assert %ApplicableOperator{rhs: {:concrete, :boolean}} =
-               %ApplicableOperator{name: :is_nil, rhs: {:concrete, :boolean}}
+    test "rhs can be a concrete module (builtin)" do
+      assert %ApplicableOperator{rhs: {:concrete, Ash.Type.Boolean}} =
+               %ApplicableOperator{name: :is_nil, rhs: {:concrete, Ash.Type.Boolean}}
     end
 
-    test "rhs can be a concrete module" do
+    test "rhs can be a concrete module (custom)" do
       assert %ApplicableOperator{rhs: {:concrete, Ash.Type.UUID}} =
                %ApplicableOperator{name: :==, rhs: {:concrete, Ash.Type.UUID}}
     end
@@ -36,9 +36,9 @@ defmodule Ash.Test.Info.Manifest.ApplicableOperatorTest do
 
   describe "%ApplicableFunction{}" do
     test "shares the same shape as ApplicableOperator" do
-      fun = %ApplicableFunction{name: :contains, rhs: {:concrete, :string}}
+      fun = %ApplicableFunction{name: :contains, rhs: {:concrete, Ash.Type.String}}
       assert fun.name == :contains
-      assert fun.rhs == {:concrete, :string}
+      assert fun.rhs == {:concrete, Ash.Type.String}
     end
   end
 end

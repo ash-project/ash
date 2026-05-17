@@ -32,7 +32,8 @@ defmodule Ash.Info.Manifest.Field do
           # signatures again.
           filter_operators: [Ash.Info.Manifest.ApplicableOperator.t()] | nil,
           filter_functions: [Ash.Info.Manifest.ApplicableFunction.t()] | nil,
-          filter_custom_expressions: [Ash.Info.Manifest.ApplicableCustomExpression.t()] | nil
+          filter_custom_expressions: [Ash.Info.Manifest.ApplicableCustomExpression.t()] | nil,
+          custom: map()
         }
 
   defstruct [
@@ -52,6 +53,7 @@ defmodule Ash.Info.Manifest.Field do
     :aggregate_kind,
     :filter_operators,
     :filter_functions,
-    :filter_custom_expressions
+    :filter_custom_expressions,
+    custom: %{}
   ]
 end

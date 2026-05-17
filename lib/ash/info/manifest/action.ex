@@ -21,7 +21,8 @@ defmodule Ash.Info.Manifest.Action do
           allow_nil_input: [atom()] | nil,
           metadata: [Ash.Info.Manifest.Metadata.t()],
           returns: Ash.Info.Manifest.Type.t() | nil,
-          pagination: Ash.Info.Manifest.Pagination.t() | nil
+          pagination: Ash.Info.Manifest.Pagination.t() | nil,
+          custom: map()
         }
 
   defstruct [
@@ -36,6 +37,7 @@ defmodule Ash.Info.Manifest.Action do
     :allow_nil_input,
     :metadata,
     :returns,
-    :pagination
+    :pagination,
+    custom: %{}
   ]
 end

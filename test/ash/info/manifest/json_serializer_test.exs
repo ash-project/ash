@@ -217,8 +217,8 @@ defmodule Ash.Test.Info.Manifest.JsonSerializerTest do
 
       assert [%{"args" => [a, b]}] = jaro["signatures"]
       assert a["kind"] == "concrete"
-      assert a["builtin"] == "string"
-      assert b["builtin"] == "string"
+      assert a["type_ref"] == "Ash.Type.String"
+      assert b["type_ref"] == "Ash.Type.String"
     end
 
     test "the JSON round-trips via Jason without errors", %{manifest: manifest} do
@@ -298,7 +298,7 @@ defmodule Ash.Test.Info.Manifest.JsonSerializerTest do
       assert eq["rhs"] == "same"
 
       is_nil_entry = Enum.find(title["filter_operators"], &(&1["name"] == "is_nil"))
-      assert is_nil_entry["rhs"] == %{"concrete" => "boolean"}
+      assert is_nil_entry["rhs"] == %{"concrete" => "Ash.Type.Boolean"}
 
       in_entry = Enum.find(title["filter_operators"], &(&1["name"] == "in"))
       assert in_entry["rhs"] == %{"array" => "same"}

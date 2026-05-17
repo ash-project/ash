@@ -13,7 +13,8 @@ defmodule Ash.Info.Manifest.Argument do
           allow_nil?: boolean(),
           has_default?: boolean(),
           description: String.t() | nil,
-          sensitive?: boolean()
+          sensitive?: boolean(),
+          custom: map()
         }
 
   defstruct [
@@ -22,6 +23,7 @@ defmodule Ash.Info.Manifest.Argument do
     :allow_nil?,
     :has_default?,
     :description,
-    :sensitive?
+    :sensitive?,
+    custom: %{}
   ]
 end

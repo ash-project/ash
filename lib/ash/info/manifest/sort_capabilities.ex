@@ -11,7 +11,7 @@ defmodule Ash.Info.Manifest.SortCapabilities do
   @type direction ::
           :asc | :desc | :asc_nils_first | :asc_nils_last | :desc_nils_first | :desc_nils_last
 
-  @type t :: %__MODULE__{directions: [direction()]}
+  @type t :: %__MODULE__{directions: [direction()], custom: map()}
 
   defstruct directions: [
               :asc,
@@ -20,5 +20,6 @@ defmodule Ash.Info.Manifest.SortCapabilities do
               :asc_nils_last,
               :desc_nils_first,
               :desc_nils_last
-            ]
+            ],
+            custom: %{}
 end

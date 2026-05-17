@@ -33,7 +33,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
 
   describe "resolve/2 returns structured records" do
     test "operators are returned as %ApplicableOperator{name, rhs}", %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {operators, _functions} = OperatorResolver.resolve(string_type, caps)
 
@@ -41,7 +41,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
     end
 
     test "functions are returned as %ApplicableFunction{name, rhs}", %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {_operators, functions} = OperatorResolver.resolve(string_type, caps)
 
@@ -51,7 +51,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
 
   describe "resolve/2 — rhs computation" do
     test ":== gets rhs :same on a string field", %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {operators, _} = OperatorResolver.resolve(string_type, caps)
       eq = Enum.find(operators, &(&1.name == :==))
@@ -60,7 +60,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
     end
 
     test ":in gets rhs {:array, :same}", %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {operators, _} = OperatorResolver.resolve(string_type, caps)
       in_op = Enum.find(operators, &(&1.name == :in))
@@ -68,29 +68,29 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
       assert in_op.rhs == {:array, :same}
     end
 
-    test ":is_nil gets rhs {:concrete, :boolean}", %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+    test ":is_nil gets rhs {:concrete, Ash.Type.Boolean}", %{caps: caps} do
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {operators, _} = OperatorResolver.resolve(string_type, caps)
       is_nil = Enum.find(operators, &(&1.name == :is_nil))
 
-      assert is_nil.rhs == {:concrete, :boolean}
+      assert is_nil.rhs == {:concrete, Ash.Type.Boolean}
     end
 
     test ":contains gets rhs concrete-string on a string field", %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {_operators, functions} = OperatorResolver.resolve(string_type, caps)
       contains = Enum.find(functions, &(&1.name == :contains))
 
-      assert contains.rhs == {:concrete, :string}
+      assert contains.rhs == {:concrete, Ash.Type.String}
     end
   end
 
   describe "resolve/2 — applicability" do
     test "a string field gets equality + membership operators and string predicate functions",
          %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {operators, functions} = OperatorResolver.resolve(string_type, caps)
 
@@ -104,7 +104,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
     end
 
     test "an integer field gets ordered-comparison operators", %{caps: caps} do
-      integer_type = %Type{kind: :integer, name: "Integer"}
+      integer_type = %Type{kind: :integer, name: "Integer", module: Ash.Type.Integer}
 
       {operators, _functions} = OperatorResolver.resolve(integer_type, caps)
       names = op_names(operators)
@@ -171,7 +171,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
       array_type = %Type{
         kind: :array,
         name: "Array",
-        item_type: %Type{kind: :string, name: "String"}
+        item_type: %Type{kind: :string, name: "String", module: Ash.Type.String}
       }
 
       {_operators, functions} = OperatorResolver.resolve(array_type, caps)
@@ -184,7 +184,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
       array_type = %Type{
         kind: :array,
         name: "Array",
-        item_type: %Type{kind: :string, name: "String"}
+        item_type: %Type{kind: :string, name: "String", module: Ash.Type.String}
       }
 
       {_operators, functions} = OperatorResolver.resolve(array_type, caps)
@@ -197,7 +197,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
       array_type = %Type{
         kind: :array,
         name: "Array",
-        item_type: %Type{kind: :string, name: "String"}
+        item_type: %Type{kind: :string, name: "String", module: Ash.Type.String}
       }
 
       {operators, _functions} = OperatorResolver.resolve(array_type, caps)
@@ -215,7 +215,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
     end
 
     test "a non-array field still gets the ordered comparison operators", %{caps: caps} do
-      integer_type = %Type{kind: :integer, name: "Integer"}
+      integer_type = %Type{kind: :integer, name: "Integer", module: Ash.Type.Integer}
 
       {operators, _functions} = OperatorResolver.resolve(integer_type, caps)
       names = op_names(operators)
@@ -227,7 +227,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
     end
 
     test "a boolean field drops the ordered comparison operators", %{caps: caps} do
-      boolean_type = %Type{kind: :boolean, name: "Boolean"}
+      boolean_type = %Type{kind: :boolean, name: "Boolean", module: Ash.Type.Boolean}
 
       {operators, _functions} = OperatorResolver.resolve(boolean_type, caps)
       names = op_names(operators)
@@ -254,7 +254,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
 
     test "a string field whose resource uses the data layer sees that data layer's functions",
          %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {_operators, functions} =
         OperatorResolver.resolve(string_type, caps, Ash.Test.Manifest.FakeDataLayer)
@@ -264,7 +264,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
 
     test "a string field whose resource uses a different data layer does NOT see foreign functions",
          %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {_operators, functions} =
         OperatorResolver.resolve(string_type, caps, SomeOtherDataLayer)
@@ -273,7 +273,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
     end
 
     test "a string field with no data layer (nil) only sees builtin functions", %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {_operators, functions} = OperatorResolver.resolve(string_type, caps, nil)
 
@@ -283,7 +283,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
 
     test "a function tagged with a data layer is still returned when its data layer is passed",
          %{caps: caps} do
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {_, functions} =
         OperatorResolver.resolve(string_type, caps, Ash.Test.Manifest.FakeDataLayer)
@@ -311,7 +311,7 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
         predicate_custom_expressions: []
       }
 
-      string_type = %Type{kind: :string, name: "String"}
+      string_type = %Type{kind: :string, name: "String", module: Ash.Type.String}
 
       {_operators, functions} = OperatorResolver.resolve(string_type, caps)
 
