@@ -227,13 +227,18 @@ interact with policies in other policy groups, unless they also apply.
 ### Access Type
 
 Policies have an "access type" that determines when they are applied. By default, `access_type` is `:filter`.
-When applied to a read action, `:filter` will result in a filtered read. For other action types, the filter will be evaluated
-to determine if a forbidden error should be raised.
+When applied to a read action, `:filter` will result in a filtered read. For update and destroy actions, the
+filter is evaluated against the original loaded record, producing a forbidden error if it does not match.
+For create actions, the filter is evaluated against the inserted record _inside the action's transaction_;
+if it does not match, the transaction is rolled back and the action returns a forbidden error (see
+[Filter checks on create actions](#filter-checks-on-create-actions) below).
 
 There are three access types, and they determine the _latest point in the process_ that any check contained by a policy can be applied.
 
 - `strict` - All checks must be applied statically. These result in a forbidden error if they are not met.
-- `filter` - All checks must be applied either statically or as a filter. These result in a filtered read if they are not met, and a forbidden error for other action types.
+- `filter` - All checks must be applied either statically or as a filter. For reads they produce a filtered
+  read; for updates/destroys they're evaluated against the original record; for creates they're evaluated
+  post-insert inside the action's transaction.
 - `runtime` - This allows checks to be run _after_ the data has been read. It is exceedingly rare that you would need to use this access type.
 
 For example, given this policy:
@@ -257,6 +262,105 @@ end
 ```
 
 A non-admin using the `:read_hidden` action would see a forbidden error.
+
+### Filter checks on create actions
+
+Filter-mode policy checks that reference data — for example, a check that requires the inserted post's
+parent organization to be owned by the actor — cannot be evaluated at pre-flight time on a create action,
+because the row does not exist yet. Ash handles this by deferring the check to a post-insert authorization
+step inside the action's transaction:
+
+```elixir
+policy action_type(:create) do
+  authorize_if expr(organization.owner_id == ^actor(:id))
+end
+```
+
+When the create runs, Ash inserts the row, runs the user's `after_action` hooks, then evaluates the filter
+as a single `SELECT ... WHERE pkey = ^inserted.id AND ^filter` inside the same transaction. If the row
+matches, the transaction commits. If it does not match, the transaction is rolled back and the action
+returns `Ash.Error.Forbidden`. There is no need to write a custom check or restructure the policy.
+
+This behavior is automatic and requires no opt-in for the common case. Two requirements:
+
+1. **The data layer must support transactions.** ETS-backed resources, for example, cannot participate
+   because there's no transaction to roll back; Ash raises `Ash.Error.Forbidden.CannotFilterCreates` at
+   pre-flight time with a message explaining why.
+2. **The action must run in a transaction.** The default for create actions is `transaction? true`. If an
+   action is explicitly marked `transaction? false`, the same pre-flight error fires.
+
+#### `before_transaction` / `around_transaction` hooks require opt-in
+
+`before_transaction` and `around_transaction` hooks run _outside_ the data-layer transaction, so any side
+effects they perform (sending external notifications, writing to other systems) cannot be rolled back if
+the post-insert filter rejects the row. For actions that have these hooks, Ash refuses to defer the
+filter check by default — the safer behavior is to fail at pre-flight rather than fire a hook with
+side effects on a create that will be rejected.
+
+To opt in to the trade-off, set `allow_post_action_authorization? true` on the create action:
+
+```elixir
+create :create do
+  allow_post_action_authorization? true
+end
+```
+
+With this option set, the action proceeds: `before_transaction` runs, the row inserts, `after_action`
+runs, the filter is evaluated, and the transaction commits or rolls back. The `before_transaction`
+side effects will have already fired regardless of the outcome — you are acknowledging this.
+
+#### Bulk creates
+
+The post-insert authorization fires for `Ash.bulk_create/4` too, per record. Note that
+`Ash.bulk_create(..., transaction: false)` is incompatible with filter-mode checks on create — the
+hook will raise `CannotFilterCreates` at runtime because rollback is not possible without a transaction.
+Use `transaction: :batch` or `transaction: :all` instead, or rewrite the policy to not need a filter
+on this action.
+
+#### Avoiding the post-insert query
+
+The post-insert authorization adds one `SELECT` per create. For most policies this is fine — it's the
+same shape of query the read path would issue, and it runs in the same transaction as the insert. But
+on hot create paths it can be worth replacing the filter check with a check that reads the changeset
+directly, eliminating the round-trip.
+
+Filters that reference **only the inserted record's own attributes** can almost always be expressed as
+a check against the changeset:
+
+```elixir
+# Adds a post-insert SELECT:
+policy action_type(:create) do
+  authorize_if expr(status == :active and visibility == :public)
+end
+
+# Equivalent, no extra query — evaluated against the changeset at pre-flight:
+policy action_type(:create) do
+  authorize_if changing_attributes(status: [to: :active])
+  authorize_if changing_attributes(visibility: [to: :public])
+end
+```
+
+For policies that reference **foreign-key attributes plus the actor**, you can often combine an
+attribute check with an actor check to avoid loading the related record:
+
+```elixir
+# Adds a post-insert SELECT that joins through `organization`:
+policy action_type(:create) do
+  authorize_if expr(organization.owner_id == ^actor(:id))
+end
+
+# Equivalent for the common case where the actor's `organization_id` is on the actor itself —
+# no query, evaluated at pre-flight:
+policy action_type(:create) do
+  authorize_if expr(organization_id == ^actor(:organization_id))
+end
+```
+
+When the relationship truly needs to be loaded to evaluate the check (e.g. the actor doesn't carry
+the join key, or the policy depends on a column that isn't a foreign key on the changeset), the
+post-insert SELECT is the right tool — there's no cheaper way to verify a property of the database
+that the action doesn't otherwise read. Treat the rewrites above as targeted optimizations for
+measured-hot create paths, not as the default style.
 
 ### Relationships and Policies
 
@@ -415,6 +519,9 @@ Many checks won't return a status yes/no, but instead return a "filter" to apply
 
 For update and destroy actions, they apply to the data _before_ the action is run.
 
+For create actions, they are evaluated against the inserted row inside the action's transaction — see
+[Filter checks on create actions](#filter-checks-on-create-actions).
+
 For read actions, they will automatically restrict the returned data to be compliant with the filter. Using the drinking example from earlier, we could write a filter check to list only users that are old enough to drink alcohol.
 
 There are two ways to write a filter check - by creating a module and using the `Ash.Policy.FilterCheck` module, or by using inline expression syntax.
@@ -465,24 +572,29 @@ end
 
 ##### Inline checks for create actions
 
-When using expressions inside of policies that apply to create actions, you may not reference the data being created. For example:
+Inline filter checks on create actions are evaluated post-insert, inside the action's transaction.
+The row is inserted, the user's `after_action` hooks run, then Ash issues a single
+`SELECT WHERE pkey = ^inserted.id AND ^filter` and authorizes only if the row comes back. If it does
+not, the transaction is rolled back and the action returns `Ash.Error.Forbidden`. This means you can
+reference attributes _and relationships_ of the inserted record:
 
 ```elixir
 policy action_type(:create) do
-  # This check is fine, as we only reference the actor
-  authorize_if expr(^actor(:admin) == true)
-  # This check is not, because it contains a reference to a field
+  # Evaluated against the inserted row's `status` field
   authorize_if expr(status == :active)
+  # Evaluated against the inserted row's organization relationship
+  authorize_if expr(organization.owner_id == ^actor(:id))
 end
 ```
 
-> ### Why can't we reference data in creates? {: .info}
->
-> We cannot allow references to the data being created in create policies, because we do not yet know what the result of the action will be.
-> For updates and destroys, referencing the data always references the data _prior_ to the action being run, and so it is deterministic.
+See [Filter checks on create actions](#filter-checks-on-create-actions) above for the full mechanics,
+data-layer requirements, and the `allow_post_action_authorization?` opt-in for actions that have
+`before_transaction` / `around_transaction` hooks.
 
-If a policy that applies to creates, would result in a filter, you will get a `Ash.Error.Forbidden.CannotFilterCreates` at runtime explaining
-that you must change your check. Typically this means writing a custom `Ash.Policy.SimpleCheck` instead.
+If the deferral path cannot be set up — the data layer does not support transactions, the action sets
+`transaction? false`, or the action has non-transactional hooks without
+`allow_post_action_authorization? true` — Ash raises `Ash.Error.Forbidden.CannotFilterCreates` at
+pre-flight with a message explaining the specific cause.
 
 Ash also comes with a set of built-in helpers for writing inline checks - see `Ash.Policy.Check.Builtins` for more information.
 

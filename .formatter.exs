@@ -18,6 +18,7 @@ spark_locals_without_parens = [
   allow_forbidden_field?: 1,
   allow_nil?: 1,
   allow_nil_input: 1,
+  allow_post_action_authorization?: 1,
   allow_stream_with: 1,
   allow_unregistered?: 1,
   always_atomic?: 1,

@@ -54,9 +54,17 @@ defmodule Ash.Policy.Check do
   @doc """
   An optional callback, that allows the check to work with policies set to `access_type :filter`
 
-  Return a keyword list filter that will be applied to the query being made, and will scope the results to match the rule
+  Return a keyword list filter that will be applied to the query being made, and will scope the results to match the rule.
+
+  Returning `:unknown` signals that this check cannot be expressed as a pre-flight filter and
+  must be evaluated post-action via `check/4`. The check author must also implement `check/4`
+  (the `Ash.Policy.FilterCheck` default does so automatically). For read actions and for
+  update/destroy actions inside a transaction, the existing runtime-check machinery handles
+  the deferral; for create actions, this triggers a post-insert authorization step inside the
+  action's transaction.
   """
-  @callback auto_filter(actor(), authorizer(), options()) :: Keyword.t() | Ash.Expr.t()
+  @callback auto_filter(actor(), authorizer(), options()) ::
+              Keyword.t() | Ash.Expr.t() | :unknown | nil | false
   @doc """
   An optional callback, that allows the check to work with policies set to `access_type :runtime`
 
@@ -172,14 +180,14 @@ defmodule Ash.Policy.Check do
     result = apply(module, :auto_filter, [actor, authorizer, opts])
 
     if is_list(result) or is_struct(result) or is_tuple(result) or is_nil(result) or
-         result == false do
+         result == false or result == :unknown do
       result
     else
       raise Ash.Error.Framework.InvalidReturnType,
         message: """
         Invalid value returned from #{inspect(module)}.auto_filter/3.
 
-        The callback #{inspect(__MODULE__)}.auto_filter/3 expects a keyword list, Ash.Expr.t(), nil, or false.
+        The callback #{inspect(__MODULE__)}.auto_filter/3 expects a keyword list, Ash.Expr.t(), :unknown, nil, or false.
         """
     end
   end
@@ -191,14 +199,14 @@ defmodule Ash.Policy.Check do
     result = apply(module, :auto_filter_not, [actor, authorizer, opts])
 
     if is_list(result) or is_struct(result) or is_tuple(result) or is_nil(result) or
-         result == false do
+         result == false or result == :unknown do
       result
     else
       raise Ash.Error.Framework.InvalidReturnType,
         message: """
         Invalid value returned from #{inspect(module)}.auto_filter_not/3.
 
-        The callback #{inspect(__MODULE__)}.auto_filter_not/3 expects a keyword list, Ash.Expr.t(), nil, or false.
+        The callback #{inspect(__MODULE__)}.auto_filter_not/3 expects a keyword list, Ash.Expr.t(), :unknown, nil, or false.
         """
     end
   end

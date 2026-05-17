@@ -705,7 +705,21 @@ defmodule Ash.Policy.Authorizer do
 
       {:filter_and_continue, filter, authorizer} ->
         log_successful_policy_breakdown(authorizer, filter)
-        {:filter, authorizer, filter}
+
+        case context[:changeset] do
+          %Ash.Changeset{action_type: :create} ->
+            # Keep the signal so Ash.Can can dispatch a hook that knows the filter
+            # is necessary but not sufficient — a post-insert check/3 is still
+            # required to evaluate any deferred / runtime scenarios. For all
+            # other subjects we preserve the historical collapse to `:filter`
+            # because the runtime portion is handled via authorize_results on
+            # the read query (or, for update/destroy, by filtering against the
+            # original data).
+            {:filter_and_continue, filter, authorizer}
+
+          _ ->
+            {:filter, authorizer, filter}
+        end
 
       {:error, error} ->
         {:error, error}
@@ -1362,7 +1376,9 @@ defmodule Ash.Policy.Authorizer do
         end)
       end)
 
-    filter = strict_filters(filterable, authorizer)
+    {filter, deferred_scenarios} = strict_filters(filterable, authorizer)
+
+    require_check = require_check ++ deferred_scenarios
 
     case {filter, require_check} do
       {[], []} ->
@@ -1405,100 +1421,104 @@ defmodule Ash.Policy.Authorizer do
   defp strict_filters(filterable, authorizer) do
     filterable
     |> Enum.map(fn scenario ->
-      scenario
-      |> Enum.filter(fn {{check_module, check_opts}, _} ->
-        Ash.Policy.Check.type(check_module) == :filter &&
-          check_opts[:access_type] in [:filter, :runtime]
-      end)
-      |> Enum.reject(fn {{check_module, check_opts}, result} ->
-        match?({:ok, ^result}, Policy.fetch_fact(authorizer.facts, {check_module, check_opts}))
-      end)
-      |> Map.new()
-    end)
-    |> Enum.reduce([], fn scenario, or_filters ->
-      if scenario == %{} do
-        [false | or_filters]
-      else
+      relevant =
         scenario
-        |> Enum.map(fn
-          {{check_module, check_opts}, true} ->
-            result =
-              try do
-                nil_to_false(
-                  Ash.Policy.Check.auto_filter(
-                    check_module,
-                    authorizer.actor,
-                    authorizer,
-                    check_opts
-                  )
-                )
-              rescue
-                e ->
-                  reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                            bread_crumbs:
-                              "Creating filter for check: #{Ash.Policy.Check.describe(check_module, check_opts)} on resource: #{authorizer.resource}"
-                          ),
-                          __STACKTRACE__
-              end
-
-            if is_nil(result) do
-              false
-            else
-              result
-            end
-
-          {{check_module, check_opts}, false} ->
-            result =
-              try do
-                if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-                  nil_to_false(
-                    Ash.Policy.Check.auto_filter_not(
-                      check_module,
-                      authorizer.actor,
-                      authorizer,
-                      check_opts
-                    )
-                  )
-                else
-                  [
-                    not:
-                      nil_to_false(
-                        Ash.Policy.Check.auto_filter(
-                          check_module,
-                          authorizer.actor,
-                          authorizer,
-                          check_opts
-                        )
-                      )
-                  ]
-                end
-              rescue
-                e ->
-                  reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                            bread_crumbs:
-                              "Creating filter for check: #{Ash.Policy.Check.describe(check_module, check_opts)} on resource: #{authorizer.resource}"
-                          ),
-                          __STACKTRACE__
-              end
-
-            if is_nil(result) do
-              false
-            else
-              result
-            end
+        |> Enum.filter(fn {{check_module, check_opts}, _} ->
+          Ash.Policy.Check.type(check_module) == :filter &&
+            check_opts[:access_type] in [:filter, :runtime]
         end)
-        |> case do
-          [] ->
-            or_filters
+        |> Enum.reject(fn {{check_module, check_opts}, result} ->
+          match?({:ok, ^result}, Policy.fetch_fact(authorizer.facts, {check_module, check_opts}))
+        end)
+        |> Map.new()
 
-          [single] ->
-            [single | or_filters]
+      {scenario, relevant}
+    end)
+    |> Enum.reduce({[], []}, fn {original_scenario, relevant}, {or_filters, deferred} ->
+      if relevant == %{} do
+        {[false | or_filters], deferred}
+      else
+        per_check =
+          Enum.map(relevant, fn
+            {{check_module, check_opts}, true} ->
+              resolve_auto_filter(check_module, check_opts, authorizer, :positive)
 
-          filters ->
-            [[and: filters] | or_filters]
+            {{check_module, check_opts}, false} ->
+              resolve_auto_filter(check_module, check_opts, authorizer, :negative)
+          end)
+
+        cond do
+          Enum.any?(per_check, &(&1 == :unknown)) ->
+            {or_filters, [original_scenario | deferred]}
+
+          per_check == [] ->
+            {or_filters, deferred}
+
+          match?([_], per_check) ->
+            {[hd(per_check) | or_filters], deferred}
+
+          true ->
+            {[[and: per_check] | or_filters], deferred}
         end
       end
     end)
+    |> then(fn {or_filters, deferred} -> {Enum.reverse(or_filters), Enum.reverse(deferred)} end)
+  end
+
+  defp resolve_auto_filter(check_module, check_opts, authorizer, direction) do
+    fetch =
+      case direction do
+        :positive ->
+          fn ->
+            Ash.Policy.Check.auto_filter(
+              check_module,
+              authorizer.actor,
+              authorizer,
+              check_opts
+            )
+          end
+
+        :negative ->
+          fn ->
+            if :erlang.function_exported(check_module, :auto_filter_not, 3) do
+              Ash.Policy.Check.auto_filter_not(
+                check_module,
+                authorizer.actor,
+                authorizer,
+                check_opts
+              )
+            else
+              case Ash.Policy.Check.auto_filter(
+                     check_module,
+                     authorizer.actor,
+                     authorizer,
+                     check_opts
+                   ) do
+                :unknown -> :unknown
+                inner -> [not: nil_to_false(inner)]
+              end
+            end
+          end
+      end
+
+    result =
+      try do
+        fetch.()
+      rescue
+        e ->
+          reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
+                    bread_crumbs:
+                      "Creating filter for check: #{Ash.Policy.Check.describe(check_module, check_opts)} on resource: #{authorizer.resource}"
+                  ),
+                  __STACKTRACE__
+      end
+
+    case result do
+      :unknown -> :unknown
+      nil -> false
+      false -> false
+      other -> other
+    end
   end
 
   defp nil_to_false(nil), do: false
@@ -1548,38 +1568,49 @@ defmodule Ash.Policy.Authorizer do
       {{check_module, check_opts}, required_status} ->
         additional_filter =
           if required_status do
-            nil_to_false(
-              Ash.Policy.Check.auto_filter(check_module, authorizer.actor, authorizer, check_opts)
-            )
+            Ash.Policy.Check.auto_filter(check_module, authorizer.actor, authorizer, check_opts)
           else
             if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-              nil_to_false(
-                Ash.Policy.Check.auto_filter_not(
-                  check_module,
-                  authorizer.actor,
-                  authorizer,
-                  check_opts
-                )
+              Ash.Policy.Check.auto_filter_not(
+                check_module,
+                authorizer.actor,
+                authorizer,
+                check_opts
               )
             else
-              [
-                not:
-                  nil_to_false(
-                    Ash.Policy.Check.auto_filter(
-                      check_module,
-                      authorizer.actor,
-                      authorizer,
-                      check_opts
-                    )
-                  )
-              ]
+              case Ash.Policy.Check.auto_filter(
+                     check_module,
+                     authorizer.actor,
+                     authorizer,
+                     check_opts
+                   ) do
+                :unknown -> :unknown
+                inner -> [not: nil_to_false(inner)]
+              end
             end
           end
 
-        scenarios = remove_clause(authorizer.scenarios, {check_module, check_opts})
-        new_facts = Map.put(authorizer.facts, {check_module, check_opts}, required_status)
+        case additional_filter do
+          :unknown ->
+            # A globally-required filter can't be expressed pre-flight; let
+            # the require_check pipeline handle it via check/4 instead of
+            # extracting a global filter for it.
+            case filter do
+              [] -> nil
+              filter -> {filter, scenarios}
+            end
 
-        global_filters(%{authorizer | facts: new_facts}, scenarios, [additional_filter | filter])
+          additional_filter ->
+            additional_filter = nil_to_false(additional_filter)
+            scenarios = remove_clause(authorizer.scenarios, {check_module, check_opts})
+            new_facts = Map.put(authorizer.facts, {check_module, check_opts}, required_status)
+
+            global_filters(
+              %{authorizer | facts: new_facts},
+              scenarios,
+              [additional_filter | filter]
+            )
+        end
     end
   end
 

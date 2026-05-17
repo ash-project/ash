@@ -800,7 +800,8 @@ defmodule Ash.Actions.Create.Bulk do
       opts[:notify?] ||
         Enum.any?(batch, fn item ->
           item.after_action != [] ||
-            item.after_transaction != []
+            item.after_transaction != [] ||
+            item.authorize_results != []
         end)
 
     # Can return both valid and invalid changesets
@@ -1980,7 +1981,8 @@ defmodule Ash.Actions.Create.Bulk do
             must_return_records? =
               state.must_return_records? ||
                 Enum.any?(batch, fn item ->
-                  item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
+                  item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action) ||
+                    !Enum.empty?(item.authorize_results)
                 end) ||
                 (module.has_batch_change?() &&
                    module.has_after_batch?() &&
@@ -2041,7 +2043,8 @@ defmodule Ash.Actions.Create.Bulk do
               must_return_records? =
                 state.must_return_records? ||
                   Enum.any?(batch, fn item ->
-                    item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
+                    item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action) ||
+                      !Enum.empty?(item.authorize_results)
                   end) ||
                   (module.has_batch_change?() &&
                      module.has_after_batch?() &&

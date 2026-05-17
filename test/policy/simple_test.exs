@@ -395,8 +395,8 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
-  test "an impossible create policy shows the correct error message" do
-    assert_raise Ash.Error.Forbidden, ~r/Cannot use a filter to authorize a create/, fn ->
+  test "a create policy whose filter cannot match the inserted record is forbidden after the insert" do
+    assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
       ResourceWithAnImpossibleCreatePolicy
       |> Ash.create!(%{}, actor: %{id: 10})
     end

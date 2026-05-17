@@ -450,9 +450,26 @@ defmodule Ash.Can do
   end
 
   defp alter_source({:ok, true, query}, domain, actor, %Ash.Changeset{} = subject, opts) do
-    case alter_source({:ok, true}, domain, actor, subject, Keyword.put(opts, :base_query, query)) do
-      {:ok, true, new_subject} -> {:ok, true, new_subject, query}
-      other -> other
+    pending = get_in(query.context || %{}, [:private, :create_authorize_results_pending])
+
+    if pending && subject.action_type == :create do
+      subject = install_create_authorize_results(subject, pending)
+
+      case alter_source({:ok, true}, domain, actor, subject, opts) do
+        {:ok, true, new_subject} -> {:ok, true, new_subject}
+        other -> other
+      end
+    else
+      case alter_source(
+             {:ok, true},
+             domain,
+             actor,
+             subject,
+             Keyword.put(opts, :base_query, query)
+           ) do
+        {:ok, true, new_subject} -> {:ok, true, new_subject, query}
+        other -> other
+      end
     end
   end
 
@@ -686,6 +703,7 @@ defmodule Ash.Can do
                     filter,
                     authorizer,
                     authorizer_state,
+                    context,
                     opts
                   ), [{authorizer, authorizer_state, context} | authorizers]}}
 
@@ -701,21 +719,35 @@ defmodule Ash.Can do
                     filter,
                     authorizer,
                     authorizer_state,
+                    context,
                     opts
                   ), [{authorizer, authorizer_state, context} | authorizers]}}
 
               {:continue, authorizer_state} ->
-                if opts[:no_check?] do
-                  {:halt,
-                   opts[:on_must_pass_strict_check] ||
-                     {:error, {authorizer, authorizer_state, context},
-                      Ash.Authorizer.exception(
+                cond do
+                  match?(%Ash.Changeset{action_type: :create}, subject) ->
+                    {:cont,
+                     {true,
+                      stash_create_pending(
+                        query,
+                        subject,
+                        domain,
                         authorizer,
-                        :must_pass_strict_check,
-                        authorizer_state
-                      )}}
-                else
-                  if opts[:alter_source?] || !match?(%Ash.Query{}, subject) do
+                        authorizer_state,
+                        context
+                      ), [{authorizer, authorizer_state, context} | authorizers]}}
+
+                  opts[:no_check?] ->
+                    {:halt,
+                     opts[:on_must_pass_strict_check] ||
+                       {:error, {authorizer, authorizer_state, context},
+                        Ash.Authorizer.exception(
+                          authorizer,
+                          :must_pass_strict_check,
+                          authorizer_state
+                        )}}
+
+                  opts[:alter_source?] || !match?(%Ash.Query{}, subject) ->
                     query_with_hook =
                       Ash.Query.authorize_results(
                         or_query(query, subject.resource, domain, subject),
@@ -742,30 +774,44 @@ defmodule Ash.Can do
                     {:cont,
                      {true, query_with_hook,
                       [{authorizer, authorizer_state, context} | authorizers]}}
-                  else
-                    if opts[:maybe_is] == false do
-                      {:halt,
-                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state),
-                        {authorizer, authorizer_state, context}}}
-                    else
-                      {:halt,
-                       {:maybe, nil, [{authorizer, authorizer_state, context} | authorizers]}}
-                    end
-                  end
+
+                  opts[:maybe_is] == false ->
+                    {:halt,
+                     {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state),
+                      {authorizer, authorizer_state, context}}}
+
+                  true ->
+                    {:halt,
+                     {:maybe, nil, [{authorizer, authorizer_state, context} | authorizers]}}
                 end
 
               {:filter_and_continue, filter, authorizer_state} ->
                 filter = fill_template(filter, context, opts)
 
-                if opts[:no_check?] || !match?(%Ash.Query{}, subject) do
-                  {:error, {authorizer, authorizer_state, context},
-                   Ash.Authorizer.exception(
-                     authorizer,
-                     :must_pass_strict_check,
-                     authorizer_state
-                   )}
-                else
-                  if opts[:alter_source?] do
+                cond do
+                  match?(%Ash.Changeset{action_type: :create}, subject) ->
+                    {:cont,
+                     {true,
+                      apply_filter(
+                        query,
+                        subject,
+                        domain,
+                        filter,
+                        authorizer,
+                        authorizer_state,
+                        context,
+                        Keyword.put(opts, :create_filter_kind, :filter_and_continue)
+                      ), [{authorizer, authorizer_state, context} | authorizers]}}
+
+                  opts[:no_check?] || !match?(%Ash.Query{}, subject) ->
+                    {:error, {authorizer, authorizer_state, context},
+                     Ash.Authorizer.exception(
+                       authorizer,
+                       :must_pass_strict_check,
+                       authorizer_state
+                     )}
+
+                  opts[:alter_source?] ->
                     query_with_hook =
                       query
                       |> apply_filter(
@@ -774,6 +820,7 @@ defmodule Ash.Can do
                         filter,
                         authorizer,
                         authorizer_state,
+                        context,
                         opts
                       )
                       |> Ash.Query.authorize_results(fn query, results ->
@@ -798,16 +845,15 @@ defmodule Ash.Can do
                     {:cont,
                      {true, query_with_hook,
                       [{authorizer, authorizer_state, context} | authorizers]}}
-                  else
-                    if opts[:maybe_is] == false do
-                      {:halt,
-                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state),
-                        authorizer}}
-                    else
-                      {:halt,
-                       {:maybe, nil, [{authorizer, authorizer_state, context} | authorizers]}}
-                    end
-                  end
+
+                  opts[:maybe_is] == false ->
+                    {:halt,
+                     {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state),
+                      authorizer}}
+
+                  true ->
+                    {:halt,
+                     {:maybe, nil, [{authorizer, authorizer_state, context} | authorizers]}}
                 end
             end
           end
@@ -847,29 +893,66 @@ defmodule Ash.Can do
     end
   end
 
-  defp apply_filter(query, subject, domain, filter, authorizer, authorizer_state, opts) do
+  defp apply_filter(query, subject, domain, filter, authorizer, authorizer_state, context, opts) do
     resource = subject.resource
     filter = Ash.Filter.parse!(resource, filter).expression
 
-    case opts[:filter_with] || :filter do
-      :filter ->
-        Ash.Query.filter(or_query(query, resource, domain, subject), ^filter)
+    case subject do
+      %Ash.Changeset{action_type: :create} ->
+        kind = opts[:create_filter_kind] || :filter
 
-      :error ->
-        Ash.Query.filter(
-          or_query(query, resource, domain, subject),
-          if ^filter do
-            true
-          else
-            error(Ash.Error.Forbidden.Placeholder, %{
-              authorizer: ^inspect(authorizer)
-            })
-          end
+        stash_create_pending(
+          query,
+          subject,
+          domain,
+          authorizer,
+          authorizer_state,
+          context,
+          {kind, filter}
         )
-        |> Ash.Query.set_context(%{
-          private: %{authorizer_state: %{authorizer => authorizer_state}}
-        })
+
+      _ ->
+        case opts[:filter_with] || :filter do
+          :filter ->
+            Ash.Query.filter(or_query(query, resource, domain, subject), ^filter)
+
+          :error ->
+            Ash.Query.filter(
+              or_query(query, resource, domain, subject),
+              if ^filter do
+                true
+              else
+                error(Ash.Error.Forbidden.Placeholder, %{
+                  authorizer: ^inspect(authorizer)
+                })
+              end
+            )
+            |> Ash.Query.set_context(%{
+              private: %{authorizer_state: %{authorizer => authorizer_state}}
+            })
+        end
     end
+  end
+
+  defp stash_create_pending(
+         query,
+         subject,
+         domain,
+         authorizer,
+         authorizer_state,
+         context,
+         disposition \\ {:continue, nil}
+       ) do
+    query = or_query(query, subject.resource, domain, subject)
+    existing = get_in(query.context || %{}, [:private, :create_authorize_results_pending]) || []
+
+    Ash.Query.set_context(query, %{
+      private: %{
+        create_authorize_results_pending: [
+          {authorizer, authorizer_state, context, disposition} | existing
+        ]
+      }
+    })
   end
 
   defp run_queries(subject, actor, opts, authorizers, query) do
@@ -1013,9 +1096,160 @@ defmodule Ash.Can do
           end
         end
 
-      %Ash.Changeset{} ->
-        raise Ash.Error.Forbidden.CannotFilterCreates, filter: query.filter
+      %Ash.Changeset{action_type: :create} = changeset ->
+        case get_in(query.context, [:private, :create_authorize_results_pending]) do
+          nil ->
+            raise Ash.Error.Forbidden.CannotFilterCreates,
+              filter: query.filter,
+              resource: changeset.resource,
+              action: changeset.action && changeset.action.name
+
+          _pending ->
+            {:ok, true, query}
+        end
+
+      %Ash.Changeset{} = changeset ->
+        raise Ash.Error.Forbidden.CannotFilterCreates,
+          filter: query.filter,
+          resource: changeset.resource,
+          action: changeset.action && changeset.action.name
     end
+  end
+
+  defp install_create_authorize_results(changeset, pending) do
+    cond do
+      !Ash.DataLayer.data_layer_can?(changeset.resource, :transact) ->
+        raise Ash.Error.Forbidden.CannotFilterCreates,
+          filter: nil,
+          resource: changeset.resource,
+          action: changeset.action && changeset.action.name
+
+      changeset.action && changeset.action.transaction? == false ->
+        raise Ash.Error.Forbidden.CannotFilterCreates,
+          filter: nil,
+          resource: changeset.resource,
+          action: changeset.action && changeset.action.name
+
+      (changeset.before_transaction != [] or changeset.around_transaction != []) and
+          not (changeset.action && changeset.action.allow_post_action_authorization?) ->
+        raise Ash.Error.Forbidden.CannotFilterCreates,
+          filter: nil,
+          resource: changeset.resource,
+          action: changeset.action && changeset.action.name,
+          reason: :non_transactional_hooks
+
+      true ->
+        :ok
+    end
+
+    Enum.reduce(pending, changeset, fn entry, cs ->
+      Ash.Changeset.authorize_results(cs, fn cs, [record] ->
+        # Runtime guard: even though the install-time guard verified the data
+        # layer supports transactions and the action's `transaction?` is true,
+        # bulk creates accept a separate `transaction: false` option that can
+        # bypass that wrapping. If we're not actually inside a transaction
+        # when the hook fires, the post-insert authorization can't roll back
+        # the row — fail loudly rather than silently authorize.
+        if Ash.DataLayer.in_transaction?(cs.resource) do
+          evaluate_create_pending(entry, cs, record)
+        else
+          raise Ash.Error.Forbidden.CannotFilterCreates,
+            filter: nil,
+            resource: cs.resource,
+            action: cs.action && cs.action.name
+        end
+      end)
+    end)
+  end
+
+  defp evaluate_create_pending(
+         {authorizer, authorizer_state, context, {kind, filter}},
+         changeset,
+         record
+       ) do
+    case kind do
+      :filter ->
+        # All scenarios were filterable — the combined filter is both
+        # necessary and sufficient. One SELECT covers every filter check.
+        case filter_matches?(changeset, record, filter) do
+          {:ok, true} -> {:ok, [record]}
+          {:ok, false} -> forbidden(authorizer, authorizer_state)
+          {:error, error} -> {:error, error}
+        end
+
+      :filter_and_continue ->
+        # The filter is globally required but not sufficient on its own.
+        # One SELECT short-circuits the forbidden case; if the row matches,
+        # fall through to check/3 to evaluate the remaining scenarios.
+        case filter_matches?(changeset, record, filter) do
+          {:ok, false} ->
+            forbidden(authorizer, authorizer_state)
+
+          {:ok, true} ->
+            delegate_to_authorizer_check(authorizer, authorizer_state, context, changeset, record)
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      :continue ->
+        # No pre-flight filter — every check is :unknown / runtime. Delegate
+        # straight to the authorizer's check/3 callback, which will run
+        # check_fact for each unresolved scenario.
+        delegate_to_authorizer_check(authorizer, authorizer_state, context, changeset, record)
+    end
+  end
+
+  defp filter_matches?(_changeset, _record, nil), do: {:ok, true}
+  defp filter_matches?(_changeset, _record, true), do: {:ok, true}
+
+  defp filter_matches?(changeset, record, filter) do
+    resource = changeset.resource
+    pkey = Ash.Resource.Info.primary_key(resource)
+    pkey_filter = record |> Map.take(pkey) |> Map.to_list()
+
+    resource
+    |> Ash.Query.do_filter(pkey_filter)
+    |> Ash.Query.filter(^filter)
+    |> Ash.Query.set_tenant(changeset.tenant)
+    |> Ash.Query.set_context(%{private: %{internal?: true}})
+    |> Ash.Query.data_layer_query()
+    |> case do
+      {:ok, data_layer_query} ->
+        case Ash.DataLayer.run_query(data_layer_query, resource) do
+          {:ok, [_ | _]} -> {:ok, true}
+          {:ok, []} -> {:ok, false}
+          {:error, error} -> {:error, error}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp delegate_to_authorizer_check(authorizer, authorizer_state, context, changeset, record) do
+    context = Map.merge(context, %{data: [record], changeset: changeset})
+
+    case Ash.Authorizer.check(authorizer, authorizer_state, context) do
+      :authorized ->
+        {:ok, [record]}
+
+      {:data, [_ | _]} ->
+        {:ok, [record]}
+
+      {:data, []} ->
+        forbidden(authorizer, authorizer_state)
+
+      {:error, :forbidden, state} ->
+        {:error, Ash.Authorizer.exception(authorizer, :forbidden, state)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp forbidden(authorizer, authorizer_state) do
+    {:error, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}
   end
 
   defp or_query(query, resource, domain, subject) do

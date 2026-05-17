@@ -77,6 +77,7 @@ defmodule Ash.Changeset do
     atomic_validations: [],
     after_action: [],
     after_transaction: [],
+    authorize_results: [],
     arguments: %{},
     around_action: [],
     around_transaction: [],
@@ -4637,7 +4638,8 @@ defmodule Ash.Changeset do
       if !(changeset.action && changeset.action.manual) &&
            Enum.empty?(changeset.before_transaction) && Enum.empty?(changeset.around_transaction) &&
            Enum.empty?(changeset.before_action) && Enum.empty?(changeset.after_action) &&
-           Enum.empty?(changeset.around_action) && Enum.empty?(changeset.relationships) do
+           Enum.empty?(changeset.around_action) && Enum.empty?(changeset.relationships) &&
+           Enum.empty?(changeset.authorize_results) do
         data_layer_prefers_transaction?
       else
         true
@@ -5243,6 +5245,19 @@ defmodule Ash.Changeset do
         end
       end
     )
+    |> case do
+      {:ok, result, changeset, acc} ->
+        case run_authorize_results(changeset, result) do
+          {:ok, result} ->
+            {:ok, result, changeset, acc}
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      other ->
+        other
+    end
   end
 
   defp data_layer_can_do_atomic_for_changest?(changeset) do
@@ -7276,6 +7291,34 @@ defmodule Ash.Changeset do
         %{changeset | after_action: changeset.after_action ++ [func]}
       end
     end
+  end
+
+  @doc false
+  @spec authorize_results(
+          t(),
+          (t(), [Ash.Resource.record()] ->
+             {:ok, [Ash.Resource.record()]}
+             | {:error, term})
+        ) :: t()
+  def authorize_results(changeset, func) do
+    %{changeset | authorize_results: [func | changeset.authorize_results]}
+  end
+
+  @doc false
+  def run_authorize_results(changeset, result) do
+    changeset.authorize_results
+    |> Enum.reduce_while({:ok, result}, fn authorize_results, {:ok, result} ->
+      case authorize_results.(changeset, [result]) do
+        {:ok, [result]} ->
+          {:cont, {:ok, result}}
+
+        {:ok, []} ->
+          {:halt, {:error, Ash.Error.Forbidden.exception([])}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
   end
 
   @doc """

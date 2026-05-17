@@ -41,7 +41,7 @@ defmodule Ash.Authorizer do
               | {:data, list(Ash.Resource.record())}
               | {:error, :forbidden, state}
               | {:error, Ash.Error.t()}
-  @callback exception(atom, state) :: no_return
+  @callback exception(atom, state) :: Exception.t()
 
   @optional_callbacks [exception: 2, add_calculations: 3, alter_results: 3, alter_filter: 3]
 
@@ -75,15 +75,15 @@ defmodule Ash.Authorizer do
   end
 
   @doc false
-  @spec exception(module(), atom(), state()) :: no_return
+  @spec exception(module(), atom(), state()) :: Exception.t()
   def exception(module, reason, state) do
     if function_exported?(module, :exception, 2) do
       apply(module, :exception, [reason, state])
     else
       if reason == :must_pass_strict_check do
-        raise Ash.Error.Forbidden.MustPassStrictCheck.exception([])
+        Ash.Error.Forbidden.MustPassStrictCheck.exception([])
       else
-        raise Ash.Error.Forbidden.exception([])
+        Ash.Error.Forbidden.exception([])
       end
     end
   end
