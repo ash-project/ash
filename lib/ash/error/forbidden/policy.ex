@@ -26,7 +26,8 @@ defmodule Ash.Error.Forbidden.Policy do
       solver_statement: nil,
       domain: nil,
       action: nil,
-      changeset_doesnt_match_filter: false
+      changeset_doesnt_match_filter: false,
+      custom_message: nil
     ],
     class: :forbidden
 
@@ -54,10 +55,18 @@ defmodule Ash.Error.Forbidden.Policy do
   end
 
   def message(error) do
-    if error.policy_breakdown? do
-      "forbidden:\n\n#{Ash.Error.Forbidden.Policy.report(error, help_text?: false)}"
-    else
-      "forbidden"
+    cond do
+      is_binary(error.custom_message) and error.policy_breakdown? ->
+        "#{error.custom_message}\n\n#{Ash.Error.Forbidden.Policy.report(error, help_text?: false)}"
+
+      is_binary(error.custom_message) ->
+        error.custom_message
+
+      error.policy_breakdown? ->
+        "forbidden:\n\n#{Ash.Error.Forbidden.Policy.report(error, help_text?: false)}"
+
+      true ->
+        "forbidden"
     end
   end
 

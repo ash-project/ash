@@ -183,6 +183,25 @@ defmodule Ash.Policy.Authorizer do
         doc: """
         A check or list of checks that must be true in order for this policy to apply.
         """
+      ],
+      error_message: [
+        type: {:or, [:string, {:fun, 2}]},
+        doc: """
+        A custom error message to surface when this policy is the reason a request is forbidden.
+
+        Either a string, or a 2-arity function `(subject, context) -> String.t() | Exception.t()`.
+        Returning an exception struct replaces the default `Ash.Error.Forbidden.Policy` entirely;
+        returning a string sets the message on the default error.
+
+        `subject` is the changeset/query/action input being authorized; `context` is a map of
+        `:resource`, `:action`, `:actor`, `:domain`, and `:tenant`.
+
+        Only takes effect when the policy is the one responsible for denying the request —
+        the framework re-evaluates policies to identify which one failed and uses its
+        `error_message`. If multiple policies contributed to the denial, the first one in
+        source order whose state is `:forbidden` wins, falling back to the first whose state
+        is `:unknown` (i.e. didn't authorize).
+        """
       ]
     ],
     args: [{:optional, :condition}],
@@ -487,49 +506,96 @@ defmodule Ash.Policy.Authorizer do
 
   @impl true
   def exception({:changeset_doesnt_match_filter, filter}, state) do
-    Ash.Error.Forbidden.Policy.exception(
-      scenarios: Map.get(state, :scenarios),
-      solver_statement: Map.get(state, :solver_statement),
-      facts: Map.get(state, :facts),
-      policies: Map.get(state, :policies),
-      subject: Map.get(state, :subject),
-      resource: Map.get(state, :resource),
-      action: Map.get(state, :action),
-      actor: Map.get(state, :actor),
-      domain: Map.get(state, :domain),
-      changeset_doesnt_match_filter: true,
-      filter: filter
-    )
+    state
+    |> base_exception_opts()
+    |> Keyword.merge(changeset_doesnt_match_filter: true, filter: filter)
+    |> build_policy_exception(state)
   end
 
   def exception(:must_pass_strict_check, state) do
-    Ash.Error.Forbidden.Policy.exception(
-      scenarios: Map.get(state, :scenarios),
-      facts: Map.get(state, :facts),
-      solver_statement: Map.get(state, :solver_statement),
-      domain: Map.get(state, :domain),
-      subject: Map.get(state, :subject),
-      policies: Map.get(state, :policies),
-      resource: Map.get(state, :resource),
-      action: Map.get(state, :action),
-      actor: Map.get(state, :actor),
-      must_pass_strict_check?: true
-    )
+    state
+    |> base_exception_opts()
+    |> Keyword.put(:must_pass_strict_check?, true)
+    |> build_policy_exception(state)
   end
 
   def exception(_, state) do
-    Ash.Error.Forbidden.Policy.exception(
+    state
+    |> base_exception_opts()
+    |> Keyword.put(:must_pass_strict_check?, false)
+    |> build_policy_exception(state)
+  end
+
+  defp base_exception_opts(state) do
+    [
       scenarios: Map.get(state, :scenarios),
-      domain: Map.get(state, :domain),
-      solver_statement: Map.get(state, :solver_statement),
       facts: Map.get(state, :facts),
+      solver_statement: Map.get(state, :solver_statement),
+      domain: Map.get(state, :domain),
       subject: Map.get(state, :subject),
       policies: Map.get(state, :policies),
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
+      actor: Map.get(state, :actor)
+    ]
+  end
+
+  # If the responsible policy specifies an `error_message`, either replace the
+  # default exception entirely (when the function returns an `Exception.t()`)
+  # or surface a custom message on the standard policy-breakdown error.
+  defp build_policy_exception(opts, state) do
+    case responsible_error_message(state) do
+      {:replace, exception} ->
+        exception
+
+      {:message, message} ->
+        Ash.Error.Forbidden.Policy.exception(Keyword.put(opts, :custom_message, message))
+
+      :none ->
+        Ash.Error.Forbidden.Policy.exception(opts)
+    end
+  end
+
+  defp responsible_error_message(state) do
+    policies = Map.get(state, :policies) || []
+    facts = Map.get(state, :facts, %{})
+
+    case Policy.responsible_for_forbidden(policies, facts) do
+      {%Policy{error_message: nil}, _} ->
+        :none
+
+      {%Policy{error_message: message}, _} when is_binary(message) ->
+        {:message, message}
+
+      {%Policy{error_message: fun}, _} when is_function(fun, 2) ->
+        case fun.(Map.get(state, :subject), error_message_context(state)) do
+          message when is_binary(message) ->
+            {:message, message}
+
+          %{__exception__: true} = exception ->
+            {:replace, exception}
+
+          other ->
+            raise ArgumentError, """
+            Invalid return from a policy `error_message` function.
+
+            Expected a string or an exception struct, got: #{inspect(other)}
+            """
+        end
+
+      nil ->
+        :none
+    end
+  end
+
+  defp error_message_context(state) do
+    %{
+      resource: Map.get(state, :resource),
+      action: Map.get(state, :action),
       actor: Map.get(state, :actor),
-      must_pass_strict_check?: false
-    )
+      domain: Map.get(state, :domain),
+      tenant: Map.get(state, :tenant)
+    }
   end
 
   if Code.ensure_loaded?(Igniter) do
@@ -1838,40 +1904,23 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp handle_strict_check_result({:error, authorizer, :unsatisfiable}, opts) do
-    if authorizer.action.type == :action || Enum.empty?(authorizer.policies || []) do
-      {:error,
-       Ash.Error.Forbidden.Policy.exception(
-         facts: authorizer.facts,
-         domain: Map.get(authorizer, :domain),
-         solver_statement: Map.get(authorizer, :solver_statement),
-         policies: authorizer.policies,
-         subject: authorizer.subject,
-         context_description: opts[:context_description],
-         for_fields: opts[:for_fields],
-         resource: Map.get(authorizer, :resource),
-         action: Map.get(authorizer, :action),
-         actor: Map.get(authorizer, :actor),
-         scenarios: []
-       )}
-    else
-      if forbidden_due_to_strict_policy?(authorizer) do
-        {:error,
-         Ash.Error.Forbidden.Policy.exception(
-           facts: authorizer.facts,
-           domain: Map.get(authorizer, :domain),
-           solver_statement: Map.get(authorizer, :solver_statement),
-           policies: authorizer.policies,
-           subject: authorizer.subject,
-           context_description: opts[:context_description],
-           for_fields: opts[:for_fields],
-           resource: Map.get(authorizer, :resource),
-           action: Map.get(authorizer, :action),
-           actor: Map.get(authorizer, :actor),
-           scenarios: []
-         )}
-      else
+    base_opts =
+      base_exception_opts(authorizer)
+      |> Keyword.merge(
+        context_description: opts[:context_description],
+        for_fields: opts[:for_fields],
+        scenarios: []
+      )
+
+    cond do
+      authorizer.action.type == :action || Enum.empty?(authorizer.policies || []) ->
+        {:error, build_policy_exception(base_opts, authorizer)}
+
+      forbidden_due_to_strict_policy?(authorizer) ->
+        {:error, build_policy_exception(base_opts, authorizer)}
+
+      true ->
         {:filter, authorizer, false}
-      end
     end
   end
 

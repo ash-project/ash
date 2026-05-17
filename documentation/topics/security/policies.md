@@ -362,6 +362,84 @@ post-insert SELECT is the right tool — there's no cheaper way to verify a prop
 that the action doesn't otherwise read. Treat the rewrites above as targeted optimizations for
 measured-hot create paths, not as the default style.
 
+### Custom error messages
+
+Policies can carry an `error_message` that surfaces when the policy is the
+reason a request is forbidden. Two forms:
+
+```elixir
+policy action(:edit_billing) do
+  error_message "only admins can edit billing"
+  authorize_if actor_attribute_equals(:is_admin, true)
+end
+```
+
+```elixir
+policy action(:edit_billing) do
+  error_message fn _subject, context ->
+    "actor #{inspect(context.actor.id)} can't use #{inspect(context.action.name)}"
+  end
+
+  authorize_if actor_attribute_equals(:is_admin, true)
+end
+```
+
+The function form receives `(subject, context)`. `subject` is the changeset,
+query, or action input being authorized. `context` is a map of `:resource`,
+`:action`, `:actor`, `:domain`, and `:tenant`.
+
+The function may also return an `Exception.t()`, which **replaces** the
+default `Ash.Error.Forbidden.Policy` entirely:
+
+```elixir
+defmodule MyApp.Errors.SubscriptionRequired do
+  use Splode.Error, fields: [:plan], class: :forbidden
+  def message(error), do: "subscription #{inspect(error.plan)} required"
+end
+
+policy action(:premium_feature) do
+  error_message fn _subject, context ->
+    MyApp.Errors.SubscriptionRequired.exception(plan: context.actor.plan)
+  end
+
+  authorize_if actor_attribute_equals(:plan, :pro)
+end
+```
+
+#### How the responsible policy is chosen
+
+When multiple policies could be responsible for a denial, Ash picks one by
+re-evaluating each policy's check chain against the already-computed facts:
+
+1. Bypass policies are skipped — they don't deny on their own.
+2. Among non-bypass policies whose condition applies, the first one whose
+   check chain decided to `:forbidden` (explicit `forbid_if`/`forbid_unless`
+   fired) wins.
+3. Otherwise, the first one whose check chain ended in `:unknown` (no
+   `authorize_if` matched) wins.
+4. If no policy is responsible — e.g. authorization was filtered to empty —
+   the default forbidden message is used.
+
+The SAT solver only computes facts it needs to decide the request. Once one
+policy fails to authorize, later policies may have facts that were never
+computed; their state appears as `:unknown` and explicit-forbid preference
+can't fire for them. In practice this means: when multiple policies can each
+deny, the **first** one (in source order) tends to be the responsible one.
+If you need a specific policy's message to win, put it first.
+
+#### Where the message appears
+
+For the string-returning case, the `error_message` becomes the top-level
+message of the returned `Ash.Error.Forbidden.Policy`. The policy breakdown
+(printed when `config :ash, policies: [show_policy_breakdowns?: true]`) is
+appended below the custom message, so you keep both the user-facing
+explanation and the diagnostic detail.
+
+For the exception-returning case, your exception struct replaces the entire
+`Ash.Error.Forbidden.Policy` and is added to the wrapping `Ash.Error.Forbidden`'s
+`errors` list. The policy breakdown is **not** generated — your exception is
+the whole story.
+
 ### Relationships and Policies
 
 A common point of confusion when working with relationships is when they return less results or no results due to policies.

@@ -22,8 +22,22 @@ defmodule Ash.Policy.Policy do
     :bypass?,
     :description,
     :access_type,
+    :error_message,
     :__spark_metadata__
   ]
+
+  @type subject :: Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()
+
+  @type error_message_context :: %{
+          resource: Ash.Resource.t(),
+          action: Ash.Resource.Actions.action() | nil,
+          actor: Ash.actor() | nil,
+          domain: Ash.Domain.t() | nil,
+          tenant: Ash.ToTenant.t() | nil
+        }
+
+  @type error_message ::
+          String.t() | (subject(), error_message_context() -> String.t() | Exception.t())
 
   @type t :: %__MODULE__{
           condition: nil | Check.ref() | list(Check.ref()),
@@ -31,6 +45,7 @@ defmodule Ash.Policy.Policy do
           bypass?: boolean(),
           description: String.t() | nil,
           access_type: :strict | :filter | :runtime,
+          error_message: error_message() | nil,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
@@ -128,6 +143,103 @@ defmodule Ash.Policy.Policy do
       true ->
         {:ok, policy}
     end
+  end
+
+  @doc """
+  Evaluates a policy's check chain against already-computed facts and returns
+  its decision.
+
+  Walks checks in source order. The first decisive check fixes the decision:
+
+    * `authorize_if X` with `X` true → `:authorized`
+    * `authorize_unless X` with `X` false → `:authorized`
+    * `forbid_if X` with `X` true → `:forbidden`
+    * `forbid_unless X` with `X` false → `:forbidden`
+
+  Anything else leaves the state at `:unknown` and the walk continues. If no
+  check is decisive, the policy ends at `:unknown` — callers that need a
+  binary "did this policy deny?" should treat `:unknown` as `:forbidden`,
+  matching Ash's "if nothing authorized, the request is forbidden" rule.
+
+  Reads from the supplied `facts` map only. Strict checks are **not** invoked,
+  so this is safe to call from error-construction paths where rerunning a
+  strict check would surface unrelated errors (e.g. missing calculation
+  arguments). For pre-flight call sites that need lazy strict-check
+  evaluation, use the private `policy_fails_statically?/2` in the policy
+  authorizer.
+  """
+  @spec evaluate(t(), map()) :: :authorized | :forbidden | :unknown
+  def evaluate(%__MODULE__{policies: checks}, facts) when is_map(facts) do
+    Enum.reduce_while(List.wrap(checks), :unknown, fn check, _state ->
+      case decide_check(check, facts) do
+        :unknown -> {:cont, :unknown}
+        decided -> {:halt, decided}
+      end
+    end)
+  end
+
+  defp decide_check(%Check{type: type, check_module: mod, check_opts: opts}, facts) do
+    case fetch_fact(facts, {mod, opts}) do
+      {:ok, true} when type == :authorize_if -> :authorized
+      {:ok, true} when type == :forbid_if -> :forbidden
+      {:ok, false} when type == :authorize_unless -> :authorized
+      {:ok, false} when type == :forbid_unless -> :forbidden
+      _ -> :unknown
+    end
+  end
+
+  @doc """
+  Returns the first non-bypass policy considered responsible for a forbidden
+  outcome, along with its computed state.
+
+  A policy is considered responsible if:
+
+    * Its `condition` applies given the facts (no condition resolves to
+      `{:ok, false}`),
+    * It is not a bypass (bypasses don't deny on their own; an unsatisfied
+      bypass just falls through to the next policy), and
+    * Its `evaluate/2` decision is `:forbidden` (explicit deny) or `:unknown`
+      (no check authorized).
+
+  Within those, explicit `:forbidden` is preferred over `:unknown`. Returns
+  `nil` when no non-bypass policy is responsible.
+  """
+  @spec responsible_for_forbidden([t() | FieldPolicy.t()], map()) ::
+          {t(), :forbidden | :unknown} | nil
+  def responsible_for_forbidden(policies, facts) when is_list(policies) and is_map(facts) do
+    {forbidden, unknown} =
+      Enum.reduce(policies, {nil, nil}, fn
+        # Skip field policies — they don't carry `error_message` and the only
+        # responsibility we surface is on regular policies.
+        %FieldPolicy{}, acc ->
+          acc
+
+        %__MODULE__{bypass?: true}, acc ->
+          acc
+
+        %__MODULE__{} = policy, {forbidden_acc, unknown_acc} = acc ->
+          if condition_applies?(policy, facts) do
+            case evaluate(policy, facts) do
+              :forbidden -> {forbidden_acc || policy, unknown_acc}
+              :unknown -> {forbidden_acc, unknown_acc || policy}
+              :authorized -> acc
+            end
+          else
+            acc
+          end
+      end)
+
+    cond do
+      forbidden -> {forbidden, :forbidden}
+      unknown -> {unknown, :unknown}
+      true -> nil
+    end
+  end
+
+  defp condition_applies?(%__MODULE__{condition: condition}, facts) do
+    condition
+    |> List.wrap()
+    |> Enum.all?(fn check -> fetch_fact(facts, check) != {:ok, false} end)
   end
 
   @spec build_requirements_expression(
