@@ -24,26 +24,26 @@ defmodule Ash.Info.Manifest.Generator.CapabilitiesBuilder do
 
   ## Options
 
-    * `:data_layer_modules` - List of data-layer modules whose `functions/1`
-      callback contributes additional predicate functions to the catalog. Each
-      contributed `%Function{}` is tagged with `data_layer_module` so consumers
-      can intersect against a resource's data layer.
+    * `:resources_by_data_layer` - Map of `%{data_layer_module => [resources]}`
+      whose `functions/1` callback contributes additional predicate functions
+      to the catalog. The first resource per data layer is used as the
+      representative when invoking `functions/1` — required because some
+      data-layer implementations (e.g. `AshPostgres.DataLayer`) read
+      configuration off the resource and crash with `nil`. Each contributed
+      `%Function{}` is tagged with `data_layer_module` so consumers can
+      intersect against a resource's data layer.
 
-  Without `:data_layer_modules`, the catalog is the Ash builtins plus the
-  app's registered custom expressions — identical to the previous `build/0`
-  behavior.
+  Without `:resources_by_data_layer`, the catalog is the Ash builtins plus
+  the app's registered custom expressions.
   """
   @spec build(keyword()) :: {FilterCapabilities.t(), SortCapabilities.t()}
   def build(opts \\ []) do
-    data_layer_modules =
-      opts
-      |> Keyword.get(:data_layer_modules, [])
-      |> Enum.uniq()
+    resources_by_data_layer = Keyword.get(opts, :resources_by_data_layer, %{})
 
     operators = Enum.map(Ash.Filter.builtin_operators(), &build_operator/1)
 
     builtin_functions = Enum.map(Ash.Filter.builtin_functions(), &build_function(&1, nil))
-    data_layer_functions = collect_data_layer_functions(data_layer_modules)
+    data_layer_functions = collect_data_layer_functions(resources_by_data_layer)
     functions = builtin_functions ++ data_layer_functions
 
     custom_expressions =
@@ -65,35 +65,52 @@ defmodule Ash.Info.Manifest.Generator.CapabilitiesBuilder do
   end
 
   # Each data-layer module contributes its `functions/1` modules, deduplicated
-  # by function module across data layers. Tag with the *first* data layer that
-  # claimed it. Modules that don't export `functions/1` contribute nothing.
-  defp collect_data_layer_functions(data_layer_modules) do
-    Enum.flat_map(data_layer_modules, fn dl_module ->
-      Code.ensure_loaded(dl_module)
+  # by function module across data layers. Tag each with the *first* data
+  # layer that claims it. Data layers that don't export `functions/1`, that
+  # have no representative resource, or whose `functions/1` raises contribute
+  # nothing — the rescue here protects the manifest build from a misbehaving
+  # data-layer implementation (e.g. one that assumes a non-nil resource).
+  defp collect_data_layer_functions(resources_by_data_layer) do
+    function_modules_by_data_layer =
+      Map.new(resources_by_data_layer, fn {dl_module, resources} ->
+        {dl_module, list_functions_safely(dl_module, resources)}
+      end)
 
-      if function_exported?(dl_module, :functions, 1) do
-        # The functions/1 callback is per-resource in the Ash data-layer API,
-        # but at this catalog level we just need the set of contributed
-        # modules. Passing nil works for data layers whose `functions/1` is
-        # resource-independent (Postgres ilike/trigram, the test fake).
-        apply(dl_module, :functions, [nil])
-      else
-        []
-      end
-    end)
+    function_modules_by_data_layer
+    |> Map.values()
+    |> List.flatten()
     |> Enum.uniq()
     |> Enum.map(fn module ->
-      data_layer_module = first_data_layer_owning(module, data_layer_modules)
+      data_layer_module = first_data_layer_owning(module, function_modules_by_data_layer)
       build_function(module, data_layer_module)
     end)
   end
 
-  defp first_data_layer_owning(function_module, data_layer_modules) do
-    Enum.find(data_layer_modules, fn dl ->
-      Code.ensure_loaded(dl)
+  defp list_functions_safely(dl_module, resources) do
+    Code.ensure_loaded(dl_module)
 
-      function_exported?(dl, :functions, 1) and
-        function_module in apply(dl, :functions, [nil])
+    with true <- function_exported?(dl_module, :functions, 1),
+         representative when not is_nil(representative) <- List.first(resources) do
+      apply(dl_module, :functions, [representative])
+    else
+      _ -> []
+    end
+  rescue
+    error ->
+      require Logger
+
+      Logger.warning(
+        "#{inspect(dl_module)}.functions/1 raised during manifest capability " <>
+          "building (#{Exception.message(error)}); its predicate functions will " <>
+          "not be included in the manifest catalog."
+      )
+
+      []
+  end
+
+  defp first_data_layer_owning(function_module, function_modules_by_data_layer) do
+    Enum.find_value(function_modules_by_data_layer, fn {dl, modules} ->
+      if function_module in modules, do: dl
     end)
   end
 
