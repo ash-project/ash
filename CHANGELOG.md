@@ -8,6 +8,33 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.25.0](https://github.com/ash-project/ash/compare/v3.24.7...v3.25.0) (2026-05-17)
+
+
+
+
+### Features:
+
+* add filtering and sorting to manifest (#2704) by [@Torkan](https://github.com/Torkan) [(#2704)](https://github.com/ash-project/ash/pull/2704)
+
+* `Ash.Info.manifest` for code generation basis (#2703) by [@Torkan](https://github.com/Torkan) [(#2703)](https://github.com/ash-project/ash/pull/2703)
+
+### Bug Fixes:
+
+* manifest: pass real resource to data_layer.functions/1 (#2706) by [@Torkan](https://github.com/Torkan) [(#2706)](https://github.com/ash-project/ash/pull/2706)
+
+* Manual relationships select missing (#2700) by Kenneth Kostrešević [(#2700)](https://github.com/ash-project/ash/pull/2700)
+
+* add query context to bulk destroy (#2699) by danielatdpg [(#2699)](https://github.com/ash-project/ash/pull/2699)
+
+* add code interface validation hint for options (#2697) by febarnett3 [(#2697)](https://github.com/ash-project/ash/pull/2697)
+
+* preserve all errors in Required dedupe accumulator (#2692) by sevenseacat [(#2692)](https://github.com/ash-project/ash/pull/2692)
+
+### Improvements:
+
+* support filter checks on create actions by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.24.7](https://github.com/ash-project/ash/compare/v3.24.6...v3.24.7) (2026-05-05)
 
 
