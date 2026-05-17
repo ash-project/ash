@@ -184,9 +184,14 @@ defmodule Ash.Test.Info.Manifest.Generator.CapabilitiesBuilderTest do
   end
 
   describe "build/1 with data layer functions" do
+    # FakeDataLayer ignores its resource arg, so any module works as the
+    # representative — but the API still requires a real resource because
+    # other data layers (e.g. AshPostgres) crash on nil.
+    @fake_dl_resources %{Ash.Test.Manifest.FakeDataLayer => [Ash.Test.Manifest.Todo]}
+
     test "collects functions from each data layer and tags them with data_layer_module" do
       {filter_caps, _} =
-        CapabilitiesBuilder.build(data_layer_modules: [Ash.Test.Manifest.FakeDataLayer])
+        CapabilitiesBuilder.build(resources_by_data_layer: @fake_dl_resources)
 
       fake =
         Enum.find(
@@ -202,7 +207,7 @@ defmodule Ash.Test.Info.Manifest.Generator.CapabilitiesBuilderTest do
 
     test "predicate_functions includes data-layer-sourced predicates" do
       {filter_caps, _} =
-        CapabilitiesBuilder.build(data_layer_modules: [Ash.Test.Manifest.FakeDataLayer])
+        CapabilitiesBuilder.build(resources_by_data_layer: @fake_dl_resources)
 
       assert :fake_ilike in filter_caps.predicate_functions
     end
@@ -216,19 +221,37 @@ defmodule Ash.Test.Info.Manifest.Generator.CapabilitiesBuilderTest do
       assert contains.data_layer_module == nil
     end
 
-    test "deduplicates a function module if multiple data layers list it" do
+    test "deduplicates a function module across resources of the same data layer" do
       {filter_caps, _} =
         CapabilitiesBuilder.build(
-          data_layer_modules: [
-            Ash.Test.Manifest.FakeDataLayer,
-            Ash.Test.Manifest.FakeDataLayer
-          ]
+          resources_by_data_layer: %{
+            Ash.Test.Manifest.FakeDataLayer => [
+              Ash.Test.Manifest.Todo,
+              Ash.Test.Manifest.User
+            ]
+          }
         )
 
       hits =
         Enum.count(filter_caps.functions, &(&1.module == Ash.Test.Manifest.FakeDataLayerFunction))
 
       assert hits == 1
+    end
+
+    test "data layers whose functions/1 raises are skipped (manifest build survives)" do
+      defmodule CrashingDataLayer do
+        def functions(_resource), do: raise("boom")
+      end
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert {%Ash.Info.Manifest.FilterCapabilities{}, _} =
+                   CapabilitiesBuilder.build(
+                     resources_by_data_layer: %{CrashingDataLayer => [Ash.Test.Manifest.Todo]}
+                   )
+        end)
+
+      assert log =~ "CrashingDataLayer.functions/1 raised"
     end
   end
 end

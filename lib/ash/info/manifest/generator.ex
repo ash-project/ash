@@ -111,10 +111,10 @@ defmodule Ash.Info.Manifest.Generator do
     reachable_resources = Enum.uniq(reachable_resources ++ always_resources)
     standalone_types = Enum.uniq(standalone_types ++ always_types)
 
-    data_layer_modules = collect_data_layer_modules(reachable_resources)
+    resources_by_data_layer = collect_resources_by_data_layer(reachable_resources)
 
     {filter_capabilities, sort_capabilities} =
-      CapabilitiesBuilder.build(data_layer_modules: data_layer_modules)
+      CapabilitiesBuilder.build(resources_by_data_layer: resources_by_data_layer)
 
     # Build resource specs (no actions — those live in entrypoints)
     resources =
@@ -157,14 +157,14 @@ defmodule Ash.Info.Manifest.Generator do
      }}
   end
 
-  # Distinct data-layer modules across reachable resources, in a stable order
-  # (sorted by module split). `nil` data layers are filtered out.
-  defp collect_data_layer_modules(resources) do
+  # Groups reachable resources by their data layer, dropping resources whose
+  # `Ash.DataLayer.data_layer/1` returns `nil`. The resulting map is what
+  # `CapabilitiesBuilder` needs to pass a real (non-nil) resource into each
+  # data layer's `functions/1` callback.
+  defp collect_resources_by_data_layer(resources) do
     resources
-    |> Enum.map(&Ash.DataLayer.data_layer/1)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
-    |> Enum.sort_by(&Module.split/1)
+    |> Enum.group_by(&Ash.DataLayer.data_layer/1)
+    |> Map.delete(nil)
   end
 
   # Normalizes action_filter entries into {resource, action_name, config} triples.

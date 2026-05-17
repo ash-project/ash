@@ -247,7 +247,11 @@ defmodule Ash.Test.Info.Manifest.Generator.OperatorResolverTest do
   describe "resolve/3 with data layer scoping" do
     setup do
       {filter_caps, _sort_caps} =
-        CapabilitiesBuilder.build(data_layer_modules: [Ash.Test.Manifest.FakeDataLayer])
+        CapabilitiesBuilder.build(
+          resources_by_data_layer: %{
+            Ash.Test.Manifest.FakeDataLayer => [Ash.Test.Manifest.Todo]
+          }
+        )
 
       {:ok, caps: filter_caps}
     end
