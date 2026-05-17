@@ -41,6 +41,137 @@ that contains:
 The struct is plain data — no Ash runtime APIs — and can be serialized to JSON
 via `Ash.Info.Manifest.JsonSerializer.to_map/1` for use by non-Elixir tools.
 
+### A taste of the output
+
+Given a resource like:
+
+```elixir
+defmodule MyApp.Post do
+  use Ash.Resource
+
+  attributes do
+    uuid_primary_key :id
+    attribute :title, :string, public?: true, allow_nil?: false
+    attribute :status, MyApp.Post.Status, public?: true
+  end
+
+  relationships do
+    belongs_to :author, MyApp.User, public?: true
+  end
+
+  actions do
+    defaults [:read, create: [:title, :status, :author_id]]
+  end
+end
+```
+
+`Ash.Info.Manifest.generate(otp_app: :my_app)` produces (abridged) roughly:
+
+```elixir
+%Ash.Info.Manifest{
+  resources: [
+    %Ash.Info.Manifest.Resource{
+      name: "Post",
+      module: MyApp.Post,
+      primary_key: [:id],
+      fields: %{
+        id: %Ash.Info.Manifest.Field{
+          name: :id,
+          kind: :attribute,
+          type: %Ash.Info.Manifest.Type{kind: :uuid, name: "UUID", module: Ash.Type.UUID},
+          allow_nil?: false,
+          primary_key?: true,
+          filter_operators: [
+            %Ash.Info.Manifest.ApplicableOperator{name: :==, rhs: :same},
+            %Ash.Info.Manifest.ApplicableOperator{name: :in, rhs: {:array, :same}},
+            %Ash.Info.Manifest.ApplicableOperator{name: :is_nil,
+              rhs: {:concrete, Ash.Type.Boolean}}
+          ],
+          # ...
+        },
+        title: %Ash.Info.Manifest.Field{
+          name: :title,
+          kind: :attribute,
+          type: %Ash.Info.Manifest.Type{kind: :string, name: "String", module: Ash.Type.String},
+          allow_nil?: false,
+          filter_operators: [...],
+          filter_functions: [
+            %Ash.Info.Manifest.ApplicableFunction{name: :contains,
+              rhs: {:concrete, Ash.Type.String}},
+            # ...
+          ]
+        },
+        status: %Ash.Info.Manifest.Field{
+          name: :status,
+          type: %Ash.Info.Manifest.Type{
+            kind: :type_ref,    # named-type reference; full def lives in `types`
+            name: "Status",
+            module: MyApp.Post.Status
+          }
+        }
+      },
+      relationships: %{
+        author: %Ash.Info.Manifest.Relationship{
+          name: :author,
+          type: :belongs_to,
+          cardinality: :one,
+          destination: MyApp.User
+        }
+      }
+    },
+    # ... MyApp.User, reached transitively through :author
+  ],
+  types: [
+    %Ash.Info.Manifest.Type{
+      kind: :enum,
+      name: "Status",
+      module: MyApp.Post.Status,
+      values: [:draft, :published, :archived]
+    }
+  ],
+  entrypoints: [
+    %Ash.Info.Manifest.Entrypoint{
+      resource: MyApp.Post,
+      action: %Ash.Info.Manifest.Action{
+        name: :create,
+        type: :create,
+        accept: [:title, :status, :author_id],
+        arguments: [],
+        # ...
+      }
+    },
+    %Ash.Info.Manifest.Entrypoint{
+      resource: MyApp.Post,
+      action: %Ash.Info.Manifest.Action{name: :read, type: :read, ...}
+    }
+    # ... entrypoints for MyApp.User
+  ],
+  filter_capabilities: %Ash.Info.Manifest.FilterCapabilities{
+    operators: [%Ash.Info.Manifest.Operator{name: :==, ...}, ...],
+    functions: [%Ash.Info.Manifest.Function{name: :contains, ...}, ...],
+    predicate_operators: [:==, :!=, :<, :<=, :>, :>=, :in, :is_nil, ...],
+    # ...
+  },
+  sort_capabilities: %Ash.Info.Manifest.SortCapabilities{
+    directions: [:asc, :desc, :asc_nils_first, ...]
+  }
+}
+```
+
+Things to notice:
+
+  * The reachable `MyApp.User` appears in `resources` even though we never
+    asked for it directly — reachability followed the `:author` relationship.
+  * Type references on fields (`%Type{kind: :uuid, module: Ash.Type.UUID}`)
+    carry the canonical module. Short-name aliases like `:string` are
+    resolved at construction time and never appear in the output.
+  * Per-field `filter_operators` / `filter_functions` are already resolved —
+    consumers don't re-derive applicability from operator signatures.
+  * Named types (like the `:status` enum) are stored as a `:type_ref` on the
+    field with the full definition in the top-level `types` list, so a tool
+    emitting client code can render the enum once and reference it from
+    everywhere.
+
 For a complete overview of the available fields, see `Ash.Info.Manifest`,
 `Ash.Info.Manifest.Resource`, `Ash.Info.Manifest.Field`, etc.
 
