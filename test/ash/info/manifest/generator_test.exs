@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Test.Info.Manifest.GeneratorTest do
-  use ExUnit.Case, async: true
+  # async: false because the capability-population describe blocks mutate
+  # Application.put_env(:ash, :custom_expressions, ...) in setup.
+  use ExUnit.Case, async: false
 
   describe "generate/1" do
     test "generates spec for otp_app" do
@@ -189,6 +191,76 @@ defmodule Ash.Test.Info.Manifest.GeneratorTest do
 
       assert length(spec_without.resources) == length(spec_with.resources)
       assert length(spec_without.types) == length(spec_with.types)
+    end
+  end
+
+  describe "generate/1 populates filter/sort capabilities" do
+    setup do
+      original = Application.get_env(:ash, :custom_expressions, [])
+
+      Application.put_env(:ash, :custom_expressions, [
+        Ash.Test.Expressions.JaroDistance
+      ])
+
+      on_exit(fn -> Application.put_env(:ash, :custom_expressions, original) end)
+
+      :ok
+    end
+
+    test "the manifest carries a populated filter_capabilities" do
+      {:ok, manifest} = Ash.Info.Manifest.generate(otp_app: :ash_manifest_test)
+
+      assert %Ash.Info.Manifest.FilterCapabilities{} = manifest.filter_capabilities
+      assert manifest.filter_capabilities.operators != []
+      assert manifest.filter_capabilities.functions != []
+    end
+
+    test "the manifest includes registered custom expressions" do
+      {:ok, manifest} = Ash.Info.Manifest.generate(otp_app: :ash_manifest_test)
+
+      assert Enum.any?(manifest.filter_capabilities.custom_expressions, fn ce ->
+               ce.module == Ash.Test.Expressions.JaroDistance
+             end)
+    end
+
+    test "the manifest carries a populated sort_capabilities" do
+      {:ok, manifest} = Ash.Info.Manifest.generate(otp_app: :ash_manifest_test)
+
+      assert %Ash.Info.Manifest.SortCapabilities{directions: directions} =
+               manifest.sort_capabilities
+
+      assert :asc in directions
+      assert :desc_nils_last in directions
+    end
+  end
+
+  describe "per-field operator/function resolution invariants" do
+    test "every field's filter_operators is a subset of predicate_operators" do
+      {:ok, manifest} = Ash.Info.Manifest.generate(otp_app: :ash_manifest_test)
+      catalog_predicate_ops = MapSet.new(manifest.filter_capabilities.predicate_operators)
+
+      for resource <- manifest.resources, {_name, field} <- resource.fields do
+        if field.filter_operators do
+          field_op_names = MapSet.new(field.filter_operators, & &1.name)
+
+          assert MapSet.subset?(field_op_names, catalog_predicate_ops),
+                 "field #{resource.name}.#{field.name} has operators not in predicate_operators: #{inspect(MapSet.difference(field_op_names, catalog_predicate_ops))}"
+        end
+      end
+    end
+
+    test "every field's filter_functions is a subset of predicate_functions" do
+      {:ok, manifest} = Ash.Info.Manifest.generate(otp_app: :ash_manifest_test)
+      catalog_predicate_fns = MapSet.new(manifest.filter_capabilities.predicate_functions)
+
+      for resource <- manifest.resources, {_name, field} <- resource.fields do
+        if field.filter_functions do
+          field_fn_names = MapSet.new(field.filter_functions, & &1.name)
+
+          assert MapSet.subset?(field_fn_names, catalog_predicate_fns),
+                 "field #{resource.name}.#{field.name} has functions not in predicate_functions"
+        end
+      end
     end
   end
 end

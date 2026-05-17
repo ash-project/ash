@@ -8,7 +8,12 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
   """
 
   alias Ash.Info.Manifest.{Argument, Field, Relationship, Resource}
-  alias Ash.Info.Manifest.Generator.TypeResolver
+
+  alias Ash.Info.Manifest.Generator.{
+    OperatorResolver,
+    ResultNullability,
+    TypeResolver
+  }
 
   @doc """
   Build a `%Ash.Info.Manifest.Resource{}` from an Ash resource module.
@@ -22,51 +27,57 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
     * `:include_private_aggregates?` - Include private aggregates (default: `false`)
     * `:include_private_relationships?` - Include private relationships (default: `false`)
   """
-  @spec build(atom(), keyword()) :: Resource.t()
-  def build(resource, opts \\ []) do
+  @spec build(atom(), keyword(), Ash.Info.Manifest.FilterCapabilities.t() | nil) :: Resource.t()
+  def build(resource, opts \\ [], filter_capabilities \\ nil) do
+    data_layer = Ash.DataLayer.data_layer(resource)
+
     %Resource{
       name: resource_name(resource),
       module: resource,
       embedded?: Ash.Resource.Info.embedded?(resource),
       primary_key: Ash.Resource.Info.primary_key(resource),
       description: Ash.Resource.Info.description(resource),
-      fields: build_fields(resource, opts),
+      fields: build_fields(resource, opts, filter_capabilities, data_layer),
       relationships: build_relationships(resource, opts),
       identities: build_identities(resource),
       multitenancy: build_multitenancy(resource)
     }
   end
 
-  defp build_fields(resource, opts) do
-    attributes = build_attributes(resource, opts)
-    calculations = build_calculations(resource, opts)
-    aggregates = build_aggregates(resource, opts)
+  defp build_fields(resource, opts, filter_capabilities, data_layer) do
+    attributes = build_attributes(resource, opts, filter_capabilities, data_layer)
+    calculations = build_calculations(resource, opts, filter_capabilities, data_layer)
+    aggregates = build_aggregates(resource, opts, filter_capabilities, data_layer)
 
     Map.new(attributes ++ calculations ++ aggregates, fn field -> {field.name, field} end)
   end
 
-  defp build_attributes(resource, opts) do
+  defp build_attributes(resource, opts, filter_capabilities, data_layer) do
     resource
     |> get_attributes(opts)
     |> Enum.map(fn attr ->
+      type = TypeResolver.resolve(attr.type, attr.constraints || [])
+      filterable? = Map.get(attr, :filterable?, true)
+
       %Field{
         name: attr.name,
         kind: :attribute,
-        type: TypeResolver.resolve(attr.type, attr.constraints || []),
+        type: type,
         allow_nil?: attr.allow_nil?,
         writable?: attr.writable?,
         has_default?: not is_nil(attr.default),
         description: Map.get(attr, :description),
-        filterable?: Map.get(attr, :filterable?, true),
+        filterable?: filterable?,
         sortable?: Map.get(attr, :sortable?, true),
         primary_key?: attr.primary_key?,
         sensitive?: Map.get(attr, :sensitive?, false),
         select_by_default?: Map.get(attr, :select_by_default?, true)
       }
+      |> resolve_filter_lists(filterable?, type, filter_capabilities, data_layer)
     end)
   end
 
-  defp build_calculations(resource, opts) do
+  defp build_calculations(resource, opts, filter_capabilities, data_layer) do
     resource
     |> get_calculations(opts)
     |> Enum.filter(fn calc -> Map.get(calc, :field?, true) end)
@@ -83,46 +94,83 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
           }
         end)
 
+      type = TypeResolver.resolve(calc.type, calc.constraints || [])
+      filterable? = Map.get(calc, :filterable?, true)
+
       %Field{
         name: calc.name,
         kind: :calculation,
-        type: TypeResolver.resolve(calc.type, calc.constraints || []),
+        type: type,
         allow_nil?: calc.allow_nil?,
         writable?: false,
         has_default?: false,
         description: Map.get(calc, :description),
-        filterable?: Map.get(calc, :filterable?, true),
+        filterable?: filterable?,
         sortable?: Map.get(calc, :sortable?, true),
         primary_key?: false,
         sensitive?: Map.get(calc, :sensitive?, false),
         select_by_default?: Map.get(calc, :select_by_default?, true),
         arguments: arguments
       }
+      |> resolve_filter_lists(filterable?, type, filter_capabilities, data_layer)
     end)
   end
 
-  defp build_aggregates(resource, opts) do
+  defp build_aggregates(resource, opts, filter_capabilities, data_layer) do
     resource
     |> get_aggregates(opts)
     |> Enum.map(fn aggregate ->
-      {type, constraints} = resolve_aggregate_type(resource, aggregate)
+      {type_in, constraints} = resolve_aggregate_type(resource, aggregate)
+      type = TypeResolver.resolve(type_in, constraints)
+      filterable? = Map.get(aggregate, :filterable?, true)
 
       %Field{
         name: aggregate.name,
         kind: :aggregate,
-        type: TypeResolver.resolve(type, constraints),
-        allow_nil?: Map.get(aggregate, :include_nil?, false),
+        type: type,
+        allow_nil?: ResultNullability.for_aggregate(aggregate),
         writable?: false,
         has_default?: false,
         description: Map.get(aggregate, :description),
-        filterable?: Map.get(aggregate, :filterable?, true),
+        filterable?: filterable?,
         sortable?: Map.get(aggregate, :sortable?, true),
         primary_key?: false,
         sensitive?: false,
         select_by_default?: Map.get(aggregate, :select_by_default?, true),
         aggregate_kind: aggregate.kind
       }
+      |> resolve_filter_lists(filterable?, type, filter_capabilities, data_layer)
     end)
+  end
+
+  defp resolve_filter_lists(field, false, _type, _caps, _data_layer) do
+    %{
+      field
+      | filter_operators: nil,
+        filter_functions: nil,
+        filter_custom_expressions: nil
+    }
+  end
+
+  defp resolve_filter_lists(field, true, _type, nil, _data_layer) do
+    %{
+      field
+      | filter_operators: nil,
+        filter_functions: nil,
+        filter_custom_expressions: nil
+    }
+  end
+
+  defp resolve_filter_lists(field, true, type, capabilities, data_layer) do
+    {operators, functions} = OperatorResolver.resolve(type, capabilities, data_layer)
+    custom_expressions = OperatorResolver.resolve_custom_expressions(type, capabilities)
+
+    %{
+      field
+      | filter_operators: operators,
+        filter_functions: functions,
+        filter_custom_expressions: custom_expressions
+    }
   end
 
   defp resolve_aggregate_type(resource, aggregate) do
