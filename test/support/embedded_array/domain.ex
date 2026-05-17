@@ -7,6 +7,7 @@ defmodule Ash.Test.EmbeddedArray.Domain do
   use Ash.Domain
 
   resources do
+    resource Ash.Test.EmbeddedArray.Company
     resource Ash.Test.EmbeddedArray.Estimate
   end
 end

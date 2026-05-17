@@ -2,13 +2,11 @@
 #
 # SPDX-License-Identifier: MIT
 
-defmodule Ash.Test.EmbeddedArray.Estimate do
+defmodule Ash.Test.EmbeddedArray.Company do
   @moduledoc false
   use Ash.Resource,
     domain: Ash.Test.EmbeddedArray.Domain,
     data_layer: Ash.DataLayer.Ets
-
-  alias Ash.Test.EmbeddedArray.Option
 
   ets do
     private?(true)
@@ -21,15 +19,13 @@ defmodule Ash.Test.EmbeddedArray.Estimate do
 
   attributes do
     uuid_primary_key :id, writable?: true
-    attribute :title, :string, public?: true
-    attribute :active, :boolean, public?: true, default: true
-    attribute :options, {:array, Option}, public?: true, default: []
-    attribute :company_id, :uuid, public?: true
+    attribute :name, :string, public?: true
   end
 
   relationships do
-    belongs_to :company, Ash.Test.EmbeddedArray.Company do
+    has_many :estimates, Ash.Test.EmbeddedArray.Estimate do
       public? true
+      destination_attribute :company_id
     end
   end
 end
