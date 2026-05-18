@@ -251,7 +251,9 @@ defmodule Ash.Info.Manifest.JsonSerializer do
   end
 
   defp serialize_nested_resource(nil), do: nil
-  defp serialize_nested_resource(%Ash.Info.Manifest.Resource{} = resource), do: serialize_resource(resource)
+
+  defp serialize_nested_resource(%Ash.Info.Manifest.Resource{} = resource),
+    do: serialize_resource(resource)
 
   defp serialize_argument(%Ash.Info.Manifest.Argument{} = arg) do
     %{
