@@ -154,6 +154,22 @@ defmodule Ash.Test.Info.Manifest.Generator.TypeResolverTest do
       assert length(members) == 2
       assert Enum.any?(members, &(&1.name == :text))
       assert Enum.any?(members, &(&1.name == :number))
+      assert Enum.all?(members, &Map.has_key?(&1, :description))
+    end
+
+    test "preserves member descriptions" do
+      constraints = [
+        types: [
+          text: [type: :string, description: "Plain text content"],
+          number: [type: :integer]
+        ]
+      ]
+
+      result = TypeResolver.resolve(Ash.Type.Union, constraints)
+      text_member = Enum.find(result.members, &(&1.name == :text))
+      number_member = Enum.find(result.members, &(&1.name == :number))
+      assert text_member.description == "Plain text content"
+      assert number_member.description == nil
     end
   end
 
@@ -172,6 +188,22 @@ defmodule Ash.Test.Info.Manifest.Generator.TypeResolverTest do
       name_field = Enum.find(fields, &(&1.name == :name))
       assert name_field.allow_nil? == false
       assert %Type{kind: :string} = name_field.type
+      assert name_field.description == nil
+    end
+
+    test "preserves field descriptions" do
+      constraints = [
+        fields: [
+          name: [type: :string, description: "Display name"],
+          age: [type: :integer]
+        ]
+      ]
+
+      result = TypeResolver.resolve(Ash.Type.Map, constraints)
+      name_field = Enum.find(result.fields, &(&1.name == :name))
+      age_field = Enum.find(result.fields, &(&1.name == :age))
+      assert name_field.description == "Display name"
+      assert age_field.description == nil
     end
 
     test "resolves map without fields" do
