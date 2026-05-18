@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.25.2](https://github.com/ash-project/ash/compare/v3.25.1...v3.25.2) (2026-05-18)
+
+
+
+
+### Bug Fixes:
+
+* place embedded resources into `types` by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.25.1](https://github.com/ash-project/ash/compare/v3.25.0...v3.25.1) (2026-05-18)
 
 
