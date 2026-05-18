@@ -1171,6 +1171,42 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  describe "Ash.can? log_policy_breakdown? option" do
+    setup do
+      old_policies = Application.get_env(:ash, :policies, [])
+
+      policies = Keyword.put(old_policies, :log_policy_breakdowns, :error)
+      Application.put_env(:ash, :policies, policies)
+
+      on_exit(fn -> Application.put_env(:ash, :policies, old_policies) end)
+
+      actor = %{role: :viewer, has_read_permission: true}
+
+      actor
+    end
+
+    test "Ash.can? logs policy breakdown at global config level by default", actor do
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          refute Ash.can?({ResourceWithForbidUnlessAndAuthorizeIf, :read}, actor)
+        end)
+
+      assert log =~ "Policy Breakdown"
+    end
+
+    test "Ash.can? suppresses policy breakdown log when set to false, overriding global config",
+         actor do
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          refute Ash.can?({ResourceWithForbidUnlessAndAuthorizeIf, :read}, actor,
+                   log_policy_breakdown?: false
+                 )
+        end)
+
+      assert log == ""
+    end
+  end
+
   describe "check init/1 callback" do
     test "init/1 is called and normalizes opts during compilation" do
       # CheckWithInit sets :initialized to true when :required_option is provided.
