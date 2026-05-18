@@ -23,28 +23,38 @@ defmodule Ash.Test.Info.Manifest.Generator.ActionBuilderTest do
       assert result.primary? == true
     end
 
-    test "builds create action with accept list" do
+    test "builds create action with accepted attribute inputs" do
       action = get_action(Ash.Test.Manifest.Todo, :create)
       result = ActionBuilder.build(Ash.Test.Manifest.Todo, action)
 
       assert result.type == :create
-      assert is_list(result.accept)
-      assert :title in result.accept
+      assert is_list(result.inputs)
+      assert Enum.any?(result.inputs, &(&1.name == :title))
     end
 
     test "builds action with public arguments only" do
       action = get_action(Ash.Test.Manifest.Todo, :read)
       result = ActionBuilder.build(Ash.Test.Manifest.Todo, action)
 
-      assert is_list(result.arguments)
-      assert Enum.all?(result.arguments, &is_atom(&1.name))
+      assert is_list(result.inputs)
+      assert Enum.all?(result.inputs, &is_atom(&1.name))
+    end
+
+    test "inputs merge accepted attributes and arguments" do
+      action = get_action(Ash.Test.Manifest.Todo, :create)
+      result = ActionBuilder.build(Ash.Test.Manifest.Todo, action)
+
+      names = Enum.map(result.inputs, & &1.name)
+      assert :title in names
+      assert :user_id in names
+      assert :auto_complete in names
     end
 
     test "builds argument with type resolution" do
       action = get_action(Ash.Test.Manifest.Todo, :create)
       result = ActionBuilder.build(Ash.Test.Manifest.Todo, action)
 
-      user_id_arg = Enum.find(result.arguments, &(&1.name == :user_id))
+      user_id_arg = Enum.find(result.inputs, &(&1.name == :user_id))
 
       if user_id_arg do
         assert %Argument{} = user_id_arg

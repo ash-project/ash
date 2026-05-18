@@ -221,13 +221,10 @@ defmodule Ash.Info.Manifest.JsonSerializer do
       "type" => to_string(action.type),
       "primary" => action.primary?,
       "get" => action.get?,
-      "arguments" => Enum.map(action.arguments || [], &serialize_argument/1),
+      "inputs" => Enum.map(action.inputs || [], &serialize_argument/1),
       "metadata" => Enum.map(action.metadata || [], &serialize_metadata/1)
     }
     |> put_if_present("description", action.description)
-    |> put_if_present("accept", serialize_atom_list(action.accept))
-    |> put_if_present("require_attributes", serialize_atom_list(action.require_attributes))
-    |> put_if_present("allow_nil_input", serialize_atom_list(action.allow_nil_input))
     |> put_if_present("returns", serialize_type(action.returns))
     |> put_if_present("pagination", serialize_pagination(action.pagination))
   end

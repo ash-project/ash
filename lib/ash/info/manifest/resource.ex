@@ -99,18 +99,4 @@ defmodule Ash.Info.Manifest.Resource do
   end
 
   defp sort_by_name(items), do: Enum.sort_by(items, & &1.name)
-
-  @doc "Returns fields for accepted attributes of an action."
-  @spec accepted_fields(t(), map()) :: [Ash.Info.Manifest.Field.t()]
-  def accepted_fields(%__MODULE__{fields: fields}, action) do
-    case Map.get(action, :accept) || [] do
-      [] ->
-        []
-
-      accept_list ->
-        accept_list
-        |> Enum.map(&Map.get(fields, &1))
-        |> Enum.reject(&is_nil/1)
-    end
-  end
 end

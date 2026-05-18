@@ -169,6 +169,12 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
           {resources ++ found_r, types ++ found_t, new_visited}
         end)
 
+      # Walk accepted-attribute types. Public attributes are already reached
+      # via the resource's field set, but private attributes named in `accept`
+      # become action inputs and their types must be registered too.
+      {resources, types, visited} =
+        traverse_action_accepted_attributes(resource, action, resources, types, visited, opts)
+
       # Walk return type (generic actions declare a custom return type via :returns;
       # CRUD actions return the resource itself, which is already reachable)
       {resources, types, visited} =
@@ -176,6 +182,23 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
 
       # Walk metadata field types (custom types in metadata fields need to be reachable)
       traverse_action_metadata(action, resources, types, visited, opts)
+    end)
+  end
+
+  defp traverse_action_accepted_attributes(resource, action, resources, types, visited, opts) do
+    accept = Map.get(action, :accept) || []
+
+    Enum.reduce(accept, {resources, types, visited}, fn name, {resources, types, visited} ->
+      case Ash.Resource.Info.attribute(resource, name) do
+        nil ->
+          {resources, types, visited}
+
+        attribute ->
+          {found_r, found_t, new_visited} =
+            traverse_type(attribute.type, attribute.constraints || [], visited, opts)
+
+          {resources ++ found_r, types ++ found_t, new_visited}
+      end
     end)
   end
 

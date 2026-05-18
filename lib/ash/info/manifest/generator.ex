@@ -22,8 +22,6 @@ defmodule Ash.Info.Manifest.Generator do
     TypeResolver
   }
 
-  alias Ash.Info.Manifest.Validators
-
   @doc """
   Generate an API specification.
 
@@ -54,14 +52,6 @@ defmodule Ash.Info.Manifest.Generator do
     * `:include_private_actions?` - Include private actions (default: `false`).
       Private actions (`public? false`) are omitted from `entrypoints` even
       when explicitly named in `:action_entrypoints`.
-
-  ## Enforcement Options
-
-    * `:enforce_public_accept?` - When `true` (default), raises
-      `Ash.Info.Manifest.Error.NonPublicAccept` if any action entrypoint's accept
-      list contains non-public attributes. Set to `false` to disable this
-      check (e.g. for extensions that intentionally expose private
-      attributes to internal callers).
   """
   @build_opt_keys [
     :include_private_attributes?,
@@ -77,7 +67,6 @@ defmodule Ash.Info.Manifest.Generator do
     otp_app = Keyword.fetch!(opts, :otp_app)
     action_filter = Keyword.get(opts, :action_entrypoints)
     overrides = Keyword.get(opts, :overrides, [])
-    enforce_public_accept? = Keyword.get(opts, :enforce_public_accept?, true)
     build_opts = Keyword.take(opts, @build_opt_keys)
 
     always_opts = Keyword.get(overrides, :always, [])
@@ -133,8 +122,7 @@ defmodule Ash.Info.Manifest.Generator do
       build_entrypoints(
         normalized_entries,
         resource_action_map,
-        build_opts,
-        enforce_public_accept?
+        build_opts
       )
 
     # Build standalone type specs (full definitions, not references)
@@ -209,7 +197,7 @@ defmodule Ash.Info.Manifest.Generator do
   end
 
   # When no filter: one entrypoint per action on each resource
-  defp build_entrypoints(nil, resource_action_map, opts, enforce_public_accept?) do
+  defp build_entrypoints(nil, resource_action_map, opts) do
     include_private? = Keyword.get(opts, :include_private_actions?, false)
 
     resource_action_map
@@ -218,8 +206,6 @@ defmodule Ash.Info.Manifest.Generator do
       |> Ash.Resource.Info.actions()
       |> Enum.filter(&include_action?(&1, include_private?))
       |> Enum.map(fn action ->
-        if enforce_public_accept?, do: Validators.validate_entrypoint!(resource, action)
-
         %Ash.Info.Manifest.Entrypoint{
           resource: resource,
           action: ActionBuilder.build(resource, action, opts)
@@ -230,20 +216,13 @@ defmodule Ash.Info.Manifest.Generator do
   end
 
   # When filtered: one entrypoint per normalized entry (preserves duplicates with different configs)
-  defp build_entrypoints(
-         normalized_entries,
-         _resource_action_map,
-         opts,
-         enforce_public_accept?
-       ) do
+  defp build_entrypoints(normalized_entries, _resource_action_map, opts) do
     include_private? = Keyword.get(opts, :include_private_actions?, false)
 
     normalized_entries
     |> Enum.flat_map(fn {resource, action_name, config} ->
       with %{} = action <- Ash.Resource.Info.action(resource, action_name),
            true <- include_action?(action, include_private?) do
-        if enforce_public_accept?, do: Validators.validate_entrypoint!(resource, action)
-
         [
           %Ash.Info.Manifest.Entrypoint{
             resource: resource,

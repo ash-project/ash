@@ -13,9 +13,15 @@ defmodule Ash.Info.Manifest.Generator.ActionBuilder do
   @doc """
   Build an `%Ash.Info.Manifest.Action{}` from an Ash action struct.
 
+  Action arguments and accepted attributes are merged into a single `inputs`
+  list. Accepted attributes appear in `accept` order, followed by arguments in
+  declaration order.
+
   ## Options
 
-    * `:include_private_arguments?` - Include private arguments (default: `false`)
+    * `:include_private_arguments?` - Include private arguments (default: `false`).
+      Accepted attributes are always included (whether public or not), since
+      `accept` is itself an explicit exposure.
   """
   @spec build(atom(), struct(), keyword()) :: Action.t()
   def build(resource, action, opts \\ []) do
@@ -25,17 +31,21 @@ defmodule Ash.Info.Manifest.Generator.ActionBuilder do
       description: Map.get(action, :description),
       primary?: Map.get(action, :primary?, false),
       get?: Map.get(action, :get?, false),
-      arguments: build_arguments(action, opts),
-      accept: Map.get(action, :accept),
-      require_attributes: Map.get(action, :require_attributes),
-      allow_nil_input: Map.get(action, :allow_nil_input),
+      inputs: build_inputs(resource, action, opts),
       metadata: build_metadata(resource, action),
       returns: build_returns(action),
       pagination: build_pagination(action)
     }
   end
 
-  defp build_arguments(action, opts) do
+  defp build_inputs(resource, action, opts) do
+    accept_inputs =
+      action
+      |> Map.get(:accept, [])
+      |> List.wrap()
+      |> Enum.map(&build_accepted_attribute_input(resource, action, &1))
+      |> Enum.reject(&is_nil/1)
+
     args =
       if Keyword.get(opts, :include_private_arguments?, false) do
         action.arguments
@@ -43,10 +53,39 @@ defmodule Ash.Info.Manifest.Generator.ActionBuilder do
         Enum.filter(action.arguments, & &1.public?)
       end
 
-    Enum.map(args, &build_argument/1)
+    argument_inputs = Enum.map(args, &build_argument_input/1)
+
+    accept_inputs ++ argument_inputs
   end
 
-  defp build_argument(arg) do
+  defp build_accepted_attribute_input(resource, action, name) do
+    case Ash.Resource.Info.attribute(resource, name) do
+      nil ->
+        nil
+
+      attribute ->
+        require_attributes = Map.get(action, :require_attributes, []) || []
+        allow_nil_input = Map.get(action, :allow_nil_input, []) || []
+
+        allow_nil? =
+          cond do
+            name in allow_nil_input -> true
+            name in require_attributes -> false
+            true -> attribute.allow_nil?
+          end
+
+        %Argument{
+          name: attribute.name,
+          type: TypeResolver.resolve(attribute.type, attribute.constraints || []),
+          allow_nil?: allow_nil?,
+          has_default?: not is_nil(attribute.default),
+          description: Map.get(attribute, :description),
+          sensitive?: Map.get(attribute, :sensitive?, false)
+        }
+    end
+  end
+
+  defp build_argument_input(arg) do
     %Argument{
       name: arg.name,
       type: TypeResolver.resolve(arg.type, arg.constraints || []),
