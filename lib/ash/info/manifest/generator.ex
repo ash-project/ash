@@ -104,14 +104,20 @@ defmodule Ash.Info.Manifest.Generator do
     reachable_resources = Enum.uniq(reachable_resources ++ always_resources)
     standalone_types = Enum.uniq(standalone_types ++ always_types)
 
-    resources_by_data_layer = collect_resources_by_data_layer(reachable_resources)
+    # Embedded resources are types, not resources — they live in `manifest.types`
+    # as `kind: :embedded_resource` entries with their full Resource definition
+    # nested in `type.resource`. Domain-owned resources go in `manifest.resources`.
+    {embedded_resource_modules, domain_resource_modules} =
+      Enum.split_with(reachable_resources, &Ash.Resource.Info.embedded?/1)
+
+    resources_by_data_layer = collect_resources_by_data_layer(domain_resource_modules)
 
     {filter_capabilities, sort_capabilities} =
       CapabilitiesBuilder.build(resources_by_data_layer: resources_by_data_layer)
 
     # Build resource specs (no actions — those live in entrypoints)
     resources =
-      reachable_resources
+      domain_resource_modules
       |> Enum.sort_by(&Module.split/1)
       |> Enum.map(fn resource ->
         ResourceBuilder.build(resource, build_opts, filter_capabilities)
@@ -125,8 +131,24 @@ defmodule Ash.Info.Manifest.Generator do
         build_opts
       )
 
-    # Build standalone type specs (full definitions, not references)
-    types =
+    # Build standalone type specs (full definitions, not references) for
+    # named types (enums, NewTypes) plus embedded resources.
+    embedded_type_entries =
+      embedded_resource_modules
+      |> Enum.sort_by(&Module.split/1)
+      |> Enum.map(fn mod ->
+        resource = ResourceBuilder.build(mod, build_opts, filter_capabilities)
+
+        %Ash.Info.Manifest.Type{
+          kind: :embedded_resource,
+          name: resource.name,
+          module: mod,
+          resource_module: mod,
+          resource: resource
+        }
+      end)
+
+    named_type_entries =
       standalone_types
       |> Enum.sort_by(fn module ->
         if is_atom(module) and Code.ensure_loaded?(module) == true do
@@ -138,6 +160,8 @@ defmodule Ash.Info.Manifest.Generator do
       |> Enum.map(fn type_module ->
         TypeResolver.resolve_definition(type_module)
       end)
+
+    types = named_type_entries ++ embedded_type_entries
 
     {:ok,
      %Ash.Info.Manifest{

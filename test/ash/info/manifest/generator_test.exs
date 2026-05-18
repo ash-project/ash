@@ -112,6 +112,22 @@ defmodule Ash.Test.Info.Manifest.GeneratorTest do
       module_names = Enum.map(spec.resources, &Module.split(&1.module))
       assert module_names == Enum.sort(module_names)
     end
+
+    test "embedded resources live in spec.types, not spec.resources" do
+      {:ok, spec} = Ash.Info.Manifest.generate(otp_app: :ash_manifest_test)
+
+      refute Enum.any?(spec.resources, &(&1.module == Ash.Test.Manifest.TodoMetadata))
+      refute Enum.any?(spec.resources, & &1.embedded?)
+
+      embedded =
+        Enum.find(spec.types, &(&1.module == Ash.Test.Manifest.TodoMetadata))
+
+      assert embedded != nil
+      assert embedded.kind == :embedded_resource
+      assert embedded.resource_module == Ash.Test.Manifest.TodoMetadata
+      assert %Ash.Info.Manifest.Resource{embedded?: true} = embedded.resource
+      assert is_map(embedded.resource.fields)
+    end
   end
 
   describe "private actions" do

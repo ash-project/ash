@@ -247,7 +247,11 @@ defmodule Ash.Info.Manifest.JsonSerializer do
     |> put_if_present("instance_of", module_to_string(type.instance_of))
     |> put_if_present("item_type", serialize_type(type.item_type))
     |> put_if_present("element_types", serialize_type_fields(type.element_types))
+    |> put_if_present("resource", serialize_nested_resource(type.resource))
   end
+
+  defp serialize_nested_resource(nil), do: nil
+  defp serialize_nested_resource(%Ash.Info.Manifest.Resource{} = resource), do: serialize_resource(resource)
 
   defp serialize_argument(%Ash.Info.Manifest.Argument{} = arg) do
     %{

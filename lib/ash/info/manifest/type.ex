@@ -6,10 +6,16 @@ defmodule Ash.Info.Manifest.Type do
   @moduledoc """
   Represents a resolved type in the API specification.
 
-  Named type modules (Ash.Type.Enum implementations and Ash.Type.NewType subtypes)
-  are referenced via `kind: :type_ref` inline, with their full definitions in
-  `%Ash.Info.Manifest{}.types`. This prevents circular references and mirrors how resources
-  are referenced via `kind: :resource` with definitions in `%Ash.Info.Manifest{}.resources`.
+  Named type modules (Ash.Type.Enum implementations, Ash.Type.NewType subtypes,
+  and embedded resources) are referenced inline with their full definitions
+  living in `%Ash.Info.Manifest{}.types`. This prevents circular references and
+  mirrors how non-embedded resources are referenced via `kind: :resource` with
+  definitions in `%Ash.Info.Manifest{}.resources`.
+
+  Embedded resources are *types*, not resources — they have no domain and no
+  callable surface. The standalone entry in `manifest.types` has
+  `kind: :embedded_resource` and `resource:` set to the full
+  `%Ash.Info.Manifest.Resource{}` definition.
 
   Primitive types (string, integer, etc.) and anonymous containers (map/keyword/tuple
   without a named module) are still resolved inline.
@@ -67,6 +73,10 @@ defmodule Ash.Info.Manifest.Type do
           item_type: t() | nil,
           # For :tuple
           element_types: [%{name: atom(), type: t(), allow_nil?: boolean()}] | nil,
+          # Set on standalone `kind: :embedded_resource` entries in `manifest.types`
+          # to carry the full embedded resource definition. Inline references
+          # leave this `nil` and resolve via `resource_module` lookup.
+          resource: Ash.Info.Manifest.Resource.t() | nil,
           custom: map()
         }
 
@@ -83,6 +93,7 @@ defmodule Ash.Info.Manifest.Type do
     :instance_of,
     :item_type,
     :element_types,
+    :resource,
     custom: %{}
   ]
 
