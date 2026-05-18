@@ -316,6 +316,7 @@ defmodule Ash.Info.Manifest.JsonSerializer do
         "name" => to_string(member.name),
         "type" => serialize_type(member.type)
       }
+      |> put_if_present("description", Map.get(member, :description))
     end)
   end
 
@@ -328,6 +329,7 @@ defmodule Ash.Info.Manifest.JsonSerializer do
         "type" => serialize_type(field.type),
         "allow_nil" => field.allow_nil?
       }
+      |> put_if_present("description", Map.get(field, :description))
     end)
   end
 

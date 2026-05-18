@@ -236,7 +236,8 @@ defmodule Ash.Info.Manifest.Generator.TypeResolver do
 
         member = %{
           name: name,
-          type: resolve(member_type, member_constraints)
+          type: resolve(member_type, member_constraints),
+          description: Keyword.get(config, :description)
         }
 
         # Include tag info when present (for tagged unions)
@@ -352,7 +353,8 @@ defmodule Ash.Info.Manifest.Generator.TypeResolver do
       %{
         name: name,
         type: resolve(field_type, field_constraints),
-        allow_nil?: allow_nil?
+        allow_nil?: allow_nil?,
+        description: Keyword.get(config, :description)
       }
     end)
   end

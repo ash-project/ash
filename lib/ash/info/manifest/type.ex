@@ -62,17 +62,21 @@ defmodule Ash.Info.Manifest.Type do
           # For :enum
           values: [atom()] | nil,
           # For :union
-          members: [%{name: atom(), type: t()}] | nil,
+          members: [%{name: atom(), type: t(), description: String.t() | nil}] | nil,
           # For :resource / :embedded_resource
           resource_module: atom() | nil,
           # For :map / :struct / :keyword
-          fields: [%{name: atom(), type: t(), allow_nil?: boolean()}] | nil,
+          fields:
+            [%{name: atom(), type: t(), allow_nil?: boolean(), description: String.t() | nil}]
+            | nil,
           # For :struct
           instance_of: atom() | nil,
           # For :array
           item_type: t() | nil,
           # For :tuple
-          element_types: [%{name: atom(), type: t(), allow_nil?: boolean()}] | nil,
+          element_types:
+            [%{name: atom(), type: t(), allow_nil?: boolean(), description: String.t() | nil}]
+            | nil,
           # Set on standalone `kind: :embedded_resource` entries in `manifest.types`
           # to carry the full embedded resource definition. Inline references
           # leave this `nil` and resolve via `resource_module` lookup.
@@ -142,9 +146,12 @@ defmodule Ash.Info.Manifest.Type do
   Checks `.fields` first (for map/struct/keyword), then `.element_types` (for tuple).
   Returns an empty list if neither is populated.
 
-  Each field is a map with `:name`, `:type` (`%Ash.Info.Manifest.Type{}`), and `:allow_nil?`.
+  Each field is a map with `:name`, `:type` (`%Ash.Info.Manifest.Type{}`), `:allow_nil?`,
+  and `:description` (which may be nil).
   """
-  @spec get_fields(t()) :: [%{name: atom(), type: t(), allow_nil?: boolean()}]
+  @spec get_fields(t()) :: [
+          %{name: atom(), type: t(), allow_nil?: boolean(), description: String.t() | nil}
+        ]
   def get_fields(%__MODULE__{fields: fields}) when is_list(fields) and fields != [], do: fields
 
   def get_fields(%__MODULE__{element_types: ets}) when is_list(ets) and ets != [], do: ets
@@ -154,9 +161,11 @@ defmodule Ash.Info.Manifest.Type do
   @doc """
   Finds a sub-field by name from the type's field descriptors.
 
-  Returns the field map (`%{name, type, allow_nil?}`) or nil if not found.
+  Returns the field map (`%{name, type, allow_nil?, description}`) or nil if not found.
   """
-  @spec find_field(t(), atom()) :: %{name: atom(), type: t(), allow_nil?: boolean()} | nil
+  @spec find_field(t(), atom()) ::
+          %{name: atom(), type: t(), allow_nil?: boolean(), description: String.t() | nil}
+          | nil
   def find_field(%__MODULE__{} = type, field_name) when is_atom(field_name) do
     type
     |> get_fields()
@@ -181,7 +190,8 @@ defmodule Ash.Info.Manifest.Type do
   @doc """
   Finds a union member by name from the type's members.
 
-  Returns the member map (`%{name, type, tag, tag_value}`) or nil.
+  Returns the member map (`%{name, type, description, tag, tag_value}`) or nil.
+  `:tag` and `:tag_value` are only present for tagged union members.
   """
   @spec find_member(t(), atom()) :: map() | nil
   def find_member(%__MODULE__{members: members}, member_name)
