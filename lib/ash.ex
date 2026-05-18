@@ -2967,6 +2967,7 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_resource_or_query!(query)
     domain = Ash.Helpers.domain!(query, opts)
+    lock = Keyword.get(opts, :lock, :__ash_no_lock__)
     query = Ash.Query.new(query)
 
     with {:ok, opts} <- ReadOneOpts.validate(opts),
@@ -2974,7 +2975,7 @@ defmodule Ash do
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
-      case do_read_one(query, action, opts) do
+      case do_read_one(maybe_lock_query(query, lock), action, opts) do
         {:ok, result} -> {:ok, result}
         {:ok, result, query} -> {:ok, result, query}
         {:error, error} -> {:error, Ash.Error.to_error_class(error)}
@@ -3046,6 +3047,7 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_resource_or_query!(query)
     domain = Ash.Helpers.domain!(query, opts)
+    lock = Keyword.get(opts, :lock, :__ash_no_lock__)
     query = query |> Ash.Query.new() |> Ash.Query.limit(1)
 
     with {:ok, opts} <- ReadOneOpts.validate(opts),
@@ -3053,7 +3055,7 @@ defmodule Ash do
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
-      case do_read_one(query, action, opts) do
+      case do_read_one(maybe_lock_query(query, lock), action, opts) do
         {:ok, result} -> {:ok, result}
         {:ok, result, query} -> {:ok, result, query}
         {:error, error} -> {:error, Ash.Error.to_error_class(error)}
@@ -3063,6 +3065,9 @@ defmodule Ash do
         {:error, Ash.Error.to_error_class(error)}
     end
   end
+
+  defp maybe_lock_query(query, :__ash_no_lock__), do: query
+  defp maybe_lock_query(query, lock), do: Ash.Query.lock(query, lock)
 
   defp do_read_one(query, action, opts) do
     query
