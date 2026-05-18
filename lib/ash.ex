@@ -979,6 +979,11 @@ defmodule Ash do
       type: :boolean,
       default: false,
       doc: "Whether or not to log the authorization result."
+    ],
+    log_policy_breakdown?: [
+      type: :boolean,
+      doc:
+        "If set to `false`, suppresses policy breakdown logs, overriding the global `show_policy_breakdowns?` configuration."
     ]
   ]
 
