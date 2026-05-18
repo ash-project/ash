@@ -70,7 +70,7 @@ defmodule Ash.Resource.Change.RelateActor do
         )
 
       actor when relationship.type == :belongs_to ->
-        Changeset.change_attribute(
+        Changeset.force_change_attribute(
           changeset,
           relationship.source_attribute,
           Map.get(actor, relationship.destination_attribute)
