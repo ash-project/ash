@@ -226,7 +226,10 @@ defmodule Ash.Can do
             subject
         end
         |> Ash.Subject.set_context(%{
-          private: %{authorizer_log?: opts[:log?] || false}
+          private: %{
+            authorizer_log?: opts[:log?] || false,
+            log_policy_breakdown?: opts[:log_policy_breakdown?]
+          }
         })
 
       case Ash.Domain.Info.resource(domain, resource) do
