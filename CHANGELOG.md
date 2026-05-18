@@ -8,6 +8,19 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.25.1](https://github.com/ash-project/ash/compare/v3.25.0...v3.25.1) (2026-05-18)
+
+
+
+
+### Bug Fixes:
+
+* merge action arguments and accepted attributes into unified `inputs` list by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* support custom error messages in policies by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.25.0](https://github.com/ash-project/ash/compare/v3.24.7...v3.25.0) (2026-05-17)
 
 
