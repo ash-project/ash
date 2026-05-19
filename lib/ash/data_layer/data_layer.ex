@@ -105,6 +105,7 @@ defmodule Ash.DataLayer do
           | :destroy
           | :limit
           | :offset
+          | :keyset
           | :transact
           | :filter
           | :composite_type
@@ -150,6 +151,7 @@ defmodule Ash.DataLayer do
               offset :: non_neg_integer(),
               resource :: Ash.Resource.t()
             ) :: {:ok, data_layer_query()} | {:error, term}
+  @callback data_layer_keyset_by_default?() :: boolean
   @callback select(
               data_layer_query(),
               select :: list(atom),
@@ -341,6 +343,7 @@ defmodule Ash.DataLayer do
                       select: 3,
                       limit: 3,
                       offset: 3,
+                      data_layer_keyset_by_default?: 0,
                       transaction: 4,
                       rollback: 2,
                       upsert: 3,

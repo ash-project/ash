@@ -344,6 +344,7 @@ spark_locals_without_parens = [
   validate: 1,
   validate: 2,
   validate_destination_attribute?: 1,
+  via_data_layer?: 1,
   violation_message: 1,
   wait_for: 1,
   wait_for: 2,
