@@ -137,6 +137,59 @@ defmodule Ash.Test.EmbeddedArray.NestedTest do
 
       assert tea.id in results
     end
+
+    # Mirrors the relationship-exists pattern from
+    # `test/filter/parent_test.exs:164` — exercising that `parent/1` can
+    # traverse a `belongs_to` relationship from the calling resource and
+    # access an attribute on the related row, even when the exists target
+    # is an embedded array.
+    test "parent can refer to a belongs_to relationship's field" do
+      acme =
+        Ash.Test.EmbeddedArray.Company
+        |> Ash.Changeset.for_create(:create, %{name: "acme"})
+        |> Ash.create!()
+
+      other =
+        Ash.Test.EmbeddedArray.Company
+        |> Ash.Changeset.for_create(:create, %{name: "other"})
+        |> Ash.create!()
+
+      matching =
+        Estimate
+        |> Ash.Changeset.for_create(:create, %{
+          title: "matchy",
+          company_id: acme.id,
+          options: [%{name: "acme", total_amt: Decimal.new("10")}]
+        })
+        |> Ash.create!()
+
+      _non_matching_co_name =
+        Estimate
+        |> Ash.Changeset.for_create(:create, %{
+          title: "no-match-1",
+          company_id: other.id,
+          options: [%{name: "acme", total_amt: Decimal.new("10")}]
+        })
+        |> Ash.create!()
+
+      _non_matching_option_name =
+        Estimate
+        |> Ash.Changeset.for_create(:create, %{
+          title: "no-match-2",
+          company_id: acme.id,
+          options: [%{name: "something-else", total_amt: Decimal.new("10")}]
+        })
+        |> Ash.create!()
+
+      results =
+        Estimate
+        |> Ash.Query.filter(exists(options, name == parent(company.name)))
+        |> Ash.read!()
+        |> Enum.map(& &1.id)
+
+      assert matching.id in results
+      assert length(results) == 1
+    end
   end
 
   defp create(attrs) do
