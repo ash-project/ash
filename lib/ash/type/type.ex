@@ -2441,4 +2441,58 @@ defmodule Ash.Type do
       end
     end
   end
+
+  @doc false
+  def __defend_against_compile_cycle__(subtype_of, constraints, owner, location \\ nil) do
+    Ash.Type.init(subtype_of, constraints)
+    :ok
+  rescue
+    e in UndefinedFunctionError ->
+      IO.warn(__compile_cycle_message__(e, owner), warning_location(location))
+      :ok
+  end
+
+  defp warning_location(nil), do: []
+  defp warning_location(%Macro.Env{} = env), do: env
+  defp warning_location({file, line}), do: [{nil, nil, 0, [file: to_charlist(file), line: line]}]
+
+  @doc false
+  def __compile_cycle_message__(%UndefinedFunctionError{module: target} = exception, owner) do
+    cond do
+      target == owner ->
+        """
+        While initialising `#{inspect(owner)}` at compile time, a recursive reference \
+        to itself was encountered.
+
+        Set `init?: false` on the recursive field to defer its initialisation:
+
+            field: [type: ..., init?: false]
+
+        Without this, using `#{inspect(owner)}` in a resource (for example as an \
+        action argument) will loop forever at that resource's compile.
+        """
+
+      is_atom(target) and not is_nil(target) ->
+        """
+        While initialising `#{inspect(owner)}` at compile time, type `#{inspect(target)}` \
+        could not be loaded. Either:
+
+          * `#{inspect(target)}` does not exist (check for typos), or
+          * `#{inspect(target)}` is part of a mutually-recursive type chain with \
+        `#{inspect(owner)}` — set `init?: false` on the recursive field:
+
+                field: [type: ..., init?: false]
+        """
+
+      true ->
+        """
+        While initialising `#{inspect(owner)}` at compile time an unexpected error occurred:
+
+          #{Exception.message(exception)}
+
+        This often means a recursive or mutually-recursive type. Set `init?: false` on \
+        the recursive field to defer its initialisation.
+        """
+    end
+  end
 end

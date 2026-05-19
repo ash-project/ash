@@ -109,6 +109,14 @@ defmodule Ash.Type.NewType do
     end
   end
 
+  defp expand_module_refs(term, env) do
+    Macro.prewalk(term, fn
+      {:__aliases__, _, _} = ast -> Macro.expand(ast, env)
+      {:__MODULE__, _, _} -> env.module
+      other -> other
+    end)
+  end
+
   defmacro __using__(opts) do
     case Keyword.keys(opts) -- [:subtype_of, :constraints, :lazy_init?] do
       [] ->
@@ -121,208 +129,117 @@ defmodule Ash.Type.NewType do
     subtype_of =
       Ash.Type.get_type(opts[:subtype_of])
 
-    quote bind_quoted: [
-            subtype_of: subtype_of,
-            subtype_constraints: Macro.escape(opts[:constraints] || []),
-            lazy_init?: Keyword.get(opts, :lazy_init?, false),
-            mod: __MODULE__
-          ],
-          generated: true do
-      if !lazy_init? do
-        Code.ensure_compiled!(subtype_of)
-      end
+    subtype_constraints = opts[:constraints] || []
+    lazy_init? = Keyword.get(opts, :lazy_init?, false)
+    resolved_constraints = expand_module_refs(subtype_constraints, __CALLER__)
 
-      @compile {:inline, custom_constraint_keys: 0, custom_constraints: 1, subtype_constraints: 1}
-
-      if is_nil(subtype_of) do
-        raise "Must supply `:subtype_of` option when using #{mod}"
-      end
-
-      use Ash.Type
-      import Ash.Gettext
-
-      @behaviour Ash.Type.NewType
-
-      @impl Ash.Type.NewType
-      def subtype_constraints, do: unquote(subtype_constraints)
-
-      @impl Ash.Type.NewType
-      def subtype_of do
-        unquote(subtype_of)
-      end
-
-      @impl Ash.Type
-      def load(values, load, constraints, context) do
-        constraints = subtype_constraints(constraints)
-
-        apply(unquote(subtype_of), :load, [
-          values,
-          load,
-          constraints,
-          context
-        ])
-      end
-
-      @impl Ash.Type
-      def can_load?(constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).can_load?(constraints)
-      end
-
-      @impl Ash.Type
-      def merge_load(left, right, constraints, context) do
-        constraints = subtype_constraints(constraints)
-        Ash.Type.merge_load(unquote(subtype_of), left, right, constraints, context)
-      end
-
-      @impl Ash.Type
-      def get_rewrites(merged_load, calculation, path, constraints) do
-        constraints = subtype_constraints(constraints)
-        Ash.Type.get_rewrites(unquote(subtype_of), merged_load, calculation, path, constraints)
-      end
-
-      @impl Ash.Type
-      def rewrite(value, rewrites, constraints) do
-        constraints = subtype_constraints(constraints)
-        Ash.Type.rewrite(unquote(subtype_of), value, rewrites, constraints)
-      end
-
-      @impl Ash.Type
-      def matches_type?(type, constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).matches_type?(type, constraints)
-      end
-
-      @impl Ash.Type
-      def cast_input(value, constraints) do
-        subtype_constraints = subtype_constraints(constraints)
-
-        with {:ok, value} <- unquote(subtype_of).cast_input(value, subtype_constraints),
-             {:ok, value} <-
-               Ash.Type.apply_constraints(
-                 unquote(subtype_of),
-                 value,
-                 subtype_constraints
-               ) do
-          apply_constraints(value, constraints)
+    body =
+      quote bind_quoted: [
+              subtype_of: subtype_of,
+              subtype_constraints: Macro.escape(subtype_constraints),
+              lazy_init?: lazy_init?,
+              mod: __MODULE__
+            ],
+            generated: true do
+        if !lazy_init? do
+          Code.ensure_compiled!(subtype_of)
         end
-      end
 
-      @impl Ash.Type
-      def coerce(value, constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).coerce(value, constraints)
-      end
+        @compile {:inline,
+                  custom_constraint_keys: 0, custom_constraints: 1, subtype_constraints: 1}
 
-      @impl Ash.Type
-      def cast_input_array(nil, _), do: {:ok, nil}
+        if is_nil(subtype_of) do
+          raise "Must supply `:subtype_of` option when using #{mod}"
+        end
 
-      def cast_input_array(term, constraints) do
-        term
-        |> Stream.with_index()
-        |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-          case cast_input(item, constraints) do
-            :error ->
-              {:halt,
-               {:error,
-                message: error_message("invalid value at %{index}"), index: index, path: [index]}}
+        use Ash.Type
+        import Ash.Gettext
 
-            {:error, keyword} ->
-              errors =
-                keyword
-                |> List.wrap()
-                |> Ash.Helpers.flatten_preserving_keywords()
-                |> Enum.map(fn
-                  message when is_binary(message) ->
-                    [message: message, index: index, path: [index]]
+        @behaviour Ash.Type.NewType
 
-                  error when is_exception(error) ->
-                    error
-                    |> Ash.Error.to_ash_error()
-                    |> Ash.Error.set_path([index])
+        @impl Ash.Type.NewType
+        def subtype_constraints, do: unquote(subtype_constraints)
 
-                  keyword ->
-                    keyword
-                    |> Keyword.put(:index, index)
-                    |> Keyword.update(:path, [index], &[index | &1])
-                end)
+        @impl Ash.Type.NewType
+        def subtype_of do
+          unquote(subtype_of)
+        end
 
-              {:halt, {:error, errors}}
+        @impl Ash.Type
+        def load(values, load, constraints, context) do
+          constraints = subtype_constraints(constraints)
 
-            {:ok, value} ->
-              {:cont, {:ok, [value | casted]}}
+          apply(unquote(subtype_of), :load, [
+            values,
+            load,
+            constraints,
+            context
+          ])
+        end
+
+        @impl Ash.Type
+        def can_load?(constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).can_load?(constraints)
+        end
+
+        @impl Ash.Type
+        def merge_load(left, right, constraints, context) do
+          constraints = subtype_constraints(constraints)
+          Ash.Type.merge_load(unquote(subtype_of), left, right, constraints, context)
+        end
+
+        @impl Ash.Type
+        def get_rewrites(merged_load, calculation, path, constraints) do
+          constraints = subtype_constraints(constraints)
+          Ash.Type.get_rewrites(unquote(subtype_of), merged_load, calculation, path, constraints)
+        end
+
+        @impl Ash.Type
+        def rewrite(value, rewrites, constraints) do
+          constraints = subtype_constraints(constraints)
+          Ash.Type.rewrite(unquote(subtype_of), value, rewrites, constraints)
+        end
+
+        @impl Ash.Type
+        def matches_type?(type, constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).matches_type?(type, constraints)
+        end
+
+        @impl Ash.Type
+        def cast_input(value, constraints) do
+          subtype_constraints = subtype_constraints(constraints)
+
+          with {:ok, value} <- unquote(subtype_of).cast_input(value, subtype_constraints),
+               {:ok, value} <-
+                 Ash.Type.apply_constraints(
+                   unquote(subtype_of),
+                   value,
+                   subtype_constraints
+                 ) do
+            apply_constraints(value, constraints)
           end
-        end)
-        |> case do
-          {:ok, result} ->
-            {:ok, Enum.reverse(result)}
-
-          {:error, error} ->
-            {:error, error}
         end
-      end
 
-      @impl Ash.Type.NewType
-      def lazy_init?, do: unquote(lazy_init?)
-
-      @impl Ash.Type
-      if lazy_init? do
-        def init(constraints) do
-          {:ok, constraints}
+        @impl Ash.Type
+        def coerce(value, constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).coerce(value, constraints)
         end
-      else
-        def init(constraints) do
-          do_init(constraints)
-        end
-      end
 
-      @doc false
-      def do_init(constraints) do
-        with :ok <- validate_constraints(constraints),
-             {:ok, validated_custom} <-
-               validate_custom_constraints(constraints),
-             type_constraints =
-               type_constraints(
-                 subtype_constraints(constraints),
-                 unquote(subtype_constraints)
-               ),
-             {:ok, initialized} <-
-               Ash.Type.init(unquote(subtype_of), type_constraints) do
-          {:ok, Keyword.merge(initialized, validated_custom)}
-        end
-      end
+        @impl Ash.Type
+        def cast_input_array(nil, _), do: {:ok, nil}
 
-      defp validate_custom_constraints(constraints) do
-        case custom_constraint_keys() do
-          [] ->
-            {:ok, []}
-
-          keys ->
-            Spark.Options.validate(
-              Keyword.take(constraints, keys),
-              Keyword.take(constraints(), keys)
-            )
-        end
-      end
-
-      @impl Ash.Type
-      def cast_stored(value, constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).cast_stored(value, constraints)
-      end
-
-      @impl Ash.Type
-      def cast_stored_array(term, constraints) do
-        if is_nil(term) do
-          {:ok, nil}
-        else
+        def cast_input_array(term, constraints) do
           term
-          |> Enum.with_index()
-          |> Enum.reverse()
+          |> Stream.with_index()
           |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-            case cast_stored(item, constraints) do
+            case cast_input(item, constraints) do
               :error ->
-                {:halt, {:error, index: index}}
+                {:halt,
+                 {:error,
+                  message: error_message("invalid value at %{index}"), index: index, path: [index]}}
 
               {:error, keyword} ->
                 errors =
@@ -330,11 +247,18 @@ defmodule Ash.Type.NewType do
                   |> List.wrap()
                   |> Ash.Helpers.flatten_preserving_keywords()
                   |> Enum.map(fn
-                    string when is_binary(string) ->
-                      [message: string, index: index]
+                    message when is_binary(message) ->
+                      [message: message, index: index, path: [index]]
 
-                    vars ->
-                      Keyword.put(vars, :index, index)
+                    error when is_exception(error) ->
+                      error
+                      |> Ash.Error.to_ash_error()
+                      |> Ash.Error.set_path([index])
+
+                    keyword ->
+                      keyword
+                      |> Keyword.put(:index, index)
+                      |> Keyword.update(:path, [index], &[index | &1])
                   end)
 
                 {:halt, {:error, errors}}
@@ -343,331 +267,443 @@ defmodule Ash.Type.NewType do
                 {:cont, {:ok, [value | casted]}}
             end
           end)
+          |> case do
+            {:ok, result} ->
+              {:ok, Enum.reverse(result)}
+
+            {:error, error} ->
+              {:error, error}
+          end
         end
-      end
 
-      @impl Ash.Type
-      def include_source(constraints, source) do
-        subtype_constraints(constraints)
-        |> then(&Ash.Type.include_source(unquote(subtype_of), source, &1))
-        |> Keyword.merge(custom_constraints(constraints))
-      end
+        @impl Ash.Type.NewType
+        def lazy_init?, do: unquote(lazy_init?)
 
-      @impl Ash.Type
-      def dump_to_embedded(value, constraints) do
-        constraints = subtype_constraints(constraints)
-        Ash.Type.dump_to_embedded(unquote(subtype_of), value, constraints)
-      end
-
-      @impl Ash.Type
-      def composite?(constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).composite?(constraints)
-      end
-
-      @impl Ash.Type
-      def composite_types(constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).composite_types(constraints)
-      end
-
-      @impl Ash.Type
-      def dump_to_embedded_array(term, constraints) do
-        if is_nil(term) do
-          {:ok, nil}
+        @impl Ash.Type
+        if lazy_init? do
+          def init(constraints) do
+            {:ok, constraints}
+          end
         else
-          term
-          |> Enum.with_index()
-          |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
-            case dump_to_embedded(item, constraints) do
-              {:ok, value} ->
-                {:cont, {:ok, [value | dumped]}}
-
-              error ->
-                {:halt, Ash.Helpers.error_with_context(error, index: index)}
-            end
-          end)
+          def init(constraints) do
+            do_init(constraints)
+          end
         end
-      end
 
-      @impl Ash.Type
-      def dump_to_native(value, constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).dump_to_native(value, constraints)
-      end
-
-      @impl Ash.Type
-      def dump_to_native_array(term, constraints) do
-        if is_nil(term) do
-          {:ok, nil}
-        else
-          term
-          |> Enum.with_index()
-          |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
-            case dump_to_native(item, constraints) do
-              {:ok, value} ->
-                {:cont, {:ok, [value | dumped]}}
-
-              error ->
-                {:halt, Ash.Helpers.error_with_context(error, index: index)}
-            end
-          end)
+        @doc false
+        def do_init(constraints) do
+          with :ok <- validate_constraints(constraints),
+               {:ok, validated_custom} <-
+                 validate_custom_constraints(constraints),
+               type_constraints =
+                 type_constraints(
+                   subtype_constraints(constraints),
+                   unquote(subtype_constraints)
+                 ),
+               {:ok, initialized} <-
+                 Ash.Type.init(unquote(subtype_of), type_constraints) do
+            {:ok, Keyword.merge(initialized, validated_custom)}
+          end
         end
-      end
 
-      @impl Ash.Type
-      def equal?(left, right) do
-        unquote(subtype_of).equal?(left, right)
-      end
+        defp validate_custom_constraints(constraints) do
+          case custom_constraint_keys() do
+            [] ->
+              {:ok, []}
 
-      @impl Ash.Type
-      def generator(constraints) do
-        Ash.Type.generator(unquote(subtype_of), constraints)
-      end
-
-      @impl Ash.Type
-      def handle_change(old_term, new_term, constraints) do
-        constraints = subtype_constraints(constraints)
-
-        Ash.Type.handle_change(unquote(subtype_of), old_term, new_term, constraints)
-      end
-
-      @impl Ash.Type
-      def handle_change_array(old_term, new_term, constraints) do
-        constraints = subtype_constraints(constraints)
-
-        Ash.Type.handle_change(
-          {:array, unquote(subtype_of)},
-          old_term,
-          new_term,
-          items: constraints
-        )
-      end
-
-      @impl Ash.Type
-      def prepare_change(old_term, new_term, constraints) do
-        constraints = subtype_constraints(constraints)
-
-        Ash.Type.prepare_change(
-          unquote(subtype_of),
-          old_term,
-          new_term,
-          constraints
-        )
-      end
-
-      @impl Ash.Type
-      def prepare_change_array(old_term, new_term, constraints) do
-        constraints = subtype_constraints(constraints)
-
-        Ash.Type.prepare_change(
-          {:array, unquote(subtype_of)},
-          old_term,
-          new_term,
-          items: constraints
-        )
-      end
-
-      @impl Ash.Type
-      def simple_equality? do
-        unquote(subtype_of).simple_equality?()
-      end
-
-      @impl Ash.Type
-      def storage_type(constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).storage_type(constraints)
-      end
-
-      @impl Ash.Type
-      def constraints do
-        unquote(subtype_of).constraints()
-      end
-
-      @impl Ash.Type
-      def embedded? do
-        unquote(subtype_of).embedded?()
-      end
-
-      @impl Ash.Type
-      def cast_atomic(value, constraints) do
-        if custom_constraint_keys() != [] and Ash.Expr.expr?(value) do
-          {:not_atomic,
-           "Type `#{inspect(__MODULE__)}` does not support atomic updates with custom constraints"}
-        else
-          unquote(subtype_of).cast_atomic(value, subtype_constraints(constraints))
+            keys ->
+              Spark.Options.validate(
+                Keyword.take(constraints, keys),
+                Keyword.take(constraints(), keys)
+              )
+          end
         end
-      end
 
-      @impl Ash.Type
-      def may_support_atomic_update?(constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).may_support_atomic_update?(constraints)
-      end
-
-      @impl Ash.Type
-      def cast_atomic_array(value, constraints) do
-        if custom_constraint_keys() != [] and Ash.Expr.expr?(value) do
-          {:not_atomic,
-           "Type `#{inspect(__MODULE__)}` does not support atomic updates with custom constraints"}
-        else
-          unquote(subtype_of).cast_atomic_array(value, subtype_constraints(constraints))
+        @impl Ash.Type
+        def cast_stored(value, constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).cast_stored(value, constraints)
         end
-      end
 
-      @impl Ash.Type
-      def apply_atomic_constraints(value, constraints) do
-        if custom_constraint_keys() != [] and Ash.Expr.expr?(value) do
-          {:not_atomic,
-           "Type `#{inspect(__MODULE__)}` does not support atomic updates with custom constraints"}
-        else
-          unquote(subtype_of).apply_atomic_constraints(value, subtype_constraints(constraints))
+        @impl Ash.Type
+        def cast_stored_array(term, constraints) do
+          if is_nil(term) do
+            {:ok, nil}
+          else
+            term
+            |> Enum.with_index()
+            |> Enum.reverse()
+            |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+              case cast_stored(item, constraints) do
+                :error ->
+                  {:halt, {:error, index: index}}
+
+                {:error, keyword} ->
+                  errors =
+                    keyword
+                    |> List.wrap()
+                    |> Ash.Helpers.flatten_preserving_keywords()
+                    |> Enum.map(fn
+                      string when is_binary(string) ->
+                        [message: string, index: index]
+
+                      vars ->
+                        Keyword.put(vars, :index, index)
+                    end)
+
+                  {:halt, {:error, errors}}
+
+                {:ok, value} ->
+                  {:cont, {:ok, [value | casted]}}
+              end
+            end)
+          end
         end
-      end
 
-      @impl Ash.Type
-      def apply_atomic_constraints_array(value, constraints) do
-        if custom_constraint_keys() != [] and Ash.Expr.expr?(value) do
-          {:not_atomic,
-           "Type `#{inspect(__MODULE__)}` does not support atomic updates with custom constraints"}
-        else
-          unquote(subtype_of).apply_atomic_constraints_array(
+        @impl Ash.Type
+        def include_source(constraints, source) do
+          subtype_constraints(constraints)
+          |> then(&Ash.Type.include_source(unquote(subtype_of), source, &1))
+          |> Keyword.merge(custom_constraints(constraints))
+        end
+
+        @impl Ash.Type
+        def dump_to_embedded(value, constraints) do
+          constraints = subtype_constraints(constraints)
+          Ash.Type.dump_to_embedded(unquote(subtype_of), value, constraints)
+        end
+
+        @impl Ash.Type
+        def composite?(constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).composite?(constraints)
+        end
+
+        @impl Ash.Type
+        def composite_types(constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).composite_types(constraints)
+        end
+
+        @impl Ash.Type
+        def dump_to_embedded_array(term, constraints) do
+          if is_nil(term) do
+            {:ok, nil}
+          else
+            term
+            |> Enum.with_index()
+            |> Enum.reverse()
+            |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
+              case dump_to_embedded(item, constraints) do
+                {:ok, value} ->
+                  {:cont, {:ok, [value | dumped]}}
+
+                error ->
+                  {:halt, Ash.Helpers.error_with_context(error, index: index)}
+              end
+            end)
+          end
+        end
+
+        @impl Ash.Type
+        def dump_to_native(value, constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).dump_to_native(value, constraints)
+        end
+
+        @impl Ash.Type
+        def dump_to_native_array(term, constraints) do
+          if is_nil(term) do
+            {:ok, nil}
+          else
+            term
+            |> Enum.with_index()
+            |> Enum.reverse()
+            |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, dumped} ->
+              case dump_to_native(item, constraints) do
+                {:ok, value} ->
+                  {:cont, {:ok, [value | dumped]}}
+
+                error ->
+                  {:halt, Ash.Helpers.error_with_context(error, index: index)}
+              end
+            end)
+          end
+        end
+
+        @impl Ash.Type
+        def equal?(left, right) do
+          unquote(subtype_of).equal?(left, right)
+        end
+
+        @impl Ash.Type
+        def generator(constraints) do
+          Ash.Type.generator(unquote(subtype_of), constraints)
+        end
+
+        @impl Ash.Type
+        def handle_change(old_term, new_term, constraints) do
+          constraints = subtype_constraints(constraints)
+
+          Ash.Type.handle_change(unquote(subtype_of), old_term, new_term, constraints)
+        end
+
+        @impl Ash.Type
+        def handle_change_array(old_term, new_term, constraints) do
+          constraints = subtype_constraints(constraints)
+
+          Ash.Type.handle_change(
+            {:array, unquote(subtype_of)},
+            old_term,
+            new_term,
+            items: constraints
+          )
+        end
+
+        @impl Ash.Type
+        def prepare_change(old_term, new_term, constraints) do
+          constraints = subtype_constraints(constraints)
+
+          Ash.Type.prepare_change(
+            unquote(subtype_of),
+            old_term,
+            new_term,
+            constraints
+          )
+        end
+
+        @impl Ash.Type
+        def prepare_change_array(old_term, new_term, constraints) do
+          constraints = subtype_constraints(constraints)
+
+          Ash.Type.prepare_change(
+            {:array, unquote(subtype_of)},
+            old_term,
+            new_term,
+            items: constraints
+          )
+        end
+
+        @impl Ash.Type
+        def simple_equality? do
+          unquote(subtype_of).simple_equality?()
+        end
+
+        @impl Ash.Type
+        def storage_type(constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).storage_type(constraints)
+        end
+
+        @impl Ash.Type
+        def constraints do
+          unquote(subtype_of).constraints()
+        end
+
+        @impl Ash.Type
+        def embedded? do
+          unquote(subtype_of).embedded?()
+        end
+
+        @impl Ash.Type
+        def cast_atomic(value, constraints) do
+          if custom_constraint_keys() != [] and Ash.Expr.expr?(value) do
+            {:not_atomic,
+             "Type `#{inspect(__MODULE__)}` does not support atomic updates with custom constraints"}
+          else
+            unquote(subtype_of).cast_atomic(value, subtype_constraints(constraints))
+          end
+        end
+
+        @impl Ash.Type
+        def may_support_atomic_update?(constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).may_support_atomic_update?(constraints)
+        end
+
+        @impl Ash.Type
+        def cast_atomic_array(value, constraints) do
+          if custom_constraint_keys() != [] and Ash.Expr.expr?(value) do
+            {:not_atomic,
+             "Type `#{inspect(__MODULE__)}` does not support atomic updates with custom constraints"}
+          else
+            unquote(subtype_of).cast_atomic_array(value, subtype_constraints(constraints))
+          end
+        end
+
+        @impl Ash.Type
+        def apply_atomic_constraints(value, constraints) do
+          if custom_constraint_keys() != [] and Ash.Expr.expr?(value) do
+            {:not_atomic,
+             "Type `#{inspect(__MODULE__)}` does not support atomic updates with custom constraints"}
+          else
+            unquote(subtype_of).apply_atomic_constraints(value, subtype_constraints(constraints))
+          end
+        end
+
+        @impl Ash.Type
+        def apply_atomic_constraints_array(value, constraints) do
+          if custom_constraint_keys() != [] and Ash.Expr.expr?(value) do
+            {:not_atomic,
+             "Type `#{inspect(__MODULE__)}` does not support atomic updates with custom constraints"}
+          else
+            unquote(subtype_of).apply_atomic_constraints_array(
+              value,
+              subtype_constraints(constraints)
+            )
+          end
+        end
+
+        @impl Ash.Type
+        def apply_constraints(value, constraints) do
+          Ash.Type.apply_constraints(
+            unquote(subtype_of),
             value,
             subtype_constraints(constraints)
           )
         end
+
+        @impl Ash.Type
+        def apply_constraints_array(value, constraints) do
+          with {:ok, value} <-
+                 Ash.Type.apply_constraints(
+                   {:array, unquote(subtype_of)},
+                   value,
+                   items: subtype_constraints(constraints)
+                 ),
+               {:ok, results} <-
+                 Enum.reduce_while(value, {:ok, []}, fn item, {:ok, acc} ->
+                   case apply_constraints(item, constraints) do
+                     {:ok, result} -> {:cont, {:ok, [result | acc]}}
+                     err -> {:halt, err}
+                   end
+                 end) do
+            {:ok, Enum.reverse(results)}
+          end
+        end
+
+        @impl Ash.Type
+        def cast_in_query?(constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).cast_in_query?(constraints)
+        end
+
+        @impl Ash.Type
+        def describe(constraints) do
+          constraints = subtype_constraints(constraints)
+          unquote(subtype_of).describe(constraints)
+        end
+
+        @impl Ash.Type.NewType
+        def type_constraints(constraints, subtype_constraints) do
+          constraints = subtype_constraints(constraints)
+          Keyword.merge(constraints || [], subtype_constraints || [])
+        end
+
+        defp custom_constraint_keys do
+          Keyword.keys(constraints()) -- Keyword.keys(unquote(subtype_of).constraints())
+        end
+
+        defp subtype_constraints(constraints) do
+          Keyword.drop(constraints, custom_constraint_keys())
+        end
+
+        defp custom_constraints(constraints) do
+          Keyword.take(constraints, custom_constraint_keys())
+        end
+
+        defp validate_constraints(constraints) do
+          constraint_keys = constraints |> List.wrap() |> Keyword.keys()
+          valid_constraint_keys = constraints() |> Keyword.keys()
+
+          case constraint_keys -- valid_constraint_keys do
+            [] ->
+              validate_field_constraints(constraints)
+
+            keys ->
+              {:error, "Unknown options given to `#{__MODULE__}`: #{inspect(keys)}"}
+          end
+        end
+
+        defp validate_field_constraints(constraints) do
+          case constraints[:fields] do
+            nil ->
+              :ok
+
+            fields ->
+              Enum.reduce_while(fields, :ok, fn
+                {key, field}, :ok ->
+                  field_keys = field |> List.wrap() |> Keyword.keys()
+
+                  case field_keys -- [:type, :constraints, :allow_nil?, :description, :init?] do
+                    [] ->
+                      {:cont, validate_type_constraints(key, field[:type], field[:constraints])}
+
+                    keys ->
+                      {:halt, {:error, "Unknown options given to #{key}: #{inspect(keys)}"}}
+                  end
+
+                _, acc ->
+                  {:halt, acc}
+              end)
+          end
+        end
+
+        defp validate_type_constraints(key, type, constraints) do
+          constraint_keys = constraints |> List.wrap() |> Keyword.keys()
+          valid_keys = type |> Ash.Type.constraints() |> Keyword.keys()
+
+          case constraint_keys -- valid_keys do
+            [] -> validate_field_constraints(constraints)
+            bad_keys -> {:error, "Unknown options given to #{key}: #{inspect(bad_keys)}"}
+          end
+        end
+
+        defoverridable apply_constraints_array: 2,
+                       apply_constraints: 2,
+                       apply_atomic_constraints: 2,
+                       apply_atomic_constraints_array: 2,
+                       cast_atomic: 2,
+                       cast_atomic_array: 2,
+                       cast_input_array: 2,
+                       cast_input: 2,
+                       cast_stored_array: 2,
+                       cast_stored: 2,
+                       constraints: 0,
+                       dump_to_embedded_array: 2,
+                       dump_to_embedded: 2,
+                       dump_to_native_array: 2,
+                       dump_to_native: 2,
+                       generator: 1,
+                       handle_change_array: 3,
+                       handle_change: 3,
+                       include_source: 2,
+                       prepare_change_array: 3,
+                       prepare_change: 3,
+                       storage_type: 1,
+                       type_constraints: 2
       end
 
-      @impl Ash.Type
-      def apply_constraints(value, constraints) do
-        Ash.Type.apply_constraints(
-          unquote(subtype_of),
-          value,
-          subtype_constraints(constraints)
-        )
-      end
+    check =
+      if lazy_init? do
+        quote do: :ok
+      else
+        caller_file = __CALLER__.file
+        caller_line = __CALLER__.line
 
-      @impl Ash.Type
-      def apply_constraints_array(value, constraints) do
-        with {:ok, value} <-
-               Ash.Type.apply_constraints(
-                 {:array, unquote(subtype_of)},
-                 value,
-                 items: subtype_constraints(constraints)
-               ),
-             {:ok, results} <-
-               Enum.reduce_while(value, {:ok, []}, fn item, {:ok, acc} ->
-                 case apply_constraints(item, constraints) do
-                   {:ok, result} -> {:cont, {:ok, [result | acc]}}
-                   err -> {:halt, err}
-                 end
-               end) do
-          {:ok, Enum.reverse(results)}
+        quote do
+          Ash.Type.__defend_against_compile_cycle__(
+            unquote(subtype_of),
+            unquote(Macro.escape(resolved_constraints)),
+            __MODULE__,
+            {unquote(caller_file), unquote(caller_line)}
+          )
         end
       end
 
-      @impl Ash.Type
-      def cast_in_query?(constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).cast_in_query?(constraints)
-      end
-
-      @impl Ash.Type
-      def describe(constraints) do
-        constraints = subtype_constraints(constraints)
-        unquote(subtype_of).describe(constraints)
-      end
-
-      @impl Ash.Type.NewType
-      def type_constraints(constraints, subtype_constraints) do
-        constraints = subtype_constraints(constraints)
-        Keyword.merge(constraints || [], subtype_constraints || [])
-      end
-
-      defp custom_constraint_keys do
-        Keyword.keys(constraints()) -- Keyword.keys(unquote(subtype_of).constraints())
-      end
-
-      defp subtype_constraints(constraints) do
-        Keyword.drop(constraints, custom_constraint_keys())
-      end
-
-      defp custom_constraints(constraints) do
-        Keyword.take(constraints, custom_constraint_keys())
-      end
-
-      defp validate_constraints(constraints) do
-        constraint_keys = constraints |> List.wrap() |> Keyword.keys()
-        valid_constraint_keys = constraints() |> Keyword.keys()
-
-        case constraint_keys -- valid_constraint_keys do
-          [] ->
-            validate_field_constraints(constraints)
-
-          keys ->
-            {:error, "Unknown options given to `#{__MODULE__}`: #{inspect(keys)}"}
-        end
-      end
-
-      defp validate_field_constraints(constraints) do
-        case constraints[:fields] do
-          nil ->
-            :ok
-
-          fields ->
-            Enum.reduce_while(fields, :ok, fn
-              {key, field}, :ok ->
-                field_keys = field |> List.wrap() |> Keyword.keys()
-
-                case field_keys -- [:type, :constraints, :allow_nil?, :description] do
-                  [] ->
-                    {:cont, validate_type_constraints(key, field[:type], field[:constraints])}
-
-                  keys ->
-                    {:halt, {:error, "Unknown options given to #{key}: #{inspect(keys)}"}}
-                end
-
-              _, acc ->
-                {:halt, acc}
-            end)
-        end
-      end
-
-      defp validate_type_constraints(key, type, constraints) do
-        constraint_keys = constraints |> List.wrap() |> Keyword.keys()
-        valid_keys = type |> Ash.Type.constraints() |> Keyword.keys()
-
-        case constraint_keys -- valid_keys do
-          [] -> validate_field_constraints(constraints)
-          bad_keys -> {:error, "Unknown options given to #{key}: #{inspect(bad_keys)}"}
-        end
-      end
-
-      defoverridable apply_constraints_array: 2,
-                     apply_constraints: 2,
-                     apply_atomic_constraints: 2,
-                     apply_atomic_constraints_array: 2,
-                     cast_atomic: 2,
-                     cast_atomic_array: 2,
-                     cast_input_array: 2,
-                     cast_input: 2,
-                     cast_stored_array: 2,
-                     cast_stored: 2,
-                     constraints: 0,
-                     dump_to_embedded_array: 2,
-                     dump_to_embedded: 2,
-                     dump_to_native_array: 2,
-                     dump_to_native: 2,
-                     generator: 1,
-                     handle_change_array: 3,
-                     handle_change: 3,
-                     include_source: 2,
-                     prepare_change_array: 3,
-                     prepare_change: 3,
-                     storage_type: 1,
-                     type_constraints: 2
+    quote do
+      unquote(body)
+      unquote(check)
     end
   end
 end
