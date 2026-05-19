@@ -2967,7 +2967,7 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_resource_or_query!(query)
     domain = Ash.Helpers.domain!(query, opts)
-    lock = Keyword.get(opts, :lock, :__ash_no_lock__)
+    lock = Keyword.get(opts, :lock)
     query = Ash.Query.new(query)
 
     with {:ok, opts} <- ReadOneOpts.validate(opts),
@@ -3047,7 +3047,7 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_resource_or_query!(query)
     domain = Ash.Helpers.domain!(query, opts)
-    lock = Keyword.get(opts, :lock, :__ash_no_lock__)
+    lock = Keyword.get(opts, :lock)
     query = query |> Ash.Query.new() |> Ash.Query.limit(1)
 
     with {:ok, opts} <- ReadOneOpts.validate(opts),
@@ -3066,7 +3066,7 @@ defmodule Ash do
     end
   end
 
-  defp maybe_lock_query(query, :__ash_no_lock__), do: query
+  defp maybe_lock_query(query, nil), do: query
   defp maybe_lock_query(query, lock), do: Ash.Query.lock(query, lock)
 
   defp do_read_one(query, action, opts) do
