@@ -243,7 +243,9 @@ defmodule Ash.DataLayer do
               {:ok,
                Ash.Resource.Record.t()
                | {:upsert_skipped, Ash.Query.t(),
-                  (-> {:ok, Ash.Resource.Record.t()} | {:error, term} | {:error, :no_rollback, term})}}
+                  (-> {:ok, Ash.Resource.Record.t()}
+                      | {:error, term}
+                      | {:error, :no_rollback, term})}}
               | {:error, term}
               | {:error, :no_rollback, term}
   @callback update(Ash.Resource.t(), Ash.Changeset.t()) ::

@@ -82,7 +82,8 @@ defmodule Ash.Resource.ManualUpdate do
               list(
                 :ok
                 | {:ok, Ash.Resource.Record.t()}
-                | {:ok, Ash.Resource.Record.t(), %{notifications: [Ash.Notifier.Notification.t()]}}
+                | {:ok, Ash.Resource.Record.t(),
+                   %{notifications: [Ash.Notifier.Notification.t()]}}
                 | {:ok, Ash.Resource.Record.t(), [Ash.Notifier.Notification.t()]}
                 | {:error, Ash.Error.t()}
                 | {:notifications, list(Ash.Notifier.Notification.t())}

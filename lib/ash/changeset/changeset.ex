@@ -271,7 +271,8 @@ defmodule Ash.Changeset do
   Contains the successful result with record, changeset, and notifications, or an error.
   """
   @type around_action_result ::
-          {:ok, Ash.Resource.Record.t(), t(), %{notifications: list(Ash.Notifier.Notification.t())}}
+          {:ok, Ash.Resource.Record.t(), t(),
+           %{notifications: list(Ash.Notifier.Notification.t())}}
           | {:error, Ash.Error.t()}
 
   @typedoc """
@@ -7552,7 +7553,8 @@ defmodule Ash.Changeset do
 
   * force? - applies current attributes even if the changeset is not valid
   """
-  @spec apply_attributes(t(), opts :: Keyword.t()) :: {:ok, Ash.Resource.Record.t()} | {:error, t()}
+  @spec apply_attributes(t(), opts :: Keyword.t()) ::
+          {:ok, Ash.Resource.Record.t()} | {:error, t()}
   def apply_attributes(changeset, opts \\ [])
 
   def apply_attributes(%{valid?: true} = changeset, _opts) do

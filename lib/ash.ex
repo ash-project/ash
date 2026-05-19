@@ -2686,7 +2686,8 @@ defmodule Ash do
                   {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page() | no_return}
                   | {:error, Ash.Error.t()}),
           load: (list(Ash.Resource.Record.t()) | Ash.Page.page() ->
-                   {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page()} | {:error, Ash.Error.t()})
+                   {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page()}
+                   | {:error, Ash.Error.t()})
         }
 
   @doc """
