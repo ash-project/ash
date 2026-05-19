@@ -10,7 +10,10 @@ defmodule Ash.Resource do
   """
 
   @type t :: module
-  @type record :: Ash.Resource.Record.t()
+
+  if String.to_integer(System.otp_release()) < 29 do
+    @type record :: Ash.Resource.Record.t()
+  end
 
   use Spark.Dsl,
     single_extension_kinds: [:data_layer],
