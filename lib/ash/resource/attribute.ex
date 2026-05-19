@@ -55,7 +55,7 @@ defmodule Ash.Resource.Attribute do
           sortable?: boolean(),
           select_by_default?: boolean(),
           default: nil | term | (-> term),
-          update_default: nil | term | (-> term) | (Ash.Resource.record() -> term),
+          update_default: nil | term | (-> term) | (Ash.Resource.Record.t() -> term),
           sensitive?: boolean(),
           writable?: boolean(),
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()

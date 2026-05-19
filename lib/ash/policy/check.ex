@@ -70,8 +70,8 @@ defmodule Ash.Policy.Check do
 
   Takes a list of records, and returns the subset of authorized records.
   """
-  @callback check(actor(), list(Ash.Resource.record()), map, options) ::
-              list(Ash.Resource.record())
+  @callback check(actor(), list(Ash.Resource.Record.t()), map, options) ::
+              list(Ash.Resource.Record.t())
   @doc "Describe the check in human readable format, given the options"
   @callback describe(options()) :: String.t()
 
@@ -156,8 +156,8 @@ defmodule Ash.Policy.Check do
   end
 
   @doc false
-  @spec check(module(), actor(), [Ash.Resource.record()], map(), options()) ::
-          [Ash.Resource.record()]
+  @spec check(module(), actor(), [Ash.Resource.Record.t()], map(), options()) ::
+          [Ash.Resource.Record.t()]
   def check(module, actor, records, context, opts) do
     result = apply(module, :check, [actor, records, context, opts])
 

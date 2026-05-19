@@ -86,8 +86,8 @@ defmodule Ash.Resource.ManualCreate do
               opts :: Keyword.t(),
               context :: Context.t()
             ) ::
-              {:ok, Ash.Resource.record()}
-              | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
+              {:ok, Ash.Resource.Record.t()}
+              | {:ok, Ash.Resource.Record.t(), %{notifications: [Ash.Notifier.Notification.t()]}}
               | {:error, term}
 
   @callback bulk_create(
@@ -97,9 +97,9 @@ defmodule Ash.Resource.ManualCreate do
             ) ::
               list(
                 :ok
-                | {:ok, Ash.Resource.record()}
-                | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
-                | {:ok, Ash.Resource.record(), [Ash.Notifier.Notification.t()]}
+                | {:ok, Ash.Resource.Record.t()}
+                | {:ok, Ash.Resource.Record.t(), %{notifications: [Ash.Notifier.Notification.t()]}}
+                | {:ok, Ash.Resource.Record.t(), [Ash.Notifier.Notification.t()]}
                 | {:error, Ash.Error.t()}
                 | {:notifications, list(Ash.Notifier.Notification.t())}
               )
@@ -108,8 +108,8 @@ defmodule Ash.Resource.ManualCreate do
 
   @doc false
   @spec create(module(), Ash.Changeset.t() | term(), Keyword.t() | term(), Context.t() | term()) ::
-          {:ok, Ash.Resource.record()}
-          | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
+          {:ok, Ash.Resource.Record.t()}
+          | {:ok, Ash.Resource.Record.t(), %{notifications: [Ash.Notifier.Notification.t()]}}
           | {:error, term()}
   def create(module, changeset, opts, context) do
     Ash.BehaviourHelpers.call_and_validate_return(
@@ -126,9 +126,9 @@ defmodule Ash.Resource.ManualCreate do
   @spec bulk_create(module(), Enumerable.t(Ash.Changeset.t()), Keyword.t(), BulkContext.t()) ::
           list(
             :ok
-            | {:ok, Ash.Resource.record()}
-            | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
-            | {:ok, Ash.Resource.record(), [Ash.Notifier.Notification.t()]}
+            | {:ok, Ash.Resource.Record.t()}
+            | {:ok, Ash.Resource.Record.t(), %{notifications: [Ash.Notifier.Notification.t()]}}
+            | {:ok, Ash.Resource.Record.t(), [Ash.Notifier.Notification.t()]}
             | {:error, Ash.Error.t()}
             | {:notifications, list(Ash.Notifier.Notification.t())}
           )

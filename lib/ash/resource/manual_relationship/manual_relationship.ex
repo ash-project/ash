@@ -35,14 +35,14 @@ defmodule Ash.Resource.ManualRelationship do
   @callback select(opts :: Keyword.t()) :: list(atom) | :*
 
   @callback load(
-              list(Ash.Resource.record()),
+              list(Ash.Resource.Record.t()),
               opts :: Keyword.t(),
               context :: Context.t()
             ) ::
               {:ok, [term] | map} | {:error, term}
 
   @doc false
-  @spec load(module(), [Ash.Resource.record()], Keyword.t(), Context.t()) ::
+  @spec load(module(), [Ash.Resource.Record.t()], Keyword.t(), Context.t()) ::
           {:ok, [term()] | map()} | {:error, term()}
   def load(module, records, opts, context) do
     result = apply(module, :load, [records, opts, context])

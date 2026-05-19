@@ -10,8 +10,8 @@ defmodule Ash.Actions.Create do
   require Ash.Tracer
 
   @spec run(Ash.Domain.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
-          {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
-          | {:ok, Ash.Resource.record()}
+          {:ok, Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.Record.t()}
           | {:error, term}
   def run(domain, changeset, action, opts) do
     is_upsert? = changeset.context[:private][:upsert?]

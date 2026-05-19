@@ -23,8 +23,8 @@ defmodule Ash.Actions.Read do
   end
 
   @spec run(Ash.Query.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
-          {:ok, Ash.Page.page() | list(Ash.Resource.record())}
-          | {:ok, Ash.Page.page() | list(Ash.Resource.record()), Ash.Query.t()}
+          {:ok, Ash.Page.page() | list(Ash.Resource.Record.t())}
+          | {:ok, Ash.Page.page() | list(Ash.Resource.Record.t()), Ash.Query.t()}
           | {:error, term}
   def run(query, action, opts \\ [])
 
