@@ -1604,7 +1604,7 @@ defmodule Ash.Actions.Create.Bulk do
           domain :: Ash.Domain.t(),
           resource :: Ash.Resource.t(),
           action :: Ash.Resource.Actions.action()
-        ) :: [Ash.Resource.record() | {:error, term()}]
+        ) :: [Ash.Resource.Record.t() | {:error, term()}]
   defp process_results(
          batch,
          opts,

@@ -23,7 +23,7 @@ defmodule Ash.DataLayer do
               required(:metadata) => %{
                 resource: Ash.Resource.t(),
                 action: atom,
-                record: Ash.Resource.record(),
+                record: Ash.Resource.Record.t(),
                 actor: term()
               },
               optional(:data_layer_context) => %{}
@@ -33,7 +33,7 @@ defmodule Ash.DataLayer do
               required(:metadata) => %{
                 resource: Ash.Resource.t(),
                 action: atom,
-                record: Ash.Resource.record(),
+                record: Ash.Resource.Record.t(),
                 actor: term()
               },
               optional(:data_layer_context) => %{}
@@ -160,7 +160,7 @@ defmodule Ash.DataLayer do
   @callback resource_to_query(Ash.Resource.t(), Ash.Domain.t()) :: data_layer_query()
   @callback transform_query(Ash.Query.t()) :: Ash.Query.t()
   @callback run_query(data_layer_query(), Ash.Resource.t()) ::
-              {:ok, list(Ash.Resource.record())} | {:error, term} | {:error, :no_rollback, term}
+              {:ok, list(Ash.Resource.Record.t())} | {:error, term} | {:error, :no_rollback, term}
   @callback lock(data_layer_query(), lock_type(), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
   @callback run_aggregate_query(
@@ -172,18 +172,18 @@ defmodule Ash.DataLayer do
   @callback run_aggregate_query_with_lateral_join(
               data_layer_query(),
               list(Ash.Query.Aggregate.t()),
-              [Ash.Resource.record()],
+              [Ash.Resource.Record.t()],
               destination_resource :: Ash.Resource.t(),
               list(lateral_join_link())
             ) ::
               {:ok, list(Ash.Resource.t())} | {:error, term}
   @callback run_query_with_lateral_join(
               data_layer_query(),
-              [Ash.Resource.record()],
+              [Ash.Resource.Record.t()],
               source_resource :: Ash.Resource.t(),
               list(lateral_join_link())
             ) ::
-              {:ok, list(Ash.Resource.record())} | {:error, term}
+              {:ok, list(Ash.Resource.Record.t())} | {:error, term}
 
   @callback return_query(data_layer_query(), Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
@@ -222,16 +222,16 @@ defmodule Ash.DataLayer do
               options :: bulk_create_options()
             ) ::
               :ok
-              | {:ok, Enumerable.t(Ash.Resource.record())}
+              | {:ok, Enumerable.t(Ash.Resource.Record.t())}
               | {:partial_success,
                  failed :: Enumerable.t({error :: term(), changeset :: Ash.Changeset.t()}),
-                 Enumerable.t(Ash.Resource.record())}
+                 Enumerable.t(Ash.Resource.Record.t())}
               | {:error, Ash.Error.t()}
               | {:error, :no_rollback, Ash.Error.t()}
   @callback create(Ash.Resource.t(), Ash.Changeset.t()) ::
-              {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
+              {:ok, Ash.Resource.Record.t()} | {:error, term} | {:error, :no_rollback, term}
   @callback upsert(Ash.Resource.t(), Ash.Changeset.t(), list(atom)) ::
-              {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
+              {:ok, Ash.Resource.Record.t()} | {:error, term} | {:error, :no_rollback, term}
   @callback upsert(
               Ash.Resource.t(),
               Ash.Changeset.t(),
@@ -239,13 +239,13 @@ defmodule Ash.DataLayer do
               Ash.Resource.Identity.t() | nil
             ) ::
               {:ok,
-               Ash.Resource.record()
+               Ash.Resource.Record.t()
                | {:upsert_skipped, Ash.Query.t(),
-                  (-> {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term})}}
+                  (-> {:ok, Ash.Resource.Record.t()} | {:error, term} | {:error, :no_rollback, term})}}
               | {:error, term}
               | {:error, :no_rollback, term}
   @callback update(Ash.Resource.t(), Ash.Changeset.t()) ::
-              {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
+              {:ok, Ash.Resource.Record.t()} | {:error, term} | {:error, :no_rollback, term}
 
   @callback update_query(
               data_layer_query(),
@@ -254,7 +254,7 @@ defmodule Ash.DataLayer do
               opts :: bulk_update_options()
             ) ::
               :ok
-              | {:ok, Enumerable.t(Ash.Resource.record())}
+              | {:ok, Enumerable.t(Ash.Resource.Record.t())}
               | {:error, Ash.Error.t()}
               | {:error, :no_rollback, Ash.Error.t()}
 
@@ -265,7 +265,7 @@ defmodule Ash.DataLayer do
               opts :: bulk_update_options()
             ) ::
               :ok
-              | {:ok, Enumerable.t(Ash.Resource.record())}
+              | {:ok, Enumerable.t(Ash.Resource.Record.t())}
               | {:error, Ash.Error.t()}
               | {:error, :no_rollback, Ash.Error.t()}
 
@@ -650,7 +650,7 @@ defmodule Ash.DataLayer do
   end
 
   @spec update(Ash.Resource.t(), Ash.Changeset.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
+          {:ok, Ash.Resource.Record.t()} | {:error, term} | {:error, :no_rollback, term}
   def update(resource, changeset) do
     changeset = %{changeset | tenant: changeset.to_tenant}
     update(Ash.DataLayer.data_layer(resource), resource, changeset)
@@ -658,7 +658,7 @@ defmodule Ash.DataLayer do
 
   @doc false
   @spec update(module(), Ash.Resource.t(), Ash.Changeset.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
+          {:ok, Ash.Resource.Record.t()} | {:error, term} | {:error, :no_rollback, term}
   def update(data_layer_module, resource, changeset) do
     Ash.BehaviourHelpers.call_and_validate_return(
       data_layer_module,
@@ -672,7 +672,7 @@ defmodule Ash.DataLayer do
 
   @spec update_query(data_layer_query(), Ash.Changeset.t(), opts :: bulk_update_options()) ::
           :ok
-          | {:ok, Enumerable.t(Ash.Resource.record())}
+          | {:ok, Enumerable.t(Ash.Resource.Record.t())}
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def update_query(query, changeset, opts) do
@@ -696,7 +696,7 @@ defmodule Ash.DataLayer do
           bulk_update_options()
         ) ::
           :ok
-          | {:ok, Enumerable.t(Ash.Resource.record())}
+          | {:ok, Enumerable.t(Ash.Resource.Record.t())}
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def update_query(data_layer_module, query, changeset, resource, opts) do
@@ -716,7 +716,7 @@ defmodule Ash.DataLayer do
 
   @spec destroy_query(data_layer_query(), Ash.Changeset.t(), opts :: bulk_update_options()) ::
           :ok
-          | {:ok, Enumerable.t(Ash.Resource.record())}
+          | {:ok, Enumerable.t(Ash.Resource.Record.t())}
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def destroy_query(query, changeset, opts) do
@@ -740,7 +740,7 @@ defmodule Ash.DataLayer do
           bulk_update_options()
         ) ::
           :ok
-          | {:ok, Enumerable.t(Ash.Resource.record())}
+          | {:ok, Enumerable.t(Ash.Resource.Record.t())}
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def destroy_query(data_layer_module, query, changeset, resource, opts) do
@@ -759,7 +759,7 @@ defmodule Ash.DataLayer do
   end
 
   @spec create(Ash.Resource.t(), Ash.Changeset.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
+          {:ok, Ash.Resource.Record.t()} | {:error, term} | {:error, :no_rollback, term}
   def create(resource, changeset) do
     changeset = %{changeset | tenant: changeset.to_tenant}
     create(Ash.DataLayer.data_layer(resource), resource, changeset)
@@ -767,7 +767,7 @@ defmodule Ash.DataLayer do
 
   @doc false
   @spec create(module(), Ash.Resource.t(), Ash.Changeset.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
+          {:ok, Ash.Resource.Record.t()} | {:error, term} | {:error, :no_rollback, term}
   def create(data_layer_module, resource, changeset) do
     Ash.BehaviourHelpers.call_and_validate_return(
       data_layer_module,
@@ -811,10 +811,10 @@ defmodule Ash.DataLayer do
           options :: bulk_create_options
         ) ::
           :ok
-          | {:ok, Enumerable.t(Ash.Resource.record())}
+          | {:ok, Enumerable.t(Ash.Resource.Record.t())}
           | {:partial_success,
              failed :: Enumerable.t({error :: term(), changeset :: Ash.Changeset.t()}),
-             Enumerable.t(Ash.Resource.record())}
+             Enumerable.t(Ash.Resource.Record.t())}
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def bulk_create(resource, changesets, options) do
@@ -829,10 +829,10 @@ defmodule Ash.DataLayer do
           bulk_create_options()
         ) ::
           :ok
-          | {:ok, Enumerable.t(Ash.Resource.record())}
+          | {:ok, Enumerable.t(Ash.Resource.Record.t())}
           | {:partial_success,
              failed :: Enumerable.t({error :: term(), changeset :: Ash.Changeset.t()}),
-             Enumerable.t(Ash.Resource.record())}
+             Enumerable.t(Ash.Resource.Record.t())}
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def bulk_create(data_layer_module, resource, changesets, options) do
@@ -912,9 +912,9 @@ defmodule Ash.DataLayer do
           identity :: Ash.Resource.Identity.t() | nil
         ) ::
           {:ok,
-           Ash.Resource.record()
+           Ash.Resource.Record.t()
            | {:upsert_skipped, Ash.Query.t(),
-              (-> {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term})}}
+              (-> {:ok, Ash.Resource.Record.t()} | {:error, term} | {:error, :no_rollback, term})}}
           | {:error, term}
           | {:error, :no_rollback, term}
 
@@ -931,8 +931,8 @@ defmodule Ash.DataLayer do
 
   @doc false
   @spec run_upsert(module(), Ash.Resource.t(), Ash.Changeset.t(), list(atom)) ::
-          {:ok, Ash.Resource.record()}
-          | {:ok, Ash.Resource.record() | {:upsert_skipped, Ash.Query.t(), (-> term)}}
+          {:ok, Ash.Resource.Record.t()}
+          | {:ok, Ash.Resource.Record.t() | {:upsert_skipped, Ash.Query.t(), (-> term)}}
           | {:error, term}
           | {:error, :no_rollback, term}
   def run_upsert(data_layer_module, resource, changeset, keys) do
@@ -958,8 +958,8 @@ defmodule Ash.DataLayer do
           list(atom),
           Ash.Resource.Identity.t() | nil
         ) ::
-          {:ok, Ash.Resource.record()}
-          | {:ok, Ash.Resource.record() | {:upsert_skipped, Ash.Query.t(), (-> term)}}
+          {:ok, Ash.Resource.Record.t()}
+          | {:ok, Ash.Resource.Record.t() | {:upsert_skipped, Ash.Query.t(), (-> term)}}
           | {:error, term}
           | {:error, :no_rollback, term}
   def run_upsert(data_layer_module, resource, changeset, keys, identity) do
@@ -1433,14 +1433,14 @@ defmodule Ash.DataLayer do
   end
 
   @spec run_query(data_layer_query(), central_resource :: Ash.Resource.t()) ::
-          {:ok, list(Ash.Resource.record())} | {:error, term} | {:error, :no_rollback, term}
+          {:ok, list(Ash.Resource.Record.t())} | {:error, term} | {:error, :no_rollback, term}
   def run_query(query, central_resource) do
     run_query(Ash.DataLayer.data_layer(central_resource), query, central_resource)
   end
 
   @doc false
   @spec run_query(module(), data_layer_query(), Ash.Resource.t()) ::
-          {:ok, list(Ash.Resource.record())} | {:error, term} | {:error, :no_rollback, term}
+          {:ok, list(Ash.Resource.Record.t())} | {:error, term} | {:error, :no_rollback, term}
   def run_query(data_layer_module, query, central_resource) do
     Ash.BehaviourHelpers.call_and_validate_return(
       data_layer_module,
@@ -1496,7 +1496,7 @@ defmodule Ash.DataLayer do
           module(),
           data_layer_query(),
           list(Ash.Query.Aggregate.t()),
-          [Ash.Resource.record()],
+          [Ash.Resource.Record.t()],
           Ash.Resource.t(),
           list(lateral_join_link())
         ) :: {:ok, list(Ash.Resource.t())} | {:error, term}
@@ -1547,10 +1547,10 @@ defmodule Ash.DataLayer do
   @spec run_query_with_lateral_join(
           module(),
           data_layer_query(),
-          [Ash.Resource.record()],
+          [Ash.Resource.Record.t()],
           Ash.Resource.t(),
           list(lateral_join_link())
-        ) :: {:ok, list(Ash.Resource.record())} | {:error, term}
+        ) :: {:ok, list(Ash.Resource.Record.t())} | {:error, term}
   def run_query_with_lateral_join(
         data_layer_module,
         query,

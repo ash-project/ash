@@ -17,7 +17,7 @@ defmodule Ash.Authorizer do
   @type context :: map
   @callback initial_state(
               Ash.Resource.t(),
-              Ash.Resource.record(),
+              Ash.Resource.Record.t(),
               Ash.Resource.Actions.action(),
               Ash.Domain.t()
             ) :: state
@@ -33,12 +33,12 @@ defmodule Ash.Authorizer do
               {:ok, Ash.Filter.t()} | {:error, Ash.Error.t()}
   @callback add_calculations(Ash.Query.t() | Ash.Changeset.t(), state, context) ::
               {:ok, Ash.Query.t() | Ash.Changeset.t(), state} | {:error, Ash.Error.t()}
-  @callback alter_results(state, list(Ash.Resource.record()), context) ::
-              {:ok, list(Ash.Resource.record())} | {:error, Ash.Error.t()}
+  @callback alter_results(state, list(Ash.Resource.Record.t()), context) ::
+              {:ok, list(Ash.Resource.Record.t())} | {:error, Ash.Error.t()}
   @callback check_context(state) :: [atom]
   @callback check(state, context) ::
               :authorized
-              | {:data, list(Ash.Resource.record())}
+              | {:data, list(Ash.Resource.Record.t())}
               | {:error, :forbidden, state}
               | {:error, Ash.Error.t()}
   @callback exception(atom, state) :: Exception.t()
@@ -54,7 +54,7 @@ defmodule Ash.Authorizer do
   @doc false
   @spec initial_state(
           module(),
-          Ash.Resource.record(),
+          Ash.Resource.Record.t(),
           Ash.Resource.t(),
           Ash.Resource.Actions.action(),
           Ash.Domain.t()
@@ -150,8 +150,8 @@ defmodule Ash.Authorizer do
   end
 
   @doc false
-  @spec alter_results(module(), state(), [Ash.Resource.record()], context()) ::
-          {:ok, [Ash.Resource.record()]} | {:error, Ash.Error.t()}
+  @spec alter_results(module(), state(), [Ash.Resource.Record.t()], context()) ::
+          {:ok, [Ash.Resource.Record.t()]} | {:error, Ash.Error.t()}
   def alter_results(module, state, records, context) do
     if function_exported?(module, :alter_results, 3) do
       Ash.BehaviourHelpers.call_and_validate_return(
@@ -223,7 +223,7 @@ defmodule Ash.Authorizer do
   @doc false
   @spec check(module(), state(), context()) ::
           :authorized
-          | {:data, [Ash.Resource.record()]}
+          | {:data, [Ash.Resource.Record.t()]}
           | {:error, :forbidden, state()}
           | {:error, Ash.Error.t()}
   def check(module, state, context) do

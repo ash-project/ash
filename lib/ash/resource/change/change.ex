@@ -230,13 +230,13 @@ defmodule Ash.Resource.Change do
   @doc false
   @spec after_batch(
           module(),
-          [{Ash.Changeset.t(), Ash.Resource.record()}],
+          [{Ash.Changeset.t(), Ash.Resource.Record.t()}],
           Keyword.t(),
           Ash.Resource.Change.Context.t()
         ) ::
           :ok
           | [
-              {:ok, Ash.Resource.record()}
+              {:ok, Ash.Resource.Record.t()}
               | {:error, Ash.Error.t()}
               | Ash.Notifier.Notification.t()
             ]
@@ -264,7 +264,7 @@ defmodule Ash.Resource.Change do
           The callback #{inspect(__MODULE__)}.after_batch/3 expects one of the following return types:
 
             :ok
-            Enumerable.t({:ok, Ash.Resource.record()} | {:error, Ash.Error.t()} | Ash.Notifier.Notification.t())
+            Enumerable.t({:ok, Ash.Resource.Record.t()} | {:error, Ash.Error.t()} | Ash.Notifier.Notification.t())
           """
       end
     end
@@ -297,7 +297,7 @@ defmodule Ash.Resource.Change do
     defstruct [:actor, :tenant, :authorize?, :tracer, bulk?: false, source_context: %{}]
 
     @type t :: %__MODULE__{
-            actor: Ash.Resource.record() | nil,
+            actor: Ash.Resource.Record.t() | nil,
             tenant: term(),
             source_context: map(),
             authorize?: boolean() | nil,
@@ -339,13 +339,13 @@ defmodule Ash.Resource.Change do
   Runs on each batch result after it is dispatched to the data layer.
   """
   @callback after_batch(
-              changesets_and_results :: [{Ash.Changeset.t(), Ash.Resource.record()}],
+              changesets_and_results :: [{Ash.Changeset.t(), Ash.Resource.Record.t()}],
               opts :: Keyword.t(),
               context :: Context.t()
             ) ::
               :ok
               | Enumerable.t(
-                  {:ok, Ash.Resource.record()}
+                  {:ok, Ash.Resource.Record.t()}
                   | {:error, Ash.Error.t()}
                   | Ash.Notifier.Notification.t()
                 )

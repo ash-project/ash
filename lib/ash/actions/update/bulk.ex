@@ -2962,7 +2962,7 @@ defmodule Ash.Actions.Update.Bulk do
           resource :: Ash.Resource.t(),
           domain :: Ash.Domain.t(),
           base_changeset :: Ash.Changeset.t()
-        ) :: [Ash.Resource.record() | {:error, term()}]
+        ) :: [Ash.Resource.Record.t() | {:error, term()}]
   defp process_results(
          tagged_results,
          opts,

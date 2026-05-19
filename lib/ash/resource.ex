@@ -10,7 +10,6 @@ defmodule Ash.Resource do
   """
 
   @type t :: module
-  @type record :: struct()
 
   use Spark.Dsl,
     single_extension_kinds: [:data_layer],
@@ -417,7 +416,7 @@ defmodule Ash.Resource do
     end
   end
 
-  @spec set_metadata(Ash.Resource.record(), map) :: Ash.Resource.record()
+  @spec set_metadata(Ash.Resource.Record.t(), map) :: Ash.Resource.Record.t()
   def set_metadata(record, map) do
     %{record | __metadata__: Ash.Helpers.deep_merge_maps(record.__metadata__, map)}
   end
@@ -429,27 +428,27 @@ defmodule Ash.Resource do
 
   def set_meta(struct, _), do: struct
 
-  @spec put_metadata(Ash.Resource.record(), atom, term) :: Ash.Resource.record()
+  @spec put_metadata(Ash.Resource.Record.t(), atom, term) :: Ash.Resource.Record.t()
   def put_metadata(record, key, term) do
     set_metadata(record, %{key => term})
   end
 
   @doc "Sets a list of loaded key or paths to a key back to their original unloaded stated"
   @spec unload_many(
-          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
+          nil | list(Ash.Resource.Record.t()) | Ash.Resource.Record.t() | Ash.Page.page(),
           list(atom) | list(list(atom))
         ) ::
-          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page()
+          nil | list(Ash.Resource.Record.t()) | Ash.Resource.Record.t() | Ash.Page.page()
   def unload_many(data, paths) do
     Enum.reduce(paths, data, &unload(&2, &1))
   end
 
   @doc "Sets a loaded key or path to a key back to its original unloaded stated"
   @spec unload(
-          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
+          nil | list(Ash.Resource.Record.t()) | Ash.Resource.Record.t() | Ash.Page.page(),
           atom | list(atom)
         ) ::
-          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page()
+          nil | list(Ash.Resource.Record.t()) | Ash.Resource.Record.t() | Ash.Page.page()
   def unload(nil, _), do: nil
 
   def unload(%struct{results: results} = page, path)
@@ -485,7 +484,7 @@ defmodule Ash.Resource do
   - `strict?`: set to `true` to return false if a calculation with arguments is being checked
   """
   @spec loaded?(
-          nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
+          nil | list(Ash.Resource.Record.t()) | Ash.Resource.Record.t() | Ash.Page.page(),
           atom | Ash.Query.Calculation.t() | Ash.Query.Aggregate.t() | list(atom),
           opts :: Keyword.t()
         ) ::
@@ -706,7 +705,7 @@ defmodule Ash.Resource do
     Ash.Type.loaded?(type, value, path, constraints, opts)
   end
 
-  @spec get_metadata(Ash.Resource.record(), atom | list(atom)) :: term
+  @spec get_metadata(Ash.Resource.Record.t(), atom | list(atom)) :: term
   def get_metadata(record, key_or_path) do
     get_in(record.__metadata__ || %{}, List.wrap(key_or_path))
   end
@@ -719,7 +718,7 @@ defmodule Ash.Resource do
   - `forbidden_means_selected?`: set to `true` to return `true` if the field is marked as forbidden
 
   """
-  @spec selected?(Ash.Resource.record(), atom) :: boolean
+  @spec selected?(Ash.Resource.Record.t(), atom) :: boolean
   def selected?(record, field, opts \\ []) do
     case Map.get(record, field) do
       %Ash.NotLoaded{} -> false

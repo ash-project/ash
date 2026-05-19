@@ -77,7 +77,7 @@ if Code.ensure_loaded?(Plug.Conn) do
         ...> actor = get_actor(conn)
         %{email: "marty@1985.retro"} = actor
     """
-    @spec get_actor(Conn.t()) :: nil | Ash.Resource.record()
+    @spec get_actor(Conn.t()) :: nil | Ash.Resource.Record.t()
     def get_actor(%{assigns: %{actor: actor}}) when not is_nil(actor) do
       emit_assign_warning(:actor)
 
@@ -106,7 +106,7 @@ if Code.ensure_loaded?(Plug.Conn) do
         ...> actor = get_actor(conn)
         %{name: "Marty Retro"} = actor
     """
-    @spec update_actor(Conn.t(), (nil | Ash.Resource.record() -> nil | Ash.Resource.record())) ::
+    @spec update_actor(Conn.t(), (nil | Ash.Resource.Record.t() -> nil | Ash.Resource.Record.t())) ::
             Conn.t()
     def update_actor(conn, callback) do
       case get_actor(conn) do

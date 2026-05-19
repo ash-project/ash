@@ -236,9 +236,9 @@ defmodule Ash.Changeset do
   the record optionally with notifications, or an error.
   """
   @type after_action_fun ::
-          (t, Ash.Resource.record() ->
-             {:ok, Ash.Resource.record()}
-             | {:ok, Ash.Resource.record(), [Ash.Notifier.Notification.t()]}
+          (t, Ash.Resource.Record.t() ->
+             {:ok, Ash.Resource.Record.t()}
+             | {:ok, Ash.Resource.Record.t(), [Ash.Notifier.Notification.t()]}
              | {:error, any})
 
   @typedoc """
@@ -248,8 +248,8 @@ defmodule Ash.Changeset do
   and returns the result (potentially modified).
   """
   @type after_transaction_fun ::
-          (t, {:ok, Ash.Resource.record()} | {:error, any} ->
-             {:ok, Ash.Resource.record()} | {:error, any})
+          (t, {:ok, Ash.Resource.Record.t()} | {:error, any} ->
+             {:ok, Ash.Resource.Record.t()} | {:error, any})
 
   @typedoc """
   Function type for before action hooks.
@@ -271,7 +271,7 @@ defmodule Ash.Changeset do
   Contains the successful result with record, changeset, and notifications, or an error.
   """
   @type around_action_result ::
-          {:ok, Ash.Resource.record(), t(), %{notifications: list(Ash.Notifier.Notification.t())}}
+          {:ok, Ash.Resource.Record.t(), t(), %{notifications: list(Ash.Notifier.Notification.t())}}
           | {:error, Ash.Error.t()}
 
   @typedoc """
@@ -293,7 +293,7 @@ defmodule Ash.Changeset do
 
   Contains either a successful result with the record or an error.
   """
-  @type around_transaction_result :: {:ok, Ash.Resource.record()} | {:error, any}
+  @type around_transaction_result :: {:ok, Ash.Resource.Record.t()} | {:error, any}
 
   @typedoc """
   Callback function type for around transaction hooks.
@@ -352,7 +352,7 @@ defmodule Ash.Changeset do
           context: map,
           filter: Ash.Filter.t() | nil,
           added_filter: Ash.Filter.t() | nil,
-          data: Ash.Resource.record() | nil,
+          data: Ash.Resource.Record.t() | nil,
           defaults: [atom],
           errors: [Ash.Error.t()],
           handle_errors:
@@ -501,7 +501,7 @@ defmodule Ash.Changeset do
   - `for_update/4` for updating existing records
   - `for_destroy/4` for destroying records
   """
-  @spec new(Ash.Resource.t() | Ash.Resource.record()) :: t
+  @spec new(Ash.Resource.t() | Ash.Resource.Record.t()) :: t
 
   def new(record_or_resource) do
     {resource, record, action_type} =
@@ -5431,9 +5431,9 @@ defmodule Ash.Changeset do
       %Ash.Changeset.OriginalDataNotAvailable{} ->
         raise ArgumentError,
               """
-              Original data is not available for this changeset. 
+              Original data is not available for this changeset.
 
-              You are likely running an atomic update, meaning that the original data is not available. 
+              You are likely running an atomic update, meaning that the original data is not available.
               See the atomics guide for more.
               """
 
@@ -7296,8 +7296,8 @@ defmodule Ash.Changeset do
   @doc false
   @spec authorize_results(
           t(),
-          (t(), [Ash.Resource.record()] ->
-             {:ok, [Ash.Resource.record()]}
+          (t(), [Ash.Resource.Record.t()] ->
+             {:ok, [Ash.Resource.Record.t()]}
              | {:error, term})
         ) :: t()
   def authorize_results(changeset, func) do
@@ -7552,7 +7552,7 @@ defmodule Ash.Changeset do
 
   * force? - applies current attributes even if the changeset is not valid
   """
-  @spec apply_attributes(t(), opts :: Keyword.t()) :: {:ok, Ash.Resource.record()} | {:error, t()}
+  @spec apply_attributes(t(), opts :: Keyword.t()) :: {:ok, Ash.Resource.Record.t()} | {:error, t()}
   def apply_attributes(changeset, opts \\ [])
 
   def apply_attributes(%{valid?: true} = changeset, _opts) do

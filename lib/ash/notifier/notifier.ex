@@ -135,7 +135,7 @@ defmodule Ash.Notifier do
   each notifier to `{statement, extra}`.
   """
   @spec extract_notifier_data(
-          Ash.Resource.record(),
+          Ash.Resource.Record.t(),
           [module()],
           Ash.Resource.t(),
           Ash.Resource.Actions.action()

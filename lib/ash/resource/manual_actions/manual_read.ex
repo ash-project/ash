@@ -21,13 +21,13 @@ defmodule Ash.Resource.ManualRead do
 
   @callback load_relationships(
               query :: Ash.Query.t(),
-              results :: list(Ash.Resource.record()),
+              results :: list(Ash.Resource.Record.t()),
               opts :: Keyword.t(),
               context :: context(),
               lazy? :: boolean()
             ) ::
-              {:ok, list(Ash.Resource.record())}
-              | {:ok, list(Ash.Resource.record()), extra_info()}
+              {:ok, list(Ash.Resource.Record.t())}
+              | {:ok, list(Ash.Resource.Record.t()), extra_info()}
               | {:error, term}
 
   @callback read(
@@ -36,8 +36,8 @@ defmodule Ash.Resource.ManualRead do
               opts :: Keyword.t(),
               context :: context()
             ) ::
-              {:ok, list(Ash.Resource.record())}
-              | {:ok, list(Ash.Resource.record()), extra_info()}
+              {:ok, list(Ash.Resource.Record.t())}
+              | {:ok, list(Ash.Resource.Record.t()), extra_info()}
               | {:error, term}
 
   @optional_callbacks [
@@ -46,8 +46,8 @@ defmodule Ash.Resource.ManualRead do
 
   @doc false
   @spec read(module(), Ash.Query.t(), term(), Keyword.t(), context()) ::
-          {:ok, list(Ash.Resource.record())}
-          | {:ok, list(Ash.Resource.record()), extra_info()}
+          {:ok, list(Ash.Resource.Record.t())}
+          | {:ok, list(Ash.Resource.Record.t()), extra_info()}
           | {:error, term()}
   def read(module, query, data_layer_query, opts, context) do
     Ash.BehaviourHelpers.call_and_validate_return(
@@ -64,13 +64,13 @@ defmodule Ash.Resource.ManualRead do
   @spec load_relationships(
           module(),
           Ash.Query.t(),
-          list(Ash.Resource.record()),
+          list(Ash.Resource.Record.t()),
           Keyword.t(),
           context(),
           boolean()
         ) ::
-          {:ok, list(Ash.Resource.record())}
-          | {:ok, list(Ash.Resource.record()), extra_info()}
+          {:ok, list(Ash.Resource.Record.t())}
+          | {:ok, list(Ash.Resource.Record.t()), extra_info()}
           | {:error, term()}
   def load_relationships(module, query, results, opts, context, lazy?) do
     Ash.BehaviourHelpers.call_and_validate_return(
