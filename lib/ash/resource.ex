@@ -10,6 +10,7 @@ defmodule Ash.Resource do
   """
 
   @type t :: module
+  @type record :: Ash.Resource.Record.t()
 
   use Spark.Dsl,
     single_extension_kinds: [:data_layer],
