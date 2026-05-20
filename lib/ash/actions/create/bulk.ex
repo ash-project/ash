@@ -1205,7 +1205,7 @@ defmodule Ash.Actions.Create.Bulk do
                 Ash.Resource.Info.primary_key(resource)
 
               identity ->
-                keys =
+                identity_record =
                   resource
                   |> Ash.Resource.Info.identities()
                   |> Enum.find(&(&1.name == identity))
@@ -1214,11 +1214,12 @@ defmodule Ash.Actions.Create.Bulk do
                       resource: resource,
                       identity: identity
                   )
-                  |> Map.get(:keys)
 
-                if opts[:tenant] &&
+                keys = identity_record.keys
+
+                if !identity_record.all_tenants? &&
                      Ash.Resource.Info.multitenancy_strategy(resource) == :attribute do
-                  [Ash.Resource.Info.multitenancy_attribute(resource) | keys]
+                  Enum.uniq([Ash.Resource.Info.multitenancy_attribute(resource) | keys])
                 else
                   keys
                 end

@@ -300,9 +300,8 @@ defmodule Ash.Actions.Create do
           if identity.all_tenants? do
             keys
           else
-            if Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute &&
-                 (changeset.tenant || !identity.nils_distinct?) do
-              [Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys]
+            if Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
+              Enum.uniq([Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys])
             else
               keys
             end
