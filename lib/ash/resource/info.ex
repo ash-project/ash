@@ -131,6 +131,14 @@ defmodule Ash.Resource.Info do
   end
 
   @doc """
+  Default namespace module for this resource's code interface definitions, or `nil` if unset.
+  """
+  @spec code_interface_namespace(Spark.Dsl.t() | Ash.Resource.t()) :: module() | nil
+  def code_interface_namespace(resource) do
+    Extension.get_opt(resource, [:code_interface], :namespace, nil)
+  end
+
+  @doc """
   Whether or not the resource is an embedded resource
   """
   @spec embedded?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean

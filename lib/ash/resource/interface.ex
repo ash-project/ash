@@ -16,6 +16,7 @@ defmodule Ash.Resource.Interface do
     :get_by,
     :get_by_identity,
     :not_found_error?,
+    :namespace,
     args: [],
     custom_inputs: [],
     exclude_inputs: [],
@@ -360,6 +361,11 @@ defmodule Ash.Resource.Interface do
       default: [],
       doc:
         "Default options to be merged with client-provided options. These can override domain or action defaults. `:load`, `:bulk_options`, and `:page` options will be deep merged. Can be a keyword list or a zero-arity function that returns a keyword list."
+    ],
+    namespace: [
+      type: :atom,
+      doc:
+        "Generate this interface function on a separate module instead of the host (domain or resource). The given module name is concatenated to the host (e.g. `namespace: Tickets` on `Helpdesk.Support` generates the functions on `Helpdesk.Support.Tickets`). Overrides any namespace set on the enclosing `code_interface`/`resource` block."
     ]
   ]
 

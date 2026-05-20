@@ -31,6 +31,39 @@ end
 
 These will then be called on the resource itself, i.e `Helpdesk.Support.Ticket.open(subject)`.
 
+## Splitting interfaces across modules with `namespace`
+
+By default every `define`/`define_calculation` adds functions to the host module — the domain when used inside `resources` (`resource Ticket do define ... end`), and the resource itself when used inside the resource's own `code_interface` block. If you'd rather group functions onto a separate module (for organization, or to keep any single module smaller), set `namespace`:
+
+```elixir
+# Domain-side
+resources do
+  resource Patient do
+    namespace Patients
+
+    define :create_patient, action: :create
+    define :read_patients, action: :read
+
+    # per-define override
+    define :archive, action: :archive, namespace: PatientArchive
+  end
+end
+```
+
+```elixir
+# Resource-side
+code_interface do
+  namespace Iface
+
+  define :create, action: :create
+  define :read, action: :read
+end
+```
+
+The `namespace:` value is concatenated to the host module. With `Helpdesk.Support` as the domain, `namespace: Tickets` produces `Helpdesk.Support.Tickets.open_ticket/...`; on a resource `Helpdesk.Support.Ticket`, `namespace: Iface` produces `Helpdesk.Support.Ticket.Iface.open/...`. Per-entry `namespace:` overrides the block-level default.
+
+Ash refuses to overwrite an existing module, so the generated target name must be unique. Definitions without a `namespace:` (and without a block-level default) continue to land on the host module.
+
 ## Using the code interface
 
 If the action is an update or destroy, it will take a record or a changeset as its _first_ argument.

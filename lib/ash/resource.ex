@@ -312,7 +312,27 @@ defmodule Ash.Resource do
           end
 
           require Ash.CodeInterface
-          Ash.CodeInterface.define_interface(domain, __MODULE__)
+
+          definitions =
+            Ash.Resource.Info.interfaces(__MODULE__) ++
+              Ash.Resource.Info.calculation_interfaces(__MODULE__)
+
+          {host_definitions, by_namespace} =
+            Ash.CodeInterface.split_definitions_by_namespace(
+              definitions,
+              __MODULE__,
+              Ash.Resource.Info.code_interface_namespace(__MODULE__)
+            )
+
+          Ash.CodeInterface.define_interface(domain, __MODULE__, host_definitions)
+
+          Ash.CodeInterface.create_namespace_modules(
+            __MODULE__,
+            domain,
+            __MODULE__,
+            by_namespace,
+            __ENV__
+          )
         end
       end
 

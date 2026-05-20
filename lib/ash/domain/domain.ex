@@ -134,7 +134,22 @@ defmodule Ash.Domain do
       end
 
       for reference <- Ash.Domain.Info.resource_references(__MODULE__) do
-        Ash.CodeInterface.define_interface(__MODULE__, reference.resource, reference.definitions)
+        {host_definitions, by_namespace} =
+          Ash.CodeInterface.split_definitions_by_namespace(
+            reference.definitions,
+            __MODULE__,
+            reference.namespace
+          )
+
+        Ash.CodeInterface.define_interface(__MODULE__, reference.resource, host_definitions)
+
+        Ash.CodeInterface.create_namespace_modules(
+          __MODULE__,
+          __MODULE__,
+          reference.resource,
+          by_namespace,
+          __ENV__
+        )
       end
     end
   end

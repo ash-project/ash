@@ -1097,6 +1097,11 @@ defmodule Ash.Resource.Dsl do
       define?: [
         type: :boolean,
         doc: "Whether or not to define the code interface in the resource."
+      ],
+      namespace: [
+        type: :atom,
+        doc:
+          "Default module on which to generate this resource's code interface functions instead of the resource itself. The given name is concatenated to the resource module. Individual `define`/`define_calculation` entries can override with their own `:namespace` option."
       ]
     ],
     entities: [

@@ -97,7 +97,11 @@ resource Foo
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`resource`](#resources-resource-resource){: #resources-resource-resource .spark-required} | `module` |  |  |
+### Options
 
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`namespace`](#resources-resource-namespace){: #resources-resource-namespace } | `atom` |  | Default module on which to generate this resource's code interface functions instead of the domain. The given name is concatenated to the domain module (e.g. `namespace: Tickets` on `Helpdesk.Support` generates onto `Helpdesk.Support.Tickets`). Individual `define`/`define_calculation` entries can override with their own `:namespace` option. |
 
 
 ### resources.resource.define
@@ -139,6 +143,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 | [`get_by`](#resources-resource-define-get_by){: #resources-resource-define-get_by } | `atom \| list(atom)` |  | Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true and `require_reference?` to false automatically. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
 | [`get_by_identity`](#resources-resource-define-get_by_identity){: #resources-resource-define-get_by_identity } | `atom` |  | Takes an identity, gets its field list, and performs the same logic as `get_by` with those fields. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
 | [`default_options`](#resources-resource-define-default_options){: #resources-resource-define-default_options } | `keyword \| (-> any)` | `[]` | Default options to be merged with client-provided options. These can override domain or action defaults. `:load`, `:bulk_options`, and `:page` options will be deep merged. Can be a keyword list or a zero-arity function that returns a keyword list. |
+| [`namespace`](#resources-resource-define-namespace){: #resources-resource-define-namespace } | `atom` |  | Generate this interface function on a separate module instead of the host (domain or resource). The given module name is concatenated to the host (e.g. `namespace: Tickets` on `Helpdesk.Support` generates the functions on `Helpdesk.Support.Tickets`). Overrides any namespace set on the enclosing `code_interface`/`resource` block. |
 
 
 ### resources.resource.define.custom_input
@@ -279,6 +284,7 @@ define_calculation :referral_link, User, args: [{:arg, :id}, {:ref, :id}]
 | [`calculation`](#resources-resource-define_calculation-calculation){: #resources-resource-define_calculation-calculation } | `atom` |  | The name of the calculation that will be evaluated. Defaults to the same name as the function. |
 | [`exclude_inputs`](#resources-resource-define_calculation-exclude_inputs){: #resources-resource-define_calculation-exclude_inputs } | `list(atom)` | `[]` | A list of calculation inputs to not accept in the defined interface |
 | [`args`](#resources-resource-define_calculation-args){: #resources-resource-define_calculation-args } | `any` | `[]` | Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more. |
+| [`namespace`](#resources-resource-define_calculation-namespace){: #resources-resource-define_calculation-namespace } | `atom` |  | Generate this calculation interface function on a separate module instead of the host (domain or resource). The given module name is concatenated to the host. Overrides any namespace set on the enclosing `code_interface`/`resource` block. |
 
 
 ### resources.resource.define_calculation.custom_input
