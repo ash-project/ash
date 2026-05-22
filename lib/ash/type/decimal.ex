@@ -49,26 +49,34 @@ defmodule Ash.Type.Decimal do
 
   @impl true
   def generator(constraints) do
-    params =
-      constraints
-      |> Keyword.take([:min, :max])
-      |> Enum.map(fn {key, value} ->
-        if Decimal.is_decimal(value) do
-          {key, Decimal.to_float(value)}
-        else
-          {key, value}
-        end
-      end)
+    # Use the more restrictive constraint
+    float_options = [
+      max: minimum(constraints[:less_than], constraints[:max]),
+      min: maximum(constraints[:greater_than], constraints[:min])
+    ]
 
-    params
+    float_options
     |> StreamData.float()
-    |> StreamData.map(&Decimal.from_float/1)
-    #  A second pass filter to account for inaccuracies in the above float -> decimal
+    |> StreamData.map(fn float ->
+      float
+      |> Decimal.from_float()
+      |> Map.update!(:coef, &trunc_coef(&1, constraints[:precision]))
+      |> Map.update!(:exp, &trunc_exp(&1, constraints[:scale]))
+      |> Decimal.normalize()
+    end)
+    #  A second pass filter to account for:
+    # - inaccuracies in the above float -> decimal
+    # - truncated coefficients and/or exponents that result in a number that violates other constraints
     |> StreamData.filter(fn value ->
-      !(constraints[:max] && Decimal.gt?(value, constraints[:max])) &&
-        (!constraints[:less_than] || Decimal.lt?(value, constraints[:less_than])) &&
-        !(constraints[:min] && Decimal.lt?(value, constraints[:min])) &&
-        (!constraints[:greater_than] || Decimal.gt?(value, constraints[:greater_than]))
+      Enum.all?([
+        !constraints[:max] || Decimal.lte?(value, constraints[:max]),
+        !constraints[:less_than] || Decimal.lt?(value, constraints[:less_than]),
+        !constraints[:min] || Decimal.gte?(value, constraints[:min]),
+        !constraints[:greater_than] || Decimal.gt?(value, constraints[:greater_than]),
+        constraints[:scale] == :arbitrary || Decimal.scale(value) <= constraints[:scale],
+        constraints[:precision] == :arbitrary ||
+          count_significant_digits(value) <= constraints[:precision]
+      ])
     end)
   end
 
@@ -346,6 +354,30 @@ defmodule Ash.Type.Decimal do
       String.length(coef_str)
     end
   end
+
+  # Generator helpers
+
+  defp maximum(nil, nil), do: nil
+  defp maximum(v1, nil), do: Decimal.to_float(v1)
+  defp maximum(nil, v2), do: Decimal.to_float(v2)
+  defp maximum(v1, v2), do: max(Decimal.to_float(v1), Decimal.to_float(v2))
+
+  defp minimum(nil, nil), do: nil
+  defp minimum(v1, nil), do: Decimal.to_float(v1)
+  defp minimum(nil, v2), do: Decimal.to_float(v2)
+  defp minimum(v1, v2), do: min(Decimal.to_float(v1), Decimal.to_float(v2))
+
+  defp trunc_coef(coef, :arbitrary), do: coef
+
+  defp trunc_coef(coef, precision) do
+    coef
+    |> Integer.to_string()
+    |> String.slice(0..(precision - 1))
+    |> String.to_integer()
+  end
+
+  defp trunc_exp(exp, :arbitrary), do: exp
+  defp trunc_exp(exp, scale), do: max(exp, -1 * scale)
 end
 
 import Ash.Type.Comparable

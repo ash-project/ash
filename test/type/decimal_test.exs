@@ -5,8 +5,10 @@
 defmodule Ash.Test.Type.DecimalTest do
   @moduledoc false
   use ExUnit.Case, async: true
+  use ExUnitProperties
 
   require Ash.Expr
+  require Decimal
 
   defmodule Balance do
     @moduledoc false
@@ -310,5 +312,103 @@ defmodule Ash.Test.Type.DecimalTest do
     with {:ok, value} <- Ash.Type.Decimal.cast_input(value, constraints) do
       Ash.Type.Decimal.apply_constraints(value, constraints)
     end
+  end
+
+  describe "generator/1" do
+    property "with a :min option" do
+      check all(decimal <- generator(min: 1.23)) do
+        assert Decimal.is_decimal(decimal)
+        assert Decimal.gte?(decimal, Decimal.from_float(1.23))
+      end
+
+      check all(decimal <- generator(min: -10.0)) do
+        assert Decimal.is_decimal(decimal)
+        assert Decimal.gte?(decimal, Decimal.from_float(-10.0))
+      end
+    end
+
+    property "with a :max option" do
+      check all(decimal <- generator(max: 1.23)) do
+        assert Decimal.is_decimal(decimal)
+        assert Decimal.lte?(decimal, Decimal.from_float(1.23))
+      end
+
+      check all(decimal <- generator(max: -10.0)) do
+        assert Decimal.is_decimal(decimal)
+        assert Decimal.lte?(decimal, Decimal.from_float(-10.0))
+      end
+    end
+
+    property "with a :greater_than option" do
+      check all(decimal <- generator(greater_than: 1.23)) do
+        assert Decimal.is_decimal(decimal)
+        assert Decimal.gt?(decimal, Decimal.from_float(1.23))
+      end
+
+      check all(decimal <- generator(greater_than: -10.0)) do
+        assert Decimal.is_decimal(decimal)
+        assert Decimal.gt?(decimal, Decimal.from_float(-10.0))
+      end
+    end
+
+    property "with a :less_than option" do
+      check all(decimal <- generator(less_than: 1.23)) do
+        assert Decimal.is_decimal(decimal)
+        assert Decimal.lt?(decimal, Decimal.from_float(1.23))
+      end
+
+      check all(decimal <- generator(less_than: -10.0)) do
+        assert Decimal.is_decimal(decimal)
+        assert Decimal.lt?(decimal, Decimal.from_float(-10.0))
+      end
+    end
+
+    property "with a :scale option" do
+      check all(decimal <- generator(scale: 3)) do
+        assert Decimal.is_decimal(decimal)
+        assert Decimal.scale(decimal) <= 3
+      end
+    end
+
+    property "with a :precision option" do
+      check all(decimal <- generator(precision: 7)) do
+        assert Decimal.is_decimal(decimal)
+        assert String.length(Integer.to_string(decimal.coef)) <= 7
+      end
+    end
+
+    property "with all options" do
+      options = [
+        scale: 3,
+        precision: 7,
+        min: -1000.49,
+        greater_than: -1100.23,
+        max: 5000.23,
+        less_than: 4000.234
+      ]
+
+      check all(decimal <- generator(options)) do
+        assert Decimal.is_decimal(decimal)
+
+        assert Decimal.gt?(decimal, Decimal.from_float(options[:greater_than]))
+        assert Decimal.lt?(decimal, Decimal.from_float(options[:less_than]))
+        assert Decimal.scale(decimal) <= options[:scale]
+        assert String.length(Integer.to_string(decimal.coef)) <= options[:precision]
+      end
+    end
+  end
+
+  defp generator(constraints) do
+    {:ok, constraints} = Ash.Type.Decimal.init(constraints)
+
+    constraints
+    |> Enum.map(fn {key, value} ->
+      if key in ~w(greater_than less_than max min)a do
+        {key, Decimal.from_float(value)}
+      else
+        {key, value}
+      end
+    end)
+    |> Ash.Type.Decimal.generator()
   end
 end
