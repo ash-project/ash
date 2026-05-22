@@ -8,6 +8,33 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.26.0](https://github.com/ash-project/ash/compare/v3.25.2...v3.26.0) (2026-05-22)
+
+
+
+
+### Features:
+
+* add manual keyset pagination delegated to data layer (#2686) by Rekkice [(#2686)](https://github.com/ash-project/ash/pull/2686)
+
+* manifest: preserve field and union member descriptions (#2707) by [@Torkan](https://github.com/Torkan) [(#2707)](https://github.com/ash-project/ash/pull/2707)
+
+### Bug Fixes:
+
+* don't hide private fields in filters when the policy is to show them by [@zachdaniel](https://github.com/zachdaniel)
+
+* include multitenancy attribute when `all_tenants?: false` by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* add `namespace` option for code interfaces by [@zachdaniel](https://github.com/zachdaniel)
+
+* Allow `can` to not log policy breakdown (#2708) by sezaru [(#2708)](https://github.com/ash-project/ash/pull/2708)
+
+### Performance Improvements:
+
+* avoid related-record read in relate_actor for belongs_to (#2709) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2709)](https://github.com/ash-project/ash/pull/2709)
+
 ## [v3.25.2](https://github.com/ash-project/ash/compare/v3.25.1...v3.25.2) (2026-05-18)
 
 
