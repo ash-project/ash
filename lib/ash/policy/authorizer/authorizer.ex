@@ -1216,8 +1216,8 @@ defmodule Ash.Policy.Authorizer do
         end
 
       {expr, authorizer} =
-        if field in Ash.Resource.Info.primary_key(resource) do
-          # primary keys are always accessible
+        if field in Ash.Resource.Info.primary_key(resource) or
+             private_field_shown?(resource, field) do
           {true, authorizer}
         else
           policies = Ash.Policy.Info.field_policies_for_field(resource, field)
@@ -1269,6 +1269,17 @@ defmodule Ash.Policy.Authorizer do
       end
     else
       {:none, acc}
+    end
+  end
+
+  defp private_field_shown?(resource, field) do
+    case Ash.Resource.Info.field(resource, field) do
+      nil ->
+        false
+
+      field_info ->
+        not Map.get(field_info, :public?, true) and
+          Ash.Policy.Info.private_fields_policy(resource) == :show
     end
   end
 
