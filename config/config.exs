@@ -60,4 +60,5 @@ if config_env() == :test do
   config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 
   config :ash, Ash.Type.UUIDv7, match_v4_uuids?: true
+  config :ash, :include_embedded_source_by_default?, false
 end
