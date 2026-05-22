@@ -7791,19 +7791,24 @@ defmodule Ash.Changeset do
   defp keyword_to_validation_change_error(changeset, keyword) do
     error =
       if keyword[:field] do
-        exception =
-          if has_argument?(changeset.action, keyword[:field]) do
-            InvalidArgument
-          else
-            InvalidAttribute
-          end
+        field = keyword[:field]
 
-        exception.exception(
-          field: keyword[:field],
+        opts = [
           message: keyword[:message],
           value: keyword[:value],
           vars: keyword
-        )
+        ]
+
+        cond do
+          has_argument?(changeset.action, field) ->
+            InvalidArgument.exception(Keyword.put(opts, :field, field))
+
+          Ash.Resource.Info.attribute(changeset.resource, field) ->
+            InvalidAttribute.exception(Keyword.put(opts, :field, field))
+
+          true ->
+            InvalidChanges.exception(Keyword.put(opts, :fields, [field]))
+        end
       else
         InvalidChanges.exception(
           fields: keyword[:fields] || [],
