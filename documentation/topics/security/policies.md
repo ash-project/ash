@@ -764,6 +764,40 @@ In results, forbidden fields will be replaced with a special value: `%Ash.Forbid
 
 When these fields are referred to in filters, they will be replaced with an expression that evaluates to `nil`. To support this behavior, only simple and filter checks are allowed in field policies.
 
+> #### Field policies are not applied to generic action return values {: .warning}
+>
+> Unlike read/create/update/destroy actions, generic actions do not enforce
+> `field_policies` on the data they return. The authorizer runs on the action
+> itself (so `policies` decide whether the action may be called), but the value
+> returned from `run/2` is passed through to the caller as-is.
+>
+> This includes any nested resource records — `{:array, :struct}` with
+> `instance_of:`, resources hidden inside `:map` field constraints, custom
+> `Ash.Type` modules or `Ash.Type.NewType` wrappers, etc. There is no general
+> way for the framework to know which slots inside an arbitrary return type
+> contain records, and even when it can tell, applying *another* resource's
+> field policies in a context that resource never sees would be misleading.
+>
+> If your generic action returns records and you need field policies applied,
+> you have a few options:
+>
+> - Return records of the same resource and pipe the result through
+>   `Ash.load/3` with the actor before returning, with all the fields you're
+>   returning the load runs as an authorized read and goes through the normal
+>   field-policy pipeline.
+> - Filter sensitive fields yourself inside the action body before returning.
+> - Prefer a read action with a manual implementation
+>   (`Ash.Resource.ManualRead`) when the return shape allows — manual reads
+>   still participate in field policies because they flow through the read
+>   pipeline.
+>
+> Note that extensions which expose resources over an API layer — such as
+> `ash_graphql`, `ash_typescript`, and `ash_json_api` — typically *do* apply
+> field policies to resource records returned from generic actions, since
+> they know which slots in the response correspond to which resources. The
+> caveat above is specifically about the raw return value from `run/2` when
+> called directly via `Ash.run_action/2` or a code interface.
+
 ### Handling private fields in internal functions
 
 When calling internal functions like `Ash.read!/1`, private fields will by default always be shown.
