@@ -3,6 +3,12 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Resource.Record do
-  @moduledoc false
+  @moduledoc """
+  In Ash, a record is an instance of a resource.
+
+  This module acts as a way to refer to the type via t:t()
+  and will also act as a place for shared functionality for
+  instances of resouces in the future.
+  """
   @type t :: struct()
 end
