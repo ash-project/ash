@@ -314,11 +314,6 @@ defmodule Ash.Test.Type.DecimalTest do
     end
   end
 
-  @default_constraints [
-    precision: :arbitrary,
-    scale: :arbitrary
-  ]
-
   describe "generator/1" do
     property "with a :min option" do
       Enum.each([1.23, -10.0], fn min ->
@@ -406,7 +401,12 @@ defmodule Ash.Test.Type.DecimalTest do
   end
 
   defp generator(constraints) do
-    Keyword.merge(@default_constraints, constraints)
+    default_constraints = [
+      precision: :arbitrary,
+      scale: :arbitrary
+    ]
+
+    Keyword.merge(default_constraints, constraints)
     |> Ash.Type.Decimal.generator()
   end
 end

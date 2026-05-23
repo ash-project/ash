@@ -51,12 +51,12 @@ defmodule Ash.Type.Decimal do
   def generator(constraints) do
     max =
       constraints[:less_than]
-      |> perturb(:down)
+      |> nudge(:down)
       |> minimum(constraints[:max])
 
     min =
       constraints[:greater_than]
-      |> perturb(:up)
+      |> nudge(:up)
       |> maximum(constraints[:min])
 
     StreamData.float(max: max, min: min)
@@ -344,16 +344,17 @@ defmodule Ash.Type.Decimal do
   end
 
   # Generator helpers
-  defp perturb(nil, _), do: nil
+  def nudge(nil, _), do: nil
+  def nudge(%Decimal{} = decimal, :down), do: Decimal.sub(decimal, nudge_amount(decimal))
+  def nudge(%Decimal{} = decimal, :up), do: Decimal.add(decimal, nudge_amount(decimal))
 
-  defp perturb(%Decimal{} = decimal, :down) do
-    %Decimal{exp: exp} = Decimal.normalize(decimal)
-    Decimal.sub(decimal, Decimal.new(1, 10, exp - 1))
-  end
-
-  defp perturb(%Decimal{} = decimal, :up) do
-    %Decimal{exp: exp} = Decimal.normalize(decimal)
-    Decimal.add(decimal, Decimal.new(1, 10, exp - 1))
+  defp nudge_amount(%Decimal{} = decimal) do
+    decimal
+    |> Decimal.normalize()
+    |> Decimal.scale()
+    |> min(0)
+    |> Kernel.-(1)
+    |> then(&Decimal.new(1, 10, &1))
   end
 
   defp trunc_precision(decimal, :arbitrary), do: decimal
