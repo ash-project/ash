@@ -815,11 +815,19 @@ defmodule Ash.Actions.Helpers do
     end)
   end
 
+  defp select_selected(query, []), do: query
+
   defp select_selected(query, result) do
+    sample =
+      case result do
+        [first | _] -> first
+        other -> other
+      end
+
     select =
       query.resource
       |> Ash.Resource.Info.attributes()
-      |> Enum.filter(&Ash.Resource.selected?(result, &1.name))
+      |> Enum.filter(&Ash.Resource.selected?(sample, &1.name))
       |> Enum.map(& &1.name)
 
     Ash.Query.ensure_selected(query, select)
