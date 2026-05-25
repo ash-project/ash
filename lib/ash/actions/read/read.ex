@@ -2213,11 +2213,31 @@ defmodule Ash.Actions.Read do
     |> Enum.reduce(query.load_through, fn name, load_through ->
       Map.update(load_through, :attribute, %{name => []}, &Map.put_new(&1, name, []))
     end)
+    |> then(fn load_through ->
+      # Ensure every loadable calculation in the query is included in
+      # load_through, even when no nested load was requested. This lets
+      # `Ash.Type.load` run on calc values whose type defines its own
+      # load logic — e.g. a calc returning `:struct` with `instance_of:`
+      # a resource will get that resource's field policies applied even
+      # without an explicit sub-load.
+      Enum.reduce(query.calculations, load_through, fn {name, calc}, load_through ->
+        {inner_type, inner_constraints} =
+          case calc.type do
+            {:array, type} -> {type, calc.constraints[:items] || []}
+            type -> {type, calc.constraints || []}
+          end
+
+        if inner_type && Ash.Type.can_load?(inner_type, inner_constraints) do
+          Map.update(load_through, :calculation, %{name => []}, &Map.put_new(&1, name, []))
+        else
+          load_through
+        end
+      end)
+    end)
     |> Enum.reduce_while({:ok, results}, fn
       {:calculation, load_through}, {:ok, results} ->
         load_through
         |> Map.take(Map.keys(query.calculations))
-        |> Enum.reject(fn {_, v} -> is_nil(v) end)
         |> Enum.reduce_while({:ok, results}, fn {name, load_statement}, {:ok, results} ->
           calculation = Map.get(query.calculations, name)
 

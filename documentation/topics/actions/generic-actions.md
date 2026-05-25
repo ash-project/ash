@@ -112,13 +112,6 @@ end
 >  end
 > ```
 
-> #### Field policies are not applied to generic action return values {: .warning}
->
-> Unlike read/create/update/destroy actions, generic actions do not enforce
-> `field_policies` on the data they return. See
-> [the policies guide](/documentation/topics/security/policies.md#field-policies)
-> for details and workarounds.
-
 ## Calling Generic Actions
 
 To execute a generic action in Ash, follow these steps:

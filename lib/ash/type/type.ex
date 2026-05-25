@@ -674,6 +674,30 @@ defmodule Ash.Type do
   @doc "Whether or not `c:load/4` can be used. Defined automatically"
   @callback can_load?(constraints) :: boolean
 
+  @doc """
+  Controls how `Ash.Type.load/5` strips nils from a values list before
+  handing them to `c:load/4`.
+
+  The default (provided by `Ash.Type.splicing_nil_values/2`) flat-maps
+  any value that is itself a list, which works for types whose values
+  are non-list (struct, map, tuple, union, primitives). Types whose
+  values are themselves lists — e.g. `Ash.Type.Keyword` — must
+  override this callback to skip the flatten step, otherwise their
+  keyword-list values get torn apart into `{key, value}` entries
+  before the load callback ever sees them.
+
+  Implementations should:
+
+    * pass non-nil values to `callback` as a flat list,
+    * track positions of nils so they can be reinserted,
+    * unwrap the callback's `{:ok, new_list}` into the original shape.
+  """
+  @callback splice_nil_values(
+              values :: list(term) | term(),
+              callback :: (list(term) -> {:ok, list(term)} | {:error, term})
+            ) ::
+              {:ok, list(term) | term} | {:error, term}
+
   @optional_callbacks [
     init: 1,
     storage_type: 0,
@@ -691,6 +715,7 @@ defmodule Ash.Type do
     cast_from_embedded_array: 2,
     include_source: 2,
     load: 4,
+    splice_nil_values: 2,
     merge_load: 4,
     get_rewrites: 4,
     rewrite: 3,
@@ -1648,15 +1673,23 @@ defmodule Ash.Type do
         constraints,
         context
       ) do
-    splicing_nil_values(values, fn values ->
-      type = get_type(type)
+    type = get_type(type)
 
+    splice_with_type(type, values, fn values ->
       if can_load?(type, constraints) do
         type.load(values, loads, constraints, context)
       else
         {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
       end
     end)
+  end
+
+  defp splice_with_type(type, values, callback) do
+    if function_exported?(type, :splice_nil_values, 2) do
+      type.splice_nil_values(values, callback)
+    else
+      splicing_nil_values(values, callback)
+    end
   end
 
   @doc """
@@ -1698,7 +1731,20 @@ defmodule Ash.Type do
     type.rewrite(item, rewrites, constraints)
   end
 
-  @doc false
+  @doc """
+  The default implementation of `c:splice_nil_values/2`.
+
+  Walks `values` (a list), flattens any value that is itself a list (so
+  array-shaped values are unpacked into a single stream), strips `nil`s
+  while tracking their positions, hands the resulting flat list of
+  non-nil values to `callback`, and reinserts nils at their original
+  positions in the result.
+
+  Types whose values are themselves list-shaped (e.g. `Ash.Type.Keyword`)
+  should override `splice_nil_values/2` to skip the flatten step,
+  because the default would tear keyword-list values apart into their
+  `{key, value}` entries.
+  """
   def splicing_nil_values(values, callback) when is_list(values) do
     values
     |> Stream.flat_map(fn value ->

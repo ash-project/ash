@@ -323,11 +323,89 @@ defmodule Ash.Type.Struct do
   end
 
   @impl Ash.Type
-  def load(record, load, _constraints, %{domain: domain} = context) do
+  def load(record, load, constraints, %{domain: domain} = context) do
+    instance_of = constraints[:instance_of]
     opts = Ash.Context.to_opts(context, domain: domain)
 
-    Ash.load(record, load, opts)
+    cond do
+      is_nil(instance_of) || !Ash.Resource.Info.resource?(instance_of) ->
+        Ash.load(record, load, opts)
+
+      # No primary read action, can't reasonably `load`
+      is_nil(Ash.Resource.Info.primary_action(instance_of, :read)) ->
+        {:ok, record}
+
+      !opts[:authorize?] ->
+        if load in [nil, [], %{}] do
+          {:ok, record}
+        else
+          Ash.load(record, load, opts)
+        end
+
+      true ->
+        # Two things to do here:
+        #
+        # 1. Scrub populated fields that aren't part of the explicit
+        #    load via field policies (in memory — `apply_field_level_auth`
+        #    doesn't re-fetch from the data layer).
+        # 2. Run the explicit load through `Ash.load`, which goes through
+        #    the read pipeline and applies field policies to loaded fields
+        #    via the normal `restrict_field_access` step.
+        with {:ok, scrubbed} <- scrub_populated(record, instance_of, load, opts) do
+          if load in [nil, [], %{}] do
+            {:ok, scrubbed}
+          else
+            Ash.load(scrubbed, load, opts)
+          end
+        end
+    end
   end
+
+  defp scrub_populated(record, resource, load, opts) do
+    case populated_not_in_load(record, resource, load) do
+      [] ->
+        {:ok, record}
+
+      to_scrub ->
+        Ash.Authorizer.apply_field_level_auth(
+          resource,
+          record,
+          Keyword.put(opts, :for_fields, to_scrub)
+        )
+    end
+  end
+
+  defp populated_not_in_load(record_or_records, resource, load) do
+    sample =
+      case record_or_records do
+        [first | _] -> first
+        other -> other
+      end
+
+    if is_struct(sample, resource) do
+      load_names = load_top_level_names(load)
+
+      resource
+      |> Ash.Resource.Info.fields([:attributes, :calculations, :aggregates])
+      |> Enum.filter(& &1.public?)
+      |> Enum.map(& &1.name)
+      |> Enum.filter(&(Ash.Resource.loaded?(sample, &1) and &1 not in load_names))
+    else
+      []
+    end
+  end
+
+  defp load_top_level_names(load) when load in [nil, [], %{}], do: []
+
+  defp load_top_level_names(load) when is_list(load) do
+    Enum.flat_map(load, fn
+      atom when is_atom(atom) -> [atom]
+      {atom, _nested} when is_atom(atom) -> [atom]
+      _ -> []
+    end)
+  end
+
+  defp load_top_level_names(_), do: []
 
   @impl Ash.Type
   def merge_load(left, right, constraints, context) do

@@ -133,18 +133,26 @@ defmodule Ash.Actions.Action do
   defp maybe_load(:ok, _input, _domain, _opts), do: :ok
   defp maybe_load({:ok, nil}, _input, _domain, _opts), do: {:ok, nil}
 
-  defp maybe_load(result, input, domain, opts) do
-    with {:ok, result, _} <-
-           Ash.Actions.Helpers.load(result, input, domain,
-             actor: opts[:actor],
-             reuse_values?: true,
-             action: Ash.Resource.Info.primary_action(input.resource, :read) || input.action,
-             authorize?: opts[:authorize?],
-             tracer: opts[:tracer]
-           ) do
+  defp maybe_load({:ok, result}, input, domain, opts) do
+    constraints = input.action.constraints || []
+    returns = input.action.returns
+
+    if returns && Ash.Type.can_load?(returns, constraints) do
+      context = %{
+        actor: opts[:actor],
+        domain: domain,
+        tenant: opts[:tenant],
+        authorize?: opts[:authorize?],
+        tracer: opts[:tracer]
+      }
+
+      Ash.Type.load(returns, result, input.load, constraints, context)
+    else
       {:ok, result}
     end
   end
+
+  defp maybe_load(other, _input, _domain, _opts), do: other
 
   defp run_with_transaction(domain, input, module, run_opts, context, opts) do
     # Run before_transaction hooks first

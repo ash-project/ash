@@ -108,6 +108,129 @@ defmodule Ash.Type.Tuple do
   end
 
   @impl true
+  def can_load?(constraints) do
+    case constraints[:fields] do
+      fields when is_list(fields) ->
+        Enum.any?(fields, fn {_name, config} ->
+          inner_type = config[:type]
+          inner_constraints = config[:constraints] || []
+          inner_type && Ash.Type.can_load?(inner_type, inner_constraints)
+        end)
+
+      _ ->
+        false
+    end
+  end
+
+  @impl true
+  def load(values, load, constraints, context) when is_list(values) do
+    fields = constraints[:fields] || []
+    indexed_fields = Enum.with_index(fields)
+
+    indexed_fields
+    |> effective_load(load)
+    |> Enum.reduce_while({:ok, values}, fn {index, key, sub_load}, {:ok, values} ->
+      {^key, config} = Enum.at(fields, index)
+      inner_type = config[:type]
+      inner_constraints = config[:constraints] || []
+
+      load_pos_across(values, index, inner_type, inner_constraints, sub_load, context)
+    end)
+  end
+
+  defp load_pos_across(
+         values,
+         index,
+         {:array, _} = inner_type,
+         inner_constraints,
+         sub_load,
+         context
+       ) do
+    values
+    |> Enum.reduce_while({:ok, []}, fn
+      tuple, {:ok, acc} when is_tuple(tuple) and tuple_size(tuple) > index ->
+        case elem(tuple, index) do
+          nil ->
+            {:cont, {:ok, [tuple | acc]}}
+
+          list when is_list(list) ->
+            case Ash.Type.load(inner_type, list, sub_load, inner_constraints, context) do
+              {:ok, loaded} -> {:cont, {:ok, [put_elem(tuple, index, loaded) | acc]}}
+              {:error, error} -> {:halt, {:error, error}}
+            end
+
+          other ->
+            {:cont, {:ok, [put_elem(tuple, index, other) | acc]}}
+        end
+
+      other, {:ok, acc} ->
+        {:cont, {:ok, [other | acc]}}
+    end)
+    |> case do
+      {:ok, reversed} -> {:cont, {:ok, Enum.reverse(reversed)}}
+      {:error, error} -> {:halt, {:error, error}}
+    end
+  end
+
+  defp load_pos_across(values, index, inner_type, inner_constraints, sub_load, context) do
+    slice =
+      Enum.map(values, fn
+        tuple when is_tuple(tuple) and tuple_size(tuple) > index -> elem(tuple, index)
+        _ -> nil
+      end)
+
+    case Ash.Type.load(inner_type, slice, sub_load, inner_constraints, context) do
+      {:ok, loaded_slice} ->
+        updated =
+          values
+          |> Enum.zip(loaded_slice)
+          |> Enum.map(fn
+            {tuple, v} when is_tuple(tuple) and tuple_size(tuple) > index ->
+              put_elem(tuple, index, v)
+
+            {other, _v} ->
+              other
+          end)
+
+        {:cont, {:ok, updated}}
+
+      {:error, error} ->
+        {:halt, {:error, error}}
+    end
+  end
+
+  defp effective_load(indexed_fields, load) do
+    explicit_keys =
+      load
+      |> List.wrap()
+      |> Enum.flat_map(fn
+        {k, sub} when is_atom(k) -> [{k, sub}]
+        k when is_atom(k) -> [{k, []}]
+        _ -> []
+      end)
+      |> Map.new()
+
+    Enum.flat_map(indexed_fields, fn {{name, config}, index} ->
+      cond do
+        Map.has_key?(explicit_keys, name) ->
+          [{index, name, Map.fetch!(explicit_keys, name)}]
+
+        loadable_inner?(config) ->
+          [{index, name, []}]
+
+        true ->
+          []
+      end
+    end)
+  end
+
+  defp loadable_inner?(config) do
+    type = config[:type]
+    constraints = config[:constraints] || []
+    type && Ash.Type.can_load?(type, constraints)
+  end
+
+  @impl true
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, constraints) when is_tuple(value) do

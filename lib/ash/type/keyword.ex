@@ -81,6 +81,150 @@ defmodule Ash.Type.Keyword do
   end
 
   @impl true
+  def can_load?(constraints) do
+    case constraints[:fields] do
+      fields when is_list(fields) ->
+        Enum.any?(fields, fn {_name, config} ->
+          inner_type = config[:type]
+          inner_constraints = config[:constraints] || []
+          inner_type && Ash.Type.can_load?(inner_type, inner_constraints)
+        end)
+
+      _ ->
+        false
+    end
+  end
+
+  # Override the default splice — without this, `splicing_nil_values/2`'s
+  # flat_map would tear each keyword-list value apart into its
+  # `{key, value}` entries before the load callback ever sees the
+  # structured value.
+  @impl true
+  def splice_nil_values(values, callback) when is_list(values) do
+    values
+    |> Stream.with_index()
+    |> Enum.reduce({[], []}, fn
+      {nil, index}, {acc, nil_indices} -> {acc, [index | nil_indices]}
+      {value, _index}, {acc, nil_indices} -> {[value | acc], nil_indices}
+    end)
+    |> then(fn {list, nil_indices} ->
+      case callback.(Enum.reverse(list)) do
+        {:ok, new_list} ->
+          {:ok, Enum.reduce(Enum.reverse(nil_indices), new_list, &List.insert_at(&2, &1, nil))}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
+  end
+
+  def splice_nil_values(value, callback), do: callback.(value)
+
+  @impl true
+  def load(values, load, constraints, context) when is_list(values) do
+    fields = constraints[:fields] || []
+
+    fields
+    |> effective_load(load)
+    |> Enum.reduce_while({:ok, values}, fn {key, sub_load}, {:ok, values} ->
+      config = Keyword.fetch!(fields, key)
+      inner_type = config[:type]
+      inner_constraints = config[:constraints] || []
+
+      load_field_across(values, key, inner_type, inner_constraints, sub_load, context)
+    end)
+  end
+
+  defp load_field_across(
+         values,
+         key,
+         {:array, _} = inner_type,
+         inner_constraints,
+         sub_load,
+         context
+       ) do
+    values
+    |> Enum.reduce_while({:ok, []}, fn
+      kw, {:ok, acc} when is_list(kw) ->
+        case Keyword.get(kw, key) do
+          nil ->
+            {:cont, {:ok, [kw | acc]}}
+
+          list when is_list(list) ->
+            case Ash.Type.load(inner_type, list, sub_load, inner_constraints, context) do
+              {:ok, loaded} -> {:cont, {:ok, [Keyword.put(kw, key, loaded) | acc]}}
+              {:error, error} -> {:halt, {:error, error}}
+            end
+
+          other ->
+            {:cont, {:ok, [Keyword.put(kw, key, other) | acc]}}
+        end
+
+      other, {:ok, acc} ->
+        {:cont, {:ok, [other | acc]}}
+    end)
+    |> case do
+      {:ok, reversed} -> {:cont, {:ok, Enum.reverse(reversed)}}
+      {:error, error} -> {:halt, {:error, error}}
+    end
+  end
+
+  defp load_field_across(values, key, inner_type, inner_constraints, sub_load, context) do
+    slice =
+      Enum.map(values, fn
+        kw when is_list(kw) -> Keyword.get(kw, key)
+        _ -> nil
+      end)
+
+    case Ash.Type.load(inner_type, slice, sub_load, inner_constraints, context) do
+      {:ok, loaded_slice} ->
+        updated =
+          values
+          |> Enum.zip(loaded_slice)
+          |> Enum.map(fn
+            {kw, v} when is_list(kw) -> Keyword.put(kw, key, v)
+            {other, _v} -> other
+          end)
+
+        {:cont, {:ok, updated}}
+
+      {:error, error} ->
+        {:halt, {:error, error}}
+    end
+  end
+
+  defp effective_load(fields, load) do
+    explicit =
+      load
+      |> List.wrap()
+      |> Enum.flat_map(fn
+        {k, sub} when is_atom(k) -> [{k, sub}]
+        k when is_atom(k) -> [{k, []}]
+        _ -> []
+      end)
+      |> Map.new()
+
+    Enum.reduce(fields, explicit, fn {field_name, config}, acc ->
+      cond do
+        Map.has_key?(acc, field_name) ->
+          acc
+
+        loadable_inner?(config) ->
+          Map.put(acc, field_name, [])
+
+        true ->
+          acc
+      end
+    end)
+  end
+
+  defp loadable_inner?(config) do
+    type = config[:type]
+    constraints = config[:constraints] || []
+    type && Ash.Type.can_load?(type, constraints)
+  end
+
+  @impl true
   def init(constraints) do
     if is_list(constraints[:fields]) do
       constraints[:fields]

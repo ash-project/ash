@@ -496,7 +496,8 @@ defmodule Ash.Policy.Authorizer do
   @verifiers [
     Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers,
     Ash.Policy.Authorizer.Verifiers.VerifySatSolverImplementation,
-    Ash.Policy.Authorizer.Verifiers.VerifyResources
+    Ash.Policy.Authorizer.Verifiers.VerifyResources,
+    Ash.Policy.Authorizer.Verifiers.VerifyFieldPoliciesHaveReadAction
   ]
 
   use Spark.Dsl.Extension,
@@ -1216,8 +1217,8 @@ defmodule Ash.Policy.Authorizer do
         end
 
       {expr, authorizer} =
-        if field in Ash.Resource.Info.primary_key(resource) or
-             private_field_shown?(resource, field) do
+        if field in Ash.Resource.Info.primary_key(resource) do
+          # primary keys are always accessible
           {true, authorizer}
         else
           policies = Ash.Policy.Info.field_policies_for_field(resource, field)
@@ -1272,15 +1273,199 @@ defmodule Ash.Policy.Authorizer do
     end
   end
 
-  defp private_field_shown?(resource, field) do
-    case Ash.Resource.Info.field(resource, field) do
-      nil ->
-        false
+  @impl true
+  def apply_field_level_auth(_resource, [], _opts), do: {:ok, []}
 
-      field_info ->
-        not Map.get(field_info, :public?, true) and
-          Ash.Policy.Info.private_fields_policy(resource) == :show
+  def apply_field_level_auth(resource, records, opts) do
+    if Ash.Policy.Info.field_policies(resource) == [] do
+      {:ok, records}
+    else
+      actor = opts[:actor]
+      tenant = opts[:tenant]
+      domain = opts[:domain] || Ash.Resource.Info.domain(resource)
+      restrict_to = opts[:for_fields]
+
+      only_public? =
+        case Ash.Policy.Info.private_fields_policy(resource) do
+          :include -> false
+          :show -> true
+          :hide -> false
+        end
+
+      action = Ash.Resource.Info.primary_action(resource, :read)
+
+      # Synthetic query just for the strict_check_result calls below.
+      # It's never executed — we only need actor/tenant/domain context
+      # to compute the policy expressions.
+      query =
+        resource
+        |> Ash.Query.new()
+        |> Ash.Query.set_tenant(tenant)
+        |> Ash.Query.set_context(%{private: %{actor: actor}})
+
+      authorizer =
+        initial_state(actor, resource, action, domain)
+        |> Map.merge(%{
+          query: query,
+          changeset: nil,
+          action_input: nil,
+          subject: query,
+          context: %{},
+          domain: domain
+        })
+
+      pkey = Ash.Resource.Info.primary_key(resource)
+      records = List.wrap(records)
+
+      candidate_fields = fields_for_records(records, resource, only_public?)
+
+      candidate_fields =
+        if restrict_to do
+          Enum.filter(candidate_fields, &(&1 in restrict_to))
+        else
+          candidate_fields
+        end
+
+      # Resolve each policy group:
+      #   * `:authorized` → leave fields alone.
+      #   * `:error`      → scrub fields directly (unconditional deny).
+      #   * `:filter`     → build a `__ash_field_auth_check__` calc and
+      #                     defer to `Ash.load` to evaluate it (eagerly
+      #                     when `reuse_values?: true` resolves all refs,
+      #                     otherwise via the data layer). We use a name
+      #                     *other than* `__ash_fields_are_visible__`
+      #                     specifically because `restrict_field_access`
+      #                     strips that name unconditionally — we need
+      #                     to read the value ourselves and scrub.
+      candidate_fields
+      |> Enum.reject(&(&1 in pkey))
+      |> Enum.group_by(fn field ->
+        Ash.Policy.Info.field_policies_for_field(resource, field)
+      end)
+      |> Enum.reduce_while({records, [], authorizer}, fn {policies, fields},
+                                                         {records, calcs, authorizer} ->
+        case strict_check_result(
+               %{authorizer | policies: policies},
+               for_fields: fields,
+               context_description: "applying field-level auth"
+             ) do
+          {:authorized, authorizer} ->
+            {:cont, {records, calcs, authorizer}}
+
+          {:error, _exception} ->
+            {:cont, {Enum.map(records, &scrub_fields(&1, fields)), calcs, authorizer}}
+
+          {:filter, authorizer, expr} ->
+            parsed =
+              case expr do
+                %Ash.Filter{expression: e} -> e
+                other -> Ash.Filter.parse!(resource, other).expression
+              end
+
+            {:ok, calc} =
+              Ash.Query.Calculation.new(
+                {:__ash_field_auth_check__, fields},
+                Ash.Resource.Calculation.Expression,
+                [expr: parsed],
+                :boolean,
+                async?: false,
+                actor: actor,
+                tenant: tenant,
+                authorize?: false
+              )
+
+            {:cont, {records, [calc | calcs], authorizer}}
+
+          {:filter_and_continue, _, _} ->
+            {:halt, {:error, only_simple_or_filter_error()}}
+
+          {:continue, _} ->
+            {:halt, {:error, only_simple_or_filter_error()}}
+        end
+      end)
+      |> case do
+        {:error, error} ->
+          {:error, error}
+
+        {records, [], _authorizer} ->
+          {:ok, records}
+
+        {records, calcs, _authorizer} ->
+          # Evaluate the visibility calcs via `Ash.load` with
+          # `reuse_values?: true`. The calc engine tries eager eval
+          # against the records (no DB hit for simple/filter checks),
+          # and only drops to the data layer for refs it can't resolve
+          # — and when it does, it batches across the whole record
+          # set.
+          load_opts = [
+            actor: actor,
+            tenant: tenant,
+            domain: domain,
+            authorize?: false,
+            reuse_values?: true
+          ]
+
+          case Ash.load(records, calcs, load_opts) do
+            {:ok, loaded} ->
+              {:ok, Enum.map(List.wrap(loaded), &apply_field_auth_check_results/1)}
+
+            {:error, error} ->
+              {:error, error}
+          end
+      end
     end
+  end
+
+  defp only_simple_or_filter_error do
+    Ash.Error.Forbidden.exception(
+      errors: ["Field policies must currently use only filter checks or simple checks"]
+    )
+  end
+
+  defp fields_for_records(records, resource, only_public?) do
+    resource
+    |> Ash.Resource.Info.fields([:attributes, :calculations, :aggregates])
+    |> then(fn fields ->
+      if only_public?, do: Stream.filter(fields, & &1.public?), else: fields
+    end)
+    |> Stream.map(& &1.name)
+    |> Enum.filter(fn name -> Enum.any?(records, &Ash.Resource.selected?(&1, name)) end)
+  end
+
+  defp scrub_fields(record, fields) do
+    Enum.reduce(fields, record, fn field, record ->
+      type =
+        case Ash.Resource.Info.field(record.__struct__, field) do
+          %Ash.Resource.Aggregate{} -> :aggregate
+          %Ash.Resource.Attribute{} -> :attribute
+          %Ash.Resource.Calculation{} -> :calculation
+          _ -> :attribute
+        end
+
+      Map.put(record, field, %Ash.ForbiddenField{field: field, type: type})
+    end)
+  end
+
+  # After `Ash.load` populates the field-auth-check calcs on each
+  # record, walk them and scrub any field whose calc resolved falsy.
+  # Also strip the synthetic calc entries from the result so callers
+  # don't see them.
+  defp apply_field_auth_check_results(record) do
+    record.calculations
+    |> Enum.reduce(record, fn
+      {{:__ash_field_auth_check__, fields}, value}, rec ->
+        rec =
+          if value do
+            rec
+          else
+            scrub_fields(rec, fields)
+          end
+
+        Map.update!(rec, :calculations, &Map.delete(&1, {:__ash_field_auth_check__, fields}))
+
+      _, rec ->
+        rec
+    end)
   end
 
   @impl true
