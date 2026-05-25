@@ -74,11 +74,20 @@ defmodule Ash.Info.Manifest.Generator.ActionBuilder do
             true -> attribute.allow_nil?
           end
 
+        required? =
+          cond do
+            name in allow_nil_input -> false
+            name in require_attributes -> true
+            action.type == :create -> not attribute.allow_nil? and is_nil(attribute.default)
+            true -> false
+          end
+
         %Argument{
           name: attribute.name,
           type: TypeResolver.resolve(attribute.type, attribute.constraints || []),
           allow_nil?: allow_nil?,
           has_default?: not is_nil(attribute.default),
+          required?: required?,
           description: Map.get(attribute, :description),
           sensitive?: Map.get(attribute, :sensitive?, false)
         }
@@ -91,6 +100,7 @@ defmodule Ash.Info.Manifest.Generator.ActionBuilder do
       type: TypeResolver.resolve(arg.type, arg.constraints || []),
       allow_nil?: arg.allow_nil?,
       has_default?: not is_nil(arg.default),
+      required?: not arg.allow_nil? and is_nil(arg.default),
       description: Map.get(arg, :description),
       sensitive?: Map.get(arg, :sensitive?, false)
     }
