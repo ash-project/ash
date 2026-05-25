@@ -23,6 +23,10 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
           :primary_key_simple_equality?,
           Enum.all?(attributes, &Ash.Type.simple_equality?(&1.type))
         )
+        |> Transformer.persist(
+          :primary_key_simple_equality_comparable?,
+          Enum.all?(attributes, &Ash.Type.simple_equality_comparable?(&1.type))
+        )
 
       {:ok, dsl_state}
     end

@@ -517,6 +517,16 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
+      def simple_equality_comparable? do
+        Ash.Type.simple_equality_comparable?(unquote(subtype_of))
+      end
+
+      @impl Ash.Type
+      def to_simple_equality_comparable(value) do
+        Ash.Type.to_simple_equality_comparable(unquote(subtype_of), value)
+      end
+
+      @impl Ash.Type
       def storage_type(constraints) do
         constraints = subtype_constraints(constraints)
         unquote(subtype_of).storage_type(constraints)

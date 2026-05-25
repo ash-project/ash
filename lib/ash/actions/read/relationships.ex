@@ -1122,18 +1122,19 @@ defmodule Ash.Actions.Read.Relationships do
          related_records,
          {:lazy, _related_query}
        ) do
-    if Ash.Resource.Info.primary_key_simple_equality?(relationship.source) do
-      pkey = Ash.Resource.Info.primary_key(resource)
+    pkey = Ash.Resource.Info.primary_key(resource)
+    pkey_to_key = pkey_normalizer(resource, pkey)
 
+    if pkey_to_key do
       records_by_pkey =
         Enum.reduce(related_records, %{}, fn related, acc ->
           Enum.reduce(related.__metadata__.__lazy_join_sources__, acc, fn source, acc ->
-            Map.update(acc, source, [related], &[related | &1])
+            Map.update(acc, pkey_to_key.(source), [related], &[related | &1])
           end)
         end)
 
       Enum.map(records, fn record ->
-        record_pkey = Map.take(record, pkey)
+        record_pkey = pkey_to_key.(Map.take(record, pkey))
 
         related = Enum.reverse(Map.get(records_by_pkey, record_pkey, []))
 
@@ -1379,11 +1380,11 @@ defmodule Ash.Actions.Read.Relationships do
 
   defp do_attach_related_records(records, relationship, related_records, related_query) do
     attribute = Ash.Resource.Info.attribute(relationship.source, relationship.source_attribute)
-    simple_equality? = Ash.Type.simple_equality?(attribute.type)
+    to_key = key_fn_for_type(attribute.type)
 
     related =
-      if simple_equality? do
-        Enum.group_by(related_records, &Map.get(&1, relationship.destination_attribute))
+      if to_key do
+        Enum.group_by(related_records, &to_key.(Map.get(&1, relationship.destination_attribute)))
       else
         related_records
       end
@@ -1395,9 +1396,9 @@ defmodule Ash.Actions.Read.Relationships do
         []
       end
 
-    if simple_equality? do
+    if to_key do
       Enum.map(records, fn record ->
-        value = Map.get(record, relationship.source_attribute)
+        value = to_key.(Map.get(record, relationship.source_attribute))
 
         if relationship.cardinality == :many do
           Map.put(
@@ -1648,19 +1649,37 @@ defmodule Ash.Actions.Read.Relationships do
         Ash.Resource.Info.attribute(relationship.source, relationship.source_attribute)
       end
 
-    pkey_simple_equality? = Ash.Resource.Info.primary_key_simple_equality?(relationship.source)
-
-    source_attribute_simple_equality? =
-      is_nil(source_attribute) || Ash.Type.simple_equality?(source_attribute.type)
-
     primary_key = Ash.Resource.Info.primary_key(resource)
+    pkey_to_key = pkey_normalizer(resource, primary_key)
+    attr_to_key = source_attribute && key_fn_for_type(source_attribute.type)
 
-    if pkey_simple_equality? && source_attribute_simple_equality? do
+    # Fast path requires that we can build comparable Map keys for whichever
+    # shape `__lateral_join_source__` takes. The pkey side is always needed;
+    # the attribute side only when this relationship has a `source_attribute`.
+    if pkey_to_key && (is_nil(source_attribute) || attr_to_key) do
+      # `__lateral_join_source__` is set by the data layer at query time and
+      # holds *either* a pkey map (`%{id: ...}`) or a single attribute value,
+      # depending on how the lateral join was constructed. Dispatch on shape:
+      # plain map → pkey path; anything else (including structs like
+      # `%Ash.CiString{}`) → attribute path. This mirrors the existing
+      # slow-path dispatch below (`is_map(...)` check around the
+      # `primary_key_matches?` vs `Ash.Type.equal?` branch).
+      lateral_source_key = fn
+        m when is_map(m) and not is_struct(m) -> pkey_to_key.(m)
+        v -> attr_to_key.(v)
+      end
+
       values =
         if relationship.cardinality == :many do
-          Enum.group_by(related_records, & &1.__lateral_join_source__)
+          Enum.group_by(related_records, &lateral_source_key.(&1.__lateral_join_source__))
         else
-          Map.new(Enum.reverse(related_records), &{&1.__lateral_join_source__, &1})
+          # `Enum.reverse` + `Map.new` makes the *first* related record win on
+          # key collisions (Map.new keeps the last write); reversing flips that
+          # to first-wins, matching the prior behaviour of this code.
+          Map.new(
+            Enum.reverse(related_records),
+            &{lateral_source_key.(&1.__lateral_join_source__), &1}
+          )
         end
 
       default =
@@ -1671,9 +1690,15 @@ defmodule Ash.Actions.Read.Relationships do
         end
 
       if source_attribute do
+        # Two lookups because `__lateral_join_source__` could have been
+        # populated as either shape; try pkey first, then the attribute value.
         Enum.map(records, fn record ->
-          with :error <- Map.fetch(values, Map.take(record, primary_key)),
-               :error <- Map.fetch(values, Map.get(record, relationship.source_attribute)) do
+          with :error <- Map.fetch(values, pkey_to_key.(Map.take(record, primary_key))),
+               :error <-
+                 Map.fetch(
+                   values,
+                   attr_to_key.(Map.get(record, relationship.source_attribute))
+                 ) do
             attach_fun.(record, relationship.name, default)
           else
             {:ok, value} ->
@@ -1682,7 +1707,7 @@ defmodule Ash.Actions.Read.Relationships do
         end)
       else
         Enum.map(records, fn record ->
-          case Map.fetch(values, Map.take(record, primary_key)) do
+          case Map.fetch(values, pkey_to_key.(Map.take(record, primary_key))) do
             {:ok, value} ->
               attach_fun.(record, relationship.name, value)
 
@@ -2022,4 +2047,55 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp is_many_to_many_not_unique_on_join?(_, _, _), do: false
+
+  # Returns a function that converts a value of `type` into a term safe for use
+  # as a Map key (i.e. comparable with `==`). Callers use this to build O(n+m)
+  # hash-based joins instead of O(n*m) `Ash.Type.equal?/3` scans.
+  #
+  # Three outcomes:
+  #
+  #   * `simple_equality?` types (string, integer, uuid, ...): returns `& &1`.
+  #     Values already work as Map keys; no transformation needed.
+  #   * Types that define `c:Ash.Type.to_simple_equality_comparable/1` (e.g.
+  #     `:ci_string` returns the downcased binary): returns a closure that
+  #     applies the callback.
+  #   * Neither: returns `nil`. The caller's contract is that `nil` means
+  #     "no safe Map key exists, fall back to the scan-based slow path."
+  defp key_fn_for_type(type) do
+    cond do
+      Ash.Type.simple_equality?(type) ->
+        & &1
+
+      Ash.Type.simple_equality_comparable?(type) ->
+        & Ash.Type.to_simple_equality_comparable(type, &1)
+
+      true ->
+        nil
+    end
+  end
+
+  # The pkey analogue of `key_fn_for_type/1`. Returns a function that
+  # normalizes a `%{field => value}` pkey map (the shape produced by
+  # `Map.take(record, primary_key)`) into one usable as a Map key.
+  defp pkey_normalizer(resource, primary_key) do
+    if Ash.Resource.Info.primary_key_simple_equality?(resource) do
+      & &1
+    else
+      Enum.reduce_while(primary_key, [], fn name, acc ->
+        case key_fn_for_type(Ash.Resource.Info.attribute(resource, name).type) do
+          nil -> {:halt, nil}
+          f -> {:cont, [{name, f} | acc]}
+        end
+      end)
+      |> case do
+        nil ->
+          nil
+
+        pairs ->
+          fn pkey_map ->
+            Map.new(pairs, fn {name, f} -> {name, f.(Map.get(pkey_map, name))} end)
+          end
+      end
+    end
+  end
 end

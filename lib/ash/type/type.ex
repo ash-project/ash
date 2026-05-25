@@ -574,8 +574,29 @@ defmodule Ash.Type do
   For example, if a resource's primary key cannot be compared with `==`, we cannot do things like key
   a list of records by their primary key. Implementing `c:equal?/2` will cause various code paths to be considerably
   slower, so only do it when necessary.
+
+  If a type can be converted to a form that *can* be used with `==` to compare instances,
+  implement `c:to_simple_equality_comparable/1`.
   """
   @callback simple_equality?() :: boolean
+
+  @doc """
+  Convert a value of this type into a term that can be compared with `==`
+  against other comparable terms produced by this type.
+
+  Types that cannot be compared using `==` incur significant runtime costs when used in certain ways.
+  For example, if a resource's primary key cannot be compared with `==`, we cannot do things like key
+  a list of records by their primary key.
+
+  Only meaningful for types where `c:simple_equality?/0` returns `false`.
+  """
+  @callback to_simple_equality_comparable(term) :: term
+
+  @doc """
+  Whether or not this type defines a custom `c:to_simple_equality_comparable/1`.
+  This is defined automatically.
+  """
+  @callback simple_equality_comparable?() :: boolean
 
   @doc "Whether or not the type is an embedded resource. This is defined by embedded resources, you should not define this."
   @callback embedded?() :: boolean
@@ -675,7 +696,8 @@ defmodule Ash.Type do
     rewrite: 3,
     operator_overloads: 0,
     evaluate_operator: 1,
-    operator_expression: 1
+    operator_expression: 1,
+    to_simple_equality_comparable: 1
   ]
 
   @builtin_types Registry.builtin_types()
@@ -1752,6 +1774,55 @@ defmodule Ash.Type do
     type.simple_equality?()
   end
 
+  @doc """
+  Whether or not the type can be converted to a term that supports `==`
+  comparison (and Map key use) via `to_simple_equality_comparable/3`.
+
+  Returns true when `simple_equality?/1` is true, or when the type defines
+  `c:to_simple_equality_comparable/1`.
+  """
+  @spec simple_equality_comparable?(t()) :: boolean
+  def simple_equality_comparable?({:array, type}), do: simple_equality_comparable?(type)
+
+  def simple_equality_comparable?(type) do
+    type = get_type(type)
+    type.simple_equality?() || type.simple_equality_comparable?()
+  end
+
+  @doc """
+  Convert a value into a term suitable for `==` comparison and Map key use
+  against other instances of the same type.
+
+  For types where `simple_equality?/1` is true, returns the value unchanged.
+  For `{:array, type}`, each element is converted.
+
+  Callers must check `simple_equality_comparable?/1` first; calling this on
+  a type that has no comparable form raises `ArgumentError`.
+  """
+  @spec to_simple_equality_comparable(t(), term) :: term
+  def to_simple_equality_comparable(_type, nil), do: nil
+
+  def to_simple_equality_comparable({:array, type}, values) when is_list(values) do
+    Enum.map(values, &to_simple_equality_comparable(type, &1))
+  end
+
+  def to_simple_equality_comparable(type, value) do
+    resolved = get_type(type)
+
+    cond do
+      resolved.simple_equality?() ->
+        value
+
+      resolved.simple_equality_comparable?() ->
+        resolved.to_simple_equality_comparable(value)
+
+      true ->
+        raise ArgumentError,
+              "#{inspect(type)} has no simple-equality-comparable form; " <>
+                "check Ash.Type.simple_equality_comparable?/1 first"
+    end
+  end
+
   defmacro __using__(opts) do
     quote location: :keep, generated: true do
       @behaviour Ash.Type
@@ -2438,6 +2509,14 @@ defmodule Ash.Type do
 
         @impl true
         def equal?(left, right), do: left == right
+      end
+
+      if Module.defines?(__MODULE__, {:to_simple_equality_comparable, 1}, :def) do
+        @impl true
+        def simple_equality_comparable?, do: true
+      else
+        @impl true
+        def simple_equality_comparable?, do: false
       end
 
       if Module.defines?(__MODULE__, {:handle_change_array, 3}, :def) do

@@ -340,7 +340,17 @@ defmodule Ash.Resource.Info do
   @doc "Whether or not all primary key attributes can be compared with simple_equality"
   @spec primary_key_simple_equality?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean()
   def primary_key_simple_equality?(resource) do
-    Spark.Dsl.Extension.get_persisted(resource, :primary_key_simple_equality?, [])
+    Spark.Dsl.Extension.get_persisted(resource, :primary_key_simple_equality?, false)
+  end
+
+  @doc """
+  Whether or not all primary key attributes can be reduced to a simple-equality
+  comparable term — either because their type is `simple_equality?/1`, or
+  because their type implements `c:Ash.Type.to_simple_equality_comparable/1`.
+  """
+  @spec primary_key_simple_equality_comparable?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean()
+  def primary_key_simple_equality_comparable?(resource) do
+    Spark.Dsl.Extension.get_persisted(resource, :primary_key_simple_equality_comparable?, false)
   end
 
   @doc "Returns all relationships of a resource"
