@@ -1661,7 +1661,9 @@ defmodule Ash.Actions.Read.Relationships do
       # holds *either* a pkey map (`%{id: ...}`) or a single attribute value,
       # depending on how the lateral join was constructed. Dispatch on shape:
       # plain map → pkey path; anything else (including structs like
-      # `%Ash.CiString{}`) → attribute path.
+      # `%Ash.CiString{}`) → attribute path. This mirrors the existing
+      # slow-path dispatch below (`is_map(...)` check around the
+      # `primary_key_matches?` vs `Ash.Type.equal?` branch).
       lateral_source_key = fn
         m when is_map(m) and not is_struct(m) -> pkey_to_key.(m)
         v -> attr_to_key.(v)
@@ -2065,10 +2067,7 @@ defmodule Ash.Actions.Read.Relationships do
         & &1
 
       Ash.Type.simple_equality_comparable?(type) ->
-        fn value ->
-          {:ok, key} = Ash.Type.to_simple_equality_comparable(type, value)
-          key
-        end
+        & Ash.Type.to_simple_equality_comparable(type, &1)
 
       true ->
         nil

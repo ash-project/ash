@@ -267,6 +267,6 @@ defmodule Ash.Type.CiString do
 
   @impl true
   def to_simple_equality_comparable(value) do
-    {:ok, Ash.CiString.to_comparable_string(value)}
+    Ash.CiString.to_comparable_string(value)
   end
 end

@@ -589,18 +589,12 @@ defmodule Ash.Type do
   a list of records by their primary key.
 
   Only meaningful for types where `c:simple_equality?/0` returns `false`.
-  Return `:error` if no equivalent comparable form exists.
   """
-  @callback to_simple_equality_comparable(term) :: {:ok, term} | :error
+  @callback to_simple_equality_comparable(term) :: term
 
   @doc """
   Whether or not this type defines a custom `c:to_simple_equality_comparable/1`.
   This is defined automatically.
-
-  **Contract:** if this returns `true`, `c:to_simple_equality_comparable/1`
-  must return `{:ok, _}` for every valid instance of the type. Returning
-  `:error` while reporting `true` here will crash callers that use the
-  hash-based lookup optimisation.
   """
   @callback simple_equality_comparable?() :: boolean
 
@@ -702,7 +696,8 @@ defmodule Ash.Type do
     rewrite: 3,
     operator_overloads: 0,
     evaluate_operator: 1,
-    operator_expression: 1
+    operator_expression: 1,
+    to_simple_equality_comparable: 1
   ]
 
   @builtin_types Registry.builtin_types()
@@ -1798,37 +1793,33 @@ defmodule Ash.Type do
   Convert a value into a term suitable for `==` comparison and Map key use
   against other instances of the same type.
 
-  Returns `{:ok, term}` or `:error` if the type cannot produce a comparable
-  form. For types where `simple_equality?/1` is true, returns the value
-  unchanged.
+  For types where `simple_equality?/1` is true, returns the value unchanged.
+  For `{:array, type}`, each element is converted.
 
-  For `{:array, type}`, each element is converted; if any element fails,
-  returns `:error`.
+  Callers must check `simple_equality_comparable?/1` first; calling this on
+  a type that has no comparable form raises `ArgumentError`.
   """
-  @spec to_simple_equality_comparable(t(), term) :: {:ok, term} | :error
-  def to_simple_equality_comparable(_type, nil), do: {:ok, nil}
+  @spec to_simple_equality_comparable(t(), term) :: term
+  def to_simple_equality_comparable(_type, nil), do: nil
 
   def to_simple_equality_comparable({:array, type}, values) when is_list(values) do
-    values
-    |> Enum.reduce_while({:ok, []}, fn value, {:ok, acc} ->
-      case to_simple_equality_comparable(type, value) do
-        {:ok, v} -> {:cont, {:ok, [v | acc]}}
-        :error -> {:halt, :error}
-      end
-    end)
-    |> case do
-      {:ok, list} -> {:ok, Enum.reverse(list)}
-      :error -> :error
-    end
+    Enum.map(values, &to_simple_equality_comparable(type, &1))
   end
 
   def to_simple_equality_comparable(type, value) do
     resolved = get_type(type)
 
-    if resolved.simple_equality?() do
-      {:ok, value}
-    else
-      resolved.to_simple_equality_comparable(value)
+    cond do
+      resolved.simple_equality?() ->
+        value
+
+      resolved.simple_equality_comparable?() ->
+        resolved.to_simple_equality_comparable(value)
+
+      true ->
+        raise ArgumentError,
+              "#{inspect(type)} has no simple-equality-comparable form; " <>
+                "check Ash.Type.simple_equality_comparable?/1 first"
     end
   end
 
@@ -2526,9 +2517,6 @@ defmodule Ash.Type do
       else
         @impl true
         def simple_equality_comparable?, do: false
-
-        @impl true
-        def to_simple_equality_comparable(_value), do: :error
       end
 
       if Module.defines?(__MODULE__, {:handle_change_array, 3}, :def) do

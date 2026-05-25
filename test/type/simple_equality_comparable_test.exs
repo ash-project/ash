@@ -152,19 +152,19 @@ defmodule Ash.Test.Type.SimpleEqualityComparableTest do
 
   describe "Ash.Type.to_simple_equality_comparable/2" do
     test "returns the value unchanged for simple-equality types" do
-      assert {:ok, "foo"} = Ash.Type.to_simple_equality_comparable(:string, "foo")
-      assert {:ok, 42} = Ash.Type.to_simple_equality_comparable(:integer, 42)
+      assert "foo" == Ash.Type.to_simple_equality_comparable(:string, "foo")
+      assert 42 == Ash.Type.to_simple_equality_comparable(:integer, 42)
     end
 
     test "downcases CiString values regardless of input shape" do
-      assert {:ok, "foo"} = Ash.Type.to_simple_equality_comparable(:ci_string, "FoO")
+      assert "foo" == Ash.Type.to_simple_equality_comparable(:ci_string, "FoO")
 
-      assert {:ok, "foo"} =
+      assert "foo" ==
                Ash.Type.to_simple_equality_comparable(:ci_string, %Ash.CiString{
                  string: "FoO"
                })
 
-      assert {:ok, "foo"} =
+      assert "foo" ==
                Ash.Type.to_simple_equality_comparable(:ci_string, %Ash.CiString{
                  string: "foo",
                  case: :lower,
@@ -173,34 +173,37 @@ defmodule Ash.Test.Type.SimpleEqualityComparableTest do
     end
 
     test "produces equal terms for differently-cased CiStrings" do
-      {:ok, a} = Ash.Type.to_simple_equality_comparable(:ci_string, "FRED")
-      {:ok, b} = Ash.Type.to_simple_equality_comparable(:ci_string, "fReD")
-      {:ok, c} = Ash.Type.to_simple_equality_comparable(:ci_string, %Ash.CiString{string: "fred"})
+      a = Ash.Type.to_simple_equality_comparable(:ci_string, "FRED")
+      b = Ash.Type.to_simple_equality_comparable(:ci_string, "fReD")
+      c = Ash.Type.to_simple_equality_comparable(:ci_string, %Ash.CiString{string: "fred"})
 
       assert a == b
       assert b == c
     end
 
     test "passes nil through" do
-      assert {:ok, nil} = Ash.Type.to_simple_equality_comparable(:ci_string, nil)
+      assert nil == Ash.Type.to_simple_equality_comparable(:ci_string, nil)
     end
 
     test "normalizes each element of an array" do
-      assert {:ok, ["foo", "bar"]} =
+      assert ["foo", "bar"] ==
                Ash.Type.to_simple_equality_comparable({:array, :ci_string}, ["FoO", "BAR"])
     end
 
-    test "returns :error for types without a comparable form" do
-      assert :error = Ash.Type.to_simple_equality_comparable(:decimal, Decimal.new("1.0"))
+    test "raises for types without a comparable form" do
+      assert_raise ArgumentError, ~r/has no simple-equality-comparable form/, fn ->
+        Ash.Type.to_simple_equality_comparable(:decimal, Decimal.new("1.0"))
+      end
     end
 
     test "NewType delegates to its subtype" do
-      assert {:ok, "foo"} = Ash.Type.to_simple_equality_comparable(CiStringNewType, "FoO")
+      assert "foo" == Ash.Type.to_simple_equality_comparable(CiStringNewType, "FoO")
     end
 
-    test "NewType wrapping a non-comparable subtype returns :error" do
-      assert :error =
-               Ash.Type.to_simple_equality_comparable(DecimalNewType, Decimal.new("1.0"))
+    test "NewType wrapping a non-comparable subtype raises" do
+      assert_raise ArgumentError, ~r/has no simple-equality-comparable form/, fn ->
+        Ash.Type.to_simple_equality_comparable(DecimalNewType, Decimal.new("1.0"))
+      end
     end
   end
 
