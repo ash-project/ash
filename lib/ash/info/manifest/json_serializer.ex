@@ -261,6 +261,7 @@ defmodule Ash.Info.Manifest.JsonSerializer do
       "type" => serialize_type(arg.type),
       "allow_nil" => arg.allow_nil?,
       "has_default" => arg.has_default?,
+      "required" => arg.required?,
       "sensitive" => arg.sensitive?
     }
     |> put_if_present("description", arg.description)

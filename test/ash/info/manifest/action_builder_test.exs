@@ -126,4 +126,78 @@ defmodule Ash.Test.Info.Manifest.Generator.ActionBuilderTest do
       assert result.get? == true
     end
   end
+
+  describe "input required? semantics" do
+    test "create action: non-null attribute without default is required" do
+      action = get_action(Ash.Test.Manifest.Article, :create)
+      result = ActionBuilder.build(Ash.Test.Manifest.Article, action)
+
+      hero_image_url = Enum.find(result.inputs, &(&1.name == :hero_image_url))
+      assert hero_image_url.required? == true
+      assert hero_image_url.allow_nil? == false
+    end
+
+    test "create action: allow_nil_input makes attribute optional and nullable" do
+      action = get_action(Ash.Test.Manifest.Article, :create_with_optional_hero_image)
+      result = ActionBuilder.build(Ash.Test.Manifest.Article, action)
+
+      hero_image_url = Enum.find(result.inputs, &(&1.name == :hero_image_url))
+      assert hero_image_url.required? == false
+      assert hero_image_url.allow_nil? == true
+
+      hero_image_alt = Enum.find(result.inputs, &(&1.name == :hero_image_alt))
+      assert hero_image_alt.required? == true
+      assert hero_image_alt.allow_nil? == false
+    end
+
+    test "update action: accepted attribute not in require_attributes is optional" do
+      action = get_action(Ash.Test.Manifest.Article, :update)
+      result = ActionBuilder.build(Ash.Test.Manifest.Article, action)
+
+      for name <- [:hero_image_url, :hero_image_alt, :summary, :body] do
+        input = Enum.find(result.inputs, &(&1.name == name))
+        assert input.required? == false, "expected #{name} to be optional on update"
+        assert input.allow_nil? == false, "expected #{name} to keep allow_nil?: false"
+      end
+    end
+
+    test "update action: require_attributes marks attribute as required" do
+      action = get_action(Ash.Test.Manifest.Article, :update_with_required_hero_image_alt)
+      result = ActionBuilder.build(Ash.Test.Manifest.Article, action)
+
+      hero_image_alt = Enum.find(result.inputs, &(&1.name == :hero_image_alt))
+      assert hero_image_alt.required? == true
+      assert hero_image_alt.allow_nil? == false
+
+      # Other accepted attributes remain optional even though their value, if
+      # supplied, must be non-null.
+      for name <- [:hero_image_url, :summary, :body] do
+        input = Enum.find(result.inputs, &(&1.name == name))
+        assert input.required? == false, "expected #{name} to be optional on update"
+        assert input.allow_nil? == false, "expected #{name} to keep allow_nil?: false"
+      end
+    end
+
+    test "action argument: allow_nil? false with no default is required" do
+      action = get_action(Ash.Test.Manifest.Todo, :create)
+      result = ActionBuilder.build(Ash.Test.Manifest.Todo, action)
+
+      user_id_arg = Enum.find(result.inputs, &(&1.name == :user_id))
+
+      if user_id_arg do
+        assert user_id_arg.required? == true
+      end
+    end
+
+    test "action argument: with default is optional" do
+      action = get_action(Ash.Test.Manifest.Todo, :create)
+      result = ActionBuilder.build(Ash.Test.Manifest.Todo, action)
+
+      auto_complete = Enum.find(result.inputs, &(&1.name == :auto_complete))
+
+      if auto_complete && auto_complete.has_default? do
+        assert auto_complete.required? == false
+      end
+    end
+  end
 end
