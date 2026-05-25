@@ -2067,7 +2067,7 @@ defmodule Ash.Actions.Read.Relationships do
         & &1
 
       Ash.Type.simple_equality_comparable?(type) ->
-        & Ash.Type.to_simple_equality_comparable(type, &1)
+        &Ash.Type.to_simple_equality_comparable(type, &1)
 
       true ->
         nil
