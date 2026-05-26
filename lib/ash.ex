@@ -2490,9 +2490,7 @@ defmodule Ash do
   def load({:error, error}, _, _), do: {:error, error}
 
   def load({:ok, values}, query, opts) do
-    Ash.Helpers.expect_options!(opts)
-    resource = Ash.Helpers.resource_from_data!(values, query, opts)
-    load(values, query, Keyword.put(opts, :resource, resource))
+    load(values, query, opts)
   end
 
   def load(%Ash.Query{}, _query, _opts) do
