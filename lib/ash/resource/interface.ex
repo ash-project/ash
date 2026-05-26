@@ -21,6 +21,7 @@ defmodule Ash.Resource.Interface do
     custom_inputs: [],
     exclude_inputs: [],
     default_options: [],
+    functions: [:subject, :can, :can?, :action, :action!],
     require_reference?: true,
     __spark_metadata__: nil
   ]
@@ -366,6 +367,19 @@ defmodule Ash.Resource.Interface do
       type: :atom,
       doc:
         "Generate this interface function on a separate module instead of the host (domain or resource). The given module name is concatenated to the host (e.g. `namespace: Tickets` on `Helpdesk.Support` generates the functions on `Helpdesk.Support.Tickets`). Overrides any namespace set on the enclosing `code_interface`/`resource` block."
+    ],
+    functions: [
+      type: {:list, {:in, [:subject, :can, :can?, :action, :action!]}},
+      default: [:subject, :can, :can?, :action, :action!],
+      doc: """
+      Controls which functions are generated for this interface. Defaults to all of `[:subject, :can, :can?, :action, :action!]`.
+
+      - `:action` - the main function (e.g. `create_user`)
+      - `:action!` - the raising variant (e.g. `create_user!`)
+      - `:can` - the authorization check (e.g. `can_create_user`)
+      - `:can?` - the boolean/raising authorization check (e.g. `can_create_user?`)
+      - `:subject` - the subject builder (e.g. `changeset_to_create_user`, `query_to_read_user`, `input_to_run_X`)
+      """
     ]
   ]
 

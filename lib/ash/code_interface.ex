@@ -1074,60 +1074,64 @@ defmodule Ash.CodeInterface do
             end
           end
 
-        @dialyzer {:nowarn_function, {interface.name, length(common_args) + 2}}
-        @doc Ash.CodeInterface.docs(
-               resource,
-               action,
-               interface.args,
-               interface.exclude_inputs,
-               interface.custom_inputs,
-               interface_options
-             )
-        @doc spark_opts: [
-               {first_opts_location, interface_options.schema()},
-               {first_opts_location + 1, interface_options.schema()}
-             ]
+        if :action in interface.functions do
+          @dialyzer {:nowarn_function, {interface.name, length(common_args) + 2}}
+          @doc Ash.CodeInterface.docs(
+                 resource,
+                 action,
+                 interface.args,
+                 interface.exclude_inputs,
+                 interface.custom_inputs,
+                 interface_options
+               )
+          @doc spark_opts: [
+                 {first_opts_location, interface_options.schema()},
+                 {first_opts_location + 1, interface_options.schema()}
+               ]
 
-        def unquote(interface.name)(
-              unquote_splicing(common_args),
-              params \\ nil,
-              opts \\ nil
-            ) do
-          {params_or_opts, opts} = unquote(params_handling_bulk_empty_params)
+          def unquote(interface.name)(
+                unquote_splicing(common_args),
+                params \\ nil,
+                opts \\ nil
+              ) do
+            {params_or_opts, opts} = unquote(params_handling_bulk_empty_params)
 
-          unquote(resolve_params_and_opts)
-          unquote(resolve_subject)
-          unquote(act)
+            unquote(resolve_params_and_opts)
+            unquote(resolve_subject)
+            unquote(act)
+          end
         end
 
         # sobelow_skip ["DOS.BinToAtom"]
-        @dialyzer {:nowarn_function, {:"#{interface.name}!", length(common_args) + 2}}
-        @doc Ash.CodeInterface.docs(
-               resource,
-               action,
-               interface.args,
-               interface.exclude_inputs,
-               interface.custom_inputs,
-               interface_options,
-               true
-             )
-        @doc spark_opts: [
-               {first_opts_location, interface_options.schema()},
-               {first_opts_location + 1, interface_options.schema()}
-             ]
-        def unquote(:"#{interface.name}!")(
-              unquote_splicing(common_args),
-              params \\ nil,
-              opts \\ nil
-            ) do
-          {params_or_opts, opts} = unquote(params_handling_bulk_empty_params)
-          unquote(resolve_params_and_opts)
-          unquote(resolve_subject)
-          unquote(act!)
+        if :action! in interface.functions do
+          @dialyzer {:nowarn_function, {:"#{interface.name}!", length(common_args) + 2}}
+          @doc Ash.CodeInterface.docs(
+                 resource,
+                 action,
+                 interface.args,
+                 interface.exclude_inputs,
+                 interface.custom_inputs,
+                 interface_options,
+                 true
+               )
+          @doc spark_opts: [
+                 {first_opts_location, interface_options.schema()},
+                 {first_opts_location + 1, interface_options.schema()}
+               ]
+          def unquote(:"#{interface.name}!")(
+                unquote_splicing(common_args),
+                params \\ nil,
+                opts \\ nil
+              ) do
+            {params_or_opts, opts} = unquote(params_handling_bulk_empty_params)
+            unquote(resolve_params_and_opts)
+            unquote(resolve_subject)
+            unquote(act!)
+          end
         end
 
         # sobelow_skip ["DOS.BinToAtom"]
-        if subject_name in [:changeset, :query, :input] do
+        if subject_name in [:changeset, :query, :input] && :subject in interface.functions do
           subject_opts =
             Keyword.take(interface_options.schema(), [
               :actor,
@@ -1164,81 +1168,85 @@ defmodule Ash.CodeInterface do
         end
 
         # sobelow_skip ["DOS.BinToAtom"]
-        @doc Ash.CodeInterface.docs_can(resource, action)
-        @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 3}}
-        @doc spark_opts: [
-               {first_opts_location + 1, Ash.Resource.Interface.CanOpts.schema()},
-               {first_opts_location + 2, Ash.Resource.Interface.CanOpts.schema()}
-             ]
-        def unquote(:"can_#{interface.name}")(
-              actor,
-              unquote_splicing(common_args),
-              params_or_opts \\ %{},
-              opts \\ []
-            ) do
-          {params, opts, custom_input_errors} =
-            Ash.CodeInterface.can_opts(
-              params_or_opts,
+        if :can in interface.functions do
+          @doc Ash.CodeInterface.docs_can(resource, action)
+          @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 3}}
+          @doc spark_opts: [
+                 {first_opts_location + 1, Ash.Resource.Interface.CanOpts.schema()},
+                 {first_opts_location + 2, Ash.Resource.Interface.CanOpts.schema()}
+               ]
+          def unquote(:"can_#{interface.name}")(
+                actor,
+                unquote_splicing(common_args),
+                params_or_opts \\ %{},
+                opts \\ []
+              ) do
+            {params, opts, custom_input_errors} =
+              Ash.CodeInterface.can_opts(
+                params_or_opts,
+                opts,
+                unquote(arg_params),
+                unquote(resource),
+                unquote(interface.name),
+                unquote(interface.exclude_inputs),
+                unquote(Enum.count(interface.args || []) + 2),
+                unquote(custom_inputs),
+                unquote(interface_options),
+                actor
+              )
+
+            unquote(resolve_subject)
+
+            Ash.CodeInterface.can(
+              params,
               opts,
-              unquote(arg_params),
-              unquote(resource),
-              unquote(interface.name),
-              unquote(interface.exclude_inputs),
-              unquote(Enum.count(interface.args || []) + 2),
-              unquote(custom_inputs),
-              unquote(interface_options),
-              actor
+              actor,
+              unquote(subject),
+              unquote(action.name),
+              unquote(interface.name)
             )
-
-          unquote(resolve_subject)
-
-          Ash.CodeInterface.can(
-            params,
-            opts,
-            actor,
-            unquote(subject),
-            unquote(action.name),
-            unquote(interface.name)
-          )
+          end
         end
 
         # sobelow_skip ["DOS.BinToAtom"]
-        @dialyzer {:nowarn_function, {:"can_#{interface.name}?", length(common_args) + 3}}
-        @doc spark_opts: [
-               {first_opts_location + 1, Ash.Resource.Interface.CanQuestionMarkOpts.schema()},
-               {first_opts_location + 2, Ash.Resource.Interface.CanQuestionMarkOpts.schema()}
-             ]
-        @doc Ash.CodeInterface.docs_can?(resource, action)
-        def unquote(:"can_#{interface.name}?")(
-              actor,
-              unquote_splicing(common_args),
-              params_or_opts \\ %{},
-              opts \\ []
-            ) do
-          {params, opts, custom_input_errors} =
-            Ash.CodeInterface.can_opts(
-              params_or_opts,
+        if :can? in interface.functions do
+          @dialyzer {:nowarn_function, {:"can_#{interface.name}?", length(common_args) + 3}}
+          @doc spark_opts: [
+                 {first_opts_location + 1, Ash.Resource.Interface.CanQuestionMarkOpts.schema()},
+                 {first_opts_location + 2, Ash.Resource.Interface.CanQuestionMarkOpts.schema()}
+               ]
+          @doc Ash.CodeInterface.docs_can?(resource, action)
+          def unquote(:"can_#{interface.name}?")(
+                actor,
+                unquote_splicing(common_args),
+                params_or_opts \\ %{},
+                opts \\ []
+              ) do
+            {params, opts, custom_input_errors} =
+              Ash.CodeInterface.can_opts(
+                params_or_opts,
+                opts,
+                unquote(arg_params),
+                unquote(resource),
+                unquote(interface.name),
+                unquote(interface.exclude_inputs),
+                unquote(Enum.count(interface.args || []) + 2),
+                unquote(custom_inputs),
+                unquote(interface_options),
+                actor
+              )
+
+            unquote(resolve_subject)
+
+            Ash.CodeInterface.can?(
+              params,
               opts,
-              unquote(arg_params),
-              unquote(resource),
-              unquote(interface.name),
-              unquote(interface.exclude_inputs),
-              unquote(Enum.count(interface.args || []) + 2),
-              unquote(custom_inputs),
-              unquote(interface_options),
-              actor
+              actor,
+              unquote(subject),
+              unquote(action.name),
+              unquote(interface.name)
             )
-
-          unquote(resolve_subject)
-
-          Ash.CodeInterface.can?(
-            params,
-            opts,
-            actor,
-            unquote(subject),
-            unquote(action.name),
-            unquote(interface.name)
-          )
+          end
         end
       end
     end
