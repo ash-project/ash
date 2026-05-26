@@ -8,6 +8,29 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.27.0](https://github.com/ash-project/ash/compare/v3.26.0...v3.27.0) (2026-05-26)
+
+
+
+
+### Features:
+
+* apply field policies on composite types by [@zachdaniel](https://github.com/zachdaniel)
+
+* Add new type callback for `to_simple_equality_comparable` (#2719) by sevenseacat [(#2719)](https://github.com/ash-project/ash/pull/2719)
+
+### Bug Fixes:
+
+* don't coerce or match datetimes to microseconds incorrectly by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle arrays in `select_selected` by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* add `functions` option to code interfaces by [@zachdaniel](https://github.com/zachdaniel)
+
+* expose required? on manifest Argument inputs (#2720) by [@Torkan](https://github.com/Torkan) [(#2720)](https://github.com/ash-project/ash/pull/2720)
+
 ## [v3.26.0](https://github.com/ash-project/ash/compare/v3.25.2...v3.26.0) (2026-05-22)
 
 
