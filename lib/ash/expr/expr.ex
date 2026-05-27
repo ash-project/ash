@@ -1174,8 +1174,6 @@ defmodule Ash.Expr do
 
     overloads = Ash.Query.Operator.operator_overloads(name) || %{}
 
-    overload_index_cap = Enum.count(overloads) - 1
-
     if types == :var_args || returns == :no_return || returns == :unknown do
       []
     else
@@ -1244,7 +1242,10 @@ defmodule Ash.Expr do
       match_types == :same ||
         length(match_types) == length(values)
     end)
-    |> Enum.map(fn {match_types, cast_as_types, returns} ->
+    |> Enum.with_index()
+    |> Enum.map(fn {{match_types, cast_as_types, returns}, signature_index} ->
+      is_overload? = signature_index < Enum.count(overloads)
+
       basis =
         cond do
           !returns ->
@@ -1371,7 +1372,7 @@ defmodule Ash.Expr do
                  )}
             end
 
-          {{{type, constraints}, value}, index}, acc ->
+          {{{type, constraints}, value}, _index}, acc ->
             determined_type = determine_type(value)
 
             cond do
@@ -1391,7 +1392,7 @@ defmodule Ash.Expr do
                 {:cont, Map.update!(acc, :types, &[elem(determined_type, 1) | &1])}
 
               Ash.Expr.expr?(value) ->
-                if index < overload_index_cap do
+                if is_overload? do
                   {:cont,
                    acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
                 else
@@ -1399,10 +1400,17 @@ defmodule Ash.Expr do
                 end
 
               true ->
-                {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+                if is_overload? do
+                  {:cont,
+                   acc
+                   |> Map.update!(:types, &[{type, constraints} | &1])
+                   |> Map.put(:last_resort?, true)}
+                else
+                  {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+                end
             end
 
-          {{type, value}, index}, acc ->
+          {{type, value}, _index}, acc ->
             determined_type = determine_type(value)
 
             cond do
@@ -1422,7 +1430,7 @@ defmodule Ash.Expr do
                 {:cont, Map.update!(acc, :types, &[elem(determined_type, 1) | &1])}
 
               Ash.Expr.expr?(value) ->
-                if index < overload_index_cap do
+                if is_overload? do
                   {:cont,
                    acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
                 else
@@ -1430,7 +1438,12 @@ defmodule Ash.Expr do
                 end
 
               true ->
-                {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+                if is_overload? do
+                  {:cont,
+                   acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
+                else
+                  {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+                end
             end
         end
       )
