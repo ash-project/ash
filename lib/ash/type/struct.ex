@@ -38,6 +38,14 @@ defmodule Ash.Type.Struct do
             constraints: [
               type: :keyword_list,
               default: []
+            ],
+            init?: [
+              type: :boolean,
+              default: true,
+              doc: """
+              If false, the field's type constraints are not initialised at compile time. \
+              Allows for recursive struct fields.
+              """
             ]
           ]
         ]

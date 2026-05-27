@@ -25,6 +25,14 @@ defmodule Ash.Type.Tuple do
             constraints: [
               type: :keyword_list,
               default: []
+            ],
+            init?: [
+              type: :boolean,
+              default: true,
+              doc: """
+              If false, the field's type constraints are not initialised at compile time. \
+              Allows for recursive tuple fields.
+              """
             ]
           ]
         ]
@@ -84,13 +92,17 @@ defmodule Ash.Type.Tuple do
       type = Ash.Type.get_type(config[:type])
       constraints = config[:constraints] || []
 
-      case Ash.Type.init(type, constraints) do
-        {:ok, constraints} ->
-          {:cont,
-           {:ok, [{name, Keyword.merge(config, constraints: constraints, type: type)} | fields]}}
+      if Keyword.get(config, :init?, true) do
+        case Ash.Type.init(type, constraints) do
+          {:ok, constraints} ->
+            {:cont,
+             {:ok, [{name, Keyword.merge(config, constraints: constraints, type: type)} | fields]}}
 
-        {:error, error} ->
-          {:halt, {:error, error}}
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      else
+        {:cont, {:ok, [{name, config} | fields]}}
       end
     end)
     |> case do
