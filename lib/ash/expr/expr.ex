@@ -1379,7 +1379,14 @@ defmodule Ash.Expr do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) ->
                 case Ash.Type.coerce(type, value, constraints) do
                   {:ok, _} ->
-                    {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+                    if is_overload? do
+                      {:cont,
+                       acc
+                       |> Map.update!(:types, &[{type, constraints} | &1])
+                       |> Map.put(:last_resort?, true)}
+                    else
+                      {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+                    end
 
                   _ ->
                     {:halt, :error}
@@ -1417,7 +1424,14 @@ defmodule Ash.Expr do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, []) ->
                 case Ash.Type.coerce(type, value, []) do
                   {:ok, _} ->
-                    {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+                    if is_overload? do
+                      {:cont,
+                       acc
+                       |> Map.update!(:types, &[{type, []} | &1])
+                       |> Map.put(:last_resort?, true)}
+                    else
+                      {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+                    end
 
                   _ ->
                     {:halt, :error}
