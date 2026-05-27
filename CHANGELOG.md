@@ -8,6 +8,21 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.27.1](https://github.com/ash-project/ash/compare/v3.27.0...v3.27.1) (2026-05-27)
+
+
+
+
+### Bug Fixes:
+
+* add missing overload detection branch by [@zachdaniel](https://github.com/zachdaniel)
+
+* loosen usec change, allow coercing but not matching by [@zachdaniel](https://github.com/zachdaniel)
+
+* retain subtype constraints when coercing new types by [@zachdaniel](https://github.com/zachdaniel)
+
+* use correct detection for overloads as "last resort typecasts" by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.27.0](https://github.com/ash-project/ash/compare/v3.26.0...v3.27.0) (2026-05-26)
 
 
