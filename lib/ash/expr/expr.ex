@@ -1758,6 +1758,7 @@ defmodule Ash.Expr do
 
   defp defines_operator_expression?(type) when is_atom(type) do
     mod = Ash.Type.get_type(type)
+
     is_atom(mod) and mod != nil and
       (function_exported?(mod, :operator_expression, 1) or
          (Code.ensure_loaded(mod) == {:module, mod} and
