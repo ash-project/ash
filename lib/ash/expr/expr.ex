@@ -1246,22 +1246,14 @@ defmodule Ash.Expr do
     |> Enum.map(fn {{match_types, cast_as_types, returns}, signature_index} ->
       is_overload? = signature_index < Enum.count(overloads)
 
-      # Distinguish active overloads from passive ones: a type that defines
-      # `operator_expression/1` is asserting intent to rewrite the operator,
-      # so its overload should beat the default dispatch even when matching
-      # is non-strict. A type that only registers `operator_overloads/0` is
-      # just declaring coercion hints — those become last_resort when the
-      # match relies on coercion or permissive matches_type?.
-      overload_wants_dispatch? =
-        is_overload? &&
-          match_types
-          |> List.wrap()
-          |> Enum.any?(fn t ->
-            case t do
-              {type, _constraints} -> defines_operator_expression?(type)
-              type -> defines_operator_expression?(type)
-            end
-          end)
+      # An overload that declares `cast_as_types` is forcibly converting
+      # operands to a different type than they natively resolve to (e.g.
+      # `Timestamptz` claiming an `UtcDatetimeUsec` column). That kind of
+      # type-coercion overload should be a fallback — let stricter matches
+      # win first. An overload without `cast_as_types` is just declaring
+      # "here's my return type for this signature" (e.g. `Money + Money`,
+      # `integer in IntListType`) — let it win normally when matched.
+      overload_forces_conversion? = is_overload? && !is_nil(cast_as_types)
 
       basis =
         cond do
@@ -1396,7 +1388,7 @@ defmodule Ash.Expr do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) ->
                 case Ash.Type.coerce(type, value, constraints) do
                   {:ok, _} ->
-                    if is_overload? && !overload_wants_dispatch? do
+                    if overload_forces_conversion? do
                       {:cont,
                        acc
                        |> Map.update!(:types, &[{type, constraints} | &1])
@@ -1416,7 +1408,7 @@ defmodule Ash.Expr do
                 {:cont, Map.update!(acc, :types, &[elem(determined_type, 1) | &1])}
 
               Ash.Expr.expr?(value) ->
-                if is_overload? && !overload_wants_dispatch? do
+                if overload_forces_conversion? do
                   {:cont,
                    acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
                 else
@@ -1424,7 +1416,7 @@ defmodule Ash.Expr do
                 end
 
               true ->
-                if is_overload? && !overload_wants_dispatch? do
+                if overload_forces_conversion? do
                   {:cont,
                    acc
                    |> Map.update!(:types, &[{type, constraints} | &1])
@@ -1441,7 +1433,7 @@ defmodule Ash.Expr do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, []) ->
                 case Ash.Type.coerce(type, value, []) do
                   {:ok, _} ->
-                    if is_overload? && !overload_wants_dispatch? do
+                    if overload_forces_conversion? do
                       {:cont,
                        acc
                        |> Map.update!(:types, &[{type, []} | &1])
@@ -1461,7 +1453,7 @@ defmodule Ash.Expr do
                 {:cont, Map.update!(acc, :types, &[elem(determined_type, 1) | &1])}
 
               Ash.Expr.expr?(value) ->
-                if is_overload? && !overload_wants_dispatch? do
+                if overload_forces_conversion? do
                   {:cont,
                    acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
                 else
@@ -1469,7 +1461,7 @@ defmodule Ash.Expr do
                 end
 
               true ->
-                if is_overload? && !overload_wants_dispatch? do
+                if overload_forces_conversion? do
                   {:cont,
                    acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
                 else
@@ -1755,17 +1747,6 @@ defmodule Ash.Expr do
       :error
     end
   end
-
-  defp defines_operator_expression?(type) when is_atom(type) do
-    mod = Ash.Type.get_type(type)
-
-    is_atom(mod) and mod != nil and
-      (function_exported?(mod, :operator_expression, 1) or
-         (Code.ensure_loaded(mod) == {:module, mod} and
-            function_exported?(mod, :operator_expression, 1)))
-  end
-
-  defp defines_operator_expression?(_), do: false
 
   defp determine_map_type(map) do
     if Enum.all?(map, fn {key, _} -> is_atom(key) end) do
