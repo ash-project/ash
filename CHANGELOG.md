@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.27.4](https://github.com/ash-project/ash/compare/v3.27.3...v3.27.4) (2026-05-28)
+
+
+
+
+### Bug Fixes:
+
+* don't force coerction of untyped expressions by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.27.3](https://github.com/ash-project/ash/compare/v3.27.2...v3.27.3) (2026-05-28)
 
 
