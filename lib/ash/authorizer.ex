@@ -57,6 +57,14 @@ defmodule Ash.Authorizer do
               | {:data, list(Ash.Resource.Record.t())}
               | {:error, :forbidden, state}
               | {:error, Ash.Error.t()}
+  @doc """
+  Returns the fields this authorizer may protect at field level for the resource.
+
+  This is metadata for callers that need to know which fields can be hidden by
+  authorization without running an action. Authorizers that do not implement this
+  callback are treated as protecting no fields.
+  """
+  @callback protected_fields(Ash.Resource.t()) :: [atom()]
   @callback exception(atom, state) :: Exception.t()
 
   @optional_callbacks [
@@ -64,7 +72,8 @@ defmodule Ash.Authorizer do
     add_calculations: 3,
     alter_results: 3,
     alter_filter: 3,
-    apply_field_level_auth: 3
+    apply_field_level_auth: 3,
+    protected_fields: 1
   ]
 
   defmacro __using__(_) do
@@ -262,6 +271,27 @@ defmodule Ash.Authorizer do
       behaviour: __MODULE__,
       callback_name: "check/2"
     )
+  end
+
+  @doc false
+  @spec protected_fields(module(), Ash.Resource.t()) :: [atom()]
+  def protected_fields(module, resource) do
+    if function_exported?(module, :protected_fields, 1) do
+      result = apply(module, :protected_fields, [resource])
+
+      if is_list(result) and Enum.all?(result, &is_atom/1) do
+        Enum.uniq(result)
+      else
+        raise Ash.Error.Framework.InvalidReturnType,
+          message: """
+          Invalid value returned from #{inspect(module)}.protected_fields/1.
+
+          The callback #{inspect(__MODULE__)}.protected_fields/1 expects a list of atoms.
+          """
+      end
+    else
+      []
+    end
   end
 
   @doc """

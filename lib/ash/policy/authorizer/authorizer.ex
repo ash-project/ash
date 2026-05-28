@@ -1416,6 +1416,27 @@ defmodule Ash.Policy.Authorizer do
     end
   end
 
+  @impl true
+  def protected_fields(resource) do
+    resource
+    |> Ash.Policy.Info.field_policies()
+    |> Enum.flat_map(& &1.fields)
+    |> Enum.uniq()
+    |> Enum.filter(&protected_field?(resource, &1))
+  end
+
+  defp protected_field?(resource, field) do
+    resource
+    |> Ash.Policy.Info.field_policies_for_field(field)
+    |> case do
+      nil ->
+        false
+
+      policies ->
+        Policy.expression(policies, %{resource: resource}) != true
+    end
+  end
+
   defp only_simple_or_filter_error do
     Ash.Error.Forbidden.exception(
       errors: ["Field policies must currently use only filter checks or simple checks"]

@@ -177,6 +177,13 @@ defmodule Ash.Test.Actions.GenericActionFieldPolicyTest do
     :ok
   end
 
+  describe "protected field metadata" do
+    test "policy authorizer reports fields that may be scrubbed" do
+      assert MapSet.new(Ash.Resource.Info.protected_fields(Report)) ==
+               MapSet.new([:admin_note, :private_note, :approval_note])
+    end
+  end
+
   describe "single-record generic action return" do
     test "non-admin sees admin_note scrubbed when load: includes it" do
       {:ok, report} =
