@@ -266,6 +266,15 @@ defmodule Ash.Resource.Info do
     Extension.get_persisted(resource, :authorizers, [])
   end
 
+  @doc "A list of fields that may be protected by the resource's authorizers"
+  @spec protected_fields(Spark.Dsl.t() | Ash.Resource.t()) :: [atom()]
+  def protected_fields(resource) do
+    resource
+    |> authorizers()
+    |> Enum.flat_map(&Ash.Authorizer.protected_fields(&1, resource))
+    |> Enum.uniq()
+  end
+
   @doc "A list of notifiers to be used when accessing"
   @spec notifiers(Spark.Dsl.t() | Ash.Resource.t()) :: [module]
   def notifiers(resource) do
