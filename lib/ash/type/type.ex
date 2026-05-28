@@ -359,6 +359,22 @@ defmodule Ash.Type do
   """
   @callback init(constraints) :: {:ok, constraints} | {:error, Ash.Error.t()}
 
+  @doc """
+  Returns the types this type references through its constraints, paired with
+  the constraints used to recurse and a label describing the edge.
+
+  Composite types like `Ash.Type.Map`, `Ash.Type.Union`, etc. return the field
+  (or arm) types whose constraints will be initialised. Used by
+  `Ash.Type.detect_type_cycle!/2` (called during DSL compilation) to surface
+  recursive type cycles up-front rather than looping forever.
+
+  `via` is a small term describing how this reference is reached — used for
+  error messages. Conventionally `{:field, name, declared_type}` for composite
+  fields and `:subtype_of` for `Ash.Type.NewType`.
+  """
+  @callback referenced_types(constraints) ::
+              [{type :: t(), constraints :: Keyword.t(), via :: term()}]
+
   @doc "Whether or not data layers that build queries should attempt to type cast values of this type while doing so."
   @callback cast_in_query?(constraints) :: boolean
 
@@ -700,6 +716,7 @@ defmodule Ash.Type do
 
   @optional_callbacks [
     init: 1,
+    referenced_types: 1,
     storage_type: 0,
     cast_stored_array: 2,
     generator: 1,
@@ -2421,6 +2438,7 @@ defmodule Ash.Type do
 
   def set_type_transformation(%{type: original_type, constraints: constraints} = thing) do
     type = get_type!(original_type)
+    detect_type_cycle!(type, constraints)
 
     with {:ok, constraints} <- init(type, constraints),
          {:ok, thing} <- set_default(thing, type, constraints),
@@ -2446,6 +2464,105 @@ defmodule Ash.Type do
   end
 
   defp set_default(thing, _type, _constraints), do: {:ok, thing}
+
+  @doc false
+  def field_referenced_types(nil), do: []
+
+  def field_referenced_types(fields) do
+    fields
+    |> List.wrap()
+    |> Enum.flat_map(fn {name, config} ->
+      if Keyword.get(config, :init?, true) do
+        [{config[:type], config[:constraints] || [], {:field, name, config[:type]}}]
+      else
+        []
+      end
+    end)
+  end
+
+  @doc false
+  def detect_type_cycle!(type, constraints) do
+    walk_type_graph!(type, constraints, :root, MapSet.new(), [])
+    :ok
+  end
+
+  defp walk_type_graph!({:array, type}, constraints, via, seen, path) do
+    walk_type_graph!(type, item_constraints(constraints), via, seen, path)
+  end
+
+  defp walk_type_graph!(type, constraints, via, seen, path) do
+    type = get_type(type)
+    key = {type, constraints}
+    entry = {type, via}
+
+    cond do
+      not is_atom(type) or is_nil(type) ->
+        :ok
+
+      match?({:error, _}, Code.ensure_compiled(type)) ->
+        raise ArgumentError, format_unloadable(type, path ++ [entry])
+
+      MapSet.member?(seen, key) ->
+        cycle = Enum.drop_while(path, fn {t, _} -> t != type end) ++ [entry]
+        raise ArgumentError, format_cycle(cycle)
+
+      function_exported?(type, :referenced_types, 1) ->
+        seen = MapSet.put(seen, key)
+        path = path ++ [entry]
+
+        Enum.each(type.referenced_types(constraints), fn {t, c, v} ->
+          walk_type_graph!(t, c, v, seen, path)
+        end)
+
+      true ->
+        :ok
+    end
+  end
+
+  defp format_cycle(path) do
+    """
+    Recursive type cycle detected:
+
+    #{render_path(path)}
+
+    Set `init?: false` on one of the fields above to break the cycle, e.g.:
+
+        field: [type: ..., init?: false]
+    """
+  end
+
+  defp format_unloadable(type, path) do
+    """
+    Type `#{inspect(type)}` could not be loaded.
+
+    #{render_path(path)}
+
+    Either the module does not exist (check for typos), or it is part of a \
+    mutually-recursive type chain whose modules have not finished compiling. \
+    For the recursive case, set `init?: false` on the offending field:
+
+        field: [type: ..., init?: false]
+    """
+  end
+
+  defp render_path(path) do
+    path
+    |> Enum.with_index()
+    |> Enum.map_join("\n", fn {{type, via}, idx} ->
+      indent = String.duplicate("  ", idx)
+      arrow = if idx == 0, do: "", else: "└─ "
+      "    #{indent}#{arrow}#{render_node(type, via)}"
+    end)
+  end
+
+  defp render_node(type, :root), do: inspect(type)
+  defp render_node(type, :subtype_of), do: "(subtype_of) #{inspect(type)}"
+
+  defp render_node(type, {:field, name, declared}),
+    do: "field #{inspect(name)} (type: #{inspect(declared)}) -> #{inspect(type)}"
+
+  defp render_node(type, other),
+    do: "(#{inspect(other)}) #{inspect(type)}"
 
   defp set_update_default(%{update_default: {_m, _f, _a}} = thing, _type, _constraints),
     do: {:ok, thing}

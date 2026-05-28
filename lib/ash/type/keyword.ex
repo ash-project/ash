@@ -25,6 +25,14 @@ defmodule Ash.Type.Keyword do
             constraints: [
               type: :keyword_list,
               default: []
+            ],
+            init?: [
+              type: :boolean,
+              default: true,
+              doc: """
+              If false, the field's type constraints are not initialised at compile time. \
+              Allows for recursive keyword fields.
+              """
             ]
           ]
         ]
@@ -223,6 +231,9 @@ defmodule Ash.Type.Keyword do
     constraints = config[:constraints] || []
     type && Ash.Type.can_load?(type, constraints)
   end
+
+  @impl true
+  def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:fields])
 
   @impl true
   def init(constraints) do

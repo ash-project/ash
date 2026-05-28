@@ -72,9 +72,16 @@ defmodule Ash.Type.Union do
       Additionally, if you are not using a tag, a value will be considered to be of the given type if it successfully casts.
       This means that, for example, if you try to cast `"10"` as a union of a string and an integer, it will end up as `"10"` because
       it is a string. If you put the integer type ahead of the string type, it will cast first and `10` will be the value.
+
+      Each union arm also accepts `init?: false`, which skips compile-time
+      initialisation of that arm's type constraints. Use this to break recursive
+      type references.
       """
     ]
   ]
+
+  @impl true
+  def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:types])
 
   @impl true
   def init(constraints) do

@@ -34,6 +34,14 @@ defmodule Ash.Type.Map do
             constraints: [
               type: :keyword_list,
               default: []
+            ],
+            init?: [
+              type: :boolean,
+              default: true,
+              doc: """
+              If false, the field's type constraints are not initialised at compile time. \
+              Allows for recursive map fields.
+              """
             ]
           ]
         ]
@@ -87,6 +95,9 @@ defmodule Ash.Type.Map do
 
   @impl true
   def storage_type(_), do: :map
+
+  @impl true
+  def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:fields])
 
   @impl true
   def init(constraints) do
