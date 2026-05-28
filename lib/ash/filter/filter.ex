@@ -4967,7 +4967,7 @@ defmodule Ash.Filter do
                             attribute: attr,
                             relationship_path: context[:relationship_path] || [],
                             resource: context.resource,
-                            input?: true
+                            input?: context[:input?] || false
                           },
                           at_path
                         ]
@@ -4977,7 +4977,7 @@ defmodule Ash.Filter do
                         attribute: attr,
                         relationship_path: context[:relationship_path] || [],
                         resource: context.resource,
-                        input?: true
+                        input?: context[:input?] || false
                       }
                     end
 
@@ -5005,7 +5005,7 @@ defmodule Ash.Filter do
                         attribute: attr,
                         relationship_path: context[:relationship_path] || [],
                         resource: context.resource,
-                        input?: true
+                        input?: context[:input?] || false
                       },
                       at_path
                     ]
@@ -5015,7 +5015,7 @@ defmodule Ash.Filter do
                     attribute: attr,
                     relationship_path: context[:relationship_path] || [],
                     resource: context.resource,
-                    input?: true
+                    input?: context[:input?] || false
                   }
                 end
 
