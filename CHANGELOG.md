@@ -8,6 +8,19 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.27.3](https://github.com/ash-project/ash/compare/v3.27.2...v3.27.3) (2026-05-28)
+
+
+
+
+### Bug Fixes:
+
+* undo incorrect newtype constraint merging by [@zachdaniel](https://github.com/zachdaniel)
+
+* use better signal for overload type casting by [@zachdaniel](https://github.com/zachdaniel)
+
+* detect recursive types at compile time by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.27.2](https://github.com/ash-project/ash/compare/v3.27.1...v3.27.2) (2026-05-27)
 
 
