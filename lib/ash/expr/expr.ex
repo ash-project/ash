@@ -1408,7 +1408,10 @@ defmodule Ash.Expr do
                 {:cont, Map.update!(acc, :types, &[elem(determined_type, 1) | &1])}
 
               Ash.Expr.expr?(value) ->
-                if overload_forces_conversion? do
+                # An expression with no `determined_type` provides no evidence
+                # to support an overload's type claim. Mark as last_resort so
+                # the variant only wins if no better-grounded match exists.
+                if is_overload? do
                   {:cont,
                    acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
                 else
@@ -1453,7 +1456,10 @@ defmodule Ash.Expr do
                 {:cont, Map.update!(acc, :types, &[elem(determined_type, 1) | &1])}
 
               Ash.Expr.expr?(value) ->
-                if overload_forces_conversion? do
+                # An expression with no `determined_type` provides no evidence
+                # to support an overload's type claim. Mark as last_resort so
+                # the variant only wins if no better-grounded match exists.
+                if is_overload? do
                   {:cont,
                    acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
                 else
