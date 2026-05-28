@@ -648,15 +648,8 @@ defmodule Ash.Type.NewType do
 
       @impl Ash.Type.NewType
       def type_constraints(constraints, subtype_constraints) do
-        constraints = subtype_constraints(constraints) || []
-
-        Enum.reduce(subtype_constraints || [], constraints, fn {key, value}, acc ->
-          if Keyword.has_key?(acc, key) do
-            Keyword.replace(acc, key, value)
-          else
-            [{key, value} | acc]
-          end
-        end)
+        constraints = subtype_constraints(constraints)
+        Keyword.merge(constraints || [], subtype_constraints || [])
       end
 
       defp custom_constraint_keys do
@@ -664,20 +657,7 @@ defmodule Ash.Type.NewType do
       end
 
       defp subtype_constraints(constraints) do
-        # Drop NewType-only keys, then merge in the baked-in subtype
-        # constraints declared at `use Ash.Type.NewType, constraints: [...]`.
-        # Baked-in wins on value, but we preserve the original key position
-        # — some subtypes (e.g. `Ash.Type.DateTime`) rely on `:precision`
-        # being the head of the constraints list for pattern matching.
-        stripped = Keyword.drop(constraints, custom_constraint_keys())
-
-        Enum.reduce(unquote(subtype_constraints), stripped, fn {key, value}, acc ->
-          if Keyword.has_key?(acc, key) do
-            Keyword.replace(acc, key, value)
-          else
-            [{key, value} | acc]
-          end
-        end)
+        Keyword.drop(constraints, custom_constraint_keys())
       end
 
       defp custom_constraints(constraints) do
