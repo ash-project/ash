@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.27.6](https://github.com/ash-project/ash/compare/v3.27.5...v3.27.6) (2026-05-28)
+
+
+
+
+### Bug Fixes:
+
+* do not consider all maps to be input refs by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.27.5](https://github.com/ash-project/ash/compare/v3.27.4...v3.27.5) (2026-05-28)
 
 
