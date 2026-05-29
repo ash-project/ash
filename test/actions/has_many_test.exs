@@ -131,6 +131,14 @@ defmodule Ash.Test.Actions.HasManyTest do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
 
+      read :with_min_priority_comments do
+        argument :min_priority, :integer, allow_nil?: false
+
+        prepare fn query, _ ->
+          Ash.Query.load(query, :comments_with_min_priority)
+        end
+      end
+
       update :add_comment do
         require_atomic? false
         accept []
@@ -221,6 +229,13 @@ defmodule Ash.Test.Actions.HasManyTest do
            |> Ash.read!(actor: actor, authorize?: authorize?)
            |> Enum.group_by(& &1.post_id)}
         end
+      end
+
+      has_many :comments_with_min_priority, Comment do
+        destination_attribute :post_id
+        public? true
+        domain OtherDomain
+        filter expr(priority >= ^arg(:min_priority))
       end
     end
   end
@@ -532,6 +547,74 @@ defmodule Ash.Test.Actions.HasManyTest do
 
     user = Ash.get!(User, to_string(user.id), load: :unread_posts, authorize?: false)
     assert length(user.unread_posts) == 2
+  end
+
+  describe "has_many filter with ^arg template" do
+    test "^arg in relationship filter resolves the action argument" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
+        |> Ash.create!()
+
+      for priority <- [10, 50, 90] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          content: "comment #{priority}",
+          priority: priority
+        })
+        |> Ash.create!()
+      end
+
+      # min_priority: 50 should return comments with priority >= 50
+      [result] =
+        Post
+        |> Ash.Query.for_read(:with_min_priority_comments, %{min_priority: 50})
+        |> Ash.Query.filter(id == ^post.id)
+        |> Ash.read!()
+
+      priorities =
+        result.comments_with_min_priority
+        |> Enum.map(& &1.priority)
+        |> Enum.sort()
+
+      assert priorities == [50, 90]
+    end
+
+    test "^arg in relationship filter changes results with different argument values" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
+        |> Ash.create!()
+
+      for priority <- [10, 50, 90] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          content: "comment #{priority}",
+          priority: priority
+        })
+        |> Ash.create!()
+      end
+
+      # min_priority: 100 should return no comments
+      [result] =
+        Post
+        |> Ash.Query.for_read(:with_min_priority_comments, %{min_priority: 100})
+        |> Ash.Query.filter(id == ^post.id)
+        |> Ash.read!()
+
+      assert result.comments_with_min_priority == []
+
+      # min_priority: 1 should return all comments
+      [result] =
+        Post
+        |> Ash.Query.for_read(:with_min_priority_comments, %{min_priority: 1})
+        |> Ash.Query.filter(id == ^post.id)
+        |> Ash.read!()
+
+      assert length(result.comments_with_min_priority) == 3
+    end
   end
 
   describe "relationship offset and limit" do
