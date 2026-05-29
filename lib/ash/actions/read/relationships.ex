@@ -333,7 +333,7 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.default_sort(relationship.default_sort)
       |> Ash.Query.do_filter(relationship.filter, parent_stack: parent_stack)
       |> Ash.Query.set_context(relationship.context)
-      |> hydrate_refs(query.context[:private][:actor], relationship.source)
+      |> hydrate_refs(query.context[:private][:actor], relationship.source, query.arguments)
       |> with_lateral_join_query(query, relationship, records)
 
     if !related_query.context[:data_layer][:lateral_join_source] &&
@@ -458,7 +458,11 @@ defmodule Ash.Actions.Read.Relationships do
                 relationship.source_attribute_on_join_resource,
                 relationship.destination_attribute_on_join_resource
               ])
-              |> hydrate_refs(source_query.context[:private][:actor], relationship.source)
+              |> hydrate_refs(
+                source_query.context[:private][:actor],
+                relationship.source,
+                source_query.arguments
+              )
 
             if source_query.context[:private][:authorize?] do
               case Ash.can(
@@ -531,12 +535,12 @@ defmodule Ash.Actions.Read.Relationships do
     end
   end
 
-  defp hydrate_refs(query, actor, parent) do
+  defp hydrate_refs(query, actor, parent, source_args) do
     query.filter
     |> Ash.Expr.fill_template(
       actor: actor,
       tenant: query.to_tenant,
-      args: %{},
+      args: source_args,
       context: query.context
     )
     |> Ash.Filter.hydrate_refs(%{
