@@ -3359,6 +3359,7 @@ defmodule Ash.Actions.Read do
 
         agg.query
         |> Ash.Query.set_context(%{private: %{require_actor?: false}})
+        |> Ash.Query.set_context(%{shared: opts[:source_context][:shared]})
         |> Ash.Query.for_read(read_action, %{},
           domain: domain,
           actor: actor,
@@ -3366,12 +3367,14 @@ defmodule Ash.Actions.Read do
           authorize?: agg.authorize? && authorize?
         )
       else
-        Ash.Query.set_context(agg.query, %{
+        agg.query
+        |> Ash.Query.set_context(%{
           private: %{
             authorize?: agg.authorize? && authorize?,
             actor: actor
           }
         })
+        |> Ash.Query.set_context(%{shared: opts[:source_context][:shared]})
       end
 
     authorize? =
