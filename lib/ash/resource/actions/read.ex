@@ -123,6 +123,12 @@ defmodule Ash.Resource.Actions.Read do
       doc: "Whether or not offset based pagination is supported",
       default: false
     ],
+    via_data_layer?: [
+      type: {:in, [true, false, :data_layer_default]},
+      doc:
+        "Whether or not the pagination should be handled by the data layer. Use `:data_layer_default` to let the data layer decide",
+      default: :data_layer_default
+    ],
     default_limit: [
       type: :pos_integer,
       doc: "The default page size to apply, if one is not supplied"
@@ -169,6 +175,7 @@ defmodule Ash.Resource.Actions.Read do
       paginate_by_default?: false,
       keyset?: false,
       offset?: false,
+      via_data_layer?: false,
       __spark_metadata__: nil
     ]
 

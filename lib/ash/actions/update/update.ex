@@ -10,10 +10,10 @@ defmodule Ash.Actions.Update do
   require Ash.Tracer
   import Ash.Expr
 
-  @spec run(Ash.Domain.t(), Ash.Resource.record(), Ash.Resource.Actions.action(), Keyword.t()) ::
+  @spec run(Ash.Domain.t(), Ash.Resource.Record.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
           :ok
-          | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
-          | {:ok, Ash.Resource.record()}
+          | {:ok, Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.Record.t()}
           | {:error, Ash.Changeset.t()}
           | {:error, term}
   def run(domain, %{valid?: false, errors: errors} = changeset, action, opts) do

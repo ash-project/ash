@@ -72,9 +72,16 @@ defmodule Ash.Type.Union do
       Additionally, if you are not using a tag, a value will be considered to be of the given type if it successfully casts.
       This means that, for example, if you try to cast `"10"` as a union of a string and an integer, it will end up as `"10"` because
       it is a string. If you put the integer type ahead of the string type, it will cast first and `10` will be the value.
+
+      Each union arm also accepts `init?: false`, which skips compile-time
+      initialisation of that arm's type constraints. Use this to break recursive
+      type references.
       """
     ]
   ]
+
+  @impl true
+  def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:types])
 
   @impl true
   def init(constraints) do
@@ -492,32 +499,31 @@ defmodule Ash.Type.Union do
             List.wrap(load[:*]) ++ List.wrap(load[name])
           end
 
+        type_config = constraints[:types][name]
+
         result =
-          if our_load do
-            type = constraints[:types][name][:type]
+          cond do
+            is_nil(type_config) ->
+              {:ok, values}
 
-            Ash.Type.load(
-              type,
-              values,
-              our_load,
-              constraints[:types][name][:constraints],
-              context
-            )
-          else
-            type = constraints[:types][name][:type]
-            constraints = constraints[:types][name][:constraints]
-
-            if Ash.Type.can_load?(type, constraints) do
+            our_load ->
               Ash.Type.load(
-                type,
+                type_config[:type],
                 values,
-                [],
-                constraints,
+                our_load,
+                type_config[:constraints],
                 context
               )
-            else
-              {:ok, values}
-            end
+
+            true ->
+              type = type_config[:type]
+              type_constraints = type_config[:constraints]
+
+              if Ash.Type.can_load?(type, type_constraints) do
+                Ash.Type.load(type, values, [], type_constraints, context)
+              else
+                {:ok, values}
+              end
           end
 
         case result do

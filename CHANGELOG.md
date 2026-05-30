@@ -8,6 +8,120 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.27.6](https://github.com/ash-project/ash/compare/v3.27.5...v3.27.6) (2026-05-28)
+
+
+
+
+### Bug Fixes:
+
+* do not consider all maps to be input refs by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.27.5](https://github.com/ash-project/ash/compare/v3.27.4...v3.27.5) (2026-05-28)
+
+
+
+
+### Bug Fixes:
+
+* do not consider all maps to be input refs by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.27.4](https://github.com/ash-project/ash/compare/v3.27.3...v3.27.4) (2026-05-28)
+
+
+
+
+### Bug Fixes:
+
+* don't force coerction of untyped expressions by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.27.3](https://github.com/ash-project/ash/compare/v3.27.2...v3.27.3) (2026-05-28)
+
+
+
+
+### Bug Fixes:
+
+* undo incorrect newtype constraint merging by [@zachdaniel](https://github.com/zachdaniel)
+
+* use better signal for overload type casting by [@zachdaniel](https://github.com/zachdaniel)
+
+* detect recursive types at compile time by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.27.2](https://github.com/ash-project/ash/compare/v3.27.1...v3.27.2) (2026-05-27)
+
+
+
+
+### Bug Fixes:
+
+* distinguish active & passive operator overloads by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.27.1](https://github.com/ash-project/ash/compare/v3.27.0...v3.27.1) (2026-05-27)
+
+
+
+
+### Bug Fixes:
+
+* add missing overload detection branch by [@zachdaniel](https://github.com/zachdaniel)
+
+* loosen usec change, allow coercing but not matching by [@zachdaniel](https://github.com/zachdaniel)
+
+* retain subtype constraints when coercing new types by [@zachdaniel](https://github.com/zachdaniel)
+
+* use correct detection for overloads as "last resort typecasts" by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.27.0](https://github.com/ash-project/ash/compare/v3.26.0...v3.27.0) (2026-05-26)
+
+
+
+
+### Features:
+
+* apply field policies on composite types by [@zachdaniel](https://github.com/zachdaniel)
+
+* Add new type callback for `to_simple_equality_comparable` (#2719) by sevenseacat [(#2719)](https://github.com/ash-project/ash/pull/2719)
+
+### Bug Fixes:
+
+* don't coerce or match datetimes to microseconds incorrectly by [@zachdaniel](https://github.com/zachdaniel)
+
+* handle arrays in `select_selected` by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* add `functions` option to code interfaces by [@zachdaniel](https://github.com/zachdaniel)
+
+* expose required? on manifest Argument inputs (#2720) by [@Torkan](https://github.com/Torkan) [(#2720)](https://github.com/ash-project/ash/pull/2720)
+
+## [v3.26.0](https://github.com/ash-project/ash/compare/v3.25.2...v3.26.0) (2026-05-22)
+
+
+
+
+### Features:
+
+* add manual keyset pagination delegated to data layer (#2686) by Rekkice [(#2686)](https://github.com/ash-project/ash/pull/2686)
+
+* manifest: preserve field and union member descriptions (#2707) by [@Torkan](https://github.com/Torkan) [(#2707)](https://github.com/ash-project/ash/pull/2707)
+
+### Bug Fixes:
+
+* don't hide private fields in filters when the policy is to show them by [@zachdaniel](https://github.com/zachdaniel)
+
+* include multitenancy attribute when `all_tenants?: false` by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* add `namespace` option for code interfaces by [@zachdaniel](https://github.com/zachdaniel)
+
+* Allow `can` to not log policy breakdown (#2708) by sezaru [(#2708)](https://github.com/ash-project/ash/pull/2708)
+
+### Performance Improvements:
+
+* avoid related-record read in relate_actor for belongs_to (#2709) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2709)](https://github.com/ash-project/ash/pull/2709)
+
 ## [v3.25.2](https://github.com/ash-project/ash/compare/v3.25.1...v3.25.2) (2026-05-18)
 
 

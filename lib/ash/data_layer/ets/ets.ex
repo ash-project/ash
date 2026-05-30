@@ -1575,7 +1575,7 @@ defmodule Ash.DataLayer.Ets do
           subject :: record,
           conflicting_upsert_values :: record
         ) :: {:ok, [record]} | {:error, reason}
-        when record: Ash.Resource.record(), reason: term()
+        when record: Ash.Resource.Record.t(), reason: term()
   defp upsert_conflict_check(changeset, subject, conflicting_upsert_values)
 
   defp upsert_conflict_check(

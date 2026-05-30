@@ -174,7 +174,7 @@ defmodule Ash.Actions.BulkManualActionHelpers do
   along with success tracking and notifications, and builds the final BulkResult.
   """
   @spec build_bulk_result(
-          processed_results :: [Ash.Resource.record() | {:error, term()}],
+          processed_results :: [Ash.Resource.Record.t() | {:error, term()}],
           any_success? :: boolean(),
           notifications :: [Ash.Notifier.Notification.t()],
           opts :: Keyword.t()

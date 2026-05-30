@@ -267,6 +267,21 @@ defmodule Ash.Type.NewType do
 
       @impl Ash.Type
       if lazy_init? do
+        def referenced_types(_constraints), do: []
+      else
+        def referenced_types(constraints) do
+          merged =
+            type_constraints(
+              subtype_constraints(constraints),
+              unquote(subtype_constraints)
+            )
+
+          [{unquote(subtype_of), merged, :subtype_of}]
+        end
+      end
+
+      @impl Ash.Type
+      if lazy_init? do
         def init(constraints) do
           {:ok, constraints}
         end
@@ -517,6 +532,16 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
+      def simple_equality_comparable? do
+        Ash.Type.simple_equality_comparable?(unquote(subtype_of))
+      end
+
+      @impl Ash.Type
+      def to_simple_equality_comparable(value) do
+        Ash.Type.to_simple_equality_comparable(unquote(subtype_of), value)
+      end
+
+      @impl Ash.Type
       def storage_type(constraints) do
         constraints = subtype_constraints(constraints)
         unquote(subtype_of).storage_type(constraints)
@@ -662,7 +687,7 @@ defmodule Ash.Type.NewType do
               {key, field}, :ok ->
                 field_keys = field |> List.wrap() |> Keyword.keys()
 
-                case field_keys -- [:type, :constraints, :allow_nil?, :description] do
+                case field_keys -- [:type, :constraints, :allow_nil?, :description, :init?] do
                   [] ->
                     {:cont, validate_type_constraints(key, field[:type], field[:constraints])}
 

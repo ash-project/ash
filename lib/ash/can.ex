@@ -16,8 +16,8 @@ defmodule Ash.Can do
           | Ash.ActionInput.t()
           | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
           | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map}
-          | {Ash.Resource.record(), atom | Ash.Resource.Actions.action()}
-          | {Ash.Resource.record(), atom | Ash.Resource.Actions.action(), input :: map}
+          | {Ash.Resource.Record.t(), atom | Ash.Resource.Actions.action()}
+          | {Ash.Resource.Record.t(), atom | Ash.Resource.Actions.action(), input :: map}
 
   @doc """
   Returns whether an actor can perform an action, query, or changeset.
@@ -26,7 +26,7 @@ defmodule Ash.Can do
 
   Can raise an exception if return_forbidden_error is truthy in opts or there's an error.
   """
-  @spec can?(subject(), Ash.Domain.t(), Ash.Resource.record(), Keyword.t()) ::
+  @spec can?(subject(), Ash.Domain.t(), Ash.Resource.Record.t(), Keyword.t()) ::
           boolean() | no_return()
   def can?(action_or_query_or_changeset, domain, actor, opts \\ []) do
     opts =

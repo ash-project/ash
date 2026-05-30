@@ -10,7 +10,7 @@ defmodule Ash.BulkResult do
   @type t :: %__MODULE__{
           status: :success | :partial_success | :error,
           notifications: list(Ash.Notifier.Notification.t()) | nil,
-          records: list(Ash.Resource.record()) | nil,
+          records: list(Ash.Resource.Record.t()) | nil,
           errors: list(Ash.Error.t() | Ash.Changeset.t()) | nil,
           error_count: non_neg_integer()
         }

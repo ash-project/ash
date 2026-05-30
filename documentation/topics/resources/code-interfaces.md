@@ -31,6 +31,39 @@ end
 
 These will then be called on the resource itself, i.e `Helpdesk.Support.Ticket.open(subject)`.
 
+## Splitting interfaces across modules with `namespace`
+
+By default every `define`/`define_calculation` adds functions to the host module — the domain when used inside `resources` (`resource Ticket do define ... end`), and the resource itself when used inside the resource's own `code_interface` block. If you'd rather group functions onto a separate module (for organization, or to keep any single module smaller), set `namespace`:
+
+```elixir
+# Domain-side
+resources do
+  resource Patient do
+    namespace Patients
+
+    define :create_patient, action: :create
+    define :read_patients, action: :read
+
+    # per-define override
+    define :archive, action: :archive, namespace: PatientArchive
+  end
+end
+```
+
+```elixir
+# Resource-side
+code_interface do
+  namespace Iface
+
+  define :create, action: :create
+  define :read, action: :read
+end
+```
+
+The `namespace:` value is concatenated to the host module. With `Helpdesk.Support` as the domain, `namespace: Tickets` produces `Helpdesk.Support.Tickets.open_ticket/...`; on a resource `Helpdesk.Support.Ticket`, `namespace: Iface` produces `Helpdesk.Support.Ticket.Iface.open/...`. Per-entry `namespace:` overrides the block-level default.
+
+Ash refuses to overwrite an existing module, so the generated target name must be unique. Definitions without a `namespace:` (and without a block-level default) continue to land on the host module.
+
 ## Using the code interface
 
 If the action is an update or destroy, it will take a record or a changeset as its _first_ argument.
@@ -363,6 +396,10 @@ MyApp.get_user(123, load: [:posts], authorize?: false)
 # Results in: [load: [:profile, :posts], authorize?: false]
 ```
 
+## Generated helpers 
+
+Named functions for code interfaces are not the only functions generated when you define a code interface on a resource or a domain. 
+
 ### Authorization Functions
 
 For each action defined in a code interface, Ash automatically generates corresponding authorization check functions:
@@ -405,3 +442,30 @@ end
 # This will log authorization details to help with debugging
 MyApp.Blog.can_create_post(current_user, %{title: "New Post"}, log?: true)
 ```
+
+### Subject Helper Functions
+
+For each action defined in a code interface, Ash also generates a helper that returns the underlying *subject* (an `Ash.Query`, `Ash.Changeset`, or `Ash.ActionInput`) instead of executing the action. The function name depends on the action type:
+
+- Read actions: `query_to_action_name(...)` returns an `Ash.Query`
+- Create / update / destroy actions: `changeset_to_action_name(...)` returns an `Ash.Changeset`
+- Generic actions: `input_to_action_name(...)` returns an `Ash.ActionInput`
+
+They accept the same positional arguments, params map, and a subset of the options (`:actor`, `:tenant`, `:scope`, `:authorize?`, `:tracer`, and `:query`/`:changeset`/`:input`) as the regular interface function, so the returned subject is built exactly the way the action would build it before running.
+
+```elixir
+# Read action — get the query without running it
+query = MyApp.Blog.query_to_list_posts(%{published: true}, actor: current_user)
+
+# Create / update / destroy — get the changeset without running it
+changeset = MyApp.Blog.changeset_to_create_post(%{title: "Hello"}, actor: current_user)
+
+# Generic action — get the input without running it
+input = MyApp.Blog.input_to_send_newsletter(%{subject: "Weekly digest"})
+```
+
+These helpers are useful when you need to:
+
+- Inspect or further customise the query/changeset before executing it (e.g. add filters, sorts, or extra `Ash.Changeset` calls).
+- Drive a form or other UI from the same configuration the action would use.
+- Assert on the constructed subject in tests without running the action.

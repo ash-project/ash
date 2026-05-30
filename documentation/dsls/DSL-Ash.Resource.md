@@ -1700,6 +1700,7 @@ Adds pagination options to a resource
 |------|------|---------|------|
 | [`keyset?`](#actions-read-pagination-keyset?){: #actions-read-pagination-keyset? } | `boolean` | `false` | Whether or not keyset based pagination is supported |
 | [`offset?`](#actions-read-pagination-offset?){: #actions-read-pagination-offset? } | `boolean` | `false` | Whether or not offset based pagination is supported |
+| [`via_data_layer?`](#actions-read-pagination-via_data_layer?){: #actions-read-pagination-via_data_layer? } | `true \| false \| :data_layer_default` | `:data_layer_default` | Whether or not the pagination should be handled by the data layer. Use `:data_layer_default` to let the data layer decide |
 | [`default_limit`](#actions-read-pagination-default_limit){: #actions-read-pagination-default_limit } | `pos_integer` |  | The default page size to apply, if one is not supplied |
 | [`countable`](#actions-read-pagination-countable){: #actions-read-pagination-countable } | `true \| false \| :by_default` | `true` | Whether not a returned page will have a full count of all records. Use `:by_default` to do it automatically. |
 | [`max_page_size`](#actions-read-pagination-max_page_size){: #actions-read-pagination-max_page_size } | `pos_integer` | `250` | The maximum amount of records that can be requested in a single page |
@@ -2418,6 +2419,7 @@ end
 |------|------|---------|------|
 | [`domain`](#code_interface-domain){: #code_interface-domain } | `module` | `false` | Use the provided Domain instead of the resources configured domain when calling actions. |
 | [`define?`](#code_interface-define?){: #code_interface-define? } | `boolean` |  | Whether or not to define the code interface in the resource. |
+| [`namespace`](#code_interface-namespace){: #code_interface-namespace } | `atom` |  | Default module on which to generate this resource's code interface functions instead of the resource itself. The given name is concatenated to the resource module. Individual `define`/`define_calculation` entries can override with their own `:namespace` option. |
 
 
 
@@ -2460,6 +2462,8 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 | [`get_by`](#code_interface-define-get_by){: #code_interface-define-get_by } | `atom \| list(atom)` |  | Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true and `require_reference?` to false automatically. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
 | [`get_by_identity`](#code_interface-define-get_by_identity){: #code_interface-define-get_by_identity } | `atom` |  | Takes an identity, gets its field list, and performs the same logic as `get_by` with those fields. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
 | [`default_options`](#code_interface-define-default_options){: #code_interface-define-default_options } | `keyword \| (-> any)` | `[]` | Default options to be merged with client-provided options. These can override domain or action defaults. `:load`, `:bulk_options`, and `:page` options will be deep merged. Can be a keyword list or a zero-arity function that returns a keyword list. |
+| [`namespace`](#code_interface-define-namespace){: #code_interface-define-namespace } | `atom` |  | Generate this interface function on a separate module instead of the host (domain or resource). The given module name is concatenated to the host (e.g. `namespace: Tickets` on `Helpdesk.Support` generates the functions on `Helpdesk.Support.Tickets`). Overrides any namespace set on the enclosing `code_interface`/`resource` block. |
+| [`functions`](#code_interface-define-functions){: #code_interface-define-functions } | `list(:subject \| :can \| :can? \| :action \| :action!)` | `[:subject, :can, :can?, :action, :action!]` | Controls which functions are generated for this interface. Defaults to all of `[:subject, :can, :can?, :action, :action!]`. - `:action` - the main function (e.g. `create_user`) - `:action!` - the raising variant (e.g. `create_user!`) - `:can` - the authorization check (e.g. `can_create_user`) - `:can?` - the boolean/raising authorization check (e.g. `can_create_user?`) - `:subject` - the subject builder (e.g. `changeset_to_create_user`, `query_to_read_user`, `input_to_run_X`) |
 
 
 ### code_interface.define.custom_input
@@ -2600,6 +2604,7 @@ define_calculation :referral_link, args: [{:arg, :id}, {:ref, :id}]
 | [`calculation`](#code_interface-define_calculation-calculation){: #code_interface-define_calculation-calculation } | `atom` |  | The name of the calculation that will be evaluated. Defaults to the same name as the function. |
 | [`exclude_inputs`](#code_interface-define_calculation-exclude_inputs){: #code_interface-define_calculation-exclude_inputs } | `list(atom)` | `[]` | A list of calculation inputs to not accept in the defined interface |
 | [`args`](#code_interface-define_calculation-args){: #code_interface-define_calculation-args } | `any` | `[]` | Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more. |
+| [`namespace`](#code_interface-define_calculation-namespace){: #code_interface-define_calculation-namespace } | `atom` |  | Generate this calculation interface function on a separate module instead of the host (domain or resource). The given module name is concatenated to the host. Overrides any namespace set on the enclosing `code_interface`/`resource` block. |
 
 
 ### code_interface.define_calculation.custom_input

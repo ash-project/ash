@@ -14,7 +14,7 @@ defmodule Ash.Page.Keyset do
   defstruct [:results, :count, :before, :after, :limit, :rerun, :more?]
 
   @type t :: %__MODULE__{
-          results: [Ash.Resource.record()],
+          results: [Ash.Resource.Record.t()],
           count: non_neg_integer(),
           before: binary() | nil,
           after: binary() | nil,
@@ -74,7 +74,7 @@ defmodule Ash.Page.Keyset do
   Creates a new `Ash.Page.Keyset.t`.
   """
   @spec new(
-          [Ash.Resource.record()],
+          [Ash.Resource.Record.t()],
           non_neg_integer(),
           term(),
           Ash.Query.t(),
@@ -96,7 +96,7 @@ defmodule Ash.Page.Keyset do
   @doc """
   Appends keyset info to results.
   """
-  @spec data_with_keyset([Ash.Resource.record()], term(), term()) :: [Ash.Resource.record()]
+  @spec data_with_keyset([Ash.Resource.Record.t()], term(), term()) :: [Ash.Resource.Record.t()]
   def data_with_keyset(results, _resource, sort) when is_list(results) do
     Enum.map(results, fn result ->
       Map.update!(

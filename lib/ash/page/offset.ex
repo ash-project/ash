@@ -14,7 +14,7 @@ defmodule Ash.Page.Offset do
   defstruct [:results, :limit, :offset, :count, :rerun, :more?]
 
   @type t :: %__MODULE__{
-          results: [Ash.Resource.record()],
+          results: [Ash.Resource.Record.t()],
           limit: integer(),
           count: integer(),
           offset: integer(),
@@ -72,7 +72,7 @@ defmodule Ash.Page.Offset do
   @doc """
   Creates a new `Ash.Page.Offset.t()`.
   """
-  @spec new([Ash.Resource.record()], non_neg_integer(), Ash.Query.t(), boolean(), Keyword.t()) ::
+  @spec new([Ash.Resource.Record.t()], non_neg_integer(), Ash.Query.t(), boolean(), Keyword.t()) ::
           t()
   def new(results, count, original_query, more?, opts) do
     %__MODULE__{

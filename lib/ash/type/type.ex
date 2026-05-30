@@ -359,6 +359,22 @@ defmodule Ash.Type do
   """
   @callback init(constraints) :: {:ok, constraints} | {:error, Ash.Error.t()}
 
+  @doc """
+  Returns the types this type references through its constraints, paired with
+  the constraints used to recurse and a label describing the edge.
+
+  Composite types like `Ash.Type.Map`, `Ash.Type.Union`, etc. return the field
+  (or arm) types whose constraints will be initialised. Used by
+  `Ash.Type.detect_type_cycle!/2` (called during DSL compilation) to surface
+  recursive type cycles up-front rather than looping forever.
+
+  `via` is a small term describing how this reference is reached — used for
+  error messages. Conventionally `{:field, name, declared_type}` for composite
+  fields and `:subtype_of` for `Ash.Type.NewType`.
+  """
+  @callback referenced_types(constraints) ::
+              [{type :: t(), constraints :: Keyword.t(), via :: term()}]
+
   @doc "Whether or not data layers that build queries should attempt to type cast values of this type while doing so."
   @callback cast_in_query?(constraints) :: boolean
 
@@ -574,8 +590,29 @@ defmodule Ash.Type do
   For example, if a resource's primary key cannot be compared with `==`, we cannot do things like key
   a list of records by their primary key. Implementing `c:equal?/2` will cause various code paths to be considerably
   slower, so only do it when necessary.
+
+  If a type can be converted to a form that *can* be used with `==` to compare instances,
+  implement `c:to_simple_equality_comparable/1`.
   """
   @callback simple_equality?() :: boolean
+
+  @doc """
+  Convert a value of this type into a term that can be compared with `==`
+  against other comparable terms produced by this type.
+
+  Types that cannot be compared using `==` incur significant runtime costs when used in certain ways.
+  For example, if a resource's primary key cannot be compared with `==`, we cannot do things like key
+  a list of records by their primary key.
+
+  Only meaningful for types where `c:simple_equality?/0` returns `false`.
+  """
+  @callback to_simple_equality_comparable(term) :: term
+
+  @doc """
+  Whether or not this type defines a custom `c:to_simple_equality_comparable/1`.
+  This is defined automatically.
+  """
+  @callback simple_equality_comparable?() :: boolean
 
   @doc "Whether or not the type is an embedded resource. This is defined by embedded resources, you should not define this."
   @callback embedded?() :: boolean
@@ -653,8 +690,33 @@ defmodule Ash.Type do
   @doc "Whether or not `c:load/4` can be used. Defined automatically"
   @callback can_load?(constraints) :: boolean
 
+  @doc """
+  Controls how `Ash.Type.load/5` strips nils from a values list before
+  handing them to `c:load/4`.
+
+  The default (provided by `Ash.Type.splicing_nil_values/2`) flat-maps
+  any value that is itself a list, which works for types whose values
+  are non-list (struct, map, tuple, union, primitives). Types whose
+  values are themselves lists — e.g. `Ash.Type.Keyword` — must
+  override this callback to skip the flatten step, otherwise their
+  keyword-list values get torn apart into `{key, value}` entries
+  before the load callback ever sees them.
+
+  Implementations should:
+
+    * pass non-nil values to `callback` as a flat list,
+    * track positions of nils so they can be reinserted,
+    * unwrap the callback's `{:ok, new_list}` into the original shape.
+  """
+  @callback splice_nil_values(
+              values :: list(term) | term(),
+              callback :: (list(term) -> {:ok, list(term)} | {:error, term})
+            ) ::
+              {:ok, list(term) | term} | {:error, term}
+
   @optional_callbacks [
     init: 1,
+    referenced_types: 1,
     storage_type: 0,
     cast_stored_array: 2,
     generator: 1,
@@ -670,12 +732,14 @@ defmodule Ash.Type do
     cast_from_embedded_array: 2,
     include_source: 2,
     load: 4,
+    splice_nil_values: 2,
     merge_load: 4,
     get_rewrites: 4,
     rewrite: 3,
     operator_overloads: 0,
     evaluate_operator: 1,
-    operator_expression: 1
+    operator_expression: 1,
+    to_simple_equality_comparable: 1
   ]
 
   @builtin_types Registry.builtin_types()
@@ -1626,15 +1690,23 @@ defmodule Ash.Type do
         constraints,
         context
       ) do
-    splicing_nil_values(values, fn values ->
-      type = get_type(type)
+    type = get_type(type)
 
+    splice_with_type(type, values, fn values ->
       if can_load?(type, constraints) do
         type.load(values, loads, constraints, context)
       else
         {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
       end
     end)
+  end
+
+  defp splice_with_type(type, values, callback) do
+    if function_exported?(type, :splice_nil_values, 2) do
+      type.splice_nil_values(values, callback)
+    else
+      splicing_nil_values(values, callback)
+    end
   end
 
   @doc """
@@ -1676,7 +1748,20 @@ defmodule Ash.Type do
     type.rewrite(item, rewrites, constraints)
   end
 
-  @doc false
+  @doc """
+  The default implementation of `c:splice_nil_values/2`.
+
+  Walks `values` (a list), flattens any value that is itself a list (so
+  array-shaped values are unpacked into a single stream), strips `nil`s
+  while tracking their positions, hands the resulting flat list of
+  non-nil values to `callback`, and reinserts nils at their original
+  positions in the result.
+
+  Types whose values are themselves list-shaped (e.g. `Ash.Type.Keyword`)
+  should override `splice_nil_values/2` to skip the flatten step,
+  because the default would tear keyword-list values apart into their
+  `{key, value}` entries.
+  """
   def splicing_nil_values(values, callback) when is_list(values) do
     values
     |> Stream.flat_map(fn value ->
@@ -1750,6 +1835,55 @@ defmodule Ash.Type do
     type = get_type(type)
 
     type.simple_equality?()
+  end
+
+  @doc """
+  Whether or not the type can be converted to a term that supports `==`
+  comparison (and Map key use) via `to_simple_equality_comparable/3`.
+
+  Returns true when `simple_equality?/1` is true, or when the type defines
+  `c:to_simple_equality_comparable/1`.
+  """
+  @spec simple_equality_comparable?(t()) :: boolean
+  def simple_equality_comparable?({:array, type}), do: simple_equality_comparable?(type)
+
+  def simple_equality_comparable?(type) do
+    type = get_type(type)
+    type.simple_equality?() || type.simple_equality_comparable?()
+  end
+
+  @doc """
+  Convert a value into a term suitable for `==` comparison and Map key use
+  against other instances of the same type.
+
+  For types where `simple_equality?/1` is true, returns the value unchanged.
+  For `{:array, type}`, each element is converted.
+
+  Callers must check `simple_equality_comparable?/1` first; calling this on
+  a type that has no comparable form raises `ArgumentError`.
+  """
+  @spec to_simple_equality_comparable(t(), term) :: term
+  def to_simple_equality_comparable(_type, nil), do: nil
+
+  def to_simple_equality_comparable({:array, type}, values) when is_list(values) do
+    Enum.map(values, &to_simple_equality_comparable(type, &1))
+  end
+
+  def to_simple_equality_comparable(type, value) do
+    resolved = get_type(type)
+
+    cond do
+      resolved.simple_equality?() ->
+        value
+
+      resolved.simple_equality_comparable?() ->
+        resolved.to_simple_equality_comparable(value)
+
+      true ->
+        raise ArgumentError,
+              "#{inspect(type)} has no simple-equality-comparable form; " <>
+                "check Ash.Type.simple_equality_comparable?/1 first"
+    end
   end
 
   defmacro __using__(opts) do
@@ -2304,6 +2438,7 @@ defmodule Ash.Type do
 
   def set_type_transformation(%{type: original_type, constraints: constraints} = thing) do
     type = get_type!(original_type)
+    detect_type_cycle!(type, constraints)
 
     with {:ok, constraints} <- init(type, constraints),
          {:ok, thing} <- set_default(thing, type, constraints),
@@ -2329,6 +2464,105 @@ defmodule Ash.Type do
   end
 
   defp set_default(thing, _type, _constraints), do: {:ok, thing}
+
+  @doc false
+  def field_referenced_types(nil), do: []
+
+  def field_referenced_types(fields) do
+    fields
+    |> List.wrap()
+    |> Enum.flat_map(fn {name, config} ->
+      if Keyword.get(config, :init?, true) do
+        [{config[:type], config[:constraints] || [], {:field, name, config[:type]}}]
+      else
+        []
+      end
+    end)
+  end
+
+  @doc false
+  def detect_type_cycle!(type, constraints) do
+    walk_type_graph!(type, constraints, :root, MapSet.new(), [])
+    :ok
+  end
+
+  defp walk_type_graph!({:array, type}, constraints, via, seen, path) do
+    walk_type_graph!(type, item_constraints(constraints), via, seen, path)
+  end
+
+  defp walk_type_graph!(type, constraints, via, seen, path) do
+    type = get_type(type)
+    key = {type, constraints}
+    entry = {type, via}
+
+    cond do
+      not is_atom(type) or is_nil(type) ->
+        :ok
+
+      match?({:error, _}, Code.ensure_compiled(type)) ->
+        raise ArgumentError, format_unloadable(type, path ++ [entry])
+
+      MapSet.member?(seen, key) ->
+        cycle = Enum.drop_while(path, fn {t, _} -> t != type end) ++ [entry]
+        raise ArgumentError, format_cycle(cycle)
+
+      function_exported?(type, :referenced_types, 1) ->
+        seen = MapSet.put(seen, key)
+        path = path ++ [entry]
+
+        Enum.each(type.referenced_types(constraints), fn {t, c, v} ->
+          walk_type_graph!(t, c, v, seen, path)
+        end)
+
+      true ->
+        :ok
+    end
+  end
+
+  defp format_cycle(path) do
+    """
+    Recursive type cycle detected:
+
+    #{render_path(path)}
+
+    Set `init?: false` on one of the fields above to break the cycle, e.g.:
+
+        field: [type: ..., init?: false]
+    """
+  end
+
+  defp format_unloadable(type, path) do
+    """
+    Type `#{inspect(type)}` could not be loaded.
+
+    #{render_path(path)}
+
+    Either the module does not exist (check for typos), or it is part of a \
+    mutually-recursive type chain whose modules have not finished compiling. \
+    For the recursive case, set `init?: false` on the offending field:
+
+        field: [type: ..., init?: false]
+    """
+  end
+
+  defp render_path(path) do
+    path
+    |> Enum.with_index()
+    |> Enum.map_join("\n", fn {{type, via}, idx} ->
+      indent = String.duplicate("  ", idx)
+      arrow = if idx == 0, do: "", else: "└─ "
+      "    #{indent}#{arrow}#{render_node(type, via)}"
+    end)
+  end
+
+  defp render_node(type, :root), do: inspect(type)
+  defp render_node(type, :subtype_of), do: "(subtype_of) #{inspect(type)}"
+
+  defp render_node(type, {:field, name, declared}),
+    do: "field #{inspect(name)} (type: #{inspect(declared)}) -> #{inspect(type)}"
+
+  defp render_node(type, other),
+    do: "(#{inspect(other)}) #{inspect(type)}"
 
   defp set_update_default(%{update_default: {_m, _f, _a}} = thing, _type, _constraints),
     do: {:ok, thing}
@@ -2438,6 +2672,14 @@ defmodule Ash.Type do
 
         @impl true
         def equal?(left, right), do: left == right
+      end
+
+      if Module.defines?(__MODULE__, {:to_simple_equality_comparable, 1}, :def) do
+        @impl true
+        def simple_equality_comparable?, do: true
+      else
+        @impl true
+        def simple_equality_comparable?, do: false
       end
 
       if Module.defines?(__MODULE__, {:handle_change_array, 3}, :def) do

@@ -56,7 +56,7 @@ defmodule Ash.Resource.Validation do
     defstruct [:actor, :tenant, :authorize?, :tracer, :message, bulk?: false, source_context: %{}]
 
     @type t :: %__MODULE__{
-            actor: Ash.Resource.record() | nil,
+            actor: Ash.Resource.Record.t() | nil,
             message: String.t() | nil,
             tenant: term(),
             source_context: map(),

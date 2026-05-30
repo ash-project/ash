@@ -10,8 +10,8 @@ defmodule Ash.Actions.Create do
   require Ash.Tracer
 
   @spec run(Ash.Domain.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
-          {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
-          | {:ok, Ash.Resource.record()}
+          {:ok, Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.Record.t()}
           | {:error, term}
   def run(domain, changeset, action, opts) do
     is_upsert? = changeset.context[:private][:upsert?]
@@ -300,9 +300,8 @@ defmodule Ash.Actions.Create do
           if identity.all_tenants? do
             keys
           else
-            if Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute &&
-                 (changeset.tenant || !identity.nils_distinct?) do
-              [Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys]
+            if Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
+              Enum.uniq([Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys])
             else
               keys
             end

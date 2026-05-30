@@ -168,6 +168,55 @@ defmodule Ash.BehaviourReturnValidationTest do
       end
     end
 
+    defmodule AuthorizerWithProtectedFields do
+      use Ash.Authorizer
+
+      def initial_state(_actor, _resource, _action, _domain), do: %{}
+      def strict_check_context(_state), do: []
+      def strict_check(state, _context), do: {:authorized, state}
+      def check_context(_state), do: []
+      def check(_state, _context), do: :authorized
+      def protected_fields(_resource), do: [:name, :email, :name]
+    end
+
+    defmodule AuthorizerWithoutProtectedFields do
+      use Ash.Authorizer
+
+      def initial_state(_actor, _resource, _action, _domain), do: %{}
+      def strict_check_context(_state), do: []
+      def strict_check(state, _context), do: {:authorized, state}
+      def check_context(_state), do: []
+      def check(_state, _context), do: :authorized
+    end
+
+    defmodule AuthorizerReturnsWrongProtectedFields do
+      use Ash.Authorizer
+
+      def initial_state(_actor, _resource, _action, _domain), do: %{}
+      def strict_check_context(_state), do: []
+      def strict_check(state, _context), do: {:authorized, state}
+      def check_context(_state), do: []
+      def check(_state, _context), do: :authorized
+      def protected_fields(_resource), do: [:name, "email"]
+    end
+
+    defmodule ProtectedFieldsResource do
+      use Ash.Resource,
+        domain: Domain,
+        data_layer: Ash.DataLayer.Ets,
+        authorizers: [AuthorizerWithProtectedFields, AuthorizerWithoutProtectedFields]
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, public?: true
+        attribute :email, :string, public?: true
+      end
+
+      actions do
+        defaults [:read]
+      end
+    end
+
     test "raises InvalidReturnType when initial_state returns wrong shape" do
       action = %Ash.Resource.Actions.Action{name: :read, type: :read}
 
@@ -205,6 +254,21 @@ defmodule Ash.BehaviourReturnValidationTest do
           assert message =~ "map" or message =~ "state",
                  "message should describe expected return: #{message}"
       end
+    end
+
+    test "protected_fields defaults to an empty list" do
+      assert Ash.Authorizer.protected_fields(AuthorizerWithoutProtectedFields, AuthorizerResource) ==
+               []
+    end
+
+    test "protected_fields validates a list of atoms" do
+      assert_raise Ash.Error.Framework.InvalidReturnType, fn ->
+        Ash.Authorizer.protected_fields(AuthorizerReturnsWrongProtectedFields, AuthorizerResource)
+      end
+    end
+
+    test "resource info aggregates protected fields from authorizers" do
+      assert Ash.Resource.Info.protected_fields(ProtectedFieldsResource) == [:name, :email]
     end
 
     defmodule AuthorizerReturnsWrongStrictCheck do

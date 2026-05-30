@@ -2334,7 +2334,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           domain :: Ash.Domain.t(),
           resource :: Ash.Resource.t(),
           base_changeset :: Ash.Changeset.t()
-        ) :: [Ash.Resource.record() | {:error, term()}]
+        ) :: [Ash.Resource.Record.t() | {:error, term()}]
   defp process_results(
          tagged_results,
          opts,

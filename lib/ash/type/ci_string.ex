@@ -264,4 +264,9 @@ defmodule Ash.Type.CiString do
   def equal?(left, right) do
     Ash.CiString.compare(left, right) == :eq
   end
+
+  @impl true
+  def to_simple_equality_comparable(value) do
+    Ash.CiString.to_comparable_string(value)
+  end
 end

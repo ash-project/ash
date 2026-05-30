@@ -82,10 +82,11 @@ defmodule Ash.Domain.Dsl do
 
   defmodule ResourceReference do
     @moduledoc "A resource reference in a domain"
-    defstruct [:resource, :__spark_metadata__, definitions: []]
+    defstruct [:resource, :namespace, :__spark_metadata__, definitions: []]
 
     @type t :: %__MODULE__{
             resource: module(),
+            namespace: module() | nil,
             definitions: list(Ash.Resource.Interface.t() | Ash.Resource.CalculationInterface.t()),
             __spark_metadata__: Spark.Dsl.Entity.spark_meta()
           }
@@ -146,6 +147,11 @@ defmodule Ash.Domain.Dsl do
       resource: [
         type: {:spark, Ash.Resource},
         required: true
+      ],
+      namespace: [
+        type: :atom,
+        doc:
+          "Default module on which to generate this resource's code interface functions instead of the domain. The given name is concatenated to the domain module (e.g. `namespace: Tickets` on `Helpdesk.Support` generates onto `Helpdesk.Support.Tickets`). Individual `define`/`define_calculation` entries can override with their own `:namespace` option."
       ]
     ]
   }
