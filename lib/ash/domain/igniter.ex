@@ -82,10 +82,49 @@ if Code.ensure_loaded?(Igniter) do
           end
         end)
       else
-        igniter
-        |> Igniter.add_warning(
-          "Domain #{inspect(domain)} was not an `Ash.Domain`, so could not add `#{inspect(resource)}` to its resource list."
-        )
+
+
+        #  Checks if domain module exist as a file in the project
+        {exists?, igniter} = Igniter.Project.Module.module_exists(igniter, domain)
+
+        # if the module exist as an ash.domain or doesnt exit at all
+        if exists? do
+          app_name = Igniter.Project.Application.app_name(igniter)
+
+          # Shows notice to user on action to take
+          igniter
+          |> Igniter.add_notice(
+            "#{inspect(domain)} exists but is not an `Ash.Domain`. Adding `use Ash.Domain` to it."
+          )
+          # open existing module file for editing to : use Ash.Domain and its resources.
+          |> Igniter.Project.Module.find_and_update_module!(domain, fn zipper ->
+            {:ok,
+             Igniter.Code.Common.add_code(zipper, """
+             use Ash.Domain,
+               otp_app: :#{app_name}
+
+             resources do
+               resource #{inspect(resource)}
+             end
+             """)}
+          end)
+          # registers Domain in congig.exs so Ash knows about it.
+          |> Igniter.Project.Config.configure(
+            "config.exs",
+            app_name,
+            [:ash_domains],
+            [domain],
+            updater: fn list ->
+              Igniter.Code.List.prepend_new_to_list(list, domain)
+            end
+          )
+        else
+          # If module doesnt exist keep original prompt
+          igniter
+          |> Igniter.add_warning(
+            "Domain #{inspect(domain)} was not an `Ash.Domain`, so could not add `#{inspect(resource)}` to its resource list."
+          )
+        end
       end
     end
 
@@ -148,10 +187,49 @@ if Code.ensure_loaded?(Igniter) do
           end
         end)
       else
-        igniter
-        |> Igniter.add_warning(
-          "Domain #{inspect(domain)} was not an `Ash.Domain`, so could not add `#{inspect(resource)}` to its resource list."
-        )
+        #  Checks if domain module exist as a file in the project
+        {exists?, igniter} = Igniter.Project.Module.module_exists(igniter, domain)
+
+        # if the module exist as an ash.domain or doesnt exit at all
+        if exists? do
+          app_name = Igniter.Project.Application.app_name(igniter)
+
+          # Shows notice to user on action to take
+          igniter
+          |> Igniter.add_notice(
+            "#{inspect(domain)} exists but is not an `Ash.Domain`. Adding `use Ash.Domain` to it."
+          )
+          # open existing module file for editing to : use Ash.Domain and its resources.
+          |> Igniter.Project.Module.find_and_update_module!(domain, fn zipper ->
+            {:ok,
+             Igniter.Code.Common.add_code(zipper, """
+             use Ash.Domain,
+               otp_app: :#{app_name}
+
+             resources do
+               resource #{inspect(resource)} do
+                 #{definition}
+               end
+             end
+             """)}
+          end)
+          # registers Domain in congig.exs so Ash knows about it.
+          |> Igniter.Project.Config.configure(
+            "config.exs",
+            app_name,
+            [:ash_domains],
+            [domain],
+            updater: fn list ->
+              Igniter.Code.List.prepend_new_to_list(list, domain)
+            end
+          )
+        else
+          # If module doesnt exist keep original prompt
+          igniter
+          |> Igniter.add_warning(
+            "Domain #{inspect(domain)} was not an `Ash.Domain`, so could not add `#{inspect(resource)}` to its resource list."
+          )
+        end
       end
     end
 
