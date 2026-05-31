@@ -42,6 +42,79 @@ defmodule Ash.Test.Type.SimpleEqualityComparableTest do
         destination_attribute: :parent_id,
         public?: true
       )
+
+      many_to_many :tags, Ash.Test.Type.SimpleEqualityComparableTest.Tag do
+        through(Ash.Test.Type.SimpleEqualityComparableTest.ParentTag)
+        source_attribute_on_join_resource(:parent_id)
+        destination_attribute_on_join_resource(:tag_id)
+        public?(true)
+      end
+    end
+  end
+
+  defmodule Tag do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+
+      # Paginated read used to force the lateral-join attach path.
+      read :paginated do
+        pagination do
+          offset? true
+          default_limit 100
+          countable true
+        end
+      end
+    end
+
+    attributes do
+      attribute :id, :ci_string do
+        primary_key?(true)
+        allow_nil?(false)
+        public?(true)
+      end
+    end
+  end
+
+  defmodule ParentTag do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+    end
+
+    # A unique join makes the m2m eligible for the lateral-join path.
+    identities do
+      identity :unique_pair, [:parent_id, :tag_id], pre_check_with: Domain
+    end
+
+    relationships do
+      belongs_to :parent, Ash.Test.Type.SimpleEqualityComparableTest.Parent do
+        attribute_type(:ci_string)
+        public?(true)
+      end
+
+      belongs_to :tag, Ash.Test.Type.SimpleEqualityComparableTest.Tag do
+        attribute_type(:ci_string)
+        public?(true)
+      end
     end
   end
 
@@ -287,6 +360,60 @@ defmodule Ash.Test.Type.SimpleEqualityComparableTest do
       assert result["ALPHA"] == ["a1", "a2", "a3"]
       assert result["Beta"] == ["b1", "b2"]
       assert result["Gamma"] == []
+    end
+  end
+
+  describe "loading many_to_many across a CI string join key" do
+    setup do
+      for id <- ["Red", "Blue", "Green"] do
+        Tag
+        |> Ash.Changeset.for_create(:create, %{id: id})
+        |> Ash.create!()
+      end
+
+      for id <- ["ALPHA", "Beta"] do
+        Parent
+        |> Ash.Changeset.for_create(:create, %{id: id})
+        |> Ash.create!()
+      end
+
+      # Join rows whose parent_id and tag_id are cased differently from the
+      # records they reference — the m2m stitch must match case-insensitively.
+      for {parent_id, tag_id} <- [
+            {"alpha", "red"},
+            {"ALPHA", "BLUE"},
+            {"beta", "rEd"}
+          ] do
+        ParentTag
+        |> Ash.Changeset.for_create(:create, %{parent_id: parent_id, tag_id: tag_id})
+        |> Ash.create!()
+      end
+
+      :ok
+    end
+
+    test "separate-query attach path: stitches tags back onto parents regardless of case" do
+      parents = Parent |> Ash.read!() |> Ash.load!(:tags)
+
+      result =
+        Map.new(parents, fn parent ->
+          {to_string(parent.id), parent.tags |> Enum.map(&to_string(&1.id)) |> Enum.sort()}
+        end)
+
+      assert result == %{"ALPHA" => ["Blue", "Red"], "Beta" => ["Red"]}
+    end
+
+    test "lateral attach path: paginated tags stitch back to mixed-case parents" do
+      tags_query = Tag |> Ash.Query.for_read(:paginated) |> Ash.Query.page(limit: 100)
+      parents = Parent |> Ash.read!() |> Ash.load!(tags: tags_query)
+
+      result =
+        Map.new(parents, fn parent ->
+          %Ash.Page.Offset{results: results} = parent.tags
+          {to_string(parent.id), results |> Enum.map(&to_string(&1.id)) |> Enum.sort()}
+        end)
+
+      assert result == %{"ALPHA" => ["Blue", "Red"], "Beta" => ["Red"]}
     end
   end
 
