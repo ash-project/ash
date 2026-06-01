@@ -8,6 +8,19 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.27.7](https://github.com/ash-project/ash/compare/v3.27.6...v3.27.7) (2026-06-01)
+
+
+
+
+### Bug Fixes:
+
+* fix passing source query arguments down to hydrate refs on relationship filter expressions by Rutgerdj [(#2728)](https://github.com/ash-project/ash/pull/2728)
+
+### Improvements:
+
+* allow for calcs/aggs in pubsub topics by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.27.6](https://github.com/ash-project/ash/compare/v3.27.5...v3.27.6) (2026-05-28)
 
 
