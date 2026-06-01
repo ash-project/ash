@@ -141,7 +141,7 @@ If you had an action with a preparation, or a global preparation that loaded dat
 prepare build(load: :comments)
 ```
 
-this wold be applied when using `Ash.load`, because we build a query for the primary
+this would be applied when using `Ash.load`, because we build a query for the primary
 read action as a basis for loading data. This could be expensive because now you are always
 loading `:comments` even if you only intended to load something else, and could also be
 unpredictable because it could "overwrite" the already loaded `comments` on the data you
