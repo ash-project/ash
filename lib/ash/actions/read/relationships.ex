@@ -812,6 +812,17 @@ defmodule Ash.Actions.Read.Relationships do
       fn ->
         case Ash.Actions.Read.unpaginated_read(join_query, nil) do
           {:ok, join_records} ->
+            # Stitch the join map onto destination records by a comparable key,
+            # so types like ci_string match case-insensitively (as the non-join
+            # attach path does). `destination_ids` stays raw for the `in` filter.
+            to_key =
+              key_fn_for_type(
+                Ash.Resource.Info.attribute(
+                  relationship.destination,
+                  relationship.destination_attribute
+                ).type
+              ) || (& &1)
+
             {join_id_mapping, destination_ids} =
               Enum.reduce(join_records, {%{}, MapSet.new()}, fn join_record,
                                                                 {mapping, destination_ids} ->
@@ -826,7 +837,7 @@ defmodule Ash.Actions.Read.Relationships do
                 new_mapping =
                   Map.update(
                     mapping,
-                    destination_value,
+                    to_key.(destination_value),
                     [
                       source_value
                     ],
@@ -869,7 +880,9 @@ defmodule Ash.Actions.Read.Relationships do
                  {:ok,
                   Enum.flat_map(records, fn record ->
                     Enum.map(
-                      join_id_mapping[Map.get(record, relationship.destination_attribute)] || [],
+                      join_id_mapping[
+                        to_key.(Map.get(record, relationship.destination_attribute))
+                      ] || [],
                       fn lateral_join_source ->
                         Map.put(
                           record,
