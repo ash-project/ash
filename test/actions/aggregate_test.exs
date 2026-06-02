@@ -84,6 +84,8 @@ defmodule Ash.Test.Actions.AggregateTest do
     aggregates do
       count :count_of_children_relationship_based, :children
 
+      count :count_of_child_posts, [:children, :post]
+
       count :count_of_children_resource_based, Comment do
         filter expr(parent_id == parent(id))
       end
@@ -233,6 +235,8 @@ defmodule Ash.Test.Actions.AggregateTest do
           :count_of_children_relationship_based
 
       sum :sum_of_count_of_children_resource_based, :comments, :count_of_children_resource_based
+
+      sum :sum_of_count_of_child_posts, :comments, :count_of_child_posts
     end
 
     relationships do
@@ -633,6 +637,23 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       assert post.sum_of_count_of_children_relationship_based == 0
       assert post.sum_of_count_of_children_resource_based == 0
+    end
+
+    test "aggregates can sum on counts through a multi-hop relationship path" do
+      post = Post |> Ash.create!(%{public: true}, authorize?: false)
+
+      comment =
+        Comment
+        |> Ash.create!(%{post_id: post.id, public: true}, authorize?: false)
+
+      Comment
+      |> Ash.create!(%{post_id: post.id, public: true, parent_id: comment.id},
+        authorize?: false
+      )
+
+      post = Ash.load!(post, :sum_of_count_of_child_posts)
+
+      assert post.sum_of_count_of_child_posts == 1
     end
   end
 end
