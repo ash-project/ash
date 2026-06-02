@@ -777,11 +777,21 @@ defmodule Ash.Type.Union do
             config[:constraints] || []
           end
 
+        constraints_with_include_source =
+          if Ash.Type.embedded_type?(config[:type]) and
+               function_exported?(config[:type], :include_source, 2) do
+            Keyword.put_new_lazy(config_constraints, :include_source?, fn ->
+              Keyword.get(constraints, :include_source?, @include_source_by_default)
+            end)
+          else
+            config_constraints
+          end
+
         constraints_with_source =
           Ash.Type.include_source(
             config[:type],
             constraints[:__source__],
-            config_constraints
+            constraints_with_include_source
           )
 
         case Ash.Type.cast_input(
@@ -1158,6 +1168,15 @@ defmodule Ash.Type.Union do
           type_constraints =
             if union_tag = constraints[:types][name][:tag] do
               Keyword.put(type_constraints, :__union_tag__, union_tag)
+            else
+              type_constraints
+            end
+
+          type_constraints =
+            if Ash.Type.embedded_type?(type) do
+              Keyword.put_new_lazy(type_constraints, :include_source?, fn ->
+                Keyword.get(constraints, :include_source?, @include_source_by_default)
+              end)
             else
               type_constraints
             end
