@@ -4368,15 +4368,20 @@ defmodule Ash.Changeset do
                   end
 
                 {:error, errors} when is_list(errors) ->
-                  if validation.message do
-                    errors =
-                      Enum.map(errors, fn error ->
-                        Ash.Error.override_validation_message(error, validation.message)
-                      end)
+                  cond do
+                    validation.message ->
+                      errors =
+                        Enum.map(errors, fn error ->
+                          Ash.Error.override_validation_message(error, validation.message)
+                        end)
 
-                    add_error(changeset, errors)
-                  else
-                    add_error(changeset, errors)
+                      add_error(changeset, errors)
+
+                    Keyword.keyword?(errors) ->
+                      add_error(changeset, keyword_to_validation_change_error(changeset, errors))
+
+                    true ->
+                      add_error(changeset, errors)
                   end
 
                 {:error, error} ->
@@ -7767,6 +7772,43 @@ defmodule Ash.Changeset do
           value: keyword[:value],
           vars: keyword
         )
+      else
+        InvalidChanges.exception(
+          fields: keyword[:fields] || [],
+          message: keyword[:message],
+          value: keyword[:value],
+          vars: keyword
+        )
+      end
+
+    if keyword[:path] do
+      Ash.Error.set_path(error, keyword[:path])
+    else
+      error
+    end
+  end
+
+  defp keyword_to_validation_change_error(changeset, keyword) do
+    error =
+      if keyword[:field] do
+        field = keyword[:field]
+
+        opts = [
+          message: keyword[:message],
+          value: keyword[:value],
+          vars: keyword
+        ]
+
+        cond do
+          has_argument?(changeset.action, field) ->
+            InvalidArgument.exception(Keyword.put(opts, :field, field))
+
+          Ash.Resource.Info.attribute(changeset.resource, field) ->
+            InvalidAttribute.exception(Keyword.put(opts, :field, field))
+
+          true ->
+            InvalidChanges.exception(Keyword.put(opts, :fields, [field]))
+        end
       else
         InvalidChanges.exception(
           fields: keyword[:fields] || [],

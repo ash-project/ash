@@ -10,6 +10,19 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   require Ash.Query
 
+  defmodule KeywordErrorValidation do
+    @moduledoc false
+    use Ash.Resource.Validation
+
+    @impl true
+    def init(opts), do: {:ok, opts}
+
+    @impl true
+    def validate(_changeset, opts, _context) do
+      {:error, field: opts[:field], message: opts[:message]}
+    end
+  end
+
   defmodule Slugify do
     use Ash.Resource.Change
 
@@ -79,6 +92,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       create :create_with_private_argument do
         argument :ip_address_public, :string, allow_nil?: false, public?: true
+      end
+
+      create :create_with_keyword_argument_validation do
+        argument :token, :string, allow_nil?: false
+
+        validate {KeywordErrorValidation, field: :token, message: "invalid token"}
+      end
+
+      create :create_with_keyword_attribute_validation do
+        validate {KeywordErrorValidation, field: :name, message: "invalid name"}
       end
     end
 
@@ -1337,6 +1360,36 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       assert Ash.Changeset.get_argument(changeset, :true_optional_argument) == true
       assert Ash.Changeset.get_argument(changeset, :false_optional_argument) == false
+    end
+  end
+
+  describe "validation keyword errors" do
+    test "keyword list errors on action arguments use InvalidArgument" do
+      assert [
+               %Ash.Error.Changes.InvalidArgument{
+                 class: :invalid,
+                 field: :token,
+                 message: "invalid token",
+                 path: []
+               }
+             ] =
+               Ash.Changeset.for_create(Category, :create_with_keyword_argument_validation, %{
+                 token: "bad"
+               }).errors
+    end
+
+    test "keyword list errors on attributes use InvalidAttribute" do
+      assert [
+               %Ash.Error.Changes.InvalidAttribute{
+                 class: :invalid,
+                 field: :name,
+                 message: "invalid name",
+                 path: []
+               }
+             ] =
+               Ash.Changeset.for_create(Category, :create_with_keyword_attribute_validation, %{
+                 name: "bad"
+               }).errors
     end
   end
 
