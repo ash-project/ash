@@ -38,6 +38,22 @@ defmodule Ash.Test.UUIDv7Test do
     assert uuids == Enum.sort(uuids)
   end
 
+  test "generate/0 is strictly monotonic without sleeping between calls" do
+    # The Ecto monotonic generator guarantees strictly increasing (per node)
+    # values even when many UUIDs are generated within the same millisecond.
+    uuids = for _ <- 1..10_000, do: Ash.UUIDv7.generate()
+
+    assert uuids == Enum.sort(uuids)
+    assert length(Enum.uniq(uuids)) == length(uuids)
+  end
+
+  test "bingenerate/0 is strictly monotonic without sleeping between calls" do
+    uuids = for _ <- 1..10_000, do: Ash.UUIDv7.bingenerate()
+
+    assert uuids == Enum.sort(uuids)
+    assert length(Enum.uniq(uuids)) == length(uuids)
+  end
+
   test "encode/1 is working" do
     hex_uuid = Ash.UUIDv7.generate()
     raw_uuid = Ash.UUIDv7.bingenerate()

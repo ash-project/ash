@@ -384,7 +384,7 @@ defmodule Ash.MixProject do
       # DSLs
       {:spark, ">= 2.6.0"},
       # Ash resources are backed by ecto scheams
-      {:ecto, "~> 3.7"},
+      {:ecto, "~> 3.14"},
       # Used by the ETS data layer
       {:ets, "~> 0.8"},
       # Data & types

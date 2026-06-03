@@ -8,10 +8,16 @@ defmodule Ash.UUIDv7 do
 
   [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562#name-uuid-version-7)
 
-  Used for generating UUIDs version 7 with increased clock precision for better monotonicity,
-  as described by method 3 of the [Section 6.2](https://www.rfc-editor.org/rfc/rfc9562#name-monotonicity-and-counters
+  `generate/0` delegates to `Ecto.UUID`'s monotonic generator (Ecto >= 3.14),
+  which guarantees strictly increasing values per node — even for UUIDs generated
+  within the same millisecond — using the
+  [Section 6.2](https://www.rfc-editor.org/rfc/rfc9562#name-monotonicity-and-counters)
+  counter method. This requires the `:ecto` application to be started.
 
-  Inspired by the work of [Ryan Winchester](https://github.com/ryanwinchester/) on [uuidv7](https://github.com/ryanwinchester/uuidv7)
+  `generate/1`, which embeds a specific `DateTime`, uses a hand-rolled
+  implementation with increased clock precision (method 3 of Section 6.2),
+  inspired by the work of [Ryan Winchester](https://github.com/ryanwinchester/) on
+  [uuidv7](https://github.com/ryanwinchester/uuidv7).
 
   ## Examples
 
@@ -70,7 +76,11 @@ defmodule Ash.UUIDv7 do
   """
   @spec bingenerate() :: raw
   @spec bingenerate(DateTime.t()) :: raw
-  def bingenerate, do: do_bingenerate(System.system_time(:nanosecond))
+  # Delegates to Ecto's monotonic generator for absolute (strictly increasing,
+  # per node) monotonicity. Requires the `:ecto` application to be started.
+  def bingenerate, do: Ecto.UUID.bingenerate(version: 7, precision: :monotonic)
+  # The `DateTime` path stays hand-rolled: Ecto's generator cannot embed an
+  # arbitrary timestamp, which this clause needs for migrating historical records.
   def bingenerate(%DateTime{} = dt), do: do_bingenerate(DateTime.to_unix(dt, :nanosecond))
 
   defp do_bingenerate(timestamp_nanoseconds) do
