@@ -494,15 +494,22 @@ defmodule Ash do
       """
     ],
     transaction: [
-      type: {:one_of, [:all, :batch, false]},
+      type: {:one_of, [:all, :batch, :per_record, false]},
       default: :batch,
       doc: """
-      Whether or not to wrap the entire execution in a transaction, each batch, or not at all.
+      Whether or not to wrap the entire execution in a transaction, each batch, each record, or not at all.
 
       Keep in mind:
 
       `before_transaction` and `after_transaction` hooks attached to changesets will have to be run
       *inside* the transaction if you choose `transaction: :all`.
+
+      `:per_record` commits each record's write in its own transaction so that one record failing does
+      not roll back the others (yielding a `:partial_success` result). It is currently only honored by
+      the non-atomic streaming path of `Ash.bulk_update/4` (the path used for `multi_inputs?: true`);
+      elsewhere it behaves like `:batch`. Because each record is committed independently,
+      `stop_on_error?: true` can only stop *scheduling* further records — it cannot roll back records
+      that already committed.
       """
     ],
     max_concurrency: [
@@ -3428,6 +3435,8 @@ defmodule Ash do
 
   Otherwise, this will stream each record and update it.
 
+  To update a distinct input per record (record-by-record), see `update_all/3`.
+
   ## Options
 
   #{Spark.Options.docs(@bulk_update_opts_schema)}
@@ -3475,6 +3484,116 @@ defmodule Ash do
           {:error, error} ->
             %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
         end
+    end
+  end
+
+  # `update_all` is record-by-record by nature, so the atomic-only options do not apply.
+  @update_all_opts_schema Keyword.drop(@bulk_update_opts_schema, [:atomic_update, :strategy])
+
+  @doc false
+  def update_all_opts, do: @update_all_opts_schema
+
+  update_all_opts = @update_all_opts_schema
+
+  defmodule UpdateAllOpts do
+    @moduledoc false
+
+    use Spark.Options.Validator, schema: update_all_opts
+  end
+
+  @doc """
+  Updates each record in the provided enumerable with its own distinct input.
+
+  Unlike `bulk_update/4`, which applies a single input to every record, `update_all/3` accepts an
+  enumerable of `{record, input}` tuples and applies each `input` to its corresponding `record`. It
+  is the record-by-record formulation of a bulk update.
+
+  Because each record has a distinct input, this can never be performed as a single atomic query —
+  it always streams. Pair it with `transaction: :per_record` so that one record failing yields a
+  `:partial_success` result with the other records committed, rather than rolling the whole
+  operation back. With `return_records?: true`, `return_errors?: true` and `stop_on_error?: false`
+  you get a complete per-input picture: each returned record carries its input position in
+  `record.__metadata__.bulk_update_index`, and each error's path begins with its input index.
+
+  ## Options
+
+  #{Spark.Options.docs(@update_all_opts_schema)}
+  """
+  @spec update_all(
+          Enumerable.t({Ash.Resource.Record.t(), map()}),
+          atom,
+          Keyword.t()
+        ) ::
+          Ash.BulkResult.t()
+  @doc spark_opts: [{2, @update_all_opts_schema}]
+  def update_all(inputs, action, opts \\ []) do
+    Ash.Helpers.expect_options!(opts)
+    Ash.Helpers.verify_stream_options(opts)
+
+    case inputs do
+      [] ->
+        result = %Ash.BulkResult{status: :success, errors: []}
+
+        result =
+          if opts[:return_records?] do
+            %{result | records: []}
+          else
+            result
+          end
+
+        if opts[:return_notifications?] do
+          %{result | notifications: []}
+        else
+          result
+        end
+
+      inputs ->
+        domain = Ash.Helpers.domain!(inputs, opts)
+
+        with {:ok, opts} <- UpdateAllOpts.validate(opts),
+             opts <- UpdateAllOpts.to_options(opts),
+             {:ok, resource} <-
+               Ash.Helpers.resource_from_query_or_stream(domain, inputs, opts) do
+          opts = Keyword.merge(opts, resource: resource, multi_inputs?: true)
+
+          Ash.Actions.Update.Bulk.run(domain, inputs, action, %{}, opts)
+        else
+          {:error, error} ->
+            %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
+        end
+    end
+  end
+
+  @doc """
+  Updates each record in the provided enumerable with its own distinct input, raising on error.
+
+  See `update_all/3` for more. Like `bulk_update!/4`, this raises on `:error`/`:partial_success`;
+  use `update_all/3` when you want to inspect a partial-success result.
+  """
+  @spec update_all!(
+          Enumerable.t({Ash.Resource.Record.t(), map()}),
+          atom,
+          Keyword.t()
+        ) ::
+          Ash.BulkResult.t() | no_return
+  @doc spark_opts: [{2, @update_all_opts_schema}]
+  def update_all!(inputs, action, opts \\ []) do
+    inputs
+    |> update_all(action, opts)
+    |> case do
+      %Ash.BulkResult{status: status, errors: errors}
+      when status in [:partial_success, :error] and errors in [nil, []] ->
+        raise Ash.Error.to_error_class(
+                Ash.Error.Unknown.UnknownError.exception(
+                  error: "Something went wrong with update_all, but no errors were produced."
+                )
+              )
+
+      %Ash.BulkResult{status: status, errors: errors} when status in [:partial_success, :error] ->
+        raise Ash.Error.to_error_class(errors)
+
+      bulk_result ->
+        bulk_result
     end
   end
 
