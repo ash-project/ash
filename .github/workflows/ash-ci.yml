@@ -341,7 +341,7 @@ jobs:
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - name: Set OS deps compile partition count
         run: echo "MIX_OS_DEPS_COMPILE_PARTITION_COUNT=$(($(lscpu -p | grep -v '^#' | sort -u -t, -k 2,4 | wc -l) / 2))" >> $GITHUB_ENV
-      - uses: team-alembic/staple-actions/actions/mix-compile@04f27881d51ef973841fc40c549aefb7b52db7f7 # main
+      - uses: team-alembic/staple-actions/actions/mix-compile@325af91762b51931c459503300c22c057251b3cf # main
         with:
           mix-env: test
           args: "--warnings-as-errors"
@@ -528,7 +528,7 @@ jobs:
           HEX_HOME: ${{ runner.temp }}/.hex
           MIX_HOME: ${{ runner.temp }}/.mix
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
-      - uses: team-alembic/staple-actions/actions/mix-doctor@main
+      - uses: team-alembic/staple-actions/actions/mix-doctor@325af91762b51931c459503300c22c057251b3cf # main
         with:
           mix-env: test
   credo:
