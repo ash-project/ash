@@ -638,7 +638,6 @@ defmodule Ash.Query.Aggregate do
     end
   end
 
-  defp kind_to_type({:custom, type}, _attribute_type), do: {:ok, type}
   defp kind_to_type(:count, _attribute_type), do: {:ok, Ash.Type.Integer}
   defp kind_to_type(:exists, _attribute_type), do: {:ok, Ash.Type.Boolean}
   defp kind_to_type(kind, nil), do: {:error, "Must provide field type for #{kind}"}
@@ -647,7 +646,6 @@ defmodule Ash.Query.Aggregate do
   defp kind_to_type(kind, attribute_type) when kind in [:first, :sum, :max, :min],
     do: {:ok, attribute_type}
 
-  defp kind_to_type(:list, attribute_type), do: {:ok, {:array, attribute_type}}
   defp kind_to_type(kind, _attribute_type), do: {:error, "Invalid aggregate kind: #{kind}"}
 
   defimpl Inspect do

@@ -1192,9 +1192,6 @@ defmodule Ash.Actions.Read do
              count: fn -> count.() end
            }}
         else
-          {:ok, query} ->
-            {{:error, query}, query}
-
           {:error, error} ->
             {{:error, error}, query}
         end

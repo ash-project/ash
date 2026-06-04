@@ -401,7 +401,6 @@ defmodule Ash.Type.Decimal do
   defp minimum(nil, v2), do: to_number(v2)
   defp minimum(v1, v2), do: min(to_number(v1), to_number(v2))
 
-  defp to_number(nil), do: nil
   defp to_number(%Decimal{} = decimal), do: Decimal.to_float(decimal)
   defp to_number(number), do: number
 end

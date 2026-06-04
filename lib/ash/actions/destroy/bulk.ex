@@ -473,23 +473,6 @@ defmodule Ash.Actions.Destroy.Bulk do
         if :atomic_batches not in opts[:strategy],
           do: "Cannot perform atomic destroys on an enumerable of inputs"
 
-    action =
-      case action do
-        nil ->
-          Ash.Resource.Info.primary_action!(resource, :update)
-
-        name when is_atom(name) ->
-          action = Ash.Resource.Info.action(resource, action)
-
-          if !action do
-            raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: name, type: :update
-          end
-
-          action
-
-        action ->
-          action
-      end
 
     if opts[:transaction] == :all && opts[:return_stream?] do
       raise ArgumentError,

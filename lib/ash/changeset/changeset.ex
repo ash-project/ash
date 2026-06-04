@@ -4023,9 +4023,6 @@ defmodule Ash.Changeset do
                 end
             end
           else
-            {:expr, {:ok, false}, _expr} ->
-              {:cont, changeset}
-
             {:expr, {:error, error}, expr} ->
               if Keyword.get(opts, :error_is_not_atomic?, false) do
                 {:halt,

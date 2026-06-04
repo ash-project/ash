@@ -1077,9 +1077,6 @@ defmodule Ash.Filter.Runtime do
     |> or_default(attribute)
   end
 
-  defp resolve_ref(_value, _record, _, _, true), do: :unknown
-  defp resolve_ref(_value, _record, _, _, _), do: {:ok, nil}
-
   defp or_default({:ok, nil}, %Ash.Resource.Aggregate{default: default})
        when not is_nil(default) do
     if is_function(default) do

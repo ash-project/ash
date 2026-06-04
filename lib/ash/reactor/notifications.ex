@@ -155,9 +155,6 @@ defmodule Ash.Reactor.Notifications do
     error -> {:error, error}
   end
 
-  defp agent_get(%{@agent_key => []}),
-    do: {:error, "Context does not contain a notification agent"}
-
   defp agent_stop(%{@agent_key => [pid | agents]} = context) do
     :ok = Agent.stop(pid, :normal)
 

@@ -2743,12 +2743,6 @@ defmodule Ash.Filter do
           &do_list_refs(&1, true, false, expand_calculations?, expand_get_path?)
         )
 
-      value when is_list(value) ->
-        Enum.flat_map(
-          value,
-          &do_list_refs(&1, true, false, expand_calculations?, expand_get_path?)
-        )
-
       value when is_map(value) and not is_struct(value) ->
         Enum.flat_map(value, fn {key, value} ->
           do_list_refs(key, true, false, expand_calculations?, expand_get_path?) ++
@@ -4852,8 +4846,6 @@ defmodule Ash.Filter do
   defp add_to_ref_path(%Ref{relationship_path: relationship_path} = ref, to_add) do
     %{ref | relationship_path: to_add ++ relationship_path}
   end
-
-  defp add_to_ref_path(other, _), do: other
 
   defp parse_and_join([statement | statements], op, context) do
     case parse_expression(statement, context) do
