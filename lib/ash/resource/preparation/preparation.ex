@@ -24,8 +24,6 @@ defmodule Ash.Resource.Preparation do
     __spark_metadata__: nil
   ]
 
-  require Ash.BehaviourHelpers
-
   @type ref :: {module(), Keyword.t()} | module()
 
   @type t :: %__MODULE__{
