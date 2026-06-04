@@ -930,11 +930,7 @@ defmodule Ash.Filter.Runtime do
                   {:ok, nil}
               end
             else
-              if unknown_on_unknown_refs? do
-                :unknown
-              else
-                {:ok, nil}
-              end
+              {:ok, nil}
             end
           end
         end

@@ -2635,12 +2635,6 @@ defmodule Ash.Changeset do
     check_for_exists_with_relationships(expr)
   end
 
-  defp check_for_exists_with_relationships(%Ash.Query.BooleanExpression{left: left, right: right}) do
-    with :ok <- check_for_exists_with_relationships(left) do
-      check_for_exists_with_relationships(right)
-    end
-  end
-
   defp check_for_exists_with_relationships(list) when is_list(list) do
     Enum.reduce_while(list, :ok, fn item, :ok ->
       case check_for_exists_with_relationships(item) do
@@ -3228,15 +3222,6 @@ defmodule Ash.Changeset do
          identity,
          domain
        ) do
-    do_validate_identity(changeset, identity, domain)
-  end
-
-  defp validate_identity(
-         %{action: %{type: type}} = changeset,
-         identity,
-         domain
-       )
-       when type in [:create, :update] do
     do_validate_identity(changeset, identity, domain)
   end
 

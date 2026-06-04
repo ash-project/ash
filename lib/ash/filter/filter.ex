@@ -1893,7 +1893,7 @@ defmodule Ash.Filter do
 
   defp do_run_other_data_layer_filters(other, _domain, _resource, _data), do: {:ok, other}
 
-  defp split_expression_by_relationship_path(%{expression: expression}, path) do
+  defp split_expression_by_relationship_path(%__MODULE__{expression: expression}, path) do
     split_expression_by_relationship_path(expression, path)
   end
 
@@ -4414,16 +4414,6 @@ defmodule Ash.Filter do
     resolve_call(call, context)
   end
 
-  def do_hydrate_refs(%{__predicate__?: _, left: left, right: right} = expr, context) do
-    with {:ok, left} <- do_hydrate_refs(left, context),
-         {:ok, right} <- do_hydrate_refs(right, context) do
-      {:ok, %{expr | left: left, right: right}}
-    else
-      other ->
-        other
-    end
-  end
-
   def do_hydrate_refs(
         %{
           __predicate__?: _,
@@ -4491,6 +4481,16 @@ defmodule Ash.Filter do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  def do_hydrate_refs(%{__predicate__?: _, left: left, right: right} = expr, context) do
+    with {:ok, left} <- do_hydrate_refs(left, context),
+         {:ok, right} <- do_hydrate_refs(right, context) do
+      {:ok, %{expr | left: left, right: right}}
+    else
+      other ->
+        other
     end
   end
 
@@ -4667,16 +4667,6 @@ defmodule Ash.Filter do
     else
       {:error,
        "No related resource at path #{inspect(expanded_at_path ++ expanded_path)} for #{inspect(context[:resource])}"}
-    end
-  end
-
-  def do_hydrate_refs(%__MODULE__{expression: expression} = filter, context) do
-    case do_hydrate_refs(expression, context) do
-      {:ok, expression} ->
-        {:ok, %{filter | expression: expression}}
-
-      {:error, error} ->
-        {:error, error}
     end
   end
 

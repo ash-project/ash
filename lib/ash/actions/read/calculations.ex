@@ -237,56 +237,30 @@ defmodule Ash.Actions.Read.Calculations do
           end
         else
           if Ash.Resource.Calculation.has_calculate?(module) do
-            record =
-              if primary_key do
-                Ash.load(
-                  record,
-                  Ash.Resource.Calculation.load(
-                    module,
-                    Ash.Query.new(resource),
-                    calc_opts,
-                    calc_context
-                  ),
-                  actor: opts[:actor],
-                  domain: opts[:domain],
-                  lazy?: reuse_values?,
-                  reuse_values?: reuse_values?,
-                  tenant: opts[:tenant],
-                  authorize?: false,
-                  tracer: opts[:tracer],
-                  resource: opts[:resource],
-                  context: opts[:context] || %{}
-                )
-              else
-                {:ok, record}
-              end
+            case with_trace(
+                   fn ->
+                     Ash.Resource.Calculation.calculate(
+                       module,
+                       [record],
+                       calc_opts,
+                       calc_context
+                     )
+                   end,
+                   resource,
+                   calculation,
+                   opts
+                 ) do
+              [result] ->
+                {:ok, result}
 
-            with {:ok, record} <- record do
-              case with_trace(
-                     fn ->
-                       Ash.Resource.Calculation.calculate(
-                         module,
-                         [record],
-                         calc_opts,
-                         calc_context
-                       )
-                     end,
-                     resource,
-                     calculation,
-                     opts
-                   ) do
-                [result] ->
-                  {:ok, result}
+              {:ok, [result]} ->
+                {:ok, result}
 
-                {:ok, [result]} ->
-                  {:ok, result}
+              {:ok, _} ->
+                {:error, "Invalid calculation return"}
 
-                {:ok, _} ->
-                  {:error, "Invalid calculation return"}
-
-                {:error, error} ->
-                  {:error, error}
-              end
+              {:error, error} ->
+                {:error, error}
             end
           else
             {:error,
@@ -321,13 +295,7 @@ defmodule Ash.Actions.Read.Calculations do
   defp replace_refs(expr, opts) do
     Ash.Filter.map(expr, fn
       %Ash.Query.Ref{relationship_path: path, attribute: %Ash.Resource.Attribute{} = attribute} ->
-        name =
-          case attribute do
-            %{name: name} -> name
-            name -> name
-          end
-
-        Ash.Expr.get_path(opts[:record] || %{}, path ++ [name])
+        Ash.Expr.get_path(opts[:record] || %{}, path ++ [attribute.name])
 
       %Ash.Query.Exists{expr: expr} = exists ->
         %{
