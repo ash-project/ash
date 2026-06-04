@@ -478,6 +478,15 @@ defmodule Ash.Actions.Update.Bulk do
 
     opts = set_strategy(opts, resource, Keyword.get(opts, :input_was_stream?, true))
 
+    # `multi_inputs?` provides a distinct input per record, which can never be applied as a single
+    # atomic query, so we force the streaming strategy.
+    opts =
+      if opts[:multi_inputs?] do
+        Keyword.put(opts, :strategy, [:stream])
+      else
+        opts
+      end
+
     opts =
       if opts[:return_notifications?] do
         Keyword.put(opts, :notify?, true)
@@ -487,8 +496,16 @@ defmodule Ash.Actions.Update.Bulk do
 
     not_atomic_reason =
       not_atomic_reason ||
-        if :atomic_batches not in opts[:strategy],
-          do: "Cannot perform atomic destroys on an enumerable of inputs"
+        cond do
+          opts[:multi_inputs?] ->
+            "Cannot perform atomic updates with `multi_inputs?: true`"
+
+          :atomic_batches not in opts[:strategy] ->
+            "Cannot perform atomic destroys on an enumerable of inputs"
+
+          true ->
+            nil
+        end
 
     action =
       case action do
@@ -2201,6 +2218,27 @@ defmodule Ash.Actions.Update.Bulk do
     )
   end
 
+  # Multi-input mode: the element carries its own input, merged under the shared `input` base.
+  defp setup_changeset(
+         {{record, per_input}, index},
+         action,
+         opts,
+         input,
+         argument_names,
+         domain,
+         context_key
+       ) do
+    setup_changeset(
+      {record, index},
+      action,
+      opts,
+      Map.merge(input || %{}, per_input || %{}),
+      argument_names,
+      domain,
+      context_key
+    )
+  end
+
   defp setup_changeset(
          {record, index},
          action,
@@ -2691,6 +2729,8 @@ defmodule Ash.Actions.Update.Bulk do
         invalid_changeset_errors
 
       batch ->
+        transaction_per_record? = opts[:transaction] == :per_record
+
         batch
         |> Enum.group_by(&{&1.atomics, &1.filter})
         |> Enum.flat_map(fn {_atomics, batch} ->
@@ -2759,6 +2799,17 @@ defmodule Ash.Actions.Update.Bulk do
                   batch,
                   changesets_by_ref,
                   changesets_by_index
+                )
+
+              _ when transaction_per_record? ->
+                run_batch_per_record(
+                  batch,
+                  resource,
+                  action,
+                  opts,
+                  metadata_key,
+                  ref_metadata_key,
+                  context_key
                 )
 
               _ ->
@@ -2836,6 +2887,11 @@ defmodule Ash.Actions.Update.Bulk do
             {:manual_tagged, tagged_results} ->
               tagged_results
 
+            # Per-record transaction path: each record already committed/rolled back
+            # independently and tagged with its changeset.
+            {:per_record_tagged, tagged_results} ->
+              tagged_results
+
             {:ok, result} ->
               result
 
@@ -2875,6 +2931,139 @@ defmodule Ash.Actions.Update.Bulk do
         end)
         |> Enum.concat(invalid_changeset_errors)
     end
+  end
+
+  # Processes a batch one record at a time, committing each record's write in its
+  # own transaction (when the data layer supports transactions). A single record
+  # failing rolls back only that record and is collected as an error tagged with its
+  # changeset, rather than halting the batch. Returns `{:per_record_tagged, results}`
+  # where results is a list of `{:ok, record, changeset}` / `{:error, error, changeset}`
+  # tuples, which `run_batch` passes straight through to `process_results`.
+  defp run_batch_per_record(
+         batch,
+         resource,
+         action,
+         opts,
+         metadata_key,
+         ref_metadata_key,
+         context_key
+       ) do
+    stop_on_error? = opts[:stop_on_error?] && !opts[:return_stream?]
+
+    {tagged_results, _halted?} =
+      Enum.reduce_while(batch, {[], false}, fn changeset, {acc, _} ->
+        tagged =
+          update_one_per_record(
+            changeset,
+            resource,
+            action,
+            opts,
+            metadata_key,
+            ref_metadata_key,
+            context_key
+          )
+
+        acc =
+          case tagged do
+            :skip -> acc
+            tagged -> [tagged | acc]
+          end
+
+        if stop_on_error? and match?({:error, _, _}, tagged) do
+          {:halt, {acc, true}}
+        else
+          {:cont, {acc, false}}
+        end
+      end)
+
+    {:per_record_tagged, Enum.reverse(tagged_results)}
+  end
+
+  # Updates a single record inside its own transaction. Returns `:skip` for stale
+  # records (mirroring the batched loop), or a tagged `{:ok, record, changeset}` /
+  # `{:error, error, changeset}` tuple.
+  defp update_one_per_record(
+         changeset,
+         resource,
+         action,
+         opts,
+         metadata_key,
+         ref_metadata_key,
+         context_key
+       ) do
+    changed? =
+      Ash.Changeset.changing_attributes?(changeset) or
+        not Enum.empty?(changeset.atomics)
+
+    if changed? do
+      changeset =
+        if Enum.empty?(changeset.attributes) &&
+             Ash.DataLayer.data_layer_can?(changeset.resource, :atomic_update) do
+          Ash.Changeset.atomic_defaults(changeset)
+        else
+          Ash.Changeset.set_defaults(changeset, :update, true)
+        end
+        |> Ash.Changeset.set_action_select()
+
+      update_result =
+        Ash.DataLayer.transaction(
+          List.wrap(resource) ++ action.touches_resources,
+          fn ->
+            resource
+            |> Ash.DataLayer.update(changeset)
+            |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+          end,
+          opts[:timeout],
+          %{
+            type: context_key,
+            metadata: %{
+              resource: resource,
+              action: action.name,
+              actor: opts[:actor]
+            },
+            data_layer_context: opts[:data_layer_context] || changeset.context
+          },
+          rollback_on_error?: false
+        )
+
+      case update_result do
+        {:ok, {:ok, result}} ->
+          {:ok,
+           put_per_record_metadata(
+             result,
+             changeset,
+             metadata_key,
+             ref_metadata_key,
+             context_key
+           ), changeset}
+
+        {:ok, {:error, %Ash.Error.Changes.StaleRecord{}}} ->
+          :skip
+
+        {:ok, {:error, error}} ->
+          {:error, error, changeset}
+
+        {:error, error} ->
+          {:error, error, changeset}
+      end
+    else
+      result =
+        put_per_record_metadata(
+          changeset.data,
+          changeset,
+          metadata_key,
+          ref_metadata_key,
+          context_key
+        )
+
+      {:ok, result, changeset}
+    end
+  end
+
+  defp put_per_record_metadata(result, changeset, metadata_key, ref_metadata_key, context_key) do
+    result
+    |> Ash.Resource.put_metadata(metadata_key, changeset.context[context_key].index)
+    |> Ash.Resource.put_metadata(ref_metadata_key, changeset.context[context_key].ref)
   end
 
   defp manage_relationships(updated, domain, changeset, engine_opts) do
