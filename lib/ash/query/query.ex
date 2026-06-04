@@ -2543,7 +2543,12 @@ defmodule Ash.Query do
           Enum.find(calculation.arguments, fn arg -> arg.name == key end)
         end
 
-      value = Ash.Type.Helpers.handle_indexed_maps(argument.type, value)
+      value =
+        if argument do
+          Ash.Type.Helpers.handle_indexed_maps(argument.type, value)
+        else
+          value
+        end
 
       cond do
         !argument ->

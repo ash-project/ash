@@ -2263,7 +2263,7 @@ defmodule Ash.Actions.Update.Bulk do
         0
       end
 
-    if max_concurrency && max_concurrency > 1 do
+    if max_concurrency > 1 do
       ash_context = Ash.ProcessHelpers.get_context_for_transfer(opts)
 
       Task.async_stream(

@@ -30,7 +30,7 @@ defmodule Ash.Error.Invalid.NoMatchingBulkStrategy do
       if is_atom(action) do
         action
       else
-        action && action.name
+        action.name
       end
 
     reasons =

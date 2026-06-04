@@ -432,9 +432,6 @@ defmodule Ash.Filter.Runtime do
          {:ok, right_resolved} <-
            resolve_expr(right, record, parent, resource, unknown_on_unknown_refs?) do
       cond do
-        left_resolved ->
-          {:ok, !!left_resolved}
-
         is_nil(right_resolved) ->
           {:ok, right_resolved}
 
