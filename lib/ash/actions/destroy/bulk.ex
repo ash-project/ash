@@ -61,7 +61,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   def run(domain, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
-    action_name = if is_atom(action), do: action, else: action.name
+    action_name = action.name
 
     Ash.Tracer.span :bulk_destroy,
                     fn ->

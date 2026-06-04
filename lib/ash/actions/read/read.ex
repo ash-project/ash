@@ -2821,18 +2821,18 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  # The function `keep_read_action_loads_when_loading?` always returns a constant value
-  # because its a compile attr
-  # So dialyzer always complains that `!false` can never be true
-  @dialyzer {:nowarn_function, strip_load?: 1}
-  defp strip_load?(initial_data) do
-    initial_data && !Ash.Actions.Helpers.keep_read_action_loads_when_loading?()
+  # `keep_read_action_loads_when_loading?` is a compile-time constant, so we
+  # dispatch on it at compile time to avoid an always-true/always-false condition.
+  if Ash.Actions.Helpers.keep_read_action_loads_when_loading?() do
+    defp strip_load?(_initial_data), do: false
+  else
+    defp strip_load?(initial_data), do: !!initial_data
   end
 
-  @dialyzer {:nowarn_function, prefer_existing_loads?: 1}
-  defp prefer_existing_loads?(query) do
-    query.context[:loading_relationships?] &&
-      !Ash.Actions.Helpers.keep_read_action_loads_when_loading?()
+  if Ash.Actions.Helpers.keep_read_action_loads_when_loading?() do
+    defp prefer_existing_loads?(_query), do: false
+  else
+    defp prefer_existing_loads?(query), do: !!query.context[:loading_relationships?]
   end
 
   defp validate_multitenancy(query) do
