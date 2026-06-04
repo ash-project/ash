@@ -863,7 +863,7 @@ defmodule Ash.Type.Union do
         their_tag_value == tag_value || their_tag_value == to_string(tag_value)
 
       is_binary(tag_value) && is_atom(their_tag_value) ->
-        their_tag_value == tag_value || to_string(their_tag_value) == tag_value
+        to_string(their_tag_value) == tag_value
 
       true ->
         their_tag_value == tag_value

@@ -2245,7 +2245,7 @@ defmodule Ash.DataLayer.Ets do
       end
 
     filter =
-      if query.filter && query.filter != nil && query.filter.expression != nil do
+      if query.filter && query.filter.expression != nil do
         " where `#{inspect(query.filter.expression)}`"
       else
         ""
@@ -2281,7 +2281,7 @@ defmodule Ash.DataLayer.Ets do
       end
 
     filter =
-      if query.filter && query.filter != nil && query.filter.expression != nil do
+      if query.filter && query.filter.expression != nil do
         " matching filter `#{inspect(query.filter.expression)}`"
       else
         ""

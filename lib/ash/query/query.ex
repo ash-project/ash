@@ -369,7 +369,7 @@ defmodule Ash.Query do
 
     defp arguments(query, opts) do
       if query.action do
-        if is_nil(query.action) || Enum.empty?(query.action.arguments) do
+        if Enum.empty?(query.action.arguments) do
           empty()
         else
           args =
