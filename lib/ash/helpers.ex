@@ -227,7 +227,6 @@ defmodule Ash.Helpers do
           [%resource{} | _] ->
             resource
 
-          # `update_all/3` streams `{record, input}` tuples.
           [{%resource{}, _input} | _] ->
             resource
 

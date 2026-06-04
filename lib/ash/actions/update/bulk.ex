@@ -478,8 +478,6 @@ defmodule Ash.Actions.Update.Bulk do
 
     opts = set_strategy(opts, resource, Keyword.get(opts, :input_was_stream?, true))
 
-    # `multi_inputs?` provides a distinct input per record, which can never be applied as a single
-    # atomic query, so we force the streaming strategy.
     opts =
       if opts[:multi_inputs?] do
         Keyword.put(opts, :strategy, [:stream])
@@ -2218,7 +2216,6 @@ defmodule Ash.Actions.Update.Bulk do
     )
   end
 
-  # Multi-input mode: the element carries its own input, merged under the shared `input` base.
   defp setup_changeset(
          {{record, per_input}, index},
          action,
@@ -2887,8 +2884,6 @@ defmodule Ash.Actions.Update.Bulk do
             {:manual_tagged, tagged_results} ->
               tagged_results
 
-            # Per-record transaction path: each record already committed/rolled back
-            # independently and tagged with its changeset.
             {:per_record_tagged, tagged_results} ->
               tagged_results
 
@@ -2933,12 +2928,6 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  # Processes a batch one record at a time, committing each record's write in its
-  # own transaction (when the data layer supports transactions). A single record
-  # failing rolls back only that record and is collected as an error tagged with its
-  # changeset, rather than halting the batch. Returns `{:per_record_tagged, results}`
-  # where results is a list of `{:ok, record, changeset}` / `{:error, error, changeset}`
-  # tuples, which `run_batch` passes straight through to `process_results`.
   defp run_batch_per_record(
          batch,
          resource,
@@ -2979,9 +2968,6 @@ defmodule Ash.Actions.Update.Bulk do
     {:per_record_tagged, Enum.reverse(tagged_results)}
   end
 
-  # Updates a single record inside its own transaction. Returns `:skip` for stale
-  # records (mirroring the batched loop), or a tagged `{:ok, record, changeset}` /
-  # `{:error, error, changeset}` tuple.
   defp update_one_per_record(
          changeset,
          resource,

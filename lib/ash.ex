@@ -3487,7 +3487,6 @@ defmodule Ash do
     end
   end
 
-  # `update_all` is record-by-record by nature, so the atomic-only options do not apply.
   @update_all_opts_schema Keyword.drop(@bulk_update_opts_schema, [:atomic_update, :strategy])
 
   @doc false
