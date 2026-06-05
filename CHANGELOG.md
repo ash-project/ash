@@ -8,6 +8,33 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.27.8](https://github.com/ash-project/ash/compare/v3.27.7...v3.27.8) (2026-06-05)
+
+
+
+
+### Bug Fixes:
+
+* crash loading nested aggregate over a multi-hop inner aggregate (#2732) by [@joshprice](https://github.com/joshprice) [(#2732)](https://github.com/ash-project/ash/pull/2732)
+
+* propagate include_source? from union to inner embedded type constraints (#2716) by [@Munksgaard](https://github.com/Munksgaard) [(#2716)](https://github.com/ash-project/ash/pull/2716)
+
+* auto-detect argument vs attribute in validation  (#2714) by [@ThomaseLucas](https://github.com/ThomaseLucas) [(#2714)](https://github.com/ash-project/ash/pull/2714)
+
+* ensure lock is passed in read_one/read_first (#2711) by Alt-iOS [(#2711)](https://github.com/ash-project/ash/pull/2711)
+
+* propagate parent query's context.shared into aggregate authorization filters (#2730) by [@nallwhy](https://github.com/nallwhy) [(#2730)](https://github.com/ash-project/ash/pull/2730)
+
+* Error when passing in {:ok, []} to Ash.load (#2722) by [@cheerfulstoic](https://github.com/cheerfulstoic) [(#2722)](https://github.com/ash-project/ash/pull/2722)
+
+* match `ci_string` join keys case-insensitively when loading `many_to_many` relationships (#2731) by sevenseacat [(#2731)](https://github.com/ash-project/ash/pull/2731)
+
+### Improvements:
+
+* switch to uuidv7 ecto's generator (#2734) by Kenneth Kostrešević [(#2734)](https://github.com/ash-project/ash/pull/2734)
+
+* Include all constraints in `Ash.Type.Decimal.generator/1` (#2717) by David Corwin [(#2717)](https://github.com/ash-project/ash/pull/2717)
+
 ## [v3.27.7](https://github.com/ash-project/ash/compare/v3.27.6...v3.27.7) (2026-06-01)
 
 
