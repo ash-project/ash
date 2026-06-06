@@ -108,6 +108,11 @@ defmodule Ash.Test.Actions.ReadTest do
         validate string_length(:username, min: 3, max: 20)
       end
 
+      read :read_with_byte_size do
+        argument :username, :string
+        validate byte_size(:username, min: 3, max: 4)
+      end
+
       # Tests for where clauses
       read :read_with_preparation_where do
         argument :should_prepare, :boolean, default: false
@@ -1216,6 +1221,29 @@ defmodule Ash.Test.Actions.ReadTest do
         |> Ash.Query.for_read(:read_with_string_length, %{
           username: "this_username_is_way_too_long_to_be_valid"
         })
+        |> Ash.read!()
+      end
+    end
+
+    test "byte_size validation passes when string is within bounds" do
+      assert [] =
+               Author
+               |> Ash.Query.for_read(:read_with_byte_size, %{username: "🔥"})
+               |> Ash.read!()
+    end
+
+    test "byte_size validation fails when string is too short" do
+      assert_raise Ash.Error.Invalid, ~r/must have byte size of between/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_byte_size, %{username: "no"})
+        |> Ash.read!()
+      end
+    end
+
+    test "byte_size validation fails when string is too long" do
+      assert_raise Ash.Error.Invalid, ~r/must have byte size of between/, fn ->
+        Author
+        |> Ash.Query.for_read(:read_with_byte_size, %{username: "🔥a"})
         |> Ash.read!()
       end
     end

@@ -79,6 +79,7 @@ The following functions are built in:
 - `string_split/1` | Splits a string on spaces
 - `string_split/2` | As above, but with a specific delimiter
 - `string_split/3` | As above, but with options. See the function for the available options.
+- `byte_size/1` | Returns the byte size of a given string, as reported by Elixir's `byte_size/1`
 - `string_length/1` | Returns the length of a given string, as reported by `String.length/1`
 - `string_trim/1` | Trims unicode whitespace from the beginning and the end of a string
 - `at/2` | Get an element from a list, i.e `at(list, 1)`

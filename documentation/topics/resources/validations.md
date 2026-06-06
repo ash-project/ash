@@ -25,6 +25,7 @@ The following builtin validations support both changesets and queries:
 - `negate` - negates other validations
 - `one_of` - validates values are in allowed options
 - `present` - validates required values are present
+- `byte_size` - validates string byte size
 - `string_length` - validates string length
 
 Some examples of usage of builtin validations
@@ -36,6 +37,8 @@ validate match(:email, "@")
 validate compare(:age, greater_than_or_equal_to: 18) do
   message "must be over 18 to sign up"
 end
+
+validate byte_size(:password, max: 72)
 
 validate present(:last_name) do
   where [present(:first_name), present(:middle_name)]

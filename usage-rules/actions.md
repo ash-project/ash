@@ -41,7 +41,7 @@ Validations ensure that data meets your business requirements before it gets pro
 
 Validations work on both changesets and queries. Built-in validations that support queries include:
 - `action_is`, `argument_does_not_equal`, `argument_equals`, `argument_in`
-- `compare`, `confirm`, `match`, `negate`, `one_of`, `present`, `string_length`
+- `byte_size`, `compare`, `confirm`, `match`, `negate`, `one_of`, `present`, `string_length`
 - Custom validations that implement the `supports/1` callback
 
 Common validation patterns:
@@ -406,5 +406,4 @@ change MyApp.MyDomain.MyResource.Changes.SlugifyName
 - **Update**: For changing records
 - **Destroy**: For removing records
 - **Generic**: For custom operations that don't fit the other types
-
 

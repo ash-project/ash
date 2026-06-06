@@ -171,6 +171,24 @@ defmodule Ash.Resource.Validation.Builtins do
     {Validation.StringLength, Keyword.merge(opts, attribute: attribute)}
   end
 
+  @doc """
+  Validates that an attribute on the original record meets the given byte size criteria
+
+  ## Options
+
+  #{Spark.Options.docs(Ash.Resource.Validation.ByteSize.opt_schema())}
+
+  ## Examples
+
+      validate byte_size(:slug, exact: 8)
+      validate byte_size(:password, min: 6)
+      validate byte_size(:secret, min: 4, max: 12)
+  """
+  @spec byte_size(attribute :: atom, opts :: Keyword.t()) :: Validation.ref()
+  def byte_size(attribute, opts \\ []) do
+    {Validation.ByteSize, Keyword.merge(opts, attribute: attribute)}
+  end
+
   @numericality_docs """
   Validates that an attribute or argument meets the given comparison criteria.
 
