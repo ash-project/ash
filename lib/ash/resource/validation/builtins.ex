@@ -185,7 +185,7 @@ defmodule Ash.Resource.Validation.Builtins do
       validate byte_size(:secret, min: 4, max: 12)
   """
   @spec byte_size(attribute :: atom, opts :: Keyword.t()) :: Validation.ref()
-  def byte_size(attribute, opts \\ []) do
+  def byte_size(attribute, opts) do
     {Validation.ByteSize, Keyword.merge(opts, attribute: attribute)}
   end
 
