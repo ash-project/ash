@@ -7,6 +7,7 @@ defmodule Ash.Test.Resource.Validation.ByteSizeTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Validation.ByteSize
+  require Ash.Expr
 
   defmodule Post do
     use Ash.Resource, domain: Ash.Test.Domain
@@ -92,6 +93,29 @@ defmodule Ash.Test.Resource.Validation.ByteSizeTest do
 
       changeset = Ash.Changeset.for_create(Post, :create, %{body: "🔥a"})
       assert_error(changeset, opts, "must have byte size of between 3 and 4")
+    end
+  end
+
+  describe "atomic" do
+    test "delegates to validate for non-atomic changes" do
+      {:ok, opts} = ByteSize.init(attribute: :body, min: 4)
+      post = %Post{id: Ash.UUID.generate(), body: "yes"}
+      changeset = Ash.Changeset.for_update(post, :update, %{body: "🔥"})
+
+      assert :ok = ByteSize.atomic(changeset, opts, %{})
+    end
+
+    test "is not atomic when the attribute is changed atomically" do
+      {:ok, opts} = ByteSize.init(attribute: :body, min: 4)
+      post = %Post{id: Ash.UUID.generate(), body: "yes"}
+
+      changeset =
+        post
+        |> Ash.Changeset.for_update(:update, %{})
+        |> Ash.Changeset.atomic_update(:body, Ash.Expr.expr(body <> "x"))
+
+      assert {:not_atomic, message} = ByteSize.atomic(changeset, opts, %{})
+      assert message =~ "being atomically changed"
     end
   end
 

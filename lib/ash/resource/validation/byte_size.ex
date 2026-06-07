@@ -82,6 +82,16 @@ defmodule Ash.Resource.Validation.ByteSize do
     end
   end
 
+  @impl true
+  def atomic(changeset, opts, context) do
+    if Keyword.has_key?(changeset.atomics, opts[:attribute]) do
+      {:not_atomic,
+       "can't atomically run byte size validation on attribute `#{opts[:attribute]}` that is being atomically changed"}
+    else
+      validate(changeset, opts, context)
+    end
+  end
+
   defp do_validate(subject, value, %{exact: exact} = opts) do
     if byte_size(value) == exact do
       :ok
