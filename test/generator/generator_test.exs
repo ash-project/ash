@@ -235,6 +235,47 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  defmodule ScopedThing do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read]
+
+      create :create do
+        accept [:name]
+
+        change fn changeset, _ctx ->
+          case changeset.context[:shared][:scope_id] do
+            nil ->
+              Ash.Changeset.add_error(changeset, "scope_id missing from context.shared")
+
+            scope_id ->
+              Ash.Changeset.force_change_attribute(changeset, :scope_id, scope_id)
+          end
+        end
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+        allow_nil? false
+      end
+
+      attribute :scope_id, :integer do
+        public?(true)
+      end
+    end
+  end
+
   defmodule ActionOverrides do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -386,6 +427,14 @@ defmodule Ash.Test.GeneratorTest do
         overrides: opts
       )
     end
+
+    def scoped_thing(opts \\ []) do
+      changeset_generator(ScopedThing, :create,
+        defaults: [name: sequence(:name, &"Thing #{&1}")],
+        context: %{shared: %{scope_id: 42}},
+        overrides: opts
+      )
+    end
   end
 
   setup do
@@ -403,6 +452,15 @@ defmodule Ash.Test.GeneratorTest do
       import Generator
       assert [%Post{title: "Post 0"}, %Post{title: "Post 1"}] = generate_many(post(), 2)
       assert [%Post{title: "Post 2"}, %Post{title: "Post 3"}] = generate_many(seed_post(), 2)
+    end
+
+    test "generate_many preserves the changeset context (including context.shared) like generate" do
+      import Generator
+
+      assert %ScopedThing{scope_id: 42} = generate(scoped_thing())
+
+      assert [%ScopedThing{scope_id: 42}, %ScopedThing{scope_id: 42}, %ScopedThing{scope_id: 42}] =
+               generate_many(scoped_thing(), 3)
     end
 
     test "after_action works with generate" do
