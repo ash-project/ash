@@ -473,7 +473,6 @@ defmodule Ash.Actions.Destroy.Bulk do
         if :atomic_batches not in opts[:strategy],
           do: "Cannot perform atomic destroys on an enumerable of inputs"
 
-
     if opts[:transaction] == :all && opts[:return_stream?] do
       raise ArgumentError,
             "Cannot specify `transaction: :all` and `return_stream?: true` together"

@@ -35,6 +35,20 @@ defmodule Ash.Resource.Verifiers.ValidateMultitenancy do
            location: strategy_anno
          )}
 
+      strategy == :attribute && is_nil(attribute) ->
+        # Get location info for the multitenancy strategy option
+        strategy_anno = Extension.get_opt_anno(dsl_state, [:multitenancy], :strategy)
+
+        {:error,
+         DslError.exception(
+           module: resource,
+           path: [:multitenancy, :attribute],
+           message:
+             "Multitenancy strategy is `:attribute`, but no `attribute` is configured. " <>
+               "You must set the `attribute` option to the name of an attribute to use for multitenancy.",
+           location: strategy_anno
+         )}
+
       strategy == :attribute && !Enum.any?(attributes, &(&1.name == attribute)) ->
         # Get location info for the multitenancy attribute option
         attribute_anno = Extension.get_opt_anno(dsl_state, [:multitenancy], :attribute)

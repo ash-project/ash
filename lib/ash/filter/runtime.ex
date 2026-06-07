@@ -410,12 +410,10 @@ defmodule Ash.Filter.Runtime do
            resolve_expr(left, record, parent, resource, unknown_on_unknown_refs?),
          {:ok, right_resolved} <-
            resolve_expr(right, record, parent, resource, unknown_on_unknown_refs?) do
-      cond do
-        is_nil(right_resolved) ->
-          {:ok, nil}
-
-        true ->
-          {:ok, !!right_resolved}
+      if is_nil(right_resolved) do
+        {:ok, nil}
+      else
+        {:ok, !!right_resolved}
       end
     end
   end
@@ -431,12 +429,10 @@ defmodule Ash.Filter.Runtime do
            resolve_expr(left, record, parent, resource, unknown_on_unknown_refs?),
          {:ok, right_resolved} <-
            resolve_expr(right, record, parent, resource, unknown_on_unknown_refs?) do
-      cond do
-        is_nil(right_resolved) ->
-          {:ok, right_resolved}
-
-        true ->
-          {:ok, !!right_resolved}
+      if is_nil(right_resolved) do
+        {:ok, right_resolved}
+      else
+        {:ok, !!right_resolved}
       end
     end
   end

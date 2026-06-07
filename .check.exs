@@ -4,6 +4,7 @@
 
 [
   tools: [
+    {:dialyzer, false},
     {:check_cheat_sheets, command: "mix spark.cheat_sheets --check"},
     {:check_formatter, command: "mix spark.formatter --check"},
     {:doctor, false},
