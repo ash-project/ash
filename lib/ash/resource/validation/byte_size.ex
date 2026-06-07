@@ -8,7 +8,6 @@ defmodule Ash.Resource.Validation.ByteSize do
   import Ash.Gettext
 
   alias Ash.Error.Changes.InvalidAttribute
-  import Ash.Expr
 
   @opt_schema [
     min: [
@@ -80,72 +79,6 @@ defmodule Ash.Resource.Validation.ByteSize do
           {:error, error} ->
             {:error, error}
         end
-    end
-  end
-
-  @impl true
-  def atomic(changeset, opts, context) do
-    case Ash.Changeset.fetch_argument(changeset, opts[:attribute]) do
-      {:ok, _} ->
-        validate(changeset, opts, context)
-
-      :error ->
-        error_value =
-          if Ash.Resource.Validation.should_redact?(changeset, opts[:attribute]) do
-            Ash.Helpers.redact(nil)
-          else
-            atomic_ref(opts[:attribute])
-          end
-
-        opts
-        |> Keyword.delete(:attribute)
-        |> Enum.map(fn
-          {:min, min} ->
-            {:atomic, [opts[:attribute]], expr(byte_size(^atomic_ref(opts[:attribute])) < ^min),
-             expr(
-               error(
-                 Ash.Error.Changes.InvalidAttribute,
-                 %{
-                   field: ^opts[:attribute],
-                   value: ^error_value,
-                   message:
-                     ^(context.message || error_message("must have byte size of at least %{min}")),
-                   vars: %{min: ^min}
-                 }
-               )
-             )}
-
-          {:max, max} ->
-            {:atomic, [opts[:attribute]], expr(byte_size(^atomic_ref(opts[:attribute])) > ^max),
-             expr(
-               error(
-                 Ash.Error.Changes.InvalidAttribute,
-                 %{
-                   field: ^opts[:attribute],
-                   value: ^error_value,
-                   message:
-                     ^(context.message || error_message("must have byte size of at most %{max}")),
-                   vars: %{max: ^max}
-                 }
-               )
-             )}
-
-          {:exact, exact} ->
-            {:atomic, [opts[:attribute]],
-             expr(byte_size(^atomic_ref(opts[:attribute])) != ^exact),
-             expr(
-               error(
-                 Ash.Error.Changes.InvalidAttribute,
-                 %{
-                   field: ^opts[:attribute],
-                   value: ^error_value,
-                   message:
-                     ^(context.message || error_message("must have byte size of exactly %{exact}")),
-                   vars: %{exact: ^exact}
-                 }
-               )
-             )}
-        end)
     end
   end
 
