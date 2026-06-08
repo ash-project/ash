@@ -823,7 +823,7 @@ defmodule Ash.Generator do
           authorize?: first.context[:private][:authorize?],
           tenant: first.tenant,
           tracer: first.context[:private][:tracer],
-          context: Map.delete(first.context, :private)
+          context: first.context
         ]
 
         opts =

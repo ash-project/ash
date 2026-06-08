@@ -251,12 +251,21 @@ defmodule Ash.Test.GeneratorTest do
         accept [:name]
 
         change fn changeset, _ctx ->
-          case changeset.context[:shared][:scope_id] do
-            nil ->
-              Ash.Changeset.add_error(changeset, "scope_id missing from context.shared")
+          changeset =
+            case changeset.context[:shared][:scope_id] do
+              nil ->
+                Ash.Changeset.add_error(changeset, "scope_id missing from context.shared")
 
-            scope_id ->
-              Ash.Changeset.force_change_attribute(changeset, :scope_id, scope_id)
+              scope_id ->
+                Ash.Changeset.force_change_attribute(changeset, :scope_id, scope_id)
+            end
+
+          case changeset.context[:private][:custom] do
+            nil ->
+              Ash.Changeset.add_error(changeset, "custom missing from context.private")
+
+            custom ->
+              Ash.Changeset.force_change_attribute(changeset, :custom, custom)
           end
         end
       end
@@ -271,6 +280,10 @@ defmodule Ash.Test.GeneratorTest do
       end
 
       attribute :scope_id, :integer do
+        public?(true)
+      end
+
+      attribute :custom, :string do
         public?(true)
       end
     end
@@ -431,7 +444,7 @@ defmodule Ash.Test.GeneratorTest do
     def scoped_thing(opts \\ []) do
       changeset_generator(ScopedThing, :create,
         defaults: [name: sequence(:name, &"Thing #{&1}")],
-        context: %{shared: %{scope_id: 42}},
+        context: %{shared: %{scope_id: 42}, private: %{custom: "kept"}},
         overrides: opts
       )
     end
@@ -454,13 +467,16 @@ defmodule Ash.Test.GeneratorTest do
       assert [%Post{title: "Post 2"}, %Post{title: "Post 3"}] = generate_many(seed_post(), 2)
     end
 
-    test "generate_many preserves the changeset context (including context.shared) like generate" do
+    test "generate_many preserves the changeset context (shared and custom private) like generate" do
       import Generator
 
-      assert %ScopedThing{scope_id: 42} = generate(scoped_thing())
+      assert %ScopedThing{scope_id: 42, custom: "kept"} = generate(scoped_thing())
 
-      assert [%ScopedThing{scope_id: 42}, %ScopedThing{scope_id: 42}, %ScopedThing{scope_id: 42}] =
-               generate_many(scoped_thing(), 3)
+      assert [
+               %ScopedThing{scope_id: 42, custom: "kept"},
+               %ScopedThing{scope_id: 42, custom: "kept"},
+               %ScopedThing{scope_id: 42, custom: "kept"}
+             ] = generate_many(scoped_thing(), 3)
     end
 
     test "after_action works with generate" do
