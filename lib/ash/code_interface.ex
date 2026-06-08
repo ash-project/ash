@@ -1622,7 +1622,7 @@ defmodule Ash.CodeInterface do
     end
   end
 
-  defp cast_like_argument(nil, key, value, type, constraints) do
+  defp cast_like_argument(nil, _key, value, type, constraints) do
     # No query/changeset context for include_source — still fine for most scalar types
     value = Ash.Type.Helpers.handle_indexed_maps(type, value)
     constraints = Ash.Type.include_source(type, nil, constraints)
