@@ -330,6 +330,7 @@ The following built-in validations support queries:
 - `negate` - negates other validations
 - `one_of` - validates arguments are in allowed values
 - `present` - validates required arguments are present
+- `byte_size` - validates string argument byte size
 - `string_length` - validates string argument length
 
 ### Validation Examples
