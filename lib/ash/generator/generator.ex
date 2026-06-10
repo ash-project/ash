@@ -339,6 +339,9 @@ defmodule Ash.Generator do
         input,
         Map.to_list(changeset_opts)
       )
+      |> Ash.Changeset.set_context(%{
+        private: %{generator_context: Map.get(changeset_opts, :context, %{})}
+      })
       |> then(fn changeset ->
         if opts[:after_action] do
           Ash.Changeset.after_action(changeset, fn _changeset, record ->
@@ -822,7 +825,8 @@ defmodule Ash.Generator do
           actor: first.context[:private][:actor],
           authorize?: first.context[:private][:authorize?],
           tenant: first.tenant,
-          tracer: first.context[:private][:tracer]
+          tracer: first.context[:private][:tracer],
+          context: first.context[:private][:generator_context] || %{}
         ]
 
         opts =
