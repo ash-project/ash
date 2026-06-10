@@ -251,6 +251,14 @@ defmodule Ash.Test.GeneratorTest do
         accept [:name]
 
         change fn changeset, _ctx ->
+          # Record whatever `marker` this changeset *started* with, then set a
+          # marker tailored to this specific changeset. If `generate_many/2`
+          # forwarded the whole changeset context (post-change) instead of only
+          # the context provided to the generator, the first record's marker
+          # would leak into every record's `seen_marker`.
+          seen_marker = changeset.context[:shared][:marker]
+          name = Ash.Changeset.get_attribute(changeset, :name)
+
           changeset =
             case changeset.context[:shared][:scope_id] do
               nil ->
@@ -260,13 +268,18 @@ defmodule Ash.Test.GeneratorTest do
                 Ash.Changeset.force_change_attribute(changeset, :scope_id, scope_id)
             end
 
-          case changeset.context[:private][:custom] do
-            nil ->
-              Ash.Changeset.add_error(changeset, "custom missing from context.private")
+          changeset =
+            case changeset.context[:private][:custom] do
+              nil ->
+                Ash.Changeset.add_error(changeset, "custom missing from context.private")
 
-            custom ->
-              Ash.Changeset.force_change_attribute(changeset, :custom, custom)
-          end
+              custom ->
+                Ash.Changeset.force_change_attribute(changeset, :custom, custom)
+            end
+
+          changeset
+          |> Ash.Changeset.force_change_attribute(:seen_marker, seen_marker)
+          |> Ash.Changeset.set_context(%{shared: %{marker: name}})
         end
       end
     end
@@ -284,6 +297,10 @@ defmodule Ash.Test.GeneratorTest do
       end
 
       attribute :custom, :string do
+        public?(true)
+      end
+
+      attribute :seen_marker, :string do
         public?(true)
       end
     end
@@ -467,15 +484,19 @@ defmodule Ash.Test.GeneratorTest do
       assert [%Post{title: "Post 2"}, %Post{title: "Post 3"}] = generate_many(seed_post(), 2)
     end
 
-    test "generate_many preserves the changeset context (shared and custom private) like generate" do
+    test "generate_many forwards only the generator's context, like generate" do
       import Generator
 
-      assert %ScopedThing{scope_id: 42, custom: "kept"} = generate(scoped_thing())
+      # `scope_id`/`custom` confirm the provided context (shared + private) is
+      # carried over; `seen_marker: nil` confirms a change-set, per-changeset
+      # context is NOT leaked from the first record onto the rest of the batch.
+      assert %ScopedThing{scope_id: 42, custom: "kept", seen_marker: nil} =
+               generate(scoped_thing())
 
       assert [
-               %ScopedThing{scope_id: 42, custom: "kept"},
-               %ScopedThing{scope_id: 42, custom: "kept"},
-               %ScopedThing{scope_id: 42, custom: "kept"}
+               %ScopedThing{scope_id: 42, custom: "kept", seen_marker: nil},
+               %ScopedThing{scope_id: 42, custom: "kept", seen_marker: nil},
+               %ScopedThing{scope_id: 42, custom: "kept", seen_marker: nil}
              ] = generate_many(scoped_thing(), 3)
     end
 
