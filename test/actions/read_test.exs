@@ -418,7 +418,8 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "raises an error when the second argument is not a list" do
       assert_raise ArgumentError, "Expected a keyword list in `Ash.read\/2`, got: 1", fn ->
-        Ash.read(Post, 1)
+        # apply/3 hides the intentionally-wrong argument type from the type checker
+        apply(Ash, :read, [Post, 1])
       end
     end
 
@@ -467,7 +468,8 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "raises an error when the second argument is not a list" do
       assert_raise ArgumentError, "Expected a keyword list in `Ash.read!/2`, got: 1", fn ->
-        Ash.read!(Post, 1)
+        # apply/3 hides the intentionally-wrong argument type from the type checker
+        apply(Ash, :read!, [Post, 1])
       end
     end
 
@@ -582,7 +584,8 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "raises an error when the second argument is not a list" do
       assert_raise ArgumentError, "Expected a keyword list in `Ash.read_one/2`, got: 1", fn ->
-        Ash.read_one(Post, 1)
+        # apply/3 hides the intentionally-wrong argument type from the type checker
+        apply(Ash, :read_one, [Post, 1])
       end
     end
 
@@ -641,7 +644,8 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "raises an error when the second argument is not a list" do
       assert_raise ArgumentError, "Expected a keyword list in `Ash.read_one!/2`, got: 1", fn ->
-        Ash.read_one!(Post, 1)
+        # apply/3 hides the intentionally-wrong argument type from the type checker
+        apply(Ash, :read_one!, [Post, 1])
       end
     end
 

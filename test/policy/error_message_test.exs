@@ -5,7 +5,6 @@
 defmodule Ash.Test.Policy.ErrorMessageTest do
   @moduledoc false
   use ExUnit.Case, async: true
-  require Ash.Query
 
   defmodule CustomForbidden do
     use Splode.Error, fields: [:where], class: :forbidden

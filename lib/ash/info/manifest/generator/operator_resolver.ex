@@ -11,7 +11,7 @@ defmodule Ash.Info.Manifest.Generator.OperatorResolver do
   Treats the field as the *first argument* of each operator/function signature.
   `:any` and `:same` arg-kind sentinels always match. Concrete builtins match
   when the type's `kind` agrees; concrete modules match when the type's
-  `module` agrees. `Ash.Type.operator_overloads/0` is consulted for the
+  `module` agrees. `c:Ash.Type.operator_overloads/0` is consulted for the
   type's module — any operator listed there is considered applicable.
 
   ## NewType subtype matching
@@ -45,8 +45,8 @@ defmodule Ash.Info.Manifest.Generator.OperatorResolver do
     * second arg concrete       → `{:concrete, type_ref}`
     * second arg `{:array, t}`  → `{:array, rhs(t)}`
 
-  Operators that apply only via `operator_overloads/0` (no matching signature
-  found structurally) default to `rhs: :same`.
+  Operators that apply only via `c:Ash.Type.operator_overloads/0` (no matching
+  signature found structurally) default to `rhs: :same`.
   """
 
   alias Ash.Info.Manifest.{

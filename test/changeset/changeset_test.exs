@@ -1531,7 +1531,12 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         ArgumentError,
         ~r/The first argument of.*for_update.*must be one of/,
         fn ->
-          Ash.Changeset.for_update(ResourceWithWrongActionType, :update, %{name: "test"})
+          # apply/3 hides the intentionally-wrong argument type from the type checker
+          apply(Ash.Changeset, :for_update, [
+            ResourceWithWrongActionType,
+            :update,
+            %{name: "test"}
+          ])
         end
       )
     end
@@ -1541,7 +1546,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         assert_raise(
           ArgumentError,
           fn ->
-            Ash.Changeset.for_update("some-id", :update, %{name: "test"})
+            # apply/3 hides the intentionally-wrong argument type from the type checker
+            apply(Ash.Changeset, :for_update, ["some-id", :update, %{name: "test"}])
           end
         ).message
 
@@ -1738,7 +1744,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       }
 
       assert_raise ArgumentError, ~r/Original data is not available/, fn ->
-        Ash.Changeset.get_data(changeset, :title)
+        # apply/3 hides the intentionally-invalid changeset from the type checker
+        apply(Ash.Changeset, :get_data, [changeset, :title])
       end
     end
   end

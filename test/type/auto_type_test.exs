@@ -6,7 +6,6 @@ defmodule Ash.Test.Type.AutoTypeTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  require Ash.Query
   alias Ash.Test.Domain, as: Domain
 
   # ── Shared types ──────────────────────────────────────────────────────

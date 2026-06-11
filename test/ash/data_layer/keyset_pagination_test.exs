@@ -5,8 +5,6 @@
 defmodule Ash.Test.Ash.DataLayer.KeysetPaginationTest do
   use ExUnit.Case, async: false
 
-  require Ash.Query
-
   alias Ash.Test.Domain, as: Domain
 
   defmodule KeysetDataLayer do
