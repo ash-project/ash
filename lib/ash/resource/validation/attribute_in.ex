@@ -2,8 +2,13 @@
 #
 # SPDX-License-Identifier: MIT
 
+# remove in 4.0
 defmodule Ash.Resource.Validation.AttributeIn do
-  @moduledoc false
+  @moduledoc """
+  Deprecated. Use `Ash.Resource.Validation.OneOf` via `one_of/2` in `Ash.Resource.Validation.Builtins`.
+
+  This module remains for compatibility with references in DSL extensions and other code.
+  """
 
   @opt_schema [
     attribute: [

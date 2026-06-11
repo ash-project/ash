@@ -139,7 +139,9 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
-  Validates that an attribute is being changed to one of a set of specific values, or is in the the given list if it is not being changed.
+  Deprecated. Use `one_of/2` instead.
+
+  Delegates to `one_of/2` for backwards compatibility.
 
   ## Examples
 
@@ -150,7 +152,7 @@ defmodule Ash.Resource.Validation.Builtins do
   """
   @spec attribute_in(attribute :: atom, list :: [term]) :: Validation.ref()
   def attribute_in(attribute, list) do
-    {Validation.AttributeIn, attribute: attribute, list: list}
+    one_of(attribute, list)
   end
 
   @doc """
