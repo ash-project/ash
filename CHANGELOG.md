@@ -8,6 +8,29 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.28.0](https://github.com/ash-project/ash/compare/v3.27.8...v3.28.0) (2026-06-11)
+
+
+
+
+### Features:
+
+* Add byte_size validation (#2741) by charlieaten [(#2741)](https://github.com/ash-project/ash/pull/2741)
+
+### Bug Fixes:
+
+* use proper embedded casting for fields in composite types by [@zachdaniel](https://github.com/zachdaniel)
+
+* preserve changeset context in `generate_many/2` (#2742) by [@nallwhy](https://github.com/nallwhy) [(#2742)](https://github.com/ash-project/ash/pull/2742)
+
+* validate multitenancy attribute by [@zachdaniel](https://github.com/zachdaniel)
+
+* pass the index to Ash.DataLayer.upsert so it is included in the sql statement. (#2740) by David Corwin [(#2740)](https://github.com/ash-project/ash/pull/2740)
+
+### Improvements:
+
+* verify types before codes run, catching unspecified or unusable types. (#2739) by torazar [(#2739)](https://github.com/ash-project/ash/pull/2739)
+
 ## [v3.27.8](https://github.com/ash-project/ash/compare/v3.27.7...v3.27.8) (2026-06-05)
 
 
