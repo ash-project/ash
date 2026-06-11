@@ -2057,7 +2057,7 @@ defmodule Ash.Actions.Read.Relationships do
     is_unique_on_join_keys? =
       Enum.any?(Ash.Resource.Info.identities(relationship.through), fn identity ->
         Enum.all?(identity.keys, &(&1 in join_keys)) &&
-          identity_where_matches_join_keys?(identity, join_keys)
+          identity_where_safe_for_join_keys?(identity.where, join_keys)
       end)
 
     not (primary_key_is_join_keys? || is_unique_on_join_keys?)
@@ -2065,37 +2065,23 @@ defmodule Ash.Actions.Read.Relationships do
 
   defp is_many_to_many_not_unique_on_join?(_, _, _), do: false
 
-  defp identity_where_matches_join_keys?(%{where: nil} = identity, _join_keys) do
-    identity.nils_distinct?
-  end
+  defp identity_where_safe_for_join_keys?(nil, _join_keys), do: true
 
-  defp identity_where_matches_join_keys?(%{where: where, keys: keys}, join_keys) do
-    case join_key_non_nil_refs(where, join_keys) do
-      {:ok, refs} ->
-        Enum.all?(keys, &(&1 in refs))
-
-      :error ->
-        false
-    end
-  end
-
-  defp join_key_non_nil_refs(
+  defp identity_where_safe_for_join_keys?(
          %Ash.Query.BooleanExpression{op: :and, left: left, right: right},
          join_keys
        ) do
-    with {:ok, left_refs} <- join_key_non_nil_refs(left, join_keys),
-         {:ok, right_refs} <- join_key_non_nil_refs(right, join_keys) do
-      {:ok, Enum.uniq(left_refs ++ right_refs)}
-    end
+    identity_where_safe_for_join_keys?(left, join_keys) &&
+      identity_where_safe_for_join_keys?(right, join_keys)
   end
 
-  defp join_key_non_nil_refs(expr, join_keys) do
+  defp identity_where_safe_for_join_keys?(expr, join_keys) do
     case non_nil_ref_name(expr) do
       {:ok, name} ->
-        non_nil_join_key_ref(name, join_keys)
+        name in join_keys
 
       :error ->
-        :error
+        false
     end
   end
 
@@ -2123,14 +2109,6 @@ defmodule Ash.Actions.Read.Relationships do
     do: {:ok, name}
 
   defp ref_name(_), do: :error
-
-  defp non_nil_join_key_ref(name, join_keys) do
-    if name in join_keys do
-      {:ok, [name]}
-    else
-      :error
-    end
-  end
 
   # Returns a function that converts a value of `type` into a term safe for use
   # as a Map key (i.e. comparable with `==`). Callers use this to build O(n+m)
