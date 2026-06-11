@@ -267,8 +267,10 @@ defmodule Ash.Type.Tuple do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
+  # stored fields are in the embedded format (see `dump_to_native/2`),
+  # so they are loaded with `cast_from_embedded`
   def cast_stored(value, constraints) when is_map(value) do
-    cast_tuple_fields(value, constraints, &Ash.Type.cast_stored/3)
+    cast_tuple_fields(value, constraints, &Ash.Type.cast_from_embedded/3)
   end
 
   def cast_stored(_, _), do: :error
@@ -276,8 +278,11 @@ defmodule Ash.Type.Tuple do
   @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
 
+  # fields are dumped with `dump_to_embedded` because the dumped map is
+  # JSON-encoded by data layers, and `dump_to_native` may produce values
+  # that are not JSON-safe (e.g. raw binaries for `:binary`/`:uuid_v7`)
   def dump_to_native(value, constraints) when is_tuple(value) do
-    dump_tuple_fields(value, constraints, &Ash.Type.dump_to_native/3)
+    dump_tuple_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
   end
 
   def dump_to_native(_, _), do: :error

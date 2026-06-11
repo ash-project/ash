@@ -497,6 +497,39 @@ defmodule Type.StructTest do
     assert result.title == "title"
   end
 
+  describe "JSON safety of dump_to_native (#2747)" do
+    defmodule JsonSafetyMetadata do
+      defstruct [:id, :data]
+    end
+
+    test "dumped struct with binary-native field types stays JSON-encodable" do
+      constraints = [
+        instance_of: JsonSafetyMetadata,
+        fields: [
+          id: [type: :uuid_v7],
+          data: [type: :binary]
+        ]
+      ]
+
+      uuid = Ash.UUIDv7.generate()
+      binary = <<1, 158, 179, 13, 254, 207>>
+
+      {:ok, dumped} =
+        Ash.Type.dump_to_native(
+          Ash.Type.Struct,
+          %JsonSafetyMetadata{id: uuid, data: binary},
+          constraints
+        )
+
+      json = Jason.encode!(dumped)
+
+      {:ok, loaded} =
+        Ash.Type.cast_stored(Ash.Type.Struct, Jason.decode!(json), constraints)
+
+      assert %JsonSafetyMetadata{id: ^uuid, data: ^binary} = loaded
+    end
+  end
+
   describe "dump_to_embedded" do
     defmodule DumpMetadata do
       defstruct [:name, :val]
@@ -519,7 +552,7 @@ defmodule Type.StructTest do
                )
     end
 
-    test "uses dump_to_embedded not dump_to_native on fields" do
+    test "dump_to_native also dumps fields with dump_to_embedded, for JSON safety" do
       constraints = [
         instance_of: DumpMetadata,
         fields: [
@@ -532,7 +565,7 @@ defmodule Type.StructTest do
       {:ok, native_result} = Ash.Type.dump_to_native(Ash.Type.Struct, value, constraints)
       {:ok, embedded_result} = Ash.Type.dump_to_embedded(Ash.Type.Struct, value, constraints)
 
-      assert native_result[:val] == "native:test"
+      assert native_result[:val] == "embedded:test"
       assert embedded_result[:val] == "embedded:test"
     end
 
