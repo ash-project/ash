@@ -88,6 +88,7 @@ defmodule Ash.Test do
     match
   end
 
+  @spec no_errors(Ash.Error.class_module() | nil) :: no_return
   defp no_errors(error_class) do
     message =
       if error_class do

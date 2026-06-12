@@ -93,7 +93,7 @@ defmodule Ash.Notifier do
     notifier_statements =
       Enum.reduce(notifiers, %{}, fn notifier, acc ->
         statement =
-          if function_exported?(notifier, :load, 2) do
+          if implements_load?(notifier) do
             load(notifier, resource, action)
           else
             []
@@ -145,7 +145,7 @@ defmodule Ash.Notifier do
     notifier_statements =
       Enum.reduce(notifiers, %{}, fn notifier, acc ->
         statement =
-          if function_exported?(notifier, :load, 2) do
+          if implements_load?(notifier) do
             load(notifier, resource, action)
           else
             []
@@ -223,6 +223,13 @@ defmodule Ash.Notifier do
     |> List.flatten()
   end
 
+  # `function_exported?/3` does not load the module, so in interactive-mode
+  # VMs (dev, test) a notifier that has not been called yet would silently
+  # report no `load/2` and its dependencies would never be loaded.
+  defp implements_load?(notifier) do
+    Code.ensure_loaded?(notifier) and function_exported?(notifier, :load, 2)
+  end
+
   # Checks if the record already has NotifierDependencies calculations loaded
   # (meaning the action pipeline pre-loaded them).
   defp has_preloaded_notifier_data?(data) when is_struct(data) do
@@ -249,7 +256,7 @@ defmodule Ash.Notifier do
     notifier_statements =
       Enum.reduce(notifiers, %{}, fn notifier, acc ->
         statement =
-          if function_exported?(notifier, :load, 2) do
+          if implements_load?(notifier) do
             load(notifier, notification.resource, notification.action)
           else
             []
