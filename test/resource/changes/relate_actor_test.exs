@@ -90,6 +90,10 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
       create :create_possibly_without_actor do
         change relate_actor(:author, allow_nil?: true)
       end
+
+      create :create_with_actor_scalar_field do
+        change relate_actor(:author, field: :author_id)
+      end
     end
   end
 
@@ -349,6 +353,26 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
       |> Ash.create!()
 
     assert post.account_id == account.id
+  end
+
+  test "relate_actor change with field extracting a scalar value" do
+    # When field: extracts a scalar (e.g. a UUID string) rather than a
+    # related record struct, the belongs_to branch should use the scalar
+    # directly as the FK value instead of calling Map.get on it.
+    author =
+      Author
+      |> Ash.Changeset.for_create(:create)
+      |> Ash.create!()
+
+    # Use a plain map as actor where :author_id is a raw UUID string
+    actor = %{author_id: author.id}
+
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create_with_actor_scalar_field, %{text: "foo"}, actor: actor)
+      |> Ash.create!()
+
+    assert post.author_id == author.id
   end
 
   test "relate_actor change with field when field is nil" do
