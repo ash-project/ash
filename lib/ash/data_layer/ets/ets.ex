@@ -1488,7 +1488,9 @@ defmodule Ash.DataLayer.Ets do
       |> run_query(resource)
       |> case do
         {:ok, []} ->
-          create(resource, changeset, from_bulk_create?)
+          resource
+          |> create(changeset, from_bulk_create?)
+          |> set_upsert_action(:create)
 
         {:ok, [result]} ->
           with {:ok, conflicting_upsert_values} <- Ash.Changeset.apply_attributes(changeset),
@@ -1504,12 +1506,13 @@ defmodule Ash.DataLayer.Ets do
               |> Map.put(:data, result)
               |> Ash.Changeset.force_change_attributes(to_set)
 
-            update(
-              resource,
+            resource
+            |> update(
               %{changeset | action_type: :update, filter: nil},
               Map.take(result, pkey),
               from_bulk_create?
             )
+            |> set_upsert_action(:update)
           else
             {:ok, []} ->
               {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
@@ -1523,6 +1526,12 @@ defmodule Ash.DataLayer.Ets do
       end
     end
   end
+
+  defp set_upsert_action({:ok, record}, action) do
+    {:ok, Ash.Resource.put_metadata(record, :upsert_action, action)}
+  end
+
+  defp set_upsert_action(result, _), do: result
 
   defp apply_upsert_update_defaults(to_set, resource, changeset) do
     touch_update_defaults? =
