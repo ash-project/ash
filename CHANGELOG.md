@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.29.1](https://github.com/ash-project/ash/compare/v3.29.0...v3.29.1) (2026-06-14)
+
+
+
+
+### Bug Fixes:
+
+* handle all hook types in update_many by [@zachdaniel](https://github.com/zachdaniel)
+
+* require primary keys explicitly as update_many targets by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.29.0](https://github.com/ash-project/ash/compare/v3.28.0...v3.29.0) (2026-06-14)
 
 
