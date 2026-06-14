@@ -850,7 +850,7 @@ defmodule Ash.Changeset do
                changed?:
                  not (Enum.empty?(changeset.atomics) and Enum.empty?(changeset.attributes))
              }),
-           %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
+           %Ash.Changeset{} = changeset <- atomic_defaults(changeset, opts),
            %Ash.Changeset{} = changeset <-
              hydrate_atomic_refs(
                changeset,
@@ -876,17 +876,17 @@ defmodule Ash.Changeset do
     end
   end
 
-  def atomic_defaults(changeset) do
+  def atomic_defaults(changeset, opts \\ []) do
     if changeset.context.changed? do
-      with %__MODULE__{} <- atomic_static_update_defaults(changeset) do
-        atomic_lazy_update_defaults(changeset)
+      with %__MODULE__{} <- atomic_static_update_defaults(changeset, opts) do
+        atomic_lazy_update_defaults(changeset, opts)
       end
     else
       changeset
     end
   end
 
-  defp atomic_static_update_defaults(changeset) do
+  defp atomic_static_update_defaults(changeset, opts) do
     initial_changeset = changeset
 
     changeset.resource
@@ -905,7 +905,7 @@ defmodule Ash.Changeset do
            atomic_update(
              changeset,
              attribute.name,
-             {:atomic, atomic_default_condition(initial_changeset, attribute.name, atomic)}
+             {:atomic, atomic_default_condition(initial_changeset, attribute.name, atomic, opts)}
            )}
 
         {:ok, value} ->
@@ -913,7 +913,7 @@ defmodule Ash.Changeset do
            atomic_update(
              changeset,
              attribute.name,
-             {:atomic, atomic_default_condition(initial_changeset, attribute.name, value)}
+             {:atomic, atomic_default_condition(initial_changeset, attribute.name, value, opts)}
            )}
 
         {:error, error} ->
@@ -926,7 +926,7 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp atomic_lazy_update_defaults(changeset) do
+  defp atomic_lazy_update_defaults(changeset, opts) do
     initial_changeset = changeset
 
     changeset.resource
@@ -945,7 +945,12 @@ defmodule Ash.Changeset do
              changeset,
              attribute.name,
              {:atomic,
-              atomic_default_condition(initial_changeset, attribute.name, Ash.Expr.expr(now()))}
+              atomic_default_condition(
+                initial_changeset,
+                attribute.name,
+                Ash.Expr.expr(now()),
+                opts
+              )}
            )}
 
         attribute.update_default == (&Ash.UUID.generate/0) ->
@@ -957,7 +962,8 @@ defmodule Ash.Changeset do
               atomic_default_condition(
                 initial_changeset,
                 attribute.name,
-                Ash.Expr.expr(^Ash.UUID.generate())
+                Ash.Expr.expr(^Ash.UUID.generate()),
+                opts
               )}
            )}
 
@@ -970,15 +976,32 @@ defmodule Ash.Changeset do
               atomic_default_condition(
                 initial_changeset,
                 attribute.name,
-                attribute.update_default.()
+                attribute.update_default.(),
+                opts
               )}
            )}
       end
     end)
   end
 
-  defp atomic_default_condition(changeset, key, value) do
-    Enum.reduce(changeset.atomics ++ Map.to_list(changeset.attributes), nil, fn
+  defp atomic_default_condition(changeset, key, value, opts) do
+    # The condition decides whether the default applies (e.g. only bump `updated_at` if a value
+    # actually changed). By default it compares each changed attribute's literal new value against
+    # the current value. When this changeset is one of many applied in a single statement
+    # (`update_many`), the literal would differ per record and defeat batching, so we instead
+    # compare against the incoming value via `upsert_conflict/1` (rendered as `EXCLUDED.<col>`),
+    # keeping the condition identical across the batch while still per-row correct.
+    comparisons =
+      if opts[:reference_changes_via_conflict?] do
+        changeset.atomics ++
+          Enum.map(changeset.attributes, fn {attr, _value} ->
+            {attr, %Ash.Query.UpsertConflict{attribute: attr}}
+          end)
+      else
+        changeset.atomics ++ Map.to_list(changeset.attributes)
+      end
+
+    Enum.reduce(comparisons, nil, fn
       {key, atomic}, expr ->
         atomic = strip_errors(atomic)
 

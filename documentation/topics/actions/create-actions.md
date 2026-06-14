@@ -263,6 +263,21 @@ Post
 > to instead return the existing record, which will have the `:upsert_skipped` metadata set to `true`
 > (check it with `Ash.Resource.get_metadata(record, :upsert_skipped)`).
 
+> ### Did the upsert insert or update? {: .info}
+>
+> If the data layer supports it, each returned record is tagged with whether it was inserted or
+> updated, in its `:upsert_action` metadata (`:insert` or `:update`). Check it with
+> `Ash.Resource.get_metadata(record, :upsert_action)`. Data layers that can't report this leave the
+> metadata unset, so treat a `nil` as "unknown" rather than assuming an outcome.
+>
+> For example, AshPostgres reports this on PostgreSQL 17+ (where upserts run as a SQL `MERGE`):
+>
+> ```elixir
+> [record] = Ash.create!(changeset, upsert?: true, upsert_identity: :unique_email, return_records?: true)
+> Ash.Resource.get_metadata(record, :upsert_action)
+> # => :insert (a new row) or :update (an existing row was updated)
+> ```
+
 
 ### Atomic Updates and Atomic Sets
 

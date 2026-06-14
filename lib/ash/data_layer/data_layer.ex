@@ -99,6 +99,7 @@ defmodule Ash.DataLayer do
           | :bulk_create_with_partial_success
           | :update_query
           | :destroy_query
+          | :update_many
           | :create
           | :read
           | :update
@@ -273,6 +274,30 @@ defmodule Ash.DataLayer do
               | {:error, Ash.Error.t()}
               | {:error, :no_rollback, Ash.Error.t()}
 
+  @doc """
+  Updates many records, each with its own distinct changes, in a single operation.
+
+  Unlike `c:update_query/4` (which applies one set of changes to every matching record), each
+  changeset in the enumerable carries the record it targets (in `changeset.data`) and its own
+  `attributes`. Changesets are grouped by their shared `atomics` and `filter` before dispatch, so
+  every changeset in a single call shares those.
+
+  Records that no longer exist are simply not returned; the caller diffs the returned records
+  against the changesets to detect them.
+  """
+  @callback update_many(
+              Ash.Resource.t(),
+              Enumerable.t(Ash.Changeset.t()),
+              opts :: bulk_update_options()
+            ) ::
+              :ok
+              | {:ok, Enumerable.t(Ash.Resource.Record.t())}
+              | {:partial_success,
+                 failed :: Enumerable.t({error :: term(), changeset :: Ash.Changeset.t()}),
+                 Enumerable.t(Ash.Resource.Record.t())}
+              | {:error, Ash.Error.t()}
+              | {:error, :no_rollback, Ash.Error.t()}
+
   @callback add_aggregate(
               data_layer_query(),
               Ash.Query.Aggregate.t(),
@@ -327,6 +352,7 @@ defmodule Ash.DataLayer do
                       bulk_create: 3,
                       update_query: 4,
                       destroy_query: 4,
+                      update_many: 3,
                       distinct: 3,
                       return_query: 2,
                       lock: 3,
@@ -851,6 +877,51 @@ defmodule Ash.DataLayer do
         message: """
         Invalid value returned from #{inspect(data_layer_module)}.bulk_create/3.
         The callback #{inspect(__MODULE__)}.bulk_create/3 expects :ok, {:ok, enumerable}, {:partial_success, failed, records}, {:error, term}, or {:error, :no_rollback, term}.
+        """
+    end
+  end
+
+  @spec update_many(
+          Ash.Resource.t(),
+          Enumerable.t(Ash.Changeset.t()),
+          options :: bulk_update_options()
+        ) ::
+          :ok
+          | {:ok, Enumerable.t(Ash.Resource.Record.t())}
+          | {:partial_success,
+             failed :: Enumerable.t({error :: term(), changeset :: Ash.Changeset.t()}),
+             Enumerable.t(Ash.Resource.Record.t())}
+          | {:error, Ash.Error.t()}
+          | {:error, :no_rollback, Ash.Error.t()}
+  def update_many(resource, changesets, options) do
+    update_many(Ash.DataLayer.data_layer(resource), resource, changesets, options)
+  end
+
+  @doc false
+  @spec update_many(
+          module(),
+          Ash.Resource.t(),
+          Enumerable.t(Ash.Changeset.t()),
+          bulk_update_options()
+        ) ::
+          :ok
+          | {:ok, Enumerable.t(Ash.Resource.Record.t())}
+          | {:partial_success,
+             failed :: Enumerable.t({error :: term(), changeset :: Ash.Changeset.t()}),
+             Enumerable.t(Ash.Resource.Record.t())}
+          | {:error, Ash.Error.t()}
+          | {:error, :no_rollback, Ash.Error.t()}
+  def update_many(data_layer_module, resource, changesets, options) do
+    result = apply(data_layer_module, :update_many, [resource, changesets, options])
+
+    if match?(:ok, result) or match?({:ok, _}, result) or match?({:partial_success, _, _}, result) or
+         match?({:error, _}, result) or match?({:error, :no_rollback, _}, result) do
+      result
+    else
+      raise Ash.Error.Framework.InvalidReturnType,
+        message: """
+        Invalid value returned from #{inspect(data_layer_module)}.update_many/3.
+        The callback #{inspect(__MODULE__)}.update_many/3 expects :ok, {:ok, enumerable}, {:partial_success, failed, records}, {:error, term}, or {:error, :no_rollback, term}.
         """
     end
   end

@@ -465,7 +465,7 @@ defmodule Ash.DataLayer.Mnesia do
   @doc false
   @impl true
   def create(resource, changeset, opts \\ []) do
-    unless opts[:from_bulk_create?], do: log_create(resource, changeset)
+    if !opts[:from_bulk_create?], do: log_create(resource, changeset)
 
     with {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          {:ok, record} <- apply_create_atomics(changeset, resource, record) do
@@ -564,8 +564,12 @@ defmodule Ash.DataLayer.Mnesia do
   def update(resource, changeset, from_bulk_create? \\ false) do
     pkey = pkey_list(resource, changeset.data)
 
-    unless from_bulk_create? do
-      log_update(resource, Map.take(changeset.data, Ash.Resource.Info.primary_key(resource)), changeset)
+    if !from_bulk_create? do
+      log_update(
+        resource,
+        Map.take(changeset.data, Ash.Resource.Info.primary_key(resource)),
+        changeset
+      )
     end
 
     result =

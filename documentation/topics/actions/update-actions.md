@@ -226,6 +226,27 @@ WHERE id IN (...ids)
 Stream is used when the update action [cannot be done atomically](#fully-atomic-updates) or if the data layer does not support updating a query. If a query is given, it is run and the records are used as an enumerable of inputs. If an enumerable of inputs is given, each one is updated individually. There is nothing inherently wrong with doing this kind of update, but it will naturally be slower than the other two strategies.
 The benefit of having a single interface (`Ash.bulk_update/4`) is that the caller doesn't need to change based on the performance implications of the action.
 
+## Updating records with distinct inputs
+
+`Ash.bulk_update/4` applies the *same* input to every record. When you need to apply a *different* input to each record, use `Ash.update_many/4` (and `Ash.update_many!/4`). It accepts a list of `{record_or_identifier, input}` tuples:
+
+```elixir
+Ash.update_many!(
+  [
+    {ticket_1, %{status: :closed}},
+    {ticket_2, %{status: :snoozed, snooze_until: tomorrow}},
+    # an identifier (primary key value or a map of the primary key) works too
+    {ticket_3_id, %{priority: :high}}
+  ],
+  Ticket,
+  :update
+)
+```
+
+It uses the same `:strategy` option as bulk updates (`:atomic`, `:atomic_batches`, `:stream`), but defaults to `[:atomic]` only. When every change can be made atomically and the data layer supports it, the whole set is applied in a single statement (for example, AshPostgres uses a SQL `MERGE` on PostgreSQL 17+), grouping records that share the same atomics/filter. With the default `[:atomic]`, a change that cannot be applied atomically fails the operation with a single error rather than silently falling back to streaming — add `:stream` to allow per-record updates, and `:atomic_batches` (with `:batch_size`) to chunk very large inputs.
+
+The result is an `Ash.BulkResult`. A `{record_or_identifier, input}` whose record no longer exists becomes a per-row error: `Ash.Error.Changes.StaleRecord` when given a record, `Ash.Error.Query.NotFound` when given a bare identifier. So some rows can succeed while others fail, yielding a `:partial_success` result.
+
 ## Running a standard update action
 
 All actions are run in a transaction if the data layer supports it. You can opt out of this behavior by supplying `transaction?: false` when creating the action. When an action is being run in a transaction, all steps inside of it are serialized because transactions cannot be split across processes.
