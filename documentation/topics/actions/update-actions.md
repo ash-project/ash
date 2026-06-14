@@ -243,7 +243,7 @@ Ash.update_many!(
 )
 ```
 
-It uses the same `:strategy` option as bulk updates (`:atomic`, `:atomic_batches`, `:stream`), but defaults to `[:atomic]` only. When every change can be made atomically and the data layer supports it, the whole set is applied in a single statement (for example, AshPostgres uses a SQL `MERGE` on PostgreSQL 17+), grouping records that share the same atomics/filter. With the default `[:atomic]`, a change that cannot be applied atomically fails the operation with a single error rather than silently falling back to streaming — add `:stream` to allow per-record updates, and `:atomic_batches` (with `:batch_size`) to chunk very large inputs.
+It uses the same `:strategy` option as bulk updates (`:atomic`, `:atomic_batches`, `:stream`), but defaults to `[:atomic_batches]` (with a default `:batch_size` of `1000`). When every change can be made atomically and the data layer supports it, each batch is applied in a single statement (for example, AshPostgres uses a SQL `MERGE` on PostgreSQL 17+), grouping records that share the same atomics/filter. A change that cannot be applied atomically fails the operation with a single error rather than silently falling back to streaming — add `:stream` to allow per-record updates. Use `:atomic` (no batching) if you want the whole input applied in one statement.
 
 The result is an `Ash.BulkResult`. A `{record_or_identifier, input}` whose record no longer exists becomes a per-row error: `Ash.Error.Changes.StaleRecord` when given a record, `Ash.Error.Query.NotFound` when given a bare identifier. So some rows can succeed while others fail, yielding a `:partial_success` result.
 

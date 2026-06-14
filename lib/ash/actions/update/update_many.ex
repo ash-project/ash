@@ -2,19 +2,19 @@ defmodule Ash.Actions.Update.UpdateMany do
   @moduledoc false
   # Updates many records, each with its own input.
   #
-  # The `:strategy` option controls how the work is executed (default `[:atomic]`):
+  # The `:strategy` option controls how the work is executed (default `[:atomic_batches]`):
   #
   #   * `:atomic` — apply the whole input in a single pass, one statement per shared atomics/filter
   #     group (e.g. one SQL `MERGE`). No batching.
-  #   * `:atomic_batches` — same, but chunk the input into `:batch_size` batches first, so very large
-  #     inputs stay within the data layer's bind-parameter limits.
+  #   * `:atomic_batches` — same, but chunk the input into `:batch_size` batches first, so large
+  #     inputs stay within the data layer's bind-parameter limits. This is the default.
   #   * `:stream` — update records one at a time via `Ash.bulk_update`, for changes that can't be
   #     made atomic (or data layers without `update_many`).
   #
   # Strategies are tried in the order `:atomic`, `:atomic_batches`, `:stream`; only those present are
-  # allowed. With the default `[:atomic]`, a change that can't be applied atomically fails the
-  # operation with a single error rather than silently falling back to streaming (this is a property
-  # of the request, not of any one row — unlike the per-row stale/not-found errors below).
+  # allowed. Without `:stream`, a change that can't be applied atomically fails the operation with a
+  # single error rather than silently falling back to streaming (this is a property of the request,
+  # not of any one row — unlike the per-row stale/not-found errors below).
   #
   # Inputs are `{record_or_identifier, input}` tuples. A record that no longer exists (or whose
   # input was a bare identifier with no matching row) becomes a per-row error in the result:
@@ -24,7 +24,7 @@ defmodule Ash.Actions.Update.UpdateMany do
     action = get_action!(resource, action)
     pkey = Ash.Resource.Info.primary_key(resource)
     opts = Keyword.put(opts, :domain, domain)
-    strategy = List.wrap(opts[:strategy] || [:atomic])
+    strategy = List.wrap(opts[:strategy] || [:atomic_batches])
     changeset_opts = changeset_opts(domain, opts)
 
     inputs
@@ -275,7 +275,9 @@ defmodule Ash.Actions.Update.UpdateMany do
   defp status(0, _error_count), do: :error
   defp status(_success_count, _error_count), do: :partial_success
 
-  defp batch_size(_resource, _action, opts), do: opts[:batch_size] || 2000
+  # Used under `:atomic_batches`. Each batch is a single MERGE, kept well under PostgreSQL's 65535
+  # bind-param limit for typical updates; lower `:batch_size` for very wide updates.
+  defp batch_size(_resource, _action, opts), do: opts[:batch_size] || 1000
 
   defp missing_error(resource, %{kind: :identifier, pkey: pkey}) do
     Ash.Error.to_ash_error(

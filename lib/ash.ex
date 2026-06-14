@@ -3493,16 +3493,16 @@ defmodule Ash do
 
   ## Options
 
-    * `:strategy` - One or more of `:atomic`, `:atomic_batches`, and `:stream` (default `[:atomic]`).
-      Tried in that order; only the ones you list are allowed.
+    * `:strategy` - One or more of `:atomic`, `:atomic_batches`, and `:stream`
+      (default `[:atomic_batches]`). Tried in that order; only the ones you list are allowed.
       * `:atomic` - apply the whole input in a single pass (one statement per shared atomics/filter
         group). No batching.
       * `:atomic_batches` - chunk the input into `:batch_size` batches first, each applied atomically.
-        Use this for very large inputs that would otherwise exceed the data layer's parameter limits.
+        This is the default, so large inputs stay within the data layer's parameter limits.
       * `:stream` - update records one at a time, for changes that can't be made atomic (or data
-        layers without atomic update support). With the default `[:atomic]`, such a change fails the
-        operation with a single error instead.
-    * `:batch_size` - Batch size to use under the `:atomic_batches` strategy (default `2000`).
+        layers without atomic update support). Without `:stream`, such a change fails the operation
+        with a single error instead.
+    * `:batch_size` - Batch size to use under the `:atomic_batches` strategy (default `1000`).
     * `:return_records?` - Whether to return the updated records (default `false`).
     * `:return_errors?` - Whether to return per-row errors (default `false`).
     * `:select` - The fields to return when `return_records?: true`.
