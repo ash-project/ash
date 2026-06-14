@@ -881,7 +881,13 @@ defmodule Ash.DataLayer do
   def source(resource) do
     data_layer = Ash.DataLayer.data_layer(resource)
 
-    Code.ensure_compiled!(data_layer)
+    if data_layer && !Code.ensure_loaded?(data_layer) do
+      raise ArgumentError, """
+      The data layer #{inspect(data_layer)} could not be loaded.
+      This can mean that the name is misspelled, or the dependency that \
+      provides it is not currently installed.
+      """
+    end
 
     if Code.ensure_loaded?(data_layer) && function_exported?(data_layer, :source, 1) do
       source(data_layer, resource)
