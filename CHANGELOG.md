@@ -8,6 +8,33 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.29.0](https://github.com/ash-project/ash/compare/v3.28.0...v3.29.0) (2026-06-14)
+
+
+
+
+### Features:
+
+* add `Ash.update_many/4` by Zach Daniel
+
+### Bug Fixes:
+
+* look up field policies by calc_name when authorizing calculation sorts (#2754) by Jesse Williams [(#2754)](https://github.com/ash-project/ash/pull/2754)
+
+* ensure modules are loaded before optional callback checks (#2753) by Vasilis Spilka
+
+* relate_actor with field: raises BadMapError for belongs_to (#2751) by diogomrts [(#2751)](https://github.com/ash-project/ash/pull/2751)
+
+### Improvements:
+
+* set `upsert_action` metadata in ETS and Mnesia by Zach Daniel
+
+* allow partial identity join sorting (#2746) by Jechol Lee [(#2746)](https://github.com/ash-project/ash/pull/2746)
+
+* Make attribute_in delegate to one_of (#1713) (#2748) by nashjar000 [(#2748)](https://github.com/ash-project/ash/pull/2748)
+
+* Prompt to add use Ash.Domain when module exists but is not a domain (#2744) by gixtrem [(#2744)](https://github.com/ash-project/ash/pull/2744)
+
 ## [v3.28.0](https://github.com/ash-project/ash/compare/v3.27.8...v3.28.0) (2026-06-11)
 
 
