@@ -19,6 +19,11 @@ defmodule Ash.Actions.Update.UpdateMany do
   # Inputs are `{record_or_identifier, input}` tuples. A record that no longer exists (or whose
   # input was a bare identifier with no matching row) becomes a per-row error in the result:
   # `Ash.Error.Changes.StaleRecord` for a record, `Ash.Error.Query.NotFound` for an identifier.
+  #
+  # Notifications (`:notify?` / `:return_notifications?`) work like other bulk actions: built per
+  # updated record (the atomic path emits resource-level notifier notifications), accumulated across
+  # batches, and only sent once every batch has committed — or handed to the enclosing Ash
+  # transaction's owner when nested inside one.
 
   def run(domain, resource, action, inputs, opts) do
     action = get_action!(resource, action)
@@ -30,12 +35,13 @@ defmodule Ash.Actions.Update.UpdateMany do
     inputs
     |> batches(resource, action, strategy, opts)
     |> Enum.reduce(initial_accumulator(opts), fn batch, acc ->
-      {records, errors} =
+      {records, errors, notifications} =
         run_batch(resource, action, pkey, strategy, changeset_opts, batch, opts)
 
-      accumulate(acc, records, errors, opts)
+      accumulate(acc, records, errors, notifications, opts)
     end)
     |> finalize(opts)
+    |> process_notifications(resource, action, opts)
   end
 
   # Only `:atomic_batches` chunks the input. Otherwise the whole input is handled in a single pass
@@ -69,8 +75,9 @@ defmodule Ash.Actions.Update.UpdateMany do
       end)
 
     # The single-statement path needs both an `update_many`-capable data layer and an atomic-ish
-    # strategy. Everything it can't take (non-atomic or invalid changesets, or every change when the
-    # data layer can't `update_many`) flows to `Ash.bulk_update`, which enforces the strategy itself.
+    # strategy. Everything it can't take (non-atomic or invalid changesets, changesets whose hooks
+    # the MERGE path can't run, or every change when the data layer can't `update_many`) flows to
+    # `Ash.bulk_update`, which enforces the strategy and runs those hooks the same atomic way.
     use_update_many? =
       Ash.DataLayer.data_layer_can?(resource, :update_many) and
         (:atomic in strategy or :atomic_batches in strategy)
@@ -78,7 +85,8 @@ defmodule Ash.Actions.Update.UpdateMany do
     {atomic, fallback} =
       if use_update_many? do
         Enum.split_with(built, fn target ->
-          match?(%Ash.Changeset{valid?: true}, target.changeset)
+          match?(%Ash.Changeset{valid?: true}, target.changeset) and
+            merge_runnable?(target.changeset)
         end)
       else
         {[], built}
@@ -87,71 +95,168 @@ defmodule Ash.Actions.Update.UpdateMany do
     Ash.DataLayer.transaction(
       resource,
       fn ->
-        atomic_updated = run_atomic(resource, action, atomic, opts)
-        manual_results = run_manual(resource, action, strategy, fallback, opts)
+        {atomic_records, atomic_errors, atomic_notifications} =
+          run_atomic(resource, action, pkey, atomic, opts)
 
-        assemble_batch(resource, pkey, atomic, atomic_updated, manual_results)
+        {manual_records, manual_errors, manual_notifications} =
+          run_manual(resource, action, strategy, fallback, opts)
+
+        {atomic_records ++ manual_records, atomic_errors ++ manual_errors,
+         atomic_notifications ++ manual_notifications}
       end,
       nil,
       %{type: :bulk_update, metadata: %{resource: resource, action: action.name}}
     )
     |> case do
-      {:ok, {records, errors}} -> {records, errors}
-      {:error, error} -> {[], [Ash.Error.to_ash_error(error)]}
+      {:ok, {records, errors, notifications}} -> {records, errors, notifications}
+      {:error, error} -> {[], [Ash.Error.to_ash_error(error)], []}
     end
   end
 
-  defp run_atomic(_resource, _action, [], _opts), do: []
+  defp run_atomic(_resource, _action, _pkey, [], _opts), do: {[], [], []}
 
-  defp run_atomic(resource, action, atomic, opts) do
-    atomic
-    |> Enum.group_by(fn %{changeset: changeset} -> {changeset.atomics, changeset.filter} end)
-    |> Enum.flat_map(fn {_group_key, targets} ->
-      changesets = Enum.map(targets, & &1.changeset)
+  defp run_atomic(resource, action, pkey, atomic, opts) do
+    notify? = notify?(opts)
 
-      # We always need the primary keys back (to diff updated rows against the inputs for
-      # NotFound/Stale), but only load the full record set when the caller actually wants records.
-      action_select =
-        if opts[:return_records?] do
-          action_select(resource, action, opts)
-        else
-          Ash.Resource.Info.primary_key(resource)
-        end
+    # after_action hooks (and notification subscribers) need the full updated record, not just pkeys.
+    has_after_action? = Enum.any?(atomic, &(&1.changeset.after_action != []))
 
-      data_layer_opts = %{
-        return_records?: true,
-        tenant: opts[:tenant],
-        action_select: action_select,
-        calculations: []
-      }
+    {records, errors, notifications, returned_pkeys} =
+      atomic
+      |> Enum.group_by(fn %{changeset: changeset} -> {changeset.atomics, changeset.filter} end)
+      |> Enum.reduce({[], [], [], MapSet.new()}, fn {_group_key, targets}, acc ->
+        {records_acc, errors_acc, notifications_acc, seen} = acc
+        changesets = Enum.map(targets, & &1.changeset)
 
-      case Ash.DataLayer.update_many(resource, changesets, data_layer_opts) do
-        :ok ->
-          []
+        # Changesets in a group share atomics/filter; use the first as the batch's representative for
+        # the after_batch change callbacks, exactly as an atomic bulk update uses one changeset.
+        representative = hd(changesets)
 
-        {:ok, records} ->
-          records
+        context =
+          struct(Ash.Resource.Change.Context, %{
+            bulk?: true,
+            source_context: representative.context,
+            actor: opts[:actor],
+            tenant: opts[:tenant],
+            tracer: opts[:tracer],
+            authorize?: opts[:authorize?]
+          })
 
-        {:partial_success, _failed, records} ->
-          records
+        # Only *unconditional* after_batch hooks reach the merge path; conditional ones (whose `where`
+        # is a calculation needing both the old and new row values together) are routed to the
+        # `bulk_update` fallback. So `conditional_after_batch_hooks` here only ever has the `true`
+        # condition, which `run_atomic_after_batch_hooks` applies to every row without a calculation.
+        {all_changes, conditional_after_batch_hooks, _calculations} =
+          Ash.Actions.Update.Bulk.hooks_and_calcs_for_update_query(
+            representative,
+            context,
+            Ash.Query.new(resource),
+            opts
+          )
 
-        {:error, error} ->
-          Ash.DataLayer.rollback(resource, Ash.Error.to_ash_error(error))
+        action_select =
+          if opts[:return_records?] or notify? or has_after_action? or
+               not Enum.empty?(conditional_after_batch_hooks) do
+            action_select(resource, action, opts)
+          else
+            Ash.Resource.Info.primary_key(resource)
+          end
 
-        {:error, :no_rollback, error} ->
-          Ash.DataLayer.rollback(resource, Ash.Error.to_ash_error(error))
-      end
-    end)
+        data_layer_opts = %{
+          return_records?: true,
+          tenant: opts[:tenant],
+          action_select: action_select,
+          calculations: []
+        }
+
+        written =
+          case Ash.DataLayer.update_many(resource, changesets, data_layer_opts) do
+            :ok ->
+              []
+
+            {:ok, records} ->
+              records
+
+            {:partial_success, _failed, records} ->
+              records
+
+            {:error, error} ->
+              Ash.DataLayer.rollback(resource, Ash.Error.to_ash_error(error))
+
+            {:error, :no_rollback, error} ->
+              Ash.DataLayer.rollback(resource, Ash.Error.to_ash_error(error))
+          end
+
+        # after_batch change callbacks, run the same way an atomic bulk update runs them.
+        {written, after_batch_notifications} =
+          if Enum.empty?(conditional_after_batch_hooks) do
+            {written, []}
+          else
+            Ash.Actions.Update.Bulk.run_atomic_after_batch_hooks(
+              written,
+              representative,
+              all_changes,
+              conditional_after_batch_hooks,
+              context
+            )
+          end
+
+        changeset_by_pkey = Map.new(targets, &{&1.pkey, &1.changeset})
+
+        # Run after_action hooks per row with that row's own changeset — the same hooks atomic bulk
+        # updates run after their write. The MERGE already happened, so a hook failure is a per-row
+        # error (the row stays updated) rather than a rollback, matching bulk update behavior.
+        {group_records, group_errors, group_notifications, seen} =
+          Enum.reduce(written, {[], [], [], seen}, fn record, {recs, errs, notifs, seen} ->
+            row_pkey = Map.take(record, pkey)
+            seen = MapSet.put(seen, row_pkey)
+            changeset = Map.get(changeset_by_pkey, row_pkey) || representative
+
+            case Ash.Changeset.run_after_actions(record, changeset, []) do
+              {:ok, new_record, _changeset, %{notifications: hook_notifications}} ->
+                row_notifications =
+                  if notify? do
+                    [
+                      Ash.Actions.Helpers.resource_notification(changeset, new_record, opts)
+                      | hook_notifications
+                    ]
+                  else
+                    []
+                  end
+
+                {[new_record | recs], errs, row_notifications ++ notifs, seen}
+
+              {:error, error} ->
+                {recs, [Ash.Error.to_ash_error(error) | errs], notifs, seen}
+            end
+          end)
+
+        group_notifications =
+          if notify?,
+            do: after_batch_notifications ++ group_notifications,
+            else: group_notifications
+
+        {records_acc ++ Enum.reverse(group_records), errors_acc ++ Enum.reverse(group_errors),
+         notifications_acc ++ group_notifications, seen}
+      end)
+
+    # Targets whose row never came back from the MERGE are genuinely missing.
+    missing_errors =
+      atomic
+      |> Enum.reject(&MapSet.member?(returned_pkeys, &1.pkey))
+      |> Enum.map(&missing_error(resource, &1))
+
+    {records, errors ++ missing_errors, notifications}
   end
 
-  defp run_manual(_resource, _action, _strategy, [], _opts), do: []
+  defp run_manual(_resource, _action, _strategy, [], _opts), do: {[], [], []}
 
   defp run_manual(resource, action, strategy, manual, opts) do
     # `Ash.bulk_update`'s own strategy handling isn't uniform (it will stream an identifier query
     # even when `:stream` wasn't requested, and force-streams on data layers without atomic update
     # support), so enforce the strategy here instead of relying on it. A change reaches this path
-    # only because the single-statement `update_many` couldn't take it; we can still honor an
-    # atomic-only strategy when the data layer can update atomically on its own.
+    # because the single-statement `update_many` couldn't take it; `bulk_update` then runs the full
+    # pipeline (before/after batch, after_action, after_transaction) the same atomic way.
     stream? = :stream in strategy
     atomic_capable? = Ash.DataLayer.data_layer_can?(resource, :update_query)
 
@@ -165,23 +270,29 @@ defmodule Ash.Actions.Update.UpdateMany do
         stream? or (atomic_capable? and match?(%Ash.Changeset{valid?: true}, target.changeset))
       end)
 
-    invalid_results =
-      Enum.map(invalid, fn target ->
-        {:error, target, Ash.Error.to_ash_error(target.changeset.errors)}
-      end)
+    invalid_errors =
+      Enum.map(invalid, &Ash.Error.to_ash_error(&1.changeset.errors))
 
-    runnable_results =
-      Enum.map(runnable, &run_via_bulk_update(resource, action, strategy, &1, opts))
+    {runnable_records, runnable_errors, runnable_notifications} =
+      Enum.reduce(runnable, {[], [], []}, fn target, {records, errors, notifications} ->
+        {result, notifs} = run_via_bulk_update(resource, action, strategy, target, opts)
+
+        case result do
+          {:ok, record} -> {[record | records], errors, notifs ++ notifications}
+          {:error, _target, error} -> {records, [error | errors], notifs ++ notifications}
+        end
+      end)
 
     # Being unable to satisfy an atomic-only strategy is a single property of the request, not a
     # per-row data problem, so the whole blocked set collapses to one error.
-    blocked_result =
+    blocked_errors =
       case blocked do
         [] -> []
-        [target | _] -> [{:error, target, no_matching_strategy_error(resource, action, strategy)}]
+        _ -> [no_matching_strategy_error(resource, action, strategy)]
       end
 
-    invalid_results ++ runnable_results ++ blocked_result
+    {Enum.reverse(runnable_records),
+     invalid_errors ++ Enum.reverse(runnable_errors) ++ blocked_errors, runnable_notifications}
   end
 
   defp run_via_bulk_update(resource, action, strategy, target, opts) do
@@ -194,19 +305,30 @@ defmodule Ash.Actions.Update.UpdateMany do
         :identifier -> Ash.Query.do_filter(resource, Map.to_list(target.pkey))
       end
 
-    query_or_records
-    |> Ash.bulk_update(action.name, target.input, manual_bulk_opts(strategy, opts))
-    |> case do
-      %Ash.BulkResult{status: :success, records: [record | _]} ->
-        {:ok, record}
+    bulk_result =
+      Ash.bulk_update(
+        query_or_records,
+        action.name,
+        target.input,
+        manual_bulk_opts(strategy, opts)
+      )
 
-      %Ash.BulkResult{status: :success} ->
-        # Nothing matched: the record is gone, or the identifier names no row.
-        {:error, target, missing_error(resource, target)}
+    result =
+      case bulk_result do
+        %Ash.BulkResult{status: :success, records: [record | _]} ->
+          {:ok, record}
 
-      %Ash.BulkResult{errors: errors} ->
-        {:error, target, Ash.Error.to_ash_error(errors)}
-    end
+        %Ash.BulkResult{status: :success} ->
+          # Nothing matched: the record is gone, or the identifier names no row.
+          {:error, target, missing_error(resource, target)}
+
+        %Ash.BulkResult{errors: errors} ->
+          {:error, target, Ash.Error.to_ash_error(errors)}
+      end
+
+    # `manual_bulk_opts` forces `return_notifications?: true`, so bulk_update returns rather than
+    # sends; we fold them into the operation-wide set and emit/return them once at the end.
+    {result, List.wrap(bulk_result.notifications)}
   end
 
   defp no_matching_strategy_error(resource, action, strategy) do
@@ -222,43 +344,55 @@ defmodule Ash.Actions.Update.UpdateMany do
     )
   end
 
-  defp assemble_batch(resource, pkey, atomic_targets, atomic_records, manual_results) do
-    returned_pkeys = MapSet.new(atomic_records, &Map.take(&1, pkey))
-
-    atomic_errors =
-      atomic_targets
-      |> Enum.reject(&MapSet.member?(returned_pkeys, &1.pkey))
-      |> Enum.map(&missing_error(resource, &1))
-
-    {manual_records, manual_errors} =
-      Enum.reduce(manual_results, {[], []}, fn
-        {:ok, record}, {records, errors} ->
-          {[record | records], errors}
-
-        {:error, _target, error}, {records, errors} ->
-          {records, [Ash.Error.to_ash_error(error) | errors]}
-      end)
-
-    {atomic_records ++ Enum.reverse(manual_records), atomic_errors ++ Enum.reverse(manual_errors)}
+  # The merge path runs the hooks an atomic bulk update runs after its write that need nothing the
+  # MERGE can't provide: after_action and *unconditional* after_batch (applies to every row).
+  #
+  # Everything else goes to the `bulk_update` fallback, whose update is a join-capable `SELECT`:
+  #   * before_batch — not part of an atomic write.
+  #   * conditional hooks — a hook gated by a `where` needs that condition evaluated with both the
+  #     old (`ref`) and new (`atomic_ref`) row values together, which only exist during the update
+  #     statement; a MERGE can't surface that (its RETURNING can't join, and is post-update only).
+  #   * after_transaction — runs post-commit.
+  # (before_action already forces the changeset non-atomic, so it never reaches here.)
+  defp merge_runnable?(%Ash.Changeset{} = changeset) do
+    Enum.empty?(changeset.after_transaction) and
+      not action_needs_fallback_for_hooks?(changeset.resource, changeset.action)
   end
+
+  defp action_needs_fallback_for_hooks?(resource, action) do
+    (action.changes ++ Ash.Resource.Info.changes(resource, action.type))
+    |> Enum.any?(fn
+      %{change: {module, _opts}} = change ->
+        module.has_before_batch?() or
+          (conditional_change?(change) and (module.has_after_batch?() or module.has_change?()))
+
+      _ ->
+        false
+    end)
+  end
+
+  defp conditional_change?(%{where: where}), do: where not in [[], nil]
+  defp conditional_change?(_), do: false
 
   defp initial_accumulator(opts) do
     %{
       success_count: 0,
       error_count: 0,
       records: if(opts[:return_records?], do: [], else: nil),
-      errors: if(opts[:return_errors?], do: [], else: nil)
+      errors: if(opts[:return_errors?], do: [], else: nil),
+      notifications: []
     }
   end
 
-  # Records/errors are accumulated as a reversed list-of-batches (then flattened in `finalize/2`)
-  # so appending stays O(1) per batch rather than O(n) — important when there are many batches.
-  defp accumulate(acc, records, errors, opts) do
+  # Records/errors/notifications are accumulated as a reversed list-of-batches (then flattened in
+  # `finalize/2`) so appending stays O(1) per batch rather than O(n) — important with many batches.
+  defp accumulate(acc, records, errors, notifications, opts) do
     %{
       success_count: acc.success_count + length(records),
       error_count: acc.error_count + length(errors),
       records: if(opts[:return_records?], do: [records | acc.records], else: nil),
-      errors: if(opts[:return_errors?], do: [errors | acc.errors], else: nil)
+      errors: if(opts[:return_errors?], do: [errors | acc.errors], else: nil),
+      notifications: [notifications | acc.notifications]
     }
   end
 
@@ -267,9 +401,39 @@ defmodule Ash.Actions.Update.UpdateMany do
       status: status(acc.success_count, acc.error_count),
       error_count: acc.error_count,
       records: acc.records && acc.records |> Enum.reverse() |> Enum.concat(),
-      errors: acc.errors && acc.errors |> Enum.reverse() |> Enum.concat()
+      errors: acc.errors && acc.errors |> Enum.reverse() |> Enum.concat(),
+      notifications: acc.notifications |> Enum.reverse() |> Enum.concat()
     }
   end
+
+  # Notifications are built inside each batch's transaction but only emitted here, once everything
+  # has committed. If we're nested inside another Ash transaction, hand them to that owner instead.
+  defp process_notifications(result, resource, action, opts) do
+    cond do
+      opts[:return_notifications?] ->
+        result
+
+      Enum.empty?(result.notifications) ->
+        %{result | notifications: nil}
+
+      Process.get(:ash_started_transaction?, false) ->
+        Process.put(
+          :ash_notifications,
+          List.wrap(Process.get(:ash_notifications)) ++ result.notifications
+        )
+
+        %{result | notifications: []}
+
+      true ->
+        remaining = Ash.Notifier.notify(result.notifications)
+
+        Ash.Actions.Helpers.warn_missed!(resource, action, %{resource_notifications: remaining})
+
+        %{result | notifications: []}
+    end
+  end
+
+  defp notify?(opts), do: opts[:notify?] || opts[:return_notifications?] || false
 
   defp status(_success_count, 0), do: :success
   defp status(0, _error_count), do: :error
@@ -289,13 +453,25 @@ defmodule Ash.Actions.Update.UpdateMany do
     Ash.Error.to_ash_error(Ash.Error.Changes.StaleRecord.exception([]))
   end
 
+  # Targets are matched by primary key (that's how the rows are grouped and how the data layer
+  # matches them), so an identifier must be a record or the full primary key — not some other
+  # identity. A partial/other map is rejected rather than silently matching nothing.
   defp normalize_target!(resource, target, pkey) do
     cond do
       is_struct(target) and target.__struct__ == resource ->
         {:record, target}
 
       is_map(target) and not is_struct(target) ->
-        {:identifier, struct(resource, Map.take(target, pkey))}
+        provided = Map.take(target, pkey)
+
+        if map_size(provided) == length(pkey) do
+          {:identifier, struct(resource, provided)}
+        else
+          raise ArgumentError,
+                "Cannot use #{inspect(target)} as an identifier for #{inspect(resource)}: " <>
+                  "`Ash.update_many` identifies records by their primary key #{inspect(pkey)}. " <>
+                  "Pass a record or a map containing the full primary key."
+        end
 
       match?([_], pkey) ->
         {:identifier, struct(resource, %{hd(pkey) => target})}
@@ -341,10 +517,13 @@ defmodule Ash.Actions.Update.UpdateMany do
   defp manual_bulk_opts(strategy, opts) do
     # Pass the caller's strategy straight through: `Ash.bulk_update` decides whether each change can
     # be satisfied (e.g. errors under `[:atomic]` if a change isn't atomic, streams under `[:stream]`).
+    # `return_notifications?: true` makes it hand notifications back rather than sending them, so we
+    # can emit them once for the whole operation after every batch has committed.
     [
       domain: opts[:domain],
       return_records?: true,
       return_errors?: true,
+      return_notifications?: notify?(opts),
       stop_on_error?: false,
       strategy: strategy
     ]
@@ -352,6 +531,7 @@ defmodule Ash.Actions.Update.UpdateMany do
     |> maybe_put(:tenant, opts[:tenant])
     |> maybe_put(:authorize?, opts[:authorize?])
     |> maybe_put(:context, opts[:context])
+    |> maybe_put(:notification_metadata, opts[:notification_metadata])
   end
 
   defp maybe_put(opts, _key, nil), do: opts

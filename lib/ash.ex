@@ -3505,6 +3505,11 @@ defmodule Ash do
     * `:batch_size` - Batch size to use under the `:atomic_batches` strategy (default `1000`).
     * `:return_records?` - Whether to return the updated records (default `false`).
     * `:return_errors?` - Whether to return per-row errors (default `false`).
+    * `:notify?` - Whether to send notifications (default `false`). Like other bulk actions, the
+      atomic path emits the resource-level notifier notifications (per-record `after_action` hooks
+      force a non-atomic action and run on the streaming path instead).
+    * `:return_notifications?` - Whether to return notifications instead of sending them
+      (default `false`).
     * `:select` - The fields to return when `return_records?: true`.
     * Plus the usual `:actor`, `:tenant`, `:authorize?`, `:context` and `:domain` options.
   """

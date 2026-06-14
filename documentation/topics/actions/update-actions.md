@@ -247,6 +247,8 @@ It uses the same `:strategy` option as bulk updates (`:atomic`, `:atomic_batches
 
 The result is an `Ash.BulkResult`. A `{record_or_identifier, input}` whose record no longer exists becomes a per-row error: `Ash.Error.Changes.StaleRecord` when given a record, `Ash.Error.Query.NotFound` when given a bare identifier. So some rows can succeed while others fail, yielding a `:partial_success` result.
 
+Like other bulk actions, it supports notifications via `notify?: true` (send) and `return_notifications?: true` (return them on the result instead). They're emitted once every batch has committed.
+
 ## Running a standard update action
 
 All actions are run in a transaction if the data layer supports it. You can opt out of this behavior by supplying `transaction?: false` when creating the action. When an action is being run in a transaction, all steps inside of it are serialized because transactions cannot be split across processes.
