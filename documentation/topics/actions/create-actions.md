@@ -221,7 +221,47 @@ Now, when we perform this upsert, there are three possible outcomes:
 > end
 > ```
 
+#### Referring to the conflicting values with `upsert_conflict/1`
 
+When an upsert finds a conflicting record, you sometimes need to compare the value
+*already in the database* against the value *being provided* by the current create.
+Inside `upsert_condition` (and other expressions evaluated during the upsert), a bare
+field reference refers to the **existing** record's value, while `upsert_conflict(:field)`
+refers to the **incoming** value that the create attempted to set.
+
+For example, to only perform the update when the incoming `contents` actually differ from
+what is already stored (and skip the upsert otherwise):
+
+```elixir
+create :upsert_post do
+  accept [:title, :contents]
+  upsert? true
+  upsert_identity :unique_title
+  upsert_fields [:contents]
+  # `contents` is the existing value, `upsert_conflict(:contents)` is the incoming value
+  upsert_condition expr(contents != upsert_conflict(:contents))
+end
+```
+
+This can also be supplied as an option when calling the action:
+
+```elixir
+Post
+|> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
+|> Ash.create!(
+  upsert?: true,
+  upsert_identity: :unique_title,
+  upsert_fields: [:contents],
+  upsert_condition: expr(contents != upsert_conflict(:contents))
+)
+```
+
+> ### Skipped upserts {: .info}
+>
+> When an `upsert_condition` does not match, the upsert is skipped. By default this results
+> in an `Ash.Error.Changes.StaleRecord` error (as described above). Pass `return_skipped_upsert?: true`
+> to instead return the existing record, which will have the `:upsert_skipped` metadata set to `true`
+> (check it with `Ash.Resource.get_metadata(record, :upsert_skipped)`).
 
 
 ### Atomic Updates and Atomic Sets

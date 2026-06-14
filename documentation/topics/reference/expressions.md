@@ -88,6 +88,7 @@ The following functions are built in:
 - `fragment/*` | Creates a fragment of a data layer expression. See the section on fragments below.
 - `error/2` | Raises an error with a given exception module and parameters. See the section on error expressions below.
 - `required!/2` | Returns the given value when present, or produces a required-attribute error when it is `nil`. Typically used as `expr(required!(^value, ^attribute))` where `attribute` has at least `:name` and `:resource`.
+- `upsert_conflict/1` | Only valid during an upsert. Refers to the *incoming* value for a field being upserted, as opposed to a bare field reference which refers to the *existing* value. See [Upserts](/documentation/topics/actions/create-actions.md#upserts) for details.
 
 ## Required Error
 
