@@ -485,6 +485,18 @@ defmodule Ash.Actions.Read.Relationships do
                    ]}
 
                 {:ok, true, authorized_through_query} ->
+                  authorized_through_query =
+                    Ash.Actions.Read.add_calc_context_to_query(
+                      authorized_through_query,
+                      source_query.context[:private][:actor],
+                      source_query.context[:private][:authorize?],
+                      authorized_through_query.tenant,
+                      source_query.context[:private][:tracer],
+                      authorized_through_query.domain,
+                      expand?: false,
+                      source_context: authorized_through_query.context
+                    )
+
                   {:ok,
                    [
                      {clear_lateral_join_source(source_query), relationship.source_attribute,
