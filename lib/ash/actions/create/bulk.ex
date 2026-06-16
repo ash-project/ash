@@ -10,6 +10,7 @@ defmodule Ash.Actions.Create.Bulk do
   @spec run(Ash.Domain.t(), Ash.Resource.t(), atom(), Enumerable.t(map), Keyword.t()) ::
           Ash.BulkResult.t()
   def run(domain, resource, action_name, inputs, opts) do
+    opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
     action = Ash.Resource.Info.action(resource, action_name)
 
     opts =
