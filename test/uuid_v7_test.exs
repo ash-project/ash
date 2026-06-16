@@ -95,6 +95,26 @@ defmodule Ash.Test.UUIDv7Test do
     assert Ash.UUIDv7.extract_timestamp(raw) == expected_ms
   end
 
+  test "generate/0 falls back gracefully when Ecto is not started" do
+    # Ecto's monotonic generator requires the `:ecto` application to be started
+    # (it reads a persistent_term set on boot). In contexts where it isn't -
+    # most notably at compile time - it raises "Ecto has not been started".
+    # We rescue that and provision a (non-ascending) UUIDv7 instead.
+    key = {Ecto.UUID, :nanosecond}
+    saved = :persistent_term.get(key, nil)
+    :persistent_term.erase(key)
+
+    try do
+      uuid = Ash.UUIDv7.generate()
+      assert <<_::64, ?-, _::32, ?-, "7", _::24, ?-, _::32, ?-, _::96>> = uuid
+
+      raw = Ash.UUIDv7.bingenerate()
+      assert bit_size(raw) == 128
+    after
+      if saved, do: :persistent_term.put(key, saved)
+    end
+  end
+
   test "decode/1 is working" do
     hex_uuid = Ash.UUIDv7.generate()
     raw_uuid = Ash.UUIDv7.bingenerate()
