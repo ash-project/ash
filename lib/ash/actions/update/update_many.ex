@@ -32,7 +32,7 @@ defmodule Ash.Actions.Update.UpdateMany do
   def run(domain, resource, action, inputs, opts) do
     action = get_action!(resource, action)
     pkey = Ash.Resource.Info.primary_key(resource)
-    opts = Keyword.put(opts, :domain, domain)
+    opts = Ash.Actions.Helpers.apply_scope_to_opts(opts) |> Keyword.put(:domain, domain)
     strategy = List.wrap(opts[:strategy] || [:atomic_batches])
     changeset_opts = changeset_opts(domain, opts)
 
