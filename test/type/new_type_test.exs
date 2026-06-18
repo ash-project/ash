@@ -504,6 +504,14 @@ defmodule Ash.Test.Type.NewTypeTest do
           other -> other
         end
       end
+
+      @impl Ash.Type
+      def cast_from_embedded(value, constraints) do
+        case super(value, constraints) do
+          {:ok, str} -> {:ok, "from_embedded:" <> str}
+          other -> other
+        end
+      end
     end
 
     test "cast_input_array calls overridden cast_input for each element" do
@@ -540,6 +548,15 @@ defmodule Ash.Test.Type.NewTypeTest do
 
     test "dump_to_embedded_array handles nil" do
       assert {:ok, nil} = Ash.Type.dump_to_embedded({:array, TaggedString}, nil)
+    end
+
+    test "cast_from_embedded_array calls overridden cast_from_embedded for each element" do
+      assert {:ok, ["from_embedded:hello", "from_embedded:world"]} =
+               Ash.Type.cast_from_embedded({:array, TaggedString}, ["hello", "world"])
+    end
+
+    test "cast_from_embedded_array handles nil" do
+      assert {:ok, nil} = Ash.Type.cast_from_embedded({:array, TaggedString}, nil)
     end
   end
 end

@@ -25,6 +25,14 @@ defmodule Ash.Type.Keyword do
             constraints: [
               type: :keyword_list,
               default: []
+            ],
+            init?: [
+              type: :boolean,
+              default: true,
+              doc: """
+              If false, the field's type constraints are not initialised at compile time. \
+              Allows for recursive keyword fields.
+              """
             ]
           ]
         ]
@@ -79,6 +87,153 @@ defmodule Ash.Type.Keyword do
   def matches_type?(v, _constraints) do
     Keyword.keyword?(v)
   end
+
+  @impl true
+  def can_load?(constraints) do
+    case constraints[:fields] do
+      fields when is_list(fields) ->
+        Enum.any?(fields, fn {_name, config} ->
+          inner_type = config[:type]
+          inner_constraints = config[:constraints] || []
+          inner_type && Ash.Type.can_load?(inner_type, inner_constraints)
+        end)
+
+      _ ->
+        false
+    end
+  end
+
+  # Override the default splice — without this, `splicing_nil_values/2`'s
+  # flat_map would tear each keyword-list value apart into its
+  # `{key, value}` entries before the load callback ever sees the
+  # structured value.
+  @impl true
+  def splice_nil_values(values, callback) when is_list(values) do
+    values
+    |> Stream.with_index()
+    |> Enum.reduce({[], []}, fn
+      {nil, index}, {acc, nil_indices} -> {acc, [index | nil_indices]}
+      {value, _index}, {acc, nil_indices} -> {[value | acc], nil_indices}
+    end)
+    |> then(fn {list, nil_indices} ->
+      case callback.(Enum.reverse(list)) do
+        {:ok, new_list} ->
+          {:ok, Enum.reduce(Enum.reverse(nil_indices), new_list, &List.insert_at(&2, &1, nil))}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
+  end
+
+  def splice_nil_values(value, callback), do: callback.(value)
+
+  @impl true
+  def load(values, load, constraints, context) when is_list(values) do
+    fields = constraints[:fields] || []
+
+    fields
+    |> effective_load(load)
+    |> Enum.reduce_while({:ok, values}, fn {key, sub_load}, {:ok, values} ->
+      config = Keyword.fetch!(fields, key)
+      inner_type = config[:type]
+      inner_constraints = config[:constraints] || []
+
+      load_field_across(values, key, inner_type, inner_constraints, sub_load, context)
+    end)
+  end
+
+  defp load_field_across(
+         values,
+         key,
+         {:array, _} = inner_type,
+         inner_constraints,
+         sub_load,
+         context
+       ) do
+    values
+    |> Enum.reduce_while({:ok, []}, fn
+      kw, {:ok, acc} when is_list(kw) ->
+        case Keyword.get(kw, key) do
+          nil ->
+            {:cont, {:ok, [kw | acc]}}
+
+          list when is_list(list) ->
+            case Ash.Type.load(inner_type, list, sub_load, inner_constraints, context) do
+              {:ok, loaded} -> {:cont, {:ok, [Keyword.put(kw, key, loaded) | acc]}}
+              {:error, error} -> {:halt, {:error, error}}
+            end
+
+          other ->
+            {:cont, {:ok, [Keyword.put(kw, key, other) | acc]}}
+        end
+
+      other, {:ok, acc} ->
+        {:cont, {:ok, [other | acc]}}
+    end)
+    |> case do
+      {:ok, reversed} -> {:cont, {:ok, Enum.reverse(reversed)}}
+      {:error, error} -> {:halt, {:error, error}}
+    end
+  end
+
+  defp load_field_across(values, key, inner_type, inner_constraints, sub_load, context) do
+    slice =
+      Enum.map(values, fn
+        kw when is_list(kw) -> Keyword.get(kw, key)
+        _ -> nil
+      end)
+
+    case Ash.Type.load(inner_type, slice, sub_load, inner_constraints, context) do
+      {:ok, loaded_slice} ->
+        updated =
+          values
+          |> Enum.zip(loaded_slice)
+          |> Enum.map(fn
+            {kw, v} when is_list(kw) -> Keyword.put(kw, key, v)
+            {other, _v} -> other
+          end)
+
+        {:cont, {:ok, updated}}
+
+      {:error, error} ->
+        {:halt, {:error, error}}
+    end
+  end
+
+  defp effective_load(fields, load) do
+    explicit =
+      load
+      |> List.wrap()
+      |> Enum.flat_map(fn
+        {k, sub} when is_atom(k) -> [{k, sub}]
+        k when is_atom(k) -> [{k, []}]
+        _ -> []
+      end)
+      |> Map.new()
+
+    Enum.reduce(fields, explicit, fn {field_name, config}, acc ->
+      cond do
+        Map.has_key?(acc, field_name) ->
+          acc
+
+        loadable_inner?(config) ->
+          Map.put(acc, field_name, [])
+
+        true ->
+          acc
+      end
+    end)
+  end
+
+  defp loadable_inner?(config) do
+    type = config[:type]
+    constraints = config[:constraints] || []
+    type && Ash.Type.can_load?(type, constraints)
+  end
+
+  @impl true
+  def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:fields])
 
   @impl true
   def init(constraints) do
@@ -151,22 +306,50 @@ defmodule Ash.Type.Keyword do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
-  def cast_stored(value, constraints) when is_map(value),
-    do: {:ok, try_map_to_keyword(value, constraints)}
+  def cast_stored(value, constraints) when is_map(value) do
+    cast_keyword_fields(value, constraints, &Ash.Type.cast_stored/3)
+  end
 
   def cast_stored(_, _), do: :error
 
   @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
-  def dump_to_native(value, _) when is_map(value), do: {:ok, value}
 
-  def dump_to_native(value, _) do
+  def dump_to_native(value, constraints) when is_map(value) do
+    dump_fields(value, constraints, &Ash.Type.dump_to_native/3)
+  end
+
+  def dump_to_native(value, constraints) do
     if Keyword.keyword?(value) do
-      {:ok, Map.new(value)}
+      dump_fields(value, constraints, &Ash.Type.dump_to_native/3)
     else
       :error
     end
   end
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(value, constraints) when is_map(value) do
+    dump_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(value, constraints) do
+    if Keyword.keyword?(value) do
+      dump_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
+    else
+      :error
+    end
+  end
+
+  @impl true
+  def cast_from_embedded(nil, _), do: {:ok, nil}
+
+  def cast_from_embedded(value, constraints) when is_map(value) do
+    cast_keyword_fields(value, constraints, &Ash.Type.cast_from_embedded/3)
+  end
+
+  def cast_from_embedded(_, _), do: :error
 
   @impl true
   def apply_constraints(value, constraints) do
@@ -266,6 +449,65 @@ defmodule Ash.Type.Keyword do
   end
 
   defp fetch_field(_, _), do: :error
+
+  defp cast_keyword_fields(value, constraints, cast_fn) do
+    if fields = constraints[:fields] do
+      fields
+      |> Enum.reduce_while({:ok, []}, fn {key, config}, {:ok, acc} ->
+        case cast_keyword_field(value, key, config, cast_fn) do
+          {:ok, value} -> {:cont, {:ok, [{key, value} | acc]}}
+          :skip -> {:cont, {:ok, acc}}
+          other -> {:halt, other}
+        end
+      end)
+      |> case do
+        {:ok, keyword} -> {:ok, Enum.reverse(keyword)}
+        other -> other
+      end
+    else
+      {:ok, try_map_to_keyword(value, constraints)}
+    end
+  end
+
+  defp cast_keyword_field(map, key, config, cast_fn) do
+    case fetch_map_field(map, key) do
+      {:ok, value} -> cast_fn.(config[:type], value, config[:constraints] || [])
+      :error -> :skip
+    end
+  end
+
+  defp dump_fields(value, constraints, dump_fn) do
+    if fields = constraints[:fields] do
+      Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
+        case dump_field(value, key, config, dump_fn) do
+          {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
+          :skip -> {:cont, {:ok, acc}}
+          other -> {:halt, other}
+        end
+      end)
+    else
+      {:ok, if(is_map(value), do: value, else: Map.new(value))}
+    end
+  end
+
+  defp dump_field(value, key, config, dump_fn) do
+    fetched =
+      if is_map(value),
+        do: fetch_map_field(value, key),
+        else: Keyword.fetch(value, key)
+
+    case fetched do
+      {:ok, field_value} -> dump_fn.(config[:type], field_value, config[:constraints] || [])
+      :error -> :skip
+    end
+  end
+
+  defp fetch_map_field(map, atom) when is_atom(atom) do
+    case Map.fetch(map, atom) do
+      {:ok, value} -> {:ok, value}
+      :error -> Map.fetch(map, to_string(atom))
+    end
+  end
 
   defp try_map_to_keyword(map, constraints) do
     constraints[:fields]

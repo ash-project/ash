@@ -220,6 +220,8 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
 
       action :return_post_with_author, :struct do
+        constraints instance_of: __MODULE__
+
         run fn input, _ ->
           author = Ash.create!(Author, %{name: "Author"})
           post = Ash.create!(__MODULE__, %{title: "Post1", author_id: author.id})

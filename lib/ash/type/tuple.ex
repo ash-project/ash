@@ -25,6 +25,14 @@ defmodule Ash.Type.Tuple do
             constraints: [
               type: :keyword_list,
               default: []
+            ],
+            init?: [
+              type: :boolean,
+              default: true,
+              doc: """
+              If false, the field's type constraints are not initialised at compile time. \
+              Allows for recursive tuple fields.
+              """
             ]
           ]
         ]
@@ -77,6 +85,9 @@ defmodule Ash.Type.Tuple do
   def storage_type(_), do: :map
 
   @impl true
+  def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:fields])
+
+  @impl true
   def init(constraints) do
     constraints[:fields]
     |> List.wrap()
@@ -84,13 +95,17 @@ defmodule Ash.Type.Tuple do
       type = Ash.Type.get_type(config[:type])
       constraints = config[:constraints] || []
 
-      case Ash.Type.init(type, constraints) do
-        {:ok, constraints} ->
-          {:cont,
-           {:ok, [{name, Keyword.merge(config, constraints: constraints, type: type)} | fields]}}
+      if Keyword.get(config, :init?, true) do
+        case Ash.Type.init(type, constraints) do
+          {:ok, constraints} ->
+            {:cont,
+             {:ok, [{name, Keyword.merge(config, constraints: constraints, type: type)} | fields]}}
 
-        {:error, error} ->
-          {:halt, {:error, error}}
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      else
+        {:cont, {:ok, [{name, config} | fields]}}
       end
     end)
     |> case do
@@ -105,6 +120,129 @@ defmodule Ash.Type.Tuple do
   @impl true
   def matches_type?(v, _constraints) do
     is_tuple(v)
+  end
+
+  @impl true
+  def can_load?(constraints) do
+    case constraints[:fields] do
+      fields when is_list(fields) ->
+        Enum.any?(fields, fn {_name, config} ->
+          inner_type = config[:type]
+          inner_constraints = config[:constraints] || []
+          inner_type && Ash.Type.can_load?(inner_type, inner_constraints)
+        end)
+
+      _ ->
+        false
+    end
+  end
+
+  @impl true
+  def load(values, load, constraints, context) when is_list(values) do
+    fields = constraints[:fields] || []
+    indexed_fields = Enum.with_index(fields)
+
+    indexed_fields
+    |> effective_load(load)
+    |> Enum.reduce_while({:ok, values}, fn {index, key, sub_load}, {:ok, values} ->
+      {^key, config} = Enum.at(fields, index)
+      inner_type = config[:type]
+      inner_constraints = config[:constraints] || []
+
+      load_pos_across(values, index, inner_type, inner_constraints, sub_load, context)
+    end)
+  end
+
+  defp load_pos_across(
+         values,
+         index,
+         {:array, _} = inner_type,
+         inner_constraints,
+         sub_load,
+         context
+       ) do
+    values
+    |> Enum.reduce_while({:ok, []}, fn
+      tuple, {:ok, acc} when is_tuple(tuple) and tuple_size(tuple) > index ->
+        case elem(tuple, index) do
+          nil ->
+            {:cont, {:ok, [tuple | acc]}}
+
+          list when is_list(list) ->
+            case Ash.Type.load(inner_type, list, sub_load, inner_constraints, context) do
+              {:ok, loaded} -> {:cont, {:ok, [put_elem(tuple, index, loaded) | acc]}}
+              {:error, error} -> {:halt, {:error, error}}
+            end
+
+          other ->
+            {:cont, {:ok, [put_elem(tuple, index, other) | acc]}}
+        end
+
+      other, {:ok, acc} ->
+        {:cont, {:ok, [other | acc]}}
+    end)
+    |> case do
+      {:ok, reversed} -> {:cont, {:ok, Enum.reverse(reversed)}}
+      {:error, error} -> {:halt, {:error, error}}
+    end
+  end
+
+  defp load_pos_across(values, index, inner_type, inner_constraints, sub_load, context) do
+    slice =
+      Enum.map(values, fn
+        tuple when is_tuple(tuple) and tuple_size(tuple) > index -> elem(tuple, index)
+        _ -> nil
+      end)
+
+    case Ash.Type.load(inner_type, slice, sub_load, inner_constraints, context) do
+      {:ok, loaded_slice} ->
+        updated =
+          values
+          |> Enum.zip(loaded_slice)
+          |> Enum.map(fn
+            {tuple, v} when is_tuple(tuple) and tuple_size(tuple) > index ->
+              put_elem(tuple, index, v)
+
+            {other, _v} ->
+              other
+          end)
+
+        {:cont, {:ok, updated}}
+
+      {:error, error} ->
+        {:halt, {:error, error}}
+    end
+  end
+
+  defp effective_load(indexed_fields, load) do
+    explicit_keys =
+      load
+      |> List.wrap()
+      |> Enum.flat_map(fn
+        {k, sub} when is_atom(k) -> [{k, sub}]
+        k when is_atom(k) -> [{k, []}]
+        _ -> []
+      end)
+      |> Map.new()
+
+    Enum.flat_map(indexed_fields, fn {{name, config}, index} ->
+      cond do
+        Map.has_key?(explicit_keys, name) ->
+          [{index, name, Map.fetch!(explicit_keys, name)}]
+
+        loadable_inner?(config) ->
+          [{index, name, []}]
+
+        true ->
+          []
+      end
+    end)
+  end
+
+  defp loadable_inner?(config) do
+    type = config[:type]
+    constraints = config[:constraints] || []
+    type && Ash.Type.can_load?(type, constraints)
   end
 
   @impl true
@@ -130,10 +268,43 @@ defmodule Ash.Type.Tuple do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, constraints) when is_map(value) do
+    cast_tuple_fields(value, constraints, &Ash.Type.cast_stored/3)
+  end
+
+  def cast_stored(_, _), do: :error
+
+  @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+
+  def dump_to_native(value, constraints) when is_tuple(value) do
+    dump_tuple_fields(value, constraints, &Ash.Type.dump_to_native/3)
+  end
+
+  def dump_to_native(_, _), do: :error
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(value, constraints) when is_tuple(value) do
+    dump_tuple_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(_, _), do: :error
+
+  @impl true
+  def cast_from_embedded(nil, _), do: {:ok, nil}
+
+  def cast_from_embedded(value, constraints) when is_map(value) do
+    cast_tuple_fields(value, constraints, &Ash.Type.cast_from_embedded/3)
+  end
+
+  def cast_from_embedded(_, _), do: :error
+
+  defp cast_tuple_fields(value, constraints, cast_fn) do
     Enum.reduce_while(constraints[:fields], {:ok, []}, fn {key, config}, {:ok, acc} ->
       case fetch_field(value, key) do
         {:ok, value} ->
-          case Ash.Type.cast_stored(config[:type], value, config[:constraints] || []) do
+          case cast_fn.(config[:type], value, config[:constraints] || []) do
             {:ok, value} ->
               {:cont, {:ok, [value | acc]}}
 
@@ -151,27 +322,25 @@ defmodule Ash.Type.Tuple do
     end
   end
 
-  def cast_stored(_, _), do: :error
-
-  @impl true
-  def dump_to_native(nil, _), do: {:ok, nil}
-
-  def dump_to_native(value, constraints) when is_tuple(value) do
+  defp dump_tuple_fields(value, constraints, dump_fn) do
     list = Tuple.to_list(value)
 
     if length(list) == length(constraints[:fields]) do
       list
       |> Enum.zip(constraints[:fields])
-      |> Map.new(fn {tuple_val, {key, _config}} ->
-        {key, tuple_val}
+      |> Enum.reduce_while({:ok, %{}}, fn {tuple_val, {key, config}}, {:ok, acc} ->
+        case dump_fn.(config[:type], tuple_val, config[:constraints] || []) do
+          {:ok, dumped} ->
+            {:cont, {:ok, Map.put(acc, key, dumped)}}
+
+          other ->
+            {:halt, other}
+        end
       end)
-      |> then(&{:ok, &1})
     else
       :error
     end
   end
-
-  def dump_to_native(_, _), do: :error
 
   @impl true
   def apply_constraints(nil, _), do: {:ok, nil}

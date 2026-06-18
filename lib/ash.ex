@@ -979,6 +979,11 @@ defmodule Ash do
       type: :boolean,
       default: false,
       doc: "Whether or not to log the authorization result."
+    ],
+    log_policy_breakdown?: [
+      type: :boolean,
+      doc:
+        "If set to `false`, suppresses policy breakdown logs, overriding the global `show_policy_breakdowns?` configuration."
     ]
   ]
 
@@ -1977,7 +1982,7 @@ defmodule Ash do
   - [Calculations Guide](/documentation/topics/resources/calculations.md) for understanding calculations
   """
   @spec calculate!(
-          resource_or_record :: Ash.Resource.t() | Ash.Resource.record(),
+          resource_or_record :: Ash.Resource.t() | Ash.Resource.Record.t(),
           calculation :: atom,
           opts :: Keyword.t()
         ) ::
@@ -2024,7 +2029,7 @@ defmodule Ash do
   """
   @doc spark_opts: [{2, @calculate_opts}]
   @spec calculate(
-          resource_or_record :: Ash.Resource.t() | Ash.Resource.record(),
+          resource_or_record :: Ash.Resource.t() | Ash.Resource.Record.t(),
           calculation :: atom,
           opts :: Keyword.t()
         ) ::
@@ -2059,7 +2064,7 @@ defmodule Ash do
   - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
   """
   @spec get!(Ash.Resource.t(), term(), Keyword.t()) ::
-          Ash.Resource.record() | nil | no_return
+          Ash.Resource.Record.t() | nil | no_return
   @doc spark_opts: [{2, @get_opts_schema}]
   def get!(resource, id, opts \\ []) do
     Ash.Helpers.expect_resource!(resource)
@@ -2107,7 +2112,7 @@ defmodule Ash do
   """
   @doc spark_opts: [{2, @get_opts_schema}]
   @spec get(Ash.Resource.t(), term(), Keyword.t()) ::
-          {:ok, Ash.Resource.record() | nil} | {:error, term}
+          {:ok, Ash.Resource.Record.t() | nil} | {:error, term}
   def get(resource, id, opts \\ []) do
     Ash.Helpers.expect_resource!(resource)
     Ash.Helpers.expect_options!(opts)
@@ -2379,7 +2384,7 @@ defmodule Ash do
   @typedoc """
   A single record or a list of records.
   """
-  @type record_or_records :: Ash.Resource.record() | [Ash.Resource.record()]
+  @type record_or_records :: Ash.Resource.Record.t() | [Ash.Resource.Record.t()]
 
   @typedoc """
   The actor performing the action - can be any term.
@@ -2420,7 +2425,7 @@ defmodule Ash do
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
-          Ash.Resource.record() | [Ash.Resource.record()] | nil | no_return
+          Ash.Resource.Record.t() | [Ash.Resource.Record.t()] | nil | no_return
   @doc spark_opts: [{2, @load_opts_schema}]
   def load!(data, query, opts \\ []) do
     data
@@ -2475,7 +2480,7 @@ defmodule Ash do
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
-          {:ok, Ash.Resource.record() | [Ash.Resource.record()] | nil} | {:error, term}
+          {:ok, Ash.Resource.Record.t() | [Ash.Resource.Record.t()] | nil} | {:error, term}
 
   @doc spark_opts: [{2, @load_opts_schema}]
   def load(data, query, opts \\ [])
@@ -2485,9 +2490,7 @@ defmodule Ash do
   def load({:error, error}, _, _), do: {:error, error}
 
   def load({:ok, values}, query, opts) do
-    Ash.Helpers.expect_options!(opts)
-    resource = Ash.Helpers.resource_from_data!(values, query, opts)
-    load(values, query, Keyword.put(opts, :resource, resource))
+    load(values, query, opts)
   end
 
   def load(%Ash.Query{}, _query, _opts) do
@@ -2646,7 +2649,7 @@ defmodule Ash do
   #{Spark.Options.docs(@stream_opts)}
   """
   @spec stream!(query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
-          Enumerable.t(Ash.Resource.record())
+          Enumerable.t(Ash.Resource.Record.t())
 
   @doc spark_opts: [{1, @stream_opts}]
   def stream!(query, opts \\ []) do
@@ -2678,10 +2681,11 @@ defmodule Ash do
           ash_query: Ash.Query.t(),
           count: (-> {:ok, integer() | nil} | {:error, Ash.Error.t()}),
           run: (Ash.DataLayer.data_layer_query() ->
-                  {:ok, list(Ash.Resource.record()) | Ash.Page.page() | no_return}
+                  {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page() | no_return}
                   | {:error, Ash.Error.t()}),
-          load: (list(Ash.Resource.record()) | Ash.Page.page() ->
-                   {:ok, list(Ash.Resource.record()) | Ash.Page.page()} | {:error, Ash.Error.t()})
+          load: (list(Ash.Resource.Record.t()) | Ash.Page.page() ->
+                   {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page()}
+                   | {:error, Ash.Error.t()})
         }
 
   @doc """
@@ -2751,7 +2755,7 @@ defmodule Ash do
   - [Read Actions Guide](/documentation/topics/actions/read-actions.md) for understanding read operations
   """
   @spec read!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
-          list(Ash.Resource.record()) | Ash.Page.page() | no_return
+          list(Ash.Resource.Record.t()) | Ash.Page.page() | no_return
   @doc spark_opts: [{1, @read_opts_schema}]
   def read!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -2799,7 +2803,7 @@ defmodule Ash do
   #{Spark.Options.docs(Ash.Page.Keyset.page_opts())}
   """
   @spec read(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
-          {:ok, list(Ash.Resource.record()) | Ash.Page.page()} | {:error, term}
+          {:ok, list(Ash.Resource.Record.t()) | Ash.Page.page()} | {:error, term}
   @doc read: [{1, @read_opts_schema}]
   def read(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -2854,8 +2858,8 @@ defmodule Ash do
   - `reload/2` for the non-raising version
   - `d:Ash.Resource.Dsl.relationships` for defining relationships to load
   """
-  @spec reload!(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
-          Ash.Resource.record() | no_return
+  @spec reload!(record :: Ash.Resource.Record.t(), opts :: Keyword.t()) ::
+          Ash.Resource.Record.t() | no_return
   @doc spark_opts: [{1, @get_opts_schema}]
   def reload!(record, opts \\ []) do
     Ash.Helpers.expect_record!(record)
@@ -2881,8 +2885,8 @@ defmodule Ash do
 
   - `reload!/2` for the raising version
   """
-  @spec reload(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, Ash.Error.t()}
+  @spec reload(record :: Ash.Resource.Record.t(), opts :: Keyword.t()) ::
+          {:ok, Ash.Resource.Record.t()} | {:error, Ash.Error.t()}
   @doc spark_opts: [{1, @get_opts_schema}]
   def reload(record, opts \\ []) do
     Ash.Helpers.expect_record!(record)
@@ -2916,7 +2920,7 @@ defmodule Ash do
   """
   @doc spark_opts: [{1, @read_one_opts_schema}]
   @spec read_one!(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
-          Ash.Resource.record() | nil
+          Ash.Resource.Record.t() | nil
   def read_one!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -2957,11 +2961,12 @@ defmodule Ash do
   """
   @doc spark_opts: [{1, @read_one_opts_schema}]
   @spec read_one(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
-          {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()}
+          {:ok, Ash.Resource.Record.t() | nil} | {:error, Ash.Error.t()}
   def read_one(query, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_resource_or_query!(query)
     domain = Ash.Helpers.domain!(query, opts)
+    lock = Keyword.get(opts, :lock)
     query = Ash.Query.new(query)
 
     with {:ok, opts} <- ReadOneOpts.validate(opts),
@@ -2969,7 +2974,7 @@ defmodule Ash do
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
-      case do_read_one(query, action, opts) do
+      case do_read_one(maybe_lock_query(query, lock), action, opts) do
         {:ok, result} -> {:ok, result}
         {:ok, result, query} -> {:ok, result, query}
         {:error, error} -> {:error, Ash.Error.to_error_class(error)}
@@ -2999,7 +3004,7 @@ defmodule Ash do
   - `read_first/2` for the non-raising version
   """
   @spec read_first!(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
-          Ash.Resource.record() | nil
+          Ash.Resource.Record.t() | nil
   @doc spark_opts: [{1, @read_one_opts_schema}]
   def read_first!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
@@ -3035,12 +3040,13 @@ defmodule Ash do
   #{Spark.Options.docs(@read_one_opts_schema)}
   """
   @spec read_first(resource_or_query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
-          {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()}
+          {:ok, Ash.Resource.Record.t() | nil} | {:error, Ash.Error.t()}
   @doc spark_opts: [{1, @read_one_opts_schema}]
   def read_first(query, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_resource_or_query!(query)
     domain = Ash.Helpers.domain!(query, opts)
+    lock = Keyword.get(opts, :lock)
     query = query |> Ash.Query.new() |> Ash.Query.limit(1)
 
     with {:ok, opts} <- ReadOneOpts.validate(opts),
@@ -3048,7 +3054,7 @@ defmodule Ash do
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource) do
-      case do_read_one(query, action, opts) do
+      case do_read_one(maybe_lock_query(query, lock), action, opts) do
         {:ok, result} -> {:ok, result}
         {:ok, result, query} -> {:ok, result, query}
         {:error, error} -> {:error, Ash.Error.to_error_class(error)}
@@ -3058,6 +3064,9 @@ defmodule Ash do
         {:error, Ash.Error.to_error_class(error)}
     end
   end
+
+  defp maybe_lock_query(query, nil), do: query
+  defp maybe_lock_query(query, lock), do: Ash.Query.lock(query, lock)
 
   defp do_read_one(query, action, opts) do
     query
@@ -3104,8 +3113,8 @@ defmodule Ash do
           params_or_opts :: map() | Keyword.t(),
           opts :: Keyword.t()
         ) ::
-          Ash.Resource.record()
-          | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          Ash.Resource.Record.t()
+          | {Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
           | no_return
   def create!(changeset_or_resource, params \\ %{}, opts \\ []) do
     create(changeset_or_resource, params, opts)
@@ -3153,8 +3162,8 @@ defmodule Ash do
           params_or_opts :: map() | Keyword.t(),
           opts :: Keyword.t()
         ) ::
-          {:ok, Ash.Resource.record()}
-          | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          {:ok, Ash.Resource.Record.t()}
+          | {:ok, Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def create(changeset_or_resource, params_or_opts \\ %{}, opts \\ [])
 
@@ -3316,7 +3325,7 @@ defmodule Ash do
         ) ::
           Ash.BulkResult.t()
           | Enumerable.t(
-              {:ok, Ash.Resource.record()}
+              {:ok, Ash.Resource.Record.t()}
               | {:error, Ash.Changeset.t() | Ash.Error.t()}
               | {:notification, Ash.Notifier.Notification.t()}
             )
@@ -3365,7 +3374,7 @@ defmodule Ash do
   See `bulk_update/4` for more.
   """
   @spec bulk_update!(
-          Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
+          Enumerable.t(Ash.Resource.Record.t()) | Ash.Query.t(),
           action :: atom,
           input :: map,
           opts :: Keyword.t()
@@ -3424,7 +3433,7 @@ defmodule Ash do
   #{Spark.Options.docs(@bulk_update_opts_schema)}
   """
   @spec bulk_update(
-          Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
+          Enumerable.t(Ash.Resource.Record.t()) | Ash.Query.t(),
           atom,
           input :: map,
           Keyword.t()
@@ -3475,7 +3484,7 @@ defmodule Ash do
   See `bulk_destroy/4` for more.
   """
   @spec bulk_destroy!(
-          Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
+          Enumerable.t(Ash.Resource.Record.t()) | Ash.Query.t(),
           action :: atom,
           input :: map,
           opts :: Keyword.t()
@@ -3534,7 +3543,7 @@ defmodule Ash do
   #{Spark.Options.docs(@bulk_destroy_opts_schema)}
   """
   @spec bulk_destroy(
-          Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
+          Enumerable.t(Ash.Resource.Record.t()) | Ash.Query.t(),
           atom,
           input :: map,
           Keyword.t()
@@ -3602,12 +3611,12 @@ defmodule Ash do
   """
   @doc spark_opts: [{1, @update_opts_schema}]
   @spec update!(
-          changeset_or_record :: Ash.Changeset.t() | Ash.Resource.record(),
+          changeset_or_record :: Ash.Changeset.t() | Ash.Resource.Record.t(),
           params_or_opts :: map() | Keyword.t(),
           opts :: Keyword.t()
         ) ::
-          Ash.Resource.record()
-          | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          Ash.Resource.Record.t()
+          | {Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
           | no_return
   def update!(changeset_or_record, params_or_opts \\ %{}, opts \\ []) do
     update(changeset_or_record, params_or_opts, opts)
@@ -3650,12 +3659,12 @@ defmodule Ash do
   #{Spark.Options.docs(@update_opts_schema)}
   """
   @spec update(
-          changeset_or_record :: Ash.Changeset.t() | Ash.Resource.record(),
+          changeset_or_record :: Ash.Changeset.t() | Ash.Resource.Record.t(),
           params_or_opts :: map() | Keyword.t(),
           opts :: Keyword.t()
         ) ::
-          {:ok, Ash.Resource.record()}
-          | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          {:ok, Ash.Resource.Record.t()}
+          | {:ok, Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def update(changeset_or_record, params_or_opts \\ %{}, opts \\ [])
 
@@ -3751,11 +3760,11 @@ defmodule Ash do
   - [Destroy Actions Guide](/documentation/topics/actions/destroy-actions.md) for understanding destroy operations
   - [Actions Guide](/documentation/topics/actions/actions.md) for general action concepts
   """
-  @spec destroy!(Ash.Changeset.t() | Ash.Resource.record(), opts :: Keyword.t()) ::
+  @spec destroy!(Ash.Changeset.t() | Ash.Resource.Record.t(), opts :: Keyword.t()) ::
           :ok
-          | Ash.Resource.record()
+          | Ash.Resource.Record.t()
           | list(Ash.Notifier.Notification.t())
-          | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          | {Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
           | no_return
   @doc spark_opts: [{1, @destroy_opts_schema}]
   def destroy!(changeset_or_record, opts \\ []) do
@@ -3804,11 +3813,11 @@ defmodule Ash do
 
   #{Spark.Options.docs(@destroy_opts_schema)}
   """
-  @spec destroy(Ash.Changeset.t() | Ash.Resource.record(), opts :: Keyword.t()) ::
+  @spec destroy(Ash.Changeset.t() | Ash.Resource.Record.t(), opts :: Keyword.t()) ::
           :ok
-          | {:ok, Ash.Resource.record()}
+          | {:ok, Ash.Resource.Record.t()}
           | {:ok, list(Ash.Notifier.Notification.t())}
-          | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   @doc spark_opts: [{1, @destroy_opts_schema}]
   def destroy(changeset_or_record, opts \\ []) do

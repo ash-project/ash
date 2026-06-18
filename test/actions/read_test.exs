@@ -624,6 +624,32 @@ defmodule Ash.Test.Actions.ReadTest do
       Ash.create!(Ash.Changeset.for_create(Post, :create, %{}, authorize?: false))
       assert %Post{} = Ash.read_one!(Post |> Ash.Query.limit(1))
     end
+
+    test "it applies the lock option" do
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [
+                  %Ash.Error.Query.LockNotSupported{
+                    resource: Post,
+                    lock_type: :for_update
+                  }
+                ]
+              }} = Ash.read_one(Post, lock: :for_update)
+    end
+  end
+
+  describe "Ash.read_first/2" do
+    test "it applies the lock option" do
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [
+                  %Ash.Error.Query.LockNotSupported{
+                    resource: Post,
+                    lock_type: :for_update
+                  }
+                ]
+              }} = Ash.read_first(Post, lock: :for_update)
+    end
   end
 
   describe "Ash.read_one!/2" do

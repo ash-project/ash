@@ -267,6 +267,21 @@ defmodule Ash.Type.NewType do
 
       @impl Ash.Type
       if lazy_init? do
+        def referenced_types(_constraints), do: []
+      else
+        def referenced_types(constraints) do
+          merged =
+            type_constraints(
+              subtype_constraints(constraints),
+              unquote(subtype_constraints)
+            )
+
+          [{unquote(subtype_of), merged, :subtype_of}]
+        end
+      end
+
+      @impl Ash.Type
+      if lazy_init? do
         def init(constraints) do
           {:ok, constraints}
         end
@@ -360,6 +375,12 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
+      def cast_from_embedded(value, constraints) do
+        constraints = subtype_constraints(constraints)
+        Ash.Type.cast_from_embedded(unquote(subtype_of), value, constraints)
+      end
+
+      @impl Ash.Type
       def composite?(constraints) do
         constraints = subtype_constraints(constraints)
         unquote(subtype_of).composite?(constraints)
@@ -386,6 +407,41 @@ defmodule Ash.Type.NewType do
 
               error ->
                 {:halt, Ash.Helpers.error_with_context(error, index: index)}
+            end
+          end)
+        end
+      end
+
+      @impl Ash.Type
+      def cast_from_embedded_array(term, constraints) do
+        if is_nil(term) do
+          {:ok, nil}
+        else
+          term
+          |> Enum.with_index()
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+            case cast_from_embedded(item, constraints) do
+              :error ->
+                {:halt, {:error, index: index}}
+
+              {:error, keyword} ->
+                errors =
+                  keyword
+                  |> List.wrap()
+                  |> Ash.Helpers.flatten_preserving_keywords()
+                  |> Enum.map(fn
+                    string when is_binary(string) ->
+                      [message: string, index: index]
+
+                    vars ->
+                      Keyword.put(vars, :index, index)
+                  end)
+
+                {:halt, {:error, errors}}
+
+              {:ok, value} ->
+                {:cont, {:ok, [value | casted]}}
             end
           end)
         end
@@ -473,6 +529,16 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       def simple_equality? do
         unquote(subtype_of).simple_equality?()
+      end
+
+      @impl Ash.Type
+      def simple_equality_comparable? do
+        Ash.Type.simple_equality_comparable?(unquote(subtype_of))
+      end
+
+      @impl Ash.Type
+      def to_simple_equality_comparable(value) do
+        Ash.Type.to_simple_equality_comparable(unquote(subtype_of), value)
       end
 
       @impl Ash.Type
@@ -621,7 +687,7 @@ defmodule Ash.Type.NewType do
               {key, field}, :ok ->
                 field_keys = field |> List.wrap() |> Keyword.keys()
 
-                case field_keys -- [:type, :constraints, :allow_nil?, :description] do
+                case field_keys -- [:type, :constraints, :allow_nil?, :description, :init?] do
                   [] ->
                     {:cont, validate_type_constraints(key, field[:type], field[:constraints])}
 
@@ -658,6 +724,8 @@ defmodule Ash.Type.NewType do
                      constraints: 0,
                      dump_to_embedded_array: 2,
                      dump_to_embedded: 2,
+                     cast_from_embedded: 2,
+                     cast_from_embedded_array: 2,
                      dump_to_native_array: 2,
                      dump_to_native: 2,
                      generator: 1,

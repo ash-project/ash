@@ -630,6 +630,9 @@ defmodule Ash.DataLayer.Ets do
         {:error, error}
 
       {:ok, root_data} ->
+        destination_type =
+          Ash.Resource.Info.attribute(query.resource, destination_attribute).type
+
         root_data
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           through_query
@@ -664,9 +667,11 @@ defmodule Ash.DataLayer.Ets do
                     Enum.flat_map(new_results, fn result ->
                       join_data
                       |> Enum.flat_map(fn join_row ->
-                        # TODO: use `Ash.Type.equal?`
-                        if Map.get(join_row, destination_attribute_on_join_resource) ==
-                             Map.get(result, destination_attribute) do
+                        if Ash.Type.equal?(
+                             destination_type,
+                             Map.get(join_row, destination_attribute_on_join_resource),
+                             Map.get(result, destination_attribute)
+                           ) do
                           [
                             Map.put(
                               result,
@@ -1575,7 +1580,7 @@ defmodule Ash.DataLayer.Ets do
           subject :: record,
           conflicting_upsert_values :: record
         ) :: {:ok, [record]} | {:error, reason}
-        when record: Ash.Resource.record(), reason: term()
+        when record: Ash.Resource.Record.t(), reason: term()
   defp upsert_conflict_check(changeset, subject, conflicting_upsert_values)
 
   defp upsert_conflict_check(

@@ -55,6 +55,18 @@ defmodule Ash.Info do
   end
 
   @doc """
+  Generate an `%Ash.Info.Manifest{}` describing the application's public Ash
+  surface — reachable resources, named types, and action entrypoints.
+
+  Delegates to `Ash.Info.Manifest.generate/1`. See that module's docs for the
+  full list of options (action filtering, overrides, private-field visibility).
+  """
+  @spec manifest(keyword()) :: {:ok, Ash.Info.Manifest.t()} | {:error, term()}
+  def manifest(opts) do
+    Ash.Info.Manifest.generate(opts)
+  end
+
+  @doc """
   Returns a list of extensions in use by all the domains and resources in the
   given application.
   """

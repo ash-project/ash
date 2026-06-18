@@ -17,7 +17,7 @@ defmodule Ash.Authorizer do
   @type context :: map
   @callback initial_state(
               Ash.Resource.t(),
-              Ash.Resource.record(),
+              Ash.Resource.Record.t(),
               Ash.Resource.Actions.action(),
               Ash.Domain.t()
             ) :: state
@@ -33,17 +33,48 @@ defmodule Ash.Authorizer do
               {:ok, Ash.Filter.t()} | {:error, Ash.Error.t()}
   @callback add_calculations(Ash.Query.t() | Ash.Changeset.t(), state, context) ::
               {:ok, Ash.Query.t() | Ash.Changeset.t(), state} | {:error, Ash.Error.t()}
-  @callback alter_results(state, list(Ash.Resource.record()), context) ::
-              {:ok, list(Ash.Resource.record())} | {:error, Ash.Error.t()}
+  @callback alter_results(state, list(Ash.Resource.Record.t()), context) ::
+              {:ok, list(Ash.Resource.Record.t())} | {:error, Ash.Error.t()}
+  @doc """
+  Apply field-level authorization to a list of records that already have
+  values populated in memory, without re-fetching them through a read.
+
+  Implementations should walk each record and substitute `%Ash.ForbiddenField{}`
+  for any field the actor isn't allowed to see (typically via field policies).
+
+  This is the lightweight counterpart to `add_calculations/3` + the read
+  pipeline's field-policy scrubbing — used when you have records in hand and
+  just need to enforce field-level visibility without running a load.
+  """
+  @callback apply_field_level_auth(
+              resource :: Ash.Resource.t(),
+              records :: list(Ash.Resource.Record.t()),
+              opts :: Keyword.t()
+            ) :: {:ok, list(Ash.Resource.Record.t())} | {:error, Ash.Error.t()}
   @callback check_context(state) :: [atom]
   @callback check(state, context) ::
               :authorized
-              | {:data, list(Ash.Resource.record())}
+              | {:data, list(Ash.Resource.Record.t())}
               | {:error, :forbidden, state}
               | {:error, Ash.Error.t()}
-  @callback exception(atom, state) :: no_return
+  @doc """
+  Returns the fields this authorizer may protect at field level for the resource.
 
-  @optional_callbacks [exception: 2, add_calculations: 3, alter_results: 3, alter_filter: 3]
+  This is metadata for callers that need to know which fields can be hidden by
+  authorization without running an action. Authorizers that do not implement this
+  callback are treated as protecting no fields.
+  """
+  @callback protected_fields(Ash.Resource.t()) :: [atom()]
+  @callback exception(atom, state) :: Exception.t()
+
+  @optional_callbacks [
+    exception: 2,
+    add_calculations: 3,
+    alter_results: 3,
+    alter_filter: 3,
+    apply_field_level_auth: 3,
+    protected_fields: 1
+  ]
 
   defmacro __using__(_) do
     quote do
@@ -54,7 +85,7 @@ defmodule Ash.Authorizer do
   @doc false
   @spec initial_state(
           module(),
-          Ash.Resource.record(),
+          Ash.Resource.Record.t(),
           Ash.Resource.t(),
           Ash.Resource.Actions.action(),
           Ash.Domain.t()
@@ -75,15 +106,15 @@ defmodule Ash.Authorizer do
   end
 
   @doc false
-  @spec exception(module(), atom(), state()) :: no_return
+  @spec exception(module(), atom(), state()) :: Exception.t()
   def exception(module, reason, state) do
     if function_exported?(module, :exception, 2) do
       apply(module, :exception, [reason, state])
     else
       if reason == :must_pass_strict_check do
-        raise Ash.Error.Forbidden.MustPassStrictCheck.exception([])
+        Ash.Error.Forbidden.MustPassStrictCheck.exception([])
       else
-        raise Ash.Error.Forbidden.exception([])
+        Ash.Error.Forbidden.exception([])
       end
     end
   end
@@ -150,8 +181,8 @@ defmodule Ash.Authorizer do
   end
 
   @doc false
-  @spec alter_results(module(), state(), [Ash.Resource.record()], context()) ::
-          {:ok, [Ash.Resource.record()]} | {:error, Ash.Error.t()}
+  @spec alter_results(module(), state(), [Ash.Resource.Record.t()], context()) ::
+          {:ok, [Ash.Resource.Record.t()]} | {:error, Ash.Error.t()}
   def alter_results(module, state, records, context) do
     if function_exported?(module, :alter_results, 3) do
       Ash.BehaviourHelpers.call_and_validate_return(
@@ -223,7 +254,7 @@ defmodule Ash.Authorizer do
   @doc false
   @spec check(module(), state(), context()) ::
           :authorized
-          | {:data, [Ash.Resource.record()]}
+          | {:data, [Ash.Resource.Record.t()]}
           | {:error, :forbidden, state()}
           | {:error, Ash.Error.t()}
   def check(module, state, context) do
@@ -240,5 +271,83 @@ defmodule Ash.Authorizer do
       behaviour: __MODULE__,
       callback_name: "check/2"
     )
+  end
+
+  @doc false
+  @spec protected_fields(module(), Ash.Resource.t()) :: [atom()]
+  def protected_fields(module, resource) do
+    if function_exported?(module, :protected_fields, 1) do
+      result = apply(module, :protected_fields, [resource])
+
+      if is_list(result) and Enum.all?(result, &is_atom/1) do
+        Enum.uniq(result)
+      else
+        raise Ash.Error.Framework.InvalidReturnType,
+          message: """
+          Invalid value returned from #{inspect(module)}.protected_fields/1.
+
+          The callback #{inspect(__MODULE__)}.protected_fields/1 expects a list of atoms.
+          """
+      end
+    else
+      []
+    end
+  end
+
+  @doc """
+  Apply field-level authorization to records that are already in memory,
+  scrubbing any fields the actor isn't allowed to see.
+
+  Walks each authorizer configured on the resource and invokes its
+  `apply_field_level_auth/3` callback if defined. Returns the records with
+  forbidden fields replaced by `%Ash.ForbiddenField{}`.
+
+  Use this when you have records in hand (for example, returned from a
+  generic action or constructed in memory) and want field policies applied
+  without driving the records through a full read.
+
+  Supported options:
+
+  - `:actor` - the actor whose visibility is being checked.
+  - `:tenant` - the tenant the records belong to.
+  - `:domain` - the domain context.
+  """
+  @spec apply_field_level_auth(
+          Ash.Resource.t(),
+          Ash.Resource.Record.t() | [Ash.Resource.Record.t()],
+          Keyword.t()
+        ) ::
+          {:ok, Ash.Resource.Record.t() | [Ash.Resource.Record.t()]} | {:error, Ash.Error.t()}
+  def apply_field_level_auth(resource, records, opts \\ []) do
+    {records, single?} =
+      case records do
+        list when is_list(list) -> {list, false}
+        record -> {[record], true}
+      end
+
+    resource
+    |> Ash.Resource.Info.authorizers()
+    |> Enum.reduce_while({:ok, records}, fn module, {:ok, records} ->
+      if function_exported?(module, :apply_field_level_auth, 3) do
+        case Ash.BehaviourHelpers.call_and_validate_return(
+               module,
+               :apply_field_level_auth,
+               [resource, records, opts],
+               [{:ok, :_}, {:error, :_}],
+               behaviour: __MODULE__,
+               callback_name: "apply_field_level_auth/3"
+             ) do
+          {:ok, records} -> {:cont, {:ok, records}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+      else
+        {:cont, {:ok, records}}
+      end
+    end)
+    |> case do
+      {:ok, [single]} when single? -> {:ok, single}
+      {:ok, records} -> {:ok, records}
+      {:error, error} -> {:error, error}
+    end
   end
 end

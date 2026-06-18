@@ -47,4 +47,21 @@ defmodule Ash.Type.Binary do
   def dump_to_native(value, _) do
     Ecto.Type.dump(:binary, value)
   end
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(value, _) when is_binary(value) do
+    {:ok, Base.encode64(value)}
+  end
+
+  @impl true
+  def cast_from_embedded(nil, _), do: {:ok, nil}
+
+  def cast_from_embedded(value, _) when is_binary(value) do
+    case Base.decode64(value) do
+      {:ok, decoded} -> {:ok, decoded}
+      :error -> {:ok, value}
+    end
+  end
 end

@@ -281,8 +281,10 @@ defmodule Ash.Notifier.PubSub do
     |> Enum.flat_map(fn {publication, index} ->
       calc_loads = load_for_calc_transform(publication, resource)
 
+      statement = publication_statement(publication, resource, action)
+
       statement_loads =
-        case List.wrap(publication.load) do
+        case statement do
           [] ->
             []
 
@@ -301,6 +303,45 @@ defmodule Ash.Notifier.PubSub do
 
       calc_loads ++ statement_loads
     end)
+  end
+
+  # Everything a publication needs loaded onto `notification.data`: the explicit
+  # `load` option plus every loadable atom referenced by the topic template, so
+  # a topic key like `[:some_calculation]` resolves without also listing it
+  # under `load`.
+  defp publication_statement(publication, resource, action) do
+    Enum.uniq(List.wrap(publication.load) ++ topic_loads(publication.topic, resource, action))
+  end
+
+  # The atoms in a topic template (it's a nested list of strings and atoms) that
+  # the action's result won't already carry and so must be loaded: calculations,
+  # aggregates, and attributes not selected by the action. Attributes the action
+  # already selects are skipped, as are the special atoms (`:_tenant`, `:_pkey`,
+  # `nil`), which are resolved from the changeset rather than loaded.
+  defp topic_loads(topic, resource, action) do
+    selected =
+      case Map.get(action, :action_select) do
+        nil -> Ash.Resource.Info.selected_by_default_attribute_names(resource)
+        select -> MapSet.new(select)
+      end
+
+    topic
+    |> List.wrap()
+    |> List.flatten()
+    |> Enum.filter(&is_atom/1)
+    |> Enum.reject(&(&1 in [:_tenant, :_pkey, nil]))
+    |> Enum.uniq()
+    |> Enum.filter(&needs_load?(&1, resource, selected))
+  end
+
+  defp needs_load?(key, resource, selected) do
+    # Attributes hit 99% of cases — check that first.
+    cond do
+      Ash.Resource.Info.attribute(resource, key) -> not MapSet.member?(selected, key)
+      Ash.Resource.Info.calculation(resource, key) -> true
+      Ash.Resource.Info.aggregate(resource, key) -> true
+      true -> false
+    end
   end
 
   defp load_for_calc_transform(%{transform: calc_name}, resource)
@@ -327,7 +368,7 @@ defmodule Ash.Notifier.PubSub do
 
   # Enriches a notification with the per-publication loaded data before broadcasting.
   defp enrich_for_publication(notification, pub, index) do
-    case List.wrap(pub.load) do
+    case publication_statement(pub, notification.resource, notification.action) do
       [] ->
         notification
 
@@ -360,7 +401,7 @@ defmodule Ash.Notifier.PubSub do
       |> List.flatten()
       |> Enum.filter(&is_atom/1)
     end)
-    |> Enum.any?(&Ash.Resource.Info.attribute(resource, &1))
+    |> Enum.any?(&Ash.Resource.Info.field(resource, &1))
   end
 
   defp publish_notification(publish, notification) do
@@ -553,8 +594,8 @@ defmodule Ash.Notifier.PubSub do
 
   defp all_combinations_of_values([item | rest], notification, type, true, trail)
        when is_atom(item) and type in [:update, :destroy] do
-    value_before_change = Map.get(notification.changeset.data, item)
-    value_after_change = Map.get(notification.data, item)
+    value_before_change = topic_value(notification.changeset.data, item)
+    value_after_change = topic_value(notification.data, item)
 
     [value_before_change, value_after_change]
     |> Enum.filter(&publishable_value?(&1, notification))
@@ -566,7 +607,7 @@ defmodule Ash.Notifier.PubSub do
 
   defp all_combinations_of_values([item | rest], notification, type, _, trail)
        when is_atom(item) and type in [:update, :destroy] do
-    value_after_change = Map.get(notification.data, item)
+    value_after_change = topic_value(notification.data, item)
 
     if publishable_value?(value_after_change, notification) do
       all_combinations_of_values(rest, notification, type, false, [value_after_change | trail])
@@ -583,7 +624,7 @@ defmodule Ash.Notifier.PubSub do
          trail
        )
        when is_atom(item) do
-    value = Map.get(notification.data, item)
+    value = topic_value(notification.data, item)
 
     if publishable_value?(value, notification) do
       all_combinations_of_values(rest, notification, action_type, previous_values?, [
@@ -611,6 +652,23 @@ defmodule Ash.Notifier.PubSub do
         trail
       )
     end)
+  end
+
+  # Reads a topic value off the record, falling back to the loaded calculations
+  # map. `enrich_for_publication/3` places named calculations under
+  # `record.calculations[key]` (per `Ash.Notifier.placement_for_key/3`) rather
+  # than on the struct field, so a calculation-keyed topic must look there too.
+  defp topic_value(data, item) do
+    case Map.get(data, item) do
+      %Ash.NotLoaded{} = not_loaded ->
+        case data do
+          %{calculations: %{^item => value}} -> value
+          _ -> not_loaded
+        end
+
+      value ->
+        value
+    end
   end
 
   defp publishable_value?(nil, _notification), do: false

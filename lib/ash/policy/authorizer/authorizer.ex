@@ -183,6 +183,25 @@ defmodule Ash.Policy.Authorizer do
         doc: """
         A check or list of checks that must be true in order for this policy to apply.
         """
+      ],
+      error_message: [
+        type: {:or, [:string, {:fun, 2}]},
+        doc: """
+        A custom error message to surface when this policy is the reason a request is forbidden.
+
+        Either a string, or a 2-arity function `(subject, context) -> String.t() | Exception.t()`.
+        Returning an exception struct replaces the default `Ash.Error.Forbidden.Policy` entirely;
+        returning a string sets the message on the default error.
+
+        `subject` is the changeset/query/action input being authorized; `context` is a map of
+        `:resource`, `:action`, `:actor`, `:domain`, and `:tenant`.
+
+        Only takes effect when the policy is the one responsible for denying the request —
+        the framework re-evaluates policies to identify which one failed and uses its
+        `error_message`. If multiple policies contributed to the denial, the first one in
+        source order whose state is `:forbidden` wins, falling back to the first whose state
+        is `:unknown` (i.e. didn't authorize).
+        """
       ]
     ],
     args: [{:optional, :condition}],
@@ -477,7 +496,8 @@ defmodule Ash.Policy.Authorizer do
   @verifiers [
     Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers,
     Ash.Policy.Authorizer.Verifiers.VerifySatSolverImplementation,
-    Ash.Policy.Authorizer.Verifiers.VerifyResources
+    Ash.Policy.Authorizer.Verifiers.VerifyResources,
+    Ash.Policy.Authorizer.Verifiers.VerifyFieldPoliciesHaveReadAction
   ]
 
   use Spark.Dsl.Extension,
@@ -487,49 +507,96 @@ defmodule Ash.Policy.Authorizer do
 
   @impl true
   def exception({:changeset_doesnt_match_filter, filter}, state) do
-    Ash.Error.Forbidden.Policy.exception(
-      scenarios: Map.get(state, :scenarios),
-      solver_statement: Map.get(state, :solver_statement),
-      facts: Map.get(state, :facts),
-      policies: Map.get(state, :policies),
-      subject: Map.get(state, :subject),
-      resource: Map.get(state, :resource),
-      action: Map.get(state, :action),
-      actor: Map.get(state, :actor),
-      domain: Map.get(state, :domain),
-      changeset_doesnt_match_filter: true,
-      filter: filter
-    )
+    state
+    |> base_exception_opts()
+    |> Keyword.merge(changeset_doesnt_match_filter: true, filter: filter)
+    |> build_policy_exception(state)
   end
 
   def exception(:must_pass_strict_check, state) do
-    Ash.Error.Forbidden.Policy.exception(
-      scenarios: Map.get(state, :scenarios),
-      facts: Map.get(state, :facts),
-      solver_statement: Map.get(state, :solver_statement),
-      domain: Map.get(state, :domain),
-      subject: Map.get(state, :subject),
-      policies: Map.get(state, :policies),
-      resource: Map.get(state, :resource),
-      action: Map.get(state, :action),
-      actor: Map.get(state, :actor),
-      must_pass_strict_check?: true
-    )
+    state
+    |> base_exception_opts()
+    |> Keyword.put(:must_pass_strict_check?, true)
+    |> build_policy_exception(state)
   end
 
   def exception(_, state) do
-    Ash.Error.Forbidden.Policy.exception(
+    state
+    |> base_exception_opts()
+    |> Keyword.put(:must_pass_strict_check?, false)
+    |> build_policy_exception(state)
+  end
+
+  defp base_exception_opts(state) do
+    [
       scenarios: Map.get(state, :scenarios),
-      domain: Map.get(state, :domain),
-      solver_statement: Map.get(state, :solver_statement),
       facts: Map.get(state, :facts),
+      solver_statement: Map.get(state, :solver_statement),
+      domain: Map.get(state, :domain),
       subject: Map.get(state, :subject),
       policies: Map.get(state, :policies),
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
+      actor: Map.get(state, :actor)
+    ]
+  end
+
+  # If the responsible policy specifies an `error_message`, either replace the
+  # default exception entirely (when the function returns an `Exception.t()`)
+  # or surface a custom message on the standard policy-breakdown error.
+  defp build_policy_exception(opts, state) do
+    case responsible_error_message(state) do
+      {:replace, exception} ->
+        exception
+
+      {:message, message} ->
+        Ash.Error.Forbidden.Policy.exception(Keyword.put(opts, :custom_message, message))
+
+      :none ->
+        Ash.Error.Forbidden.Policy.exception(opts)
+    end
+  end
+
+  defp responsible_error_message(state) do
+    policies = Map.get(state, :policies) || []
+    facts = Map.get(state, :facts, %{})
+
+    case Policy.responsible_for_forbidden(policies, facts) do
+      {%Policy{error_message: nil}, _} ->
+        :none
+
+      {%Policy{error_message: message}, _} when is_binary(message) ->
+        {:message, message}
+
+      {%Policy{error_message: fun}, _} when is_function(fun, 2) ->
+        case fun.(Map.get(state, :subject), error_message_context(state)) do
+          message when is_binary(message) ->
+            {:message, message}
+
+          %{__exception__: true} = exception ->
+            {:replace, exception}
+
+          other ->
+            raise ArgumentError, """
+            Invalid return from a policy `error_message` function.
+
+            Expected a string or an exception struct, got: #{inspect(other)}
+            """
+        end
+
+      nil ->
+        :none
+    end
+  end
+
+  defp error_message_context(state) do
+    %{
+      resource: Map.get(state, :resource),
+      action: Map.get(state, :action),
       actor: Map.get(state, :actor),
-      must_pass_strict_check?: false
-    )
+      domain: Map.get(state, :domain),
+      tenant: Map.get(state, :tenant)
+    }
   end
 
   if Code.ensure_loaded?(Igniter) do
@@ -705,7 +772,21 @@ defmodule Ash.Policy.Authorizer do
 
       {:filter_and_continue, filter, authorizer} ->
         log_successful_policy_breakdown(authorizer, filter)
-        {:filter, authorizer, filter}
+
+        case context[:changeset] do
+          %Ash.Changeset{action_type: :create} ->
+            # Keep the signal so Ash.Can can dispatch a hook that knows the filter
+            # is necessary but not sufficient — a post-insert check/3 is still
+            # required to evaluate any deferred / runtime scenarios. For all
+            # other subjects we preserve the historical collapse to `:filter`
+            # because the runtime portion is handled via authorize_results on
+            # the read query (or, for update/destroy, by filtering against the
+            # original data).
+            {:filter_and_continue, filter, authorizer}
+
+          _ ->
+            {:filter, authorizer, filter}
+        end
 
       {:error, error} ->
         {:error, error}
@@ -1193,6 +1274,222 @@ defmodule Ash.Policy.Authorizer do
   end
 
   @impl true
+  def apply_field_level_auth(_resource, [], _opts), do: {:ok, []}
+
+  def apply_field_level_auth(resource, records, opts) do
+    if Ash.Policy.Info.field_policies(resource) == [] do
+      {:ok, records}
+    else
+      actor = opts[:actor]
+      tenant = opts[:tenant]
+      domain = opts[:domain] || Ash.Resource.Info.domain(resource)
+      restrict_to = opts[:for_fields]
+
+      only_public? =
+        case Ash.Policy.Info.private_fields_policy(resource) do
+          :include -> false
+          :show -> true
+          :hide -> false
+        end
+
+      action = Ash.Resource.Info.primary_action(resource, :read)
+
+      # Synthetic query just for the strict_check_result calls below.
+      # It's never executed — we only need actor/tenant/domain context
+      # to compute the policy expressions.
+      query =
+        resource
+        |> Ash.Query.new()
+        |> Ash.Query.set_tenant(tenant)
+        |> Ash.Query.set_context(%{private: %{actor: actor}})
+
+      authorizer =
+        initial_state(actor, resource, action, domain)
+        |> Map.merge(%{
+          query: query,
+          changeset: nil,
+          action_input: nil,
+          subject: query,
+          context: %{},
+          domain: domain
+        })
+
+      pkey = Ash.Resource.Info.primary_key(resource)
+      records = List.wrap(records)
+
+      candidate_fields = fields_for_records(records, resource, only_public?)
+
+      candidate_fields =
+        if restrict_to do
+          Enum.filter(candidate_fields, &(&1 in restrict_to))
+        else
+          candidate_fields
+        end
+
+      # Resolve each policy group:
+      #   * `:authorized` → leave fields alone.
+      #   * `:error`      → scrub fields directly (unconditional deny).
+      #   * `:filter`     → build a `__ash_field_auth_check__` calc and
+      #                     defer to `Ash.load` to evaluate it (eagerly
+      #                     when `reuse_values?: true` resolves all refs,
+      #                     otherwise via the data layer). We use a name
+      #                     *other than* `__ash_fields_are_visible__`
+      #                     specifically because `restrict_field_access`
+      #                     strips that name unconditionally — we need
+      #                     to read the value ourselves and scrub.
+      candidate_fields
+      |> Enum.reject(&(&1 in pkey))
+      |> Enum.group_by(fn field ->
+        Ash.Policy.Info.field_policies_for_field(resource, field)
+      end)
+      |> Enum.reduce_while({records, [], authorizer}, fn {policies, fields},
+                                                         {records, calcs, authorizer} ->
+        case strict_check_result(
+               %{authorizer | policies: policies},
+               for_fields: fields,
+               context_description: "applying field-level auth"
+             ) do
+          {:authorized, authorizer} ->
+            {:cont, {records, calcs, authorizer}}
+
+          {:error, _exception} ->
+            {:cont, {Enum.map(records, &scrub_fields(&1, fields)), calcs, authorizer}}
+
+          {:filter, authorizer, expr} ->
+            parsed =
+              case expr do
+                %Ash.Filter{expression: e} -> e
+                other -> Ash.Filter.parse!(resource, other).expression
+              end
+
+            {:ok, calc} =
+              Ash.Query.Calculation.new(
+                {:__ash_field_auth_check__, fields},
+                Ash.Resource.Calculation.Expression,
+                [expr: parsed],
+                :boolean,
+                async?: false,
+                actor: actor,
+                tenant: tenant,
+                authorize?: false
+              )
+
+            {:cont, {records, [calc | calcs], authorizer}}
+
+          {:filter_and_continue, _, _} ->
+            {:halt, {:error, only_simple_or_filter_error()}}
+
+          {:continue, _} ->
+            {:halt, {:error, only_simple_or_filter_error()}}
+        end
+      end)
+      |> case do
+        {:error, error} ->
+          {:error, error}
+
+        {records, [], _authorizer} ->
+          {:ok, records}
+
+        {records, calcs, _authorizer} ->
+          # Evaluate the visibility calcs via `Ash.load` with
+          # `reuse_values?: true`. The calc engine tries eager eval
+          # against the records (no DB hit for simple/filter checks),
+          # and only drops to the data layer for refs it can't resolve
+          # — and when it does, it batches across the whole record
+          # set.
+          load_opts = [
+            actor: actor,
+            tenant: tenant,
+            domain: domain,
+            authorize?: false,
+            reuse_values?: true
+          ]
+
+          case Ash.load(records, calcs, load_opts) do
+            {:ok, loaded} ->
+              {:ok, Enum.map(List.wrap(loaded), &apply_field_auth_check_results/1)}
+
+            {:error, error} ->
+              {:error, error}
+          end
+      end
+    end
+  end
+
+  @impl true
+  def protected_fields(resource) do
+    resource
+    |> Ash.Policy.Info.field_policies()
+    |> Enum.flat_map(& &1.fields)
+    |> Enum.uniq()
+    |> Enum.filter(&protected_field?(resource, &1))
+  end
+
+  defp protected_field?(resource, field) do
+    resource
+    |> Ash.Policy.Info.field_policies_for_field(field)
+    |> case do
+      nil ->
+        false
+
+      policies ->
+        Policy.expression(policies, %{resource: resource}) != true
+    end
+  end
+
+  defp only_simple_or_filter_error do
+    Ash.Error.Forbidden.exception(
+      errors: ["Field policies must currently use only filter checks or simple checks"]
+    )
+  end
+
+  defp fields_for_records(records, resource, only_public?) do
+    resource
+    |> Ash.Resource.Info.fields([:attributes, :calculations, :aggregates])
+    |> then(fn fields ->
+      if only_public?, do: Stream.filter(fields, & &1.public?), else: fields
+    end)
+    |> Stream.map(& &1.name)
+    |> Enum.filter(fn name -> Enum.any?(records, &Ash.Resource.selected?(&1, name)) end)
+  end
+
+  defp scrub_fields(record, fields) do
+    Enum.reduce(fields, record, fn field, record ->
+      type =
+        case Ash.Resource.Info.field(record.__struct__, field) do
+          %Ash.Resource.Aggregate{} -> :aggregate
+          %Ash.Resource.Attribute{} -> :attribute
+          %Ash.Resource.Calculation{} -> :calculation
+          _ -> :attribute
+        end
+
+      Map.put(record, field, %Ash.ForbiddenField{field: field, type: type})
+    end)
+  end
+
+  # After `Ash.load` populates the field-auth-check calcs on each
+  # record, walk them and scrub any field whose calc resolved falsy.
+  # Also strip the synthetic calc entries from the result so callers
+  # don't see them.
+  defp apply_field_auth_check_results(record) do
+    record.calculations
+    |> Enum.reduce(record, fn
+      {{:__ash_field_auth_check__, fields}, value}, rec ->
+        rec =
+          if value do
+            rec
+          else
+            scrub_fields(rec, fields)
+          end
+
+        Map.update!(rec, :calculations, &Map.delete(&1, {:__ash_field_auth_check__, fields}))
+
+      _, rec ->
+        rec
+    end)
+  end
+
+  @impl true
   def add_calculations(query_or_changeset, authorizer, context) do
     authorizer = ensure_context_in_authorizer(authorizer, context)
 
@@ -1362,7 +1659,9 @@ defmodule Ash.Policy.Authorizer do
         end)
       end)
 
-    filter = strict_filters(filterable, authorizer)
+    {filter, deferred_scenarios} = strict_filters(filterable, authorizer)
+
+    require_check = require_check ++ deferred_scenarios
 
     case {filter, require_check} do
       {[], []} ->
@@ -1405,100 +1704,104 @@ defmodule Ash.Policy.Authorizer do
   defp strict_filters(filterable, authorizer) do
     filterable
     |> Enum.map(fn scenario ->
-      scenario
-      |> Enum.filter(fn {{check_module, check_opts}, _} ->
-        Ash.Policy.Check.type(check_module) == :filter &&
-          check_opts[:access_type] in [:filter, :runtime]
-      end)
-      |> Enum.reject(fn {{check_module, check_opts}, result} ->
-        match?({:ok, ^result}, Policy.fetch_fact(authorizer.facts, {check_module, check_opts}))
-      end)
-      |> Map.new()
-    end)
-    |> Enum.reduce([], fn scenario, or_filters ->
-      if scenario == %{} do
-        [false | or_filters]
-      else
+      relevant =
         scenario
-        |> Enum.map(fn
-          {{check_module, check_opts}, true} ->
-            result =
-              try do
-                nil_to_false(
-                  Ash.Policy.Check.auto_filter(
-                    check_module,
-                    authorizer.actor,
-                    authorizer,
-                    check_opts
-                  )
-                )
-              rescue
-                e ->
-                  reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                            bread_crumbs:
-                              "Creating filter for check: #{Ash.Policy.Check.describe(check_module, check_opts)} on resource: #{authorizer.resource}"
-                          ),
-                          __STACKTRACE__
-              end
-
-            if is_nil(result) do
-              false
-            else
-              result
-            end
-
-          {{check_module, check_opts}, false} ->
-            result =
-              try do
-                if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-                  nil_to_false(
-                    Ash.Policy.Check.auto_filter_not(
-                      check_module,
-                      authorizer.actor,
-                      authorizer,
-                      check_opts
-                    )
-                  )
-                else
-                  [
-                    not:
-                      nil_to_false(
-                        Ash.Policy.Check.auto_filter(
-                          check_module,
-                          authorizer.actor,
-                          authorizer,
-                          check_opts
-                        )
-                      )
-                  ]
-                end
-              rescue
-                e ->
-                  reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                            bread_crumbs:
-                              "Creating filter for check: #{Ash.Policy.Check.describe(check_module, check_opts)} on resource: #{authorizer.resource}"
-                          ),
-                          __STACKTRACE__
-              end
-
-            if is_nil(result) do
-              false
-            else
-              result
-            end
+        |> Enum.filter(fn {{check_module, check_opts}, _} ->
+          Ash.Policy.Check.type(check_module) == :filter &&
+            check_opts[:access_type] in [:filter, :runtime]
         end)
-        |> case do
-          [] ->
-            or_filters
+        |> Enum.reject(fn {{check_module, check_opts}, result} ->
+          match?({:ok, ^result}, Policy.fetch_fact(authorizer.facts, {check_module, check_opts}))
+        end)
+        |> Map.new()
 
-          [single] ->
-            [single | or_filters]
+      {scenario, relevant}
+    end)
+    |> Enum.reduce({[], []}, fn {original_scenario, relevant}, {or_filters, deferred} ->
+      if relevant == %{} do
+        {[false | or_filters], deferred}
+      else
+        per_check =
+          Enum.map(relevant, fn
+            {{check_module, check_opts}, true} ->
+              resolve_auto_filter(check_module, check_opts, authorizer, :positive)
 
-          filters ->
-            [[and: filters] | or_filters]
+            {{check_module, check_opts}, false} ->
+              resolve_auto_filter(check_module, check_opts, authorizer, :negative)
+          end)
+
+        cond do
+          Enum.any?(per_check, &(&1 == :unknown)) ->
+            {or_filters, [original_scenario | deferred]}
+
+          per_check == [] ->
+            {or_filters, deferred}
+
+          match?([_], per_check) ->
+            {[hd(per_check) | or_filters], deferred}
+
+          true ->
+            {[[and: per_check] | or_filters], deferred}
         end
       end
     end)
+    |> then(fn {or_filters, deferred} -> {Enum.reverse(or_filters), Enum.reverse(deferred)} end)
+  end
+
+  defp resolve_auto_filter(check_module, check_opts, authorizer, direction) do
+    fetch =
+      case direction do
+        :positive ->
+          fn ->
+            Ash.Policy.Check.auto_filter(
+              check_module,
+              authorizer.actor,
+              authorizer,
+              check_opts
+            )
+          end
+
+        :negative ->
+          fn ->
+            if :erlang.function_exported(check_module, :auto_filter_not, 3) do
+              Ash.Policy.Check.auto_filter_not(
+                check_module,
+                authorizer.actor,
+                authorizer,
+                check_opts
+              )
+            else
+              case Ash.Policy.Check.auto_filter(
+                     check_module,
+                     authorizer.actor,
+                     authorizer,
+                     check_opts
+                   ) do
+                :unknown -> :unknown
+                inner -> [not: nil_to_false(inner)]
+              end
+            end
+          end
+      end
+
+    result =
+      try do
+        fetch.()
+      rescue
+        e ->
+          reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
+                    bread_crumbs:
+                      "Creating filter for check: #{Ash.Policy.Check.describe(check_module, check_opts)} on resource: #{authorizer.resource}"
+                  ),
+                  __STACKTRACE__
+      end
+
+    case result do
+      :unknown -> :unknown
+      nil -> false
+      false -> false
+      other -> other
+    end
   end
 
   defp nil_to_false(nil), do: false
@@ -1548,38 +1851,49 @@ defmodule Ash.Policy.Authorizer do
       {{check_module, check_opts}, required_status} ->
         additional_filter =
           if required_status do
-            nil_to_false(
-              Ash.Policy.Check.auto_filter(check_module, authorizer.actor, authorizer, check_opts)
-            )
+            Ash.Policy.Check.auto_filter(check_module, authorizer.actor, authorizer, check_opts)
           else
             if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-              nil_to_false(
-                Ash.Policy.Check.auto_filter_not(
-                  check_module,
-                  authorizer.actor,
-                  authorizer,
-                  check_opts
-                )
+              Ash.Policy.Check.auto_filter_not(
+                check_module,
+                authorizer.actor,
+                authorizer,
+                check_opts
               )
             else
-              [
-                not:
-                  nil_to_false(
-                    Ash.Policy.Check.auto_filter(
-                      check_module,
-                      authorizer.actor,
-                      authorizer,
-                      check_opts
-                    )
-                  )
-              ]
+              case Ash.Policy.Check.auto_filter(
+                     check_module,
+                     authorizer.actor,
+                     authorizer,
+                     check_opts
+                   ) do
+                :unknown -> :unknown
+                inner -> [not: nil_to_false(inner)]
+              end
             end
           end
 
-        scenarios = remove_clause(authorizer.scenarios, {check_module, check_opts})
-        new_facts = Map.put(authorizer.facts, {check_module, check_opts}, required_status)
+        case additional_filter do
+          :unknown ->
+            # A globally-required filter can't be expressed pre-flight; let
+            # the require_check pipeline handle it via check/4 instead of
+            # extracting a global filter for it.
+            case filter do
+              [] -> nil
+              filter -> {filter, scenarios}
+            end
 
-        global_filters(%{authorizer | facts: new_facts}, scenarios, [additional_filter | filter])
+          additional_filter ->
+            additional_filter = nil_to_false(additional_filter)
+            scenarios = remove_clause(authorizer.scenarios, {check_module, check_opts})
+            new_facts = Map.put(authorizer.facts, {check_module, check_opts}, required_status)
+
+            global_filters(
+              %{authorizer | facts: new_facts},
+              scenarios,
+              [additional_filter | filter]
+            )
+        end
     end
   end
 
@@ -1807,40 +2121,23 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp handle_strict_check_result({:error, authorizer, :unsatisfiable}, opts) do
-    if authorizer.action.type == :action || Enum.empty?(authorizer.policies || []) do
-      {:error,
-       Ash.Error.Forbidden.Policy.exception(
-         facts: authorizer.facts,
-         domain: Map.get(authorizer, :domain),
-         solver_statement: Map.get(authorizer, :solver_statement),
-         policies: authorizer.policies,
-         subject: authorizer.subject,
-         context_description: opts[:context_description],
-         for_fields: opts[:for_fields],
-         resource: Map.get(authorizer, :resource),
-         action: Map.get(authorizer, :action),
-         actor: Map.get(authorizer, :actor),
-         scenarios: []
-       )}
-    else
-      if forbidden_due_to_strict_policy?(authorizer) do
-        {:error,
-         Ash.Error.Forbidden.Policy.exception(
-           facts: authorizer.facts,
-           domain: Map.get(authorizer, :domain),
-           solver_statement: Map.get(authorizer, :solver_statement),
-           policies: authorizer.policies,
-           subject: authorizer.subject,
-           context_description: opts[:context_description],
-           for_fields: opts[:for_fields],
-           resource: Map.get(authorizer, :resource),
-           action: Map.get(authorizer, :action),
-           actor: Map.get(authorizer, :actor),
-           scenarios: []
-         )}
-      else
+    base_opts =
+      base_exception_opts(authorizer)
+      |> Keyword.merge(
+        context_description: opts[:context_description],
+        for_fields: opts[:for_fields],
+        scenarios: []
+      )
+
+    cond do
+      authorizer.action.type == :action || Enum.empty?(authorizer.policies || []) ->
+        {:error, build_policy_exception(base_opts, authorizer)}
+
+      forbidden_due_to_strict_policy?(authorizer) ->
+        {:error, build_policy_exception(base_opts, authorizer)}
+
+      true ->
         {:filter, authorizer, false}
-      end
     end
   end
 

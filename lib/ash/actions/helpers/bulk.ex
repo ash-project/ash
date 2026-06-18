@@ -13,7 +13,7 @@ defmodule Ash.Actions.Helpers.Bulk do
   Used throughout bulk operations to maintain changeset context for hook execution.
   """
   @type tagged_result ::
-          {:ok, Ash.Resource.record(), Ash.Changeset.t()}
+          {:ok, Ash.Resource.Record.t(), Ash.Changeset.t()}
           | {:error, term(), Ash.Changeset.t()}
 
   @typedoc """
@@ -24,7 +24,7 @@ defmodule Ash.Actions.Helpers.Bulk do
   """
   @type tagged_result_with_hooks ::
           tagged_result()
-          | {:ok_hooks_done, Ash.Resource.record(), Ash.Changeset.t()}
+          | {:ok_hooks_done, Ash.Resource.Record.t(), Ash.Changeset.t()}
           | {:error_hooks_done, term(), Ash.Changeset.t()}
 
   @doc """
@@ -131,7 +131,7 @@ defmodule Ash.Actions.Helpers.Bulk do
   with all records and errors from the batch that caused the stop.
   """
   @spec build_batch_partial_success_result(
-          batch_results :: [Ash.Resource.record() | {:error, term()}],
+          batch_results :: [Ash.Resource.Record.t() | {:error, term()}],
           reference(),
           Keyword.t()
         ) :: Ash.BulkResult.t()
@@ -431,7 +431,7 @@ defmodule Ash.Actions.Helpers.Bulk do
   Function that creates a notification from a changeset and loaded record.
   """
   @type notification_fn ::
-          (Ash.Changeset.t(), Ash.Resource.record(), Keyword.t() ->
+          (Ash.Changeset.t(), Ash.Resource.Record.t(), Keyword.t() ->
              Ash.Notifier.Notification.t())
 
   @doc """
@@ -443,7 +443,7 @@ defmodule Ash.Actions.Helpers.Bulk do
   Buffers notifications in the process dictionary via `store_notification/3`.
   """
   @spec store_notifications_for_loaded_records(
-          loaded_records :: [Ash.Resource.record()],
+          loaded_records :: [Ash.Resource.Record.t()],
           changeset_by_id(),
           bulk_ref :: reference(),
           notification_fn(),

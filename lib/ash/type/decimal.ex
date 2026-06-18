@@ -49,26 +49,22 @@ defmodule Ash.Type.Decimal do
 
   @impl true
   def generator(constraints) do
-    params =
-      constraints
-      |> Keyword.take([:min, :max])
-      |> Enum.map(fn {key, value} ->
-        if Decimal.is_decimal(value) do
-          {key, Decimal.to_float(value)}
-        else
-          {key, value}
-        end
-      end)
+    max =
+      constraints[:less_than]
+      |> nudge(:down)
+      |> minimum(constraints[:max])
 
-    params
-    |> StreamData.float()
-    |> StreamData.map(&Decimal.from_float/1)
-    #  A second pass filter to account for inaccuracies in the above float -> decimal
-    |> StreamData.filter(fn value ->
-      !(constraints[:max] && Decimal.gt?(value, constraints[:max])) &&
-        (!constraints[:less_than] || Decimal.lt?(value, constraints[:less_than])) &&
-        !(constraints[:min] && Decimal.lt?(value, constraints[:min])) &&
-        (!constraints[:greater_than] || Decimal.gt?(value, constraints[:greater_than]))
+    min =
+      constraints[:greater_than]
+      |> nudge(:up)
+      |> maximum(constraints[:min])
+
+    StreamData.float(max: max, min: min)
+    |> StreamData.map(fn float ->
+      float
+      |> Decimal.from_float()
+      |> trunc_scale(constraints[:scale])
+      |> trunc_precision(constraints[:precision])
     end)
   end
 
@@ -346,6 +342,68 @@ defmodule Ash.Type.Decimal do
       String.length(coef_str)
     end
   end
+
+  # Generator helpers
+  def nudge(nil, _), do: nil
+  def nudge(%Decimal{} = decimal, :down), do: Decimal.sub(decimal, nudge_amount(decimal))
+  def nudge(%Decimal{} = decimal, :up), do: Decimal.add(decimal, nudge_amount(decimal))
+
+  defp nudge_amount(%Decimal{} = decimal) do
+    decimal
+    |> Decimal.normalize()
+    |> Decimal.scale()
+    |> min(0)
+    |> Kernel.-(1)
+    |> then(&Decimal.new(1, 10, &1))
+  end
+
+  defp trunc_precision(decimal, :arbitrary), do: decimal
+
+  defp trunc_precision(%Decimal{sign: sign, coef: coef, exp: exp} = decimal, precision) do
+    diff = count_significant_digits(decimal) - precision
+
+    if diff > 0 do
+      Decimal.new(sign, trunc_coef(coef, diff), exp + diff)
+      |> Decimal.normalize()
+    else
+      decimal
+    end
+  end
+
+  defp trunc_scale(decimal, :arbitrary), do: decimal
+
+  defp trunc_scale(%Decimal{sign: sign, coef: coef, exp: exp} = decimal, scale) do
+    max_exp = max(exp, -1 * scale)
+    diff = max_exp - exp
+
+    if diff > 0 do
+      Decimal.new(sign, trunc_coef(coef, diff), max_exp)
+      |> Decimal.normalize()
+    else
+      decimal
+    end
+  end
+
+  defp trunc_coef(coef, num_digits) do
+    coef
+    |> Integer.digits()
+    |> Enum.slice(0..-(num_digits + 1)//1)
+    |> Integer.undigits()
+  end
+
+  defp maximum(nil, nil), do: nil
+  defp maximum(v1, nil), do: to_number(v1)
+  defp maximum(nil, v2), do: to_number(v2)
+  defp maximum(v1, v2), do: max(to_number(v1), to_number(v2))
+
+  defp minimum(nil, nil), do: nil
+  defp minimum(v1, nil), do: to_number(v1)
+  defp minimum(nil, v2), do: to_number(v2)
+  defp minimum(v1, v2), do: min(to_number(v1), to_number(v2))
+
+  defp to_number(nil), do: nil
+  defp to_number(%Decimal{} = decimal), do: Decimal.to_float(decimal)
+  defp to_number(number), do: number
 end
 
 import Ash.Type.Comparable

@@ -41,8 +41,15 @@ defmodule Ash.Type.DateTime do
   end
 
   @impl true
+  def matches_type?(%DateTime{microsecond: {usec, _}}, constraints) when usec != 0 do
+    Keyword.get(constraints, :precision, :second) == :microsecond
+  end
+
   def matches_type?(%DateTime{}, _), do: true
   def matches_type?(_, _), do: false
+
+  @impl true
+  def coerce(value, constraints), do: cast_input(value, constraints)
 
   @impl true
   def init(constraints) do

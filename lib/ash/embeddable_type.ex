@@ -426,11 +426,21 @@ defmodule Ash.EmbeddableType do
       def cast_input_array(_, _), do: :error
 
       def cast_stored(value, constraints) when is_map(value) do
+        cast_from_embedded(value, constraints)
+      end
+
+      def cast_stored(nil, _), do: {:ok, nil}
+
+      def cast_stored(_other, _) do
+        :error
+      end
+
+      def cast_from_embedded(value, constraints) when is_map(value) do
         __MODULE__
         |> Ash.Resource.Info.attributes()
         |> Enum.reduce_while({:ok, struct(__MODULE__)}, fn attr, {:ok, struct} ->
           with {:fetch, {:ok, value}} <- {:fetch, fetch_key(value, attr.source)},
-               {:ok, casted} <- Ash.Type.cast_stored(attr.type, value, attr.constraints) do
+               {:ok, casted} <- Ash.Type.cast_from_embedded(attr.type, value, attr.constraints) do
             {:cont, {:ok, Map.put(struct, attr.name, casted)}}
           else
             {:fetch, :error} ->
@@ -470,9 +480,9 @@ defmodule Ash.EmbeddableType do
         end
       end
 
-      def cast_stored(nil, _), do: {:ok, nil}
+      def cast_from_embedded(nil, _), do: {:ok, nil}
 
-      def cast_stored(_other, _) do
+      def cast_from_embedded(_other, _) do
         :error
       end
 

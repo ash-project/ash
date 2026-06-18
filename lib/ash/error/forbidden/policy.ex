@@ -26,7 +26,8 @@ defmodule Ash.Error.Forbidden.Policy do
       solver_statement: nil,
       domain: nil,
       action: nil,
-      changeset_doesnt_match_filter: false
+      changeset_doesnt_match_filter: false,
+      custom_message: nil
     ],
     class: :forbidden
 
@@ -34,15 +35,25 @@ defmodule Ash.Error.Forbidden.Policy do
     exception =
       super(Keyword.put(opts, :policy_breakdown?, Ash.Policy.Info.show_policy_breakdowns?()))
 
-    log_level =
-      if exception.for_fields do
-        Ash.Policy.Info.log_successful_policy_breakdowns()
-      else
-        Ash.Policy.Info.log_policy_breakdowns()
-      end
+    private_context = get_in(opts, [:subject, Access.key(:context), :private])
+
+    log_policy_breakdown? = private_context[:log_policy_breakdown?]
 
     log_level =
-      log_level || (opts[:subject] && opts[:subject].context[:private][:authorizer_log?] && :info)
+      if log_policy_breakdown? == false do
+        nil
+      else
+        log_level =
+          if exception.for_fields do
+            Ash.Policy.Info.log_successful_policy_breakdowns()
+          else
+            Ash.Policy.Info.log_policy_breakdowns()
+          end
+
+        log_level
+        |> Kernel.||(log_policy_breakdown? == true && :info)
+        |> Kernel.||(private_context[:authorizer_log?] && :info)
+      end
 
     if log_level do
       Logger.log(log_level, report(exception, help_text?: false))
@@ -54,10 +65,18 @@ defmodule Ash.Error.Forbidden.Policy do
   end
 
   def message(error) do
-    if error.policy_breakdown? do
-      "forbidden:\n\n#{Ash.Error.Forbidden.Policy.report(error, help_text?: false)}"
-    else
-      "forbidden"
+    cond do
+      is_binary(error.custom_message) and error.policy_breakdown? ->
+        "#{error.custom_message}\n\n#{Ash.Error.Forbidden.Policy.report(error, help_text?: false)}"
+
+      is_binary(error.custom_message) ->
+        error.custom_message
+
+      error.policy_breakdown? ->
+        "forbidden:\n\n#{Ash.Error.Forbidden.Policy.report(error, help_text?: false)}"
+
+      true ->
+        "forbidden"
     end
   end
 

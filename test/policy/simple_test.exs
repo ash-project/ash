@@ -395,8 +395,8 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
-  test "an impossible create policy shows the correct error message" do
-    assert_raise Ash.Error.Forbidden, ~r/Cannot use a filter to authorize a create/, fn ->
+  test "a create policy whose filter cannot match the inserted record is forbidden after the insert" do
+    assert_raise Ash.Error.Forbidden, ~r/forbidden/, fn ->
       ResourceWithAnImpossibleCreatePolicy
       |> Ash.create!(%{}, actor: %{id: 10})
     end
@@ -1168,6 +1168,42 @@ defmodule Ash.Test.Policy.SimpleTest do
         |> Enum.sort()
 
       assert super_admin_results == Enum.sort([public_record.id, confidential_record.id])
+    end
+  end
+
+  describe "Ash.can? log_policy_breakdown? option" do
+    setup do
+      old_policies = Application.get_env(:ash, :policies, [])
+
+      policies = Keyword.put(old_policies, :log_policy_breakdowns, :error)
+      Application.put_env(:ash, :policies, policies)
+
+      on_exit(fn -> Application.put_env(:ash, :policies, old_policies) end)
+
+      actor = %{role: :viewer, has_read_permission: true}
+
+      actor
+    end
+
+    test "Ash.can? logs policy breakdown at global config level by default", actor do
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          refute Ash.can?({ResourceWithForbidUnlessAndAuthorizeIf, :read}, actor)
+        end)
+
+      assert log =~ "Policy Breakdown"
+    end
+
+    test "Ash.can? suppresses policy breakdown log when set to false, overriding global config",
+         actor do
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          refute Ash.can?({ResourceWithForbidUnlessAndAuthorizeIf, :read}, actor,
+                   log_policy_breakdown?: false
+                 )
+        end)
+
+      assert log == ""
     end
   end
 

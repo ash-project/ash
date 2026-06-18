@@ -131,6 +131,14 @@ defmodule Ash.Resource.Info do
   end
 
   @doc """
+  Default namespace module for this resource's code interface definitions, or `nil` if unset.
+  """
+  @spec code_interface_namespace(Spark.Dsl.t() | Ash.Resource.t()) :: module() | nil
+  def code_interface_namespace(resource) do
+    Extension.get_opt(resource, [:code_interface], :namespace, nil)
+  end
+
+  @doc """
   Whether or not the resource is an embedded resource
   """
   @spec embedded?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean
@@ -258,6 +266,15 @@ defmodule Ash.Resource.Info do
     Extension.get_persisted(resource, :authorizers, [])
   end
 
+  @doc "A list of fields that may be protected by the resource's authorizers"
+  @spec protected_fields(Spark.Dsl.t() | Ash.Resource.t()) :: [atom()]
+  def protected_fields(resource) do
+    resource
+    |> authorizers()
+    |> Enum.flat_map(&Ash.Authorizer.protected_fields(&1, resource))
+    |> Enum.uniq()
+  end
+
   @doc "A list of notifiers to be used when accessing"
   @spec notifiers(Spark.Dsl.t() | Ash.Resource.t()) :: [module]
   def notifiers(resource) do
@@ -332,7 +349,17 @@ defmodule Ash.Resource.Info do
   @doc "Whether or not all primary key attributes can be compared with simple_equality"
   @spec primary_key_simple_equality?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean()
   def primary_key_simple_equality?(resource) do
-    Spark.Dsl.Extension.get_persisted(resource, :primary_key_simple_equality?, [])
+    Spark.Dsl.Extension.get_persisted(resource, :primary_key_simple_equality?, false)
+  end
+
+  @doc """
+  Whether or not all primary key attributes can be reduced to a simple-equality
+  comparable term — either because their type is `simple_equality?/1`, or
+  because their type implements `c:Ash.Type.to_simple_equality_comparable/1`.
+  """
+  @spec primary_key_simple_equality_comparable?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean()
+  def primary_key_simple_equality_comparable?(resource) do
+    Spark.Dsl.Extension.get_persisted(resource, :primary_key_simple_equality_comparable?, false)
   end
 
   @doc "Returns all relationships of a resource"

@@ -34,6 +34,14 @@ defmodule Ash.Type.Map do
             constraints: [
               type: :keyword_list,
               default: []
+            ],
+            init?: [
+              type: :boolean,
+              default: true,
+              doc: """
+              If false, the field's type constraints are not initialised at compile time. \
+              Allows for recursive map fields.
+              """
             ]
           ]
         ]
@@ -89,6 +97,9 @@ defmodule Ash.Type.Map do
   def storage_type(_), do: :map
 
   @impl true
+  def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:fields])
+
+  @impl true
   def init(constraints) do
     if is_list(constraints[:fields]) do
       constraints[:fields]
@@ -133,6 +144,136 @@ defmodule Ash.Type.Map do
   end
 
   @impl true
+  def can_load?(constraints) do
+    case constraints[:fields] do
+      fields when is_list(fields) ->
+        Enum.any?(fields, fn {_name, config} ->
+          inner_type = config[:type]
+          inner_constraints = config[:constraints] || []
+          inner_type && Ash.Type.can_load?(inner_type, inner_constraints)
+        end)
+
+      _ ->
+        false
+    end
+  end
+
+  @impl true
+  def load(values, load, constraints, context) when is_list(values) do
+    fields = constraints[:fields] || []
+
+    fields
+    |> effective_load(load)
+    |> Enum.reduce_while({:ok, values}, fn {key, sub_load}, {:ok, values} ->
+      config = Keyword.fetch!(fields, key)
+      inner_type = config[:type]
+      inner_constraints = config[:constraints] || []
+
+      load_field_across(values, key, inner_type, inner_constraints, sub_load, context)
+    end)
+  end
+
+  # For non-array inner types we batch the slice across all records and
+  # let the inner type's load callback see the whole batch at once. For
+  # `{:array, _}` fields the value at this key is already a list per
+  # record, so we have to iterate per-record — otherwise the dispatcher's
+  # `splicing_nil_values` would flatten the per-record arrays into one
+  # and lose record grouping.
+  defp load_field_across(
+         values,
+         key,
+         {:array, _} = inner_type,
+         inner_constraints,
+         sub_load,
+         context
+       ) do
+    values
+    |> Enum.reduce_while({:ok, []}, fn
+      %{} = map, {:ok, acc} ->
+        case Map.get(map, key) do
+          nil ->
+            {:cont, {:ok, [map | acc]}}
+
+          list when is_list(list) ->
+            case Ash.Type.load(inner_type, list, sub_load, inner_constraints, context) do
+              {:ok, loaded} -> {:cont, {:ok, [Map.put(map, key, loaded) | acc]}}
+              {:error, error} -> {:halt, {:error, error}}
+            end
+
+          other ->
+            {:cont, {:ok, [Map.put(map, key, other) | acc]}}
+        end
+
+      other, {:ok, acc} ->
+        {:cont, {:ok, [other | acc]}}
+    end)
+    |> case do
+      {:ok, reversed} -> {:cont, {:ok, Enum.reverse(reversed)}}
+      {:error, error} -> {:halt, {:error, error}}
+    end
+  end
+
+  defp load_field_across(values, key, inner_type, inner_constraints, sub_load, context) do
+    slice =
+      Enum.map(values, fn
+        %{} = v -> Map.get(v, key)
+        _ -> nil
+      end)
+
+    case Ash.Type.load(inner_type, slice, sub_load, inner_constraints, context) do
+      {:ok, loaded_slice} ->
+        updated =
+          values
+          |> Enum.zip(loaded_slice)
+          |> Enum.map(fn
+            {%{} = m, v} -> Map.put(m, key, v)
+            {other, _v} -> other
+          end)
+
+        {:cont, {:ok, updated}}
+
+      {:error, error} ->
+        {:halt, {:error, error}}
+    end
+  end
+
+  # Caller's explicit sub-loads union with auto-recursion into any
+  # declared field whose type is loadable. The auto-added sub-load is
+  # `[]` — telling inner load callbacks to do their default work
+  # (e.g. `Ash.Type.Struct.load/4` applies field-policy scrubbing on
+  # populated values).
+  defp effective_load(fields, load) do
+    explicit =
+      load
+      |> List.wrap()
+      |> Enum.flat_map(fn
+        {k, sub} when is_atom(k) -> [{k, sub}]
+        k when is_atom(k) -> [{k, []}]
+        _ -> []
+      end)
+      |> Map.new()
+
+    Enum.reduce(fields, explicit, fn {field_name, config}, acc ->
+      cond do
+        Map.has_key?(acc, field_name) ->
+          acc
+
+        loadable_inner?(config) ->
+          Map.put(acc, field_name, [])
+
+        true ->
+          acc
+      end
+    end)
+  end
+
+  defp loadable_inner?(config) do
+    type = config[:type]
+    constraints = config[:constraints] || []
+    type && Ash.Type.can_load?(type, constraints)
+  end
+
+  @impl true
   def cast_input("", _), do: {:ok, nil}
 
   def cast_input(nil, _), do: {:ok, nil}
@@ -155,13 +296,70 @@ defmodule Ash.Type.Map do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, constraints) when is_map(value) do
+    cast_fields(value, constraints, &Ash.Type.cast_stored/3)
+  end
+
+  def cast_stored(_, _), do: :error
+
+  @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+
+  def dump_to_native(value, constraints) when is_map(value) do
+    dump_fields(value, constraints, &Ash.Type.dump_to_native/3)
+  end
+
+  def dump_to_native(_, _), do: :error
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(value, constraints) when is_map(value) do
+    dump_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(_, _), do: :error
+
+  @impl true
+  def cast_from_embedded(nil, _), do: {:ok, nil}
+
+  def cast_from_embedded(value, constraints) when is_map(value) do
+    cast_fields(value, constraints, &Ash.Type.cast_from_embedded/3)
+  end
+
+  def cast_from_embedded(_, _), do: :error
+
+  defp dump_fields(value, constraints, dump_fn) do
     if fields = constraints[:fields] do
-      nil_values = constraints[:preserve_nil_values?]
+      nil_values = constraints[:preserve_nil_values?] == true
+
+      Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
+        case dump_field(value, key, config, dump_fn) do
+          {:ok, nil} when not nil_values -> {:cont, {:ok, acc}}
+          {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
+          :skip -> {:cont, {:ok, acc}}
+          other -> {:halt, other}
+        end
+      end)
+    else
+      {:ok, value}
+    end
+  end
+
+  defp dump_field(value, key, config, dump_fn) do
+    case fetch_field(value, key) do
+      {:ok, field_value} -> dump_fn.(config[:type], field_value, config[:constraints] || [])
+      :error -> :skip
+    end
+  end
+
+  defp cast_fields(value, constraints, cast_fn) do
+    if fields = constraints[:fields] do
+      nil_values = constraints[:preserve_nil_values?] == true
 
       Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
         case fetch_field(value, key) do
           {:ok, value} ->
-            case Ash.Type.cast_stored(config[:type], value, config[:constraints] || []) do
+            case cast_fn.(config[:type], value, config[:constraints] || []) do
               {:ok, value} ->
                 if is_nil(value) && !nil_values do
                   {:cont, {:ok, acc}}
@@ -181,13 +379,6 @@ defmodule Ash.Type.Map do
       {:ok, value}
     end
   end
-
-  def cast_stored(_, _), do: :error
-
-  @impl true
-  def dump_to_native(nil, _), do: {:ok, nil}
-  def dump_to_native(value, _) when is_map(value), do: {:ok, value}
-  def dump_to_native(_, _), do: :error
 
   @impl true
   def apply_constraints(nil, _constraints), do: {:ok, nil}

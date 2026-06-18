@@ -1174,8 +1174,6 @@ defmodule Ash.Expr do
 
     overloads = Ash.Query.Operator.operator_overloads(name) || %{}
 
-    overload_index_cap = Enum.count(overloads) - 1
-
     if types == :var_args || returns == :no_return || returns == :unknown do
       []
     else
@@ -1244,7 +1242,19 @@ defmodule Ash.Expr do
       match_types == :same ||
         length(match_types) == length(values)
     end)
-    |> Enum.map(fn {match_types, cast_as_types, returns} ->
+    |> Enum.with_index()
+    |> Enum.map(fn {{match_types, cast_as_types, returns}, signature_index} ->
+      is_overload? = signature_index < Enum.count(overloads)
+
+      # An overload that declares `cast_as_types` is forcibly converting
+      # operands to a different type than they natively resolve to (e.g.
+      # `Timestamptz` claiming an `UtcDatetimeUsec` column). That kind of
+      # type-coercion overload should be a fallback — let stricter matches
+      # win first. An overload without `cast_as_types` is just declaring
+      # "here's my return type for this signature" (e.g. `Money + Money`,
+      # `integer in IntListType`) — let it win normally when matched.
+      overload_forces_conversion? = is_overload? && !is_nil(cast_as_types)
+
       basis =
         cond do
           !returns ->
@@ -1371,14 +1381,21 @@ defmodule Ash.Expr do
                  )}
             end
 
-          {{{type, constraints}, value}, index}, acc ->
+          {{{type, constraints}, value}, _index}, acc ->
             determined_type = determine_type(value)
 
             cond do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) ->
                 case Ash.Type.coerce(type, value, constraints) do
                   {:ok, _} ->
-                    {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+                    if overload_forces_conversion? do
+                      {:cont,
+                       acc
+                       |> Map.update!(:types, &[{type, constraints} | &1])
+                       |> Map.put(:last_resort?, true)}
+                    else
+                      {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+                    end
 
                   _ ->
                     {:halt, :error}
@@ -1391,7 +1408,10 @@ defmodule Ash.Expr do
                 {:cont, Map.update!(acc, :types, &[elem(determined_type, 1) | &1])}
 
               Ash.Expr.expr?(value) ->
-                if index < overload_index_cap do
+                # An expression with no `determined_type` provides no evidence
+                # to support an overload's type claim. Mark as last_resort so
+                # the variant only wins if no better-grounded match exists.
+                if is_overload? do
                   {:cont,
                    acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
                 else
@@ -1399,17 +1419,31 @@ defmodule Ash.Expr do
                 end
 
               true ->
-                {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+                if overload_forces_conversion? do
+                  {:cont,
+                   acc
+                   |> Map.update!(:types, &[{type, constraints} | &1])
+                   |> Map.put(:last_resort?, true)}
+                else
+                  {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+                end
             end
 
-          {{type, value}, index}, acc ->
+          {{type, value}, _index}, acc ->
             determined_type = determine_type(value)
 
             cond do
               !Ash.Expr.expr?(value) && !matches_type?(type, value, []) ->
                 case Ash.Type.coerce(type, value, []) do
                   {:ok, _} ->
-                    {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+                    if overload_forces_conversion? do
+                      {:cont,
+                       acc
+                       |> Map.update!(:types, &[{type, []} | &1])
+                       |> Map.put(:last_resort?, true)}
+                    else
+                      {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+                    end
 
                   _ ->
                     {:halt, :error}
@@ -1422,7 +1456,10 @@ defmodule Ash.Expr do
                 {:cont, Map.update!(acc, :types, &[elem(determined_type, 1) | &1])}
 
               Ash.Expr.expr?(value) ->
-                if index < overload_index_cap do
+                # An expression with no `determined_type` provides no evidence
+                # to support an overload's type claim. Mark as last_resort so
+                # the variant only wins if no better-grounded match exists.
+                if is_overload? do
                   {:cont,
                    acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
                 else
@@ -1430,7 +1467,12 @@ defmodule Ash.Expr do
                 end
 
               true ->
-                {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+                if overload_forces_conversion? do
+                  {:cont,
+                   acc |> Map.update!(:types, &[{type, []} | &1]) |> Map.put(:last_resort?, true)}
+                else
+                  {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+                end
             end
         end
       )

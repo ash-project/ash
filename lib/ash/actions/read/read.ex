@@ -23,8 +23,8 @@ defmodule Ash.Actions.Read do
   end
 
   @spec run(Ash.Query.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
-          {:ok, Ash.Page.page() | list(Ash.Resource.record())}
-          | {:ok, Ash.Page.page() | list(Ash.Resource.record()), Ash.Query.t()}
+          {:ok, Ash.Page.page() | list(Ash.Resource.Record.t())}
+          | {:ok, Ash.Page.page() | list(Ash.Resource.Record.t()), Ash.Query.t()}
           | {:error, term}
   def run(query, action, opts \\ [])
 
@@ -1543,7 +1543,10 @@ defmodule Ash.Actions.Read do
       else
         case Ash.Resource.Info.relationship(query.resource, name) do
           %{manual: {module, opts}} ->
-            module.select(opts)
+            case module.select(opts) do
+              :* -> query.resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
+              fields -> fields
+            end
 
           %{no_attributes?: true} ->
             []
@@ -2239,11 +2242,31 @@ defmodule Ash.Actions.Read do
     |> Enum.reduce(query.load_through, fn name, load_through ->
       Map.update(load_through, :attribute, %{name => []}, &Map.put_new(&1, name, []))
     end)
+    |> then(fn load_through ->
+      # Ensure every loadable calculation in the query is included in
+      # load_through, even when no nested load was requested. This lets
+      # `Ash.Type.load` run on calc values whose type defines its own
+      # load logic — e.g. a calc returning `:struct` with `instance_of:`
+      # a resource will get that resource's field policies applied even
+      # without an explicit sub-load.
+      Enum.reduce(query.calculations, load_through, fn {name, calc}, load_through ->
+        {inner_type, inner_constraints} =
+          case calc.type do
+            {:array, type} -> {type, calc.constraints[:items] || []}
+            type -> {type, calc.constraints || []}
+          end
+
+        if inner_type && Ash.Type.can_load?(inner_type, inner_constraints) do
+          Map.update(load_through, :calculation, %{name => []}, &Map.put_new(&1, name, []))
+        else
+          load_through
+        end
+      end)
+    end)
     |> Enum.reduce_while({:ok, results}, fn
       {:calculation, load_through}, {:ok, results} ->
         load_through
         |> Map.take(Map.keys(query.calculations))
-        |> Enum.reject(fn {_, v} -> is_nil(v) end)
         |> Enum.reduce_while({:ok, results}, fn {name, load_statement}, {:ok, results} ->
           calculation = Map.get(query.calculations, name)
 
@@ -3012,7 +3035,13 @@ defmodule Ash.Actions.Read do
         data
       end
 
-    more? = not Enum.empty?(rest)
+    more? =
+      if use_data_layer_keyset?(original_query, action.pagination) do
+        last_record = List.last(data)
+        not is_nil(last_record) && not is_nil(last_record.__metadata__[:keyset])
+      else
+        not Enum.empty?(rest)
+      end
 
     if page_opts[:offset] do
       Ash.Page.Offset.new(data, count, original_query, more?, opts)
@@ -3040,10 +3069,15 @@ defmodule Ash.Actions.Read do
   end
 
   defp add_keysets(original_query, data, sort) do
-    if Enum.any?(
-         Ash.Resource.Info.actions(original_query.resource),
-         &(&1.type == :read && &1.pagination && &1.pagination.keyset?)
-       ) do
+    action =
+      Enum.find(
+        Ash.Resource.Info.actions(original_query.resource),
+        &(&1.type == :read && &1.pagination && &1.pagination.keyset?)
+      )
+
+    pagination = action && action.pagination
+
+    if pagination && !use_data_layer_keyset?(original_query, pagination) do
       Ash.Page.Keyset.data_with_keyset(data, original_query.resource, sort)
     else
       data
@@ -3071,6 +3105,15 @@ defmodule Ash.Actions.Read do
          _missing_pkeys?
        ) do
     data
+  end
+
+  defp use_data_layer_keyset?(query, pagination) do
+    cond do
+      !Ash.DataLayer.data_layer_can?(query.resource, :keyset) -> false
+      pagination.via_data_layer? != :data_layer_default -> pagination.via_data_layer?
+      Ash.Resource.Info.data_layer(query.resource).data_layer_keyset_by_default?() == true -> true
+      true -> false
+    end
   end
 
   defp attach_fields(
@@ -3345,6 +3388,7 @@ defmodule Ash.Actions.Read do
 
         agg.query
         |> Ash.Query.set_context(%{private: %{require_actor?: false}})
+        |> Ash.Query.set_context(%{shared: opts[:source_context][:shared]})
         |> Ash.Query.for_read(read_action, %{},
           domain: domain,
           actor: actor,
@@ -3352,12 +3396,14 @@ defmodule Ash.Actions.Read do
           authorize?: agg.authorize? && authorize?
         )
       else
-        Ash.Query.set_context(agg.query, %{
+        agg.query
+        |> Ash.Query.set_context(%{
           private: %{
             authorize?: agg.authorize? && authorize?,
             actor: actor
           }
         })
+        |> Ash.Query.set_context(%{shared: opts[:source_context][:shared]})
       end
 
     authorize? =
@@ -4175,45 +4221,57 @@ defmodule Ash.Actions.Read do
   end
 
   defp keyset_pagination(query, pagination, opts) do
-    limited = Ash.Query.limit(query, limit(query, opts[:limit], query.limit, pagination) + 1)
+    if use_data_layer_keyset?(query, pagination) do
+      limited = Ash.Query.limit(query, limit(query, opts[:limit], query.limit, pagination))
 
-    if opts[:before] || opts[:after] do
-      reversed =
-        if opts[:before] do
-          reversed_sort = Ash.Sort.reverse(limited.sort)
-          max_index = Enum.count(reversed_sort) - 1
+      context = %{
+        data_layer: %{
+          keyset_opts: opts
+        }
+      }
 
-          inverted_sort_input_indices = Enum.map(query.sort_input_indices, &(max_index - &1))
-
-          limited
-          |> Ash.Query.unset(:sort)
-          |> Map.put(:sort, reversed_sort)
-          |> Map.put(:sort_input_indices, inverted_sort_input_indices)
-        else
-          limited
-        end
-
-      after_or_before =
-        if opts[:before] do
-          :before
-        else
-          :after
-        end
-
-      case Ash.Page.Keyset.filter(
-             query,
-             opts[:before] || opts[:after],
-             query.sort,
-             after_or_before
-           ) do
-        {:ok, filter} ->
-          {:ok, Ash.Query.do_filter(reversed, filter)}
-
-        {:error, error} ->
-          {:error, error}
-      end
+      {:ok, Ash.Query.set_context(limited, context)}
     else
-      {:ok, limited}
+      limited = Ash.Query.limit(query, limit(query, opts[:limit], query.limit, pagination) + 1)
+
+      if opts[:before] || opts[:after] do
+        reversed =
+          if opts[:before] do
+            reversed_sort = Ash.Sort.reverse(limited.sort)
+            max_index = Enum.count(reversed_sort) - 1
+
+            inverted_sort_input_indices = Enum.map(query.sort_input_indices, &(max_index - &1))
+
+            limited
+            |> Ash.Query.unset(:sort)
+            |> Map.put(:sort, reversed_sort)
+            |> Map.put(:sort_input_indices, inverted_sort_input_indices)
+          else
+            limited
+          end
+
+        after_or_before =
+          if opts[:before] do
+            :before
+          else
+            :after
+          end
+
+        case Ash.Page.Keyset.filter(
+               query,
+               opts[:before] || opts[:after],
+               query.sort,
+               after_or_before
+             ) do
+          {:ok, filter} ->
+            {:ok, Ash.Query.do_filter(reversed, filter)}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      else
+        {:ok, limited}
+      end
     end
   end
 

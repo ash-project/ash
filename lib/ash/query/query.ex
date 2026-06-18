@@ -215,14 +215,14 @@ defmodule Ash.Query do
           timeout: pos_integer() | nil,
           action_failed?: boolean,
           after_action: [
-            (t, [Ash.Resource.record()] ->
-               {:ok, [Ash.Resource.record()]}
-               | {:ok, [Ash.Resource.record()], [Ash.Notifier.Notification.t()]}
+            (t, [Ash.Resource.Record.t()] ->
+               {:ok, [Ash.Resource.Record.t()]}
+               | {:ok, [Ash.Resource.Record.t()], [Ash.Notifier.Notification.t()]}
                | {:error, any})
           ],
           authorize_results: [
-            (t, [Ash.Resource.record()] ->
-               {:ok, [Ash.Resource.record()]}
+            (t, [Ash.Resource.Record.t()] ->
+               {:ok, [Ash.Resource.Record.t()]}
                | {:error, any})
           ],
           aggregates: %{optional(atom) => Ash.Filter.t()},
@@ -253,7 +253,7 @@ defmodule Ash.Query do
 
   @typedoc "Result type for around_transaction hooks, containing either successful records or an error."
   @type around_result ::
-          {:ok, list(Ash.Resource.record())}
+          {:ok, list(Ash.Resource.Record.t())}
           | {:error, Ash.Error.t()}
 
   @typedoc "Function type for before_transaction hooks that run before query execution."
@@ -261,11 +261,11 @@ defmodule Ash.Query do
 
   @typedoc "Function type for after_transaction hooks that run after query execution."
   @type after_transaction_fun ::
-          (t, {:ok, list(Ash.Resource.record())} | {:error, any} ->
-             {:ok, list(Ash.Resource.record())} | {:error, any})
+          (t, {:ok, list(Ash.Resource.Record.t())} | {:error, any} ->
+             {:ok, list(Ash.Resource.Record.t())} | {:error, any})
 
   @typedoc "Function type for around_transaction hooks that wrap query execution in a transaction."
-  @type around_transaction_fun :: (t -> {:ok, Ash.Resource.record()} | {:error, any})
+  @type around_transaction_fun :: (t -> {:ok, Ash.Resource.Record.t()} | {:error, any})
 
   alias Ash.Actions.Sort
 
@@ -1511,9 +1511,9 @@ defmodule Ash.Query do
   @doc false
   @spec authorize_results(
           t(),
-          (t(), [Ash.Resource.record()] ->
-             {:ok, [Ash.Resource.record()]}
-             | {:ok, [Ash.Resource.record()], list(Ash.Notifier.Notification.t())}
+          (t(), [Ash.Resource.Record.t()] ->
+             {:ok, [Ash.Resource.Record.t()]}
+             | {:ok, [Ash.Resource.Record.t()], list(Ash.Notifier.Notification.t())}
              | {:error, term})
         ) :: t()
   def authorize_results(query, func) do
@@ -1572,9 +1572,9 @@ defmodule Ash.Query do
   """
   @spec after_action(
           query :: t(),
-          fun :: (t(), [Ash.Resource.record()] ->
-                    {:ok, [Ash.Resource.record()]}
-                    | {:ok, [Ash.Resource.record()], list(Ash.Notifier.Notification.t())}
+          fun :: (t(), [Ash.Resource.Record.t()] ->
+                    {:ok, [Ash.Resource.Record.t()]}
+                    | {:ok, [Ash.Resource.Record.t()], list(Ash.Notifier.Notification.t())}
                     | {:error, term})
         ) :: t()
   # in 4.0, add an option to prepend hooks
@@ -4357,8 +4357,8 @@ defmodule Ash.Query do
   - `load/3` for configuring relationship loading
   - `filter/2` for adding filter conditions
   """
-  @spec apply_to(t(), records :: list(Ash.Resource.record()), opts :: Keyword.t()) ::
-          {:ok, list(Ash.Resource.record())}
+  @spec apply_to(t(), records :: list(Ash.Resource.Record.t()), opts :: Keyword.t()) ::
+          {:ok, list(Ash.Resource.Record.t())}
   def apply_to(query, records, opts \\ []) do
     domain =
       query.domain || Ash.Resource.Info.domain(query.resource) || opts[:domain] ||

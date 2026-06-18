@@ -38,6 +38,14 @@ defmodule Ash.Type.Struct do
             constraints: [
               type: :keyword_list,
               default: []
+            ],
+            init?: [
+              type: :boolean,
+              default: true,
+              doc: """
+              If false, the field's type constraints are not initialised at compile time. \
+              Allows for recursive struct fields.
+              """
             ]
           ]
         ]
@@ -115,6 +123,9 @@ defmodule Ash.Type.Struct do
 
   @impl true
   def storage_type(_), do: :map
+
+  @impl true
+  def referenced_types(constraints), do: Ash.Type.field_referenced_types(constraints[:fields])
 
   @impl true
   def init(constraints) do
@@ -204,6 +215,64 @@ defmodule Ash.Type.Struct do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, constraints) when is_map(value) do
+    cast_struct_fields(value, constraints, &Ash.Type.cast_stored/3)
+  end
+
+  def cast_stored(_, _), do: :error
+
+  @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+
+  def dump_to_native(value, constraints) when is_map(value) do
+    dump_struct_fields(value, constraints, &Ash.Type.dump_to_native/3)
+  end
+
+  def dump_to_native(_, _), do: :error
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(value, constraints) when is_map(value) do
+    dump_struct_fields(value, constraints, &Ash.Type.dump_to_embedded/3)
+  end
+
+  def dump_to_embedded(_, _), do: :error
+
+  @impl true
+  def cast_from_embedded(nil, _), do: {:ok, nil}
+
+  def cast_from_embedded(value, constraints) when is_map(value) do
+    cast_struct_fields(value, constraints, &Ash.Type.cast_from_embedded/3)
+  end
+
+  def cast_from_embedded(_, _), do: :error
+
+  defp dump_struct_fields(value, constraints, dump_fn) do
+    if fields = fields(constraints) do
+      if constraints[:instance_of] do
+        Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
+          case dump_struct_field(value, key, config, dump_fn) do
+            {:ok, dumped} -> {:cont, {:ok, Map.put(acc, key, dumped)}}
+            :skip -> {:cont, {:ok, acc}}
+            other -> {:halt, other}
+          end
+        end)
+      else
+        :error
+      end
+    else
+      :error
+    end
+  end
+
+  defp dump_struct_field(value, key, config, dump_fn) do
+    case Map.fetch(value, key) do
+      {:ok, field_value} -> dump_fn.(config[:type], field_value, config[:constraints] || [])
+      :error -> :skip
+    end
+  end
+
+  defp cast_struct_fields(value, constraints, cast_fn) do
     if fields = fields(constraints) do
       if constraints[:instance_of] do
         nil_values = constraints[:preserve_nil_values?]
@@ -212,7 +281,7 @@ defmodule Ash.Type.Struct do
                                                                                    {:ok, acc} ->
           case fetch_field(value, key) do
             {:ok, value} ->
-              case Ash.Type.cast_stored(config[:type], value, config[:constraints] || []) do
+              case cast_fn.(config[:type], value, config[:constraints] || []) do
                 {:ok, value} ->
                   if is_nil(value) && !nil_values do
                     {:cont, {:ok, acc}}
@@ -235,39 +304,6 @@ defmodule Ash.Type.Struct do
       :error
     end
   end
-
-  def cast_stored(_, _), do: :error
-
-  @impl true
-  def dump_to_native(nil, _), do: {:ok, nil}
-
-  def dump_to_native(value, constraints) when is_map(value) do
-    if fields = fields(constraints) do
-      if constraints[:instance_of] do
-        Enum.reduce_while(fields, {:ok, %{}}, fn {key, config}, {:ok, acc} ->
-          case Map.fetch(value, key) do
-            {:ok, value} ->
-              case Ash.Type.dump_to_native(config[:type], value, config[:constraints] || []) do
-                {:ok, value} ->
-                  {:cont, {:ok, Map.put(acc, key, value)}}
-
-                other ->
-                  {:halt, other}
-              end
-
-            :error ->
-              {:cont, {:ok, acc}}
-          end
-        end)
-      else
-        :error
-      end
-    else
-      :error
-    end
-  end
-
-  def dump_to_native(_, _), do: :error
 
   @impl true
   def generator(constraints) do
@@ -298,11 +334,89 @@ defmodule Ash.Type.Struct do
   end
 
   @impl Ash.Type
-  def load(record, load, _constraints, %{domain: domain} = context) do
+  def load(record, load, constraints, %{domain: domain} = context) do
+    instance_of = constraints[:instance_of]
     opts = Ash.Context.to_opts(context, domain: domain)
 
-    Ash.load(record, load, opts)
+    cond do
+      is_nil(instance_of) || !Ash.Resource.Info.resource?(instance_of) ->
+        Ash.load(record, load, opts)
+
+      # No primary read action, can't reasonably `load`
+      is_nil(Ash.Resource.Info.primary_action(instance_of, :read)) ->
+        {:ok, record}
+
+      !opts[:authorize?] ->
+        if load in [nil, [], %{}] do
+          {:ok, record}
+        else
+          Ash.load(record, load, opts)
+        end
+
+      true ->
+        # Two things to do here:
+        #
+        # 1. Scrub populated fields that aren't part of the explicit
+        #    load via field policies (in memory — `apply_field_level_auth`
+        #    doesn't re-fetch from the data layer).
+        # 2. Run the explicit load through `Ash.load`, which goes through
+        #    the read pipeline and applies field policies to loaded fields
+        #    via the normal `restrict_field_access` step.
+        with {:ok, scrubbed} <- scrub_populated(record, instance_of, load, opts) do
+          if load in [nil, [], %{}] do
+            {:ok, scrubbed}
+          else
+            Ash.load(scrubbed, load, opts)
+          end
+        end
+    end
   end
+
+  defp scrub_populated(record, resource, load, opts) do
+    case populated_not_in_load(record, resource, load) do
+      [] ->
+        {:ok, record}
+
+      to_scrub ->
+        Ash.Authorizer.apply_field_level_auth(
+          resource,
+          record,
+          Keyword.put(opts, :for_fields, to_scrub)
+        )
+    end
+  end
+
+  defp populated_not_in_load(record_or_records, resource, load) do
+    sample =
+      case record_or_records do
+        [first | _] -> first
+        other -> other
+      end
+
+    if is_struct(sample, resource) do
+      load_names = load_top_level_names(load)
+
+      resource
+      |> Ash.Resource.Info.fields([:attributes, :calculations, :aggregates])
+      |> Enum.filter(& &1.public?)
+      |> Enum.map(& &1.name)
+      |> Enum.filter(&(Ash.Resource.loaded?(sample, &1) and &1 not in load_names))
+    else
+      []
+    end
+  end
+
+  defp load_top_level_names(load) when load in [nil, [], %{}], do: []
+
+  defp load_top_level_names(load) when is_list(load) do
+    Enum.flat_map(load, fn
+      atom when is_atom(atom) -> [atom]
+      {atom, _nested} when is_atom(atom) -> [atom]
+      _ -> []
+    end)
+  end
+
+  defp load_top_level_names(_), do: []
 
   @impl Ash.Type
   def merge_load(left, right, constraints, context) do

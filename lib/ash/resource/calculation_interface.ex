@@ -9,6 +9,7 @@ defmodule Ash.Resource.CalculationInterface do
   defstruct [
     :name,
     :calculation,
+    :namespace,
     args: [],
     exclude_inputs: [],
     custom_inputs: [],
@@ -39,6 +40,11 @@ defmodule Ash.Resource.CalculationInterface do
       doc: """
       Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
       """
+    ],
+    namespace: [
+      type: :atom,
+      doc:
+        "Generate this calculation interface function on a separate module instead of the host (domain or resource). The given module name is concatenated to the host. Overrides any namespace set on the enclosing `code_interface`/`resource` block."
     ]
   ]
 

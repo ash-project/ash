@@ -211,7 +211,7 @@ defmodule Ash.Resource.Calculation do
   @callback init(opts :: opts) :: {:ok, opts} | {:error, term}
   @callback describe(opts :: opts) :: String.t()
 
-  @callback calculate(records :: [Ash.Resource.record()], opts :: opts, context :: Context.t()) ::
+  @callback calculate(records :: [Ash.Resource.Record.t()], opts :: opts, context :: Context.t()) ::
               {:ok, [term]} | [term] | {:error, term} | :unknown
   @callback expression(opts :: opts, context :: Context.t()) :: any
   @doc """
@@ -258,7 +258,7 @@ defmodule Ash.Resource.Calculation do
   end
 
   @doc false
-  @spec calculate(module(), [Ash.Resource.record()], opts, Context.t()) ::
+  @spec calculate(module(), [Ash.Resource.Record.t()], opts, Context.t()) ::
           {:ok, [term()]} | [term()] | {:error, term()} | :unknown
   def calculate(module, records, opts, context) do
     result = apply(module, :calculate, [records, opts, context])

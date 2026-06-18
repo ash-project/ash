@@ -7,7 +7,7 @@ defmodule Ash.Page.Unpaged do
   # related records and then paged
   @moduledoc false
   @type t :: %__MODULE__{
-          related_records: Ash.Resource.record(),
+          related_records: Ash.Resource.Record.t(),
           opts: Keyword.t()
         }
 
@@ -16,7 +16,7 @@ defmodule Ash.Page.Unpaged do
   @doc """
   Creates a new `Ash.Page.Unpaged.t`.
   """
-  @spec new([Ash.Resource.record()], Keyword.t()) :: t()
+  @spec new([Ash.Resource.Record.t()], Keyword.t()) :: t()
   def new(related_records, opts) do
     %__MODULE__{
       related_records: related_records,

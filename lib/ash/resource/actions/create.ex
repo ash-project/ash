@@ -30,6 +30,7 @@ defmodule Ash.Resource.Actions.Create do
     reject: [],
     metadata: [],
     transaction?: true,
+    allow_post_action_authorization?: false,
     public?: true,
     type: :create,
     __spark_metadata__: nil
@@ -63,6 +64,7 @@ defmodule Ash.Resource.Actions.Create do
           primary?: boolean,
           description: String.t() | nil,
           public?: boolean,
+          allow_post_action_authorization?: boolean,
           __spark_metadata__: Spark.Dsl.Entity.spark_meta()
         }
 
@@ -121,6 +123,21 @@ defmodule Ash.Resource.Actions.Create do
                   default: :enforce,
                   doc: """
                   This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set, `:bypass_all` like `:bypass` but also bypasses the tenancy requirement for the nested resources.
+                  """
+                ],
+                allow_post_action_authorization?: [
+                  type: :boolean,
+                  default: false,
+                  doc: """
+                  Filter-mode policy checks on create actions are evaluated after the row is
+                  inserted, inside the action's transaction. If the check rejects, the
+                  transaction is rolled back. This is automatic — but only safe when no
+                  `before_transaction` or `around_transaction` hooks are present on the
+                  changeset, because those run *outside* the transaction and their side
+                  effects can't be rolled back. When such hooks are present, Ash refuses to
+                  defer authorization to post-action unless this option is explicitly set
+                  to `true`, acknowledging that those hooks may fire for create requests
+                  that ultimately get rejected.
                   """
                 ]
               ]

@@ -661,6 +661,32 @@ defmodule Ash.Test.Actions.LoadTest do
       :ok
     end
 
+    test "it handles {:ok, []} input" do
+      assert {:ok, []} = Ash.load({:ok, []}, [:author])
+    end
+
+    test "it handles {:ok, nil} input" do
+      assert {:ok, nil} = Ash.load({:ok, nil}, [:author])
+    end
+
+    test "it handles {:ok, record} input" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
+        |> Ash.create!()
+
+      assert {:ok, %Post{title: "post1"}} = Ash.load({:ok, post}, [])
+    end
+
+    test "it handles {:ok, [record]} input" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
+        |> Ash.create!()
+
+      assert {:ok, [%Post{title: "post1"}]} = Ash.load({:ok, [post]}, [])
+    end
+
     test "it allows loading manual relationships" do
       post1 =
         Post

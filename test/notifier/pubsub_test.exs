@@ -190,10 +190,69 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
   end
 
+  defmodule UpcaseName do
+    @moduledoc false
+    use Ash.Resource.Calculation
+
+    @impl true
+    def load(_query, _opts, _context), do: [:name]
+
+    @impl true
+    def calculate(records, _opts, _context) do
+      Enum.map(records, &String.upcase(&1.name || ""))
+    end
+  end
+
+  defmodule PostWithCalcTopic do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      notifiers: [Ash.Notifier.PubSub]
+
+    pub_sub do
+      module PubSub
+      prefix "calc_post"
+
+      # The calculation is referenced only in the topic — not in `load:` — so
+      # it must be auto-loaded from the topic and read from where it's placed.
+      publish_all :create, ["created", :upcased_name]
+    end
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+
+    calculations do
+      calculate :upcased_name, :string, UpcaseName
+    end
+  end
+
   setup do
     Application.put_env(PubSub, :notifier_test_pid, self())
 
     :ok
+  end
+
+  test "a calculation referenced in a topic is loaded and resolved without a `load` option" do
+    PostWithCalcTopic
+    |> Ash.Changeset.for_create(:create, %{name: "ted"})
+    |> Ash.create!()
+
+    assert_receive {:broadcast, "calc_post:created:TED", "create", %Ash.Notifier.Notification{}}
   end
 
   test "publishing a message with a change value" do

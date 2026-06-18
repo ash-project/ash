@@ -12,8 +12,8 @@ defmodule Ash.Actions.Destroy do
   @spec run(Ash.Domain.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, list(Ash.Notifier.Notification.t())}
           | :ok
-          | {:ok, Ash.Resource.record()}
-          | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+          | {:ok, Ash.Resource.Record.t()}
+          | {:ok, Ash.Resource.Record.t(), list(Ash.Notifier.Notification.t())}
           | {:error, Ash.Changeset.t()}
           | {:error, term}
   def run(domain, changeset, %{soft?: true} = action, opts) do

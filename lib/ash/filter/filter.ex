@@ -1100,14 +1100,21 @@ defmodule Ash.Filter do
          filters,
          last_relationship,
          domain,
-         _query,
+         query,
          actor,
          tenant,
          _refs,
          base_related_query \\ nil,
          _aggregate? \\ false
        ) do
-    case relationship_query(last_relationship, domain, actor, tenant, base_related_query) do
+    case relationship_query(
+           last_relationship,
+           domain,
+           actor,
+           tenant,
+           base_related_query,
+           %{shared: query.context[:shared]}
+         ) do
       %{errors: []} = related_query ->
         if filters[{last_relationship.source, last_relationship.name, related_query.action.name}] do
           {:cont, {:ok, filters}}
@@ -1176,6 +1183,8 @@ defmodule Ash.Filter do
          refs,
          authorize?
        ) do
+    shared = %{shared: query.context[:shared]}
+
     refs
     |> Enum.flat_map(fn {_path, refs} ->
       refs
@@ -1190,12 +1199,17 @@ defmodule Ash.Filter do
     |> Enum.concat(aggregates)
     |> Enum.filter(& &1.authorize?)
     |> Enum.reduce_while({:ok, path_filters}, fn aggregate, {:ok, filters} ->
+      aggregate_query = Ash.Query.set_context(aggregate.query, shared)
+      aggregate = %{aggregate | query: aggregate_query}
+
       if Map.get(aggregate, :related?, true) do
         aggregate.relationship_path
         |> :lists.droplast()
         |> Ash.Query.Aggregate.subpaths()
         |> Enum.reduce_while({:ok, filters}, fn subpath, {:ok, filters} ->
-          last_relationship = last_relationship(query.resource, subpath)
+          # Path is relative to the aggregate's own source, which differs from
+          # `query.resource` when this is a nested aggregate's inner aggregate.
+          last_relationship = last_relationship(aggregate.resource, subpath)
 
           add_authorization_path_filter(
             filters,
@@ -1211,13 +1225,14 @@ defmodule Ash.Filter do
               %{},
               actor: actor,
               tenant: tenant,
-              authorize?: authorize?
+              authorize?: authorize?,
+              context: shared
             ),
             true
           )
         end)
       else
-        case Ash.can(aggregate.query, actor,
+        case Ash.can(aggregate_query, actor,
                run_queries?: false,
                pre_flight?: false,
                alter_source?: true,
@@ -1490,7 +1505,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp relationship_query(relationship, domain, actor, tenant, base) do
+  defp relationship_query(relationship, domain, actor, tenant, base, source_context \\ %{}) do
     base_query = base || Ash.Query.new(relationship.destination)
     domain = relationship.domain || domain
 
@@ -1501,6 +1516,7 @@ defmodule Ash.Filter do
     query =
       relationship.destination
       |> Ash.Query.set_context(relationship.context)
+      |> Ash.Query.set_context(source_context)
       |> Ash.Query.sort(relationship.sort, prepend?: true)
 
     if query.__validated_for_action__ == action do
@@ -1510,7 +1526,8 @@ defmodule Ash.Filter do
         actor: actor,
         authorize?: true,
         tenant: tenant,
-        domain: domain
+        domain: domain,
+        context: source_context
       )
     end
   end
@@ -4967,7 +4984,7 @@ defmodule Ash.Filter do
                             attribute: attr,
                             relationship_path: context[:relationship_path] || [],
                             resource: context.resource,
-                            input?: true
+                            input?: context[:input?] || false
                           },
                           at_path
                         ]
@@ -4977,7 +4994,7 @@ defmodule Ash.Filter do
                         attribute: attr,
                         relationship_path: context[:relationship_path] || [],
                         resource: context.resource,
-                        input?: true
+                        input?: context[:input?] || false
                       }
                     end
 
@@ -5005,7 +5022,7 @@ defmodule Ash.Filter do
                         attribute: attr,
                         relationship_path: context[:relationship_path] || [],
                         resource: context.resource,
-                        input?: true
+                        input?: context[:input?] || false
                       },
                       at_path
                     ]
@@ -5015,7 +5032,7 @@ defmodule Ash.Filter do
                     attribute: attr,
                     relationship_path: context[:relationship_path] || [],
                     resource: context.resource,
-                    input?: true
+                    input?: context[:input?] || false
                   }
                 end
 
