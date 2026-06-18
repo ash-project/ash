@@ -197,6 +197,27 @@ defmodule Ash.Test.Actions.ReadTest do
         prepare(build(load: [:author1, :author2]))
       end
 
+      read :read_with_authors_before_action do
+        prepare(
+          before_action(fn query, _context ->
+            Ash.Query.load(query, [:author1, :author2])
+          end)
+        )
+      end
+
+      read :read_with_calculation_before_action do
+        prepare(
+          before_action(fn query, _context ->
+            Ash.Query.calculate(
+              query,
+              :title_and_contents,
+              :string,
+              expr(title <> " - " <> contents)
+            )
+          end)
+        )
+      end
+
       read :read_with_unknown_intpus do
         skip_unknown_inputs :*
       end
@@ -332,6 +353,16 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it uses the action provided", %{post: post, author1: author1} do
       fetched_post = Ash.get!(Post, post.id, action: :read_with_authors)
       assert ^author1 = strip_metadata(fetched_post.author1)
+    end
+
+    test "before_action should be able to load relationships", %{post: post, author1: author1} do
+      fetched_post = Ash.get!(Post, post.id, action: :read_with_authors_before_action)
+      assert ^author1 = strip_metadata(fetched_post.author1)
+    end
+
+    test "before_action should be able to add calculations", %{post: post} do
+      fetched_post = Ash.get!(Post, post.id, action: :read_with_calculation_before_action)
+      assert "test - yeet" = fetched_post.calculations.title_and_contents
     end
   end
 
