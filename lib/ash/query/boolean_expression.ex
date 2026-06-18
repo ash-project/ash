@@ -210,6 +210,20 @@ defmodule Ash.Query.BooleanExpression do
     do_new(op, left, right)
   end
 
+  defp simplify?(
+         %Eq{left: left, right: left_right},
+         %In{left: left, right: %MapSet{}}
+       ) do
+    can_optimize?(left_right)
+  end
+
+  defp simplify?(
+         %NotEq{left: left, right: left_right},
+         %In{left: left, right: %MapSet{}}
+       ) do
+    can_optimize?(left_right)
+  end
+
   defp simplify?(%NotEq{} = left, %In{} = right), do: simplify?(right, left)
   defp simplify?(%NotEq{} = left, %Eq{} = right), do: simplify?(right, left)
   defp simplify?(%Eq{} = left, %In{} = right), do: simplify?(right, left)
@@ -226,20 +240,6 @@ defmodule Ash.Query.BooleanExpression do
 
   defp simplify?(%NotEq{left: left, right: left_right}, %NotEq{left: left, right: right_right}) do
     can_optimize?(left_right) && can_optimize?(right_right)
-  end
-
-  defp simplify?(
-         %Eq{left: left, right: left_right},
-         %In{left: left, right: %MapSet{}}
-       ) do
-    can_optimize?(left_right)
-  end
-
-  defp simplify?(
-         %NotEq{left: left, right: left_right},
-         %In{left: left, right: %MapSet{}}
-       ) do
-    can_optimize?(left_right)
   end
 
   defp simplify?(

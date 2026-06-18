@@ -360,10 +360,15 @@ defmodule Ash.Seed do
   end
 
   defp upsert_via_data_layer(changeset, identity) do
-    fields = Ash.Resource.Info.identity(changeset.resource, identity).keys
+    identity = Ash.Resource.Info.identity(changeset.resource, identity)
 
     Ash.Changeset.with_hooks(changeset, fn changeset ->
-      Ash.DataLayer.upsert(changeset.resource, Ash.Changeset.set_action_select(changeset), fields)
+      Ash.DataLayer.upsert(
+        changeset.resource,
+        Ash.Changeset.set_action_select(changeset),
+        identity.keys,
+        identity
+      )
     end)
   end
 

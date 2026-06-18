@@ -15,9 +15,11 @@ defmodule Ash.UUID do
   """
   @type raw :: Ecto.UUID.raw()
 
-  @doc "Generates a new uuid"
-  @spec generate() :: Ecto.UUID.t()
-  def generate do
-    Ecto.UUID.generate()
+  @doc """
+  Generates a new uuid.
+  """
+  @spec generate(Keyword.t()) :: Ecto.UUID.t()
+  def generate(opts \\ []) do
+    Ecto.UUID.generate(opts)
   end
 end

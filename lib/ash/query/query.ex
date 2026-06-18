@@ -369,7 +369,7 @@ defmodule Ash.Query do
 
     defp arguments(query, opts) do
       if query.action do
-        if is_nil(query.action) || Enum.empty?(query.action.arguments) do
+        if Enum.empty?(query.action.arguments) do
           empty()
         else
           args =
@@ -2543,7 +2543,12 @@ defmodule Ash.Query do
           Enum.find(calculation.arguments, fn arg -> arg.name == key end)
         end
 
-      value = Ash.Type.Helpers.handle_indexed_maps(argument.type, value)
+      value =
+        if argument do
+          Ash.Type.Helpers.handle_indexed_maps(argument.type, value)
+        else
+          value
+        end
 
       cond do
         !argument ->

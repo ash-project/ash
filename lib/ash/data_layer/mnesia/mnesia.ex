@@ -44,6 +44,8 @@ defmodule Ash.DataLayer.Mnesia do
   alias Ash.Actions.Sort
   alias :mnesia, as: Mnesia
 
+  require Logger
+
   @doc """
   Creates the table for each mnesia resource in a domain
   """
@@ -320,10 +322,37 @@ defmodule Ash.DataLayer.Mnesia do
   defp do_limit(records, nil), do: records
   defp do_limit(records, limit), do: Enum.take(records, limit)
 
-  defp filter_matches(records, nil, _domain, _tenant, _), do: {:ok, records}
+  defp filter_matches(
+         records,
+         filter,
+         domain,
+         tenant,
+         actor,
+         parent \\ nil,
+         conflicting_upsert_values \\ nil
+       )
 
-  defp filter_matches(records, filter, domain, tenant, actor) do
-    Ash.Filter.Runtime.filter_matches(domain, records, filter, tenant: tenant, actor: actor)
+  defp filter_matches([], _, _domain, _tenant, _actor, _parent, _conflicting_upsert_values),
+    do: {:ok, []}
+
+  defp filter_matches(
+         records,
+         nil,
+         _domain,
+         _tenant,
+         _actor,
+         _parent,
+         _conflicting_upsert_values
+       ),
+       do: {:ok, records}
+
+  defp filter_matches(records, filter, domain, tenant, actor, parent, conflicting_upsert_values) do
+    Ash.Filter.Runtime.filter_matches(domain, records, filter,
+      parent: parent,
+      tenant: tenant,
+      actor: actor,
+      conflicting_upsert_values: conflicting_upsert_values
+    )
   end
 
   @doc """
@@ -343,6 +372,7 @@ defmodule Ash.DataLayer.Mnesia do
   @impl true
   def bulk_create(resource, stream, options) do
     stream = Enum.to_list(stream)
+    log_bulk_create(resource, stream, options)
 
     if options[:upsert?] do
       # This uses a lot of the ETS datalayer as a reference point. It is
@@ -359,7 +389,7 @@ defmodule Ash.DataLayer.Mnesia do
               })
           })
 
-        case upsert(resource, changeset, options.upsert_keys) do
+        case do_upsert(resource, changeset, options.upsert_keys, nil, true) do
           {:ok, result} ->
             result =
               if options[:return_records?] do
@@ -410,7 +440,7 @@ defmodule Ash.DataLayer.Mnesia do
     Mnesia.transaction(fn ->
       Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
         # Sending in `false` prevents a transaction for every write
-        case create(resource, changeset, with_transaction: false) do
+        case create(resource, changeset, with_transaction: false, from_bulk_create?: true) do
           {:ok, result} ->
             result =
               if options[:return_records?] do
@@ -435,6 +465,8 @@ defmodule Ash.DataLayer.Mnesia do
   @doc false
   @impl true
   def create(resource, changeset, opts \\ []) do
+    if !opts[:from_bulk_create?], do: log_create(resource, changeset)
+
     with {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          {:ok, record} <- apply_create_atomics(changeset, resource, record) do
       pkey =
@@ -529,8 +561,16 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def update(resource, changeset) do
+  def update(resource, changeset, from_bulk_create? \\ false) do
     pkey = pkey_list(resource, changeset.data)
+
+    if !from_bulk_create? do
+      log_update(
+        resource,
+        Map.take(changeset.data, Ash.Resource.Info.primary_key(resource)),
+        changeset
+      )
+    end
 
     result =
       Mnesia.transaction(fn ->
@@ -615,18 +655,41 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def upsert(resource, changeset, keys) do
+  def upsert(resource, changeset, keys, identity \\ nil) do
+    do_upsert(resource, changeset, keys, identity)
+  end
+
+  defp do_upsert(resource, changeset, keys, identity, from_bulk_create? \\ false) do
     keys = keys || Ash.Resource.Info.primary_key(resource)
 
-    if Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
-      create(resource, changeset)
+    if (is_nil(identity) || !identity.nils_distinct?) &&
+         Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
+      create(resource, changeset, from_bulk_create?: from_bulk_create?)
     else
       key_filters =
         Enum.map(keys, fn key ->
-          {key, Ash.Changeset.get_attribute(changeset, key)}
+          value =
+            Ash.Changeset.get_attribute(changeset, key) || Map.get(changeset.params, key) ||
+              Map.get(changeset.params, to_string(key))
+
+          {key,
+           if is_nil(value) do
+             [is_nil: true]
+           else
+             value
+           end}
         end)
 
-      query = Ash.Query.do_filter(resource, and: [key_filters])
+      query =
+        resource
+        |> Ash.Query.do_filter(and: [key_filters])
+        |> then(fn query ->
+          if is_nil(identity) || is_nil(identity.where) do
+            query
+          else
+            Ash.Query.do_filter(query, identity.where)
+          end
+        end)
 
       resource
       |> resource_to_query(changeset.domain)
@@ -635,26 +698,81 @@ defmodule Ash.DataLayer.Mnesia do
       |> run_query(resource)
       |> case do
         {:ok, []} ->
-          create(resource, changeset)
+          resource
+          |> create(changeset, from_bulk_create?: from_bulk_create?)
+          |> set_upsert_action(:create)
 
         {:ok, [result]} ->
-          to_set =
-            changeset
-            |> Ash.Changeset.set_on_upsert(keys)
-            |> apply_upsert_update_defaults(resource, result, changeset)
+          with {:ok, conflicting_upsert_values} <- Ash.Changeset.apply_attributes(changeset),
+               {:ok, [^result]} <-
+                 upsert_conflict_check(
+                   changeset,
+                   result,
+                   conflicting_upsert_values
+                 ) do
+            to_set =
+              changeset
+              |> Ash.Changeset.set_on_upsert(keys)
+              |> apply_upsert_update_defaults(resource, result, changeset)
 
-          changeset =
-            changeset
-            |> Map.put(:attributes, %{})
-            |> Map.put(:data, result)
-            |> Ash.Changeset.force_change_attributes(to_set)
+            changeset =
+              changeset
+              |> Map.put(:attributes, %{})
+              |> Map.put(:data, result)
+              |> Ash.Changeset.force_change_attributes(to_set)
 
-          update(resource, changeset)
+            resource
+            |> update(%{changeset | action_type: :update, filter: nil}, from_bulk_create?)
+            |> set_upsert_action(:update)
+          else
+            {:ok, []} ->
+              {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+
+            {:error, reason} ->
+              {:error, reason}
+          end
 
         {:ok, _} ->
           {:error, "Multiple records matching keys"}
       end
     end
+  end
+
+  defp set_upsert_action({:ok, record}, action) do
+    {:ok, Ash.Resource.put_metadata(record, :upsert_action, action)}
+  end
+
+  defp set_upsert_action(result, _), do: result
+
+  @spec upsert_conflict_check(
+          changeset :: Ash.Changeset.t(),
+          subject :: record,
+          conflicting_upsert_values :: record
+        ) :: {:ok, [record]} | {:error, reason}
+        when record: Ash.Resource.Record.t(), reason: term()
+  defp upsert_conflict_check(changeset, subject, conflicting_upsert_values)
+
+  defp upsert_conflict_check(
+         %Ash.Changeset{filter: nil},
+         result,
+         _conflicting_upsert_values
+       ),
+       do: {:ok, [result]}
+
+  defp upsert_conflict_check(
+         %Ash.Changeset{filter: filter, domain: domain, context: context},
+         result,
+         conflicting_upsert_values
+       ) do
+    filter_matches(
+      [result],
+      filter,
+      domain,
+      context.private[:tenant],
+      context.private[:actor],
+      nil,
+      conflicting_upsert_values
+    )
   end
 
   # Mnesia's update/2 calls apply_attributes which re-applies update_defaults
@@ -690,6 +808,158 @@ defmodule Ash.DataLayer.Mnesia do
 
   defp explicitly_set?(key, _, changeset),
     do: Map.has_key?(changeset.attributes, key) && key not in Map.get(changeset, :defaults, [])
+
+  defp log_bulk_create(resource, stream, options) do
+    Logger.debug(
+      "Mnesia: #{bulk_create_operation(options, stream)} #{inspect(resource)}:\n\n#{Enum.map_join(stream, "\n", &format_changes(&1, from_bulk_create?: true))}"
+    )
+  end
+
+  defp bulk_create_operation(
+         %{
+           upsert?: true,
+           upsert_keys: upsert_keys,
+           upsert_fields: upsert_fields,
+           upsert_where: expr
+         },
+         stream
+       ) do
+    where_expr =
+      if is_nil(expr) do
+        ""
+      else
+        "where #{inspect(expr)}"
+      end
+
+    "Upserting #{Enum.count(stream)} on #{inspect(upsert_keys)} #{where_expr}, setting #{inspect(List.wrap(upsert_fields))}"
+  end
+
+  defp bulk_create_operation(_options, stream) do
+    "Creating #{Enum.count(stream)}"
+  end
+
+  defp log_create(resource, changeset) do
+    Logger.debug("""
+    Mnesia: Creating #{inspect(resource)}:
+
+    #{format_changes(changeset)}
+    """)
+  end
+
+  defp log_update(resource, pkey, changeset) do
+    pkey =
+      if Enum.count_until(pkey, 2) == 2 do
+        inspect(pkey)
+      else
+        inspect(pkey |> Enum.at(0) |> elem(1))
+      end
+
+    Logger.debug("""
+    Mnesia: Updating #{inspect(resource)} #{pkey}:
+
+    #{format_changes(changeset)}
+    """)
+  end
+
+  defp format_changes(changeset, opts \\ []) do
+    prefix =
+      if opts[:from_bulk_create?] do
+        ""
+      else
+        "Setting "
+      end
+
+    inspect_opts = %Inspect.Opts{
+      limit: 10,
+      printable_limit: 36,
+      pretty: true
+    }
+
+    doc =
+      Inspect.Algebra.container_doc(
+        "%{",
+        Enum.uniq_by(Enum.to_list(changeset.attributes) ++ changeset.atomics, &elem(&1, 0)),
+        "}",
+        inspect_opts,
+        fn {k, v}, _opts ->
+          v =
+            if Ash.Expr.expr?(v) do
+              Ash.Filter.map(v, fn nested ->
+                truncate_unless_expr(nested, inspect_opts)
+              end)
+              |> inspect(
+                limit: inspect_opts.limit,
+                printable_limit: inspect_opts.printable_limit,
+                pretty: true
+              )
+            else
+              truncate_inspect(v, inspect_opts)
+            end
+
+          # Create the value document from the truncated string
+          value_doc = Inspect.Algebra.string(v)
+          Inspect.Algebra.concat([to_string(k), ": ", value_doc])
+        end,
+        separator: ",",
+        break: :flex
+      )
+
+    # Format the document to a string with proper line breaks
+    result = Inspect.Algebra.format(doc, inspect_opts.width) |> IO.iodata_to_binary()
+    prefix <> result
+  rescue
+    e ->
+      "Failed to format changes: #{Exception.message(e)}"
+  end
+
+  defp truncate_unless_expr(nested, inspect_opts) do
+    if Ash.Expr.expr?(nested) do
+      nested
+    else
+      cond do
+        is_atom(nested) ->
+          nested
+
+        is_binary(nested) ->
+          truncate(nested, inspect_opts)
+
+        is_map(nested) ->
+          Map.new(nested, fn {k, v} -> {k, truncate_unless_expr(v, inspect_opts)} end)
+
+        is_list(nested) ->
+          Enum.map(nested, fn v -> truncate_unless_expr(v, inspect_opts) end)
+
+        is_tuple(nested) ->
+          nested
+          |> Tuple.to_list()
+          |> Enum.map(&truncate_unless_expr(&1, inspect_opts))
+          |> List.to_tuple()
+
+        true ->
+          truncate_inspect(nested, inspect_opts)
+      end
+    end
+  end
+
+  defp truncate_inspect(v, inspect_opts) do
+    value_str =
+      inspect(v,
+        limit: inspect_opts.limit,
+        printable_limit: inspect_opts.printable_limit,
+        pretty: true
+      )
+
+    truncate(value_str, inspect_opts)
+  end
+
+  defp truncate(value_str, inspect_opts) do
+    if String.length(value_str) > inspect_opts.printable_limit + 3 do
+      String.slice(value_str, 0, inspect_opts.printable_limit) <>
+        "..."
+    else
+      value_str
+    end
+  end
 
   @doc false
   @impl true

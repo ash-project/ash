@@ -18,6 +18,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   def run(domain, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
+    opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
     action_name = if is_atom(action), do: action, else: action.name
 
     span_type =
@@ -474,6 +475,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   def run(domain, stream, action, input, opts, not_atomic_reason) do
+    opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
     resource = opts[:resource]
 
     opts = set_strategy(opts, resource, Keyword.get(opts, :input_was_stream?, true))
@@ -2263,7 +2265,7 @@ defmodule Ash.Actions.Update.Bulk do
         0
       end
 
-    if max_concurrency && max_concurrency > 1 do
+    if max_concurrency > 1 do
       ash_context = Ash.ProcessHelpers.get_context_for_transfer(opts)
 
       Task.async_stream(

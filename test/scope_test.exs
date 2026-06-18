@@ -43,6 +43,42 @@ defmodule Ash.ScopeTest do
     end
   end
 
+  defmodule RequireActorDomain do
+    use Ash.Domain, validate_config_inclusion?: false
+
+    authorization do
+      require_actor? true
+      authorize :when_requested
+    end
+
+    resources do
+      allow_unregistered? true
+    end
+  end
+
+  defmodule Post do
+    use Ash.Resource, domain: RequireActorDomain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults [:read, :destroy, create: [:title]]
+
+      update :publish do
+        accept []
+        change set_attribute(:published, true)
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, public?: true
+      attribute :published, :boolean, default: false, public?: true
+    end
+  end
+
   describe "Ash.Scope.to_opts/1 with Map" do
     test "handles nested shared context pattern" do
       context = %{
@@ -203,6 +239,134 @@ defmodule Ash.ScopeTest do
       context_opts = Ash.Context.to_opts(context)
 
       assert scope_opts == context_opts
+    end
+  end
+
+  describe "bulk actions resolve the actor from scope: (require_actor? true)" do
+    setup do
+      actor = %{id: Ash.UUID.generate()}
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "hello"}, actor: actor)
+        |> Ash.create!()
+
+      %{actor: actor, scope: %MyScope{actor: actor}, post: post}
+    end
+
+    for strategy <- [:stream, :atomic_batches, :atomic] do
+      @strategy strategy
+
+      test "bulk_update (list input), strategy #{strategy}", %{post: post, scope: scope} do
+        assert %Ash.BulkResult{status: :success, records: [%Post{published: true}]} =
+                 Ash.bulk_update([post], :publish, %{},
+                   scope: scope,
+                   strategy: @strategy,
+                   return_records?: true,
+                   return_errors?: true
+                 )
+      end
+
+      test "bulk_update (query input), strategy #{strategy}", %{scope: scope} do
+        assert %Ash.BulkResult{status: :success} =
+                 Ash.bulk_update(Post, :publish, %{},
+                   scope: scope,
+                   strategy: @strategy,
+                   return_records?: true,
+                   return_errors?: true
+                 )
+      end
+
+      test "bulk_destroy, strategy #{strategy}", %{post: post, scope: scope} do
+        assert %Ash.BulkResult{status: :success} =
+                 Ash.bulk_destroy([post], :destroy, %{},
+                   scope: scope,
+                   strategy: @strategy,
+                   return_errors?: true
+                 )
+      end
+    end
+
+    test "bulk_create", %{scope: scope} do
+      assert %Ash.BulkResult{status: :success, records: [_, _]} =
+               Ash.bulk_create([%{title: "a"}, %{title: "b"}], Post, :create,
+                 scope: scope,
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+
+    test "update_many", %{post: post, scope: scope} do
+      assert %Ash.BulkResult{status: :success} =
+               Ash.update_many([{post, %{}}], Post, :publish,
+                 scope: scope,
+                 return_records?: true,
+                 return_errors?: true
+               )
+    end
+  end
+
+  describe "bulk action telemetry reflects the actor resolved from scope:" do
+    setup do
+      actor = %{id: Ash.UUID.generate()}
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "hello"}, actor: actor)
+        |> Ash.create!()
+
+      %{actor: actor, scope: %MyScope{actor: actor}, post: post}
+    end
+
+    test "bulk_update span metadata carries the scope actor", %{
+      post: post,
+      actor: actor,
+      scope: scope
+    } do
+      assert %Ash.BulkResult{status: :success} =
+               Ash.bulk_update([post], :publish, %{},
+                 scope: scope,
+                 strategy: :stream,
+                 tracer: Ash.Tracer.Simple,
+                 return_records?: true,
+                 return_errors?: true
+               )
+
+      span = Enum.find(Ash.Tracer.Simple.gather_spans(), &(&1.type == :bulk_update))
+      assert span, "expected a :bulk_update span"
+      assert span.metadata.actor == actor
+    end
+
+    test "bulk_create span metadata carries the scope actor", %{actor: actor, scope: scope} do
+      assert %Ash.BulkResult{status: :success} =
+               Ash.bulk_create([%{title: "a"}], Post, :create,
+                 scope: scope,
+                 tracer: Ash.Tracer.Simple,
+                 return_records?: true,
+                 return_errors?: true
+               )
+
+      span = Enum.find(Ash.Tracer.Simple.gather_spans(), &(&1.type == :bulk_create))
+      assert span, "expected a :bulk_create span"
+      assert span.metadata.actor == actor
+    end
+
+    test "bulk_destroy span metadata carries the scope actor", %{
+      post: post,
+      actor: actor,
+      scope: scope
+    } do
+      assert %Ash.BulkResult{status: :success} =
+               Ash.bulk_destroy([post], :destroy, %{},
+                 scope: scope,
+                 strategy: :stream,
+                 tracer: Ash.Tracer.Simple,
+                 return_errors?: true
+               )
+
+      span = Enum.find(Ash.Tracer.Simple.gather_spans(), &(&1.type == :bulk_destroy))
+      assert span, "expected a :bulk_destroy span"
+      assert span.metadata.actor == actor
     end
   end
 end

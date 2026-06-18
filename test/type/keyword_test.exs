@@ -561,7 +561,7 @@ defmodule Type.KeywordTest do
           ]
         )
 
-      assert {:ok, %{name: "native:hello", count: 42}} =
+      assert {:ok, %{name: "embedded:hello", count: 42}} =
                Ash.Type.dump_to_native(
                  Ash.Type.Keyword,
                  [name: "hello", count: 42],
@@ -577,7 +577,7 @@ defmodule Type.KeywordTest do
           ]
         )
 
-      assert {:ok, %{name: "native:hello"}} =
+      assert {:ok, %{name: "embedded:hello"}} =
                Ash.Type.dump_to_native(Ash.Type.Keyword, %{name: "hello"}, constraints)
     end
 
@@ -628,6 +628,32 @@ defmodule Type.KeywordTest do
     end
   end
 
+  describe "JSON safety of dump_to_native (#2747)" do
+    test "dumped keyword with binary-native field types stays JSON-encodable" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Keyword,
+          fields: [
+            id: [type: :uuid_v7],
+            data: [type: :binary]
+          ]
+        )
+
+      uuid = Ash.UUIDv7.generate()
+      binary = <<1, 158, 179, 13, 254, 207>>
+
+      {:ok, dumped} =
+        Ash.Type.dump_to_native(Ash.Type.Keyword, [id: uuid, data: binary], constraints)
+
+      json = Jason.encode!(dumped)
+
+      {:ok, loaded} =
+        Ash.Type.cast_stored(Ash.Type.Keyword, Jason.decode!(json), constraints)
+
+      assert loaded[:id] == uuid
+      assert loaded[:data] == binary
+    end
+  end
+
   describe "dump_to_embedded" do
     test "recursively calls dump_to_embedded on field types from keyword list" do
       {:ok, constraints} =
@@ -658,7 +684,7 @@ defmodule Type.KeywordTest do
                Ash.Type.dump_to_embedded(Ash.Type.Keyword, %{name: "hello"}, constraints)
     end
 
-    test "uses dump_to_embedded not dump_to_native on fields" do
+    test "dump_to_native also dumps fields with dump_to_embedded, for JSON safety" do
       {:ok, constraints} =
         Ash.Type.init(Ash.Type.Keyword,
           fields: [
@@ -672,7 +698,7 @@ defmodule Type.KeywordTest do
       {:ok, embedded_result} =
         Ash.Type.dump_to_embedded(Ash.Type.Keyword, [val: "test"], constraints)
 
-      assert native_result[:val] == "native:test"
+      assert native_result[:val] == "embedded:test"
       assert embedded_result[:val] == "embedded:test"
     end
 

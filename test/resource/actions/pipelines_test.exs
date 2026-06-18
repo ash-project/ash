@@ -2,13 +2,10 @@
 #
 # SPDX-License-Identifier: MIT
 
-defmodule Ash.Test.Resource.Actions.PipelinesTest do
+defmodule Ash.Test.Resource.Actions.PipelinesTest.Helpers do
   @moduledoc false
-  use ExUnit.Case, async: true
 
-  alias Ash.Resource.Info
-
-  defmacrop defresource(name, do: body) do
+  defmacro defresource(name, do: body) do
     quote do
       defmodule unquote(name) do
         @moduledoc false
@@ -25,27 +22,54 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
       end
     end
   end
+end
+
+defmodule Ash.Test.Resource.Actions.PipelinesTest do
+  @moduledoc false
+  use ExUnit.Case, async: true
+
+  import Ash.Test.Resource.Actions.PipelinesTest.Helpers
+
+  alias Ash.Resource.Info
+
+  # defined at the module level rather than in `setup` blocks, which run per
+  # test and would redefine the modules, emitting "redefining module" warnings
+  defresource FullCUD do
+    pipelines do
+      pipeline :full do
+        change set_attribute(:score, 1)
+        validate present(:name)
+        prepare build(sort: [:name])
+      end
+    end
+
+    actions do
+      create :with_full do
+        pipe_through [:full]
+        accept [:name]
+        change set_attribute(:state, :created)
+      end
+    end
+  end
+
+  defresource FullRead do
+    pipelines do
+      pipeline :full do
+        change set_attribute(:score, 1)
+        validate present(:name)
+        prepare build(sort: [:name])
+      end
+    end
+
+    actions do
+      read :with_full do
+        pipe_through [:full]
+      end
+    end
+  end
 
   describe "full pipeline into CUD action" do
     setup do
-      defresource FullCUD do
-        pipelines do
-          pipeline :full do
-            change set_attribute(:score, 1)
-            validate present(:name)
-            prepare build(sort: [:name])
-          end
-        end
-
-        actions do
-          create :with_full do
-            pipe_through [:full]
-            accept [:name]
-            change set_attribute(:state, :created)
-          end
-        end
-      end
-
       %{action: Info.action(FullCUD, :with_full)}
     end
 
@@ -70,22 +94,6 @@ defmodule Ash.Test.Resource.Actions.PipelinesTest do
 
   describe "full pipeline into read action" do
     setup do
-      defresource FullRead do
-        pipelines do
-          pipeline :full do
-            change set_attribute(:score, 1)
-            validate present(:name)
-            prepare build(sort: [:name])
-          end
-        end
-
-        actions do
-          read :with_full do
-            pipe_through [:full]
-          end
-        end
-      end
-
       %{action: Info.action(FullRead, :with_full)}
     end
 

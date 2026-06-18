@@ -339,6 +339,9 @@ defmodule Ash.Generator do
         input,
         Map.to_list(changeset_opts)
       )
+      |> Ash.Changeset.set_context(%{
+        private: %{generator_context: Map.get(changeset_opts, :context, %{})}
+      })
       |> then(fn changeset ->
         if opts[:after_action] do
           Ash.Changeset.after_action(changeset, fn _changeset, record ->
@@ -540,7 +543,7 @@ defmodule Ash.Generator do
   end
 
   @doc """
-  Generate globally unique values.
+  Generate sequential unique values.
 
   This is useful for generating values that are unique within a given test or processes that it spawns, such as email addresses,
   or for generating values that are unique across a single resource, such as identifiers. The values will be unique
@@ -551,7 +554,8 @@ defmodule Ash.Generator do
   > that will be the test. In the rare case where you are running async processes that need to share a sequence
   > that is not created in the test process, you can initialize a sequence in the test using `initialize_sequence/1`.
   >
-  > If you need a globally unique value, use a value like `System.unique_integer([:positive])` in your values instead.
+  > If you need a globally unique value, for example to satisfy a unique database constraint, use a value
+  > like `System.unique_integer([:positive])` instead.
   >
   > For example:
   >
@@ -822,7 +826,8 @@ defmodule Ash.Generator do
           actor: first.context[:private][:actor],
           authorize?: first.context[:private][:authorize?],
           tenant: first.tenant,
-          tracer: first.context[:private][:tracer]
+          tracer: first.context[:private][:tracer],
+          context: first.context[:private][:generator_context] || %{}
         ]
 
         opts =

@@ -863,7 +863,7 @@ defmodule Ash.Type.Union do
         their_tag_value == tag_value || their_tag_value == to_string(tag_value)
 
       is_binary(tag_value) && is_atom(their_tag_value) ->
-        their_tag_value == tag_value || to_string(their_tag_value) == tag_value
+        to_string(their_tag_value) == tag_value
 
       true ->
         their_tag_value == tag_value
@@ -897,8 +897,10 @@ defmodule Ash.Type.Union do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
+  # stored values are in the embedded format (see `dump_to_native/2`),
+  # so they are loaded with `cast_from_embedded`
   def cast_stored(value, constraints) when is_map(value) do
-    cast_union(value, constraints, &Ash.Type.cast_stored/3)
+    cast_union(value, constraints, &Ash.Type.cast_from_embedded/3)
   end
 
   def cast_stored(_, _), do: :error
@@ -906,8 +908,11 @@ defmodule Ash.Type.Union do
   @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
 
+  # the inner value is dumped with `dump_to_embedded` because the dumped map
+  # is JSON-encoded by data layers, and `dump_to_native` may produce values
+  # that are not JSON-safe (e.g. raw binaries for `:binary`/`:uuid_v7`)
   def dump_to_native(%Ash.Union{value: value, type: type_name}, union_constraints) do
-    dump_union(value, type_name, union_constraints, &Ash.Type.dump_to_native/3)
+    dump_union(value, type_name, union_constraints, &Ash.Type.dump_to_embedded/3)
   end
 
   @impl true
@@ -1119,7 +1124,7 @@ defmodule Ash.Type.Union do
         end,
         fn
           %Ash.Union{value: value} = union ->
-            {:union_value, value, Map.get(union, :__index__)}
+            {:union_value, value, :maps.get(:__index__, union, nil)}
 
           other ->
             other

@@ -161,6 +161,9 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a non writable, non-nil, primary key column of type `uuid_v7`, which defaults to `Ash.UUIDv7.generate/0`.
 
+    `Ash.UUIDv7.generate/0` produces strictly monotonic (per node) version 7 UUIDs via `Ecto.UUID`,
+    making it a good choice of primary key for new resources.
+
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
     the following different defaults:
 

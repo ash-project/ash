@@ -1131,7 +1131,7 @@ defmodule Ash.Can do
         raise Ash.Error.Forbidden.CannotFilterCreates,
           filter: nil,
           resource: changeset.resource,
-          action: changeset.action && changeset.action.name
+          action: changeset.action.name
 
       (changeset.before_transaction != [] or changeset.around_transaction != []) and
           not (changeset.action && changeset.action.allow_post_action_authorization?) ->

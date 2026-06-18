@@ -385,8 +385,6 @@ defmodule Ash.Info.Manifest.Generator.TypeResolver do
     is_resource?(module) and Ash.Resource.Info.embedded?(module)
   end
 
-  defp is_embedded_resource?(_), do: false
-
   defp is_resource?(module) when is_atom(module) do
     Code.ensure_loaded?(module) == true and Ash.Resource.Info.resource?(module)
   end

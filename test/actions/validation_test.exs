@@ -176,6 +176,50 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
   end
 
+  describe "attribute_in" do
+    defmodule AttributeInProfile do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Domain,
+        data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private? true
+      end
+
+      actions do
+        default_accept :*
+        defaults [:read, :destroy, create: :*, update: :*]
+      end
+
+      validations do
+        validate attribute_in(:status, ["foo", "bar"])
+      end
+
+      attributes do
+        uuid_primary_key :id
+
+        attribute :status, :string do
+          public?(true)
+        end
+      end
+    end
+
+    test "it succeeds if the value is in the list" do
+      AttributeInProfile
+      |> Ash.Changeset.for_create(:create, %{status: "foo"})
+      |> Ash.create!()
+    end
+
+    test "it fails if the value is not in the list" do
+      assert_raise(Ash.Error.Invalid, ~r/expected one of \"foo, bar\"/, fn ->
+        AttributeInProfile
+        |> Ash.Changeset.for_create(:create, %{status: "blart"})
+        |> Ash.create!()
+      end)
+    end
+  end
+
   describe "data_one_of" do
     defmodule StatusResource do
       @moduledoc false

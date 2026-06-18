@@ -419,22 +419,34 @@ defmodule Ash.Resource do
       @doc """
       Same as `input/1`, except restricts the keys to values accepted by the action provided.
       """
-      @spec input(values :: map | Keyword.t(), action :: atom) :: map | no_return
-      def input(opts, action) do
-        case Map.fetch(@arguments_by_action, action) do
-          :error ->
-            raise ArgumentError, message: "No such action #{inspect(action)}"
+      # when there are no actions, `@arguments_by_action` is an empty map literal,
+      # which the type system can prove `Map.fetch/2` will always fail on, producing
+      # a warning everywhere such a resource is defined. In that case the function
+      # only ever raises, so its spec must be `no_return` (a `map` success typing
+      # would never match, producing a Dialyzer `invalid_contract` warning).
+      if Enum.empty?(@arguments_by_action) do
+        @spec input(values :: map | Keyword.t(), action :: atom) :: no_return
+        def input(_opts, action) do
+          raise ArgumentError, message: "No such action #{inspect(action)}"
+        end
+      else
+        @spec input(values :: map | Keyword.t(), action :: atom) :: map | no_return
+        def input(opts, action) do
+          case Map.fetch(@arguments_by_action, action) do
+            :error ->
+              raise ArgumentError, message: "No such action #{inspect(action)}"
 
-          {:ok, args} ->
-            action = Ash.Resource.Info.action(__MODULE__, action)
+            {:ok, _args} ->
+              action = Ash.Resource.Info.action(__MODULE__, action)
 
-            Map.new(opts, fn {key, value} ->
-              if key in action.accept do
-                {key, value}
-              else
-                raise KeyError, key: key
-              end
-            end)
+              Map.new(opts, fn {key, value} ->
+                if key in action.accept do
+                  {key, value}
+                else
+                  raise KeyError, key: key
+                end
+              end)
+          end
         end
       end
     end

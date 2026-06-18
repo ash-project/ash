@@ -10,6 +10,7 @@ defmodule Ash.Actions.Create.Bulk do
   @spec run(Ash.Domain.t(), Ash.Resource.t(), atom(), Enumerable.t(map), Keyword.t()) ::
           Ash.BulkResult.t()
   def run(domain, resource, action_name, inputs, opts) do
+    opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
     action = Ash.Resource.Info.action(resource, action_name)
 
     opts =
@@ -919,7 +920,7 @@ defmodule Ash.Actions.Create.Bulk do
         0
       end
 
-    if max_concurrency && max_concurrency > 1 do
+    if max_concurrency > 1 do
       ash_context = Ash.ProcessHelpers.get_context_for_transfer(opts)
 
       Task.async_stream(

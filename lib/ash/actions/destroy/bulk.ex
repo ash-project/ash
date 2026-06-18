@@ -61,7 +61,8 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   def run(domain, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
-    action_name = if is_atom(action), do: action, else: action.name
+    opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
+    action_name = action.name
 
     Ash.Tracer.span :bulk_destroy,
                     fn ->
@@ -455,6 +456,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   def run(domain, stream, action, input, opts, not_atomic_reason) do
+    opts = Ash.Actions.Helpers.apply_scope_to_opts(opts)
     resource = opts[:resource]
 
     opts = select(opts, resource)
@@ -472,24 +474,6 @@ defmodule Ash.Actions.Destroy.Bulk do
       not_atomic_reason ||
         if :atomic_batches not in opts[:strategy],
           do: "Cannot perform atomic destroys on an enumerable of inputs"
-
-    action =
-      case action do
-        nil ->
-          Ash.Resource.Info.primary_action!(resource, :update)
-
-        name when is_atom(name) ->
-          action = Ash.Resource.Info.action(resource, action)
-
-          if !action do
-            raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: name, type: :update
-          end
-
-          action
-
-        action ->
-          action
-      end
 
     if opts[:transaction] == :all && opts[:return_stream?] do
       raise ArgumentError,
@@ -1886,7 +1870,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         0
       end
 
-    if max_concurrency && max_concurrency > 1 do
+    if max_concurrency > 1 do
       ash_context = Ash.ProcessHelpers.get_context_for_transfer(opts)
 
       Task.async_stream(

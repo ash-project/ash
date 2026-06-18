@@ -170,7 +170,7 @@ defmodule Ash.Changeset do
 
       action =
         if changeset.action do
-          concat("action: ", inspect(changeset.action && changeset.action.name))
+          concat("action: ", inspect(changeset.action.name))
         else
           empty()
         end
@@ -850,7 +850,7 @@ defmodule Ash.Changeset do
                changed?:
                  not (Enum.empty?(changeset.atomics) and Enum.empty?(changeset.attributes))
              }),
-           %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
+           %Ash.Changeset{} = changeset <- atomic_defaults(changeset, opts),
            %Ash.Changeset{} = changeset <-
              hydrate_atomic_refs(
                changeset,
@@ -876,17 +876,17 @@ defmodule Ash.Changeset do
     end
   end
 
-  def atomic_defaults(changeset) do
+  def atomic_defaults(changeset, opts \\ []) do
     if changeset.context.changed? do
-      with %__MODULE__{} <- atomic_static_update_defaults(changeset) do
-        atomic_lazy_update_defaults(changeset)
+      with %__MODULE__{} <- atomic_static_update_defaults(changeset, opts) do
+        atomic_lazy_update_defaults(changeset, opts)
       end
     else
       changeset
     end
   end
 
-  defp atomic_static_update_defaults(changeset) do
+  defp atomic_static_update_defaults(changeset, opts) do
     initial_changeset = changeset
 
     changeset.resource
@@ -905,7 +905,7 @@ defmodule Ash.Changeset do
            atomic_update(
              changeset,
              attribute.name,
-             {:atomic, atomic_default_condition(initial_changeset, attribute.name, atomic)}
+             {:atomic, atomic_default_condition(initial_changeset, attribute.name, atomic, opts)}
            )}
 
         {:ok, value} ->
@@ -913,7 +913,7 @@ defmodule Ash.Changeset do
            atomic_update(
              changeset,
              attribute.name,
-             {:atomic, atomic_default_condition(initial_changeset, attribute.name, value)}
+             {:atomic, atomic_default_condition(initial_changeset, attribute.name, value, opts)}
            )}
 
         {:error, error} ->
@@ -926,7 +926,7 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp atomic_lazy_update_defaults(changeset) do
+  defp atomic_lazy_update_defaults(changeset, opts) do
     initial_changeset = changeset
 
     changeset.resource
@@ -945,7 +945,12 @@ defmodule Ash.Changeset do
              changeset,
              attribute.name,
              {:atomic,
-              atomic_default_condition(initial_changeset, attribute.name, Ash.Expr.expr(now()))}
+              atomic_default_condition(
+                initial_changeset,
+                attribute.name,
+                Ash.Expr.expr(now()),
+                opts
+              )}
            )}
 
         attribute.update_default == (&Ash.UUID.generate/0) ->
@@ -957,7 +962,8 @@ defmodule Ash.Changeset do
               atomic_default_condition(
                 initial_changeset,
                 attribute.name,
-                Ash.Expr.expr(^Ash.UUID.generate())
+                Ash.Expr.expr(^Ash.UUID.generate()),
+                opts
               )}
            )}
 
@@ -970,15 +976,32 @@ defmodule Ash.Changeset do
               atomic_default_condition(
                 initial_changeset,
                 attribute.name,
-                attribute.update_default.()
+                attribute.update_default.(),
+                opts
               )}
            )}
       end
     end)
   end
 
-  defp atomic_default_condition(changeset, key, value) do
-    Enum.reduce(changeset.atomics ++ Map.to_list(changeset.attributes), nil, fn
+  defp atomic_default_condition(changeset, key, value, opts) do
+    # The condition decides whether the default applies (e.g. only bump `updated_at` if a value
+    # actually changed). By default it compares each changed attribute's literal new value against
+    # the current value. When this changeset is one of many applied in a single statement
+    # (`update_many`), the literal would differ per record and defeat batching, so we instead
+    # compare against the incoming value via `upsert_conflict/1` (rendered as `EXCLUDED.<col>`),
+    # keeping the condition identical across the batch while still per-row correct.
+    comparisons =
+      if opts[:reference_changes_via_conflict?] do
+        changeset.atomics ++
+          Enum.map(changeset.attributes, fn {attr, _value} ->
+            {attr, %Ash.Query.UpsertConflict{attribute: attr}}
+          end)
+      else
+        changeset.atomics ++ Map.to_list(changeset.attributes)
+      end
+
+    Enum.reduce(comparisons, nil, fn
       {key, atomic}, expr ->
         atomic = strip_errors(atomic)
 
@@ -2052,7 +2075,7 @@ defmodule Ash.Changeset do
 
     upsert_condition =
       case opts[:upsert_condition] do
-        nil -> action && action.upsert_condition
+        nil -> action.upsert_condition
         other -> other
       end
 
@@ -2072,13 +2095,13 @@ defmodule Ash.Changeset do
     changeset
     |> set_context(%{
       private: %{
-        upsert?: opts[:upsert?] || (action && action.upsert?) || false,
+        upsert?: opts[:upsert?] || action.upsert? || false,
         return_skipped_upsert?:
-          opts[:return_skipped_upsert?] || (action && action.return_skipped_upsert?) || false,
-        upsert_identity: opts[:upsert_identity] || (action && action.upsert_identity),
+          opts[:return_skipped_upsert?] || action.return_skipped_upsert? || false,
+        upsert_identity: opts[:upsert_identity] || action.upsert_identity,
         upsert_fields:
           expand_upsert_fields(
-            opts[:upsert_fields] || (action && action.upsert_fields),
+            opts[:upsert_fields] || action.upsert_fields,
             changeset.resource
           ),
         upsert_condition: upsert_condition
@@ -2260,83 +2283,79 @@ defmodule Ash.Changeset do
     changeset = %{changeset | domain: domain}
 
     if changeset.valid? do
-      if action do
-        try do
-          if action.soft? do
-            do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
-          else
-            {changeset, opts} =
-              Ash.Actions.Helpers.set_context_and_get_opts(
-                domain,
-                changeset,
-                opts
-              )
+      try do
+        if action.soft? do
+          do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
+        else
+          {changeset, opts} =
+            Ash.Actions.Helpers.set_context_and_get_opts(
+              domain,
+              changeset,
+              opts
+            )
 
-            name =
-              fn ->
-                "changeset:" <>
-                  Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
-              end
+          name =
+            fn ->
+              "changeset:" <>
+                Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
+            end
 
-            Ash.Tracer.span :changeset,
-                            name,
-                            opts[:tracer] do
-              Ash.Tracer.telemetry_span [:ash, :changeset], fn ->
+          Ash.Tracer.span :changeset,
+                          name,
+                          opts[:tracer] do
+            Ash.Tracer.telemetry_span [:ash, :changeset], fn ->
+              %{
+                resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
+              }
+            end do
+              metadata = fn ->
                 %{
-                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
+                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                  resource: changeset.resource,
+                  actor: opts[:actor],
+                  tenant: opts[:tenant],
+                  action: action.name,
+                  authorize?: opts[:authorize?]
                 }
-              end do
-                metadata = fn ->
-                  %{
-                    resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-                    resource: changeset.resource,
-                    actor: opts[:actor],
-                    tenant: opts[:tenant],
-                    action: action.name,
-                    authorize?: opts[:authorize?]
-                  }
-                end
-
-                Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
-
-                changeset
-                |> Map.put(:action, action)
-                |> set_private_arguments_for_action(opts[:private_arguments] || %{})
-                |> handle_errors(action.error_handler)
-                |> set_actor(opts)
-                |> set_authorize(opts)
-                |> set_tracer(opts)
-                |> load(opts[:load])
-                |> set_tenant(opts[:tenant] || changeset.tenant)
-                |> cast_params(action, params, opts)
-                |> set_argument_defaults(action)
-                |> require_arguments(action)
-                |> validate_attributes_accepted(action)
-                |> run_action_changes(
-                  action,
-                  opts[:actor],
-                  opts[:authorize?],
-                  opts[:tracer],
-                  metadata
-                )
-                |> add_validations(opts[:tracer], metadata, opts[:actor])
-                |> mark_validated(action.name)
-                |> Map.put(:__validated_for_action__, action.name)
               end
+
+              Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
+
+              changeset
+              |> Map.put(:action, action)
+              |> set_private_arguments_for_action(opts[:private_arguments] || %{})
+              |> handle_errors(action.error_handler)
+              |> set_actor(opts)
+              |> set_authorize(opts)
+              |> set_tracer(opts)
+              |> load(opts[:load])
+              |> set_tenant(opts[:tenant] || changeset.tenant)
+              |> cast_params(action, params, opts)
+              |> set_argument_defaults(action)
+              |> require_arguments(action)
+              |> validate_attributes_accepted(action)
+              |> run_action_changes(
+                action,
+                opts[:actor],
+                opts[:authorize?],
+                opts[:tracer],
+                metadata
+              )
+              |> add_validations(opts[:tracer], metadata, opts[:actor])
+              |> mark_validated(action.name)
+              |> Map.put(:__validated_for_action__, action.name)
             end
           end
-        rescue
-          e ->
-            reraise Ash.Error.to_error_class(e,
-                      stacktrace: __STACKTRACE__,
-                      bread_crumbs: [
-                        "building changeset for #{inspect(changeset.resource)}.#{action.name}"
-                      ]
-                    ),
-                    __STACKTRACE__
         end
-      else
-        raise_no_action(changeset.resource, action_or_name, :destroy)
+      rescue
+        e ->
+          reraise Ash.Error.to_error_class(e,
+                    stacktrace: __STACKTRACE__,
+                    bread_crumbs: [
+                      "building changeset for #{inspect(changeset.resource)}.#{action.name}"
+                    ]
+                  ),
+                  __STACKTRACE__
       end
     else
       changeset
@@ -2637,12 +2656,6 @@ defmodule Ash.Changeset do
 
   defp check_for_exists_with_relationships(%Ash.Query.Not{expression: expr}) do
     check_for_exists_with_relationships(expr)
-  end
-
-  defp check_for_exists_with_relationships(%Ash.Query.BooleanExpression{left: left, right: right}) do
-    with :ok <- check_for_exists_with_relationships(left) do
-      check_for_exists_with_relationships(right)
-    end
   end
 
   defp check_for_exists_with_relationships(list) when is_list(list) do
@@ -3232,15 +3245,6 @@ defmodule Ash.Changeset do
          identity,
          domain
        ) do
-    do_validate_identity(changeset, identity, domain)
-  end
-
-  defp validate_identity(
-         %{action: %{type: type}} = changeset,
-         identity,
-         domain
-       )
-       when type in [:create, :update] do
     do_validate_identity(changeset, identity, domain)
   end
 
@@ -4042,9 +4046,6 @@ defmodule Ash.Changeset do
                 end
             end
           else
-            {:expr, {:ok, false}, _expr} ->
-              {:cont, changeset}
-
             {:expr, {:error, error}, expr} ->
               if Keyword.get(opts, :error_is_not_atomic?, false) do
                 {:halt,

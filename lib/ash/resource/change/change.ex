@@ -23,8 +23,6 @@ defmodule Ash.Resource.Change do
     __spark_metadata__: nil
   ]
 
-  require Ash.BehaviourHelpers
-
   @type t :: %__MODULE__{__spark_metadata__: Spark.Dsl.Entity.spark_meta()}
   @type ref :: {module(), Keyword.t()} | module()
 

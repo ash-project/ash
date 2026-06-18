@@ -235,6 +235,77 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  defmodule ScopedThing do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read]
+
+      create :create do
+        accept [:name]
+
+        change fn changeset, _ctx ->
+          # Record whatever `marker` this changeset *started* with, then set a
+          # marker tailored to this specific changeset. If `generate_many/2`
+          # forwarded the whole changeset context (post-change) instead of only
+          # the context provided to the generator, the first record's marker
+          # would leak into every record's `seen_marker`.
+          seen_marker = changeset.context[:shared][:marker]
+          name = Ash.Changeset.get_attribute(changeset, :name)
+
+          changeset =
+            case changeset.context[:shared][:scope_id] do
+              nil ->
+                Ash.Changeset.add_error(changeset, "scope_id missing from context.shared")
+
+              scope_id ->
+                Ash.Changeset.force_change_attribute(changeset, :scope_id, scope_id)
+            end
+
+          changeset =
+            case changeset.context[:private][:custom] do
+              nil ->
+                Ash.Changeset.add_error(changeset, "custom missing from context.private")
+
+              custom ->
+                Ash.Changeset.force_change_attribute(changeset, :custom, custom)
+            end
+
+          changeset
+          |> Ash.Changeset.force_change_attribute(:seen_marker, seen_marker)
+          |> Ash.Changeset.set_context(%{shared: %{marker: name}})
+        end
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+        allow_nil? false
+      end
+
+      attribute :scope_id, :integer do
+        public?(true)
+      end
+
+      attribute :custom, :string do
+        public?(true)
+      end
+
+      attribute :seen_marker, :string do
+        public?(true)
+      end
+    end
+  end
+
   defmodule ActionOverrides do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -386,6 +457,14 @@ defmodule Ash.Test.GeneratorTest do
         overrides: opts
       )
     end
+
+    def scoped_thing(opts \\ []) do
+      changeset_generator(ScopedThing, :create,
+        defaults: [name: sequence(:name, &"Thing #{&1}")],
+        context: %{shared: %{scope_id: 42}, private: %{custom: "kept"}},
+        overrides: opts
+      )
+    end
   end
 
   setup do
@@ -403,6 +482,22 @@ defmodule Ash.Test.GeneratorTest do
       import Generator
       assert [%Post{title: "Post 0"}, %Post{title: "Post 1"}] = generate_many(post(), 2)
       assert [%Post{title: "Post 2"}, %Post{title: "Post 3"}] = generate_many(seed_post(), 2)
+    end
+
+    test "generate_many forwards only the generator's context, like generate" do
+      import Generator
+
+      # `scope_id`/`custom` confirm the provided context (shared + private) is
+      # carried over; `seen_marker: nil` confirms a change-set, per-changeset
+      # context is NOT leaked from the first record onto the rest of the batch.
+      assert %ScopedThing{scope_id: 42, custom: "kept", seen_marker: nil} =
+               generate(scoped_thing())
+
+      assert [
+               %ScopedThing{scope_id: 42, custom: "kept", seen_marker: nil},
+               %ScopedThing{scope_id: 42, custom: "kept", seen_marker: nil},
+               %ScopedThing{scope_id: 42, custom: "kept", seen_marker: nil}
+             ] = generate_many(scoped_thing(), 3)
     end
 
     test "after_action works with generate" do

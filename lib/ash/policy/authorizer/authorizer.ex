@@ -969,7 +969,7 @@ defmodule Ash.Policy.Authorizer do
             """
 
         {_other, field} ->
-          {[], field, field, context.query.action, context.query.domain}
+          {[], field_name, field, context.query.action, context.query.domain}
       end
 
     resource =

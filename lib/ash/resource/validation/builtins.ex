@@ -139,7 +139,9 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
-  Validates that an attribute is being changed to one of a set of specific values, or is in the the given list if it is not being changed.
+  Deprecated. Use `one_of/2` instead.
+
+  Delegates to `one_of/2` for backwards compatibility.
 
   ## Examples
 
@@ -150,7 +152,7 @@ defmodule Ash.Resource.Validation.Builtins do
   """
   @spec attribute_in(attribute :: atom, list :: [term]) :: Validation.ref()
   def attribute_in(attribute, list) do
-    {Validation.AttributeIn, attribute: attribute, list: list}
+    one_of(attribute, list)
   end
 
   @doc """
@@ -169,6 +171,24 @@ defmodule Ash.Resource.Validation.Builtins do
   @spec string_length(attribute :: atom, opts :: Keyword.t()) :: Validation.ref()
   def string_length(attribute, opts \\ []) do
     {Validation.StringLength, Keyword.merge(opts, attribute: attribute)}
+  end
+
+  @doc """
+  Validates that an attribute on the original record meets the given byte size criteria
+
+  ## Options
+
+  #{Spark.Options.docs(Ash.Resource.Validation.ByteSize.opt_schema())}
+
+  ## Examples
+
+      validate byte_size(:slug, exact: 8)
+      validate byte_size(:password, min: 6)
+      validate byte_size(:secret, min: 4, max: 12)
+  """
+  @spec byte_size(attribute :: atom, opts :: Keyword.t()) :: Validation.ref()
+  def byte_size(attribute, opts) do
+    {Validation.ByteSize, Keyword.merge(opts, attribute: attribute)}
   end
 
   @numericality_docs """

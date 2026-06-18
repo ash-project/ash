@@ -793,6 +793,31 @@ defmodule Ash.Test.Filter.UnionTest do
     end
   end
 
+  describe "JSON safety of dump_to_native (#2747)" do
+    test "dumped union with binary-native member type stays JSON-encodable" do
+      constraints = [
+        types: [
+          bin: [type: :binary]
+        ]
+      ]
+
+      {:ok, %{constraints: constraints}} =
+        Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+      binary = <<1, 158, 179, 13, 254, 207>>
+      union = %Ash.Union{type: :bin, value: binary}
+
+      {:ok, dumped} = Ash.Type.dump_to_native(Ash.Type.Union, union, constraints)
+
+      json = Jason.encode!(dumped)
+
+      {:ok, loaded} =
+        Ash.Type.cast_stored(Ash.Type.Union, Jason.decode!(json), constraints)
+
+      assert %Ash.Union{type: :bin, value: ^binary} = loaded
+    end
+  end
+
   describe "dump_to_embedded" do
     test "uses dump_to_embedded on inner value with type_and_value storage" do
       constraints = [
@@ -809,7 +834,8 @@ defmodule Ash.Test.Filter.UnionTest do
       {:ok, native_result} = Ash.Type.dump_to_native(Ash.Type.Union, union, constraints)
       {:ok, embedded_result} = Ash.Type.dump_to_embedded(Ash.Type.Union, union, constraints)
 
-      assert native_result["value"] == "native:hello"
+      # dump_to_native also dumps the inner value with dump_to_embedded, for JSON safety
+      assert native_result["value"] == "embedded:hello"
       assert embedded_result["value"] == "embedded:hello"
     end
 

@@ -16,7 +16,7 @@ defmodule Ash.Test.Manifest.TodoMetadata.AdjustedPriorityCalculation do
   @impl true
   def calculate(records, opts, _context) do
     urgency_multiplier = opts[:urgency_multiplier] || 1.0
-    deadline_factor = opts[:deadline_factor] || true
+    deadline_factor = Keyword.get(opts, :deadline_factor, true)
     user_bias = opts[:user_bias] || 0
 
     Enum.map(records, fn record ->

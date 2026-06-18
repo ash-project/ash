@@ -241,6 +241,38 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
   end
 
+  defmodule LazilyNotifiedPost do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      notifiers: [Ash.Test.Support.LazyNotifier]
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      defaults [:read]
+
+      create :create do
+        accept :*
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id, writable?: true
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+
+    calculations do
+      calculate :shout, :string, expr(name <> "!")
+    end
+  end
+
   setup do
     Application.put_env(PubSub, :notifier_test_pid, self())
 
@@ -541,6 +573,24 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
       assert data.name == "charlie",
              "Expected name to be loaded via PubSub load but got: #{inspect(data.name)}"
+    end
+  end
+
+  describe "notifier load/2 when the notifier module is not yet loaded" do
+    test "dependencies are still loaded" do
+      # Simulates a freshly started interactive-mode VM (dev, test) where the
+      # notifier module has not been called - and therefore not loaded - yet.
+      # `function_exported?/3` alone reports false for unloaded modules.
+      :code.purge(Ash.Test.Support.LazyNotifier)
+      :code.delete(Ash.Test.Support.LazyNotifier)
+      refute :erlang.module_loaded(Ash.Test.Support.LazyNotifier)
+
+      LazilyNotifiedPost
+      |> Ash.Changeset.for_create(:create, %{name: "lazy"})
+      |> Ash.create!()
+
+      assert_receive {:lazy_notify, %Ash.Notifier.Notification{data: data}}
+      assert %{shout: "lazy!"} = data.calculations
     end
   end
 end

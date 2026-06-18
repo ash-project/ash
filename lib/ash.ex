@@ -3479,6 +3479,98 @@ defmodule Ash do
   end
 
   @doc """
+  Updates each of the given records with its own distinct input.
+
+  Accepts a list of `{record_or_identifier, input}` tuples. Each record is updated with its own
+  `input` map. When every change can be made atomic and the data layer supports it, the whole set
+  is applied as a single operation (e.g. one SQL `MERGE`).
+
+  A `{record_or_identifier, input}` whose record no longer exists becomes a per-row error:
+  `Ash.Error.Changes.StaleRecord` when given a record, `Ash.Error.Query.NotFound` when given a
+  bare identifier.
+
+  Returns an `Ash.BulkResult`.
+
+  ## Options
+
+    * `:strategy` - One or more of `:atomic`, `:atomic_batches`, and `:stream`
+      (default `[:atomic_batches]`). Tried in that order; only the ones you list are allowed.
+      * `:atomic` - apply the whole input in a single pass (one statement per shared atomics/filter
+        group). No batching.
+      * `:atomic_batches` - chunk the input into `:batch_size` batches first, each applied atomically.
+        This is the default, so large inputs stay within the data layer's parameter limits.
+      * `:stream` - update records one at a time, for changes that can't be made atomic (or data
+        layers without atomic update support). Without `:stream`, such a change fails the operation
+        with a single error instead.
+    * `:batch_size` - Batch size to use under the `:atomic_batches` strategy (default `1000`).
+    * `:return_records?` - Whether to return the updated records (default `false`).
+    * `:return_errors?` - Whether to return per-row errors (default `false`).
+    * `:notify?` - Whether to send notifications (default `false`). Like other bulk actions, the
+      atomic path emits the resource-level notifier notifications (per-record `after_action` hooks
+      force a non-atomic action and run on the streaming path instead).
+    * `:return_notifications?` - Whether to return notifications instead of sending them
+      (default `false`).
+    * `:select` - The fields to return when `return_records?: true`.
+    * Plus the usual `:actor`, `:tenant`, `:authorize?`, `:context` and `:domain` options.
+  """
+  @spec update_many(
+          Enumerable.t({Ash.Resource.Record.t() | term(), map()}),
+          Ash.Resource.t(),
+          action :: atom,
+          opts :: Keyword.t()
+        ) :: Ash.BulkResult.t()
+  def update_many(inputs, resource, action, opts \\ []) do
+    Ash.Helpers.expect_options!(opts)
+    domain = Ash.Helpers.domain!(resource, opts)
+
+    case Enum.to_list(inputs) do
+      [] ->
+        %Ash.BulkResult{
+          status: :success,
+          errors: if(opts[:return_errors?], do: [], else: nil),
+          records: if(opts[:return_records?], do: [], else: nil)
+        }
+
+      inputs ->
+        case Ash.Domain.Info.resource(domain, resource) do
+          {:ok, resource} ->
+            Ash.Actions.Update.UpdateMany.run(domain, resource, action, inputs, opts)
+
+          {:error, error} ->
+            %Ash.BulkResult{
+              status: :error,
+              errors: [Ash.Error.to_ash_error(error)],
+              error_count: 1
+            }
+        end
+    end
+  end
+
+  @doc """
+  Updates each of the given records with its own distinct input, raising on error.
+
+  See `update_many/4` for more.
+  """
+  @spec update_many!(
+          Enumerable.t({Ash.Resource.Record.t() | term(), map()}),
+          Ash.Resource.t(),
+          action :: atom,
+          opts :: Keyword.t()
+        ) :: Ash.BulkResult.t() | no_return
+  def update_many!(inputs, resource, action, opts \\ []) do
+    case update_many(inputs, resource, action, Keyword.put(opts, :return_errors?, true)) do
+      %Ash.BulkResult{status: :error, errors: errors} ->
+        raise Ash.Error.to_error_class(errors)
+
+      %Ash.BulkResult{status: :partial_success, errors: errors} ->
+        raise Ash.Error.to_error_class(errors)
+
+      result ->
+        result
+    end
+  end
+
+  @doc """
   Destroys all items in the provided enumerable or query with the provided input.
 
   See `bulk_destroy/4` for more.

@@ -365,7 +365,7 @@ defmodule Ash.Type do
 
   Composite types like `Ash.Type.Map`, `Ash.Type.Union`, etc. return the field
   (or arm) types whose constraints will be initialised. Used by
-  `Ash.Type.detect_type_cycle!/2` (called during DSL compilation) to surface
+  `Ash.Type.detect_type_cycle!` (called during DSL compilation) to surface
   recursive type cycles up-front rather than looping forever.
 
   `via` is a small term describing how this reference is reached — used for
@@ -1702,7 +1702,10 @@ defmodule Ash.Type do
   end
 
   defp splice_with_type(type, values, callback) do
-    if function_exported?(type, :splice_nil_values, 2) do
+    # `function_exported?/3` does not load the module; without ensuring the
+    # type module is loaded, its `splice_nil_values/2` override would be
+    # silently skipped (e.g. keyword values flattened by the default).
+    if Code.ensure_loaded?(type) and function_exported?(type, :splice_nil_values, 2) do
       type.splice_nil_values(values, callback)
     else
       splicing_nil_values(values, callback)

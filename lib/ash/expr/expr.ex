@@ -1266,13 +1266,7 @@ defmodule Ash.Expr do
           returns == {:array, :same} ->
             case known_result do
               {:array, type} ->
-                case type do
-                  {type, constraints} ->
-                    {type, constraints}
-
-                  type ->
-                    {type, []}
-                end
+                {type, []}
 
               _ ->
                 nil

@@ -6,7 +6,6 @@ defmodule Ash.Test.Actions.AtomicSetTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  require Ash.Query
   require Ash.Expr
 
   alias Ash.Test.Domain, as: Domain

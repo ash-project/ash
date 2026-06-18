@@ -73,7 +73,7 @@ defmodule Ash.Resource.Change.RelateActor do
         Changeset.force_change_attribute(
           changeset,
           relationship.source_attribute,
-          Map.get(actor, relationship.destination_attribute)
+          resolve_fk_value(actor, relationship)
         )
         |> Changeset.after_action(fn _changeset, record ->
           {:ok, Map.put(record, relationship.name, actor)}
@@ -106,7 +106,7 @@ defmodule Ash.Resource.Change.RelateActor do
       actor when relationship.type == :belongs_to ->
         {:atomic,
          %{
-           relationship.source_attribute => Map.get(actor, relationship.destination_attribute)
+           relationship.source_attribute => resolve_fk_value(actor, relationship)
          }}
 
       _ ->
@@ -129,6 +129,15 @@ defmodule Ash.Resource.Change.RelateActor do
       """
     end
   end
+
+  # When `field:` is used, `resolve_actor/2` may return a scalar value
+  # (e.g. a UUID string) rather than a map/struct. In that case, use
+  # the value directly as the FK instead of extracting destination_attribute.
+  defp resolve_fk_value(actor, relationship) when is_map(actor) do
+    Map.get(actor, relationship.destination_attribute)
+  end
+
+  defp resolve_fk_value(actor, _relationship), do: actor
 
   defp resolve_actor(actor, opts) do
     field = opts[:field]

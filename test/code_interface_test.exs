@@ -416,6 +416,28 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
   end
 
+  describe "code interface get_by validation" do
+    test "validates lookup values like action get_by before filtering" do
+      invalid_id = "not a uuid"
+
+      query = User.query_to_get_user(invalid_id)
+
+      assert [%Ash.Error.Query.InvalidArgument{field: :id, message: "is invalid"}] =
+               query.errors
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidArgument{field: :id}]}} =
+               User.get_user(invalid_id)
+
+      assert_raise Ash.Error.Invalid, fn ->
+        User.get_user!(invalid_id)
+      end
+
+      by_id_query = Ash.Query.for_read(User, :by_id, %{id: invalid_id})
+
+      assert [%Ash.Error.Query.InvalidArgument{field: :id}] = by_id_query.errors
+    end
+  end
+
   describe "read get actions" do
     test "raise on not found by default" do
       assert_raise Ash.Error.Invalid, ~r/not found/, fn ->

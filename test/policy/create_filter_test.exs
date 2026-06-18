@@ -5,7 +5,6 @@
 defmodule Ash.Test.Policy.CreateFilterTest do
   @moduledoc false
   use ExUnit.Case, async: false
-  require Ash.Query
 
   defmodule Domain do
     use Ash.Domain

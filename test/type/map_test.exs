@@ -479,7 +479,7 @@ defmodule Ash.Type.MapTest do
           ]
         )
 
-      assert {:ok, %{name: "native:hello", count: 42}} =
+      assert {:ok, %{name: "embedded:hello", count: 42}} =
                Ash.Type.dump_to_native(Ash.Type.Map, %{name: "hello", count: 42}, constraints)
     end
 
@@ -551,7 +551,7 @@ defmodule Ash.Type.MapTest do
           ]
         )
 
-      assert {:ok, %{name: "native:hello"}} =
+      assert {:ok, %{name: "embedded:hello"}} =
                Ash.Type.dump_to_native(Ash.Type.Map, %{"name" => "hello"}, constraints)
     end
 
@@ -575,7 +575,7 @@ defmodule Ash.Type.MapTest do
                Ash.Type.dump_to_embedded(Ash.Type.Map, %{name: "hello", count: 42}, constraints)
     end
 
-    test "uses dump_to_embedded not dump_to_native on fields" do
+    test "dump_to_native also dumps fields with dump_to_embedded, for JSON safety" do
       {:ok, constraints} =
         Ash.Type.init(Ash.Type.Map,
           fields: [
@@ -589,7 +589,7 @@ defmodule Ash.Type.MapTest do
       {:ok, embedded_result} =
         Ash.Type.dump_to_embedded(Ash.Type.Map, %{val: "test"}, constraints)
 
-      assert native_result[:val] == "native:test"
+      assert native_result[:val] == "embedded:test"
       assert embedded_result[:val] == "embedded:test"
     end
 
@@ -651,6 +651,37 @@ defmodule Ash.Type.MapTest do
     end
   end
 
+  describe "JSON safety of dump_to_native (#2747)" do
+    test "dumped map with binary-native field types stays JSON-encodable" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Map,
+          fields: [
+            previous_block_id: [type: :uuid_v7, allow_nil?: false],
+            data: [type: :binary]
+          ]
+        )
+
+      uuid = Ash.UUIDv7.generate()
+      binary = <<1, 158, 179, 13, 254, 207>>
+
+      {:ok, casted} =
+        Ash.Type.cast_input(
+          Ash.Type.Map,
+          %{previous_block_id: uuid, data: binary},
+          constraints
+        )
+
+      {:ok, dumped} = Ash.Type.dump_to_native(Ash.Type.Map, casted, constraints)
+
+      json = Jason.encode!(dumped)
+
+      {:ok, loaded} =
+        Ash.Type.cast_stored(Ash.Type.Map, Jason.decode!(json), constraints)
+
+      assert loaded == %{previous_block_id: uuid, data: binary}
+    end
+  end
+
   describe "cast_from_embedded" do
     test "recursively calls cast_from_embedded on field types" do
       {:ok, constraints} =
@@ -669,7 +700,7 @@ defmodule Ash.Type.MapTest do
                )
     end
 
-    test "uses cast_from_embedded not cast_stored on fields" do
+    test "cast_stored also loads fields with cast_from_embedded, since they are dumped with dump_to_embedded" do
       {:ok, constraints} =
         Ash.Type.init(Ash.Type.Map,
           fields: [
@@ -685,7 +716,7 @@ defmodule Ash.Type.MapTest do
       {:ok, from_embedded} =
         Ash.Type.cast_from_embedded(Ash.Type.Map, %{val: "embedded:test"}, constraints)
 
-      assert from_stored.val == "embedded:test"
+      assert from_stored.val == "test"
       assert from_embedded.val == "test"
     end
 

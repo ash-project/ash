@@ -466,9 +466,6 @@ defmodule Ash.Sort do
       {:error, error} ->
         {:error, error}
 
-      {:ok, nil} ->
-        {:error, NoSuchField.exception(field: field, resource: resource)}
-
       {:ok, %{sortable?: true} = field} ->
         {type, constraints} = get_type(resource, field)
 

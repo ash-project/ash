@@ -1221,9 +1221,6 @@ defmodule Ash.Actions.Read do
              count: fn -> count.() end
            }}
         else
-          {:ok, query} ->
-            {{:error, query}, query}
-
           {:error, error} ->
             {{:error, error}, query}
         end
@@ -2850,18 +2847,18 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  # The function `keep_read_action_loads_when_loading?` always returns a constant value
-  # because its a compile attr
-  # So dialyzer always complains that `!false` can never be true
-  @dialyzer {:nowarn_function, strip_load?: 1}
-  defp strip_load?(initial_data) do
-    initial_data && !Ash.Actions.Helpers.keep_read_action_loads_when_loading?()
+  # `keep_read_action_loads_when_loading?` is a compile-time constant, so we
+  # dispatch on it at compile time to avoid an always-true/always-false condition.
+  if Ash.Actions.Helpers.keep_read_action_loads_when_loading?() do
+    defp strip_load?(_initial_data), do: false
+  else
+    defp strip_load?(initial_data), do: !!initial_data
   end
 
-  @dialyzer {:nowarn_function, prefer_existing_loads?: 1}
-  defp prefer_existing_loads?(query) do
-    query.context[:loading_relationships?] &&
-      !Ash.Actions.Helpers.keep_read_action_loads_when_loading?()
+  if Ash.Actions.Helpers.keep_read_action_loads_when_loading?() do
+    defp prefer_existing_loads?(_query), do: false
+  else
+    defp prefer_existing_loads?(query), do: !!query.context[:loading_relationships?]
   end
 
   defp validate_multitenancy(query) do
@@ -4023,7 +4020,7 @@ defmodule Ash.Actions.Read do
               state
             end
 
-          is_map(state) && !Map.has_key?(state, :subject) ->
+          !Map.has_key?(state, :subject) ->
             Map.put(state, :subject, query)
 
           true ->
@@ -5050,22 +5047,6 @@ defmodule Ash.Actions.Read do
       _ ->
         {:ok, aggregate.field}
     end
-  end
-
-  defp aggregate_field_with_related_filters(
-         aggregate,
-         _path_filters,
-         _actor,
-         _authorize?,
-         _tenant,
-         _tracer,
-         _domain,
-         _ref_path,
-         _parent_stack,
-         _source_context
-       )
-       when is_atom(aggregate.field) do
-    {:ok, aggregate.field}
   end
 
   defp resource_aggregate_to_query_aggregate(resource, resource_aggregate, opts) do

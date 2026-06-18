@@ -167,28 +167,7 @@ defmodule Ash.Subject do
     get_argument(subject, argument_or_attribute, default)
   end
 
-  @doc """
-  Gets an argument value from the subject.
-
-  Supports both atom and string argument names.
-
-  ## Parameters
-
-    * `subject` - The subject to get argument from
-    * `argument` - The argument name (atom or string)
-  """
   @spec get_argument(subject :: t(), argument :: atom() | String.t()) :: term()
-  def get_argument(%Ash.Changeset{} = subject, argument) do
-    Ash.Changeset.get_argument(subject, argument)
-  end
-
-  def get_argument(%Ash.Query{} = subject, argument) do
-    Ash.Query.get_argument(subject, argument)
-  end
-
-  def get_argument(%Ash.ActionInput{} = subject, argument) do
-    Ash.ActionInput.get_argument(subject, argument)
-  end
 
   @doc """
   Gets an argument value from the subject
