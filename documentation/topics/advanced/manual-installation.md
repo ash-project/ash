@@ -135,6 +135,11 @@ Update `config/config.exs`:
 ```diff
   import Config
   
++ # These enable behaviors that will become the default in the next major
++ # version of Ash. Setting them now opts your application into the new
++ # behavior and ensures a seamless upgrade. See the backwards compatibility
++ # guide for an explanation of each setting:
++ # https://hexdocs.pm/ash/backwards-compatibility-config.html
 + config :ash,
 +   allow_forbidden_field_for_relationships_by_default?: true,
 +   include_embedded_source_by_default?: false,
