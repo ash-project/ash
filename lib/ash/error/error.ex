@@ -242,6 +242,9 @@ defmodule Ash.Error do
         |> Keyword.put(:value, Map.get(error, :value))
         |> Ash.Error.Changes.InvalidChanges.exception()
 
+      errors when is_list(errors) ->
+        Enum.map(errors, &override_validation_message(&1, message))
+
       _ ->
         message
     end
