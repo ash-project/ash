@@ -8,6 +8,27 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.29.2](https://github.com/ash-project/ash/compare/v3.29.1...v3.29.2) (2026-06-22)
+
+
+
+
+### Bug Fixes:
+
+* properly retain override messages on list of errors by [@zachdaniel](https://github.com/zachdaniel)
+
+* narrow input/2 spec to no_return for resources without actions (#2758) by diogomrts [(#2758)](https://github.com/ash-project/ash/pull/2758)
+
+* respect actor from scope: in bulk actions under require_actor? (#2757) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2757)](https://github.com/ash-project/ash/pull/2757)
+
+* support uuidv7 generation when Ecto isn't started by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure calc context is added to m2m through query by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* add explanatory comment on backwards compat config by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.29.1](https://github.com/ash-project/ash/compare/v3.29.0...v3.29.1) (2026-06-14)
 
 
