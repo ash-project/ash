@@ -400,7 +400,87 @@ MyApp.get_user(123, load: [:posts], authorize?: false)
 
 Named functions for code interfaces are not the only functions generated when you define a code interface on a resource or a domain. 
 
+### Predicate interfaces (names ending in `?`)
+
+In Elixir, function names ending in `?` are usually expected to be predicates, which return bare booleans. For most code interfaces, Ash generates two action functions: a non-`!` function that returns `{:ok, result}` or `{:error, reason}`, and a `!` function that returns the unwrapped result (or raises on error).
+
+When the interface name itself ends in `?`, Ash treats it as a **predicate interface** and generates different action helpers.
+
+This applies regardless of action type, though it is most commonly used with generic actions that return `:boolean`, where the `?` name matches Elixir predicate conventions.
+
+- One **action function** that shares the same name as the interface is generated (e.g. `user_exists?/…`)
+- This function returns the **unwrapped result** directly (typically a bare `true` or `false`)
+- Upon failure it **raises**, similar to other `!` variants, rather than returning `{:error, _}`
+- **No** `user_exists?!/…` function is generated
+- **No** tuple-returning `user_exists?/…` that returns `{:ok, boolean()}` is generated
+
+This matches how you would use a predicate in Elixir:
+```elixir
+if MyApp.Accounts.user_exists?(email) do
+  ...
+end
+```
+
+#### Example
+```elixir
+# on the resource
+actions do
+  action :user_exists?, :boolean do
+    argument :email, :string, allow_nil?: false
+
+    run fn input, _ ->
+      exists =
+        User
+        |> Ash.Query.filter_input(email: input.arguments.email)
+        |> Ash.exists?()
+      
+      {:ok, exists}
+    end
+  end
+end
+
+# in your domain or code_interface block
+resources do
+  resource User do
+    define :user_exists?, action: :user_exists?, args: [:email]
+  end
+end
+
+# => true or false — not {:ok, true}
+MyApp.Accounts.user_exists?("alice@example.com")
+```
+The action’s `run` callback still follows the normal action contract and returns `{:ok, result}` or `{:error, reason}`. The code interface is what unwraps that result for callers, the same way a `!` function would for a non-predicate interface.
+
+Compare with a normal interface:
+```elixir
+define :create_user, action: :create
+
+# MyApp.create_user/…   => {:ok, user} | {:error, reason}
+# MyApp.create_user!/…  => user | raise
+```
+
+#### Authorization helpers
+For predicate interfaces, authorization helpers are named to avoid doubling the `?`:
+- `can_user_exists/…` returns `{:ok, true/false}` or `{:error, reason}`
+- `can_user_exists?/…` returns a bare boolean (true/false)
+- **No** `can_user_exists??/…` function is generated
+
+For a normal interface named `:create_post`, the helpers are `can_create_post/…` and `can_create_post?/…`:
+```elixir
+if MyApp.Accounts.can_user_exists?(current_user, email) do
+  # ...
+end
+
+{:ok, true} = MyApp.Accounts.can_user_exists(current_user, email)
+```
+Subject helpers (such as `input_to_user_exists?/…` for generic actions) are still generated using the interface name.
+
+#### The `functions` option
+By default, code interfaces generate `[:subject, :can, :can?, :action, :action!]`. For predicate interfaces, the runnable function is emitted from the `:action!` entry in that list, but under the `?` interface name (without appending `!`). If you customize `functions:` and remove `:action!`, the predicate action function will not be generated.
+
 ### Authorization Functions
+
+For predicate interfaces (names ending in `?`), see [Predicate interfaces](#predicate-interfaces-names-ending-in-) above for how authorization helpers are named.
 
 For each action defined in a code interface, Ash automatically generates corresponding authorization check functions:
 
