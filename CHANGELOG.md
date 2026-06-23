@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.29.3](https://github.com/ash-project/ash/compare/v3.29.2...v3.29.3) (2026-06-23)
+
+
+
+
+### Bug Fixes:
+
+* scrub private arguments w/ string values by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.29.2](https://github.com/ash-project/ash/compare/v3.29.1...v3.29.2) (2026-06-22)
 
 
