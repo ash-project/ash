@@ -103,6 +103,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       create :create_with_keyword_attribute_validation do
         validate {KeywordErrorValidation, field: :name, message: "invalid name"}
       end
+
+      create :create_with_private_only_argument do
+        argument :secret, :string, allow_nil?: true, public?: false
+      end
+
+      update :update_with_private_argument do
+        require_atomic? true
+        argument :secret, :string, allow_nil?: true, public?: false
+        argument :public_note, :string, allow_nil?: true, public?: true
+      end
     end
 
     attributes do
@@ -1390,6 +1400,71 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                Ash.Changeset.for_create(Category, :create_with_keyword_attribute_validation, %{
                  name: "bad"
                }).errors
+    end
+  end
+
+  describe "private argument boundary (public?: false)" do
+    test "create: a private argument cannot be set from string-keyed params" do
+      changeset =
+        Ash.Changeset.for_create(Category, :create_with_private_only_argument, %{
+          "secret" => "attacker"
+        })
+
+      refute Map.has_key?(changeset.arguments, :secret),
+             "private argument must not be settable from string-keyed params"
+    end
+
+    test "atomic update: a private argument cannot be set from string-keyed params" do
+      changeset =
+        Ash.Changeset.fully_atomic_changeset(Category, :update_with_private_argument, %{
+          "secret" => "attacker"
+        })
+
+      assert match?(%Ash.Changeset{}, changeset),
+             "expected a changeset, got: #{inspect(changeset)}"
+
+      assert Enum.any?(changeset.errors, fn error ->
+               match?(%Ash.Error.Invalid.NoSuchInput{input: "secret"}, error)
+             end),
+             "expected string-keyed private argument to be rejected as NoSuchInput"
+
+      refute Map.has_key?(changeset.arguments, :secret),
+             "private argument must not be present in changeset.arguments"
+    end
+
+    test "atomic update: a private argument cannot be set from atom-keyed params" do
+      changeset =
+        Ash.Changeset.fully_atomic_changeset(Category, :update_with_private_argument, %{
+          secret: "attacker"
+        })
+
+      assert match?(%Ash.Changeset{}, changeset),
+             "expected a changeset, got: #{inspect(changeset)}"
+
+      assert Enum.any?(changeset.errors, fn error ->
+               match?(%Ash.Error.Invalid.NoSuchInput{input: :secret}, error)
+             end),
+             "expected atom-keyed private argument to be rejected as NoSuchInput"
+
+      refute Map.has_key?(changeset.arguments, :secret),
+             "private argument must not be present in changeset.arguments"
+    end
+
+    test "atomic update: a public argument is still accepted from params" do
+      changeset =
+        Ash.Changeset.fully_atomic_changeset(Category, :update_with_private_argument, %{
+          "public_note" => "hello"
+        })
+
+      assert match?(%Ash.Changeset{}, changeset),
+             "expected a changeset, got: #{inspect(changeset)}"
+
+      refute Enum.any?(changeset.errors, fn error ->
+               match?(%Ash.Error.Invalid.NoSuchInput{}, error)
+             end),
+             "a public argument must not be rejected as NoSuchInput"
+
+      assert Ash.Changeset.get_argument(changeset, :public_note) == "hello"
     end
   end
 

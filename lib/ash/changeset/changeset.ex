@@ -3520,15 +3520,15 @@ defmodule Ash.Changeset do
   end
 
   defp get_action_argument(action, name) when is_binary(name) do
-    Enum.find(action.arguments, &(to_string(&1.name) == name))
+    Enum.find(action.arguments, &(&1.public? && to_string(&1.name) == name))
   end
 
   defp has_argument?(action, name) when is_atom(name) do
-    Enum.any?(action.arguments, &(&1.name == name))
+    Enum.any?(action.arguments, &(&1.public? && &1.name == name))
   end
 
   defp has_argument?(action, name) when is_binary(name) do
-    Enum.any?(action.arguments, &(to_string(&1.name) == name))
+    Enum.any?(action.arguments, &(&1.public? && to_string(&1.name) == name))
   end
 
   defp validate_attributes_accepted(changeset, %{accept: nil}), do: changeset
