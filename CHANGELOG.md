@@ -17,6 +17,8 @@ SPDX-License-Identifier: MIT
 
 * scrub private arguments w/ string values by [@zachdaniel](https://github.com/zachdaniel)
 
+Fixes CVE-2026-55736
+
 ## [v3.29.2](https://github.com/ash-project/ash/compare/v3.29.1...v3.29.2) (2026-06-22)
 
 
