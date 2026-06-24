@@ -420,8 +420,17 @@ defmodule Ash.Test.CodeInterfaceTest do
       refute match?({:error, _}, User.user_exists?("brian"))
     end
 
+    test "?-suffixed interfaces generate a tuple-returning function without ?" do
+      User.create!("alice")
+
+      assert User.user_exists("alice") == {:ok, true}
+      assert User.user_exists("brian") == {:ok, false}
+    end
+
     test "?-suffixed interfaces do not generate a ! variant" do
+      assert function_exported?(User, :user_exists, 1)
       assert function_exported?(User, :user_exists?, 1)
+      refute function_exported?(User, :user_exists!, 1)
       refute function_exported?(User, :"user_exists?!", 1)
     end
 

@@ -116,12 +116,13 @@ end)
 
 ## Predicate interfaces (`?`-suffixed names)
 
-When a code interface name ends in `?` (e.g. `define :user_exists?, action: :user_exists, args: [:email]`), Ash treats it as a **predicate interface**:
+When a code interface name ends in `?` (e.g. `define :user_exists?, action: :user_exists?, args: [:email]`), Ash treats it as a **predicate interface** and generates two action functions (same pattern as calculation interfaces):
 
-- Only `user_exists?/…` is generated - returns the **unwrapped result** (typically bare `true`/`false` for `:boolean` actions)
-- On failure it **raises**, like a `!` function, rather than returning `{:error, _}`
-- **No** `user_exists?/…` returning `{:ok, _}` and **no** `user_exists?!/…`
-- The action's `run` callback still returns `{:ok, result}` or `{:error, reason}`; the code interface unwraps it
+- `user_exists/…` (with `?` stripped from the name) returns `{:ok, result}` or `{:error, reason}` (from `:action`)
+- `user_exists?/…` returns the **unwrapped result** (typically bare `true`/`false`); raises on failure (from `:action!`)
+- **No** `user_exists!/…` or `user_exists?!/…`
+
+The action's `run` callback still returns `{:ok, result}` or `{:error, reason}`; the code interface unwraps it for the `?`-suffixed function.
 
 Authorization helpers for predicate interfaces:
 
@@ -129,7 +130,7 @@ Authorization helpers for predicate interfaces:
 - `can_user_exists?/…` returns a bare boolean
 - **No** `can_user_exists??/…` is generated
 
-The predicate function is generated from the `:action!` entry in `functions:` (which is included by default). If you customize `functions:` and omit `:action!`, the predicate action function will not be generated. See the [Code interface guide](https://hexdocs.pm/ash/code-interfaces.html) for examples.
+Both action functions come from the default `functions:` list (`:action` and `:action!`). Omit `:action` to skip the tuple form; omit `:action!` to skip the predicate form. See the [Code interface guide](https://hexdocs.pm/ash/code-interfaces.html) for examples.
 
 ## Authorization Functions
 

@@ -208,6 +208,11 @@ To make arguments optional, wrap them in `{:optional, ..}`, for example:
 define_calculation :id_matches, args: [{:arg, :id}, {:optional, {:ref, :id}}]
 ```
 
+When a calculation interface name ends in `?`, Ash generates two functions using the same pattern as [predicate interfaces](#predicate-interfaces-names-ending-in-):
+
+- `active/…` — name with `?` stripped — returns `{:ok, result}` or `{:error, reason}`
+- `active?/…` — interface name — returns the unwrapped result (raises on failure)
+
 ## Bulk & atomic actions
 
 ### Bulk Updates & Destroys
@@ -408,11 +413,10 @@ When the interface name itself ends in `?`, Ash treats it as a **predicate inter
 
 This applies regardless of action type, though it is most commonly used with generic actions that return `:boolean`, where the `?` name matches Elixir predicate conventions.
 
-- One **action function** that shares the same name as the interface is generated (e.g. `user_exists?/…`)
-- This function returns the **unwrapped result** directly (typically a bare `true` or `false`)
-- Upon failure it **raises**, similar to other `!` variants, rather than returning `{:error, _}`
-- **No** `user_exists?!/…` function is generated
-- **No** tuple-returning `user_exists?/…` that returns `{:ok, boolean()}` is generated
+- Two **action functions** are generated, using the same naming pattern as [calculation interfaces](#calculations):
+  - `user_exists/…` (with `?` stripped from the name) returns `{:ok, result}` or `{:error, reason}`
+  - `user_exists?/…` returns the **unwrapped result** directly (typically a bare `true` or `false`); on failure it **raises**, like other `!` variants, rather than returning `{:error, _}`
+- **No** `user_exists!/…` or `user_exists?!/…` functions are generated
 
 This matches how you would use a predicate in Elixir:
 ```elixir
@@ -448,8 +452,11 @@ end
 
 # => true or false — not {:ok, true}
 MyApp.Accounts.user_exists?("alice@example.com")
+
+# => {:ok, true} | {:ok, false} | {:error, reason}
+MyApp.Accounts.user_exists("alice@example.com")
 ```
-The action’s `run` callback still follows the normal action contract and returns `{:ok, result}` or `{:error, reason}`. The code interface is what unwraps that result for callers, the same way a `!` function would for a non-predicate interface.
+The action’s `run` callback still follows the normal action contract and returns `{:ok, result}` or `{:error, reason}`. The `user_exists?/…` function is what unwraps that result for callers, the same way a `!` function would for a non-predicate interface.
 
 Compare with a normal interface:
 ```elixir
@@ -457,6 +464,14 @@ define :create_user, action: :create
 
 # MyApp.create_user/…   => {:ok, user} | {:error, reason}
 # MyApp.create_user!/…  => user | raise
+```
+
+For a predicate interface:
+```elixir
+define :user_exists?, action: :user_exists?, args: [:email]
+
+# MyApp.Accounts.user_exists/…   => {:ok, true/false} | {:error, reason}
+# MyApp.Accounts.user_exists?/…  => true/false | raise
 ```
 
 #### Authorization helpers
@@ -476,7 +491,12 @@ end
 Subject helpers (such as `input_to_user_exists?/…` for generic actions) are still generated using the interface name.
 
 #### The `functions` option
-By default, code interfaces generate `[:subject, :can, :can?, :action, :action!]`. For predicate interfaces, the runnable function is emitted from the `:action!` entry in that list, but under the `?` interface name (without appending `!`). If you customize `functions:` and remove `:action!`, the predicate action function will not be generated.
+By default, code interfaces generate `[:subject, :can, :can?, :action, :action!]`. For predicate interfaces:
+
+- `:action` generates the tuple-returning function without `?` (e.g. `user_exists/…`)
+- `:action!` generates the unwrapped predicate function under the `?` name (e.g. `user_exists?/…`), without appending `!`
+
+If you customize `functions:` and remove `:action`, the tuple-returning function will not be generated. If you remove `:action!`, the bare-boolean predicate function will not be generated.
 
 ### Authorization Functions
 
