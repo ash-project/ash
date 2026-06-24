@@ -73,6 +73,7 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :create, args: [{:optional, :first_name}]
       define :insert, action: :create
       define :hello, args: [:name]
+      define :user_exists?, args: [:first_name]
 
       define :update_by_id_map do
         action :update_by_id_without_filter
@@ -191,6 +192,19 @@ defmodule Ash.Test.CodeInterfaceTest do
         run(fn input, _ ->
           {:ok, "Hello #{input.arguments.name}"}
         end)
+      end
+
+      action :user_exists?, :boolean do
+        argument :first_name, :string, allow_nil?: false
+
+        run fn input, _ ->
+          exists =
+            User
+            |> Ash.Query.filter_input(first_name: input.arguments.first_name)
+            |> Ash.exists?()
+
+          {:ok, exists}
+        end
       end
 
       action :hello_actor, :string do
@@ -388,6 +402,44 @@ defmodule Ash.Test.CodeInterfaceTest do
     test "have a helper to test authorization" do
       assert {:ok, true} == User.can_hello(nil, "fred")
       assert User.can_hello?(nil, "fred")
+    end
+  end
+
+  describe "predicate code interfaces" do
+    test "?-suffixed interfaces return a bare boolean" do
+      User.create!("alice")
+
+      assert User.user_exists?("alice") == true
+      assert User.user_exists?("brian") == false
+    end
+
+    test "?-suffixed interfaces do not return ok/error tuples" do
+      User.create!("alice")
+
+      refute match?({:ok, _}, User.user_exists?("alice"))
+      refute match?({:error, _}, User.user_exists?("brian"))
+    end
+
+    test "?-suffixed interfaces generate a tuple-returning function without ?" do
+      User.create!("alice")
+
+      assert User.user_exists("alice") == {:ok, true}
+      assert User.user_exists("brian") == {:ok, false}
+    end
+
+    test "?-suffixed interfaces do not generate a ! variant" do
+      assert function_exported?(User, :user_exists, 1)
+      assert function_exported?(User, :user_exists?, 1)
+      refute function_exported?(User, :user_exists!, 1)
+      refute function_exported?(User, :"user_exists?!", 1)
+    end
+
+    test "authorization helpers do not double the question mark" do
+      assert function_exported?(User, :can_user_exists?, 2)
+      refute function_exported?(User, :"can_user_exists??", 2)
+
+      assert {:ok, true} == User.can_user_exists(nil, "alice")
+      assert User.can_user_exists?(nil, "alice") == true
     end
   end
 

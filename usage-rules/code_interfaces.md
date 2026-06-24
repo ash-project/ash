@@ -114,7 +114,27 @@ Inside action hooks and callbacks, use the provided `context` parameter as your 
 end)
 ```
 
+## Predicate interfaces (`?`-suffixed names)
+
+When a code interface name ends in `?` (e.g. `define :user_exists?, action: :user_exists?, args: [:email]`), Ash treats it as a **predicate interface** and generates two action functions (same pattern as calculation interfaces):
+
+- `user_exists/…` (with `?` stripped from the name) returns `{:ok, result}` or `{:error, reason}` (from `:action`)
+- `user_exists?/…` returns the **unwrapped result** (typically bare `true`/`false`); raises on failure (from `:action!`)
+- **No** `user_exists!/…` or `user_exists?!/…`
+
+The action's `run` callback still returns `{:ok, result}` or `{:error, reason}`; the code interface unwraps it for the `?`-suffixed function.
+
+Authorization helpers for predicate interfaces:
+
+- `can_user_exists/…` returns `{:ok, true/false}` or `{:error, reason}`
+- `can_user_exists?/…` returns a bare boolean
+- **No** `can_user_exists??/…` is generated
+
+Both action functions come from the default `functions:` list (`:action` and `:action!`). Omit `:action` to skip the tuple form; omit `:action!` to skip the predicate form. See the [Code interface guide](https://hexdocs.pm/ash/code-interfaces.html) for examples.
+
 ## Authorization Functions
+
+For predicate interfaces (names ending in `?`), see [Predicate interfaces](#predicate-interfaces-suffixed-names) above for naming rules.
 
 For each action defined in a code interface, Ash automatically generates corresponding authorization check functions:
 
