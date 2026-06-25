@@ -507,7 +507,7 @@ defmodule Ash.Type.Union do
               {:ok, values}
 
             our_load ->
-              Ash.Type.load(
+              load_union_values(
                 type_config[:type],
                 values,
                 our_load,
@@ -520,7 +520,7 @@ defmodule Ash.Type.Union do
               type_constraints = type_config[:constraints]
 
               if Ash.Type.can_load?(type, type_constraints) do
-                Ash.Type.load(type, values, [], type_constraints, context)
+                load_union_values(type, values, [], type_constraints, context)
               else
                 {:ok, values}
               end
@@ -559,6 +559,49 @@ defmodule Ash.Type.Union do
     else
       {:ok, unions}
     end
+  end
+
+  # Flatten array-member values into one batched leaf load, then regroup per union.
+  defp load_union_values({:array, inner} = type, values, load, constraints, context) do
+    shapes =
+      Enum.map(values, fn
+        value when is_list(value) -> length(value)
+        other -> other
+      end)
+
+    flat =
+      Enum.flat_map(values, fn
+        value when is_list(value) -> value
+        _ -> []
+      end)
+
+    inner_result =
+      case inner do
+        {:array, _} ->
+          load_union_values(inner, flat, load, constraints[:items] || [], context)
+
+        _ ->
+          Ash.Type.load(type, flat, load, constraints, context)
+      end
+
+    case inner_result do
+      {:ok, loaded} -> {:ok, regroup_union_values(loaded, shapes)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp load_union_values(type, values, load, constraints, context) do
+    Ash.Type.load(type, values, load, constraints, context)
+  end
+
+  defp regroup_union_values(loaded, shapes) do
+    {regrouped, []} =
+      Enum.map_reduce(shapes, loaded, fn
+        length, remaining when is_integer(length) -> Enum.split(remaining, length)
+        passthrough, remaining -> {passthrough, remaining}
+      end)
+
+    regrouped
   end
 
   def generator(constraints) do
@@ -665,7 +708,7 @@ defmodule Ash.Type.Union do
         constraints[:types][value.type][:type],
         &1,
         type_rewrites,
-        constraints[:types][value.type][:type]
+        constraints[:types][value.type][:constraints] || []
       )
     )
   end
