@@ -80,6 +80,20 @@ defmodule Ash.Mix.Tasks.Helpers do
   end
 
   @doc """
+  Discovers all modules that use `Ash.Domain` inside the host mix application layout.
+  Can be safely invoked inside `config.exs`.
+  """
+  def discover_domains(igniter) do
+    {igniter, modules} =
+      Igniter.Project.Module.find_all_matching_modules(igniter, fn _, zipper ->
+        match?({:ok, _}, Igniter.Code.Module.move_to_use(zipper, Ash.Domain))
+      end)
+
+    sorted_modules = Enum.sort(modules)
+    {igniter, sorted_modules}
+  end
+
+  @doc """
   Get all domains for the current project and ensure they are compiled.
   """
   def domains!(argv) do
