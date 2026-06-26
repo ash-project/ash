@@ -93,6 +93,25 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     end
   end
 
+  describe "loadable array of an embedded type under field policies (#2764)" do
+    test "an {:array, embedded} field forbidden by field policy returns ForbiddenField, not a crash",
+         %{user: user, admin: admin, post: post} do
+      # `admin_notes` is `{:array, AdminNote}`: a loadable embedded type visible only to admins
+      assert %Ash.ForbiddenField{field: :admin_notes, type: :attribute} =
+               Post
+               |> Ash.Query.filter(id == ^post.id)
+               |> Ash.read_one!(authorize?: true, actor: user)
+               |> Map.get(:admin_notes)
+
+      # an admin can still read the field
+      assert [] =
+               Post
+               |> Ash.Query.filter(id == ^post.id)
+               |> Ash.read_one!(authorize?: true, actor: admin)
+               |> Map.get(:admin_notes)
+    end
+  end
+
   describe "rendering fields" do
     test "when creating as a user that cannot see the field, its value is not displayed", %{
       representative: rep,

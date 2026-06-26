@@ -32,6 +32,14 @@ defmodule Ash.Test.Support.PolicyField.Post do
     attribute :description, :string do
       public?(true)
     end
+
+    # Loadable array of an embedded resource, visible only to admins (see field policy below).
+    # For a non-admin actor the value becomes %Ash.ForbiddenField{} during a
+    # read, which cleanup_field_auth hands to Ash.Type.rewrite/4 (regression cover for #2764).
+    attribute :admin_notes, {:array, Ash.Test.Support.PolicyField.AdminNote} do
+      public?(true)
+      default([])
+    end
   end
 
   relationships do
@@ -62,6 +70,10 @@ defmodule Ash.Test.Support.PolicyField.Post do
 
     field_policy :reporter_id do
       forbid_if always()
+    end
+
+    field_policy :admin_notes do
+      authorize_if actor_attribute_equals(:role, :admin)
     end
 
     field_policy :* do
