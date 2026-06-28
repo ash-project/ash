@@ -64,6 +64,7 @@ defmodule Ash.Expr do
              is_struct(value, Ash.Query.Exists) or
              is_struct(value, Ash.Query.Parent) or
              is_struct(value, Ash.Query.UpsertConflict) or
+             is_struct(value, Ash.Query.EmbeddedArrayElementField) or
              is_struct(value, Ash.CustomExpression) or
              (is_struct(value) and is_map_key(value, :__predicate__?)) do
     true

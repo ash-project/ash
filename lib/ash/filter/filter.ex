@@ -1560,6 +1560,31 @@ defmodule Ash.Filter do
     add_ref_to_relevant_paths({rest, ref}, new_acc, new_trail)
   end
 
+  @doc false
+  # Rewrites references inside an `exists/2` predicate so that fields of the
+  # embedded resource currently being iterated are represented as
+  # `Ash.Query.EmbeddedArrayElementField` markers. SQL data layers translate
+  # these markers into per-element JSONB extractions (e.g.,
+  # `jsonb_extract_path_text(elem, 'field')::type`).
+  #
+  # Only refs whose `relationship_path` is empty and whose attribute belongs
+  # to `embedded_resource` are rewritten — outer-scope refs (e.g., via
+  # `parent/1`) are left intact.
+  def rewrite_for_embedded_array_scope(expr, embedded_resource) when is_atom(embedded_resource) do
+    map(expr, fn
+      %Ref{relationship_path: [], attribute: %Ash.Resource.Attribute{} = attr, resource: resource}
+      when resource == embedded_resource ->
+        %Ash.Query.EmbeddedArrayElementField{
+          field: attr.name,
+          type: attr.type,
+          constraints: attr.constraints || []
+        }
+
+      other ->
+        other
+    end)
+  end
+
   def map(%__MODULE__{expression: nil} = filter, _) do
     filter
   end
@@ -2180,8 +2205,19 @@ defmodule Ash.Filter do
   defp shortest_path_to_changed_data_layer(_resource, [], _acc), do: :error
 
   defp shortest_path_to_changed_data_layer(resource, [relationship | rest], acc) do
-    relationship = Ash.Resource.Info.relationship(resource, relationship)
+    case Ash.Resource.Info.relationship(resource, relationship) do
+      nil ->
+        # Segment is not a relationship (e.g., an embedded array attribute).
+        # Embedded arrays live in the same data layer as the parent, so they
+        # never change data layers; signal "no split needed."
+        :error
 
+      relationship ->
+        shortest_path_to_changed_data_layer_for_relationship(relationship, rest, acc, resource)
+    end
+  end
+
+  defp shortest_path_to_changed_data_layer_for_relationship(relationship, rest, acc, resource) do
     if relationship.type == :many_to_many do
       if Ash.DataLayer.data_layer_can?(resource, {:join, relationship.through}) do
         shortest_path_to_changed_data_layer(relationship.destination, rest, [
@@ -2920,6 +2956,42 @@ defmodule Ash.Filter do
     end
   end
 
+  # Like `related/2`, but a path segment may also be an attribute whose type is
+  # `{:array, EmbeddedResource}` (with `EmbeddedResource` declared as
+  # `use Ash.Resource, data_layer: :embedded`). In that case the next segment is
+  # resolved against the embedded resource. Used to power `exists/2` over
+  # embedded array attributes.
+  #
+  # Returns the destination resource, or `nil` if no segment matched.
+  defp related_or_embedded(context, segments) when not is_list(segments) do
+    related_or_embedded(context, [segments])
+  end
+
+  defp related_or_embedded(context, []), do: context.resource
+
+  defp related_or_embedded(context, [segment | rest]) do
+    case relationship(context, segment) do
+      %{destination: destination} ->
+        related_or_embedded(%{context | resource: destination}, rest)
+
+      nil ->
+        case embedded_array_attribute(context.resource, segment) do
+          nil -> nil
+          embedded_resource -> related_or_embedded(%{context | resource: embedded_resource}, rest)
+        end
+    end
+  end
+
+  defp embedded_array_attribute(resource, segment) do
+    with %{type: {:array, item_type}} <- Ash.Resource.Info.attribute(resource, segment),
+         true <- is_atom(item_type),
+         true <- Ash.Resource.Info.embedded?(item_type) do
+      item_type
+    else
+      _ -> nil
+    end
+  end
+
   defp parse_expression(%__MODULE__{expression: expression}, context),
     do: {:ok, move_to_relationship_path(expression, context[:relationship_path] || [])}
 
@@ -3047,7 +3119,7 @@ defmodule Ash.Filter do
 
     related =
       if related? do
-        related(context, at_path ++ path)
+        related_or_embedded(context, at_path ++ path)
       else
         resource
       end
@@ -4186,7 +4258,7 @@ defmodule Ash.Filter do
       when not is_nil(resource) do
     case Ash.Resource.Info.related(resource, relationship_path || []) do
       nil ->
-        {:error, "Invalid reference #{inspect(ref)}"}
+        {:error, invalid_reference_error(ref, resource, relationship_path || [])}
 
       related ->
         do_hydrate_refs(
@@ -4217,8 +4289,7 @@ defmodule Ash.Filter do
 
     case related(context, ref.relationship_path) do
       nil ->
-        {:error,
-         "Invalid reference #{inspect(ref)} at relationship_path #{inspect(ref.relationship_path)}"}
+        {:error, invalid_reference_error(ref, context.resource, ref.relationship_path)}
 
       related ->
         context = %{context | resource: related}
@@ -4635,10 +4706,27 @@ defmodule Ash.Filter do
         Ash.Resource.Info.related(context[:resource], expanded_at_path)
       end
 
-    expanded_path = expand_through_path_names(at_path_resource, path)
+    # `path` may start with an embedded-array attribute (Phase 1+). Only
+    # apply relationship `through`-expansion when the path is purely
+    # relationships; otherwise leave it as-is and resolve via the
+    # embedded-aware walker.
+    {expanded_path, new_resource} =
+      case unscoped_related_or_embedded(at_path_resource, path) do
+        nil ->
+          {path, nil}
 
-    new_resource =
-      Ash.Resource.Info.related(context[:resource], expanded_at_path ++ expanded_path)
+        resource ->
+          # If `path` is pure-relationship, normalize via through-expansion;
+          # otherwise keep as-is (embedded-array segments don't go through joins).
+          expanded_path =
+            try do
+              expand_through_path_names(at_path_resource, path)
+            rescue
+              Ash.Error.Query.NoSuchRelationship -> path
+            end
+
+          {expanded_path, resource}
+      end
 
     if new_resource do
       context = %{
@@ -4700,6 +4788,48 @@ defmodule Ash.Filter do
 
   def do_hydrate_refs(val, _context) do
     {:ok, val}
+  end
+
+  # Build a Ref-resolution error message. When a non-relationship path segment
+  # is an embedded array attribute, point the user at `exists/2` rather than
+  # leaving them with the generic "Invalid reference" string.
+  defp invalid_reference_error(ref, resource, relationship_path) do
+    embedded_array_segment =
+      Enum.find(relationship_path, fn segment ->
+        embedded_array_attribute(resource, segment) != nil
+      end)
+
+    if embedded_array_segment do
+      "Cannot reference fields through an embedded array attribute directly. " <>
+        "Use `exists/2` to filter over `#{embedded_array_segment}`, e.g. " <>
+        "`exists(#{embedded_array_segment}, ...)`. " <>
+        "Got: #{inspect(ref)}"
+    else
+      "Invalid reference #{inspect(ref)}"
+    end
+  end
+
+  # Variant of `related/2` for `do_hydrate_refs`, which previously used
+  # `Ash.Resource.Info.related/2` and therefore did not filter by `public?`.
+  # Recognizes `{:array, EmbeddedResource}` attributes in addition to
+  # relationships.
+  defp unscoped_related_or_embedded(resource, segments) when not is_list(segments) do
+    unscoped_related_or_embedded(resource, [segments])
+  end
+
+  defp unscoped_related_or_embedded(resource, []), do: resource
+
+  defp unscoped_related_or_embedded(resource, [segment | rest]) do
+    case Ash.Resource.Info.relationship(resource, segment) do
+      %{destination: destination} ->
+        unscoped_related_or_embedded(destination, rest)
+
+      nil ->
+        case embedded_array_attribute(resource, segment) do
+          nil -> nil
+          embedded_resource -> unscoped_related_or_embedded(embedded_resource, rest)
+        end
+    end
   end
 
   defp combination_calc(first_combination, attribute) do
