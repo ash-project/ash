@@ -199,6 +199,12 @@ if Code.ensure_loaded?(Igniter) do
               https://hexdocs.pm/ash/backwards-compatibility-config.html
               """
             )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:many_to_many_destroy_destination_on_match?],
+              true
+            )
           end)
         end
       )
