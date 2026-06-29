@@ -378,6 +378,18 @@ defmodule Ash.Sort do
   # an ugly workaround
   defp type_sortable?(_resource, %Ash.Query.Calculation{}), do: true
 
+  # A relationship name is not a sortable field on its own (sort *through* it with a
+  # relationship path or an aggregate). It has no `:constraints`, so guard before we
+  # reach `field.constraints` below and report it cleanly as unsortable.
+  defp type_sortable?(_resource, %struct{})
+       when struct in [
+              Ash.Resource.Relationships.BelongsTo,
+              Ash.Resource.Relationships.HasOne,
+              Ash.Resource.Relationships.HasMany,
+              Ash.Resource.Relationships.ManyToMany
+            ],
+       do: false
+
   defp type_sortable?(resource, field) do
     do_type_sortable?(resource, field.type, field.constraints)
   end
