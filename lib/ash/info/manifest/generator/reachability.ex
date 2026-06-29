@@ -46,7 +46,15 @@ defmodule Ash.Info.Manifest.Generator.Reachability do
         {resource, action_names} = normalize_entry(entry)
 
         if MapSet.member?(visited, resource) do
-          {resources, types, visited}
+          # The resource structure was already traversed, but an explicit
+          # action root still needs its action surface types discovered.
+          case action_names do
+            nil ->
+              {resources, types, visited}
+
+            action_names ->
+              traverse_action_arguments(resource, action_names, resources, types, visited, opts)
+          end
         else
           {found_resources, found_types, new_visited} =
             traverse_resource(
