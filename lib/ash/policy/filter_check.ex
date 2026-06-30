@@ -142,8 +142,12 @@ defmodule Ash.Policy.FilterCheck do
           {:ok, nil} ->
             {:ok, false}
 
-          _ ->
-            {:ok, :unknown}
+              _ ->
+                {:ok, :unknown}
+            end
+
+          {:error, error} ->
+            {:error, error}
         end
       end
 

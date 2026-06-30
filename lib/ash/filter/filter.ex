@@ -4677,8 +4677,7 @@ defmodule Ash.Filter do
         )
       end
     else
-      {:error,
-       "No related resource at path #{inspect(expanded_at_path ++ expanded_path)} for #{inspect(context[:resource])}"}
+      {:error, error} -> {:error, error}
     end
   end
 
