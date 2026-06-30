@@ -35,7 +35,8 @@ defmodule Ash.Type.Registry do
     url_encoded_binary: Ash.Type.UrlEncodedBinary,
     union: Ash.Type.Union,
     module: Ash.Type.Module,
-    vector: Ash.Type.Vector
+    vector: Ash.Type.Vector,
+    range: Ash.Type.Range
   ]
 
   @builtin_types Keyword.values(@builtin_short_names)

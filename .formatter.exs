@@ -309,6 +309,7 @@ spark_locals_without_parens = [
   sum: 3,
   sum: 4,
   table: 1,
+  temporal_keys: 1,
   tenant: 1,
   tenant: 2,
   tenant_from_attribute: 1,

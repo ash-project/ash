@@ -103,11 +103,14 @@ defmodule Ash.Can do
           {resource, action_or_query_or_changeset, input, opts}
       end
 
+    check_actor_as_of!(actor, opts[:as_of])
+
     subject =
       case action_or_query_or_changeset do
         %Ash.ActionInput{} = action_input ->
           action_input
           |> Ash.ActionInput.set_tenant(opts[:tenant] || action_input.tenant)
+          |> Ash.ActionInput.set_as_of(opts[:as_of] || action_input.as_of)
           |> Ash.ActionInput.set_context(%{
             private: %{actor: actor, pre_flight_authorization?: pre_flight?}
           })
@@ -115,6 +118,7 @@ defmodule Ash.Can do
         %Ash.Query{} = query ->
           query
           |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
+          |> Ash.Query.as_of(opts[:as_of] || query.as_of)
           |> Ash.Query.set_context(%{
             private: %{actor: actor, pre_flight_authorization?: pre_flight?}
           })
@@ -122,6 +126,7 @@ defmodule Ash.Can do
         %Ash.Changeset{} = changeset ->
           changeset
           |> Ash.Changeset.set_tenant(opts[:tenant] || changeset.tenant)
+          |> Ash.Changeset.as_of(opts[:as_of] || changeset.as_of)
           |> Ash.Changeset.set_context(%{
             private: %{actor: actor, pre_flight_authorization?: pre_flight?}
           })
@@ -131,6 +136,7 @@ defmodule Ash.Can do
             Ash.Changeset.for_update(opts[:data], name, input,
               actor: actor,
               tenant: opts[:tenant],
+              as_of: opts[:as_of],
               context: opts[:context]
             )
           else
@@ -139,6 +145,7 @@ defmodule Ash.Can do
             |> Ash.Changeset.for_update(name, input,
               actor: actor,
               tenant: opts[:tenant],
+              as_of: opts[:as_of],
               context: opts[:context]
             )
           end
@@ -147,6 +154,7 @@ defmodule Ash.Can do
           Ash.Changeset.for_create(resource, name, input,
             actor: actor,
             tenant: opts[:tenant],
+            as_of: opts[:as_of],
             context: opts[:context]
           )
 
@@ -154,6 +162,7 @@ defmodule Ash.Can do
           Ash.Query.for_read(resource, name, input,
             actor: actor,
             tenant: opts[:tenant],
+            as_of: opts[:as_of],
             context: opts[:context]
           )
 
@@ -162,6 +171,7 @@ defmodule Ash.Can do
             Ash.Changeset.for_destroy(opts[:data], name, input,
               actor: actor,
               tenant: opts[:tenant],
+              as_of: opts[:as_of],
               context: opts[:context]
             )
           else
@@ -170,6 +180,7 @@ defmodule Ash.Can do
             |> Ash.Changeset.for_destroy(name, input,
               actor: actor,
               tenant: opts[:tenant],
+              as_of: opts[:as_of],
               context: opts[:context]
             )
           end
@@ -178,6 +189,7 @@ defmodule Ash.Can do
           Ash.ActionInput.for_action(resource, name, input,
             actor: actor,
             tenant: opts[:tenant],
+            as_of: opts[:as_of],
             context: opts[:context]
           )
 
@@ -243,6 +255,39 @@ defmodule Ash.Can do
       end
     end
   end
+
+  # An actor's attributes are trusted exactly as provided, but a temporal authorization reads
+  # data `as_of` its instant. If the actor was fetched as of a *different* instant than the
+  # one being authorized, the decision mixes the actor's state at one time with data at
+  # another — a silent inconsistency. Reject it. (Only compares when both are concrete
+  # instants: a `:now`/absent `as_of`, or an actor with no `as_of` stamp — e.g. a
+  # non-temporal actor — has nothing to conflict and is allowed through.)
+  defp check_actor_as_of!(actor, %DateTime{} = as_of) do
+    case actor do
+      %{__metadata__: %{as_of: %DateTime{} = actor_as_of}} ->
+        if DateTime.compare(actor_as_of, as_of) != :eq do
+          raise ArgumentError, """
+          Mismatched `as_of` between the actor and the authorization request.
+
+          The actor was fetched as of #{inspect(actor_as_of)}, but authorization was requested
+          as of #{inspect(as_of)}. An actor's attributes are trusted as provided, while data is
+          read as of the query's instant — mixing two different instants yields inconsistent
+          authorization decisions.
+
+          Fetch the actor as of the same instant you are authorizing:
+
+              actor = Ash.get!(Resource, id, as_of: as_of)
+
+          See the "Authorization" section of the "Temporal Resources" guide.
+          """
+        end
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp check_actor_as_of!(_actor, _as_of), do: :ok
 
   defp resource_subject_input(action_or_query_or_changeset, domain, actor, opts) do
     case action_or_query_or_changeset do

@@ -21,6 +21,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :violation_message,
     :allow_nil?,
     :filter,
+    :temporal_keys,
     :sort,
     :default_sort,
     :writable?,

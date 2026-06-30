@@ -973,7 +973,9 @@ defmodule Ash.Test.GeneratorTest do
           Ash.Type.Keyword,
           Ash.Type.Map,
           Ash.Type.Tuple,
-          Ash.Type.Union
+          Ash.Type.Union,
+          # requires an `inner_type` constraint, so it can't be generated with `[]`
+          Ash.Type.Range
         ] do
       for type <- [{:array, type}, type] do
         constraints =

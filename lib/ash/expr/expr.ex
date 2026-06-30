@@ -215,6 +215,25 @@ defmodule Ash.Expr do
       )
       when is_list(opts) do
     walk_template(template, fn
+      # Anchor relative-time expressions to a temporal query/changeset's `as_of`
+      # (threaded via `context`). Idempotent with `add_calc_context_to_filter`'s
+      # rewrite — once replaced with a DateTime there is no `now()` left to map.
+      %Ash.Query.Function.Now{} = now ->
+        fill_template_as_of(opts) || now
+
+      %Ash.Query.Function.Ago{arguments: [factor, interval]} = ago when is_integer(factor) ->
+        case fill_template_as_of(opts) do
+          nil -> ago
+          as_of -> Ash.Query.Function.Ago.datetime_add(as_of, -factor, interval)
+        end
+
+      %Ash.Query.Function.FromNow{arguments: [factor, interval]} = from_now
+      when is_integer(factor) ->
+        case fill_template_as_of(opts) do
+          nil -> from_now
+          as_of -> Ash.Query.Function.Ago.datetime_add(as_of, factor, interval)
+        end
+
       {:_actor, :_primary_key} ->
         actor = opts[:actor]
 
@@ -291,6 +310,15 @@ defmodule Ash.Expr do
       context: context,
       changeset: changeset
     )
+  end
+
+  defp fill_template_as_of(opts) do
+    context = opts[:context] || %{}
+
+    case get_in(context, [:private, :as_of]) || get_in(context, [:shared, :as_of]) do
+      :now -> DateTime.utc_now()
+      other -> other
+    end
   end
 
   @doc false

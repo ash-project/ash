@@ -313,6 +313,7 @@ defmodule Ash.Generator do
                 Keyword.take(opts, [
                   :actor,
                   :tenant,
+                  :as_of,
                   :scope,
                   :authorize?,
                   :context,
@@ -460,6 +461,7 @@ defmodule Ash.Generator do
               resource
               |> Ash.Resource.Info.attributes()
               |> Enum.reject(&(!&1.writable? && &1.generated?))
+              |> reject_temporal_period(resource)
               |> generate_attributes(
                 to_generators(Map.put(merged, :__will_be_struct__, resource)),
                 false,
@@ -480,7 +482,7 @@ defmodule Ash.Generator do
         Ash.Resource.set_metadata(
           struct(keys.__will_be_struct__, keys),
           opts
-          |> Keyword.take([:tenant])
+          |> Keyword.take([:tenant, :as_of])
           |> Enum.into(%{private: %{generator_after_action: opts[:after_action]}})
         )
       end)
@@ -520,6 +522,7 @@ defmodule Ash.Generator do
             resource
             |> Ash.Resource.Info.attributes()
             |> Enum.reject(&(!&1.writable? && &1.generated?))
+            |> reject_temporal_period(resource)
             |> generate_attributes(
               to_generators(merged),
               false,
@@ -535,7 +538,7 @@ defmodule Ash.Generator do
         Ash.Resource.set_metadata(
           struct(resource, keys),
           opts
-          |> Keyword.take([:tenant])
+          |> Keyword.take([:tenant, :as_of])
           |> Enum.into(%{private: %{generator_after_action: opts[:after_action]}})
         )
       end)
@@ -990,7 +993,19 @@ defmodule Ash.Generator do
     |> Enum.reject(fn attribute ->
       Enum.any?(relationships, &(&1.source_attribute == attribute.name))
     end)
+    |> reject_temporal_period(resource)
     |> generate_attributes(generators, true, :create, Enum.map(relationships, & &1.name))
+  end
+
+  # The temporal *period* attribute is never randomly generated — its value is derived
+  # from `as_of` at write time (see `Ash.Seed`/the data layer). Drop it from any
+  # "generate all attributes" pass so a seed targets a coherent period instead of a
+  # random range (and so a `nil`-disallowed period isn't flagged as a missing input).
+  defp reject_temporal_period(attributes, resource) do
+    case Ash.Resource.Info.temporal_attribute(resource) do
+      nil -> attributes
+      period -> Enum.reject(attributes, &(&1.name == period))
+    end
   end
 
   @doc """
@@ -1152,6 +1167,7 @@ defmodule Ash.Generator do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(&(!&1.writable? && &1.generated?))
+    |> reject_temporal_period(resource)
     |> Enum.each(fn attribute ->
       default =
         if action_type == :create, do: attribute.default, else: attribute.update_default

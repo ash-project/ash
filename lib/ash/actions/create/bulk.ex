@@ -1452,28 +1452,14 @@ defmodule Ash.Actions.Create.Bulk do
               tagged_results
 
             {:ok, result} ->
-              result =
-                if tenant = opts[:tenant] do
-                  Enum.map(result, fn record ->
-                    %{record | __metadata__: Map.put(record.__metadata__, :tenant, tenant)}
-                  end)
-                else
-                  result
-                end
+              result = Ash.Actions.Helpers.stamp_record_metadata(result, resource, opts)
 
               Ash.Actions.Helpers.select(result, %{resource: resource, select: action_select})
 
             {:partial_success, failed, results} ->
               Process.put({:any_success?, ref}, true)
 
-              results =
-                if tenant = opts[:tenant] do
-                  Enum.map(results, fn record ->
-                    %{record | __metadata__: Map.put(record.__metadata__, :tenant, tenant)}
-                  end)
-                else
-                  results
-                end
+              results = Ash.Actions.Helpers.stamp_record_metadata(results, resource, opts)
 
               selected_results =
                 Ash.Actions.Helpers.select(results, %{resource: resource, select: action_select})

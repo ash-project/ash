@@ -74,6 +74,7 @@ defmodule Ash.DataLayer do
   @type feature() ::
           :transact
           | :multitenancy
+          | :temporal
           | :combine
           | {:combine, combination_type}
           | {:atomic, :update}
@@ -159,6 +160,8 @@ defmodule Ash.DataLayer do
               resource :: Ash.Resource.t()
             ) :: {:ok, data_layer_query()} | {:error, term}
   @callback set_tenant(Ash.Resource.t(), data_layer_query(), term) ::
+              {:ok, data_layer_query()} | {:error, term}
+  @callback set_as_of(Ash.Resource.t(), data_layer_query(), DateTime.t()) ::
               {:ok, data_layer_query()} | {:error, term}
   @callback resource_to_query(Ash.Resource.t(), Ash.Domain.t()) :: data_layer_query()
   @callback transform_query(Ash.Query.t()) :: Ash.Query.t()
@@ -345,6 +348,16 @@ defmodule Ash.DataLayer do
   @callback can?(Ash.Resource.t() | Spark.Dsl.t(), feature()) :: boolean
   @callback set_context(Ash.Resource.t(), data_layer_query(), map) ::
               {:ok, data_layer_query()} | {:error, term}
+  @doc """
+  The Ecto type to use for an attribute in the resource's generated schema, or `nil`
+  to use the default (`Ash.Type.ecto_type/1`).
+
+  This lets a data layer take charge of dumping/loading a stored value for a core type
+  whose native form it needs to translate (e.g. `ash_postgres` rendering
+  `Ash.Type.Range` to/from a `Postgrex.Range`). It is consulted at compile time while
+  building the schema, so the returned value must be a valid Ecto type.
+  """
+  @callback attribute_ecto_type(Ash.Resource.t(), Ash.Resource.Attribute.t()) :: nil | term()
 
   @optional_callbacks source: 1,
                       combination_acc: 1,
@@ -386,12 +399,25 @@ defmodule Ash.DataLayer do
                       run_aggregate_query: 3,
                       run_aggregate_query_with_lateral_join: 5,
                       transform_query: 1,
-                      set_tenant: 3
+                      set_tenant: 3,
+                      set_as_of: 3,
+                      attribute_ecto_type: 2
 
   @doc "The data layer of the resource, or nil if it does not have one"
   @spec data_layer(Ash.Resource.t() | Spark.Dsl.t()) :: Ash.DataLayer.t() | nil
   def data_layer(resource) do
     Extension.get_persisted(resource, :data_layer)
+  end
+
+  @doc false
+  # The data-layer-preferred Ecto type for an attribute, or `nil` for the default.
+  def attribute_ecto_type(resource, attribute) do
+    data_layer = data_layer(resource)
+
+    if data_layer && Code.ensure_loaded?(data_layer) &&
+         function_exported?(data_layer, :attribute_ecto_type, 2) do
+      data_layer.attribute_ecto_type(resource, attribute)
+    end
   end
 
   @doc "Whether or not lateral joins should be used for many to many relationships by default"
@@ -984,6 +1010,19 @@ defmodule Ash.DataLayer do
       [{:ok, :_}, {:error, :_}],
       behaviour: __MODULE__,
       callback_name: "set_tenant/3"
+    )
+  end
+
+  @spec set_as_of(Ash.Resource.t(), data_layer_query(), DateTime.t()) ::
+          {:ok, data_layer_query()} | {:error, term}
+  def set_as_of(resource, query, as_of) do
+    Ash.BehaviourHelpers.call_and_validate_return(
+      Ash.DataLayer.data_layer(resource),
+      :set_as_of,
+      [resource, query, as_of],
+      [{:ok, :_}, {:error, :_}],
+      behaviour: __MODULE__,
+      callback_name: "set_as_of/3"
     )
   end
 

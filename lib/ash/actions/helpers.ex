@@ -277,6 +277,13 @@ defmodule Ash.Actions.Helpers do
       end
 
     opts =
+      if as_of = Map.get(query_or_changeset, :as_of) do
+        Keyword.put_new(opts, :as_of, as_of)
+      else
+        opts
+      end
+
+    opts =
       case query_or_changeset.context do
         %{
           private: %{
@@ -313,6 +320,43 @@ defmodule Ash.Actions.Helpers do
   end
 
   @doc false
+  # Stamp an explicit point-in-time `as_of` onto a written record's metadata, so a later
+  # `Ash.load/3` of that record reuses the same instant (parity with how tenant is
+  # stamped — see `Ash.load/3`). Only a concrete `DateTime` is stamped: a `:now`/`nil`
+  # write is anchored at the *data layer's* clock, which core never observes, so stamping
+  # a (slightly earlier) core `now()` could place `as_of` before the row's validity and
+  # make the reload miss it. Those are left for `load` to default to the current instant.
+  def put_write_as_of(metadata, resource, %DateTime{} = as_of) do
+    if Ash.Resource.Info.temporal?(resource) do
+      Map.put_new(metadata, :as_of, as_of)
+    else
+      metadata
+    end
+  end
+
+  def put_write_as_of(metadata, _resource, _as_of), do: metadata
+
+  @doc false
+  # Stamp `tenant`/`as_of` onto each record's metadata, but only walk the list when there is
+  # actually something to stamp — so a plain (non-tenant, non-temporal) result isn't
+  # remapped for nothing.
+  def stamp_record_metadata(records, resource, opts) do
+    tenant = opts[:tenant]
+    stamp_as_of? = match?(%DateTime{}, opts[:as_of]) and Ash.Resource.Info.temporal?(resource)
+
+    if is_nil(tenant) and not stamp_as_of? do
+      records
+    else
+      Enum.map(records, fn record ->
+        metadata =
+          if tenant, do: Map.put(record.__metadata__, :tenant, tenant), else: record.__metadata__
+
+        %{record | __metadata__: put_write_as_of(metadata, resource, opts[:as_of])}
+      end)
+    end
+  end
+
+  @doc false
   def set_when_ok(opts, key, value, merger \\ fn _l, r -> r end)
 
   def set_when_ok(opts, key, {:ok, value}, merger) do
@@ -336,11 +380,13 @@ defmodule Ash.Actions.Helpers do
         query_or_changeset
         |> Ash.ActionInput.set_context(%{private: private_context})
         |> Ash.ActionInput.set_tenant(query_or_changeset.tenant || opts[:tenant])
+        |> set_subject_as_of(query_or_changeset.as_of || opts[:as_of])
 
       %Ash.Query{} ->
         query_or_changeset
         |> Ash.Query.set_context(%{private: private_context})
         |> Ash.Query.set_tenant(query_or_changeset.tenant || opts[:tenant])
+        |> set_subject_as_of(query_or_changeset.as_of || opts[:as_of])
 
       %Ash.Changeset{} ->
         query_or_changeset
@@ -348,7 +394,36 @@ defmodule Ash.Actions.Helpers do
           private: private_context
         })
         |> Ash.Changeset.set_tenant(query_or_changeset.tenant || opts[:tenant])
+        |> set_subject_as_of(query_or_changeset.as_of || opts[:as_of])
     end
+  end
+
+  # `as_of` is threaded like `tenant`. For reads this is the single point it's set on the
+  # query, so we resolve `:now` (and the temporal default — a temporal resource with no
+  # `as_of` reads as current-state) to a concrete `DateTime` here; it's then never
+  # re-evaluated downstream, so every consumer (the `@> as_of` filter, `now()`/`ago()`
+  # anchoring, related loads, aggregates, subqueries) threads the exact same instant.
+  # Writes are left as-is — the data layer resolves the write's `as_of` once at execution.
+  defp set_subject_as_of(%Ash.Query{} = query, as_of) do
+    case resolve_query_as_of(query, as_of) do
+      nil -> query
+      resolved -> Ash.Query.as_of(query, resolved)
+    end
+  end
+
+  defp set_subject_as_of(subject, nil), do: subject
+
+  defp set_subject_as_of(%Ash.Changeset{} = changeset, as_of),
+    do: Ash.Changeset.as_of(changeset, as_of)
+
+  defp set_subject_as_of(%Ash.ActionInput{} = input, as_of),
+    do: Ash.ActionInput.set_as_of(input, as_of)
+
+  defp resolve_query_as_of(_query, :now), do: DateTime.utc_now()
+  defp resolve_query_as_of(_query, %DateTime{} = as_of), do: as_of
+
+  defp resolve_query_as_of(query, nil) do
+    if Ash.Resource.Info.temporal?(query.resource), do: DateTime.utc_now()
   end
 
   defp add_actor(opts, query_or_changeset, domain) do

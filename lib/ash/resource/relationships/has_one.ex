@@ -16,6 +16,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :context,
     :description,
     :filter,
+    :temporal_keys,
     :domain,
     :sort,
     :default_sort,

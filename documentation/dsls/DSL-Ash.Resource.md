@@ -469,6 +469,7 @@ end
 | [`violation_message`](#relationships-has_one-violation_message){: #relationships-has_one-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-has_one-authorize_read_with){: #relationships-has_one-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-has_one-allow_forbidden_field?){: #relationships-has_one-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
+| [`temporal_keys`](#relationships-has_one-temporal_keys){: #relationships-has_one-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is applied at build time. Requires `no_attributes? true`. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.has_one.filter
@@ -580,6 +581,7 @@ end
 | [`violation_message`](#relationships-has_many-violation_message){: #relationships-has_many-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-has_many-authorize_read_with){: #relationships-has_many-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-has_many-allow_forbidden_field?){: #relationships-has_many-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
+| [`temporal_keys`](#relationships-has_many-temporal_keys){: #relationships-has_many-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is applied at build time. Requires `no_attributes? true`. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.has_many.filter
@@ -691,6 +693,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`violation_message`](#relationships-many_to_many-violation_message){: #relationships-many_to_many-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-many_to_many-authorize_read_with){: #relationships-many_to_many-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-many_to_many-allow_forbidden_field?){: #relationships-many_to_many-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
+| [`temporal_keys`](#relationships-many_to_many-temporal_keys){: #relationships-many_to_many-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is applied at build time. Requires `no_attributes? true`. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.many_to_many.filter
@@ -797,6 +800,7 @@ end
 | [`violation_message`](#relationships-belongs_to-violation_message){: #relationships-belongs_to-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 | [`authorize_read_with`](#relationships-belongs_to-authorize_read_with){: #relationships-belongs_to-authorize_read_with } | `:error \| :filter` |  | If set to `:error`, any authorization filter added to the relationship will result in an error if any record matches the filter in the database. |
 | [`allow_forbidden_field?`](#relationships-belongs_to-allow_forbidden_field?){: #relationships-belongs_to-allow_forbidden_field? } | `boolean` | `false` | If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error. |
+| [`temporal_keys`](#relationships-belongs_to-temporal_keys){: #relationships-belongs_to-temporal_keys } | `{atom, atom}` |  | For relationships involving temporal resources, the `{source, destination}` period attributes (e.g. `{:valid_at, :valid_at}`). Use `nil` for a non-temporal side (`{nil, :valid_at}` / `{:valid_at, nil}`). When both are set, a `range_overlaps(parent(source), destination)` filter is applied at build time. Requires `no_attributes? true`. See the `temporal` section of `Ash.Resource.Dsl`. |
 
 
 ### relationships.belongs_to.filter
@@ -4331,6 +4335,45 @@ end
 | [`global?`](#multitenancy-global?){: #multitenancy-global? } | `boolean` | `false` | Whether or not the data may be accessed without setting a tenant. For example, with attribute multitenancy, this allows accessing without filtering by the tenant attribute. |
 | [`parse_attribute`](#multitenancy-parse_attribute){: #multitenancy-parse_attribute } | `mfa` | `{Ash.Resource.Dsl, :identity, []}` | An mfa ({module, function, args}) pointing to a function that takes a tenant and returns the attribute value |
 | [`tenant_from_attribute`](#multitenancy-tenant_from_attribute){: #multitenancy-tenant_from_attribute } | `mfa` | `{Ash.Resource.Dsl, :identity, []}` | An mfa ({module, function, args}) pointing to a function that takes an attribute value and returns the tenant. This is the inverse of `parse_attribute`. |
+
+
+
+
+
+
+## temporal
+Options for configuring temporal (time-travel) behavior of a resource.
+
+Presence of this section makes a resource temporal (mirrors `multitenancy`,
+which keys on `strategy`). A temporal resource tracks a period of validity for
+each row. Reads and writes are pinned to a point in time with `Ash.Query.as_of/2`
+/ `Ash.Changeset.as_of/2`: a read returns the rows valid at that instant, and a
+write only guarantees its rules hold at that instant, at the time it is made.
+
+Only the `:context` strategy is supported for now, which defers to native data
+layer temporal support (e.g. Postgres) via a single period column.
+
+
+
+
+### Examples
+```
+temporal do
+  strategy :context
+  attribute :valid_at
+end
+
+```
+
+
+
+
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`strategy`](#temporal-strategy){: #temporal-strategy } | `:context` | `:context` | Determines how temporality is implemented. Currently only `:context`, which defers to native data layer support using a single period column. |
+| [`attribute`](#temporal-attribute){: #temporal-attribute } | `atom` | `:valid_at` | The single period (range) attribute, e.g `valid_at`. |
 
 
 

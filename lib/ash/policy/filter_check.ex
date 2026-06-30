@@ -118,21 +118,24 @@ defmodule Ash.Policy.FilterCheck do
               true
             )
 
-          if no_filter_static_forbidden_reads? || authorizer.for_fields ||
-               authorizer.action.type != :read ||
-               context[:private][:pre_flight_authorization?] do
-            try_eval(expr, authorizer)
-          else
-            case expr do
-              true ->
-                {:ok, true}
+          cond do
+            # Time-travel read (`as_of` set on the query): a check that depends on
+            # `now()`/`ago()`/`from_now()` must be applied as a data-layer filter — where it
+            # gets anchored to `as_of` (see `Ash.Actions.Read.add_calc_context_to_query`) —
+            # never eagerly evaluated here. Eager evaluation would resolve relative time
+            # against the wall clock, ignoring `as_of` (and re-evaluating `now()`). Defer it.
+            # Only reads have a data-layer filter to defer to; other action types still eval.
+            authorizer.action.type == :read and as_of_set?(authorizer) and
+                references_relative_time?(expr) ->
+              defer_to_filter(expr)
 
-              false ->
-                {:ok, false}
+            no_filter_static_forbidden_reads? || authorizer.for_fields ||
+                authorizer.action.type != :read ||
+                context[:private][:pre_flight_authorization?] ->
+              try_eval(expr, authorizer)
 
-              other ->
-                other
-            end
+            true ->
+              defer_to_filter(expr)
           end
         end)
         |> case do
@@ -146,6 +149,28 @@ defmodule Ash.Policy.FilterCheck do
             {:ok, :unknown}
         end
       end
+
+      # `as_of` is a core field on every subject (query/changeset/action_input); it is
+      # non-nil only when time-travel is requested (or defaulted for a temporal read).
+      defp as_of_set?(authorizer) do
+        case authorizer.subject do
+          %{as_of: as_of} -> not is_nil(as_of)
+          _ -> false
+        end
+      end
+
+      defp references_relative_time?(expr) do
+        Ash.Expr.template_references?(expr, fn
+          %Ash.Query.Function.Now{} -> true
+          %Ash.Query.Function.Ago{} -> true
+          %Ash.Query.Function.FromNow{} -> true
+          _ -> false
+        end)
+      end
+
+      defp defer_to_filter(true), do: {:ok, true}
+      defp defer_to_filter(false), do: {:ok, false}
+      defp defer_to_filter(other), do: other
 
       defp try_eval(expression, %{
              resource: resource,

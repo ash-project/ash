@@ -499,6 +499,26 @@ defmodule Ash.Resource.Info do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :template, nil)
   end
 
+  @doc "The temporal strategy for a resource, or `nil` if it is not temporal"
+  @spec temporal_strategy(Spark.Dsl.t() | Ash.Resource.t()) :: :context | nil
+  def temporal_strategy(resource) do
+    Spark.Dsl.Extension.get_opt(resource, [:temporal], :strategy, nil)
+  end
+
+  @doc "Whether or not the resource is temporal (keyed on the presence of a strategy)"
+  @spec temporal?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean
+  def temporal?(resource) do
+    not is_nil(temporal_strategy(resource))
+  end
+
+  @doc "The single period (range) attribute for a temporal resource"
+  @spec temporal_attribute(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
+  def temporal_attribute(resource) do
+    if temporal?(resource) do
+      Spark.Dsl.Extension.get_opt(resource, [:temporal], :attribute, :valid_at)
+    end
+  end
+
   @doc "Returns all pipelines of a resource"
   @spec pipelines(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Pipeline.t())
   def pipelines(resource) do

@@ -74,6 +74,10 @@ defmodule Ash do
       type: {:protocol, Ash.ToTenant},
       doc: "A tenant to set on the query or changeset"
     ],
+    as_of: [
+      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      doc: "A point in time to run the action \"as of\" (time travel). See `Ash.Query.as_of/2`."
+    ],
     actor: [
       type: :any,
       doc:
@@ -254,6 +258,11 @@ defmodule Ash do
                      tenant: [
                        type: {:protocol, Ash.ToTenant},
                        doc: "The tenant to set on the query being run"
+                     ],
+                     as_of: [
+                       type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+                       doc:
+                         "A point in time to run the read \"as of\" (time travel). See `Ash.Query.as_of/2`."
                      ],
                      action: [
                        type: :atom,
@@ -797,6 +806,12 @@ defmodule Ash do
       The tenant, supplied to calculation context.
       """
     ],
+    as_of: [
+      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      doc: """
+      A point in time to run "as of" (time travel). See `Ash.Query.as_of/2`.
+      """
+    ],
     context: [
       type: :map,
       doc: """
@@ -860,6 +875,12 @@ defmodule Ash do
       type: {:protocol, Ash.ToTenant},
       doc: """
       The tenant, supplied to calculation context.
+      """
+    ],
+    as_of: [
+      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      doc: """
+      A point in time to run "as of" (time travel). See `Ash.Query.as_of/2`.
       """
     ],
     authorize?: [
@@ -946,6 +967,10 @@ defmodule Ash do
     tenant: [
       type: {:protocol, Ash.ToTenant},
       doc: "The tenant to use for authorization"
+    ],
+    as_of: [
+      type: {:or, [{:struct, DateTime}, {:literal, :now}, {:literal, nil}]},
+      doc: "A point in time to authorize \"as of\" (time travel). See `Ash.Query.as_of/2`."
     ],
     alter_source?: [
       type: :boolean,
@@ -2145,6 +2170,9 @@ defmodule Ash do
       resource
       |> Ash.Query.new(domain: domain)
       |> Ash.Query.set_tenant(opts[:tenant])
+      |> then(fn query ->
+        if opts[:as_of], do: Ash.Query.as_of(query, opts[:as_of]), else: query
+      end)
       |> Ash.Query.filter(^filter)
       |> Ash.Query.set_context(opts[:context] || %{})
       |> Ash.Query.lock(opts[:lock])
@@ -2552,15 +2580,19 @@ defmodule Ash do
     query =
       case query do
         %Ash.Query{} = query ->
-          Ash.Query.set_tenant(
-            query,
+          query
+          |> Ash.Query.set_tenant(
             opts[:tenant] || query.tenant || Map.get(record.__metadata__, :tenant)
+          )
+          |> Ash.Query.as_of(
+            opts[:as_of] || query.as_of || Map.get(record.__metadata__, :as_of)
           )
 
         keyword ->
           resource
           |> Ash.Query.new()
           |> Ash.Query.set_tenant(opts[:tenant] || Map.get(record.__metadata__, :tenant))
+          |> Ash.Query.as_of(opts[:as_of] || Map.get(record.__metadata__, :as_of))
           |> Ash.Query.load(keyword, opts)
       end
 
@@ -2897,6 +2929,12 @@ defmodule Ash do
     opts =
       case Map.fetch(record.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
+
+    opts =
+      case Map.fetch(record.__metadata__, :as_of) do
+        {:ok, as_of} when not is_nil(as_of) -> Keyword.put_new(opts, :as_of, as_of)
         _ -> opts
       end
 
@@ -3788,6 +3826,7 @@ defmodule Ash do
     domain = Ash.Helpers.domain!(changeset, opts)
 
     opts = Keyword.put_new(opts, :tenant, Map.get(changeset.data.__metadata__, :tenant))
+    opts = Keyword.put_new(opts, :as_of, Map.get(changeset.data.__metadata__, :as_of))
 
     with {:ok, opts} <- UpdateOpts.validate(opts),
          opts <- UpdateOpts.to_options(opts),
@@ -3814,6 +3853,12 @@ defmodule Ash do
     opts =
       case Map.fetch(record.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
+
+    opts =
+      case Map.fetch(record.__metadata__, :as_of) do
+        {:ok, as_of} when not is_nil(as_of) -> Keyword.put_new(opts, :as_of, as_of)
         _ -> opts
       end
 
@@ -3924,6 +3969,12 @@ defmodule Ash do
     opts =
       case Map.fetch(data.__metadata__, :tenant) do
         {:ok, tenant} when not is_nil(tenant) -> Keyword.put_new(opts, :tenant, tenant)
+        _ -> opts
+      end
+
+    opts =
+      case Map.fetch(data.__metadata__, :as_of) do
+        {:ok, as_of} when not is_nil(as_of) -> Keyword.put_new(opts, :as_of, as_of)
         _ -> opts
       end
 

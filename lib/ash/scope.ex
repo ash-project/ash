@@ -148,6 +148,12 @@ defmodule Ash.Scope do
     def get_authorize?(scope)
   end
 
+  # These structs share a (large) compile cycle with this module, so their compile
+  # order relative to these `defimpl`s is otherwise unconstrained and fragile. Force
+  # them to compile first so the implementations can see the structs.
+  Code.ensure_compiled!(Ash.Policy.Authorizer)
+  Code.ensure_compiled!(Ash.Resource.Change.Context)
+
   defimpl Ash.Scope.ToOpts, for: Ash.Policy.Authorizer do
     def get_actor(%{actor: actor}), do: {:ok, actor}
 

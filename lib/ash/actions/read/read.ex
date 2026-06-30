@@ -458,7 +458,7 @@ defmodule Ash.Actions.Read do
 
             with {:ok, data, count, calculations_at_runtime, calculations_in_query, new_query} <-
                    data_result,
-                 data = add_tenant(data, new_query),
+                 data = add_read_metadata(data, new_query),
                  {:ok, data} <-
                    load_through_attributes(
                      data,
@@ -493,7 +493,7 @@ defmodule Ash.Actions.Read do
                    ) do
               data
               |> Helpers.restrict_field_access(query)
-              |> add_tenant(new_query)
+              |> add_read_metadata(new_query)
               |> attach_fields(opts[:initial_data], initial_query, query, missing_pkeys?)
               |> cleanup_field_auth(query)
               |> add_page(
@@ -1110,7 +1110,7 @@ defmodule Ash.Actions.Read do
                       ) do
                  data
                  |> Helpers.restrict_field_access(query)
-                 |> add_tenant(query)
+                 |> add_read_metadata(query)
                  |> attach_fields(nil, initial_query, query, false)
                  |> cleanup_field_auth(query)
                  |> add_page(
@@ -1167,7 +1167,7 @@ defmodule Ash.Actions.Read do
                     {:ok, results, after_notifications} <- run_after_action(query, results) do
                  notify_or_store(query, before_notifications ++ after_notifications, notify?)
 
-                 {:ok, add_tenant(results, query)}
+                 {:ok, add_read_metadata(results, query)}
                else
                  {%{valid?: false} = query, before_notifications} ->
                    notify_or_store(query, before_notifications, notify?)
@@ -2456,6 +2456,27 @@ defmodule Ash.Actions.Read do
       end
 
     Ash.Filter.map(filter, fn
+      # Anchor relative-time expressions to the query's `as_of` (temporal reads).
+      # `as_of` rides in `opts[:as_of]` (optional — `nil` leaves wall-clock behavior),
+      # threaded by `add_calc_context_to_query` and by data layers at their call sites.
+      %Ash.Query.Function.Now{} = now ->
+        opts[:as_of] || now
+
+      %Ash.Query.Function.Ago{arguments: [factor, interval]} = ago when is_integer(factor) ->
+        if as_of = opts[:as_of] do
+          Ash.Query.Function.Ago.datetime_add(as_of, -factor, interval)
+        else
+          ago
+        end
+
+      %Ash.Query.Function.FromNow{arguments: [factor, interval]} = from_now
+      when is_integer(factor) ->
+        if as_of = opts[:as_of] do
+          Ash.Query.Function.Ago.datetime_add(as_of, factor, interval)
+        else
+          from_now
+        end
+
       %Ash.Query.Parent{} = parent ->
         if List.wrap(opts[:parent_stack]) != [] do
           %{
@@ -2938,6 +2959,15 @@ defmodule Ash.Actions.Read do
 
   defp apply_calculation_tenant(calculation), do: calculation
 
+  # Stamp the read's tenant and `as_of` onto each record's metadata so a later
+  # `Ash.load/3` of the same record can reuse them (same as tenants — see `Ash.load/3`).
+  # `put_new` so a value carried from an originating read is never overwritten.
+  defp add_read_metadata(data, query) do
+    data
+    |> add_tenant(query)
+    |> add_as_of(query)
+  end
+
   defp add_tenant(data, query) do
     if Ash.Resource.Info.multitenancy_strategy(query.resource) do
       Enum.map(data, fn item ->
@@ -2947,6 +2977,18 @@ defmodule Ash.Actions.Read do
       data
     end
   end
+
+  defp add_as_of(data, %{as_of: as_of} = query) when not is_nil(as_of) do
+    if Ash.Resource.Info.temporal?(query.resource) do
+      Enum.map(data, fn item ->
+        %{item | __metadata__: Map.put_new(item.__metadata__, :as_of, as_of)}
+      end)
+    else
+      data
+    end
+  end
+
+  defp add_as_of(data, _query), do: data
 
   defp add_query(result, query, opts) do
     if opts[:return_query?] do
@@ -3231,6 +3273,10 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain, opts) do
+    # Thread the query's `as_of` so `now()`/`ago()`/`from_now()` are anchored to it
+    # during calc/aggregate/filter expansion (see `add_calc_context_to_filter`).
+    opts = Keyword.put_new(opts, :as_of, Ash.Query.resolve_as_of(query.as_of))
+
     {:ok, sort} =
       add_calc_context_to_sort(
         query.sort,

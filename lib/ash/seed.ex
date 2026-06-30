@@ -36,7 +36,7 @@ defmodule Ash.Seed do
       |> Enum.concat(Ash.Resource.Info.relationships(resource))
       |> Enum.map(& &1.name)
 
-    opts = Map.take(input.__metadata__, [:tenant]) |> Enum.into([])
+    opts = Map.take(input.__metadata__, [:tenant, :as_of]) |> Enum.into([])
 
     input =
       input
@@ -116,15 +116,12 @@ defmodule Ash.Seed do
     |> change_relationships(input)
     |> Ash.Changeset.set_defaults(:create, true)
     |> Ash.Changeset.set_tenant(opts[:tenant])
+    |> maybe_set_as_of(opts[:as_of])
     |> maybe_set_attribute_tenant()
     |> create_via_data_layer()
     |> case do
       {:ok, result, _, _} ->
-        if opts[:tenant] do
-          Ash.Resource.set_metadata(result, %{tenant: opts[:tenant]})
-        else
-          result
-        end
+        seed_metadata(result, resource, opts)
 
       {:error, error} ->
         raise Ash.Error.to_error_class(error)
@@ -150,19 +147,36 @@ defmodule Ash.Seed do
     |> change_relationships(input)
     |> Ash.Changeset.set_defaults(:create, true)
     |> Ash.Changeset.set_tenant(opts[:tenant])
+    |> maybe_set_as_of(opts[:as_of])
     |> maybe_set_attribute_tenant()
     |> create_via_data_layer()
     |> case do
       {:ok, result, _, _} ->
-        if opts[:tenant] do
-          Ash.Resource.set_metadata(result, %{tenant: opts[:tenant]})
-        else
-          result
-        end
+        seed_metadata(result, resource, opts)
 
       {:error, error} ->
         raise Ash.Error.to_error_class(error)
     end
+  end
+
+  # Apply a seed's `as_of` (temporal time-travel) to the changeset so the data layer
+  # establishes the row's period from it; stamp it back onto the result metadata (like
+  # tenant) so a later `Ash.load/3` reuses the instant.
+  defp maybe_set_as_of(changeset, nil), do: changeset
+  defp maybe_set_as_of(changeset, as_of), do: Ash.Changeset.as_of(changeset, as_of)
+
+  defp seed_metadata(result, resource, opts) do
+    result =
+      if opts[:tenant] do
+        Ash.Resource.set_metadata(result, %{tenant: opts[:tenant]})
+      else
+        result
+      end
+
+    %{
+      result
+      | __metadata__: Ash.Actions.Helpers.put_write_as_of(result.__metadata__, resource, opts[:as_of])
+    }
   end
 
   @doc """

@@ -9,6 +9,33 @@ defmodule Ash.Helpers do
 
   @dialyzer {:nowarn_function, {:unwrap_or_raise!, 2}}
 
+  @doc false
+  # Evaluate an attribute default (`&fun/0`, `{mod, fun, args}`, or a literal). When the
+  # default is a wall-clock "now" default and a concrete `as_of` instant is in play
+  # (temporal time travel), use that instant instead of evaluating the wall clock — so a
+  # record written "as of" a historical time gets historical timestamps, consistent with
+  # how `now()` is anchored. A `nil`/`:now` `as_of` evaluates the default normally.
+  @spec resolve_default(term(), DateTime.t() | :now | nil) :: term()
+  def resolve_default(default, as_of \\ nil)
+
+  def resolve_default(default, %DateTime{} = as_of) do
+    if now_default?(default), do: as_of, else: eval_default(default)
+  end
+
+  def resolve_default(default, _as_of), do: eval_default(default)
+
+  @doc false
+  # Whether an attribute default is the wall-clock `now` (`&DateTime.utc_now/0` or the
+  # equivalent `{DateTime, :utc_now, _}` MFA).
+  @spec now_default?(term()) :: boolean()
+  def now_default?(fun) when is_function(fun, 0), do: fun == (&DateTime.utc_now/0)
+  def now_default?({DateTime, :utc_now, _}), do: true
+  def now_default?(_), do: false
+
+  defp eval_default({mod, func, args}), do: apply(mod, func, args)
+  defp eval_default(function) when is_function(function, 0), do: function.()
+  defp eval_default(value), do: value
+
   @spec try_compile(term) :: :ok
   def try_compile(module) when is_atom(module) do
     try do
