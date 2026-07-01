@@ -454,29 +454,26 @@ defmodule Ash.Actions.Read do
                   {data_result, query}
               end
 
+            query = Ash.Query.set_context(query, %{shared: query_ran.context[:shared]})
+
             with {:ok, data, count, calculations_at_runtime, calculations_in_query, new_query} <-
                    data_result,
-                 {:ok, post_read_query} <-
-                   {:ok, build_post_read_query(query, query_ran, new_query)},
                  data = add_tenant(data, new_query),
                  {:ok, data} <-
                    load_through_attributes(
                      data,
-                     %{
-                       query_ran
-                       | calculations: Map.new(calculations_in_query, &{&1.name, &1})
-                     },
-                     post_read_query.domain,
+                     %{query_ran | calculations: Map.new(calculations_in_query, &{&1.name, &1})},
+                     query.domain,
                      opts[:actor],
                      opts[:tracer],
                      opts[:authorize?]
                    ),
                  {:ok, data} <-
-                   load_relationships(data, post_read_query, opts),
+                   load_relationships(data, query, opts),
                  {:ok, data} <-
                    Ash.Actions.Read.Calculations.run(
                      data,
-                     post_read_query,
+                     query,
                      calculations_at_runtime,
                      calculations_in_query
                    ),
@@ -484,35 +481,30 @@ defmodule Ash.Actions.Read do
                    load_through_attributes(
                      data,
                      %{
-                       post_read_query
+                       query
                        | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
-                         load_through: Map.delete(post_read_query.load_through || %{}, :attribute)
+                         load_through: Map.delete(query.load_through || %{}, :attribute)
                      },
-                     post_read_query.domain,
+                     query.domain,
                      opts[:actor],
                      opts[:tracer],
                      opts[:authorize?],
                      false
                    ) do
               data
-              |> Helpers.restrict_field_access(post_read_query)
+              |> Helpers.restrict_field_access(query)
               |> add_tenant(new_query)
-              |> attach_fields(
-                opts[:initial_data],
-                initial_query,
-                post_read_query,
-                missing_pkeys?
-              )
-              |> cleanup_field_auth(post_read_query)
+              |> attach_fields(opts[:initial_data], initial_query, query, missing_pkeys?)
+              |> cleanup_field_auth(query)
               |> add_page(
-                new_query.action,
+                query.action,
                 count,
-                new_query.sort,
+                query.sort,
                 query,
                 new_query,
                 opts
               )
-              |> add_query(post_read_query, opts)
+              |> add_query(query, opts)
             else
               {:error, %Ash.Query{errors: errors} = query} ->
                 {:error, Ash.Error.to_error_class(errors, query: query)}
@@ -794,17 +786,6 @@ defmodule Ash.Actions.Read do
                  query <- Map.put(query, :filter, filter),
                  query <- Ash.Query.unset(query, :calculations),
                  {%{valid?: true} = query, before_notifications} <- run_before_action(query),
-                 {:ok, query, calculations_at_runtime, calculations_in_query,
-                  data_layer_calculations} <-
-                   apply_before_action_changes(
-                     query,
-                     calculations_at_runtime,
-                     calculations_in_query,
-                     data_layer_calculations,
-                     relationship_path_filters,
-                     source_fields,
-                     opts
-                   ),
                  {:ok, count} <-
                    fetch_count(
                      query,
@@ -1074,16 +1055,6 @@ defmodule Ash.Actions.Read do
          query <- Map.put(query, :filter, filter),
          query <- Ash.Query.unset(query, :calculations),
          {%{valid?: true} = query, before_notifications} <- run_before_action(query),
-         {:ok, query, calculations_at_runtime, calculations_in_query, data_layer_calculations} <-
-           apply_before_action_changes(
-             query,
-             calculations_at_runtime,
-             calculations_in_query,
-             data_layer_calculations,
-             relationship_path_filters,
-             source_fields,
-             opts
-           ),
          {:ok, count} <-
            fetch_count(
              query,
@@ -3746,179 +3717,24 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp build_post_read_query(query, query_ran, new_query) do
-    query =
-      query
-      |> Ash.Query.set_context(%{shared: query_ran.context[:shared]})
+  defp warn_if_before_action_load_changed(load_before_action, query) do
+    if load_before_action != query.load do
+      Logger.warning("""
+      Cannot add load statements in before_action hooks on read actions.
 
-    case before_action_load_diff(query.load, new_query.load) do
-      [] -> query
-      loads -> Ash.Query.load(query, loads)
+      The load on resource #{inspect(query.resource)} was changed in a before_action hook from
+      #{inspect(load_before_action)} to #{inspect(query.load)}. Load statements added in
+      before_action hooks are not supported and will be ignored. Use `prepare` to add loads
+      to read actions instead.
+      """)
     end
-  end
 
-  defp before_action_load_diff(_outer, nil), do: []
-  defp before_action_load_diff(_outer, []), do: []
-
-  defp before_action_load_diff(outer, new) do
-    outer_keys = MapSet.new(load_names(outer))
-
-    new
-    |> List.wrap()
-    |> Enum.filter(fn
-      {key, _} when is_atom(key) ->
-        not MapSet.member?(outer_keys, key)
-
-      %Ash.Query.Calculation{name: name} ->
-        not MapSet.member?(outer_keys, name)
-
-      %Ash.Query.Aggregate{name: name} ->
-        not MapSet.member?(outer_keys, name)
-
-      key when is_atom(key) ->
-        not MapSet.member?(outer_keys, key)
-    end)
-  end
-
-  defp load_names(nil), do: []
-
-  defp load_names(loads) do
-    loads
-    |> List.wrap()
-    |> Enum.map(fn
-      {key, _} when is_atom(key) -> key
-      %Ash.Query.Calculation{name: name} -> name
-      %Ash.Query.Aggregate{name: name} -> name
-      key when is_atom(key) -> key
-    end)
-  end
-
-  defp apply_before_action_changes(
-         query,
-         calculations_at_runtime,
-         calculations_in_query,
-         data_layer_calculations,
-         relationship_path_filters,
-         source_fields,
-         opts
-       ) do
-    prev_in_query_count = length(calculations_in_query)
-    missing_pkeys? = missing_pkeys?(query, opts)
-    reuse_values? = Keyword.get(opts, :reuse_values?, false)
-    initial_data = Keyword.fetch(opts, :initial_data)
-
-    with {:ok, calculations_at_runtime, calculations_in_query, query} <-
-           Ash.Actions.Read.Calculations.process_before_action_calculations(
-             query.domain,
-             query,
-             calculations_at_runtime,
-             calculations_in_query,
-             missing_pkeys?,
-             initial_data,
-             reuse_values?,
-             opts[:authorize?]
-           ),
-         query <-
-           add_calc_context_to_query(
-             query,
-             opts[:actor],
-             opts[:authorize?],
-             query.tenant,
-             opts[:tracer],
-             query.domain,
-             expand?: false,
-             parent_stack: parent_stack_from_context(query.context),
-             source_context: query.context
-           ),
-         calculations_at_runtime <-
-           Enum.map(calculations_at_runtime, fn calc ->
-             add_calc_context(
-               calc,
-               opts[:actor],
-               opts[:authorize?],
-               query.tenant,
-               opts[:tracer],
-               query.domain,
-               query.resource,
-               source_context: query.context
-             )
-           end),
-         calculations_in_query <-
-           Enum.map(calculations_in_query, fn calc ->
-             add_calc_context(
-               calc,
-               opts[:actor],
-               opts[:authorize?],
-               query.tenant,
-               opts[:tracer],
-               query.domain,
-               query.resource,
-               source_context: query.context
-             )
-           end),
-         {query, calculations_at_runtime, calculations_in_query} <-
-           Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
-             query,
-             calculations_at_runtime,
-             calculations_in_query,
-             source_fields
-           ),
-         {:ok, data_layer_calculations} <-
-           append_before_action_data_layer_calculations(
-             query,
-             calculations_in_query,
-             prev_in_query_count,
-             data_layer_calculations,
-             relationship_path_filters,
-             opts
-           ) do
-      {:ok, query, calculations_at_runtime, calculations_in_query, data_layer_calculations}
-    end
-  end
-
-  defp append_before_action_data_layer_calculations(
-         query,
-         calculations_in_query,
-         prev_in_query_count,
-         data_layer_calculations,
-         relationship_path_filters,
-         opts
-       ) do
-    new_in_query = Enum.drop(calculations_in_query, prev_in_query_count)
-
-    if new_in_query == [] do
-      {:ok, data_layer_calculations}
-    else
-      with {:ok, new_calculations} <- hydrate_calculations(query, new_in_query) do
-        {:ok,
-         data_layer_calculations ++
-           authorize_calculation_expressions(
-             new_calculations,
-             query.resource,
-             opts[:authorize?],
-             relationship_path_filters,
-             opts[:actor],
-             query.tenant,
-             opts[:tracer],
-             query.domain,
-             parent_stack_from_context(query.context),
-             query.context
-           )}
-      end
-    end
-  end
-
-  defp missing_pkeys?(query, opts) do
-    pkey = Ash.Resource.Info.primary_key(query.resource)
-
-    Enum.empty?(pkey) ||
-      (opts[:initial_data] &&
-         Enum.any?(opts[:initial_data], fn record ->
-           Enum.any?(Map.take(record, pkey), fn {_, v} -> is_nil(v) end)
-         end))
+    query
   end
 
   defp run_before_action(query) do
+    load_before_action = query.load
+
     query =
       query
       |> Ash.Query.put_context(:private, %{in_before_action?: true})
@@ -3940,7 +3756,10 @@ defmodule Ash.Actions.Read do
           {:cont, {query, notifications}}
       end
     end)
-    |> then(fn {query, notifications} -> {set_phase(query), notifications} end)
+    |> then(fn {query, notifications} ->
+      query = warn_if_before_action_load_changed(load_before_action, query)
+      {set_phase(query), notifications}
+    end)
   end
 
   @doc false

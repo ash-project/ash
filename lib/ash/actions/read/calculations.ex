@@ -1051,41 +1051,6 @@ defmodule Ash.Actions.Read.Calculations do
     end
   end
 
-  @doc false
-  def process_before_action_calculations(
-        domain,
-        query,
-        calculations_at_runtime,
-        calculations_in_query,
-        missing_pkeys?,
-        initial_data,
-        reuse_values?,
-        authorize?
-      ) do
-    if map_size(query.calculations) == 0 do
-      {:ok, calculations_at_runtime, calculations_in_query, query}
-    else
-      case split_and_load_calculations(
-             domain,
-             query,
-             missing_pkeys?,
-             initial_data,
-             reuse_values?,
-             authorize?
-           ) do
-        {:ok, new_in_query, new_at_runtime, query} ->
-          {:ok, calculations_at_runtime ++ new_at_runtime, calculations_in_query ++ new_in_query,
-           query}
-
-        {:error, %Ash.Query{} = query} ->
-          {:error, query}
-
-        {:error, error} ->
-          {:error, error}
-      end
-    end
-  end
-
   defp try_evaluate(
          expression,
          resource,
