@@ -103,6 +103,12 @@ defmodule Ash.Test.Calculations.CalculationWithUnionTypeTest do
                         tag: :content_type,
                         tag_value: "text"
                       ],
+                      texts: [
+                        type: {:array, TextContent}
+                      ],
+                      grouped_texts: [
+                        type: {:array, {:array, TextContent}}
+                      ],
                       # Simple types for testing untagged unions
                       note: [
                         type: :string
@@ -140,5 +146,47 @@ defmodule Ash.Test.Calculations.CalculationWithUnionTypeTest do
              |> Ash.load!(content: [text: [:is_formatted], checklist: [:total_items]])
 
     assert %Ash.Union{type: :text, value: %{content_type: "text", text: "Text content"}} = content
+  end
+
+  test "load statement for calculations on an array member of a union type loads every element" do
+    assert %Author{content: content} =
+             Changeset.for_create(Author, :create, %{
+               content: %Ash.Union{
+                 type: :texts,
+                 value: [
+                   %{text: "first", content_type: "text"},
+                   %{text: "second", content_type: "text"},
+                   %{text: "third", content_type: "text"}
+                 ]
+               }
+             })
+             |> Ash.create!()
+             |> Ash.load!(content: [texts: [:is_formatted]])
+
+    assert %Ash.Union{type: :texts, value: value} = content
+
+    assert ["first", "second", "third"] = Enum.map(value, & &1.text)
+    assert [false, false, false] = Enum.map(value, & &1.is_formatted)
+  end
+
+  test "load statement for calculations on a nested array member of a union type preserves grouping" do
+    assert %Author{content: content} =
+             Changeset.for_create(Author, :create, %{
+               content: %Ash.Union{
+                 type: :grouped_texts,
+                 value: [
+                   [%{text: "a", content_type: "text"}, %{text: "b", content_type: "text"}],
+                   [%{text: "c", content_type: "text"}]
+                 ]
+               }
+             })
+             |> Ash.create!()
+             |> Ash.load!(content: [grouped_texts: [:is_formatted]])
+
+    assert %Ash.Union{type: :grouped_texts, value: [first_group, second_group]} = content
+
+    assert ["a", "b"] = Enum.map(first_group, & &1.text)
+    assert ["c"] = Enum.map(second_group, & &1.text)
+    assert [false, false] = Enum.map(first_group, & &1.is_formatted)
   end
 end

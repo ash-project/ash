@@ -170,6 +170,7 @@ defmodule Ash.Actions.Update.UpdateMany do
           return_records?: true,
           tenant: opts[:tenant],
           action_select: action_select,
+          select: opts[:select] || action_select,
           calculations: []
         }
 

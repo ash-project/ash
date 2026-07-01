@@ -1077,8 +1077,25 @@ defmodule Ash.CodeInterface do
             end
           end
 
+        predicate? = interface.name |> to_string() |> String.ends_with?("?")
+
+        {action_fn, bang_fn} =
+          if predicate? do
+            base = interface.name |> to_string() |> String.trim_trailing("?") |> String.to_atom()
+            {base, interface.name}
+          else
+            {interface.name, :"#{interface.name}!"}
+          end
+
+        {can_fn, can_question_fn} =
+          if predicate? do
+            {:"can_#{action_fn}", :"can_#{bang_fn}"}
+          else
+            {:"can_#{interface.name}", :"can_#{interface.name}?"}
+          end
+
         if :action in interface.functions do
-          @dialyzer {:nowarn_function, {interface.name, length(common_args) + 2}}
+          @dialyzer {:nowarn_function, {action_fn, length(common_args) + 2}}
           @doc Ash.CodeInterface.docs(
                  resource,
                  action,
@@ -1092,7 +1109,7 @@ defmodule Ash.CodeInterface do
                  {first_opts_location + 1, interface_options.schema()}
                ]
 
-          def unquote(interface.name)(
+          def unquote(action_fn)(
                 unquote_splicing(common_args),
                 params \\ nil,
                 opts \\ nil
@@ -1107,7 +1124,7 @@ defmodule Ash.CodeInterface do
 
         # sobelow_skip ["DOS.BinToAtom"]
         if :action! in interface.functions do
-          @dialyzer {:nowarn_function, {:"#{interface.name}!", length(common_args) + 2}}
+          @dialyzer {:nowarn_function, {bang_fn, length(common_args) + 2}}
           @doc Ash.CodeInterface.docs(
                  resource,
                  action,
@@ -1121,7 +1138,7 @@ defmodule Ash.CodeInterface do
                  {first_opts_location, interface_options.schema()},
                  {first_opts_location + 1, interface_options.schema()}
                ]
-          def unquote(:"#{interface.name}!")(
+          def unquote(bang_fn)(
                 unquote_splicing(common_args),
                 params \\ nil,
                 opts \\ nil
@@ -1173,12 +1190,12 @@ defmodule Ash.CodeInterface do
         # sobelow_skip ["DOS.BinToAtom"]
         if :can in interface.functions do
           @doc Ash.CodeInterface.docs_can(resource, action)
-          @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 3}}
+          @dialyzer {:nowarn_function, {can_fn, length(common_args) + 3}}
           @doc spark_opts: [
                  {first_opts_location + 1, Ash.Resource.Interface.CanOpts.schema()},
                  {first_opts_location + 2, Ash.Resource.Interface.CanOpts.schema()}
                ]
-          def unquote(:"can_#{interface.name}")(
+          def unquote(can_fn)(
                 actor,
                 unquote_splicing(common_args),
                 params_or_opts \\ %{},
@@ -1213,13 +1230,13 @@ defmodule Ash.CodeInterface do
 
         # sobelow_skip ["DOS.BinToAtom"]
         if :can? in interface.functions do
-          @dialyzer {:nowarn_function, {:"can_#{interface.name}?", length(common_args) + 3}}
+          @dialyzer {:nowarn_function, {can_question_fn, length(common_args) + 3}}
           @doc spark_opts: [
                  {first_opts_location + 1, Ash.Resource.Interface.CanQuestionMarkOpts.schema()},
                  {first_opts_location + 2, Ash.Resource.Interface.CanQuestionMarkOpts.schema()}
                ]
           @doc Ash.CodeInterface.docs_can?(resource, action)
-          def unquote(:"can_#{interface.name}?")(
+          def unquote(can_question_fn)(
                 actor,
                 unquote_splicing(common_args),
                 params_or_opts \\ %{},

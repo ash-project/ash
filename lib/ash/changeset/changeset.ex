@@ -3520,15 +3520,15 @@ defmodule Ash.Changeset do
   end
 
   defp get_action_argument(action, name) when is_binary(name) do
-    Enum.find(action.arguments, &(to_string(&1.name) == name))
+    Enum.find(action.arguments, &(&1.public? && to_string(&1.name) == name))
   end
 
   defp has_argument?(action, name) when is_atom(name) do
-    Enum.any?(action.arguments, &(&1.name == name))
+    Enum.any?(action.arguments, &(&1.public? && &1.name == name))
   end
 
   defp has_argument?(action, name) when is_binary(name) do
-    Enum.any?(action.arguments, &(to_string(&1.name) == name))
+    Enum.any?(action.arguments, &(&1.public? && to_string(&1.name) == name))
   end
 
   defp validate_attributes_accepted(changeset, %{accept: nil}), do: changeset
@@ -5732,11 +5732,16 @@ defmodule Ash.Changeset do
       * `:update_join` - update only the join record (only valid for many to many)
       * `{:update_join, :join_table_action_name}` - use the specified update action on a join resource
       * `{:update_join, :join_table_action_name, [:list, :of, :params]}` - pass specified params from input into a join resource update action
-      * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource. The action should be:
-        * `many_to_many` - a destroy action on the join record
+      * `:destroy` - destroys the record using primary destroy actions. For `many_to_many`, destroys both the join record and the destination record.
+      * `{:destroy, :action_name}` - the record is destroyed using the specified action. The action should be:
+        * `many_to_many` - by default, a destroy action on the join resource only (the destination record is NOT destroyed).
+          When `config :ash, many_to_many_destroy_destination_on_match?: true` is set, destroys both the destination record
+          (using the given action) and the join record (using the primary destroy action).
         * `has_many` - a destroy action on the destination resource
         * `has_one` - a destroy action on the destination resource
         * `belongs_to` - a destroy action on the destination resource
+      * `{:destroy, :destination_action_name, :join_action_name}` - (many_to_many only) destroys both the destination record
+        using the first action and the join record using the second action
       * `:error`  - an error is returned indicating that a record would have been updated
       * `:no_match` - follows the `on_no_match` instructions with these records
       * `:missing` - follows the `on_missing` instructions with these records
