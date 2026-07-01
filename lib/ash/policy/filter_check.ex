@@ -118,29 +118,29 @@ defmodule Ash.Policy.FilterCheck do
                   true
                 )
 
-          if no_filter_static_forbidden_reads? || authorizer.for_fields ||
-               authorizer.action.type != :read ||
-               context[:private][:pre_flight_authorization?] do
-            try_eval(expr, authorizer)
-          else
-            case expr do
-              true ->
-                {:ok, true}
+              if no_filter_static_forbidden_reads? || authorizer.for_fields ||
+                   authorizer.action.type != :read ||
+                   context[:private][:pre_flight_authorization?] do
+                try_eval(expr, authorizer)
+              else
+                case expr do
+                  true ->
+                    {:ok, true}
 
-              false ->
+                  false ->
+                    {:ok, false}
+
+                  other ->
+                    other
+                end
+              end
+            end)
+            |> case do
+              {:ok, v} when v in [true, false] ->
+                {:ok, v}
+
+              {:ok, nil} ->
                 {:ok, false}
-
-              other ->
-                other
-            end
-          end
-        end)
-        |> case do
-          {:ok, v} when v in [true, false] ->
-            {:ok, v}
-
-          {:ok, nil} ->
-            {:ok, false}
 
               _ ->
                 {:ok, :unknown}

@@ -4635,49 +4635,51 @@ defmodule Ash.Filter do
       ) do
     resource = context[:resource]
 
-    with :ok <- validate_exists_paths(exists, resource, at_path, path) do
-      expanded_at_path = expand_through_path_names(resource, at_path)
+    case validate_exists_paths(exists, resource, at_path, path) do
+      :ok ->
+        expanded_at_path = expand_through_path_names(resource, at_path)
 
-      at_path_resource =
-        if expanded_at_path == [] do
-          resource
+        at_path_resource =
+          if expanded_at_path == [] do
+            resource
+          else
+            Ash.Resource.Info.related(resource, expanded_at_path)
+          end
+
+        expanded_path = expand_through_path_names(at_path_resource, path)
+
+        new_resource =
+          Ash.Resource.Info.related(resource, expanded_at_path ++ expanded_path)
+
+        if new_resource do
+          context = %{
+            resource: new_resource,
+            root_resource: new_resource,
+            parent_stack: [context[:root_resource] | context[:parent_stack] || []],
+            relationship_path: [],
+            public?: context[:public?],
+            input?: context[:input?],
+            data_layer: Ash.DataLayer.data_layer(new_resource)
+          }
+
+          case do_hydrate_refs(expr, context) do
+            {:ok, expr} ->
+              {:ok, %{exists | expr: expr, at_path: expanded_at_path, path: expanded_path}}
+
+            other ->
+              other
+          end
         else
-          Ash.Resource.Info.related(resource, expanded_at_path)
+          exists_related_hydrate_error(
+            exists,
+            resource,
+            expanded_at_path,
+            expanded_path
+          )
         end
 
-      expanded_path = expand_through_path_names(at_path_resource, path)
-
-      new_resource =
-        Ash.Resource.Info.related(resource, expanded_at_path ++ expanded_path)
-
-      if new_resource do
-        context = %{
-          resource: new_resource,
-          root_resource: new_resource,
-          parent_stack: [context[:root_resource] | context[:parent_stack] || []],
-          relationship_path: [],
-          public?: context[:public?],
-          input?: context[:input?],
-          data_layer: Ash.DataLayer.data_layer(new_resource)
-        }
-
-        case do_hydrate_refs(expr, context) do
-          {:ok, expr} ->
-            {:ok, %{exists | expr: expr, at_path: expanded_at_path, path: expanded_path}}
-
-          other ->
-            other
-        end
-      else
-        exists_related_hydrate_error(
-          exists,
-          resource,
-          expanded_at_path,
-          expanded_path
-        )
-      end
-    else
-      {:error, error} -> {:error, error}
+      {:error, error} ->
+        {:error, error}
     end
   end
 
