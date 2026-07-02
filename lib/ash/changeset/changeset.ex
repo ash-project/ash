@@ -3136,6 +3136,16 @@ defmodule Ash.Changeset do
     |> timeout(changeset.timeout || opts[:timeout])
     |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
     |> Map.put(:action_type, action.type)
+    |> apply_action_filter(action)
+  end
+
+  defp apply_action_filter(changeset, %{filter: nil}), do: changeset
+
+  defp apply_action_filter(changeset, action) do
+    case Map.get(action, :filter) do
+      nil -> changeset
+      action_filter -> filter(changeset, action_filter)
+    end
   end
 
   defp reset_arguments(%{arguments: arguments} = changeset) do

@@ -880,12 +880,14 @@ multiple actions of each type in a large application.
    * pipe_through
    * metadata
    * argument
+   * filter
  * [destroy](#actions-destroy)
    * change
    * validate
    * pipe_through
    * metadata
    * argument
+   * filter
 
 
 ### Examples
@@ -1823,6 +1825,7 @@ Declares a `update` action. For calling this action, see the `Ash.Domain` docume
  * [pipe_through](#actions-update-pipe_through)
  * [metadata](#actions-update-metadata)
  * [argument](#actions-update-argument)
+ * [filter](#actions-update-filter)
 
 
 ### Examples
@@ -2088,6 +2091,40 @@ argument :password_confirmation, :string
 
 Target: `Ash.Resource.Actions.Argument`
 
+### actions.update.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#actions-update-filter-filter){: #actions-update-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
+
 
 
 
@@ -2112,6 +2149,7 @@ See `Ash.Resource.Change.Builtins.cascade_destroy/2` for cascading destroy opera
  * [pipe_through](#actions-destroy-pipe_through)
  * [metadata](#actions-destroy-metadata)
  * [argument](#actions-destroy-argument)
+ * [filter](#actions-destroy-filter)
 
 
 ### Examples
@@ -2380,6 +2418,40 @@ argument :password_confirmation, :string
 ### Introspection
 
 Target: `Ash.Resource.Actions.Argument`
+
+### actions.destroy.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#actions-destroy-filter-filter){: #actions-destroy-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` templates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 
 
