@@ -293,11 +293,11 @@ defmodule Ash.Query do
     import Inspect.Algebra
 
     def inspect(query, opts) do
-      load_through_attributes = Map.to_list(query.load_through[:attributes] || %{})
+      load_for_inspect = Ash.Query.load_for_inspect(query)
 
       query = %{
         query
-        | load: Keyword.merge(query.load || [], load_through_attributes),
+        | load: load_for_inspect,
           calculations:
             Map.new(query.calculations, fn {name, calc} ->
               if load_through = query.load_through[:calculations][name] do
@@ -401,6 +401,27 @@ defmodule Ash.Query do
 
     defp or_empty(value, true), do: value
     defp or_empty(_, false), do: empty()
+  end
+
+  @doc false
+  def load_for_inspect(%__MODULE__{} = query) do
+    load_through_attributes = Map.to_list(query.load_through[:attributes] || %{})
+    Keyword.merge(query.load || [], load_through_attributes)
+  end
+
+  @doc false
+  def formatted_load(%__MODULE__{} = query) do
+    query
+    |> load_for_inspect()
+    |> formatted_load_statement()
+  end
+
+  defp formatted_load_statement([]), do: "[]"
+
+  defp formatted_load_statement(load) do
+    load
+    |> Inspect.Algebra.to_doc(Inspect.Opts.new(limit: :infinity, printable_limit: :infinity))
+    |> Inspect.Algebra.format(:infinity)
   end
 
   defmacrop maybe_already_validated_error!(query) do
