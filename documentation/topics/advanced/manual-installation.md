@@ -151,7 +151,8 @@ Update `config/config.exs`:
 +   read_action_after_action_hooks_in_order?: true,
 +   bulk_actions_default_to_errors?: true,
 +   transaction_rollback_on_error?: true,
-+   redact_sensitive_values_in_errors?: true
++   redact_sensitive_values_in_errors?: true,
++   many_to_many_destroy_destination_on_match?: true
 + 
   config :spark,
     formatter: [
