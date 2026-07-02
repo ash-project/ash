@@ -185,6 +185,60 @@ defmodule Ash.Test.NotifierTest do
           end)
         end
       end
+
+      action :emit_notification, :atom do
+        transaction? false
+
+        run fn input, _ ->
+          notification = %Ash.Notifier.Notification{
+            resource: __MODULE__,
+            domain: Ash.Resource.Info.domain(__MODULE__),
+            action: input.action,
+            data: %{generic?: true}
+          }
+
+          {:ok, :emitted, [notification]}
+        end
+      end
+
+      action :emit_notification_in_transaction, :atom do
+        transaction? true
+
+        run fn input, _ ->
+          notification = %Ash.Notifier.Notification{
+            resource: __MODULE__,
+            domain: Ash.Resource.Info.domain(__MODULE__),
+            action: input.action,
+            data: %{generic?: true, started_transaction?: true}
+          }
+
+          {:ok, :emitted, [notification]}
+        end
+      end
+
+      create :create_with_generic_action do
+        change fn changeset, _ ->
+          Ash.Changeset.after_action(changeset, fn _changeset, result ->
+            __MODULE__
+            |> Ash.ActionInput.for_action(:emit_notification, %{})
+            |> Ash.run_action!()
+
+            {:ok, result}
+          end)
+        end
+      end
+
+      destroy :destroy_with_generic_action do
+        change fn changeset, _ ->
+          Ash.Changeset.after_action(changeset, fn _changeset, result ->
+            __MODULE__
+            |> Ash.ActionInput.for_action(:emit_notification, %{})
+            |> Ash.run_action!()
+
+            {:ok, result}
+          end)
+        end
+      end
     end
 
     attributes do
@@ -332,6 +386,42 @@ defmodule Ash.Test.NotifierTest do
     |> Ash.create!()
 
     assert_receive {:notification, %Ash.Notifier.Notification{data: %Comment{name: "auto"}}}
+  end
+
+  test "a nested generic action notification is sent automatically on create" do
+    Post
+    |> Ash.Changeset.for_create(:create_with_generic_action, %{name: "foobar"})
+    |> Ash.create!()
+
+    assert_receive {:notification, %{action: %{type: :create}}}
+    assert_receive {:notification, %Ash.Notifier.Notification{data: %{generic?: true}}}
+  end
+
+  test "a nested generic action notification is sent automatically on destroy" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{name: "foobar"})
+      |> Ash.create!()
+
+    assert_receive {:notification, %{action: %{type: :create}}}
+
+    post
+    |> Ash.Changeset.for_destroy(:destroy_with_generic_action)
+    |> Ash.destroy!()
+
+    assert_receive {:notification, %{action: %{type: :destroy}}}
+    assert_receive {:notification, %Ash.Notifier.Notification{data: %{generic?: true}}}
+  end
+
+  test "a top-level generic action with transaction? true sends its notifications" do
+    Post
+    |> Ash.ActionInput.for_action(:emit_notification_in_transaction, %{})
+    |> Ash.run_action!()
+
+    assert_receive {:notification,
+                    %Ash.Notifier.Notification{
+                      data: %{generic?: true, started_transaction?: true}
+                    }}
   end
 
   test "the `load/1` change puts the loaded data into the notification" do

@@ -1827,6 +1827,12 @@ defmodule Ash.ActionInput do
       {:ok, new_result} when has_return?(input) ->
         {:ok, new_result}
 
+      {:ok, new_result, notifications} when has_return?(input) and is_list(notifications) ->
+        {:ok, new_result, notifications}
+
+      {:ok, notifications} when has_no_return?(input) and is_list(notifications) ->
+        {:ok, notifications}
+
       {:error, error} ->
         {:error, error}
 
@@ -1835,6 +1841,7 @@ defmodule Ash.ActionInput do
         Invalid return value from after_transaction hook. Because this action has a return type I expected one of:
 
         * {:ok, term}
+        * {:ok, term, notifications}
         * {:error, error}
 
         Got:
@@ -1847,6 +1854,7 @@ defmodule Ash.ActionInput do
         Invalid return value from after_transaction hook. Because this action has no return type I expected one of:
 
         * :ok
+        * {:ok, notifications}
         * {:error, error}
 
         Got:
@@ -1865,6 +1873,12 @@ defmodule Ash.ActionInput do
       {:ok, term} when has_return?(input) ->
         {:ok, term}
 
+      {:ok, term, notifications} when has_return?(input) and is_list(notifications) ->
+        {:ok, term, notifications}
+
+      {:ok, notifications} when has_no_return?(input) and is_list(notifications) ->
+        {:ok, notifications}
+
       {:error, error} ->
         {:error, error}
 
@@ -1873,6 +1887,7 @@ defmodule Ash.ActionInput do
         Invalid return value from around_transaction hook. Because this action has no return type, I expected one of:
 
         * :ok
+        * {:ok, notifications}
         * {:error, error}
 
         Got:
@@ -1885,6 +1900,7 @@ defmodule Ash.ActionInput do
         Invalid return value from around_transaction hook. Because this action has a return type, I expected one of:
 
         * {:ok, term}
+        * {:ok, term, notifications}
         * {:error, error}
 
         Got:

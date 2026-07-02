@@ -77,7 +77,9 @@ defmodule Ash.Actions.Action do
             else
               run_without_transaction(domain, input, module, run_opts, context, opts)
             end
+            |> strip_return_notifications_for_hooks(input, opts)
           end)
+          |> restore_return_notifications_after_hooks(input, opts)
 
         result = maybe_load(result, input, domain, opts)
 
@@ -133,6 +135,20 @@ defmodule Ash.Actions.Action do
   defp maybe_load(:ok, _input, _domain, _opts), do: :ok
   defp maybe_load({:ok, nil}, _input, _domain, _opts), do: {:ok, nil}
 
+  defp maybe_load({:ok, result, notifications}, input, domain, opts) do
+    case maybe_load({:ok, result}, input, domain, opts) do
+      {:ok, loaded} -> {:ok, loaded, notifications}
+      other -> other
+    end
+  end
+
+  defp maybe_load({:ok, notifications}, %{action: %{returns: nil}} = _input, _domain, %{
+         return_notifications?: true
+       })
+       when is_list(notifications) do
+    {:ok, notifications}
+  end
+
   defp maybe_load({:ok, result}, input, domain, opts) do
     constraints = input.action.constraints || []
     returns = input.action.returns
@@ -153,6 +169,41 @@ defmodule Ash.Actions.Action do
   end
 
   defp maybe_load(other, _input, _domain, _opts), do: other
+
+  defp strip_return_notifications_for_hooks({:ok, result, notifications}, input, %{
+         return_notifications?: true
+       })
+       when not is_nil(input.action.returns) do
+    Process.put(:ash_return_notifications, notifications)
+    {:ok, result}
+  end
+
+  defp strip_return_notifications_for_hooks({:ok, notifications}, %{action: %{returns: nil}}, %{
+         return_notifications?: true
+       }) do
+    Process.put(:ash_return_notifications, notifications)
+    :ok
+  end
+
+  defp strip_return_notifications_for_hooks(result, _input, _opts), do: result
+
+  defp restore_return_notifications_after_hooks(result, input, %{return_notifications?: true}) do
+    case Process.delete(:ash_return_notifications) do
+      nil ->
+        result
+
+      notifications when not is_nil(input.action.returns) ->
+        case result do
+          {:ok, result} -> {:ok, result, notifications}
+          other -> other
+        end
+
+      notifications ->
+        {:ok, notifications}
+    end
+  end
+
+  defp restore_return_notifications_after_hooks(result, _input, _opts), do: result
 
   defp run_with_transaction(domain, input, module, run_opts, context, opts) do
     # Run before_transaction hooks first
@@ -199,30 +250,15 @@ defmodule Ash.Actions.Action do
           )
           |> case do
             {:ok, {:ok, result, notifications}} ->
-              notifications =
-                if notify? && !opts[:return_notifications?] do
-                  Enum.concat(
-                    notifications || [],
-                    Process.delete(:ash_notifications) || []
-                  )
-                else
-                  notifications || []
-                end
-
-              remaining = Ash.Notifier.notify(notifications)
-
-              Ash.Actions.Helpers.warn_missed!(input.resource, input.action, %{
-                resource_notifications: remaining
-              })
-
               final_result =
-                if input.action.returns do
-                  {:ok, result}
-                else
-                  :ok
-                end
+                finalize_notifications(
+                  notifications,
+                  input,
+                  opts,
+                  notify?
+                )
+                |> build_result(result, input, opts)
 
-              # Run after_transaction hooks
               Ash.ActionInput.run_after_transaction_hooks(final_result, input)
 
             {:error, error} ->
@@ -250,17 +286,8 @@ defmodule Ash.Actions.Action do
             :ok ->
               case run_with_hooks(module, input, run_opts, context, false) do
                 {:ok, result, notifications} ->
-                  remaining = Ash.Notifier.notify(notifications)
-
-                  Ash.Actions.Helpers.warn_missed!(input.resource, input.action, %{
-                    resource_notifications: remaining
-                  })
-
-                  if input.action.returns do
-                    {:ok, result}
-                  else
-                    :ok
-                  end
+                  finalize_notifications(notifications, input, opts, false)
+                  |> build_result(result, input, opts)
 
                 {:error, error} ->
                   {:error, error}
@@ -401,6 +428,67 @@ defmodule Ash.Actions.Action do
         end
       end
     )
+  end
+
+  defp finalize_notifications(notifications, input, opts, notify?) do
+    notifications = List.wrap(notifications)
+
+    notifications =
+      if notify? && !opts[:return_notifications?] do
+        Enum.concat(notifications, Process.delete(:ash_notifications) || [])
+      else
+        notifications
+      end
+
+    if opts[:return_notifications?] do
+      notifications
+    else
+      if Process.get(:ash_started_transaction?) && !notify? do
+        current_notifications = List.wrap(Process.get(:ash_notifications, []))
+
+        Process.put(:ash_notifications, current_notifications ++ notifications)
+      else
+        remaining = Ash.Notifier.notify(notifications)
+
+        Ash.Actions.Helpers.warn_missed!(input.resource, input.action, %{
+          resource_notifications: remaining
+        })
+      end
+
+      :ok
+    end
+  end
+
+  defp build_result(:ok, result, input, opts) do
+    if opts[:return_notifications?] do
+      if input.action.returns do
+        {:ok, result, []}
+      else
+        {:ok, []}
+      end
+    else
+      if input.action.returns do
+        {:ok, result}
+      else
+        :ok
+      end
+    end
+  end
+
+  defp build_result(notifications, result, input, opts) when is_list(notifications) do
+    if opts[:return_notifications?] do
+      if input.action.returns do
+        {:ok, result, notifications}
+      else
+        {:ok, notifications}
+      end
+    else
+      if input.action.returns do
+        {:ok, result}
+      else
+        :ok
+      end
+    end
   end
 
   defp run_with_hooks(module, input, run_opts, context, in_transaction?) do

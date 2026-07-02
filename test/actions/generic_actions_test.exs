@@ -775,6 +775,16 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
       assert result == "Processed: test"
     end
+
+    test "return_notifications?: true returns notifications" do
+      assert {:ok, "Processed: test", notifications} =
+               Post
+               |> Ash.ActionInput.for_action(:with_notifications, %{message: "test"})
+               |> Ash.run_action(return_notifications?: true)
+
+      assert length(notifications) == 1
+      assert hd(notifications).data == %{message: "test"}
+    end
   end
 
   describe "action-level preparations and validations" do
