@@ -1496,7 +1496,7 @@ defmodule Ash.Actions.Update.Bulk do
     manual_action_can_bulk? =
       case action.manual do
         {mod, _opts} ->
-          function_exported?(mod, :bulk_update, 3)
+          Code.ensure_loaded?(mod) and function_exported?(mod, :bulk_update, 3)
 
         _ ->
           false
@@ -2705,7 +2705,7 @@ defmodule Ash.Actions.Update.Bulk do
                     [] -> %{}
                   end
 
-                if function_exported?(mod, :bulk_update, 3) do
+                if Code.ensure_loaded?(mod) and function_exported?(mod, :bulk_update, 3) do
                   Ash.Resource.ManualUpdate.bulk_update(
                     mod,
                     batch,

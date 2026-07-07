@@ -1147,7 +1147,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     manual_action_can_bulk? =
       case action.manual do
         {mod, _opts} ->
-          function_exported?(mod, :bulk_destroy, 3)
+          Code.ensure_loaded?(mod) and function_exported?(mod, :bulk_destroy, 3)
 
         _ ->
           false
@@ -2097,7 +2097,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                     [] -> %{}
                   end
 
-                if function_exported?(mod, :bulk_destroy, 3) do
+                if Code.ensure_loaded?(mod) and function_exported?(mod, :bulk_destroy, 3) do
                   Ash.Resource.ManualDestroy.bulk_destroy(
                     mod,
                     batch,

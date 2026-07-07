@@ -98,52 +98,56 @@ defmodule Ash.Policy.FilterCheck do
             context: context
           )
 
-        {:ok, filter} = Ash.Filter.hydrate_refs(filter, %{resource: authorizer.resource})
-
-        filter
-        |> Ash.Actions.Read.add_calc_context_to_filter(
-          actor,
-          true,
-          authorizer.subject.tenant,
-          context[:private][:tracer],
-          authorizer.domain,
-          authorizer.resource,
-          source_context: context
-        )
-        |> then(fn expr ->
-          no_filter_static_forbidden_reads? =
-            Keyword.get(
-              Application.get_env(:ash, :policies, []),
-              :no_filter_static_forbidden_reads?,
-              true
+        case Ash.Filter.hydrate_refs(filter, %{resource: authorizer.resource}) do
+          {:ok, hydrated_filter} ->
+            hydrated_filter
+            |> Ash.Actions.Read.add_calc_context_to_filter(
+              actor,
+              true,
+              authorizer.subject.tenant,
+              context[:private][:tracer],
+              authorizer.domain,
+              authorizer.resource,
+              source_context: context
             )
+            |> then(fn expr ->
+              no_filter_static_forbidden_reads? =
+                Keyword.get(
+                  Application.get_env(:ash, :policies, []),
+                  :no_filter_static_forbidden_reads?,
+                  true
+                )
 
-          if no_filter_static_forbidden_reads? || authorizer.for_fields ||
-               authorizer.action.type != :read ||
-               context[:private][:pre_flight_authorization?] do
-            try_eval(expr, authorizer)
-          else
-            case expr do
-              true ->
-                {:ok, true}
+              if no_filter_static_forbidden_reads? || authorizer.for_fields ||
+                   authorizer.action.type != :read ||
+                   context[:private][:pre_flight_authorization?] do
+                try_eval(expr, authorizer)
+              else
+                case expr do
+                  true ->
+                    {:ok, true}
 
-              false ->
+                  false ->
+                    {:ok, false}
+
+                  other ->
+                    other
+                end
+              end
+            end)
+            |> case do
+              {:ok, v} when v in [true, false] ->
+                {:ok, v}
+
+              {:ok, nil} ->
                 {:ok, false}
 
-              other ->
-                other
+              _ ->
+                {:ok, :unknown}
             end
-          end
-        end)
-        |> case do
-          {:ok, v} when v in [true, false] ->
-            {:ok, v}
 
-          {:ok, nil} ->
-            {:ok, false}
-
-          _ ->
-            {:ok, :unknown}
+          {:error, error} ->
+            {:error, error}
         end
       end
 

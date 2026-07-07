@@ -3717,6 +3717,26 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  defp warn_if_before_action_load_changed(query, query_after) do
+    if query.load != query_after.load do
+      Logger.warning("""
+      Cannot add load statements in before_action hooks on read actions.
+
+      The load on resource #{inspect(query_after.resource)} was changed in a before_action hook.
+
+      Before:
+      #{inspect(query)}
+
+      After:
+      #{inspect(query_after)}
+
+      Load statements added in before_action hooks are not supported and will be ignored. Use `prepare` to add loads to read actions instead.
+      """)
+    end
+
+    query_after
+  end
+
   defp run_before_action(query) do
     query =
       query
@@ -3739,7 +3759,10 @@ defmodule Ash.Actions.Read do
           {:cont, {query, notifications}}
       end
     end)
-    |> then(fn {query, notifications} -> {set_phase(query), notifications} end)
+    |> then(fn {query_after, notifications} ->
+      query_after = warn_if_before_action_load_changed(query, query_after)
+      {set_phase(query_after), notifications}
+    end)
   end
 
   @doc false
