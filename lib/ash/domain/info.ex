@@ -126,8 +126,8 @@ defmodule Ash.Domain.Info do
       resource
       |> Ash.Resource.Info.actions()
       |> Enum.flat_map(fn action ->
-        action
-        |> Map.get(:changes, [])
+        resource
+        |> Ash.Resource.Info.action_changes(action)
         |> Enum.flat_map(fn
           %{change: {Ash.Resource.Change.ManageRelationship, opts}} ->
             related = Ash.Resource.Info.related(resource, opts[:relationship])

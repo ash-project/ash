@@ -880,7 +880,7 @@ defmodule Ash.Generator do
 
     arguments =
       Enum.filter(action.arguments, fn argument ->
-        argument.public? && !find_manage_change(argument, action)
+        argument.public? && !find_manage_change(argument, resource, action)
       end)
 
     resource
@@ -1209,8 +1209,10 @@ defmodule Ash.Generator do
 
   defp set_allow_nil(attributes, _), do: attributes
 
-  defp find_manage_change(argument, action) do
-    Enum.find_value(Map.get(action, :changes, []), fn
+  defp find_manage_change(argument, resource, action) do
+    resource
+    |> Ash.Resource.Info.action_changes(action)
+    |> Enum.find_value(fn
       %{change: {Ash.Resource.Change.ManageRelationship, opts}} ->
         if opts[:argument] == argument.name do
           opts
