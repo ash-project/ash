@@ -6255,7 +6255,7 @@ defmodule Ash.Changeset do
             Ash.Resource.Info.primary_action!(relationship.destination, :read).name
 
         relationship.destination
-        |> Ash.Query.for_read(action, %{},
+        |> Ash.Query.for_read(action, relationship_read_action_arguments(relationship),
           domain: domain,
           actor: changeset.context[:private][:actor],
           authorize?: changeset.context[:private][:authorize?],
@@ -6323,6 +6323,10 @@ defmodule Ash.Changeset do
         end)
       end)
     end)
+  end
+
+  defp relationship_read_action_arguments(relationship) do
+    Map.get(relationship, :read_action_arguments) || %{}
   end
 
   defp fetch_identity_field(item, data, attribute, relationship) do

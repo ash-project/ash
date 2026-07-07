@@ -258,7 +258,11 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         load_query =
           if read_action_name do
             opts.relationship.destination
-            |> Ash.Query.for_read(read_action_name, %{}, scope: context)
+            |> Ash.Query.for_read(
+              read_action_name,
+              relationship_read_action_arguments(opts.relationship),
+              scope: context
+            )
             |> Ash.Query.set_context(%{
               cascade_update: true,
               accessing_from: %{source: relationship.source, name: relationship.name}
@@ -312,7 +316,7 @@ defmodule Ash.Resource.Change.CascadeUpdate do
       Ash.Query.for_read(
         opts.relationship.destination,
         read_action.name,
-        %{},
+        relationship_read_action_arguments(opts.relationship),
         context_opts
       )
 
@@ -349,5 +353,9 @@ defmodule Ash.Resource.Change.CascadeUpdate do
     source_values = Enum.map(records, &Map.get(&1, source_attribute))
 
     Ash.Query.filter(query, ^ref(destination_attribute) in ^source_values)
+  end
+
+  defp relationship_read_action_arguments(relationship) do
+    Map.get(relationship, :read_action_arguments) || %{}
   end
 end

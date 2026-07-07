@@ -16,6 +16,11 @@ defmodule Ash.Test.Actions.HasManyTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      read :list_min_priority do
+        argument :min_priority, :integer, allow_nil?: false
+        filter expr(priority >= ^arg(:min_priority))
+      end
     end
 
     ets do
@@ -152,6 +157,18 @@ defmodule Ash.Test.Actions.HasManyTest do
         argument(:comment, :map, allow_nil?: false)
         change manage_relationship(:comment, :comments, on_no_match: :error, on_match: :destroy)
       end
+
+      update :update_static_min_priority_comment do
+        require_atomic? false
+        accept []
+        argument(:comment, :map, allow_nil?: false)
+
+        change manage_relationship(:comment, :comments_with_static_min_priority,
+                 eager_validate_with: OtherDomain,
+                 on_no_match: :error,
+                 on_match: :update
+               )
+      end
     end
 
     attributes do
@@ -236,6 +253,14 @@ defmodule Ash.Test.Actions.HasManyTest do
         public? true
         domain OtherDomain
         filter expr(priority >= ^arg(:min_priority))
+      end
+
+      has_many :comments_with_static_min_priority, Comment do
+        destination_attribute :post_id
+        public? true
+        domain OtherDomain
+        read_action :list_min_priority
+        read_action_arguments %{min_priority: 50}
       end
     end
   end
@@ -550,6 +575,88 @@ defmodule Ash.Test.Actions.HasManyTest do
   end
 
   describe "has_many filter with ^arg template" do
+    test "relationship read_action_arguments are passed to the relationship read action" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
+        |> Ash.create!()
+
+      for priority <- [10, 50, 90] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          content: "comment #{priority}",
+          priority: priority
+        })
+        |> Ash.create!()
+      end
+
+      loaded_post = Ash.load!(post, :comments_with_static_min_priority)
+
+      priorities =
+        loaded_post.comments_with_static_min_priority
+        |> Enum.map(& &1.priority)
+        |> Enum.sort()
+
+      assert priorities == [50, 90]
+    end
+
+    test "relationship read_action_arguments are passed when filtering on the relationship" do
+      matching_post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Matching Post"})
+        |> Ash.create!()
+
+      non_matching_post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Non Matching Post"})
+        |> Ash.create!()
+
+      for {post, priority} <- [
+            {matching_post, 50},
+            {non_matching_post, 10}
+          ] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          content: "comment #{priority}",
+          priority: priority
+        })
+        |> Ash.create!()
+      end
+
+      assert [result] =
+               Post
+               |> Ash.Query.filter(exists(comments_with_static_min_priority, priority == 50))
+               |> Ash.read!()
+
+      assert result.id == matching_post.id
+    end
+
+    test "relationship read_action_arguments are passed when validating manage_relationship input" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
+        |> Ash.create!()
+
+      comment =
+        Comment
+        |> Ash.Changeset.for_create(:create, %{
+          post_id: post.id,
+          content: "original",
+          priority: 50
+        })
+        |> Ash.create!()
+
+      post
+      |> Ash.Changeset.for_update(:update_static_min_priority_comment, %{
+        comment: %{id: comment.id, content: "updated", priority: 90}
+      })
+      |> Ash.update!()
+
+      assert %{content: "updated", priority: 90} = Ash.get!(Comment, comment.id)
+    end
+
     test "^arg in relationship filter resolves the action argument" do
       post =
         Post

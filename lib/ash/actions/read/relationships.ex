@@ -243,7 +243,7 @@ defmodule Ash.Actions.Read.Relationships do
                 relationship.read_action ||
                   Ash.Resource.Info.primary_action!(relationship.destination, :read).name
 
-              {read_action_name, %{}}
+              {read_action_name, relationship_read_action_arguments(relationship)}
           end
 
         {relationship,
@@ -290,7 +290,7 @@ defmodule Ash.Actions.Read.Relationships do
               Ash.Resource.Info.primary_action!(relationship.destination, :read)
             end
 
-          {read_action, %{}}
+          {read_action, relationship_read_action_arguments(relationship)}
       end
 
     domain = Ash.Domain.Info.related_domain(related_query, relationship, query.domain)
@@ -373,7 +373,7 @@ defmodule Ash.Actions.Read.Relationships do
                     |> Ash.Query.for_read(
                       relationship.read_action ||
                         Ash.Resource.Info.primary_action!(current_resource, :read).name,
-                      %{},
+                      relationship_read_action_arguments(relationship),
                       authorize?: source_query.context[:private][:authorize?],
                       actor: source_query.context[:private][:actor],
                       tenant: source_query.tenant,
@@ -447,7 +447,7 @@ defmodule Ash.Actions.Read.Relationships do
               |> Ash.Query.for_read(
                 join_relationship.read_action ||
                   Ash.Resource.Info.primary_action!(relationship.through, :read).name,
-                %{},
+                relationship_read_action_arguments(join_relationship),
                 authorize?: source_query.context[:private][:authorize?],
                 actor: source_query.context[:private][:actor],
                 tenant: source_query.tenant,
@@ -791,7 +791,7 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.for_read(
         join_relationship.read_action ||
           Ash.Resource.Info.primary_action!(relationship.through, :read).name,
-        %{},
+        relationship_read_action_arguments(join_relationship),
         authorize?: related_query.context[:private][:authorize?],
         actor: related_query.context[:private][:actor],
         tracer: related_query.context[:private][:tracer],
@@ -944,6 +944,10 @@ defmodule Ash.Actions.Read.Relationships do
         {relationship, related_query, result}
       end
     )
+  end
+
+  defp relationship_read_action_arguments(relationship) do
+    Map.get(relationship, :read_action_arguments) || %{}
   end
 
   defp do_per_record_no_attributes_load(
