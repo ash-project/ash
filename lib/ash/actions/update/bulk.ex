@@ -1379,8 +1379,11 @@ defmodule Ash.Actions.Update.Bulk do
          input,
          opts
        ) do
-    batch_size = opts[:batch_size] || 100
     resource = opts[:resource]
+
+    batch_size =
+      opts[:batch_size] || Ash.DataLayer.default_bulk_batch_size(resource, action) || 100
+
     ref = make_ref()
     pkey = Ash.Resource.Info.primary_key(resource)
 
