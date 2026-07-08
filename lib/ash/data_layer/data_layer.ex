@@ -342,6 +342,8 @@ defmodule Ash.DataLayer do
               {:ok, term} | {:error, term}
   @callback prefer_transaction?(Ash.Resource.t()) :: boolean
   @callback prefer_transaction_for_atomic_updates?(Ash.Resource.t()) :: boolean
+  @callback default_bulk_batch_size(Ash.Resource.t(), Ash.Resource.Actions.action()) ::
+              pos_integer() | nil
   @callback can?(Ash.Resource.t() | Spark.Dsl.t(), feature()) :: boolean
   @callback set_context(Ash.Resource.t(), data_layer_query(), map) ::
               {:ok, data_layer_query()} | {:error, term}
@@ -363,6 +365,7 @@ defmodule Ash.DataLayer do
                       set_context: 3,
                       prefer_transaction?: 1,
                       prefer_transaction_for_atomic_updates?: 1,
+                      default_bulk_batch_size: 2,
                       calculate: 3,
                       destroy: 2,
                       filter: 3,
@@ -475,6 +478,27 @@ defmodule Ash.DataLayer do
         Invalid value returned from #{inspect(data_layer_module)}.prefer_transaction?/1.
         The callback #{inspect(__MODULE__)}.prefer_transaction?/1 expects a boolean.
         """
+    end
+  end
+
+  @doc """
+  The data layer's preferred bulk batch size for the given action, or `nil`.
+
+  Data layers may implement `c:default_bulk_batch_size/2` to inform the default
+  chunk size used by bulk `create`/`update`/`destroy` when the caller does not
+  pass `:batch_size`. An explicit `:batch_size` option always takes precedence.
+  Returns `nil` when the data layer does not implement the callback.
+  """
+  @spec default_bulk_batch_size(Ash.Resource.t(), Ash.Resource.Actions.action()) ::
+          pos_integer() | nil
+  def default_bulk_batch_size(resource, action) do
+    data_layer = data_layer(resource)
+
+    if Code.ensure_loaded?(data_layer) &&
+         function_exported?(data_layer, :default_bulk_batch_size, 2) do
+      data_layer.default_bulk_batch_size(resource, action)
+    else
+      nil
     end
   end
 
