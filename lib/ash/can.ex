@@ -19,6 +19,96 @@ defmodule Ash.Can do
           | {Ash.Resource.Record.t(), atom | Ash.Resource.Actions.action()}
           | {Ash.Resource.Record.t(), atom | Ash.Resource.Actions.action(), input :: map}
 
+  @type check_entry :: subject() | {subject(), Keyword.t()}
+
+  @type checks ::
+          [check_entry()]
+          | [{atom(), check_entry()}]
+
+  @doc """
+  Returns whether an actor can perform all of the given actions.
+
+  You should prefer to use `Ash.can_do_all?/3` over this module, directly.
+
+  Each entry in `checks` is the same shape accepted by `can?/3`, or `{subject, opts}`
+  to provide per-check options. Per-check options are merged on top of the shared
+  options, so values like `tenant` and `context` only need to be provided once.
+
+  When `checks` is a keyword list, use `Ash.can_do_all/3` to get a map of results
+  keyed by the provided names.
+
+  Can raise an exception if `return_forbidden_error?` is truthy in opts or there's an error.
+  """
+  @spec can_do_all?(checks(), Ash.actor() | Ash.Scope.t(), Keyword.t()) ::
+          boolean() | no_return()
+  def can_do_all?(checks, actor_or_scope, opts \\ []) when is_list(checks) do
+    opts =
+      opts
+      |> Keyword.put_new(:maybe_is, true)
+      |> Keyword.put_new(:filter_with, :filter)
+      |> Keyword.put_new(:short_circuit?, true)
+
+    case can_do_all(checks, actor_or_scope, opts) do
+      {:ok, results} ->
+        results
+        |> result_values()
+        |> Enum.all?(fn
+          true -> true
+          false -> false
+          :maybe -> opts[:maybe_is] == true
+          other -> other == opts[:maybe_is]
+        end)
+
+      {:error, error} ->
+        raise Ash.Error.to_ash_error(error)
+    end
+  end
+
+  @doc """
+  Returns whether an actor can perform each of the given actions.
+
+  You should prefer to use `Ash.can_do_all/3` over this module, directly.
+
+  Returns `{:ok, results}` where `results` is a list (when `checks` is a list) or a map
+  (when `checks` is a keyword list). Each value is `true`, `false`, or `:maybe`.
+
+  Each entry in `checks` is the same shape accepted by `can/3`, or `{subject, opts}`
+  to provide per-check options. Per-check options are merged on top of the shared
+  options, so values like `tenant` and `context` only need to be provided once.
+  """
+  @spec can_do_all(checks(), Ash.actor() | Ash.Scope.t(), Keyword.t()) ::
+          {:ok, list(boolean() | :maybe) | map()}
+          | {:error, Ash.Error.t()}
+  def can_do_all(checks, actor_or_scope, opts \\ []) when is_list(checks) do
+    opts = Keyword.put_new(opts, :short_circuit?, false)
+    shared_opts = prepare_shared_opts(actor_or_scope, opts)
+    {keyed?, entries} = normalize_checks(checks)
+    short_circuit? = opts[:short_circuit?]
+
+    entries
+    |> Enum.reduce_while({:ok, []}, fn {key, subject, check_opts}, {:ok, acc} ->
+      merged_opts = Keyword.merge(shared_opts, check_opts)
+
+      with {:ok, domain} <- fetch_domain(subject, merged_opts),
+           {:ok, result} <- evaluate_can(subject, domain, actor_or_scope, merged_opts) do
+        entry = {key, result}
+        acc = acc ++ [entry]
+
+        if short_circuit? && result == false do
+          {:halt, {:ok, acc}}
+        else
+          {:cont, {:ok, acc}}
+        end
+      else
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, acc} -> {:ok, format_results(keyed?, acc)}
+      other -> other
+    end
+  end
+
   @doc """
   Returns whether an actor can perform an action, query, or changeset.
 
@@ -1267,5 +1357,135 @@ defmodule Ash.Can do
     authorizers
     |> Enum.map(&authorizer_exception([&1]))
     |> Ash.Error.to_error_class()
+  end
+
+  defp prepare_shared_opts(actor_or_scope, opts) do
+    opts = Keyword.put_new(opts, :maybe_is, :maybe)
+    opts = Keyword.put_new(opts, :run_queries?, true)
+    opts = Keyword.put_new(opts, :filter_with, :filter)
+    pre_flight? = Keyword.get(opts, :pre_flight?, true)
+
+    context =
+      Ash.Helpers.deep_merge_maps(opts[:context] || %{}, %{
+        private: %{pre_flight_authorization?: pre_flight?}
+      })
+
+    {_actor, opts} =
+      if is_struct(actor_or_scope) and Ash.Scope.ToOpts.impl_for(actor_or_scope) do
+        opts
+        |> Keyword.put(:scope, actor_or_scope)
+        |> Ash.Actions.Helpers.apply_scope_to_opts()
+        |> Keyword.pop(:actor)
+      else
+        {actor_or_scope,
+         opts |> Ash.Actions.Helpers.apply_scope_to_opts() |> Keyword.delete(:actor)}
+      end
+
+    Keyword.update(opts, :context, context, &Ash.Helpers.deep_merge_maps(&1, context))
+  end
+
+  defp normalize_checks(checks) do
+    if keyed_checks?(checks) do
+      {true,
+       Enum.map(checks, fn {key, entry} ->
+         {subject, opts} = normalize_check_entry(entry)
+         {key, subject, opts}
+       end)}
+    else
+      {false,
+       checks
+       |> Enum.with_index()
+       |> Enum.map(fn {entry, index} ->
+         {subject, opts} = normalize_check_entry(entry)
+         {index, subject, opts}
+       end)}
+    end
+  end
+
+  defp keyed_checks?(checks) do
+    Keyword.keyword?(checks) and
+      Enum.all?(checks, fn {key, entry} ->
+        check_entry?(entry) and not resource_key?(key, entry)
+      end)
+  end
+
+  defp resource_key?(key, {resource, _}) when key == resource, do: true
+  defp resource_key?(key, {resource, _, _}) when key == resource, do: true
+  defp resource_key?(_, _), do: false
+
+  defp check_entry?({subject, opts}) when is_list(opts) do
+    if Keyword.keyword?(opts), do: check_entry?(subject), else: false
+  end
+
+  defp check_entry?(%Ash.Query{}), do: true
+  defp check_entry?(%Ash.Changeset{}), do: true
+  defp check_entry?(%Ash.ActionInput{}), do: true
+
+  defp check_entry?({%resource{} = _record, action}) when is_atom(action) and is_atom(resource),
+    do: Ash.Resource.Info.resource?(resource)
+
+  defp check_entry?({%resource{} = _record, action, input})
+       when is_atom(action) and is_map(input) and is_atom(resource),
+       do: Ash.Resource.Info.resource?(resource)
+
+  defp check_entry?({resource, action}) when is_atom(resource) and is_atom(action),
+    do: Ash.Resource.Info.resource?(resource)
+
+  defp check_entry?({resource, action, input})
+       when is_atom(resource) and is_atom(action) and is_map(input),
+       do: Ash.Resource.Info.resource?(resource)
+
+  defp check_entry?(_), do: false
+
+  defp normalize_check_entry({subject, opts}) when is_list(opts) do
+    if Keyword.keyword?(opts) do
+      {subject, opts}
+    else
+      {{subject, opts}, []}
+    end
+  end
+
+  defp normalize_check_entry(subject), do: {subject, []}
+
+  defp format_results(true, results), do: Map.new(results)
+  defp format_results(false, results), do: Enum.map(results, fn {_, result} -> result end)
+
+  defp result_values(results) when is_map(results), do: Map.values(results)
+  defp result_values(results) when is_list(results), do: results
+
+  defp fetch_domain(subject, opts) do
+    case Ash.Helpers.get_domain(subject, opts) do
+      nil ->
+        {:error,
+         ArgumentError.exception(
+           "Could not determine domain for #{inspect(subject)}. Please specify the `:domain` option."
+         )}
+
+      domain ->
+        {:ok, domain}
+    end
+  end
+
+  defp evaluate_can(subject, domain, actor_or_scope, opts) do
+    case can(subject, domain, actor_or_scope, opts) do
+      {:ok, :maybe} ->
+        {:ok, opts[:maybe_is]}
+
+      {:ok, result} when result in [true, false, :maybe] ->
+        {:ok, result}
+
+      {:ok, true, _} ->
+        {:ok, true}
+
+      {:ok, false, error} ->
+        if opts[:return_forbidden_error?] do
+          {:error, error}
+        else
+          {:ok, false}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 end
