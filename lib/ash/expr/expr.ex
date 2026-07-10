@@ -294,7 +294,7 @@ defmodule Ash.Expr do
   end
 
   @doc false
-  def get_path(%Ash.NotLoaded{}, _), do: nil
+  def get_path(%Ash.NotLoaded{} = not_loaded, _), do: not_loaded
 
   def get_path(map, [key]) when is_map(map) do
     Map.get(map, key)
@@ -306,7 +306,15 @@ defmodule Ash.Expr do
 
   def get_path(_, _), do: nil
 
-  defp raise_if_not_loaded!(%Ash.NotLoaded{}, _actor, _path), do: nil
+  defp raise_if_not_loaded!(%Ash.NotLoaded{}, actor, path) do
+    raise ArgumentError, """
+    Actor field is not loaded: #{inspect(path)}
+
+    Actor: #{inspect(actor)}
+
+    Ensure the field is loaded on the actor before using it in a filter template.
+    """
+  end
 
   defp raise_if_not_loaded!(value, _actor, _path), do: value
 

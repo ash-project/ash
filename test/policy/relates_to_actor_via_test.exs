@@ -268,15 +268,16 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
       assert {:ok, %Actor{}} =
                Ash.get(Actor, %{id: same_company_actor.id}, actor: actor_with_unloaded_company_id)
 
-      # If both source_attribute and relationship are NotLoaded, treat as no actor
-      # (policy check returns false, record is filtered out)
+      # But if both source_attribute and relationship are NotLoaded, it should raise
+      # with a hint to load the source_attribute as the more optimal choice
       actor_with_both_unloaded =
         actor
         |> Map.put(:company_id, %Ash.NotLoaded{field: :company_id})
         |> Map.put(:company, %Ash.NotLoaded{field: :company})
 
-      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
-               Ash.get(Actor, %{id: same_company_actor.id}, actor: actor_with_both_unloaded)
+      assert_raise Ash.Error.Unknown, ~r"Loading `:company_id` is more optimal", fn ->
+        Ash.get(Actor, %{id: same_company_actor.id}, actor: actor_with_both_unloaded)
+      end
     end
 
     test "relates_to_actor_via with has_many" do

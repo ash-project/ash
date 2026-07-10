@@ -88,11 +88,28 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
     end
   end
 
+  defp validate_actor_field_loaded!(actor, path, optimal_field \\ nil) do
+    case actor_get_path(actor, path) do
+      %Ash.NotLoaded{} ->
+        hint =
+          if optimal_field do
+            "\n\nHint: Loading `#{inspect(optimal_field)}` is more optimal than loading the full relationship."
+          else
+            ""
+          end
 
+        raise ArgumentError, """
+        Actor field is not loaded: #{inspect(path)}
 
+        Actor: #{inspect(actor)}
 
-  defp validate_actor_field_loaded!(_actor, _path, _optimal_field \\ nil), do: :ok
+        Ensure the field is loaded on the actor before using it in a `relates_to_actor_via` check.#{hint}
+        """
 
+      _ ->
+        :ok
+    end
+  end
 
   defp actor_get_path(nil, _), do: nil
   defp actor_get_path(%Ash.NotLoaded{} = not_loaded, _), do: not_loaded

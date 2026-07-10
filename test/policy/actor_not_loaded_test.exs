@@ -3,12 +3,23 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Test.Policy.ActorNotLoadedTest do
-  @doc false
+  @moduledoc """
+  Covers ash-project/ash#2057.
+
+  A policy that references a field on the actor must not silently succeed when
+  that field is `%Ash.NotLoaded{}`. An unloaded field means the policy cannot
+  actually be evaluated, so an error is raised rather than the reference
+  quietly comparing as a `NotLoaded` struct.
+
+  A `nil` actor is a distinct, supported case: anonymous access. Actor
+  references simply resolve to `nil` and policy evaluation continues.
+  """
   use ExUnit.Case
 
   alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
+    @moduledoc false
     use Ash.Resource,
       domain: Domain,
       data_layer: Ash.DataLayer.Ets,
@@ -28,43 +39,10 @@ defmodule Ash.Test.Policy.ActorNotLoadedTest do
     end
 
     policies do
-      # Policy using authorize_if with actor field reference.
-      # When actor field is NotLoaded, should behave like no actor (deny).
+      # Reads are authorized only for an admin actor. `forbid_if` mirrors the
+      # shape reported in the original issue.
       policy action_type(:read) do
-        authorize_if expr(^actor(:admin) == true)
-      end
-
-      policy action_type(:create) do
-        authorize_if always()
-      end
-    end
-  end
-
-  defmodule Comment do
-    use Ash.Resource,
-      domain: Domain,
-      data_layer: Ash.DataLayer.Ets,
-      authorizers: [Ash.Policy.Authorizer]
-
-    ets do
-      private? true
-    end
-
-    attributes do
-      uuid_primary_key :id
-      attribute :body, :string, public?: true
-    end
-
-    actions do
-      defaults [:read, create: [:body]]
-    end
-
-    policies do
-      # Policy using forbid_if with actor field reference.
-      # When actor field is NotLoaded, should behave like no actor
-      # (forbid_if doesn't trigger, authorize_if always() catches).
-      policy action_type(:read) do
-        forbid_if expr(^actor(:blocked) == true)
+        forbid_if expr(^actor(:banned) == true)
         authorize_if always()
       end
 
@@ -75,6 +53,7 @@ defmodule Ash.Test.Policy.ActorNotLoadedTest do
   end
 
   defmodule Article do
+    @moduledoc false
     use Ash.Resource,
       domain: Domain,
       data_layer: Ash.DataLayer.Ets,
@@ -94,8 +73,8 @@ defmodule Ash.Test.Policy.ActorNotLoadedTest do
     end
 
     policies do
-      # Policy using a nested actor path.
-      # Tests that get_path also handles NotLoaded correctly.
+      # Nested actor path, to cover `get_path/2` as well as the direct
+      # field lookup exercised by `Post`.
       policy action_type(:read) do
         authorize_if expr(^actor([:settings, :can_read]) == true)
       end
@@ -106,100 +85,72 @@ defmodule Ash.Test.Policy.ActorNotLoadedTest do
     end
   end
 
-  describe "authorize_if with actor field reference" do
-    test "actor with loaded field (true) authorizes" do
-      Post
-      |> Ash.Changeset.for_create(:create, %{title: "hello"})
-      |> Ash.create!(authorize?: false)
-
-      assert [%Post{title: "hello"}] =
-               Ash.read!(Post, actor: %{admin: true})
-    end
-
-    test "actor with loaded field (false) denies" do
-      Post
-      |> Ash.Changeset.for_create(:create, %{title: "hello"})
-      |> Ash.create!(authorize?: false)
-
-      assert [] = Ash.read!(Post, actor: %{admin: false})
-    end
-
-    test "nil actor denies" do
-      Post
-      |> Ash.Changeset.for_create(:create, %{title: "hello"})
-      |> Ash.create!(authorize?: false)
-
-      assert [] = Ash.read!(Post, actor: nil)
-    end
-
-    test "actor with NotLoaded field behaves the same as nil actor" do
-      Post
-      |> Ash.Changeset.for_create(:create, %{title: "hello"})
-      |> Ash.create!(authorize?: false)
-
-      actor = %{admin: %Ash.NotLoaded{field: :admin, type: :attribute}}
-
-      assert [] = Ash.read!(Post, actor: actor)
-    end
+  defp create_post! do
+    Post
+    |> Ash.Changeset.for_create(:create, %{title: "hello"})
+    |> Ash.create!(authorize?: false)
   end
 
-  describe "forbid_if with actor field reference" do
-    test "actor with loaded field (true) forbids" do
-      Comment
-      |> Ash.Changeset.for_create(:create, %{body: "hi"})
-      |> Ash.create!(authorize?: false)
-
-      assert [] = Ash.read!(Comment, actor: %{blocked: true})
-    end
-
-    test "actor with loaded field (false) allows" do
-      Comment
-      |> Ash.Changeset.for_create(:create, %{body: "hi"})
-      |> Ash.create!(authorize?: false)
-
-      assert [%Comment{body: "hi"}] =
-               Ash.read!(Comment, actor: %{blocked: false})
-    end
-
-    test "nil actor allows (forbid_if doesn't trigger, authorize_if always catches)" do
-      Comment
-      |> Ash.Changeset.for_create(:create, %{body: "hi"})
-      |> Ash.create!(authorize?: false)
-
-      assert [%Comment{body: "hi"}] = Ash.read!(Comment, actor: nil)
-    end
-
-    test "actor with NotLoaded field behaves the same as nil actor" do
-      Comment
-      |> Ash.Changeset.for_create(:create, %{body: "hi"})
-      |> Ash.create!(authorize?: false)
-
-      actor = %{blocked: %Ash.NotLoaded{field: :blocked, type: :attribute}}
-
-      assert [%Comment{body: "hi"}] = Ash.read!(Comment, actor: actor)
-    end
+  defp create_article! do
+    Article
+    |> Ash.Changeset.for_create(:create, %{content: "article"})
+    |> Ash.create!(authorize?: false)
   end
 
-  describe "nested actor path with NotLoaded" do
-    test "actor with loaded nested path authorizes" do
-      Article
-      |> Ash.Changeset.for_create(:create, %{content: "article"})
-      |> Ash.create!(authorize?: false)
+  describe "actor field is loaded" do
+    test "policy evaluates against the real value" do
+      create_post!()
 
-      actor = %{settings: %{can_read: true}}
+      assert [%Post{title: "hello"}] = Ash.read!(Post, actor: %{banned: false})
+      assert [] = Ash.read!(Post, actor: %{banned: true})
+    end
+
+    test "nested actor path evaluates against the real value" do
+      create_article!()
 
       assert [%Article{content: "article"}] =
-               Ash.read!(Article, actor: actor)
+               Ash.read!(Article, actor: %{settings: %{can_read: true}})
+
+      assert [] = Ash.read!(Article, actor: %{settings: %{can_read: false}})
+    end
+  end
+
+  describe "actor is nil" do
+    test "actor references resolve to nil and policy evaluation continues" do
+      create_post!()
+
+      # `forbid_if ^actor(:banned) == true` does not trigger, so the
+      # trailing `authorize_if always()` authorizes.
+      assert [%Post{title: "hello"}] = Ash.read!(Post, actor: nil)
     end
 
-    test "actor with NotLoaded on nested path behaves the same as nil actor" do
-      Article
-      |> Ash.Changeset.for_create(:create, %{content: "article"})
-      |> Ash.create!(authorize?: false)
+    test "nested actor path resolves to nil rather than raising" do
+      create_article!()
+
+      # No actor means the check does not match, so nothing is authorized.
+      assert [] = Ash.read!(Article, actor: nil)
+    end
+  end
+
+  describe "actor is present but the referenced field is not loaded" do
+    test "raises rather than silently evaluating the NotLoaded struct" do
+      create_post!()
+
+      actor = %{banned: %Ash.NotLoaded{field: :banned, type: :attribute}}
+
+      assert_raise Ash.Error.Unknown, ~r/not loaded/, fn ->
+        Ash.read!(Post, actor: actor)
+      end
+    end
+
+    test "raises when a nested actor path is not loaded" do
+      create_article!()
 
       actor = %{settings: %Ash.NotLoaded{field: :settings, type: :attribute}}
 
-      assert [] = Ash.read!(Article, actor: actor)
+      assert_raise Ash.Error.Unknown, ~r/not loaded/, fn ->
+        Ash.read!(Article, actor: actor)
+      end
     end
   end
 end
