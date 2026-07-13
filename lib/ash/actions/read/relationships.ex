@@ -236,14 +236,23 @@ defmodule Ash.Actions.Read.Relationships do
         {read_action_name, arguments} =
           case related_query do
             %Ash.Query{action: %{name: name}, arguments: arguments} ->
+              arguments =
+                if name == relationship_read_action_name(relationship) do
+                  relationship_read_action_arguments(relationship, arguments)
+                else
+                  arguments
+                end
+
               {name, arguments}
 
             _ ->
-              read_action_name =
-                relationship.read_action ||
-                  Ash.Resource.Info.primary_action!(relationship.destination, :read).name
+              read_action_name = relationship_read_action_name(relationship)
 
-              {read_action_name, relationship_read_action_arguments(relationship)}
+              {read_action_name,
+               relationship_read_action_arguments(
+                 relationship,
+                 related_query_arguments(related_query)
+               )}
           end
 
         {relationship,
@@ -280,6 +289,13 @@ defmodule Ash.Actions.Read.Relationships do
     {read_action, arguments} =
       case related_query do
         %Ash.Query{action: read_action, arguments: arguments} when not is_nil(read_action) ->
+          arguments =
+            if read_action.name == relationship_read_action_name(relationship) do
+              relationship_read_action_arguments(relationship, arguments)
+            else
+              arguments
+            end
+
           {read_action, arguments}
 
         _ ->
@@ -290,7 +306,11 @@ defmodule Ash.Actions.Read.Relationships do
               Ash.Resource.Info.primary_action!(relationship.destination, :read)
             end
 
-          {read_action, relationship_read_action_arguments(relationship)}
+          {read_action,
+           relationship_read_action_arguments(
+             relationship,
+             related_query_arguments(related_query)
+           )}
       end
 
     domain = Ash.Domain.Info.related_domain(related_query, relationship, query.domain)
@@ -946,9 +966,19 @@ defmodule Ash.Actions.Read.Relationships do
     )
   end
 
-  defp relationship_read_action_arguments(relationship) do
-    Map.get(relationship, :read_action_arguments, %{})
+  defp relationship_read_action_name(relationship) do
+    relationship.read_action ||
+      Ash.Resource.Info.primary_action!(relationship.destination, :read).name
   end
+
+  defp relationship_read_action_arguments(relationship, provided_arguments \\ %{}) do
+    relationship
+    |> Map.get(:read_action_argument_defaults, %{})
+    |> Map.merge(provided_arguments)
+  end
+
+  defp related_query_arguments(%Ash.Query{arguments: arguments}), do: arguments
+  defp related_query_arguments(_), do: %{}
 
   defp do_per_record_no_attributes_load(
          records,

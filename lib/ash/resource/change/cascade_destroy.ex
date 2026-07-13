@@ -429,6 +429,6 @@ defmodule Ash.Resource.Change.CascadeDestroy do
   end
 
   defp relationship_read_action_arguments(relationship) do
-    Map.get(relationship, :read_action_arguments, %{})
+    Map.get(relationship, :read_action_argument_defaults, %{})
   end
 end
