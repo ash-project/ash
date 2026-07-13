@@ -260,7 +260,7 @@ defmodule Ash.Test.Actions.HasManyTest do
         public? true
         domain OtherDomain
         read_action :list_min_priority
-        read_action_arguments(%{min_priority: 50})
+        read_action_arguments %{min_priority: 50}
       end
     end
   end
