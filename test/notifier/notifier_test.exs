@@ -217,6 +217,8 @@ defmodule Ash.Test.NotifierTest do
       end
 
       create :create_with_generic_action do
+        require_atomic? false
+
         change fn changeset, _ ->
           Ash.Changeset.after_action(changeset, fn _changeset, result ->
             __MODULE__
@@ -229,6 +231,8 @@ defmodule Ash.Test.NotifierTest do
       end
 
       destroy :destroy_with_generic_action do
+        require_atomic? false
+
         change fn changeset, _ ->
           Ash.Changeset.after_action(changeset, fn _changeset, result ->
             __MODULE__

@@ -1911,8 +1911,62 @@ defmodule Ash.ActionInput do
   end
 
   def run_around_transaction_hooks(%{around_transaction: [around | rest]} = input, func) do
-    around.(input, fn input ->
-      run_around_transaction_hooks(%{input | around_transaction: rest}, func)
-    end)
+    pending_ref = make_ref()
+
+    result =
+      around.(input, fn input ->
+        case run_around_transaction_hooks(%{input | around_transaction: rest}, func) do
+          {:ok, term, notifications} when has_return?(input) and is_list(notifications) ->
+            Process.put(pending_ref, notifications)
+            {:ok, term}
+
+          {:ok, notifications} when has_no_return?(input) and is_list(notifications) ->
+            Process.put(pending_ref, notifications)
+            :ok
+
+          other ->
+            other
+        end
+      end)
+
+    pending = Process.get(pending_ref, [])
+    Process.delete(pending_ref)
+
+    attach_around_notifications(result, pending, input)
+  end
+
+  defp attach_around_notifications({:error, _} = error, _, _), do: error
+
+  defp attach_around_notifications(result, pending, input) do
+    {base, extra} =
+      case result do
+        {:ok, term, notifications} when is_list(notifications) -> {{:ok, term}, notifications}
+        other -> {other, []}
+      end
+
+    notifications = pending ++ extra
+
+    cond do
+      has_return?(input) ->
+        case base do
+          {:ok, term} ->
+            if notifications == [], do: {:ok, term}, else: {:ok, term, notifications}
+
+          other ->
+            other
+        end
+
+      has_no_return?(input) ->
+        case base do
+          :ok ->
+            if notifications == [], do: :ok, else: {:ok, notifications}
+
+          {:ok, more} when is_list(more) ->
+            {:ok, notifications ++ more}
+
+          other ->
+            other
+        end
+    end
   end
 end

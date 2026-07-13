@@ -77,9 +77,7 @@ defmodule Ash.Actions.Action do
             else
               run_without_transaction(domain, input, module, run_opts, context, opts)
             end
-            |> strip_return_notifications_for_hooks(input, opts)
           end)
-          |> restore_return_notifications_after_hooks(input, opts)
 
         result = maybe_load(result, input, domain, opts)
 
@@ -170,41 +168,6 @@ defmodule Ash.Actions.Action do
 
   defp maybe_load(other, _input, _domain, _opts), do: other
 
-  defp strip_return_notifications_for_hooks({:ok, result, notifications}, input, %{
-         return_notifications?: true
-       })
-       when not is_nil(input.action.returns) do
-    Process.put(:ash_return_notifications, notifications)
-    {:ok, result}
-  end
-
-  defp strip_return_notifications_for_hooks({:ok, notifications}, %{action: %{returns: nil}}, %{
-         return_notifications?: true
-       }) do
-    Process.put(:ash_return_notifications, notifications)
-    :ok
-  end
-
-  defp strip_return_notifications_for_hooks(result, _input, _opts), do: result
-
-  defp restore_return_notifications_after_hooks(result, input, %{return_notifications?: true}) do
-    case Process.delete(:ash_return_notifications) do
-      nil ->
-        result
-
-      notifications when not is_nil(input.action.returns) ->
-        case result do
-          {:ok, result} -> {:ok, result, notifications}
-          other -> other
-        end
-
-      notifications ->
-        {:ok, notifications}
-    end
-  end
-
-  defp restore_return_notifications_after_hooks(result, _input, _opts), do: result
-
   defp run_with_transaction(domain, input, module, run_opts, context, opts) do
     # Run before_transaction hooks first
     case Ash.ActionInput.run_before_transaction_hooks(input) do
@@ -250,16 +213,17 @@ defmodule Ash.Actions.Action do
           )
           |> case do
             {:ok, {:ok, result, notifications}} ->
-              final_result =
+              finalize_result =
                 finalize_notifications(
                   notifications,
                   input,
                   opts,
                   notify?
                 )
-                |> build_result(result, input, opts)
 
-              Ash.ActionInput.run_after_transaction_hooks(final_result, input)
+              to_hook_result(result, input)
+              |> Ash.ActionInput.run_after_transaction_hooks(input)
+              |> attach_return_notifications(finalize_result, input, opts)
 
             {:error, error} ->
               error_result = {:error, Ash.Error.to_ash_error(error)}
@@ -281,24 +245,25 @@ defmodule Ash.Actions.Action do
     # Run before_transaction hooks even for non-transactional actions
     case Ash.ActionInput.run_before_transaction_hooks(input) do
       {:ok, input} ->
-        result =
+        {result, finalize_result} =
           case authorize(domain, opts[:actor], input) do
             :ok ->
               case run_with_hooks(module, input, run_opts, context, false) do
                 {:ok, result, notifications} ->
-                  finalize_notifications(notifications, input, opts, false)
-                  |> build_result(result, input, opts)
+                  {to_hook_result(result, input),
+                   finalize_notifications(notifications, input, opts, false)}
 
                 {:error, error} ->
-                  {:error, error}
+                  {{:error, error}, nil}
               end
 
             {:error, error} ->
-              {:error, error}
+              {{:error, error}, nil}
           end
 
-        # Run after_transaction hooks
-        Ash.ActionInput.run_after_transaction_hooks(result, input)
+        result
+        |> Ash.ActionInput.run_after_transaction_hooks(input)
+        |> attach_return_notifications_maybe(finalize_result, input, opts)
 
       {:error, error} ->
         {:error, error}
@@ -490,6 +455,31 @@ defmodule Ash.Actions.Action do
       end
     end
   end
+
+  defp to_hook_result(result, %{action: %{returns: returns}}) when not is_nil(returns),
+    do: {:ok, result}
+
+  defp to_hook_result(_result, %{action: %{returns: nil}}), do: :ok
+
+  defp attach_return_notifications({:error, _} = error, _finalize_result, _input, _opts), do: error
+
+  defp attach_return_notifications(hook_result, finalize_result, input, opts) do
+    case hook_result do
+      :ok ->
+        build_result(finalize_result, nil, input, opts)
+
+      {:ok, result} ->
+        build_result(finalize_result, result, input, opts)
+    end
+  end
+
+  defp attach_return_notifications_maybe({:error, _} = error, _finalize_result, _input, _opts),
+    do: error
+
+  defp attach_return_notifications_maybe(result, nil, _input, _opts), do: result
+
+  defp attach_return_notifications_maybe(result, finalize_result, input, opts),
+    do: attach_return_notifications(result, finalize_result, input, opts)
 
   defp run_with_hooks(module, input, run_opts, context, in_transaction?) do
     # Run before_action hooks
