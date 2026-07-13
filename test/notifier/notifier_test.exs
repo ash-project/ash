@@ -185,6 +185,47 @@ defmodule Ash.Test.NotifierTest do
           end)
         end
       end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+
+    relationships do
+      many_to_many :related_posts, __MODULE__,
+        public?: true,
+        through: PostLink,
+        source_attribute_on_join_resource: :source_post_id,
+        destination_attribute_on_join_resource: :destination_post_id
+
+      has_many :comments, Comment, destination_attribute: :post_id, public?: true
+    end
+  end
+
+  defmodule MnesiaPost do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Mnesia,
+      simple_notifiers: [
+        Notifier
+      ]
+
+    mnesia do
+      table :notifier_test_mnesia_posts
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+
+      destroy :destroy do
+        primary? true
+      end
 
       action :emit_notification, :atom do
         transaction? false
@@ -251,16 +292,6 @@ defmodule Ash.Test.NotifierTest do
       attribute :name, :string do
         public?(true)
       end
-    end
-
-    relationships do
-      many_to_many :related_posts, __MODULE__,
-        public?: true,
-        through: PostLink,
-        source_attribute_on_join_resource: :source_post_id,
-        destination_attribute_on_join_resource: :destination_post_id
-
-      has_many :comments, Comment, destination_attribute: :post_id, public?: true
     end
   end
 
@@ -392,40 +423,59 @@ defmodule Ash.Test.NotifierTest do
     assert_receive {:notification, %Ash.Notifier.Notification{data: %Comment{name: "auto"}}}
   end
 
-  test "a nested generic action notification is sent automatically on create" do
-    Post
-    |> Ash.Changeset.for_create(:create_with_generic_action, %{name: "foobar"})
-    |> Ash.create!()
+  describe "nested generic action notifications" do
+    setup do
+      import ExUnit.CaptureLog
 
-    assert_receive {:notification, %{action: %{type: :create}}}
-    assert_receive {:notification, %Ash.Notifier.Notification{data: %{generic?: true}}}
-  end
+      capture_log(fn ->
+        Ash.DataLayer.Mnesia.start(Domain, [MnesiaPost])
+      end)
 
-  test "a nested generic action notification is sent automatically on destroy" do
-    post =
-      Post
-      |> Ash.Changeset.for_create(:create, %{name: "foobar"})
+      on_exit(fn ->
+        capture_log(fn ->
+          :mnesia.stop()
+          :mnesia.delete_schema([node()])
+        end)
+      end)
+
+      :ok
+    end
+
+    test "a nested generic action notification is sent automatically on create" do
+      MnesiaPost
+      |> Ash.Changeset.for_create(:create_with_generic_action, %{name: "foobar"})
       |> Ash.create!()
 
-    assert_receive {:notification, %{action: %{type: :create}}}
+      assert_receive {:notification, %{action: %{type: :create}}}
+      assert_receive {:notification, %Ash.Notifier.Notification{data: %{generic?: true}}}
+    end
 
-    post
-    |> Ash.Changeset.for_destroy(:destroy_with_generic_action)
-    |> Ash.destroy!()
+    test "a nested generic action notification is sent automatically on destroy" do
+      post =
+        MnesiaPost
+        |> Ash.Changeset.for_create(:create, %{name: "foobar"})
+        |> Ash.create!()
 
-    assert_receive {:notification, %{action: %{type: :destroy}}}
-    assert_receive {:notification, %Ash.Notifier.Notification{data: %{generic?: true}}}
-  end
+      assert_receive {:notification, %{action: %{type: :create}}}
 
-  test "a top-level generic action with transaction? true sends its notifications" do
-    Post
-    |> Ash.ActionInput.for_action(:emit_notification_in_transaction, %{})
-    |> Ash.run_action!()
+      post
+      |> Ash.Changeset.for_destroy(:destroy_with_generic_action)
+      |> Ash.destroy!()
 
-    assert_receive {:notification,
-                    %Ash.Notifier.Notification{
-                      data: %{generic?: true, started_transaction?: true}
-                    }}
+      assert_receive {:notification, %{action: %{type: :destroy}}}
+      assert_receive {:notification, %Ash.Notifier.Notification{data: %{generic?: true}}}
+    end
+
+    test "a top-level generic action with transaction? true sends its notifications" do
+      MnesiaPost
+      |> Ash.ActionInput.for_action(:emit_notification_in_transaction, %{})
+      |> Ash.run_action!()
+
+      assert_receive {:notification,
+                      %Ash.Notifier.Notification{
+                        data: %{generic?: true, started_transaction?: true}
+                      }}
+    end
   end
 
   test "the `load/1` change puts the loaded data into the notification" do

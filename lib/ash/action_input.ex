@@ -1791,9 +1791,11 @@ defmodule Ash.ActionInput do
   end
 
   def run_after_transaction_hooks(result, input) do
+    {result_for_hooks, pending_notifications} = peel_after_transaction_notifications(result, input)
+
     input.after_transaction
     |> Enum.reduce(
-      result,
+      result_for_hooks,
       fn after_transaction, result ->
         tracer = input.context[:private][:tracer]
 
@@ -1862,7 +1864,46 @@ defmodule Ash.ActionInput do
         #{inspect(other)}
         """
     end
+    |> attach_after_transaction_notifications(pending_notifications, input)
   end
+
+  defp peel_after_transaction_notifications({:ok, result, notifications}, input)
+       when has_return?(input) and is_list(notifications) do
+    {{:ok, result}, notifications}
+  end
+
+  defp peel_after_transaction_notifications({:ok, notifications}, input)
+       when has_no_return?(input) and is_list(notifications) do
+    # Hooks for untyped actions expect `:ok`; notifications are reattached after.
+    {:ok, notifications}
+  end
+
+  defp peel_after_transaction_notifications(result, _input), do: {result, :none}
+
+  defp attach_after_transaction_notifications(result, :none, _input), do: result
+  defp attach_after_transaction_notifications({:error, _} = error, _notifications, _input), do: error
+
+  defp attach_after_transaction_notifications({:ok, result}, notifications, input)
+       when has_return?(input) and is_list(notifications) do
+    {:ok, result, notifications}
+  end
+
+  defp attach_after_transaction_notifications({:ok, result, hook_notifications}, notifications, input)
+       when has_return?(input) and is_list(notifications) and is_list(hook_notifications) do
+    {:ok, result, notifications ++ hook_notifications}
+  end
+
+  defp attach_after_transaction_notifications(:ok, notifications, input)
+       when has_no_return?(input) and is_list(notifications) do
+    {:ok, notifications}
+  end
+
+  defp attach_after_transaction_notifications({:ok, hook_notifications}, notifications, input)
+       when has_no_return?(input) and is_list(notifications) and is_list(hook_notifications) do
+    {:ok, notifications ++ hook_notifications}
+  end
+
+  defp attach_after_transaction_notifications(result, _notifications, _input), do: result
 
   @doc false
   def run_around_transaction_hooks(%{around_transaction: []} = input, func) do
