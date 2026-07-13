@@ -27,6 +27,7 @@ defmodule Ash.ActionInput do
     context: %{},
     valid?: true,
     errors: [],
+    handle_errors: nil,
     before_action: [],
     after_action: [],
     before_transaction: [],
@@ -101,6 +102,10 @@ defmodule Ash.ActionInput do
           domain: Ash.Domain.t() | nil,
           valid?: boolean(),
           errors: [Ash.Error.t()],
+          handle_errors:
+            nil
+            | (t(), error :: term ->
+                 :ignore | t() | (error :: term) | {error :: term, t()}),
           before_action: [before_action_fun],
           after_action: [after_action_fun],
           before_transaction: [before_transaction_fun],
@@ -252,6 +257,7 @@ defmodule Ash.ActionInput do
         end)
 
       input
+      |> handle_errors(input.action.error_handler)
       |> cast_params(params, opts)
       |> set_defaults()
       |> require_arguments()
@@ -960,8 +966,56 @@ defmodule Ash.ActionInput do
     |> handle_error(input)
   end
 
-  defp handle_error(error, input) do
+  defp handle_error(error, %{handle_errors: nil} = input) do
     %{input | valid?: false, errors: [error | input.errors]}
+  end
+
+  defp handle_error(error, input) do
+    input
+    |> input.handle_errors.(error)
+    |> case do
+      :ignore ->
+        %{input | valid?: false}
+
+      {:ignore, input} ->
+        %{input | valid?: false}
+
+      %__MODULE__{} = input ->
+        %{input | valid?: false}
+
+      {input, error} ->
+        %{input | valid?: false, errors: [error | input.errors]}
+
+      error ->
+        %{input | valid?: false, errors: [error | input.errors]}
+    end
+  end
+
+  @doc """
+  Sets a custom error handler on the action input.
+
+  The error handler should be a two argument function or an mfa, in which case the first two arguments will be set
+  to the action input and the error, w/ the supplied arguments following those. The input will be marked
+  as invalid regardless of the outcome of this callback.
+
+  Any errors generated are passed to `handle_errors`, which can return any of the following:
+
+  * `:ignore` - the error is discarded.
+  * `input` - a new (or the same) action input. The error is not added.
+  * `{input, error}` - a new (or the same) error and action input. The error is added to the input.
+  * `anything_else` - is treated as a new, transformed version of the error. The result is added as an error to the input.
+  """
+  @spec handle_errors(
+          t(),
+          (t(), error :: term -> :ignore | t() | (error :: term) | {error :: term, t()})
+          | {module, atom, [term]}
+        ) :: t()
+  def handle_errors(input, {m, f, a}) do
+    %{input | handle_errors: &apply(m, f, [&1, &2 | a])}
+  end
+
+  def handle_errors(input, func) do
+    %{input | handle_errors: func}
   end
 
   defp to_change_errors(keyword) do

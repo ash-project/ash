@@ -10,6 +10,7 @@ defmodule Ash.Resource.Actions.Action do
     :description,
     :returns,
     :run,
+    :error_handler,
     constraints: [],
     touches_resources: [],
     skip_unknown_inputs: [],
@@ -34,6 +35,7 @@ defmodule Ash.Resource.Actions.Action do
           touches_resources: [Ash.Resource.t()],
           constraints: Keyword.t(),
           run: {module, Keyword.t()},
+          error_handler: mfa() | (Ash.ActionInput.t(), term() -> term()) | nil,
           returns: Ash.Type.t() | nil,
           primary?: boolean,
           transaction?: boolean,
@@ -91,6 +93,11 @@ defmodule Ash.Resource.Actions.Action do
                   doc: """
                   Module may be an `Ash.Resource.Actions.Implementation` or `Reactor`.
                   """
+                ],
+                error_handler: [
+                  type: {:or, [:mfa, {:fun, 2}]},
+                  doc:
+                    "Sets the error handler on the action input. See `Ash.ActionInput.handle_errors/2` for more"
                 ]
               ]
               |> Spark.Options.merge(
