@@ -973,7 +973,7 @@ defmodule Ash.Actions.Read.Relationships do
 
   defp relationship_read_action_arguments(relationship, provided_arguments \\ %{}) do
     relationship
-    |> Map.get(:read_action_argument_defaults, %{})
+    |> Map.get(:read_action_arguments, %{})
     |> Map.merge(provided_arguments)
   end
 

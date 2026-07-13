@@ -1533,7 +1533,7 @@ defmodule Ash.Filter do
   end
 
   defp relationship_read_action_arguments(relationship) do
-    Map.get(relationship, :read_action_argument_defaults, %{})
+    Map.get(relationship, :read_action_arguments, %{})
   end
 
   defp group_refs_by_all_paths(paths_with_refs) do

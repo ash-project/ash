@@ -6326,7 +6326,7 @@ defmodule Ash.Changeset do
   end
 
   defp relationship_read_action_arguments(relationship) do
-    Map.get(relationship, :read_action_argument_defaults, %{})
+    Map.get(relationship, :read_action_arguments, %{})
   end
 
   defp fetch_identity_field(item, data, attribute, relationship) do
