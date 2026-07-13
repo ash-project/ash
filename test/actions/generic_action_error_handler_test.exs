@@ -55,6 +55,16 @@ defmodule Ash.Test.Actions.GenericActionErrorHandlerTest do
 
         run fn _input, _ -> {:error, "from the run"} end
       end
+
+      action :raises_with_handler, :string do
+        error_handler fn _input, error ->
+          Ash.Error.Unknown.UnknownError.exception(
+            error: "handled #{Exception.message(error)}"
+          )
+        end
+
+        run fn _input, _ -> raise "boom" end
+      end
     end
 
     attributes do
@@ -99,5 +109,17 @@ defmodule Ash.Test.Actions.GenericActionErrorHandlerTest do
 
     assert Exception.message(error) =~ "handled"
     assert Exception.message(error) =~ "from the run"
+  end
+
+  test "exceptions raised in the run implementation are piped through the handler" do
+    error =
+      assert_raise Ash.Error.Unknown, fn ->
+        Post
+        |> Ash.ActionInput.for_action(:raises_with_handler, %{})
+        |> Ash.run_action()
+      end
+
+    assert Exception.message(error) =~ "handled"
+    assert Exception.message(error) =~ "boom"
   end
 end

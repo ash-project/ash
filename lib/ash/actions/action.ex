@@ -22,7 +22,12 @@ defmodule Ash.Actions.Action do
     end
   rescue
     e ->
-      reraise Ash.Error.to_error_class(e,
+      error =
+        e
+        |> Ash.Error.to_ash_error(__STACKTRACE__)
+        |> then(&handle_run_errors(input, &1))
+
+      reraise Ash.Error.to_error_class(error,
                 stacktrace: __STACKTRACE__,
                 bread_crumbs: [
                   "Exception raised in: #{inspect(input.resource)}.#{input.action.name}"
