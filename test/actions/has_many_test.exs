@@ -18,7 +18,7 @@ defmodule Ash.Test.Actions.HasManyTest do
       defaults [:read, :destroy, create: :*, update: :*]
 
       read :list_min_priority do
-        argument :min_priority, :integer, allow_nil?: false
+        argument :min_priority, :integer, allow_nil?: false, default: 10
         filter expr(priority >= ^arg(:min_priority))
       end
     end
@@ -575,7 +575,7 @@ defmodule Ash.Test.Actions.HasManyTest do
   end
 
   describe "has_many filter with ^arg template" do
-    test "relationship read action argument defaults are passed to the relationship read action" do
+    test "relationship argument defaults override read action argument defaults" do
       post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "Test Post"})
@@ -590,6 +590,15 @@ defmodule Ash.Test.Actions.HasManyTest do
         })
         |> Ash.create!()
       end
+
+      action_default_priorities =
+        Comment
+        |> Ash.Query.for_read(:list_min_priority)
+        |> Ash.read!()
+        |> Enum.map(& &1.priority)
+        |> Enum.sort()
+
+      assert action_default_priorities == [10, 50, 90]
 
       loaded_post = Ash.load!(post, :comments_with_default_min_priority)
 
