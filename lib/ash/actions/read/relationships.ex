@@ -947,7 +947,7 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp relationship_read_action_arguments(relationship) do
-    Map.get(relationship, :read_action_arguments) || %{}
+    Map.get(relationship, :read_action_arguments, %{})
   end
 
   defp do_per_record_no_attributes_load(
