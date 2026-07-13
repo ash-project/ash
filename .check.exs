@@ -8,6 +8,6 @@
     {:check_cheat_sheets, command: "mix spark.cheat_sheets --check"},
     {:check_formatter, command: "mix spark.formatter --check"},
     {:doctor, false},
-    {:reuse, command: ["pipx", "run", "reuse", "lint", "-q"]}
+    {:reuse, command: ["pipx", "run", "--spec", "reuse[charset-normalizer]", "reuse", "lint", "-q"]}
   ]
 ]
