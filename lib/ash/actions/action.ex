@@ -84,8 +84,9 @@ defmodule Ash.Actions.Action do
         case result do
           {:error, error} ->
             error =
-              Ash.Error.to_error_class(
-                error,
+              input
+              |> handle_run_errors(error)
+              |> Ash.Error.to_error_class(
                 bread_crumbs:
                   "Error returned from: #{inspect(input.resource)}.#{input.action.name}"
               )
@@ -129,6 +130,14 @@ defmodule Ash.Actions.Action do
   end
 
   defp validate_allow_nil(_result, _input, _in_transaction?), do: :ok
+
+  defp handle_run_errors(%{handle_errors: nil}, error), do: error
+
+  defp handle_run_errors(input, error) do
+    input
+    |> Ash.ActionInput.add_error(error)
+    |> Map.fetch!(:errors)
+  end
 
   defp maybe_load(:ok, _input, _domain, _opts), do: :ok
   defp maybe_load({:ok, nil}, _input, _domain, _opts), do: {:ok, nil}

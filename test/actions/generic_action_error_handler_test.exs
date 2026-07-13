@@ -45,6 +45,16 @@ defmodule Ash.Test.Actions.GenericActionErrorHandlerTest do
 
         run fn input, _ -> {:ok, input.arguments.name} end
       end
+
+      action :run_errors_with_fun_handler, :string do
+        error_handler fn _input, error ->
+          Ash.Error.Unknown.UnknownError.exception(
+            error: "handled #{Exception.message(error)}"
+          )
+        end
+
+        run fn _input, _ -> {:error, "from the run"} end
+      end
     end
 
     attributes do
@@ -79,5 +89,15 @@ defmodule Ash.Test.Actions.GenericActionErrorHandlerTest do
 
     refute input.valid?
     assert input.errors == []
+  end
+
+  test "errors returned from the run implementation are piped through the handler" do
+    assert {:error, %Ash.Error.Unknown{errors: [error]}} =
+             Post
+             |> Ash.ActionInput.for_action(:run_errors_with_fun_handler, %{})
+             |> Ash.run_action()
+
+    assert Exception.message(error) =~ "handled"
+    assert Exception.message(error) =~ "from the run"
   end
 end
