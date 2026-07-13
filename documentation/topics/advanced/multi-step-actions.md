@@ -34,6 +34,26 @@ You should use hooks for most multi-step workflow scenarios as they provide simp
 >
 > For durable workflows, we suggest to use Oban. We provide tools to integrate with Oban in [AshOban](https://hexdocs.pm/ash_oban). AshOban supports very specific types of common workflows, like "triggers" that run periodically for resources, and "scheduled actions" which run generic actions on a cron. You should not be afraid to write "standard" Oban jobs and code where possible. Don't bend over backwards trying to fit everything into AshOban.
 
+## Choosing the Right Tool
+
+Ash provides several tools for building complex workflows. Choosing the right one depends on what kind of work you're trying to perform.
+
+| If you need to... | Consider using... |
+| --- | --- |
+| Modify data for a create, update, or destroy action | A change |
+| Modify a read query before it executes | A preparation |
+| Create, update, or remove related records from action input | `manage_relationship` |
+| Run logic before or after an action | Lifecycle hooks |
+| Coordinate multiple dependent steps or external systems | Reactor |
+
+Changes and preparations are often the first tools to reach for. Changes modify create, update, and destroy actions by working with changesets. Preparations modify read actions by working with queries before they execute.
+
+Use lifecycle hooks when your workflow needs additional behavior before or after an action runs, especially for side effects such as notifications, logging, or communication with external services.
+
+When related records are part of the action input, prefer `manage_relationship` over manually creating or updating those records in hooks. It expresses the relationship directly and keeps the action focused on managing resource data.
+
+When a workflow spans multiple resources, external services, or requires compensation logic, consider using Reactor instead.
+
 ## Action Lifecycle Hooks
 
 At the core of Ash's multi-step action capability are action lifecycle hooks. These hooks allow you to run code at specific points during an action's execution:
@@ -50,6 +70,14 @@ There are other hooks that we won't go into here, as they are rarely used. See t
 
 - **around_action**: Runs code both before and after the action logic, within the transaction.
 - **around_transaction**: Runs code both before and after the transaction, outside the transaction.
+
+### Changes and Preparations
+
+Lifecycle hooks are available when working with both changesets and queries.
+
+Changes typically add lifecycle behavior to create, update, and destroy actions, while preparations customize read actions by modifying queries before they execute. Although they operate on different types of actions, the same lifecycle thinking applies: perform the right work at the appropriate stage of execution.
+
+For more detailed information, see the dedicated guides for Changes and Preparations.
 
 ## Examples
 
@@ -120,6 +148,19 @@ defmodule HelpDesk.Changes.AssignTicket do
   end
 end
 ```
+
+#### When would `manage_relationship` be a better fit?
+
+This example uses lifecycle hooks because ticket assignment coordinates additional behavior that is not supplied directly by the action input.
+
+If the action instead accepted related data—for example creating a ticket together with its initial comments, attachments, or tags—`manage_relationship` is usually a better choice than creating those related records manually in an `after_action` hook.
+
+As a general guideline:
+
+- Use `manage_relationship` when the action input includes related resources that should be created, updated, or removed.
+- Use lifecycle hooks for side effects, coordination logic, notifications, auditing, or interactions with external systems.
+
+See the Relationships guide for more information on `manage_relationship`.
 
 ### Example 3: Complex Workflow with External Services
 

@@ -97,7 +97,6 @@ defmodule Ash.Actions.Destroy.Bulk do
           opts
           |> set_strategy(query.resource)
           |> select(query.resource)
-          |> Keyword.put(:context, query.context)
 
         opts =
           if opts[:return_notifications?] do
@@ -1045,8 +1044,11 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp do_atomic_batches(atomic_changeset, domain, stream, action, input, opts) do
-    batch_size = opts[:batch_size] || 100
     resource = opts[:resource]
+
+    batch_size =
+      opts[:batch_size] || Ash.DataLayer.default_bulk_batch_size(resource, action) || 100
+
     ref = make_ref()
     pkey = Ash.Resource.Info.primary_key(resource)
 

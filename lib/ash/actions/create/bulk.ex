@@ -169,9 +169,14 @@ defmodule Ash.Actions.Create.Bulk do
 
         batch_size =
           cond do
-            action.manual != nil and manual_action_can_bulk? -> opts[:batch_size] || 100
-            action.manual == nil and data_layer_can_bulk? -> opts[:batch_size] || 100
-            true -> 1
+            action.manual != nil and manual_action_can_bulk? ->
+              opts[:batch_size] || 100
+
+            action.manual == nil and data_layer_can_bulk? ->
+              opts[:batch_size] || Ash.DataLayer.default_bulk_batch_size(resource, action) || 100
+
+            true ->
+              1
           end
 
         all_changes =

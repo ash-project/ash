@@ -351,6 +351,15 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
         change set_attribute(:title2, arg(:a_title))
       end
 
+      update :update_with_context do
+        require_atomic? false
+
+        change fn changeset, _ ->
+          send(self(), {:changeset_context, changeset.context})
+          changeset
+        end
+      end
+
       update :update_with_before_transaction do
         require_atomic? false
 
@@ -965,6 +974,23 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                return_errors?: true,
                authorize?: false
              )
+  end
+
+  test "context provided in opts is set on changesets, query context is not" do
+    Ash.bulk_create!([%{title: "title1"}], Post, :create)
+
+    Post
+    |> Ash.Query.set_context(%{from_query: true})
+    |> Ash.bulk_update!(:update_with_context, %{},
+      context: %{from_opts: true},
+      strategy: [:stream],
+      return_errors?: true,
+      authorize?: false
+    )
+
+    assert_received {:changeset_context, context}
+    assert context[:from_opts]
+    refute context[:from_query]
   end
 
   test "runs changes" do

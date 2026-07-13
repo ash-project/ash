@@ -121,7 +121,7 @@ jobs:
     # Only run this job for ash-project org main branches
     if: github.ref == 'refs/heads/main' && github.repository_owner == 'ash-project'
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: erlef/mix-dependency-submission@c4a36104ac7614b1b66d0da6e8a1c7d6d07bc52b # v1.3.2
     permissions:
       # Give the default GITHUB_TOKEN write permission to call the dependencies API
@@ -130,7 +130,7 @@ jobs:
     name: audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Update Elixir version in .tool-versions
         if: inputs.elixir-version != 'default'
         run: |
@@ -176,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.changelog-lint }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
       - name: Check for new Unreleased sections in CHANGELOG.md
@@ -207,7 +207,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.community-files }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Check community files placement and content
         run: |
           EXIT_CODE=0
@@ -303,7 +303,7 @@ jobs:
     name: MIX_ENV=test mix.compile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Update Elixir version in .tool-versions
         if: inputs.elixir-version != 'default'
         run: |
@@ -353,7 +353,7 @@ jobs:
       - build-test
       - spark-cheat-sheets
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -396,7 +396,7 @@ jobs:
     needs: build-test
     if: ${{inputs.conventional-commit}}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -419,7 +419,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -442,7 +442,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -467,7 +467,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -491,7 +491,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -515,7 +515,7 @@ jobs:
     needs: build-test
     if: ${{inputs.doctor}}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -538,7 +538,7 @@ jobs:
     permissions:
       security-events: write
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -559,7 +559,7 @@ jobs:
         with:
           task: credo --format sarif > results.sarif
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@0499de31b99561a6d14a36a5f662c2a54f91beee # v4.31.2
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           sarif_file: results.sarif
           category: credo
@@ -570,7 +570,7 @@ jobs:
       - build-test
     if: ${{inputs.codegen}}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -594,7 +594,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -624,7 +624,7 @@ jobs:
         id: dependabot-metadata
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
         if: github.event.pull_request.user.login == 'dependabot[bot]'
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
@@ -646,7 +646,7 @@ jobs:
           task: igniter.upgrade --git-ci --yes
         if: github.event.pull_request.user.login == 'dependabot[bot]'
       - name: Commit Changes
-        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         with:
           commit_message: "[dependabot skip] Apply Igniter Upgrades"
@@ -678,7 +678,7 @@ jobs:
         ports:
           - 3306:3306
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -781,7 +781,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -803,7 +803,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{inputs.reuse}}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
       - name: REUSE compliance check
         uses: fsfe/reuse-action@v6
 
@@ -813,7 +813,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -897,7 +897,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Extract crate information
         shell: bash
@@ -934,7 +934,7 @@ jobs:
           path: ${{ steps.build-crate.outputs.file-path }}
 
       - name: Publish archives and packages
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           files: |
             ${{ steps.build-crate.outputs.file-path }}
@@ -961,7 +961,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Hex Publish
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{inputs.rustler-precompiled-module}}
         with:
@@ -979,7 +979,7 @@ jobs:
     runs-on: ubuntu-latest
     name: GitHub Release
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
       - name: Check if version exists on Hex
         id: hex-check
@@ -1030,13 +1030,13 @@ jobs:
           fi
       - name: Create or update release with changelog notes
         if: ${{ steps.hex-check.outputs.on_hex == 'true' && steps.extract-notes.outputs.has_notes == 'true' }}
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           body_path: release_notes.md
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-pre') }}
       - name: Create or update release with generated notes
         if: ${{ steps.hex-check.outputs.on_hex == 'true' && steps.extract-notes.outputs.has_notes != 'true' }}
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           generate_release_notes: true
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-pre') }}

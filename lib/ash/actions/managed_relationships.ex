@@ -3006,7 +3006,10 @@ defmodule Ash.Actions.ManagedRelationships do
         authorize?: opts[:authorize?],
         actor: actor,
         tenant: changeset.tenant,
-        context: Map.take(changeset.context, [:shared]),
+        context:
+          %{accessing_from: %{source: join_relationship.source, name: join_relationship.name}}
+          |> Ash.Helpers.deep_merge_maps(Map.take(changeset.context, [:shared]))
+          |> Ash.Helpers.deep_merge_maps(join_relationship.context),
         domain: domain(changeset, join_relationship),
         strategy: [:atomic, :atomic_batches, :stream],
         transaction: false
@@ -3152,7 +3155,12 @@ defmodule Ash.Actions.ManagedRelationships do
             authorize?: opts[:authorize?],
             actor: actor,
             tenant: changeset.tenant,
-            context: Map.take(changeset.context, [:shared]),
+            context:
+              %{
+                accessing_from: %{source: join_relationship.source, name: join_relationship.name}
+              }
+              |> Ash.Helpers.deep_merge_maps(Map.take(changeset.context, [:shared]))
+              |> Ash.Helpers.deep_merge_maps(join_relationship.context),
             domain: domain(changeset, join_relationship),
             strategy: [:atomic, :atomic_batches, :stream],
             transaction: false

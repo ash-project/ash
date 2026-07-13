@@ -318,6 +318,37 @@ defmodule Ash.Resource.Info do
     Extension.get_entities(resource, [:changes])
   end
 
+  @doc """
+  A list of all changes that apply to a given action, combining global changes with the action's own changes.
+
+  Global changes (declared in the top-level `changes` block) are filtered to the action's type and
+  prepended to the action's own changes, mirroring the order in which they are resolved at runtime.
+
+  Use this instead of reading `action.changes` directly whenever you need to introspect every change
+  that will run for an action (for example, to discover `manage_relationship/3` arguments), so that
+  changes declared globally are not missed.
+  """
+  @spec action_changes(
+          Spark.Dsl.t() | Ash.Resource.t(),
+          atom() | Ash.Resource.Actions.action()
+        ) :: list(Ash.Resource.Validation.t() | Ash.Resource.Change.t())
+  def action_changes(resource, action_or_name) do
+    action =
+      case action_or_name do
+        %{type: _type} = action -> action
+        name -> action(resource, name)
+      end
+
+    global_changes =
+      if action && action.type in [:create, :update, :destroy] do
+        changes(resource, action.type)
+      else
+        []
+      end
+
+    global_changes ++ Map.get(action || %{}, :changes, [])
+  end
+
   @spec preparations(Spark.Dsl.t() | Ash.Resource.t(), action_type :: :read | :action) ::
           list(Ash.Resource.Preparation.t())
   def preparations(resource, type \\ :read) do

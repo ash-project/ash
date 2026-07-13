@@ -546,6 +546,98 @@ defmodule Ash.Test.Policy.SimpleTest do
     refute Ash.can?({context_record, :read}, admin, scope: %Scope{context: %{name: "Bar"}})
   end
 
+  describe "Ash.can_do_all?/3 and Ash.can_do_all/3" do
+    test "returns true when all checks pass" do
+      assert Ash.can_do_all?(
+               [
+                 {ResourceWithMixedActionTypePolicy, :read},
+                 {ResourceWithMixedActionTypePolicy, :create}
+               ],
+               %{id: "user"}
+             )
+    end
+
+    test "returns false when any check fails" do
+      refute Ash.can_do_all?(
+               [
+                 {ResourceWithForbidUnlessAndAuthorizeIf, :read},
+                 {ResourceWithForbidUnlessAndAuthorizeIf, :create}
+               ],
+               %{role: :viewer, has_read_permission: true}
+             )
+    end
+
+    test "returns individual results as a list" do
+      assert {:ok, [true, false]} =
+               Ash.can_do_all(
+                 [
+                   {ResourceWithForbidUnlessAndAuthorizeIf, :read},
+                   {ResourceWithForbidUnlessAndAuthorizeIf, :create}
+                 ],
+                 %{role: :admin, has_read_permission: true}
+               )
+    end
+
+    test "returns individual results as a map for keyword checks" do
+      assert {:ok, %{read: true, create: false}} =
+               Ash.can_do_all(
+                 [
+                   read: {ResourceWithForbidUnlessAndAuthorizeIf, :read},
+                   create: {ResourceWithForbidUnlessAndAuthorizeIf, :create}
+                 ],
+                 %{role: :admin, has_read_permission: true}
+               )
+    end
+
+    test "reuses shared scope context across checks", %{admin: admin} do
+      context_record =
+        Context
+        |> Ash.Changeset.for_create(:create, %{name: "Foo"})
+        |> Ash.create!()
+
+      assert Ash.can_do_all?(
+               [
+                 read: {context_record, :read},
+                 read_again: {context_record, :read}
+               ],
+               admin,
+               scope: %Scope{context: %{name: "Foo"}}
+             )
+
+      refute Ash.can_do_all?(
+               [
+                 read: {context_record, :read},
+                 read_again: {context_record, :read}
+               ],
+               admin,
+               scope: %Scope{context: %{name: "Bar"}}
+             )
+    end
+
+    test "supports per-check opts", %{admin: admin, user: user} do
+      own_tweet =
+        Ash.create!(
+          Ash.Changeset.for_create(Tweet, :create, %{user_id: user.id}, actor: user),
+          authorize?: false
+        )
+
+      other_tweet =
+        Ash.create!(
+          Ash.Changeset.for_create(Tweet, :create, %{user_id: admin.id}, actor: admin),
+          authorize?: false
+        )
+
+      assert {:ok, [true, false]} =
+               Ash.can_do_all(
+                 [
+                   {{Tweet, :read}, data: own_tweet},
+                   {{Tweet, :read}, data: other_tweet}
+                 ],
+                 user
+               )
+    end
+  end
+
   test "arguments can be referenced in expression policies", %{admin: admin, user: user} do
     Tweet
     |> Ash.Changeset.for_create(:create_foo, %{foo: "foo", user_id: admin.id}, actor: user)

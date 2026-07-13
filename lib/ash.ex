@@ -997,6 +997,12 @@ defmodule Ash do
       type: :boolean,
       doc:
         "If set to `false`, suppresses policy breakdown logs, overriding the global `show_policy_breakdowns?` configuration."
+    ],
+    short_circuit?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "For `can_do_all/3` and `can_do_all?/3`, whether to stop checking after the first failing check. Defaults to `false` for `can_do_all/3` and `true` for `can_do_all?/3`."
     ]
   ]
 
@@ -1874,6 +1880,108 @@ defmodule Ash do
         opts = CanOpts.to_options(opts)
 
         case Ash.Can.can(action_or_query_or_changeset, domain, actor_or_scope, opts) do
+          {:error, %Ash.Error.Forbidden.InitialDataRequired{} = error} ->
+            if opts[:on_must_pass_strict_check] do
+              {:error, error}
+            else
+              {:error, Ash.Error.to_error_class(error)}
+            end
+
+          {:error, error} ->
+            {:error, Ash.Error.to_error_class(error)}
+
+          other ->
+            other
+        end
+
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
+    end
+  end
+
+  @doc """
+  Returns whether an actor can perform all of the given actions.
+
+  Calls `can_do_all/3` with `maybe_is: true` and `short_circuit?: true`. See `can_do_all/3` for more info.
+
+  Each entry in `checks` is the same shape accepted by `can?/3`, or `{subject, opts}` to provide
+  per-check options. Shared options like `tenant`, `context`, and `scope` are applied to every check.
+
+  ## Examples
+
+      iex> Ash.can_do_all?([{MyApp.Post, :read}, {MyApp.Post, :create}], actor)
+      true
+
+      iex> Ash.can_do_all?([read: {MyApp.Post, :read}, create: {MyApp.Post, :create}], actor)
+      true
+
+      iex> Ash.can_do_all?([{post, :read}, {post, :update}], user)
+      false
+
+  ## See also
+
+  - `can_do_all/3` for individual results for each check
+  - `can?/3` for checking a single action
+  - [Actors and Authorization Guide](/documentation/topics/security/actors-and-authorization.md)
+
+  ### Options
+
+  #{Spark.Options.docs(@can_question_mark_opts)}
+  """
+  @spec can_do_all?(Ash.Can.checks(), actor() | Ash.Scope.t(), Keyword.t()) ::
+          boolean() | no_return()
+  @doc spark_opts: [{2, @can_question_mark_opts}]
+  def can_do_all?(checks, actor_or_scope, opts \\ []) when is_list(checks) do
+    opts =
+      opts
+      |> Keyword.put_new(:maybe_is, true)
+      |> Keyword.put_new(:short_circuit?, true)
+
+    Ash.Can.can_do_all?(checks, actor_or_scope, opts)
+  end
+
+  @doc """
+  Returns whether an actor can perform each of the given actions.
+
+  In cases with "runtime" checks (checks after the action), we may not be able to determine
+  an answer for a given check, and so the value `:maybe` will be returned. See `can/3` for more.
+
+  Returns `{:ok, results}` where `results` is a list (when `checks` is a list) or a map keyed by
+  the provided names (when `checks` is a keyword list). Each value is `true`, `false`, or `:maybe`.
+
+  Each entry in `checks` is the same shape accepted by `can/3`, or `{subject, opts}` to provide
+  per-check options. Shared options like `tenant`, `context`, and `scope` are applied to every check.
+
+  ## Examples
+
+      iex> Ash.can_do_all([{MyApp.Post, :read}, {MyApp.Post, :create}], actor)
+      {:ok, [true, true]}
+
+      iex> Ash.can_do_all([read: {MyApp.Post, :read}, update: {post, :update}], actor)
+      {:ok, %{read: true, update: false}}
+
+  ## See also
+
+  - `can_do_all?/3` for the boolean version that requires all checks to pass
+  - `can/3` for checking a single action
+  - [Actors and Authorization Guide](/documentation/topics/security/actors-and-authorization.md)
+
+  ## Options
+
+  #{Spark.Options.docs(@can_opts)}
+  """
+  @spec can_do_all(Ash.Can.checks(), actor() | Ash.Scope.t(), Keyword.t()) ::
+          {:ok, list(boolean() | :maybe) | map()}
+          | {:error, term}
+  @doc spark_opts: [{2, @can_opts}]
+  def can_do_all(checks, actor_or_scope, opts \\ []) when is_list(checks) do
+    opts = Keyword.put_new(opts, :short_circuit?, false)
+
+    case CanOpts.validate(opts) do
+      {:ok, opts} ->
+        opts = CanOpts.to_options(opts)
+
+        case Ash.Can.can_do_all(checks, actor_or_scope, opts) do
           {:error, %Ash.Error.Forbidden.InitialDataRequired{} = error} ->
             if opts[:on_must_pass_strict_check] do
               {:error, error}
