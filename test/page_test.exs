@@ -13,6 +13,11 @@ defmodule ThisTest.Obj do
     defaults [:read, create: :*]
 
     read :list_objs do
+      prepare after_action(fn _, results, _ ->
+                Process.put(:after_action_result_count, length(results))
+                {:ok, results}
+              end)
+
       pagination do
         keyset? true
         offset? true
@@ -79,6 +84,10 @@ defmodule Ash.Test.PageTest do
   describe "offset" do
     test "pass", %{ids: ids} do
       p1 = ThisTest.Domain.list_objs!(page: [offset: 0])
+
+      # Default limit is 3
+      assert Process.get(:after_action_result_count) == 3
+
       assert %Ash.Page.Offset{results: [_, _, _], more?: true} = p1
       assert p1.results |> Enum.map(& &1.id) == Enum.drop(ids, 0) |> Enum.take(3)
 
