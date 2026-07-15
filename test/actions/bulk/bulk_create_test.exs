@@ -177,6 +177,40 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule CaptureSharedContext do
+    @moduledoc false
+    use Ash.Resource.Preparation
+
+    @impl true
+    def prepare(query, _opts, _context) do
+      send(self(), {:shared_context, query.context[:shared]})
+      query
+    end
+  end
+
+  defmodule PostWithSharedContextPreparation do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    preparations do
+      prepare CaptureSharedContext
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, public?: true
+    end
+  end
+
   defmodule Org do
     @moduledoc false
     use Ash.Resource,
@@ -730,6 +764,18 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                sorted?: true,
                tenant: org.id
              )
+  end
+
+  test "passes shared context to preparations when returning created records" do
+    shared_context = %{some_id: Ash.UUID.generate()}
+
+    assert %Ash.BulkResult{records: [%{title: "title"}]} =
+             Ash.bulk_create!([%{title: "title"}], PostWithSharedContextPreparation, :create,
+               return_records?: true,
+               context: %{shared: shared_context}
+             )
+
+    assert_receive {:shared_context, ^shared_context}
   end
 
   test "runs before action hooks" do
