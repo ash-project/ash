@@ -6,12 +6,18 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Query
+
   alias Ash.Resource.Validation.Negate
 
   alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
-    use Ash.Resource, domain: Domain
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
 
     actions do
       default_accept :*
@@ -24,6 +30,13 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
       attribute :status, :atom do
         public?(true)
       end
+    end
+
+    validations do
+      validate negate(changing(:status)),
+        on: :update,
+        where: [data_one_of(:status, [:published])],
+        message: "The status of a published post cannot be changed."
     end
   end
 
@@ -76,6 +89,43 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
       assert_raise ArgumentError, ~r/must implement `describe\/1`/, fn ->
         Negate.init(validation: CustomValidationNoDescribe)
       end
+    end
+
+    test "conditionally rejects changing an attribute in an atomic update" do
+      draft = Ash.create!(Post, %{status: :draft})
+      published = Ash.create!(Post, %{status: :published})
+
+      assert %Ash.BulkResult{
+               status: :success,
+               records: [%Post{status: :archived}]
+             } =
+               Post
+               |> Ash.Query.filter(id == ^draft.id)
+               |> Ash.bulk_update(:update, %{status: :archived},
+                 strategy: :atomic,
+                 return_records?: true,
+                 return_errors?: true
+               )
+
+      assert %Ash.BulkResult{
+               status: :error,
+               errors: [
+                 %Ash.Error.Invalid{
+                   errors: [
+                     %Ash.Error.Changes.InvalidChanges{
+                       fields: [:status],
+                       message: "The status of a published post cannot be changed."
+                     }
+                   ]
+                 }
+               ]
+             } =
+               Post
+               |> Ash.Query.filter(id == ^published.id)
+               |> Ash.bulk_update(:update, %{status: :archived},
+                 strategy: :atomic,
+                 return_errors?: true
+               )
     end
   end
 end

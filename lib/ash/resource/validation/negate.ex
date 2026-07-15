@@ -115,7 +115,7 @@ defmodule Ash.Resource.Validation.Negate do
     {:atomic, fields, Ash.Expr.expr(not (^condition)),
      Ash.Expr.expr(
        error(^InvalidChanges, %{
-         fields: fields,
+         fields: ^fields,
          message: ^message,
          vars: ^Map.new(vars)
        })
