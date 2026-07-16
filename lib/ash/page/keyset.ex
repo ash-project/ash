@@ -252,22 +252,32 @@ defmodule Ash.Page.Keyset do
   end
 
   defp field_values(record, sort) do
-    Enum.map(sort, fn
-      {%{__struct__: Ash.Query.Calculation, load: load, name: name}, _} ->
+    sort
+    |> Enum.with_index()
+    |> Enum.map(fn
+      {{%{__struct__: Ash.Query.Calculation, load: load, name: name}, _}, index} ->
         if load do
           Map.get(record, load)
         else
-          Map.get(record.calculations, name)
+          # anonymous sort calculations are renamed to `{:__ash_runtime_sort__, index}`
+          # when they are computed by `Ash.Actions.Sort.runtime_sort/3`
+          case Map.fetch(record.calculations, name) do
+            {:ok, value} -> value
+            :error -> Map.get(record.calculations, {:__ash_runtime_sort__, index})
+          end
         end
 
-      {%{__struct__: Ash.Query.Aggregate, load: load, name: name}, _} ->
+      {{%{__struct__: Ash.Query.Aggregate, load: load, name: name}, _}, index} ->
         if load do
           Map.get(record, load)
         else
-          Map.get(record.aggregates, name)
+          case Map.fetch(record.aggregates, name) do
+            {:ok, value} -> value
+            :error -> Map.get(record.aggregates, {:__ash_runtime_sort__, index})
+          end
         end
 
-      {field, _} ->
+      {{field, _}, _index} ->
         Map.get(record, field)
     end)
   end
