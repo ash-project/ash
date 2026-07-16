@@ -117,7 +117,34 @@ defmodule Ash.Page.Keyset do
     with {:ok, decoded} <- decode_values(values, after_or_before),
          {:ok, zipped} <- zip_fields(sort, decoded, values) do
       {:ok, filters(Enum.with_index(zipped), resource, query, after_or_before)}
+    else
+      {:error, %Ash.Error.Page.InvalidKeyset{} = error} ->
+        {:error, maybe_redact(error, resource, sort)}
+
+      {:error, error} ->
+        {:error, error}
     end
+  end
+
+  # a keyset is `term_to_binary` + Base64 over the sort values of the record it
+  # was built from, so it exposes those values to anyone holding it
+  defp maybe_redact(error, resource, sort) do
+    if Application.get_env(:ash, :redact_sensitive_values_in_errors?, false) and
+         sensitive_sort?(resource, sort) do
+      %{error | value: Ash.Helpers.redact(error.value)}
+    else
+      error
+    end
+  end
+
+  defp sensitive_sort?(resource, sort) do
+    Enum.any?(sort, fn
+      {%{sensitive?: sensitive?}, _} ->
+        sensitive?
+
+      {field, _} ->
+        match?(%{sensitive?: true}, Ash.Resource.Info.field(resource, field))
+    end)
   end
 
   defp decode_values(values, key) do

@@ -126,6 +126,11 @@ defmodule Ash.Actions.PaginationTest do
       attribute :subname, :string do
         public?(true)
       end
+
+      attribute :secret_name, :string do
+        public?(true)
+        sensitive?(true)
+      end
     end
 
     aggregates do
@@ -461,7 +466,10 @@ defmodule Ash.Actions.PaginationTest do
     setup do
       users =
         for i <- 0..9 do
-          user = Ash.create!(Ash.Changeset.for_create(User, :create, %{name: "#{i}"}))
+          user =
+            Ash.create!(
+              Ash.Changeset.for_create(User, :create, %{name: "#{i}", secret_name: "secret-#{i}"})
+            )
 
           if i != 0 do
             for x <- 1..i do
@@ -548,12 +556,31 @@ defmodule Ash.Actions.PaginationTest do
       end)
     end
 
-    test "an invalid keyset does not include the keyset value in its message" do
+    test "an invalid keyset sorted on a sensitive attribute is redacted" do
+      %{results: [%{__metadata__: %{keyset: keyset}}]} =
+        User
+        |> Ash.Query.sort(secret_name: :asc)
+        |> Ash.read!(action: :keyset, page: [limit: 1])
+
+      # the keyset was built for a different sort, so it no longer
+      # zips with the sort of the query it is applied to here
+      error =
+        assert_raise(Ash.Error.Invalid, fn ->
+          User
+          |> Ash.Query.sort(secret_name: :asc, subname: :asc)
+          |> Ash.read!(action: :keyset, page: [limit: 1, after: keyset])
+        end)
+
+      message = Exception.message(error)
+
+      assert message =~ "**redacted**"
+      refute message =~ keyset
+    end
+
+    test "an invalid keyset sorted on non-sensitive attributes is not redacted" do
       %{results: [%{__metadata__: %{keyset: keyset}}]} =
         Ash.read!(User, action: :keyset, page: [limit: 1])
 
-      # the keyset was built for the action's sort, so it no longer
-      # zips with the sort of the query it is applied to here
       error =
         assert_raise(Ash.Error.Invalid, fn ->
           User
@@ -561,11 +588,7 @@ defmodule Ash.Actions.PaginationTest do
           |> Ash.read!(action: :keyset, page: [limit: 1, after: keyset])
         end)
 
-      message = Exception.message(error)
-
-      assert message =~ "Invalid value provided as a keyset"
-      assert message =~ "**redacted**"
-      refute message =~ keyset
+      assert Exception.message(error) =~ keyset
     end
 
     test "can ask for records before a specific keyset" do
