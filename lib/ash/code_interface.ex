@@ -1863,7 +1863,7 @@ defmodule Ash.CodeInterface do
 
   @doc false
   def trim_double_newlines(str) do
-    # this actualy trims *triple* newlines
+    # this actually trims *triple* newlines
     str
     |> String.replace(~r/\n{3,}/, "\n\n")
     |> String.trim_trailing()

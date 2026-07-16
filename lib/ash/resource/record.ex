@@ -8,7 +8,7 @@ defmodule Ash.Resource.Record do
 
   This module acts as a way to refer to the type via t:t()
   and will also act as a place for shared functionality for
-  instances of resouces in the future.
+  instances of resources in the future.
   """
   @type t :: struct()
 end

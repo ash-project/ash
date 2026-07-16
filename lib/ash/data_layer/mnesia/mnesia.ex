@@ -377,7 +377,7 @@ defmodule Ash.DataLayer.Mnesia do
     if options[:upsert?] do
       # This uses a lot of the ETS datalayer as a reference point. It is
       # recommended to NOT use this and instead upsert on the pkey which should
-      # use the optmized approach in the `else` logic.
+      # use the optimized approach in the `else` logic.
       stream
       |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
         changeset =
