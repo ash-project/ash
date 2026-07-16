@@ -548,6 +548,26 @@ defmodule Ash.Actions.PaginationTest do
       end)
     end
 
+    test "an invalid keyset does not include the keyset value in its message" do
+      %{results: [%{__metadata__: %{keyset: keyset}}]} =
+        Ash.read!(User, action: :keyset, page: [limit: 1])
+
+      # the keyset was built for the action's sort, so it no longer
+      # zips with the sort of the query it is applied to here
+      error =
+        assert_raise(Ash.Error.Invalid, fn ->
+          User
+          |> Ash.Query.sort(name: :asc)
+          |> Ash.read!(action: :keyset, page: [limit: 1, after: keyset])
+        end)
+
+      message = Exception.message(error)
+
+      assert message =~ "Invalid value provided as a keyset"
+      assert message =~ "**redacted**"
+      refute message =~ keyset
+    end
+
     test "can ask for records before a specific keyset" do
       %{results: [%{id: id, __metadata__: %{keyset: keyset}}]} =
         Ash.read!(User, action: :keyset, page: [limit: 1])
