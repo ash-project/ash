@@ -460,6 +460,7 @@ end
 | [`not_found_message`](#relationships-has_one-not_found_message){: #relationships-has_one-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-has_one-writable?){: #relationships-has_one-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-has_one-read_action){: #relationships-has_one-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
+| [`read_action_arguments`](#relationships-has_one-read_action_arguments){: #relationships-has_one-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-has_one-domain){: #relationships-has_one-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-has_one-filterable?){: #relationships-has_one-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-has_one-sortable?){: #relationships-has_one-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -571,6 +572,7 @@ end
 | [`not_found_message`](#relationships-has_many-not_found_message){: #relationships-has_many-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-has_many-writable?){: #relationships-has_many-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-has_many-read_action){: #relationships-has_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
+| [`read_action_arguments`](#relationships-has_many-read_action_arguments){: #relationships-has_many-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-has_many-domain){: #relationships-has_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-has_many-filterable?){: #relationships-has_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-has_many-sortable?){: #relationships-has_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -682,6 +684,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`not_found_message`](#relationships-many_to_many-not_found_message){: #relationships-many_to_many-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-many_to_many-writable?){: #relationships-many_to_many-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-many_to_many-read_action){: #relationships-many_to_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
+| [`read_action_arguments`](#relationships-many_to_many-read_action_arguments){: #relationships-many_to_many-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-many_to_many-domain){: #relationships-many_to_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-many_to_many-filterable?){: #relationships-many_to_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-many_to_many-sortable?){: #relationships-many_to_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -789,6 +792,7 @@ end
 | [`not_found_message`](#relationships-belongs_to-not_found_message){: #relationships-belongs_to-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-belongs_to-writable?){: #relationships-belongs_to-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-belongs_to-read_action){: #relationships-belongs_to-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
+| [`read_action_arguments`](#relationships-belongs_to-read_action_arguments){: #relationships-belongs_to-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-belongs_to-domain){: #relationships-belongs_to-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-belongs_to-filterable?){: #relationships-belongs_to-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-belongs_to-sortable?){: #relationships-belongs_to-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
