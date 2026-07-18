@@ -256,7 +256,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       end
 
       destroy :destroy_with_filter do
-        change filter(expr(title == "foo"))
+        change filter_where(expr(title == "foo"))
       end
 
       destroy :destroy_with_context do
