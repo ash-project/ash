@@ -107,6 +107,35 @@ defmodule Ash.Page.Keyset do
     end)
   end
 
+  @doc false
+  # Returns the name of the first sort field that is redacted (`%Ash.ForbiddenField{}`)
+  # on any of the given records, or `nil`. A keyset cursor seeks against the sort
+  # field's value, so a field the actor cannot read can't produce a usable cursor.
+  # This is checked on the field-policy-resolved records, so it covers both static
+  # and record-dependent field policies.
+  #
+  # Sort positions in `sort_input_indices` come from `Ash.Query.sort_input/2` and
+  # were already rewritten to be policy-aware (they encode `nil`, not the value),
+  # so they are skipped.
+  def forbidden_sort_field(records, sort, sort_input_indices) do
+    Enum.find_value(records, fn record ->
+      sort
+      |> Enum.zip(field_values(record, sort))
+      |> Enum.with_index()
+      |> Enum.find_value(fn {{{field, _direction}, value}, index} ->
+        if index not in sort_input_indices and match?(%Ash.ForbiddenField{}, value) do
+          sort_field_name(field)
+        end
+      end)
+    end)
+  end
+
+  defp sort_field_name(%{__struct__: struct, name: name})
+       when struct in [Ash.Query.Calculation, Ash.Query.Aggregate],
+       do: name
+
+  defp sort_field_name(field), do: field
+
   @doc """
   Creates filters on the query using the query for the Keyset.
   """
