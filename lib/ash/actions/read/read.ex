@@ -3357,7 +3357,7 @@ defmodule Ash.Actions.Read do
         agg.query
         |> Ash.Query.set_context(%{private: %{require_actor?: false}})
         |> Ash.Query.set_context(%{shared: opts[:source_context][:shared]})
-        |> Ash.Query.for_read(read_action, %{},
+        |> Ash.Query.for_read(read_action, agg.read_action_arguments || %{},
           domain: domain,
           actor: actor,
           tenant: tenant,

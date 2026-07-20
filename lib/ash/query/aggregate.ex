@@ -17,6 +17,7 @@ defmodule Ash.Query.Aggregate do
     :implementation,
     :load,
     :read_action,
+    :read_action_arguments,
     :agg_name,
     :multitenancy,
     join_filters: %{},
@@ -111,7 +112,8 @@ defmodule Ash.Query.Aggregate do
     ],
     read_action: [
       type: :atom,
-      doc: "The read action to use for the aggregate, defaults to the primary read action."
+      doc:
+        "The read action to use for the aggregate. Defaults to the final relationship's read action, then the primary read action."
     ],
     uniq?: [
       type: :boolean,
@@ -269,18 +271,20 @@ defmodule Ash.Query.Aggregate do
           implementation = opts.implementation
           uniq? = opts.uniq?
 
-          read_action =
+          {read_action, read_action_arguments} =
             if :read_action in opts.__set__ do
-              opts.read_action
+              {opts.read_action, %{}}
             else
               if related? do
-                relationship = Ash.Resource.Info.relationship(resource, List.first(opts.path))
+                relationship = Ash.Resource.Info.relationship(resource, opts.path)
 
                 if relationship do
-                  relationship.read_action
+                  {relationship.read_action, Map.get(relationship, :read_action_arguments, %{})}
+                else
+                  {nil, %{}}
                 end
               else
-                Ash.Resource.Info.primary_action!(opts.resource, :read).name
+                {Ash.Resource.Info.primary_action!(opts.resource, :read).name, %{}}
               end
             end
 
@@ -432,6 +436,7 @@ defmodule Ash.Query.Aggregate do
                sensitive?: sensitive?,
                authorize?: authorize?,
                read_action: read_action,
+               read_action_arguments: read_action_arguments,
                multitenancy: opts.multitenancy,
                join_filters:
                  Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end),
