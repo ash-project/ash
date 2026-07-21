@@ -492,6 +492,78 @@ defmodule Ash.Resource.Info do
     Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :attribute, nil)
   end
 
+  @doc "The multitenancy ancestor attributes for a resource, for hierarchical tenants"
+  @spec multitenancy_ancestor_attributes(Spark.Dsl.t() | Ash.Resource.t()) :: list(atom)
+  def multitenancy_ancestor_attributes(resource) do
+    Spark.Dsl.Extension.get_opt(resource, [:multitenancy], :ancestor_attributes, [])
+  end
+
+  @doc """
+  The multitenancy attribute(s) for a resource, as a list.
+
+  Ancestor attributes, when configured, come first, matching the broadest to
+  narrowest scoping order used for index prefixes.
+  """
+  @spec multitenancy_attributes(Spark.Dsl.t() | Ash.Resource.t()) :: list(atom)
+  def multitenancy_attributes(resource) do
+    multitenancy_ancestor_attributes(resource) ++ List.wrap(multitenancy_attribute(resource))
+  end
+
+  @doc """
+  Pairs each multitenancy attribute with its value for the given tenant.
+
+  The tenant attribute value is parsed from `to_tenant` (the
+  `Ash.ToTenant`-converted tenant) with `parse_attribute`. When
+  `ancestor_attributes` is configured, the ancestor values are derived from
+  the original `tenant` via the `Ash.ToAncestorTenants` protocol and paired
+  positionally; their pairs come first. Raises if the derived ancestors don't
+  line up with `ancestor_attributes`, to avoid silently dropping ancestor
+  filters.
+  """
+  @spec multitenancy_attribute_values(Spark.Dsl.t() | Ash.Resource.t(), term, term) ::
+          list({atom, term})
+  def multitenancy_attribute_values(resource, tenant, to_tenant) do
+    attribute_values =
+      case multitenancy_attribute(resource) do
+        nil ->
+          []
+
+        attribute ->
+          {m, f, a} = multitenancy_parse_attribute(resource)
+          [{attribute, apply(m, f, [to_tenant | a])}]
+      end
+
+    ancestor_attribute_values =
+      case multitenancy_ancestor_attributes(resource) do
+        [] ->
+          []
+
+        ancestor_attributes ->
+          resource_module = Spark.Dsl.Extension.get_persisted(resource, :module, resource)
+
+          ancestors = Ash.ToAncestorTenants.to_ancestor_tenants(tenant, resource_module)
+
+          if !is_list(ancestors) || length(ancestors) != length(ancestor_attributes) ||
+               Enum.any?(ancestors, &is_nil/1) do
+            raise ArgumentError, """
+            #{inspect(resource_module)} configures `ancestor_attributes #{inspect(ancestor_attributes)}`, but the ancestors
+            derived from #{inspect(tenant)} via `Ash.ToAncestorTenants` were #{inspect(ancestors)}.
+
+            Expected a list of #{length(ancestor_attributes)} non-nil values, ordered from
+            broadest to narrowest. Implement `Ash.ToAncestorTenants` for the tenant value being
+            set, or set a tenant that carries its ancestors. Prefer reading ancestor ids from the
+            tenant record's own attributes — when every level of the hierarchy configures
+            `ancestor_attributes`, each tenant record already stores all of its ancestors' ids —
+            rather than from relationships that may not be loaded.
+            """
+          end
+
+          Enum.zip(ancestor_attributes, ancestors)
+      end
+
+    ancestor_attribute_values ++ attribute_values
+  end
+
   @doc "The function to parse the tenant from the attribute"
   @spec multitenancy_parse_attribute(Spark.Dsl.t() | Ash.Resource.t()) :: {atom, atom, list(any)}
   def multitenancy_parse_attribute(resource) do

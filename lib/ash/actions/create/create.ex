@@ -301,7 +301,7 @@ defmodule Ash.Actions.Create do
             keys
           else
             if Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
-              Enum.uniq([Ash.Resource.Info.multitenancy_attribute(changeset.resource) | keys])
+              Enum.uniq(Ash.Resource.Info.multitenancy_attributes(changeset.resource) ++ keys)
             else
               keys
             end
@@ -697,11 +697,11 @@ defmodule Ash.Actions.Create do
   defp handle_attribute_multitenancy(changeset) do
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
-      attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
-      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
-      attribute_value = apply(m, f, [changeset.to_tenant | a])
-
-      Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
+      changeset.resource
+      |> Ash.Resource.Info.multitenancy_attribute_values(changeset.tenant, changeset.to_tenant)
+      |> Enum.reduce(changeset, fn {attribute, value}, changeset ->
+        Ash.Changeset.force_change_attribute(changeset, attribute, value)
+      end)
     else
       changeset
     end

@@ -494,8 +494,8 @@ defmodule Ash.Filter do
         end
 
       {fields, value} ->
-        multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(resource)
-        fields = Enum.reject(fields, fn key -> key == multitenancy_attribute end)
+        multitenancy_attributes = Ash.Resource.Info.multitenancy_attributes(resource)
+        fields = Enum.reject(fields, fn key -> key in multitenancy_attributes end)
 
         {keyval?, value} =
           case fields do

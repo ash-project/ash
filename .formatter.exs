@@ -23,6 +23,7 @@ spark_locals_without_parens = [
   allow_unregistered?: 1,
   always_atomic?: 1,
   always_select?: 1,
+  ancestor_attributes: 1,
   args: 1,
   argument: 1,
   argument: 2,
