@@ -160,7 +160,16 @@ defmodule Ash.Actions.Action do
         tracer: opts[:tracer]
       }
 
-      Ash.Type.load(returns, result, input.load, constraints, context)
+      case returns do
+        {:array, _} ->
+          Ash.Type.load(returns, result, input.load, constraints, context)
+
+        _ ->
+          case Ash.Type.load(returns, [result], input.load, constraints, context) do
+            {:ok, [result]} -> {:ok, result}
+            {:error, error} -> {:error, error}
+          end
+      end
     else
       {:ok, result}
     end
