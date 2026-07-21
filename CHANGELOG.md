@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.30.1](https://github.com/ash-project/ash/compare/v3.30.0...v3.30.1) (2026-07-21)
+
+
+
+
+### Bug Fixes:
+
+* fix `Ash.Type.load` on array returns by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.30.0](https://github.com/ash-project/ash/compare/v3.29.3...v3.30.0) (2026-07-21)
 
 
