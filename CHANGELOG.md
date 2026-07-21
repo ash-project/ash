@@ -8,6 +8,57 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.30.0](https://github.com/ash-project/ash/compare/v3.29.3...v3.30.0) (2026-07-21)
+
+
+
+
+### Features:
+
+* pass relationship read action arguments (#2775) by [@jechol](https://github.com/jechol) [(#2775)](https://github.com/ash-project/ash/pull/2775)
+
+* support for aggregated Policy evaluation (#2778) by CyanideDragon [(#2778)](https://github.com/ash-project/ash/pull/2778)
+
+* add action_changes function to combine global and action-specific changes by Aaron Heiner [(#2776)](https://github.com/ash-project/ash/pull/2776)
+
+* mix: add `mix ash.set.domains` configuration task via Igniter (#2762) by Okoye (Nature) Andrew [(#2762)](https://github.com/ash-project/ash/pull/2762)
+
+### Bug Fixes:
+
+* expand calculations no matter where they appear by [@zachdaniel](https://github.com/zachdaniel)
+
+* use final relationship read action for aggregates (#2792) by [@jechol](https://github.com/jechol) [(#2792)](https://github.com/ash-project/ash/pull/2792)
+
+* fix negate atomic validation field interpolation (#2787) by [@stevebrambilla](https://github.com/stevebrambilla) [(#2787)](https://github.com/ash-project/ash/pull/2787)
+
+* propagate shared context when loading bulk create results (#2783) by [@nallwhy](https://github.com/nallwhy) [(#2783)](https://github.com/ash-project/ash/pull/2783)
+
+* don't clobber bulk destroy context by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't carry over query context to changesets by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure manual action module is loaded before bulk dispatch (#2768) by diogomrts [(#2768)](https://github.com/ash-project/ash/pull/2768)
+
+* on_match :destroy for many_to_many now destroys both join and destination (#2638) by [@nallwhy](https://github.com/nallwhy) [(#2638)](https://github.com/ash-project/ash/pull/2638)
+
+* manifest reachability for repeated action roots (#2766) by olivermt [(#2766)](https://github.com/ash-project/ash/pull/2766)
+
+* pass NotLoaded/ForbiddenField through Ash.Type.rewrite/4 for array types (#2765) by Oshoma Momoh [(#2765)](https://github.com/ash-project/ash/pull/2765)
+
+* load and rewrite array-member union types correctly (#2763) by skanderm [(#2763)](https://github.com/ash-project/ash/pull/2763)
+
+### Improvements:
+
+* redact keyset values in `InvalidKeyset` messages (#2788) by nseaSeb [(#2788)](https://github.com/ash-project/ash/pull/2788)
+
+* add `error_handler` to generic actions (#2782) by [@jimsynz](https://github.com/jimsynz) [(#2782)](https://github.com/ash-project/ash/pull/2782)
+
+* add default_bulk_batch_size data layer callback(#2780) by alfieV [(#2780)](https://github.com/ash-project/ash/pull/2780)
+
+* Syntax Error for Exists improved #2274 (#2767) by torazar [(#2767)](https://github.com/ash-project/ash/pull/2767)
+
+* support predicate (question mark endings) in code interfaces (#2761) by colenelson0 [(#2761)](https://github.com/ash-project/ash/pull/2761)
+
 ## [v3.29.3](https://github.com/ash-project/ash/compare/v3.29.2...v3.29.3) (2026-06-23)
 
 
