@@ -1472,8 +1472,31 @@ defmodule Ash.Actions.Read do
   end
 
   defp agg_refs(query, calculations_in_query) do
-    calculations_in_query
-    |> Enum.flat_map(fn {_, expr} ->
+    sort_expressions =
+      query.sort
+      |> List.wrap()
+      |> Enum.flat_map(fn
+        {%Ash.Query.Calculation{} = calc, _direction} ->
+          if Ash.Resource.Calculation.has_expression?(calc.module) do
+            [{calc, Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context)}]
+          else
+            []
+          end
+
+        _ ->
+          []
+      end)
+
+    sort_aggregates =
+      query.sort
+      |> List.wrap()
+      |> Enum.flat_map(fn
+        {%Ash.Query.Aggregate{} = agg, _direction} -> [agg]
+        _ -> []
+      end)
+
+    (calculations_in_query ++ sort_expressions)
+    |> Enum.flat_map(fn {_calc, expr} ->
       expr
       |> Ash.Filter.hydrate_refs(%{
         resource: query.resource,
@@ -1501,6 +1524,7 @@ defmodule Ash.Actions.Read do
           []
       end
     end)
+    |> Enum.concat(sort_aggregates)
     |> Enum.concat(Map.values(query.aggregates))
   end
 
@@ -4331,6 +4355,20 @@ defmodule Ash.Actions.Read do
                parent_stack: parent_stack_from_context(query.context)
              }) do
           {:ok, expression} ->
+            expression =
+              add_calc_context_to_filter(
+                expression,
+                calculation.context.actor,
+                calculation.context.authorize?,
+                calculation.context.tenant,
+                calculation.context.tracer,
+                query.domain,
+                query.resource,
+                expand?: true,
+                parent_stack: parent_stack_from_context(query.context),
+                source_context: query.context
+              )
+
             {:cont, {:ok, [{calculation, expression} | calculations]}}
 
           {:error, error} ->

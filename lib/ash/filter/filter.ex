@@ -1793,6 +1793,45 @@ defmodule Ash.Filter do
               )
         }
 
+      %Ref{attribute: %Calculation{module: module, opts: opts, context: context} = calc} = ref ->
+        if Ash.Resource.Calculation.has_expression?(module) do
+          expr =
+            module
+            |> Ash.Resource.Calculation.expression(opts, context)
+            |> Ash.Expr.fill_template(
+              actor: context.actor,
+              tenant: context.tenant,
+              args: context.arguments,
+              context: context.source_context
+            )
+
+          case hydrate_refs(expr, %{resource: ref.resource, public?: false}) do
+            {:ok, expr} ->
+              new_expr =
+                update_aggregates(
+                  expr,
+                  resource,
+                  mapper,
+                  nested_path ++ ref.relationship_path,
+                  parent_paths
+                )
+
+              %{
+                ref
+                | attribute: %{
+                    calc
+                    | module: Ash.Resource.Calculation.Expression,
+                      opts: [expr: new_expr]
+                  }
+              }
+
+            _ ->
+              ref
+          end
+        else
+          ref
+        end
+
       other ->
         other
     end
