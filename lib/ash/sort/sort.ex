@@ -252,14 +252,12 @@ defmodule Ash.Sort do
           [] ->
             case do_get_field(resource, field, only_public?, input) do
               {:ok, field} ->
-                if type_sortable?(resource, field) do
+                with :ok <- validate_sortable(resource, field) do
                   case field do
                     %Ash.Query.Aggregate{} = field -> {:ok, field}
                     %Ash.Query.Calculation{} = field -> {:ok, field}
                     %{name: name} -> {:ok, name}
                   end
-                else
-                  {:error, UnsortableField.exception(field: field.name, resource: resource)}
                 end
 
               {:error, error} ->
@@ -382,6 +380,84 @@ defmodule Ash.Sort do
     do_type_sortable?(resource, field.type, field.constraints)
   end
 
+  defp validate_sortable(resource, %{sortable?: false} = field) do
+    {:error, UnsortableField.exception(field: field_name(field), resource: resource)}
+  end
+
+  defp validate_sortable(resource, field) do
+    with :ok <- validate_expression_refs(resource, field) do
+      if type_sortable?(resource, field) do
+        :ok
+      else
+        {:error, UnsortableField.exception(field: field_name(field), resource: resource)}
+      end
+    end
+  end
+
+  defp validate_expression_refs(
+         resource,
+         %Ash.Query.Calculation{module: module, opts: opts, context: context}
+       ) do
+    if Ash.Resource.Calculation.has_expression?(module) do
+      module
+      |> Ash.Resource.Calculation.expression(opts, context)
+      |> Ash.Filter.hydrate_refs(%{resource: resource, public?: false})
+      |> case do
+        {:ok, expression} ->
+          expression
+          |> Ash.Filter.list_refs(false, false, true)
+          |> Enum.reduce_while(:ok, fn ref, :ok ->
+            case validate_expression_ref(resource, ref) do
+              :ok -> {:cont, :ok}
+              {:error, error} -> {:halt, {:error, error}}
+            end
+          end)
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      :ok
+    end
+  end
+
+  defp validate_expression_refs(_resource, _field), do: :ok
+
+  defp validate_expression_ref(
+         resource,
+         %Ash.Query.Ref{attribute: field, relationship_path: relationship_path}
+       ) do
+    with {:ok, related} <- validate_sortable_relationship_path(resource, relationship_path) do
+      case field do
+        %{sortable?: false} ->
+          {:error, UnsortableField.exception(field: field_name(field), resource: related)}
+
+        _ ->
+          :ok
+      end
+    end
+  end
+
+  defp validate_sortable_relationship_path(resource, []) do
+    {:ok, resource}
+  end
+
+  defp validate_sortable_relationship_path(resource, [first | rest]) do
+    case Ash.Resource.Info.relationship(resource, first) do
+      %{sortable?: false, name: name} ->
+        {:error, UnsortableField.exception(field: name, resource: resource)}
+
+      %{sortable?: true, destination: destination} ->
+        validate_sortable_relationship_path(destination, rest)
+
+      _ ->
+        {:error, NoSuchField.exception(field: first, resource: resource)}
+    end
+  end
+
+  defp field_name(%Ash.Query.Calculation{calc_name: name}) when not is_nil(name), do: name
+  defp field_name(%{name: name}), do: name
+
   defp aggregate_type(resource, aggregate) do
     attribute =
       if aggregate.field do
@@ -466,17 +542,11 @@ defmodule Ash.Sort do
       {:error, error} ->
         {:error, error}
 
-      {:ok, %{sortable?: true} = field} ->
-        {type, constraints} = get_type(resource, field)
-
-        if do_type_sortable?(resource, type, constraints) do
+      {:ok, field} ->
+        with :ok <- validate_sortable(resource, field) do
+          {type, constraints} = get_type(resource, field)
           {:ok, Enum.reverse(acc), field, type, constraints}
-        else
-          {:error, UnsortableField.exception(field: field.name, resource: resource)}
         end
-
-      {:ok, %{name: name}} ->
-        {:error, UnsortableField.exception(field: name, resource: resource)}
     end
   end
 

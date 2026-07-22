@@ -982,6 +982,9 @@ defmodule Ash.Resource.Info do
       nil ->
         false
 
+      %{sortable?: false} ->
+        false
+
       %{type: {:array, _}} ->
         false
 
