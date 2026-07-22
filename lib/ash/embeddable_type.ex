@@ -526,6 +526,16 @@ defmodule Ash.EmbeddableType do
                   {:cont, {:ok, Map.put(acc, attribute.source, dumped)}}
 
                 error ->
+                  error =
+                    case Ash.Type.apply_constraints(
+                           attribute.type,
+                           value,
+                           Map.get(attribute, :constraints) || []
+                         ) do
+                      {:error, _} = constraint_error -> constraint_error
+                      _ -> error
+                    end
+
                   {:halt, Ash.Helpers.error_with_context(error, field: attribute.name)}
               end
           end
