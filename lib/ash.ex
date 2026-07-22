@@ -890,6 +890,19 @@ defmodule Ash do
     load: [
       type: :any,
       doc: "A load statement to apply on the resulting records after the action is invoked."
+    ],
+    return_notifications?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Use this if you're running ash actions in your own transaction and you want to manually handle sending notifications.
+
+      If a transaction is ongoing, and this is false, notifications will be aggregated in the process dictionary,
+      otherwise the return value is `{:ok, result, notifications}` (or `{:ok, notifications}` for actions with no return type)
+
+      To send notifications later, use `Ash.Notifier.notify(notifications)`. It sends any notifications
+      that can be sent, and returns the rest.
+      """
     ]
   ]
 
@@ -2052,7 +2065,11 @@ defmodule Ash do
   """
   @doc spark_opts: [{1, @run_action_opts}]
   @spec run_action(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
-          :ok | {:ok, term} | {:error, Ash.Error.t()}
+          :ok
+          | {:ok, term}
+          | {:ok, list(Ash.Notifier.Notification.t())}
+          | {:ok, term, list(Ash.Notifier.Notification.t())}
+          | {:error, Ash.Error.t()}
   def run_action(input, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(input, opts)
@@ -2060,15 +2077,20 @@ defmodule Ash do
     with {:ok, opts} <- RunActionOpts.validate(opts),
          opts <- RunActionOpts.to_options(opts),
          input = %{input | domain: domain},
-         {:ok, _resource} <- Ash.Domain.Info.resource(domain, input.resource),
-         {:ok, result} <- Ash.Actions.Action.run(domain, input, opts) do
-      {:ok, result}
-    else
-      :ok ->
-        :ok
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, input.resource) do
+      case Ash.Actions.Action.run(domain, input, opts) do
+        {:ok, result, notifications} ->
+          {:ok, result, notifications}
 
-      {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
+        {:ok, result} ->
+          {:ok, result}
+
+        :ok ->
+          :ok
+
+        {:error, error} ->
+          {:error, Ash.Error.to_error_class(error)}
+      end
     end
   end
 

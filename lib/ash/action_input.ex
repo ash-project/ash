@@ -1845,9 +1845,11 @@ defmodule Ash.ActionInput do
   end
 
   def run_after_transaction_hooks(result, input) do
+    {result_for_hooks, pending_notifications} = peel_after_transaction_notifications(result, input)
+
     input.after_transaction
     |> Enum.reduce(
-      result,
+      result_for_hooks,
       fn after_transaction, result ->
         tracer = input.context[:private][:tracer]
 
@@ -1881,6 +1883,12 @@ defmodule Ash.ActionInput do
       {:ok, new_result} when has_return?(input) ->
         {:ok, new_result}
 
+      {:ok, new_result, notifications} when has_return?(input) and is_list(notifications) ->
+        {:ok, new_result, notifications}
+
+      {:ok, notifications} when has_no_return?(input) and is_list(notifications) ->
+        {:ok, notifications}
+
       {:error, error} ->
         {:error, error}
 
@@ -1889,6 +1897,7 @@ defmodule Ash.ActionInput do
         Invalid return value from after_transaction hook. Because this action has a return type I expected one of:
 
         * {:ok, term}
+        * {:ok, term, notifications}
         * {:error, error}
 
         Got:
@@ -1901,6 +1910,7 @@ defmodule Ash.ActionInput do
         Invalid return value from after_transaction hook. Because this action has no return type I expected one of:
 
         * :ok
+        * {:ok, notifications}
         * {:error, error}
 
         Got:
@@ -1908,7 +1918,46 @@ defmodule Ash.ActionInput do
         #{inspect(other)}
         """
     end
+    |> attach_after_transaction_notifications(pending_notifications, input)
   end
+
+  defp peel_after_transaction_notifications({:ok, result, notifications}, input)
+       when has_return?(input) and is_list(notifications) do
+    {{:ok, result}, notifications}
+  end
+
+  defp peel_after_transaction_notifications({:ok, notifications}, input)
+       when has_no_return?(input) and is_list(notifications) do
+    # Hooks for untyped actions expect `:ok`; notifications are reattached after.
+    {:ok, notifications}
+  end
+
+  defp peel_after_transaction_notifications(result, _input), do: {result, :none}
+
+  defp attach_after_transaction_notifications(result, :none, _input), do: result
+  defp attach_after_transaction_notifications({:error, _} = error, _notifications, _input), do: error
+
+  defp attach_after_transaction_notifications({:ok, result}, notifications, input)
+       when has_return?(input) and is_list(notifications) do
+    {:ok, result, notifications}
+  end
+
+  defp attach_after_transaction_notifications({:ok, result, hook_notifications}, notifications, input)
+       when has_return?(input) and is_list(notifications) and is_list(hook_notifications) do
+    {:ok, result, notifications ++ hook_notifications}
+  end
+
+  defp attach_after_transaction_notifications(:ok, notifications, input)
+       when has_no_return?(input) and is_list(notifications) do
+    {:ok, notifications}
+  end
+
+  defp attach_after_transaction_notifications({:ok, hook_notifications}, notifications, input)
+       when has_no_return?(input) and is_list(notifications) and is_list(hook_notifications) do
+    {:ok, notifications ++ hook_notifications}
+  end
+
+  defp attach_after_transaction_notifications(result, _notifications, _input), do: result
 
   @doc false
   def run_around_transaction_hooks(%{around_transaction: []} = input, func) do
@@ -1919,6 +1968,12 @@ defmodule Ash.ActionInput do
       {:ok, term} when has_return?(input) ->
         {:ok, term}
 
+      {:ok, term, notifications} when has_return?(input) and is_list(notifications) ->
+        {:ok, term, notifications}
+
+      {:ok, notifications} when has_no_return?(input) and is_list(notifications) ->
+        {:ok, notifications}
+
       {:error, error} ->
         {:error, error}
 
@@ -1927,6 +1982,7 @@ defmodule Ash.ActionInput do
         Invalid return value from around_transaction hook. Because this action has no return type, I expected one of:
 
         * :ok
+        * {:ok, notifications}
         * {:error, error}
 
         Got:
@@ -1939,6 +1995,7 @@ defmodule Ash.ActionInput do
         Invalid return value from around_transaction hook. Because this action has a return type, I expected one of:
 
         * {:ok, term}
+        * {:ok, term, notifications}
         * {:error, error}
 
         Got:
@@ -1949,8 +2006,62 @@ defmodule Ash.ActionInput do
   end
 
   def run_around_transaction_hooks(%{around_transaction: [around | rest]} = input, func) do
-    around.(input, fn input ->
-      run_around_transaction_hooks(%{input | around_transaction: rest}, func)
-    end)
+    pending_ref = make_ref()
+
+    result =
+      around.(input, fn input ->
+        case run_around_transaction_hooks(%{input | around_transaction: rest}, func) do
+          {:ok, term, notifications} when has_return?(input) and is_list(notifications) ->
+            Process.put(pending_ref, notifications)
+            {:ok, term}
+
+          {:ok, notifications} when has_no_return?(input) and is_list(notifications) ->
+            Process.put(pending_ref, notifications)
+            :ok
+
+          other ->
+            other
+        end
+      end)
+
+    pending = Process.get(pending_ref, [])
+    Process.delete(pending_ref)
+
+    attach_around_notifications(result, pending, input)
+  end
+
+  defp attach_around_notifications({:error, _} = error, _, _), do: error
+
+  defp attach_around_notifications(result, pending, input) do
+    {base, extra} =
+      case result do
+        {:ok, term, notifications} when is_list(notifications) -> {{:ok, term}, notifications}
+        other -> {other, []}
+      end
+
+    notifications = pending ++ extra
+
+    cond do
+      has_return?(input) ->
+        case base do
+          {:ok, term} ->
+            if notifications == [], do: {:ok, term}, else: {:ok, term, notifications}
+
+          other ->
+            other
+        end
+
+      has_no_return?(input) ->
+        case base do
+          :ok ->
+            if notifications == [], do: :ok, else: {:ok, notifications}
+
+          {:ok, more} when is_list(more) ->
+            {:ok, notifications ++ more}
+
+          other ->
+            other
+        end
+    end
   end
 end

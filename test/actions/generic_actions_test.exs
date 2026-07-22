@@ -788,6 +788,32 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
       assert result == "Processed: test"
     end
+
+    test "return_notifications?: true returns notifications" do
+      assert {:ok, "Processed: test", notifications} =
+               Post
+               |> Ash.ActionInput.for_action(:with_notifications, %{message: "test"})
+               |> Ash.run_action(return_notifications?: true)
+
+      assert length(notifications) == 1
+      assert hd(notifications).data == %{message: "test"}
+    end
+
+    test "return_notifications?: true preserves notifications through around_transaction hooks" do
+      assert {:ok, "wrapped_Processed: test", notifications} =
+               Post
+               |> Ash.ActionInput.for_action(:with_notifications, %{message: "test"})
+               |> Ash.ActionInput.around_transaction(fn input, callback ->
+                 case callback.(input) do
+                   {:ok, result} -> {:ok, "wrapped_" <> result}
+                   error -> error
+                 end
+               end)
+               |> Ash.run_action(return_notifications?: true)
+
+      assert length(notifications) == 1
+      assert hd(notifications).data == %{message: "test"}
+    end
   end
 
   describe "action-level preparations and validations" do
