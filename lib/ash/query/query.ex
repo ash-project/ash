@@ -1119,20 +1119,34 @@ defmodule Ash.Query do
   end
 
   defp validate(query, validation, tracer, metadata, actor) do
-    if validation.before_action? do
-      before_action(query, fn query ->
-        if validation.only_when_valid? and not query.valid? do
-          query
-        else
-          do_validation(query, validation, tracer, metadata, actor)
-        end
-      end)
-    else
-      if validation.only_when_valid? and not query.valid? do
+    cond do
+      validation.before_transaction? ->
+        before_transaction(
+          query,
+          fn query ->
+            if validation.only_when_valid? and not query.valid? do
+              query
+            else
+              do_validation(query, validation, tracer, metadata, actor)
+            end
+          end,
+          prepend?: true
+        )
+
+      validation.before_action? ->
+        before_action(query, fn query ->
+          if validation.only_when_valid? and not query.valid? do
+            query
+          else
+            do_validation(query, validation, tracer, metadata, actor)
+          end
+        end)
+
+      validation.only_when_valid? and not query.valid? ->
         query
-      else
+
+      true ->
         do_validation(query, validation, tracer, metadata, actor)
-      end
     end
   end
 

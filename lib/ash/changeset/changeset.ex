@@ -1177,23 +1177,30 @@ defmodule Ash.Changeset do
 
   @doc false
   def run_atomic_validation(changeset, %{where: where} = validation, context) do
-    if validation.before_action? do
-      {:not_atomic,
-       "before_action? validation `#{inspect(elem(validation.validation, 0))}` cannot be run atomically. " <>
-         "To use before_action? validations, set `require_atomic? false` or use `strategy: [:stream]`."}
-    else
-      with {:atomic, condition} <- atomic_condition(where, changeset, context) do
-        case condition do
-          false ->
-            changeset
+    cond do
+      validation.before_transaction? ->
+        {:not_atomic,
+         "before_transaction? validation `#{inspect(elem(validation.validation, 0))}` cannot be run atomically. " <>
+           "To use before_transaction? validations, set `require_atomic? false` or use `strategy: [:stream]`."}
 
-          true ->
-            do_run_atomic_validation(changeset, validation, context)
+      validation.before_action? ->
+        {:not_atomic,
+         "before_action? validation `#{inspect(elem(validation.validation, 0))}` cannot be run atomically. " <>
+           "To use before_action? validations, set `require_atomic? false` or use `strategy: [:stream]`."}
 
-          where_condition ->
-            do_run_atomic_validation(changeset, validation, context, where_condition)
+      true ->
+        with {:atomic, condition} <- atomic_condition(where, changeset, context) do
+          case condition do
+            false ->
+              changeset
+
+            true ->
+              do_run_atomic_validation(changeset, validation, context)
+
+            where_condition ->
+              do_run_atomic_validation(changeset, validation, context, where_condition)
+          end
         end
-      end
     end
   end
 
@@ -2023,7 +2030,7 @@ defmodule Ash.Changeset do
   - Require any accepted attributes that are `allow_nil?` false
   - Set any default values for attributes
   - Run action changes & validations
-  - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.create.validate|before_action?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
+  - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.create.validate|before_action?`, or in `before_transaction` hooks (before any other `before_transaction` hooks) if using `d:Ash.Resource.Dsl.actions.create.validate|before_transaction?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
 
   ## Examples
 
@@ -2131,7 +2138,7 @@ defmodule Ash.Changeset do
   - Require any accepted attributes that are `allow_nil?` false
   - Set any default values for attributes
   - Run action changes & validations
-  - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.update.validate|before_action?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
+  - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.update.validate|before_action?`, or in `before_transaction` hooks (before any other `before_transaction` hooks) if using `d:Ash.Resource.Dsl.actions.update.validate|before_transaction?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
 
   ## Examples
 
@@ -2214,7 +2221,7 @@ defmodule Ash.Changeset do
   - Require any accepted attributes that are `allow_nil?` false
   - Set any default values for attributes
   - Run action changes & validations
-  - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.destroy.validate|before_action?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
+  - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.destroy.validate|before_action?`, or in `before_transaction` hooks (before any other `before_transaction` hooks) if using `d:Ash.Resource.Dsl.actions.destroy.validate|before_transaction?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
 
   ## Examples
 
@@ -4239,20 +4246,34 @@ defmodule Ash.Changeset do
          Enum.all?(validation.where, fn {module, _} ->
            module.has_validate?()
          end) do
-      if validation.before_action? do
-        before_action(changeset, fn changeset ->
-          if validation.only_when_valid? and not changeset.valid? do
-            changeset
-          else
-            do_validation(changeset, validation, tracer, metadata, actor)
-          end
-        end)
-      else
-        if validation.only_when_valid? and not changeset.valid? do
+      cond do
+        validation.before_transaction? ->
+          before_transaction(
+            changeset,
+            fn changeset ->
+              if validation.only_when_valid? and not changeset.valid? do
+                changeset
+              else
+                do_validation(changeset, validation, tracer, metadata, actor)
+              end
+            end,
+            prepend?: true
+          )
+
+        validation.before_action? ->
+          before_action(changeset, fn changeset ->
+            if validation.only_when_valid? and not changeset.valid? do
+              changeset
+            else
+              do_validation(changeset, validation, tracer, metadata, actor)
+            end
+          end)
+
+        validation.only_when_valid? and not changeset.valid? ->
           changeset
-        else
+
+        true ->
           do_validation(changeset, validation, tracer, metadata, actor)
-        end
       end
     else
       if changeset.action.type == :create do

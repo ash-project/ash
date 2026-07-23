@@ -58,6 +58,7 @@ spark_locals_without_parens = [
   base_filter: 1,
   batch_size: 1,
   before_action?: 1,
+  before_transaction?: 1,
   belongs_to: 2,
   belongs_to: 3,
   broadcast_type: 1,

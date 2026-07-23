@@ -180,7 +180,11 @@ defmodule Ash.Actions.Read do
 
         case result do
           %Ash.Query{} = query ->
-            {:cont, {:ok, query}}
+            if query.valid? do
+              {:cont, {:ok, query}}
+            else
+              {:halt, {:error, query.errors}}
+            end
 
           {:error, error} ->
             {:halt, {:error, error}}

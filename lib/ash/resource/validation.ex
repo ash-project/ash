@@ -27,6 +27,7 @@ defmodule Ash.Resource.Validation do
     :description,
     :message,
     :before_action?,
+    :before_transaction?,
     :always_atomic?,
     where: [],
     on: [],
@@ -162,6 +163,12 @@ defmodule Ash.Resource.Validation do
       type: :boolean,
       default: false,
       doc: "If set to `true`, the validation will be run in a before_action hook"
+    ],
+    before_transaction?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "If set to `true`, the validation will be run in a before_transaction hook, before any other before_transaction hooks (and outside the transaction). Takes precedence over `before_action?`."
     ],
     always_atomic?: [
       type: :boolean,

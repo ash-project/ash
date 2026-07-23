@@ -566,4 +566,89 @@ defmodule Ash.Actions.Helpers.Bulk do
       Enum.concat(validated, non_matches)
     end
   end
+
+  @doc """
+  Runs a `before_transaction?` validation against a single changeset, inside its
+  `before_transaction` hook.
+
+  The `only_when_valid?` check is deferred to hook time, matching the semantics of
+  non-bulk actions. Dispatches to `batch_validate/3` (with a single element batch)
+  when the validation module defines it, and to `validate/3` otherwise.
+  """
+  def run_before_transaction_validation(
+        changeset,
+        %{validation: {module, opts}} = validation,
+        validation_context,
+        actor
+      ) do
+    cond do
+      validation.only_when_valid? and not changeset.valid? ->
+        changeset
+
+      module.has_batch_validate?() and
+          module.batch_callbacks?([changeset], opts, validation_context) ->
+        [changeset] = run_batch_validation(validation, [changeset], validation_context, actor)
+
+        changeset
+
+      true ->
+        where_passes? =
+          Enum.all?(validation.where || [], fn {where_module, where_opts} ->
+            where_opts =
+              Ash.Actions.Helpers.templated_opts(
+                where_opts,
+                actor,
+                changeset.to_tenant,
+                changeset.arguments,
+                changeset.context,
+                changeset
+              )
+
+            {:ok, where_opts} = Ash.Resource.Validation.init(where_module, where_opts)
+
+            Ash.Resource.Validation.validate(
+              where_module,
+              changeset,
+              where_opts,
+              validation_context
+            ) == :ok
+          end)
+
+        if where_passes? do
+          opts =
+            Ash.Actions.Helpers.templated_opts(
+              opts,
+              actor,
+              changeset.to_tenant,
+              changeset.arguments,
+              changeset.context,
+              changeset
+            )
+
+          {:ok, opts} = Ash.Resource.Validation.init(module, opts)
+
+          case Ash.Resource.Validation.validate(
+                 module,
+                 changeset,
+                 opts,
+                 validation_context
+               ) do
+            :ok ->
+              changeset
+
+            {:error, error} ->
+              error =
+                if validation.message do
+                  Ash.Error.override_validation_message(error, validation.message)
+                else
+                  error
+                end
+
+              Ash.Changeset.add_error(changeset, error)
+          end
+        else
+          changeset
+        end
+    end
+  end
 end

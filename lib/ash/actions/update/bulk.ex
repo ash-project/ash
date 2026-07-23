@@ -3557,19 +3557,40 @@ defmodule Ash.Actions.Update.Bulk do
             )
 
           batch =
-            if module.has_batch_validate?() &&
-                 module.batch_callbacks?(batch, validation_opts, validation_context) do
-              Ash.Actions.Helpers.Bulk.run_batch_validation(
-                validation,
-                batch,
-                validation_context,
-                actor
-              )
-            else
-              if module.has_validate?() &&
-                   Enum.all?(validation.where, fn {module, _opts} ->
-                     module.has_validate?()
-                   end) do
+            cond do
+              validation.before_transaction? and
+                (module.has_validate?() or module.has_batch_validate?()) and
+                  Enum.all?(validation.where, fn {module, _opts} ->
+                    module.has_validate?()
+                  end) ->
+                Enum.map(batch, fn changeset ->
+                  Ash.Changeset.before_transaction(
+                    changeset,
+                    fn changeset ->
+                      Ash.Actions.Helpers.Bulk.run_before_transaction_validation(
+                        changeset,
+                        validation,
+                        validation_context,
+                        actor
+                      )
+                    end,
+                    prepend?: true
+                  )
+                end)
+
+              module.has_batch_validate?() &&
+                  module.batch_callbacks?(batch, validation_opts, validation_context) ->
+                Ash.Actions.Helpers.Bulk.run_batch_validation(
+                  validation,
+                  batch,
+                  validation_context,
+                  actor
+                )
+
+              module.has_validate?() &&
+                  Enum.all?(validation.where, fn {module, _opts} ->
+                    module.has_validate?()
+                  end) ->
                 if validation.before_action? do
                   Enum.map(batch, fn changeset ->
                     Ash.Changeset.before_action(changeset, fn changeset ->
@@ -3587,17 +3608,16 @@ defmodule Ash.Actions.Update.Bulk do
                 else
                   validate_batch_non_atomically(validation, batch, validation_context, actor)
                 end
-              else
-                if module.atomic?() do
-                  validate_batch_atomically(validation, batch, validation_context, context, actor)
-                else
-                  raise """
-                  Cannot use a non-atomic validation with an atomic condition.
 
-                  Attempting to run action: `#{inspect(resource)}.#{action.name}`
-                  """
-                end
-              end
+              module.atomic?() ->
+                validate_batch_atomically(validation, batch, validation_context, context, actor)
+
+              true ->
+                raise """
+                Cannot use a non-atomic validation with an atomic condition.
+
+                Attempting to run action: `#{inspect(resource)}.#{action.name}`
+                """
             end
 
           %{

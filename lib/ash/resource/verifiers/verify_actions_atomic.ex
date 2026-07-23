@@ -49,15 +49,21 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
             _ ->
               false
           end)
+          |> Enum.reject(fn
+            %{validation: {module, _}} = validation ->
+              # before_transaction? validations run in a before_transaction hook,
+              # so they can never be run atomically
+              module.atomic?() && !validation.before_transaction?
+
+            %{change: {module, _}} ->
+              module.atomic?()
+          end)
           |> Enum.map(fn
             %{change: {module, _}} ->
               module
 
             %{validation: {module, _}} ->
               module
-          end)
-          |> Enum.reject(fn module ->
-            module.atomic?()
           end)
           |> case do
             [] ->

@@ -1305,20 +1305,34 @@ defmodule Ash.ActionInput do
   end
 
   defp validate(input, validation, tracer, metadata, actor) do
-    if validation.before_action? do
-      before_action(input, fn input ->
-        if validation.only_when_valid? and not input.valid? do
-          input
-        else
-          do_validation(input, validation, tracer, metadata, actor)
-        end
-      end)
-    else
-      if validation.only_when_valid? and not input.valid? do
+    cond do
+      validation.before_transaction? ->
+        before_transaction(
+          input,
+          fn input ->
+            if validation.only_when_valid? and not input.valid? do
+              input
+            else
+              do_validation(input, validation, tracer, metadata, actor)
+            end
+          end,
+          prepend?: true
+        )
+
+      validation.before_action? ->
+        before_action(input, fn input ->
+          if validation.only_when_valid? and not input.valid? do
+            input
+          else
+            do_validation(input, validation, tracer, metadata, actor)
+          end
+        end)
+
+      validation.only_when_valid? and not input.valid? ->
         input
-      else
+
+      true ->
         do_validation(input, validation, tracer, metadata, actor)
-      end
     end
   end
 
@@ -1760,14 +1774,11 @@ defmodule Ash.ActionInput do
             {:halt, {:error, error}}
 
           %Ash.ActionInput{} = input ->
-            cont =
-              if input.valid? do
-                :cont
-              else
-                :halt
-              end
-
-            {cont, {:ok, input}}
+            if input.valid? do
+              {:cont, {:ok, input}}
+            else
+              {:halt, {:error, input.errors}}
+            end
 
           other ->
             raise """
