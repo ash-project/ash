@@ -3,10 +3,24 @@
 # SPDX-License-Identifier: MIT
 
 defmodule Ash.Type.UUIDv7 do
+  @constraints [
+    strict?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Requires the value to actually be a version 7 UUID. Recommended for externally-supplied values: without it, any well-formed UUID passes input casting, but non-v7 values cannot be loaded back from storage.
+      """
+    ]
+  ]
+
   @moduledoc """
   Represents a UUID.
 
   A builtin type that can be referenced via `:uuid_v7`
+
+  ### Constraints
+
+  #{Spark.Options.docs(@constraints)}
   """
 
   use Ash.Type,
@@ -16,6 +30,21 @@ defmodule Ash.Type.UUIDv7 do
 
   @impl true
   def storage_type(_), do: :uuid
+
+  @impl true
+  def constraints, do: @constraints
+
+  @impl true
+  def apply_constraints(nil, _constraints), do: :ok
+
+  def apply_constraints(value, constraints) do
+    if Keyword.get(constraints, :strict?, false) and
+         not match?(<<_::48, 7::4, _::12, 0b10::2, _::62>>, Ash.UUIDv7.decode(value)) do
+      {:error, message: "must be a version 7 UUID"}
+    else
+      :ok
+    end
+  end
 
   @impl true
   def generator(_constraints) do
