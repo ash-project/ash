@@ -3469,7 +3469,7 @@ defmodule Ash.Actions.Read do
                tenant,
                tracer,
                domain,
-               query.resource,
+               Ash.Resource.Info.related(agg.resource, key),
                opts
              )}
           end)

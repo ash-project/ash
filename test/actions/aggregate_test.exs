@@ -6,6 +6,7 @@ defmodule Ash.Test.Actions.AggregateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Expr
   require Ash.Query
 
   alias Ash.Test.Domain, as: Domain
@@ -183,6 +184,15 @@ defmodule Ash.Test.Actions.AggregateTest do
       count :count_of_comment_posts_with_matching_things, [:comments, :post] do
         public? false
         join_filter(:comments, expr(parent(thing) == thing))
+      end
+
+      count :count_of_posts_of_commented_replies, [:comments, :post] do
+        public? false
+
+        join_filter(
+          :comments,
+          expr(exists(children, public == true and exists(post, not is_nil(id))))
+        )
       end
 
       count :count_of_comments_unauthorized, :comments do
@@ -513,6 +523,54 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       assert Ash.load!(post, :count_of_comment_posts_with_matching_things, authorize?: false).count_of_comment_posts_with_matching_things ==
                1
+    end
+
+    test "multi-step aggregate join filters resolve exists paths against the resource at their subpath" do
+      # regression test for https://github.com/ash-project/ash/issues/2801
+      # the join filter at [:comments] is a filter on Comment, so exists paths
+      # inside it must resolve against Comment, not the aggregate's destination
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
+        |> Ash.create!(authorize?: false)
+
+      comment =
+        Comment
+        |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: true})
+        |> Ash.create!(authorize?: false)
+
+      assert Ash.load!(post, :count_of_posts_of_commented_replies, authorize?: false).count_of_posts_of_commented_replies ==
+               0
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{
+        post_id: post.id,
+        parent_id: comment.id,
+        public: true
+      })
+      |> Ash.create!(authorize?: false)
+
+      assert Ash.load!(post, :count_of_posts_of_commented_replies, authorize?: false).count_of_posts_of_commented_replies ==
+               1
+    end
+
+    test "add_calc_context resolves multi-step aggregate join filters against the resource at their subpath" do
+      # mimics how SQL data layers re-add calc context to aggregates whose
+      # join_filters were populated from policy filters on intermediate
+      # resources: https://github.com/ash-project/ash/issues/2801
+      {:ok, aggregate} =
+        Ash.Query.Aggregate.new(Post, :count_of_posts_of_commented_replies, :count,
+          path: [:comments, :post],
+          join_filters: %{
+            [:comments] =>
+              Ash.Expr.expr(exists(children, public == true and exists(post, not is_nil(id))))
+          }
+        )
+
+      assert %Ash.Query.Aggregate{} =
+               Ash.Actions.Read.add_calc_context(aggregate, nil, true, nil, nil, Domain, Post,
+                 parent_stack: []
+               )
     end
 
     test "aggregations on decimal fields succeed" do
