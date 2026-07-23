@@ -2748,15 +2748,11 @@ defmodule Ash.Actions.Read do
 
   defp handle_attribute_multitenancy(query) do
     if query.tenant && Ash.Resource.Info.multitenancy_strategy(query.resource) == :attribute do
-      multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(query.resource)
-
-      if multitenancy_attribute do
-        {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(query.resource)
-        attribute_value = apply(m, f, [query.to_tenant | a])
-        Ash.Query.filter(query, ^ref(multitenancy_attribute) == ^attribute_value)
-      else
-        query
-      end
+      query.resource
+      |> Ash.Resource.Info.multitenancy_attribute_values(query.tenant, query.to_tenant)
+      |> Enum.reduce(query, fn {attribute, value}, query ->
+        Ash.Query.filter(query, ^ref(attribute) == ^value)
+      end)
     else
       query
     end

@@ -295,7 +295,8 @@ defmodule Ash.Info.Manifest.JsonSerializer do
     %{
       "strategy" => to_string(mt.strategy),
       "global" => mt.global?,
-      "attribute" => serialize_atom(mt.attribute)
+      "attribute" => serialize_atom(mt.attribute),
+      "ancestor_attributes" => Enum.map(mt.ancestor_attributes || [], &serialize_atom/1)
     }
   end
 
