@@ -491,20 +491,25 @@ defmodule Ash.Actions.Read do
                      opts[:authorize?],
                      false
                    ) do
-              data
-              |> Helpers.restrict_field_access(query)
-              |> add_tenant(new_query)
-              |> attach_fields(opts[:initial_data], initial_query, query, missing_pkeys?)
-              |> cleanup_field_auth(query)
-              |> add_page(
-                query.action,
-                count,
-                query.sort,
-                query,
-                new_query,
-                opts
-              )
-              |> add_query(query, opts)
+              restricted =
+                data
+                |> Helpers.restrict_field_access(query)
+                |> add_tenant(new_query)
+                |> attach_fields(opts[:initial_data], initial_query, query, missing_pkeys?)
+                |> cleanup_field_auth(query)
+
+              with :ok <- reject_forbidden_keyset_sort(restricted, query) do
+                restricted
+                |> add_page(
+                  query.action,
+                  count,
+                  query.sort,
+                  query,
+                  new_query,
+                  opts
+                )
+                |> add_query(query, opts)
+              end
             else
               {:error, %Ash.Query{errors: errors} = query} ->
                 {:error, Ash.Error.to_error_class(errors, query: query)}
@@ -1108,19 +1113,24 @@ defmodule Ash.Actions.Read do
                         opts[:authorize?],
                         false
                       ) do
-                 data
-                 |> Helpers.restrict_field_access(query)
-                 |> add_tenant(query)
-                 |> attach_fields(nil, initial_query, query, false)
-                 |> cleanup_field_auth(query)
-                 |> add_page(
-                   query.action,
-                   count,
-                   query.sort,
-                   initial_query,
-                   query,
-                   opts
-                 )
+                 restricted =
+                   data
+                   |> Helpers.restrict_field_access(query)
+                   |> add_tenant(query)
+                   |> attach_fields(nil, initial_query, query, false)
+                   |> cleanup_field_auth(query)
+
+                 with :ok <- reject_forbidden_keyset_sort(restricted, query) do
+                   add_page(
+                     restricted,
+                     query.action,
+                     count,
+                     query.sort,
+                     initial_query,
+                     query,
+                     opts
+                   )
+                 end
                else
                  {:error, %Ash.Query{errors: errors} = query} ->
                    {:error, Ash.Error.to_error_class(errors, query: query)}
@@ -3073,6 +3083,40 @@ defmodule Ash.Actions.Read do
       Ash.Page.Keyset.data_with_keyset(data, original_query.resource, sort)
     else
       data
+    end
+  end
+
+  # A keyset cursor seeks against the sort field's value, so sorting a
+  # keyset-paginated read on a field a field policy forbids the actor from
+  # reading can't produce a usable cursor. Checked on the field-policy-resolved
+  # records (after `restrict_field_access`), so it covers both static and
+  # record-dependent field policies. Sorts from `Ash.Query.sort_input/2` are
+  # rewritten to be policy-aware earlier and encode `nil`, so they are unaffected.
+  defp reject_forbidden_keyset_sort(records, query) do
+    pagination = query.action && query.action.pagination
+
+    if query.page && pagination && pagination.keyset? &&
+         !use_data_layer_keyset?(query, pagination) do
+      case Ash.Page.Keyset.forbidden_sort_field(
+             List.wrap(records),
+             query.sort || [],
+             query.sort_input_indices || []
+           ) do
+        nil ->
+          :ok
+
+        field ->
+          {:error,
+           Ash.Error.to_error_class(
+             Ash.Error.Page.KeysetSortOnForbiddenField.exception(
+               resource: query.resource,
+               field: field
+             ),
+             query: query
+           )}
+      end
+    else
+      :ok
     end
   end
 
