@@ -81,4 +81,32 @@ defmodule Ash.Test.Type.UUIDv7Test do
 
     assert {:ok, ^uuid_v7} = Ash.Type.coerce(Ash.Type.UUIDv7, binary_uuid_v7)
   end
+
+  describe "strict? constraint" do
+    test "rejects a non-v7 uuid string that cast_input accepted" do
+      uuid_v4 = "550e8400-e29b-41d4-a716-446655440000"
+
+      assert {:ok, ^uuid_v4} = Ash.Type.cast_input(Ash.Type.UUIDv7, uuid_v4)
+
+      assert {:error, message: "must be a version 7 UUID"} =
+               Ash.Type.apply_constraints(Ash.Type.UUIDv7, uuid_v4, strict?: true)
+    end
+
+    test "accepts a version 7 uuid" do
+      uuid_v7 = "01903fa1-2523-7580-a9d6-84620dcbf2ba"
+
+      assert {:ok, ^uuid_v7} =
+               Ash.Type.apply_constraints(Ash.Type.UUIDv7, uuid_v7, strict?: true)
+    end
+
+    test "accepts nil" do
+      assert {:ok, nil} = Ash.Type.apply_constraints(Ash.Type.UUIDv7, nil, strict?: true)
+    end
+
+    test "is not enforced by default" do
+      uuid_v4 = "550e8400-e29b-41d4-a716-446655440000"
+
+      assert {:ok, ^uuid_v4} = Ash.Type.apply_constraints(Ash.Type.UUIDv7, uuid_v4, [])
+    end
+  end
 end
