@@ -30,6 +30,15 @@ defmodule Ash.Query.Operator.In do
   def evaluate(%{left: nil}), do: {:known, nil}
   def evaluate(%{right: nil}), do: {:known, nil}
 
+  def evaluate(%{left: left, right: %MapSet{} = right}) do
+    # `Comp.equal?/2` is semantic rather than structural equality — `1` equals
+    # `1.0`, a `Decimal` equals the integer and the string spelling the same
+    # number, an `Ash.CiString` equals a binary differing only in case — so a
+    # set miss does not imply the value is absent. A set hit does imply a match,
+    # though, so take it directly and only walk the members when it misses.
+    {:known, MapSet.member?(right, left) or Enum.any?(right, &Comp.equal?(&1, left))}
+  end
+
   def evaluate(%{left: left, right: right}) do
     {:known, Enum.any?(right, &Comp.equal?(&1, left))}
   end
