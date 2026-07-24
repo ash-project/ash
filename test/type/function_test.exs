@@ -162,6 +162,32 @@ defmodule Ash.Test.Type.FunctionTest do
     end
   end
 
+  describe "reconstructing a capture whose module is not loaded" do
+    test "reconstructs from the atom alone, but invocation needs the code at call time" do
+      defmodule TransientHandler do
+        @moduledoc false
+        def handle(x), do: x
+      end
+
+      {:ok, stored} = Ash.Type.Function.dump_to_native(&TransientHandler.handle/1, mfa: true)
+
+      # Remove the module: a reading VM that does not currently hold this code.
+      :code.purge(TransientHandler)
+      :code.delete(TransientHandler)
+      refute Code.ensure_loaded?(TransientHandler)
+
+      # Reconstruction still succeeds — it needs the module *atom*, not the loaded
+      # code. This is what lets a record be read on a node where the function's
+      # implementation is absent.
+      assert {:ok, fun} = Ash.Type.Function.cast_stored(stored, mfa: true)
+      assert is_function(fun, 1)
+
+      # The capture is late-bound, so with the code absent invocation raises
+      # rather than silently misbehaving — the caveat the constraint documents.
+      assert_raise UndefinedFunctionError, fn -> fun.(1) end
+    end
+  end
+
   describe "through a resource with constraints: [mfa: true]" do
     test "stores an external capture and reads it back callable" do
       assert {:ok, created} =
