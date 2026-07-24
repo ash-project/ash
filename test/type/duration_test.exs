@@ -51,6 +51,11 @@ defmodule Ash.Test.Type.DurationTest do
 
       attribute :duration_d, :duration, allow_nil?: true, public?: true
 
+      attribute :duration_calendar_free, :duration,
+        allow_nil?: true,
+        public?: true,
+        constraints: [units: :day_time]
+
       attribute :date, :date, allow_nil?: true, public?: true
 
       attribute :datetime, :datetime, allow_nil?: true, public?: true
@@ -99,6 +104,107 @@ defmodule Ash.Test.Type.DurationTest do
       calculate :utc_datetime_usec_minus_duration_c,
                 :utc_datetime_usec,
                 expr(utc_datetime_usec - duration_c)
+    end
+  end
+
+  describe "units constraint" do
+    @calendar_free [:week, :day, :hour, :minute, :second, :microsecond]
+
+    test "with no constraint, any unit is permitted" do
+      assert {:ok, _} = Ash.Type.Duration.apply_constraints(Duration.new!(year: 1, month: 2), [])
+    end
+
+    test "accepts durations that use only whitelisted units" do
+      assert {:ok, _} =
+               Ash.Type.Duration.apply_constraints(
+                 Duration.new!(day: 3, hour: 4, minute: 30),
+                 units: @calendar_free
+               )
+
+      assert {:ok, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(week: 2), units: @calendar_free)
+    end
+
+    test "rejects durations that use a non-whitelisted unit" do
+      assert {:error, [[message: message, units: _, disallowed: disallowed]]} =
+               Ash.Type.Duration.apply_constraints(
+                 Duration.new!(month: 1, day: 3),
+                 units: @calendar_free
+               )
+
+      assert message =~ "must only use the units"
+      assert disallowed =~ "month"
+    end
+
+    test "the :day_time shorthand accepts day/time units and rejects year/month" do
+      assert {:ok, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(day: 3, hour: 4),
+                 units: :day_time
+               )
+
+      assert {:error, [[message: _, units: units, disallowed: disallowed]]} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(month: 1), units: :day_time)
+
+      # the reported permitted units are the expanded list, not the shorthand atom
+      assert units =~ "week"
+      assert disallowed =~ "month"
+    end
+
+    test "the :year_month shorthand accepts year/month units and rejects day/time" do
+      assert {:ok, _} =
+               Ash.Type.Duration.apply_constraints(
+                 Duration.new!(year: 2, month: 6),
+                 units: :year_month
+               )
+
+      assert {:error, [[message: _, units: units, disallowed: disallowed]]} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(day: 1), units: :year_month)
+
+      assert units =~ "year"
+      assert disallowed =~ "day"
+    end
+
+    test "treats the microsecond precision tuple as zero/non-zero on its value only" do
+      assert {:ok, _} =
+               Ash.Type.Duration.apply_constraints(
+                 Duration.new!(second: 5, microsecond: {0, 6}),
+                 units: [:second]
+               )
+
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(
+                 Duration.new!(second: 5, microsecond: {1, 6}),
+                 units: [:second]
+               )
+    end
+
+    test "nil passes regardless of constraint" do
+      assert {:ok, nil} = Ash.Type.Duration.apply_constraints(nil, units: [:day])
+    end
+
+    test "does not support atomic updates when a units constraint is set" do
+      refute Ash.Type.Duration.may_support_atomic_update?(units: @calendar_free)
+      assert Ash.Type.Duration.may_support_atomic_update?([])
+    end
+
+    test "is enforced when casting through a resource attribute" do
+      assert {:error, _} =
+               Post
+               |> Ash.Changeset.for_create(:create, %{
+                 duration_b: @minute30,
+                 duration_calendar_free: @month5
+               })
+               |> Ash.create()
+
+      assert {:ok, post} =
+               Post
+               |> Ash.Changeset.for_create(:create, %{
+                 duration_b: @minute30,
+                 duration_calendar_free: Duration.new!(day: 3, hour: 12)
+               })
+               |> Ash.create()
+
+      assert post.duration_calendar_free == Duration.new!(day: 3, hour: 12)
     end
   end
 

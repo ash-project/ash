@@ -213,8 +213,11 @@ defmodule Ash.Test.Type.NewTypeTest do
   end
 
   describe "BoundedDuration (duration with min/max)" do
-    test "exposes custom constraints on a type that natively has none" do
-      assert Ash.Type.Duration.constraints() == []
+    test "exposes custom constraints not present on the base type" do
+      base_keys = Ash.Type.Duration.constraints() |> Keyword.keys()
+      refute :min in base_keys
+      refute :max in base_keys
+
       keys = BoundedDuration.constraints() |> Keyword.keys()
       assert :min in keys
       assert :max in keys
