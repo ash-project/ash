@@ -144,4 +144,70 @@ defmodule Ash.Type.Duration do
   def dump_to_native(value, _) do
     Ecto.Type.dump(:duration, value)
   end
+
+  @usec_per_second 1_000_000
+  @seconds_per_minute 60
+  @minutes_per_hour 60
+  @hours_per_day 24
+  @days_per_week 7
+  @days_per_month 30
+  @months_per_year 12
+
+  @doc """
+  Compares two durations as a total order, matching how the AshPostgres data
+  layer (PostgreSQL `interval`) compares them: a fixed conversion of `month` → 30
+  days and `day` → 24 hours (so `year` → 360 days, `week` → 7 days), down to
+  microseconds.
+
+  `Duration` is only *partially* ordered in general — a month is not a fixed
+  number of days — which is why Elixir ships `Duration` without a `compare/2`, and
+  why data layers disagree on cross-unit comparison: PostgreSQL uses 30-day
+  months, Neo4j ~30.44-day months, and Elixir's `to_timeout/1` refuses `month`/
+  `year` outright. This adopts PostgreSQL's convention so in-memory comparison
+  stays aligned with the dominant data layer rather than raising or drifting.
+  Within the day/time units, or within the year/month units, the result is exact
+  and portable across those backends; only comparison *across* that boundary
+  depends on the 30-day convention.
+
+  Computed from the integer fields directly, so microsecond precision is kept
+  (unlike `to_timeout/1`, which truncates to milliseconds).
+
+  This function is the single place the convention lives; if Elixir core later
+  gains a `Duration.compare/2`, it can delegate here.
+  """
+  @spec compare(Duration.t(), Duration.t()) :: :lt | :eq | :gt
+  def compare(%Duration{} = left, %Duration{} = right) do
+    compare_ints(total_microseconds(left), total_microseconds(right))
+  end
+
+  defp total_microseconds(%Duration{
+         year: year,
+         month: month,
+         week: week,
+         day: day,
+         hour: hour,
+         minute: minute,
+         second: second,
+         microsecond: {microsecond, _precision}
+       }) do
+    days = (year * @months_per_year + month) * @days_per_month + week * @days_per_week + day
+    hours = days * @hours_per_day + hour
+    minutes = hours * @minutes_per_hour + minute
+    seconds = minutes * @seconds_per_minute + second
+    seconds * @usec_per_second + microsecond
+  end
+
+  defp compare_ints(left, right) do
+    cond do
+      left > right -> :gt
+      left < right -> :lt
+      true -> :eq
+    end
+  end
+end
+
+import Ash.Type.Comparable
+
+defcomparable left :: Duration, right :: Duration do
+  Ash.Type.Duration.compare(left, right)
 end
