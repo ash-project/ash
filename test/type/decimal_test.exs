@@ -101,6 +101,29 @@ defmodule Ash.Test.Type.DecimalTest do
     assert Ash.Type.Decimal.equal?(Decimal.new("1.0"), Decimal.new("1.00"))
   end
 
+  describe "comparability" do
+    test "a decimal compares equal to an integer, string and float of the same value" do
+      assert Comp.equal?(Decimal.new(1), 1)
+      assert Comp.equal?(Decimal.new(1), "1")
+      assert Comp.equal?(Decimal.new(1), 1.0)
+    end
+
+    test "a decimal compares equal to a float in either operand order" do
+      assert Comp.equal?(Decimal.new(1), 1.0)
+      assert Comp.equal?(1.0, Decimal.new(1))
+    end
+
+    test "a decimal orders against a float" do
+      assert Comp.greater_than?(Decimal.new("1.5"), 1.0)
+      assert Comp.less_than?(Decimal.new("0.5"), 1.0)
+      assert Comp.less_than?(1.0, Decimal.new("1.5"))
+    end
+
+    test "a decimal compares equal to a fractional float" do
+      assert Comp.equal?(Decimal.from_float(1.5), 1.5)
+    end
+  end
+
   test "pass with valid precision constraint" do
     valid_attrs = @valid_attrs |> Map.put(:precise_amount, 1.23)
 
