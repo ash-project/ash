@@ -102,6 +102,84 @@ defmodule Ash.Test.Type.DurationTest do
     end
   end
 
+  describe "comparison" do
+    alias Ash.Query.Operator.{Eq, GreaterThan, LessThan}
+
+    test "orders the :day_time regime across representations at microsecond precision" do
+      # 25 hours is more than a day
+      assert Ash.Type.Duration.compare(Duration.new!(hour: 25), Duration.new!(day: 1)) == :gt
+      # 90 minutes is more than an hour
+      assert Ash.Type.Duration.compare(Duration.new!(minute: 90), Duration.new!(hour: 1)) == :gt
+      # equal magnitudes expressed differently are equal
+      assert Ash.Type.Duration.compare(Duration.new!(minute: 60), Duration.new!(hour: 1)) == :eq
+      assert Ash.Type.Duration.compare(Duration.new!(week: 1), Duration.new!(day: 7)) == :eq
+    end
+
+    test "orders the :year_month regime by total months (year = 12 months)" do
+      # 2 years is more than 1 year
+      assert Ash.Type.Duration.compare(Duration.new!(year: 2), Duration.new!(year: 1)) == :gt
+      # P1Y6M and P18M are the same duration
+      assert Ash.Type.Duration.compare(Duration.new!(year: 1, month: 6), Duration.new!(month: 18)) ==
+               :eq
+
+      # 12 months is less than 18 months
+      assert Ash.Type.Duration.compare(Duration.new!(year: 1), Duration.new!(month: 18)) == :lt
+    end
+
+    test "does not truncate sub-millisecond precision the way to_timeout/1 would" do
+      a = Duration.new!(second: 1, microsecond: {0, 6})
+      b = Duration.new!(second: 1, microsecond: {500, 6})
+      assert to_timeout(a) == to_timeout(b)
+      assert Ash.Type.Duration.compare(a, b) == :lt
+    end
+
+    test "handles negative durations" do
+      assert Ash.Type.Duration.compare(Duration.new!(hour: -1), Duration.new!(hour: 1)) == :lt
+      assert Ash.Type.Duration.compare(Duration.new!(day: -1), Duration.new!(hour: -25)) == :gt
+      assert Ash.Type.Duration.compare(Duration.new!(month: -1), Duration.new!(year: 1)) == :lt
+    end
+
+    test "a wholly-zero duration compares within either regime" do
+      zero = Duration.new!([])
+      assert Ash.Type.Duration.compare(zero, Duration.new!(day: 1)) == :lt
+      assert Ash.Type.Duration.compare(zero, Duration.new!(month: 1)) == :lt
+      assert Ash.Type.Duration.compare(zero, zero) == :eq
+    end
+
+    test "flows through comparison operators correctly" do
+      assert GreaterThan.evaluate(%{left: Duration.new!(hour: 25), right: Duration.new!(day: 1)}) ==
+               {:known, true}
+
+      assert LessThan.evaluate(%{left: Duration.new!(hour: 25), right: Duration.new!(day: 1)}) ==
+               {:known, false}
+
+      assert Eq.evaluate(%{left: Duration.new!(minute: 60), right: Duration.new!(hour: 1)}) ==
+               {:known, true}
+
+      assert Eq.evaluate(%{
+               left: Duration.new!(year: 1, month: 6),
+               right: Duration.new!(month: 18)
+             }) ==
+               {:known, true}
+    end
+
+    test "raises a typed error across regimes (year/month versus day/time)" do
+      assert_raise Ash.Error.Query.InvalidExpression, ~r/only partially ordered/, fn ->
+        Ash.Type.Duration.compare(Duration.new!(month: 1), Duration.new!(day: 30))
+      end
+
+      assert_raise Ash.Error.Query.InvalidExpression, ~r/only partially ordered/, fn ->
+        Ash.Type.Duration.compare(Duration.new!(year: 1), Duration.new!(day: 365))
+      end
+    end
+
+    test "raises a typed error for a duration that mixes both regimes" do
+      assert_raise Ash.Error.Query.InvalidExpression, ~r/mixing/, fn ->
+        Ash.Type.Duration.compare(Duration.new!(month: 1, day: 15), Duration.new!(month: 2))
+      end
+    end
+  end
+
   test "it handles non-empty values" do
     post =
       Post
