@@ -8,6 +8,35 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.31.0](https://github.com/ash-project/ash/compare/v3.30.1...v3.31.0) (2026-07-28)
+
+
+
+
+### Features:
+
+* add units constraint to Ash.Type.Duration (#2811) by [@matt-beanland](https://github.com/matt-beanland) [(#2811)](https://github.com/ash-project/ash/pull/2811)
+
+* add mfa constraint to Ash.Type.Function for portable persistence (#2807) by [@matt-beanland](https://github.com/matt-beanland) [(#2807)](https://github.com/ash-project/ash/pull/2807)
+
+* add all/1 builtin validation as the complement to any/1 (#2800) by [@barnabasJ](https://github.com/barnabasJ) [(#2800)](https://github.com/ash-project/ash/pull/2800)
+
+### Bug Fixes:
+
+* order durations semantically instead of by struct field layout (#2809) by [@matt-beanland](https://github.com/matt-beanland) [(#2809)](https://github.com/ash-project/ash/pull/2809)
+
+* compare with `Comp` in `intersects` function by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure related aggregates set the proper resource by [@zachdaniel](https://github.com/zachdaniel)
+
+* enforce sortable fasle consistently (#2793) by Dominik [(#2793)](https://github.com/ash-project/ash/pull/2793)
+
+### Improvements:
+
+* avoid quadratic cost evaluating in-list filters at runtime (#2802) by [@matt-beanland](https://github.com/matt-beanland) [(#2802)](https://github.com/ash-project/ash/pull/2802)
+
+* add strict? constraint to Ash.Type.UUIDv7 (#2795) by olivermt [(#2795)](https://github.com/ash-project/ash/pull/2795)
+
 ## [v3.30.1](https://github.com/ash-project/ash/compare/v3.30.0...v3.30.1) (2026-07-21)
 
 
