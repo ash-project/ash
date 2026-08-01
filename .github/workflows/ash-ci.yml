@@ -590,7 +590,7 @@ jobs:
   unused-deps:
     name: mix deps.unlock --check-unused
     runs-on: ubuntu-latest
-    if: ${{inputs.unused_deps}}
+    if: ${{inputs.unused-deps}}
     needs:
       - build-test
     steps:
