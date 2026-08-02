@@ -134,6 +134,21 @@ defmodule Ash.Query.Operator.InTest do
       assert In.evaluate(%In{left: %Version{number: "1.0"}, right: MapSet.new(["2.0"])}) ==
                {:known, false}
     end
+
+    # The type-pair -> comparator resolution is memoised. Interleaving distinct
+    # pairs and repeating them must keep every answer correct — one pair's cached
+    # comparator must never decide another.
+    test "stays correct across interleaved and repeated type pairs" do
+      for _ <- 1..3 do
+        assert In.evaluate(%In{left: 1, right: MapSet.new([1.0])}) == {:known, true}
+        assert In.evaluate(%In{left: :foo, right: MapSet.new(["foo"])}) == {:known, true}
+        assert In.evaluate(%In{left: "z", right: MapSet.new(["a", "b"])}) == {:known, false}
+        assert In.evaluate(%In{left: Decimal.new(1), right: MapSet.new(["1"])}) == {:known, true}
+
+        assert In.evaluate(%In{left: %Version{number: "1.0"}, right: MapSet.new(["1.0"])}) ==
+                 {:known, true}
+      end
+    end
   end
 
   describe "filter_matches/3" do
