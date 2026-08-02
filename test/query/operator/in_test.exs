@@ -135,7 +135,7 @@ defmodule Ash.Query.Operator.InTest do
                {:known, false}
     end
 
-    # The type-pair -> comparator resolution is memoised. Interleaving distinct
+    # The type-pair -> comparator resolution is memoized. Interleaving distinct
     # pairs and repeating them must keep every answer correct — one pair's cached
     # comparator must never decide another.
     test "stays correct across interleaved and repeated type pairs" do
