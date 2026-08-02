@@ -384,4 +384,36 @@ defmodule Ash.Test.Sort.SortTest do
               }} = Ash.Sort.parse_input(Post, "unsortable_author.name")
     end
   end
+
+  describe "runtime_sort/3 rekey" do
+    test "returns the input records reordered by the sort" do
+      a = %Post{id: "1", title: "a"}
+      b = %Post{id: "2", title: "b"}
+      c = %Post{id: "3", title: "c"}
+
+      assert [^c, ^b, ^a] =
+               Ash.Actions.Sort.runtime_sort([a, b, c], [title: :desc], resource: Post)
+    end
+
+    test "rekeys duplicate primary keys to the first matching input record" do
+      # Two distinct records share a primary key: every occurrence must resolve
+      # to the *first* one in the input, not the last.
+      a = %Post{id: "1", title: "x"}
+      b = %Post{id: "1", title: "y"}
+      c = %Post{id: "2", title: "z"}
+
+      assert [^c, ^a, ^a] =
+               Ash.Actions.Sort.runtime_sort([a, b, c], [title: :desc], resource: Post)
+    end
+
+    test "does not rekey records whose primary key is nil" do
+      # A nil key matches nothing, including another nil-keyed record, so each is
+      # returned as-is rather than collapsed onto a shared nil bucket.
+      a = %Post{id: nil, title: "z"}
+      b = %Post{id: nil, title: "a"}
+
+      assert [^b, ^a] =
+               Ash.Actions.Sort.runtime_sort([a, b], [title: :asc], resource: Post)
+    end
+  end
 end
