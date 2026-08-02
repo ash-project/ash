@@ -536,9 +536,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-test
     permissions:
-      # actions/checkout needs this. A job-level `permissions:` block replaces the
-      # workflow default rather than adding to it, so omitting `contents` leaves
-      # the job with none — which fails checkout on a private repository.
+      # A job-level block replaces the workflow default; checkout needs this.
       contents: read
       security-events: write
     steps:
