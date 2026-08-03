@@ -1027,22 +1027,25 @@ defmodule Ash.DataLayer.Ets do
         end
 
       kind when kind in [:sum, :max, :min] ->
-        records
-        |> Enum.map(&field_value(&1, field))
-        |> case do
+        values = Stream.map(records, &field_value(&1, field))
+
+        items =
+          if uniq? do
+            values |> Stream.uniq() |> Stream.reject(&is_nil/1)
+          else
+            values |> Stream.reject(&is_nil/1)
+          end
+
+        # Whether there is anything to aggregate has to be decided after the
+        # `nil`s are rejected, not before. Records that all hold `nil` leave
+        # nothing to fold, exactly as no records at all do, and both should
+        # give the aggregate's default rather than one giving `Enum.sum([])`
+        # and the other raising out of `Enum.max/2`.
+        case Enum.take(items, 1) do
           [] ->
             nil
 
-          items ->
-            items =
-              if uniq? do
-                items |> Stream.uniq() |> Stream.reject(&is_nil/1)
-              else
-                items |> Stream.reject(&is_nil/1)
-              end
-
-            first_item = List.first(Enum.to_list(Stream.take(items, 1)))
-
+          [first_item] ->
             case kind do
               :sum ->
                 if is_struct(first_item, Decimal) do
