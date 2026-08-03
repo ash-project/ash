@@ -304,6 +304,7 @@ defmodule Ash.Test.QueryTest do
       end
 
       assert [3, 2, 1] = ranked.(:union_all)
+      assert [3, 2, 1] = ranked.(:union)
     end
 
     test "combination with offset" do
