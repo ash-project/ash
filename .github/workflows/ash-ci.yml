@@ -69,6 +69,12 @@ on:
         type: string
       rustler-precompiled-module:
         type: string
+      rust-crate-dir:
+        type: string
+        default: ""
+        description: >
+          Optional path to a single Rust crate to run cargo test, fmt and clippy against.
+          When empty every Cargo.toml in the repository is discovered automatically.
       sat-solver:
         type: string
         default: "Picosat"
@@ -829,6 +835,68 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-compile@325af91762b51931c459503300c22c057251b3cf # main
         with:
           mix-env: dev
+  rust-check:
+    name: cargo test, fmt and clippy
+    runs-on: ubuntu-latest
+    if: ${{ inputs.rustler-precompiled-module }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install clippy and rustfmt
+        run: rustup component add clippy rustfmt
+      - name: Discover Rust crates
+        id: crates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.rust-crate-dir }}" ]; then
+            dirs="${{ inputs.rust-crate-dir }}"
+          else
+            dirs=$(find . -name Cargo.toml -not -path '*/target/*' -not -path './deps/*' \
+              -exec dirname {} \; | sed 's|^\./||' | sort -u)
+          fi
+          if [ -z "$dirs" ]; then
+            echo "No Cargo.toml found; nothing to check."
+          else
+            echo "Checking:"; echo "$dirs"
+          fi
+          { echo "dirs<<EOF"; echo "$dirs"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          prefix-key: v0-rust-check
+          workspaces: ${{ steps.crates.outputs.dirs }}
+      - name: cargo fmt
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            echo "::group::cargo fmt ($dir)"
+            (cd "$dir" && cargo fmt --all --check)
+            echo "::endgroup::"
+          done <<< "${{ steps.crates.outputs.dirs }}"
+      - name: cargo clippy
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            echo "::group::cargo clippy ($dir)"
+            (cd "$dir" && cargo clippy --all-targets -- -D warnings)
+            echo "::endgroup::"
+          done <<< "${{ steps.crates.outputs.dirs }}"
+      - name: cargo test
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            echo "::group::cargo test ($dir)"
+            (cd "$dir" && cargo test)
+            echo "::endgroup::"
+          done <<< "${{ steps.crates.outputs.dirs }}"
   build-release:
     name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
@@ -847,6 +915,7 @@ jobs:
       - test
       - dialyzer
       - build-dev
+      - rust-check
     permissions:
       contents: write
     strategy:
@@ -957,6 +1026,7 @@ jobs:
       - test
       - dialyzer
       - build-dev
+      - rust-check
     if: ${{ inputs.release && always() && !failure() && !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     name: Hex Publish
