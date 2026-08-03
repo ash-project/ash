@@ -239,6 +239,16 @@ defmodule Ash.Test.Actions.AggregateTest do
         authorize? false
       end
 
+      min :min_of_thing4, :comments, :thing4 do
+        public? true
+        authorize? false
+      end
+
+      max :max_of_thing4, :comments, :thing4 do
+        public? true
+        authorize? false
+      end
+
       sum :sum_of_doubled_thing3, :comments, :doubled_thing3 do
         public? true
         authorize? false
@@ -319,6 +329,25 @@ defmodule Ash.Test.Actions.AggregateTest do
                mine
                |> Ash.Query.sort(thing4: :desc)
                |> Ash.aggregate!({:first, :first, field: :thing4}, authorize?: false)
+    end
+
+    test "min and max of a datetime field agree with that ordering" do
+      early = ~U[2020-12-31 23:00:00.000000Z]
+      late = ~U[2026-01-01 00:00:00.000000Z]
+
+      for at <- [early, late] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{public: true, thing: "extremes", thing4: at})
+        |> Ash.create!(authorize?: false)
+      end
+
+      mine = Ash.Query.filter(Comment, thing == "extremes")
+
+      assert %{max: ^late} =
+               Ash.aggregate!(mine, {:max, :max, field: :thing4}, authorize?: false)
+
+      assert %{min: ^early} =
+               Ash.aggregate!(mine, {:min, :min, field: :thing4}, authorize?: false)
     end
 
     test "honors tenant" do
@@ -603,6 +632,25 @@ defmodule Ash.Test.Actions.AggregateTest do
                Ash.Actions.Read.add_calc_context(aggregate, nil, true, nil, nil, Domain, Post,
                  parent_stack: []
                )
+    end
+
+    test "min and max aggregates over a relationship order a datetime chronologically" do
+      early = ~U[2020-12-31 23:00:00.000000Z]
+      late = ~U[2026-01-01 00:00:00.000000Z]
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
+        |> Ash.create!(authorize?: false)
+
+      for at <- [early, late] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: true, thing4: at})
+        |> Ash.create!(authorize?: false)
+      end
+
+      assert Ash.load!(post, :min_of_thing4, authorize?: false).min_of_thing4 == early
+      assert Ash.load!(post, :max_of_thing4, authorize?: false).max_of_thing4 == late
     end
 
     test "aggregations on decimal fields succeed" do

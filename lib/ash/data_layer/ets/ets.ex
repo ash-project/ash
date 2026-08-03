@@ -1043,19 +1043,19 @@ defmodule Ash.DataLayer.Ets do
                   Enum.sum(items)
                 end
 
+              # `Comp` is what `Ash.Actions.Sort.runtime_sort/3` orders with, so
+              # comparing with it here keeps `min`/`max` consistent with how this
+              # data layer sorts the very same field. `Enum.max/1` would fall
+              # back to Erlang term order, which compares a struct's fields in
+              # alphabetical key order — for a `DateTime` that means `:day`
+              # decides and `:year` is never reached. No field ordering would be
+              # right anyway: `DateTime.compare/2` applies the UTC offsets, so
+              # two rows with different wall clocks can be the same instant.
               :max ->
-                if is_struct(first_item, Decimal) do
-                  Enum.reduce(items, &Decimal.max(&1, &2))
-                else
-                  Enum.max(items)
-                end
+                Enum.max(items, Comp)
 
               :min ->
-                if is_struct(first_item, Decimal) do
-                  Enum.reduce(items, &Decimal.min(&1, &2))
-                else
-                  Enum.min(items)
-                end
+                Enum.min(items, Comp)
             end
         end
     end
