@@ -70,6 +70,10 @@ defmodule Ash.Test.Sort.SortTest do
       calculate :title_calculation, :string, expr(title),
         public?: true,
         sortable?: false
+
+      calculate :context_dependent, :string, Ash.Test.Sort.SortTest.ContextDependent do
+        public? true
+      end
     end
 
     relationships do
@@ -120,6 +124,19 @@ defmodule Ash.Test.Sort.SortTest do
 
       belongs_to :post, Ash.Test.Sort.SortTest.Author do
         public? true
+      end
+    end
+  end
+
+  defmodule ContextDependent do
+    @moduledoc false
+    use Ash.Resource.Calculation
+
+    @impl true
+    def expression(_opts, context) do
+      case context.source_context[:sort_field] do
+        nil -> raise "requires :sort_field in the source context"
+        field -> expr(^ref(field))
       end
     end
   end
@@ -186,6 +203,19 @@ defmodule Ash.Test.Sort.SortTest do
     test "a list of string sorts parse properly" do
       assert %{sort: [title: :asc, contents: :desc]} =
                Ash.Query.sort_input(Post, ["+title", "-contents"])
+    end
+  end
+
+  describe "sorting on calculations whose expression/2 reads context.source_context" do
+    test "does not raise when the query has no context set" do
+      assert %Ash.Query{valid?: true} = Ash.Query.sort(Post, context_dependent: :asc)
+    end
+
+    test "does not raise when the query context was set before sorting" do
+      assert %Ash.Query{valid?: true} =
+               Post
+               |> Ash.Query.set_context(%{sort_field: :title})
+               |> Ash.Query.sort(context_dependent: :asc)
     end
   end
 
