@@ -73,8 +73,16 @@ on:
         type: string
         default: ""
         description: >
-          Optional path to a single Rust crate to run cargo test, fmt and clippy against.
-          When empty every Cargo.toml in the repository is discovered automatically.
+          Optional path to a single Rust crate to run cargo test, fmt and clippy against,
+          and to build for rustler_precompiled releases.
+          When empty, checks discover every Cargo.toml in the repository and the release
+          builds native/<repository name>.
+      rust-project-name:
+        type: string
+        default: ""
+        description: >
+          Crate name to build for rustler_precompiled releases.
+          Defaults to the calling repository's name.
       sat-solver:
         type: string
         default: "Picosat"
@@ -982,18 +990,18 @@ jobs:
           prefix-key: v0-precomp
           shared-key: ${{ matrix.job.target }}-${{ matrix.nif }}
           workspaces: |
-            native/igniter_js
+            ${{ inputs.rust-crate-dir || format('native/{0}', github.event.repository.name) }}
       - name: Build the project
         id: build-crate
         uses: philss/rustler-precompiled-action@67ed0cc2d6a423e4c4cd9ad651dcc6c90f802cdb # v1.1.5
         with:
-          project-name: igniter_js
+          project-name: ${{ inputs.rust-project-name || github.event.repository.name }}
           project-version: ${{ env.PROJECT_VERSION }}
           target: ${{ matrix.job.target }}
           nif-version: ${{ matrix.nif }}
           use-cross: ${{ matrix.job.use-cross }}
           cross-version: ${{ matrix.job.cross-version || 'v0.2.4' }}
-          project-dir: "native/igniter_js"
+          project-dir: ${{ inputs.rust-crate-dir || format('native/{0}', github.event.repository.name) }}
           cargo-args: ${{ matrix.job.cargo-args }}
 
       - name: Artifact upload
