@@ -303,6 +303,20 @@ defmodule Ash.Test.Actions.AggregateTest do
       assert %{count: 2} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
     end
 
+    test "min, max and sum over no records at all return the default" do
+      mine = Ash.Query.filter(Comment, thing == "no-such-comment")
+
+      for kind <- [:min, :max, :sum] do
+        assert %{v: nil} =
+                 Ash.aggregate!(mine, {:v, kind, field: :thing3}, authorize?: false)
+
+        assert %{v: :none} =
+                 Ash.aggregate!(mine, {:v, kind, field: :thing3, default: :none},
+                   authorize?: false
+                 )
+      end
+    end
+
     test "a datetime field sorts and firsts by chronology" do
       # Erlang term order compares a struct's fields in alphabetical key order,
       # so for a DateTime :day (31 vs 1) decides before :year is ever reached.
