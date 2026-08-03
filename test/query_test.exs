@@ -185,6 +185,20 @@ defmodule Ash.Test.QueryTest do
                |> Ash.read!()
     end
 
+    test "a combination calculation naming no resource field stays in :calculations" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+
+      assert [%User{calculations: %{sort_order: 1}}] =
+               User
+               |> Ash.Query.combination_of([
+                 Ash.Query.Combination.base(
+                   filter: expr(name == "fred"),
+                   calculations: %{sort_order: calc(1, type: :integer)}
+                 )
+               ])
+               |> Ash.read!()
+    end
+
     test "it handles combinations with intersect" do
       Ash.create!(User, %{name: "fred", email: "a@bar.com"})
       Ash.create!(User, %{name: "john", email: "j@bar.com"})
