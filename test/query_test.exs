@@ -217,6 +217,43 @@ defmodule Ash.Test.QueryTest do
       assert hd(result).email == "a@bar.com"
     end
 
+    test "a union following an except sees only the records the except left" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "fred", email: "b@baz.com"})
+      Ash.create!(User, %{name: "john", email: "j@bar.com"})
+
+      result =
+        User
+        |> Ash.Query.combination_of([
+          Ash.Query.Combination.base([]),
+          Ash.Query.Combination.except(filter: expr(name == "fred")),
+          Ash.Query.Combination.union(filter: expr(contains(email, "bar.com")))
+        ])
+        |> Ash.read!()
+
+      # the except leaves john, and the union adds back the fred the except removed
+      assert ["a@bar.com", "j@bar.com"] = result |> Enum.map(& &1.email) |> Enum.sort()
+    end
+
+    test "a union following an intersect sees only the records the intersect left" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "fred", email: "b@baz.com"})
+      Ash.create!(User, %{name: "john", email: "j@bar.com"})
+
+      result =
+        User
+        |> Ash.Query.combination_of([
+          Ash.Query.Combination.base([]),
+          Ash.Query.Combination.intersect(filter: expr(name == "fred")),
+          Ash.Query.Combination.union(filter: expr(contains(email, "bar.com")))
+        ])
+        |> Ash.read!()
+
+      # the intersect leaves the two freds, and the union adds back the john it removed
+      assert ["a@bar.com", "b@baz.com", "j@bar.com"] =
+               result |> Enum.map(& &1.email) |> Enum.sort()
+    end
+
     test "combinations with multiple union_all" do
       Ash.create!(User, %{name: "fred", email: "a@bar.com"})
       Ash.create!(User, %{name: "alice", email: "a@baz.com"})

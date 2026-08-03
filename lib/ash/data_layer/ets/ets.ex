@@ -1244,7 +1244,7 @@ defmodule Ash.DataLayer.Ets do
                   matcher.(result, temp_results_acc)
                 end)
 
-              {:cont, {:ok, records, grouper.(records, acc)}}
+              {:cont, {:ok, records, grouper.(records, base)}}
 
             :except ->
               temp_results_acc = grouper.(results, base)
