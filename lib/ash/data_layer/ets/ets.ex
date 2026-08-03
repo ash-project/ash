@@ -1110,17 +1110,19 @@ defmodule Ash.DataLayer.Ets do
         & &1.name
       )
 
+    # `field_set` holds field structs while these are names, so the two have to
+    # be compared by name. A combination calculation whose name shadows a field
+    # of the resource is promoted onto the record itself below; anything else
+    # stays in `:calculations`.
+    field_set_names = Enum.map(field_set, & &1.name)
+
     fields_to_rewrite =
       resource
       |> Ash.Resource.Info.fields([:attributes, :calculations, :aggregates])
       |> Enum.map(& &1.name)
+      |> Enum.filter(&(&1 in field_set_names))
 
-    rewrite? = not Enum.empty?(field_set -- fields_to_rewrite)
-
-    fields_to_rewrite =
-      if rewrite? do
-        Enum.filter(fields_to_rewrite, &(&1 in field_set))
-      end
+    rewrite? = not Enum.empty?(fields_to_rewrite)
 
     {simple_equality, non_simple_equality} =
       Enum.split_with(field_set, fn %{type: type} ->
