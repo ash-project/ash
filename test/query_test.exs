@@ -274,6 +274,38 @@ defmodule Ash.Test.QueryTest do
       assert Enum.any?(result, &(&1.name == "john"))
     end
 
+    test "a ranked union_all sorts by its combination calculation" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+
+      # One record, reached by three parts that each rank it differently.
+      ranked = fn type ->
+        User
+        |> Ash.Query.combination_of([
+          Ash.Query.Combination.base(
+            filter: expr(name == "fred"),
+            calculations: %{sort_order: calc(1, type: :integer)}
+          ),
+          apply(Ash.Query.Combination, type, [
+            [
+              filter: expr(name == "fred"),
+              calculations: %{sort_order: calc(2, type: :integer)}
+            ]
+          ]),
+          apply(Ash.Query.Combination, type, [
+            [
+              filter: expr(name == "fred"),
+              calculations: %{sort_order: calc(3, type: :integer)}
+            ]
+          ])
+        ])
+        |> Ash.Query.sort([{calc(^combinations(:sort_order)), :desc}])
+        |> Ash.read!()
+        |> Enum.map(& &1.calculations[:sort_order])
+      end
+
+      assert [3, 2, 1] = ranked.(:union_all)
+    end
+
     test "combination with offset" do
       # Create users with ascending email for predictable sort order
       Ash.create!(User, %{name: "fred", email: "a@bar.com"})
