@@ -52,6 +52,10 @@ defmodule Ash.Test.Actions.AggregateTest do
         public?(true)
       end
 
+      attribute :thing4, :utc_datetime_usec do
+        public?(true)
+      end
+
       create_timestamp :created_at
     end
 
@@ -287,6 +291,34 @@ defmodule Ash.Test.Actions.AggregateTest do
       |> Ash.create!(authorize?: false)
 
       assert %{count: 2} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
+    end
+
+    test "a datetime field sorts and firsts by chronology" do
+      # Erlang term order compares a struct's fields in alphabetical key order,
+      # so for a DateTime :day (31 vs 1) decides before :year is ever reached.
+      # These two instants therefore order one way by term order and the
+      # opposite way by chronology.
+      early = ~U[2020-12-31 23:00:00.000000Z]
+      late = ~U[2026-01-01 00:00:00.000000Z]
+
+      for at <- [early, late] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{public: true, thing: "chrono", thing4: at})
+        |> Ash.create!(authorize?: false)
+      end
+
+      mine = Ash.Query.filter(Comment, thing == "chrono")
+
+      assert [^late, ^early] =
+               mine
+               |> Ash.Query.sort(thing4: :desc)
+               |> Ash.read!(authorize?: false)
+               |> Enum.map(& &1.thing4)
+
+      assert %{first: ^late} =
+               mine
+               |> Ash.Query.sort(thing4: :desc)
+               |> Ash.aggregate!({:first, :first, field: :thing4}, authorize?: false)
     end
 
     test "honors tenant" do
