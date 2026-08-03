@@ -397,7 +397,15 @@ defmodule Ash.DataLayer.Ets do
         _resource,
         parent \\ nil
       ) do
-    maybe_not_distinct? = Enum.any?(combination_of, &(elem(&1, 0) == :union_all))
+    # A fold can return the same primary key twice in two ways: `union_all`
+    # keeps every row, and a `union` between parts carrying different
+    # combination calculations keeps both copies, because the equality basis
+    # is the combination fieldset. `runtime_sort/3` needs to know, or it
+    # batches the sort-key load and cannot tell the copies apart.
+    maybe_not_distinct? =
+      Enum.any?(combination_of, fn {type, combination} ->
+        type == :union_all or not Enum.empty?(combination.calculations)
+      end)
 
     with {:ok, records} when records != [] <-
            get_records(resource, combination_of, parent, tenant),
