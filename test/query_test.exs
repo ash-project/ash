@@ -185,6 +185,41 @@ defmodule Ash.Test.QueryTest do
                |> Ash.read!()
     end
 
+    test "a union of parts that select only a shared field still returns both records" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "fred", email: "b@bar.com"})
+
+      assert [_, _] =
+               User
+               |> Ash.Query.combination_of([
+                 Ash.Query.Combination.base(
+                   filter: expr(email == "a@bar.com"),
+                   select: [:name]
+                 ),
+                 Ash.Query.Combination.union(
+                   filter: expr(email == "b@bar.com"),
+                   select: [:name]
+                 )
+               ])
+               |> Ash.read!()
+    end
+
+    test "the combination fieldset reports the primary key even when the parts do not select it" do
+      {:ok, query} =
+        User
+        |> Ash.Query.combination_of([
+          Ash.Query.Combination.base(filter: expr(name == "fred"), select: [:name]),
+          Ash.Query.Combination.union(filter: expr(name == "alice"), select: [:name])
+        ])
+        |> Ash.Query.data_layer_query()
+
+      fieldset = query.context[:data_layer][:combination_fieldset]
+
+      for field <- Ash.Resource.Info.primary_key(User) do
+        assert field in fieldset
+      end
+    end
+
     test "a combination calculation naming no resource field stays in :calculations" do
       Ash.create!(User, %{name: "fred", email: "a@bar.com"})
 

@@ -4600,7 +4600,8 @@ defmodule Ash.Query do
                  combination_of_queries?: true,
                  combination_fieldset:
                    Enum.uniq(
-                     (combination.select || default_select) ++ Map.keys(combination.calculations)
+                     selected_fields(ash_query.resource, combination.select || default_select) ++
+                       Map.keys(combination.calculations)
                    )
                }}
             end
@@ -4613,6 +4614,16 @@ defmodule Ash.Query do
         {:ok, opts[:initial_query] || Ash.DataLayer.resource_to_query(ash_query.resource, domain),
          %{}}
     end
+  end
+
+  # The fieldset must describe what each combination query selects, and `select/3`
+  # decides that — it always adds the primary key and any always-selected
+  # attributes to whatever was asked for.
+  defp selected_fields(resource, select) do
+    resource
+    |> new()
+    |> select(select, replace?: true)
+    |> Map.fetch!(:select)
   end
 
   defp combination_queries(query) do
