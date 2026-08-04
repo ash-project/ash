@@ -320,13 +320,22 @@ if !Code.ensure_loaded?(Comp) do
         try do
           [Comparable, Type, type_of(left), To, type_of(right)]
           |> Module.safe_concat()
+          |> fall_back_unless_implemented()
         rescue
           ArgumentError ->
-            [Comparable, Type, Any, To, Any]
-            |> Module.safe_concat()
+            any_to_any()
         end
 
       %{__struct__: lr_type, left: left, right: right}
+    end
+
+    defp fall_back_unless_implemented(lr_type) do
+      if Comparable.impl_for(%{__struct__: lr_type}), do: lr_type, else: any_to_any()
+    end
+
+    defp any_to_any do
+      [Comparable, Type, Any, To, Any]
+      |> Module.safe_concat()
     end
   end
 end
