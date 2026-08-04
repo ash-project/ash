@@ -215,6 +215,29 @@ defmodule Ash.Test.QueryTest do
       refute Map.has_key?(calculations, :name)
     end
 
+    test "a combination calculation can be sorted on from the outer query" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "alice", email: "a@baz.com"})
+
+      ranked = [
+        Ash.Query.Combination.base(
+          filter: expr(name == "fred"),
+          calculations: %{sort_order: calc(1, type: :integer)}
+        ),
+        Ash.Query.Combination.union(
+          filter: expr(name == "alice"),
+          calculations: %{sort_order: calc(2, type: :integer)}
+        )
+      ]
+
+      assert [2, 1] =
+               User
+               |> Ash.Query.combination_of(ranked)
+               |> Ash.Query.sort([{calc(^combinations(:sort_order)), :desc}])
+               |> Ash.read!()
+               |> Enum.map(& &1.calculations[:sort_order])
+    end
+
     test "it handles combinations with intersect" do
       Ash.create!(User, %{name: "fred", email: "a@bar.com"})
       Ash.create!(User, %{name: "john", email: "j@bar.com"})
