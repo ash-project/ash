@@ -657,7 +657,7 @@ jobs:
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
         with:
-          task: igniter.upgrade --git-ci --yes
+          task: igniter.upgrade --git-ci --yes --all
         if: github.event.pull_request.user.login == 'dependabot[bot]'
       - name: Commit Changes
         uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
