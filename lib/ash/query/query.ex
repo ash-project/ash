@@ -540,7 +540,31 @@ defmodule Ash.Query do
   def combination_of(query, combinations) do
     query = new(query)
 
-    %{query | combination_of: query.combination_of ++ List.wrap(combinations)}
+    query = %{query | combination_of: query.combination_of ++ List.wrap(combinations)}
+
+    # A `^combinations(...)` reference can only be hydrated once the
+    # combinations are known, so a filter built before this call still carries
+    # the bare field name. Hydrate it now that they are known — otherwise the
+    # reference stays unresolvable and every record is filtered out.
+    case query.filter do
+      nil ->
+        query
+
+      filter ->
+        case Ash.Filter.hydrate_refs(filter, combination_hydration_context(query)) do
+          {:ok, hydrated} -> %{query | filter: hydrated}
+          {:error, error} -> add_error(query, :filter, error)
+        end
+    end
+  end
+
+  @doc false
+  def combination_hydration_context(query) do
+    %{
+      resource: query.resource,
+      public?: false,
+      first_combination: Enum.at(query.combination_of, 0)
+    }
   end
 
   @doc """
@@ -3971,7 +3995,8 @@ defmodule Ash.Query do
                  filter,
                  %{
                    resource: query.resource,
-                   public?: false
+                   public?: false,
+                   first_combination: Enum.at(query.combination_of, 0)
                  }
                  |> with_parent_stack(opts)
                  |> with_conflicting_upsert_values(opts)
@@ -4027,7 +4052,8 @@ defmodule Ash.Query do
                  filter,
                  %{
                    resource: query.resource,
-                   public?: false
+                   public?: false,
+                   first_combination: Enum.at(query.combination_of, 0)
                  }
                  |> with_parent_stack(opts)
                  |> with_conflicting_upsert_values(opts)
