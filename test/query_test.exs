@@ -215,6 +215,70 @@ defmodule Ash.Test.QueryTest do
       refute Map.has_key?(calculations, :name)
     end
 
+    test "a combination calculation can be sorted on from the outer query" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "alice", email: "a@baz.com"})
+
+      ranked = [
+        Ash.Query.Combination.base(
+          filter: expr(name == "fred"),
+          calculations: %{sort_order: calc(1, type: :integer)}
+        ),
+        Ash.Query.Combination.union(
+          filter: expr(name == "alice"),
+          calculations: %{sort_order: calc(2, type: :integer)}
+        )
+      ]
+
+      assert [2, 1] =
+               User
+               |> Ash.Query.combination_of(ranked)
+               |> Ash.Query.sort([{calc(^combinations(:sort_order)), :desc}])
+               |> Ash.read!()
+               |> Enum.map(& &1.calculations[:sort_order])
+    end
+
+    test "a combination calculation can be filtered on from the outer query" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "alice", email: "a@baz.com"})
+
+      ranked = [
+        Ash.Query.Combination.base(
+          filter: expr(name == "fred"),
+          calculations: %{sort_order: calc(1, type: :integer)}
+        ),
+        Ash.Query.Combination.union(
+          filter: expr(name == "alice"),
+          calculations: %{sort_order: calc(2, type: :integer)}
+        )
+      ]
+
+      # a predicate that excludes nothing must not exclude everything
+      assert [1, 2] =
+               User
+               |> Ash.Query.combination_of(ranked)
+               |> Ash.Query.filter(^combinations(:sort_order) > 0)
+               |> Ash.read!()
+               |> Enum.map(& &1.calculations[:sort_order])
+               |> Enum.sort()
+
+      # and one that discriminates must discriminate
+      assert [%User{name: "alice"}] =
+               User
+               |> Ash.Query.combination_of(ranked)
+               |> Ash.Query.filter(^combinations(:sort_order) == 2)
+               |> Ash.read!()
+
+      # the reference resolves whichever order the query is built in
+      assert [1, 2] =
+               User
+               |> Ash.Query.filter(^combinations(:sort_order) > 0)
+               |> Ash.Query.combination_of(ranked)
+               |> Ash.read!()
+               |> Enum.map(& &1.calculations[:sort_order])
+               |> Enum.sort()
+    end
+
     test "it handles combinations with intersect" do
       Ash.create!(User, %{name: "fred", email: "a@bar.com"})
       Ash.create!(User, %{name: "john", email: "j@bar.com"})
