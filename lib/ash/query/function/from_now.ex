@@ -15,7 +15,7 @@ defmodule Ash.Query.Function.FromNow do
 
   use Ash.Query.Function, name: :from_now, eager_evaluate?: false
 
-  def args, do: [[:integer, :duration_name]]
+  def args, do: [[:integer, :duration_name], [:duration]]
 
   def returns, do: [:utc_datetime]
 
