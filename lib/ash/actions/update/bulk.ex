@@ -3363,7 +3363,8 @@ defmodule Ash.Actions.Update.Bulk do
           {matches, non_matches} =
             results
             |> Enum.split_with(fn
-              {:ok, result, _changeset} ->
+              {:ok, result, changeset} ->
+                result = Ash.Actions.Helpers.Bulk.put_metadata(result, changeset)
                 result.__metadata__[metadata_key] in List.wrap(changes[index])
             end)
 
