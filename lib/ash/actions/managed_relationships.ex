@@ -220,20 +220,65 @@ defmodule Ash.Actions.ManagedRelationships do
                           )
 
                         keys ->
-                          relationship.destination
-                          |> Ash.Query.for_read(read, %{},
-                            actor: actor,
-                            context: Map.take(changeset.context, [:shared]),
-                            authorize?: opts[:authorize?],
-                            domain: domain(changeset, relationship),
-                            tenant: changeset.tenant
-                          )
-                          |> Ash.Query.filter(^keys)
-                          |> sort_and_filter(relationship)
-                          |> Ash.Query.set_context(relationship.context)
-                          |> Ash.read_one()
-                          |> case do
-                            {:ok, nil} ->
+                          # Sanitize the lookup input to literal values (casting each
+                          # value to its attribute type) before it reaches `filter/2`, so
+                          # a nested map cannot be interpreted as a filter predicate. This
+                          # mirrors the `has_many`/`many_to_many` lookup path below.
+                          case Ash.Filter.get_filter(relationship.destination, keys) do
+                            {:ok, keys} ->
+                              relationship.destination
+                              |> Ash.Query.for_read(read, %{},
+                                actor: actor,
+                                context: Map.take(changeset.context, [:shared]),
+                                authorize?: opts[:authorize?],
+                                domain: domain(changeset, relationship),
+                                tenant: changeset.tenant
+                              )
+                              |> Ash.Query.filter(^keys)
+                              |> sort_and_filter(relationship)
+                              |> Ash.Query.set_context(relationship.context)
+                              |> Ash.Query.limit(1)
+                              |> Ash.read_one()
+                              |> case do
+                                {:ok, nil} ->
+                                  create_belongs_to_record(
+                                    changeset,
+                                    instructions,
+                                    relationship,
+                                    input,
+                                    actor,
+                                    index,
+                                    opts
+                                  )
+
+                                {:ok, found} ->
+                                  changeset =
+                                    changeset
+                                    |> Ash.Changeset.set_context(%{
+                                      private: %{
+                                        belongs_to_manage_found: %{
+                                          relationship.name => %{index => found}
+                                        }
+                                      }
+                                    })
+                                    |> maybe_force_change_attribute(
+                                      relationship,
+                                      :source_attribute,
+                                      Map.get(found, relationship.destination_attribute)
+                                    )
+
+                                  {:cont, {changeset, instructions}}
+
+                                {:error, error} ->
+                                  {:halt,
+                                   {Ash.Changeset.add_error(
+                                      changeset,
+                                      add_bread_crumb(error, relationship, :lookup),
+                                      [opts[:meta][:id] || relationship.name]
+                                    ), instructions}}
+                              end
+
+                            {:error, _error} ->
                               create_belongs_to_record(
                                 changeset,
                                 instructions,
@@ -243,32 +288,6 @@ defmodule Ash.Actions.ManagedRelationships do
                                 index,
                                 opts
                               )
-
-                            {:ok, found} ->
-                              changeset =
-                                changeset
-                                |> Ash.Changeset.set_context(%{
-                                  private: %{
-                                    belongs_to_manage_found: %{
-                                      relationship.name => %{index => found}
-                                    }
-                                  }
-                                })
-                                |> maybe_force_change_attribute(
-                                  relationship,
-                                  :source_attribute,
-                                  Map.get(found, relationship.destination_attribute)
-                                )
-
-                              {:cont, {changeset, instructions}}
-
-                            {:error, error} ->
-                              {:halt,
-                               {Ash.Changeset.add_error(
-                                  changeset,
-                                  add_bread_crumb(error, relationship, :lookup),
-                                  [opts[:meta][:id] || relationship.name]
-                                ), instructions}}
                           end
                       end
                     end

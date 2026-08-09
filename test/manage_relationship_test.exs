@@ -1531,4 +1531,117 @@ defmodule Ash.Test.ManageRelationshipTest do
       assert loaded.parent_resource.name == "created-in-hook"
     end
   end
+
+  describe "belongs_to on_lookup input sanitization (GHSA-vvp6-3wv6-833j)" do
+    defmodule LookupAuthor do
+      @moduledoc false
+      use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+      actions do
+        defaults [:read, create: :*]
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, public?: true
+      end
+    end
+
+    defmodule LookupPost do
+      @moduledoc false
+      use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+      actions do
+        defaults [:read]
+
+        create :create do
+          accept [:title]
+          argument :author, :map, public?: true
+
+          change manage_relationship(:author,
+                   type: :append_and_remove,
+                   on_lookup: :relate,
+                   on_no_match: :error
+                 )
+        end
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :title, :string, public?: true
+      end
+
+      relationships do
+        belongs_to :author, LookupAuthor, public?: true
+      end
+    end
+
+    test "legitimate scalar id lookup still relates the record" do
+      alice =
+        LookupAuthor
+        |> Ash.Changeset.for_create(:create, %{name: "Alice"})
+        |> Ash.create!()
+
+      post =
+        LookupPost
+        |> Ash.Changeset.for_create(:create, %{title: "ok", author: %{"id" => alice.id}})
+        |> Ash.create!()
+
+      assert post.author_id == alice.id
+    end
+
+    test "predicate map in on_lookup value is not interpreted as a filter predicate" do
+      _alice =
+        LookupAuthor
+        |> Ash.Changeset.for_create(:create, %{name: "Alice"})
+        |> Ash.create!()
+
+      # Attacker submits a predicate map where a scalar id is expected. Before the
+      # fix this was interpreted as `WHERE id != '000...'`, forging a relationship
+      # to the real author without knowing the id.
+      result =
+        LookupPost
+        |> Ash.Changeset.for_create(:create, %{
+          title: "hijack",
+          author: %{"id" => %{"not_equals" => "00000000-0000-0000-0000-000000000000"}}
+        })
+        |> Ash.create()
+
+      case result do
+        {:ok, post} ->
+          refute post.author_id,
+                 "predicate injection forged a relationship to author_id=#{post.author_id}"
+
+        {:error, _} ->
+          :ok
+      end
+    end
+
+    test "predicate map does not leak a match-count oracle across multiple records" do
+      for name <- ["Alice", "Bob"] do
+        LookupAuthor
+        |> Ash.Changeset.for_create(:create, %{name: name})
+        |> Ash.create!()
+      end
+
+      # With two authors, the pre-fix code hit `read_one` without `limit(1)` and
+      # surfaced an "at most one result" error, distinguishing 0/1/many matches.
+      result =
+        LookupPost
+        |> Ash.Changeset.for_create(:create, %{
+          title: "oracle",
+          author: %{"id" => %{"not_equals" => "00000000-0000-0000-0000-000000000000"}}
+        })
+        |> Ash.create()
+
+      case result do
+        {:ok, post} ->
+          refute post.author_id, "predicate injection forged a relationship"
+
+        {:error, error} ->
+          refute Exception.message(error) =~ "at most one",
+                 "match-count oracle leaked via read_one error"
+      end
+    end
+  end
 end
