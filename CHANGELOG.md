@@ -8,6 +8,15 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.31.2](https://github.com/ash-project/ash/compare/v3.31.1...v3.31.2) (2026-08-09)
+
+
+
+
+### Bug Fixes:
+
+* undo breaking change where we started honoring `:allow_forbidden_field_for_relationships_by_default?` by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.31.1](https://github.com/ash-project/ash/compare/v3.31.0...v3.31.1) (2026-08-09)
 
 
