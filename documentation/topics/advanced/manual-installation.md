@@ -141,7 +141,7 @@ Update `config/config.exs`:
 + # guide for an explanation of each setting:
 + # https://hexdocs.pm/ash/backwards-compatibility-config.html
 + config :ash,
-+   allow_forbidden_field_for_relationships_by_default?: true,
++   allow_forbidden_field_for_relationships_by_default: true,
 +   include_embedded_source_by_default?: false,
 +   show_keysets_for_all_actions?: false,
 +   default_page_type: :keyset,

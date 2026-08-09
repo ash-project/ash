@@ -13,10 +13,10 @@ will have their defaults changed to the new value.
 
 The ash installer automatically sets all of these.
 
-## allow_forbidden_field_for_relationships_by_default?
+## allow_forbidden_field_for_relationships_by_default
 
 ```elixir
-config :ash, allow_forbidden_field_for_relationships_by_default?: true
+config :ash, allow_forbidden_field_for_relationships_by_default: true
 ```
 
 ### Old Behavior
