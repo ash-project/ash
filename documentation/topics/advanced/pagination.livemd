@@ -61,6 +61,17 @@ Keyset pagination, also known as cursor pagination, is done via providing an `af
 >
 > You can't change the sort applied to a request being paginated, and use the same keyset. If you want to change the sort, but *keep* the record who's keyset you are using in the `before` or `after` option, you must first request the individual record, with the new sort applied. Then, you can use the new keyset.
 
+> ### Keysets are opaque, don't construct them yourself
+>
+> A keyset is an encoded, serialized snapshot of a record's sort values. Always pass back a keyset that Ash previously returned (from a record's `__metadata__.keyset`) — treat it as an opaque token. Ash validates and decodes incoming `after`/`before` cursors and rejects anything malformed with an `Ash.Error.Page.InvalidKeyset` error.
+>
+> Because `after`/`before` come straight from client input on public paginated endpoints, Ash guards cursor deserialization against memory exhaustion: compressed payloads are rejected outright (Ash never produces them), and uncompressed cursors are capped in size (defaulting to 10 KiB). Legitimate cursors only encode a single record's sort values and are far smaller than this. If you sort on unusually large values and hit the limit, raise it with:
+>
+> ```elixir
+> # config/config.exs
+> config :ash, max_keyset_byte_size: 20_480
+> ```
+
 ### Pros of keyset pagination
 
 * Performs very well on large datasets (assuming indices exist on the columns being sorted on)

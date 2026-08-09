@@ -98,4 +98,41 @@ defmodule Ash.Test.PageTest do
       assert p6.results |> Enum.map(& &1.id) == []
     end
   end
+
+  describe "keyset cursor input validation (GHSA-j35q-v8h8-7mwq)" do
+    alias Ash.Page.Keyset
+
+    setup do
+      %{query: Ash.Query.new(ThisTest.Obj), sort: [{:id, :asc}]}
+    end
+
+    test "accepts a normal, small cursor", %{query: query, sort: sort} do
+      cursor = Base.encode64(:erlang.term_to_binary([Ash.UUID.generate()]))
+      assert {:ok, _} = Keyset.filter(query, cursor, sort, :after)
+    end
+
+    test "rejects an oversized uncompressed cursor", %{query: query, sort: sort} do
+      # A single sort value (matching the one sort field) large enough to exceed
+      # the byte-size cap, so this exercises the size guard rather than a shape
+      # mismatch.
+      cursor = Base.encode64(:erlang.term_to_binary([List.duplicate(0, 20_000)]))
+
+      assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
+               Keyset.filter(query, cursor, sort, :after)
+    end
+
+    test "rejects the reported keyset bomb (compressed list of integers)",
+         %{query: query, sort: sort} do
+      # Ash never emits compressed cursors, so any compressed payload is hostile
+      # and is rejected without inflating it. The compressed form is tiny on the
+      # wire yet would inflate to tens of MB.
+      bomb =
+        List.duplicate(0, 2_000_000)
+        |> :erlang.term_to_binary([{:compressed, 9}])
+        |> Base.encode64()
+
+      assert byte_size(bomb) < 10_000
+      assert {:error, %Ash.Error.Page.InvalidKeyset{}} = Keyset.filter(query, bomb, sort, :after)
+    end
+  end
 end

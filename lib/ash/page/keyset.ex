@@ -10,6 +10,13 @@ defmodule Ash.Page.Keyset do
   which can be used to fetch the next/previous pages.
   """
 
+  # Upper bound on the size (in bytes) of the term a client-supplied cursor is
+  # allowed to deserialize into. Cursors legitimately encode only the sort
+  # values of a single record, so this is generous; it exists purely to prevent
+  # a hostile cursor (e.g. a compressed term that inflates to tens of MB) from
+  # exhausting memory. Configurable via `config :ash, max_keyset_byte_size: ...`.
+  @default_max_keyset_byte_size 10_240
+
   @derive {Inspect, only: [:results, :count, :before, :after, :more?]}
   defstruct [:results, :count, :before, :after, :limit, :rerun, :more?]
 
@@ -148,14 +155,29 @@ defmodule Ash.Page.Keyset do
   end
 
   defp decode_values(values, key) do
-    {:ok,
-     values
-     |> Base.decode64!()
-     |> non_executable_binary_to_term([:safe])}
+    max_byte_size =
+      Application.get_env(:ash, :max_keyset_byte_size, @default_max_keyset_byte_size)
+
+    with {:ok, decoded} <- Base.decode64(values),
+         :ok <- check_keyset_size(decoded, max_byte_size) do
+      {:ok, non_executable_binary_to_term(decoded, [:safe])}
+    else
+      _ ->
+        {:error, Ash.Error.Page.InvalidKeyset.exception(value: values, key: key)}
+    end
   rescue
     _e ->
       {:error, Ash.Error.Page.InvalidKeyset.exception(value: values, key: key)}
   end
+
+  # Ash only ever encodes cursors with uncompressed `:erlang.term_to_binary/1`,
+  # so a compressed payload (external term format tag `80`) is never a legitimate
+  # keyset. Rejecting it outright removes the decompression-bomb vector entirely,
+  # without relying on the header's self-declared uncompressed size. Uncompressed
+  # payloads are then bounded directly by their own byte size.
+  defp check_keyset_size(<<131, 80, _::binary>>, _max), do: :error
+  defp check_keyset_size(binary, max) when byte_size(binary) > max, do: :error
+  defp check_keyset_size(_binary, _max), do: :ok
 
   defp filters(keyset, resource, query, after_or_before) do
     [or: do_filters(keyset, resource, query, after_or_before)]
