@@ -8,6 +8,51 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.31.1](https://github.com/ash-project/ash/compare/v3.31.0...v3.31.1) (2026-08-09)
+
+
+
+
+### Bug Fixes:
+
+* limit keyset binary size by [@zachdaniel](https://github.com/zachdaniel)
+
+  Patches CVE-2026-69659 https://github.com/ash-project/ash/security/advisories/GHSA-j35q-v8h8-7mwq
+
+* sanitize managed relationship lookup filters by [@zachdaniel](https://github.com/zachdaniel)
+
+  Patches CVE-2026-69659 https://github.com/ash-project/ash/security/advisories/GHSA-j35q-v8h8-7mwq
+
+* resolve bulk index from changeset in after_batch filter (#2842) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2842)](https://github.com/ash-project/ash/pull/2842)
+
+* ci: pass --all to `mix igniter.upgrade` (#2841) by [@jimsynz](https://github.com/jimsynz) [(#2841)](https://github.com/ash-project/ash/pull/2841)
+
+* report the primary key in the combination fieldset (#2836) by [@matt-beanland](https://github.com/matt-beanland) [(#2836)](https://github.com/ash-project/ash/pull/2836)
+
+* resolve a combinations reference in the outer filter (#2838) by [@matt-beanland](https://github.com/matt-beanland) [(#2838)](https://github.com/ash-project/ash/pull/2838)
+
+* dispatch on whether a comparator is implemented (#2840) by [@matt-beanland](https://github.com/matt-beanland) [(#2840)](https://github.com/ash-project/ash/pull/2840)
+
+* decide an ETS aggregate is empty after rejecting nil values (#2833) by [@matt-beanland](https://github.com/matt-beanland) [(#2833)](https://github.com/ash-project/ash/pull/2833)
+
+* compare the combination fieldset by name so shadowing calcs are applied (#2830) by [@matt-beanland](https://github.com/matt-beanland) [(#2830)](https://github.com/ash-project/ash/pull/2830)
+
+* sort a ranked union in ETS, not only a ranked union_all (#2828) by [@matt-beanland](https://github.com/matt-beanland) [(#2828)](https://github.com/ash-project/ash/pull/2828)
+
+* order ETS min/max aggregates with Comp instead of Erlang term order (#2824) by [@matt-beanland](https://github.com/matt-beanland) [(#2824)](https://github.com/ash-project/ash/pull/2824)
+
+* reset the combinations accumulator after an intersect in ETS (#2822) by [@matt-beanland](https://github.com/matt-beanland) [(#2822)](https://github.com/ash-project/ash/pull/2822)
+
+* ci: reference the unused-deps input by its declared name by [@joshprice](https://github.com/joshprice) [(#2813)](https://github.com/ash-project/ash/pull/2813)
+
+* allow_forbidden_field_for_relationships_by_default? missing the ? (#2812) by [@frankdugan3](https://github.com/frankdugan3) [(#2812)](https://github.com/ash-project/ash/pull/2812)
+
+### Improvements:
+
+* memoize Comparable's type-pair dispatch in a release (#2819) by [@matt-beanland](https://github.com/matt-beanland) [(#2819)](https://github.com/ash-project/ash/pull/2819)
+
+* index runtime_sort rekey by primary key instead of scanning by [@matt-beanland](https://github.com/matt-beanland) [(#2818)](https://github.com/ash-project/ash/pull/2818)
+
 ## [v3.31.0](https://github.com/ash-project/ash/compare/v3.30.1...v3.31.0) (2026-07-28)
 
 
