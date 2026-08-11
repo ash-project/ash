@@ -5,29 +5,31 @@
 defmodule Ash.Actions.Sort do
   @moduledoc false
 
-  def process(resource, sort, _aggregates, _context) do
-    process(resource, sort)
+  def process(resource, sort, _aggregates, source_context) do
+    process(resource, sort, source_context)
   end
 
-  def process(_, ""), do: {:ok, []}
+  def process(resource, sort, source_context \\ %{})
 
-  def process(_, []), do: {:ok, []}
+  def process(_, "", _), do: {:ok, []}
 
-  def process(resource, sort) when is_binary(sort) do
+  def process(_, [], _), do: {:ok, []}
+
+  def process(resource, sort, source_context) when is_binary(sort) do
     sort = String.split(sort, ",", trim: true)
-    process(resource, sort)
+    process(resource, sort, source_context)
   end
 
-  def process(_resource, nil), do: {:ok, nil}
+  def process(_resource, nil, _), do: {:ok, nil}
 
-  def process(resource, sort) when is_atom(sort) do
-    process(resource, [sort])
+  def process(resource, sort, source_context) when is_atom(sort) do
+    process(resource, [sort], source_context)
   end
 
-  def process(resource, sort) when is_list(sort) do
+  def process(resource, sort, source_context) when is_list(sort) do
     sort
     |> Enum.reduce_while({:ok, []}, fn field, {:ok, sort} ->
-      case Ash.Sort.parse_sort(resource, field, nil, false) do
+      case Ash.Sort.parse_sort(resource, field, nil, false, source_context) do
         {:ok, value} -> {:cont, {:ok, [value | sort]}}
         {:error, error} -> {:halt, {:error, error}}
       end
@@ -38,12 +40,12 @@ defmodule Ash.Actions.Sort do
     end
   end
 
-  def process(resource, %Ash.Query.Calculation{} = calculation) do
-    process(resource, [calculation])
+  def process(resource, %Ash.Query.Calculation{} = calculation, source_context) do
+    process(resource, [calculation], source_context)
   end
 
-  def process(resource, {field, order}) do
-    process(resource, [{field, order}])
+  def process(resource, {field, order}, source_context) do
+    process(resource, [{field, order}], source_context)
   end
 
   def sorting_on_identity?(%{sort: nil}), do: false
