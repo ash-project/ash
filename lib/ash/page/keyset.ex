@@ -159,8 +159,10 @@ defmodule Ash.Page.Keyset do
       Application.get_env(:ash, :max_keyset_byte_size, @default_max_keyset_byte_size)
 
     with {:ok, decoded} <- Base.decode64(values),
-         :ok <- check_keyset_size(decoded, max_byte_size) do
-      {:ok, non_executable_binary_to_term(decoded, [:safe])}
+         :ok <- check_keyset_size(decoded, max_byte_size),
+         term <- non_executable_binary_to_term(decoded, [:safe]),
+         :ok <- check_no_expression(term) do
+      {:ok, term}
     else
       _ ->
         {:error, Ash.Error.Page.InvalidKeyset.exception(value: values, key: key)}
@@ -178,6 +180,19 @@ defmodule Ash.Page.Keyset do
   defp check_keyset_size(<<131, 80, _::binary>>, _max), do: :error
   defp check_keyset_size(binary, max) when byte_size(binary) > max, do: :error
   defp check_keyset_size(_binary, _max), do: :ok
+
+  # A legitimate cursor only ever contains scalar sort values. A decoded term
+  # that is or contains an Ash expression (e.g. `%Ash.Query.Call{}`) is a forged
+  # cursor attempting to inject a filter expression — which would be spliced into
+  # the query as a value and evaluated (SQL injection / RCE depending on the data
+  # layer). Reject any such term outright.
+  defp check_no_expression(term) do
+    if Ash.Expr.expr?(term) do
+      :error
+    else
+      :ok
+    end
+  end
 
   defp filters(keyset, resource, query, after_or_before) do
     [or: do_filters(keyset, resource, query, after_or_before)]

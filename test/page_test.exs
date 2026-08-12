@@ -134,5 +134,17 @@ defmodule Ash.Test.PageTest do
       assert byte_size(bomb) < 10_000
       assert {:error, %Ash.Error.Page.InvalidKeyset{}} = Keyset.filter(query, bomb, sort, :after)
     end
+
+    test "rejects a cursor whose decoded value contains an expression (GHSA-3gq3-9xm3-c8v3)",
+         %{query: query, sort: sort} do
+      # A forged cursor whose sort value is an `Ash.Query.Call` (an expression),
+      # which would otherwise be spliced into the filter as a value and evaluated
+      # as a fragment -> SQL injection / RCE depending on the data layer.
+      call = %Ash.Query.Call{name: :fragment, args: ["arbitrary"], relationship_path: []}
+      cursor = Base.encode64(:erlang.term_to_binary([call]))
+
+      assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
+               Keyset.filter(query, cursor, sort, :after)
+    end
   end
 end
