@@ -8,6 +8,17 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.31.3](https://github.com/ash-project/ash/compare/v3.31.2...v3.31.3) (2026-08-12)
+
+
+
+
+### Bug Fixes:
+
+* do not accept any `%Ash.Expr{}` terms via keysets by [@zachdaniel](https://github.com/zachdaniel)
+
+* switch docs & installer to use actual name for config by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.31.2](https://github.com/ash-project/ash/compare/v3.31.1...v3.31.2) (2026-08-09)
 
 
