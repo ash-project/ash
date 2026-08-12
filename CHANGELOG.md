@@ -17,6 +17,8 @@ SPDX-License-Identifier: MIT
 
 * do not accept any `%Ash.Expr{}` terms via keysets by [@zachdaniel](https://github.com/zachdaniel)
 
+fix for CVE-2026-67579
+
 * switch docs & installer to use actual name for config by [@zachdaniel](https://github.com/zachdaniel)
 
 ## [v3.31.2](https://github.com/ash-project/ash/compare/v3.31.1...v3.31.2) (2026-08-09)
