@@ -1944,49 +1944,22 @@ defmodule Ash.Actions.Read do
       end)
       |> Enum.reduce_while({:ok, []}, fn
         {%Ash.Resource.Calculation{} = resource_calculation, direction}, {:ok, sort} ->
-          case Ash.Query.Calculation.from_resource_calculation(
-                 query.resource,
-                 resource_calculation,
-                 source_context: query.context
-               ) do
-            {:ok, calc} ->
-              case hydrate_calculations(query, [calc]) do
-                {:ok, [{calc, expression}]} ->
-                  {:cont,
-                   {:ok,
-                    [
-                      {%{
-                         calc
-                         | module: Ash.Resource.Calculation.Expression,
-                           opts: [expr: expression]
-                       }, direction}
-                      | sort
-                    ]}}
-
-                {:error, error} ->
-                  {:halt, {:error, error}}
-              end
-
-            {:error, error} ->
-              {:halt, {:error, error}}
+          with {:ok, calc} <-
+                 Ash.Query.Calculation.from_resource_calculation(
+                   query.resource,
+                   resource_calculation,
+                   source_context: query.context
+                 ),
+               {:ok, entry} <- hydrate_sort_calculation(query, calc, direction) do
+            {:cont, {:ok, [entry | sort]}}
+          else
+            {:error, error} -> {:halt, {:error, error}}
           end
 
         {%Ash.Query.Calculation{} = calc, direction}, {:ok, sort} ->
-          case hydrate_calculations(query, [calc]) do
-            {:ok, [{calc, expression}]} ->
-              {:cont,
-               {:ok,
-                [
-                  {%{
-                     calc
-                     | module: Ash.Resource.Calculation.Expression,
-                       opts: [expr: expression]
-                   }, direction}
-                  | sort
-                ]}}
-
-            {:error, error} ->
-              {:halt, {:error, error}}
+          case hydrate_sort_calculation(query, calc, direction) do
+            {:ok, entry} -> {:cont, {:ok, [entry | sort]}}
+            {:error, error} -> {:halt, {:error, error}}
           end
 
         {%Ash.Resource.Aggregate{} = agg, direction}, {:ok, sort} ->
@@ -2033,6 +2006,15 @@ defmodule Ash.Actions.Read do
           {:error, error}
       end
     end)
+  end
+
+  defp hydrate_sort_calculation(query, calc, direction) do
+    with {:ok, [{calc, expression}]} <- hydrate_calculations(query, [calc]),
+         :ok <- Ash.Sort.validate_expression_refs(query.resource, expression) do
+      {:ok,
+       {%{calc | module: Ash.Resource.Calculation.Expression, opts: [expr: expression]},
+        direction}}
+    end
   end
 
   defp hydrate_aggregates(query) do

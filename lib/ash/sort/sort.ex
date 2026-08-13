@@ -385,43 +385,24 @@ defmodule Ash.Sort do
   end
 
   defp validate_sortable(resource, field) do
-    with :ok <- validate_expression_refs(resource, field) do
-      if type_sortable?(resource, field) do
-        :ok
-      else
-        {:error, UnsortableField.exception(field: field_name(field), resource: resource)}
-      end
-    end
-  end
-
-  defp validate_expression_refs(
-         resource,
-         %Ash.Query.Calculation{module: module, opts: opts, context: context}
-       ) do
-    if Ash.Resource.Calculation.has_expression?(module) do
-      module
-      |> Ash.Resource.Calculation.expression(opts, context)
-      |> Ash.Filter.hydrate_refs(%{resource: resource, public?: false})
-      |> case do
-        {:ok, expression} ->
-          expression
-          |> Ash.Filter.list_refs(false, false, true)
-          |> Enum.reduce_while(:ok, fn ref, :ok ->
-            case validate_expression_ref(resource, ref) do
-              :ok -> {:cont, :ok}
-              {:error, error} -> {:halt, {:error, error}}
-            end
-          end)
-
-        {:error, error} ->
-          {:error, error}
-      end
-    else
+    if type_sortable?(resource, field) do
       :ok
+    else
+      {:error, UnsortableField.exception(field: field_name(field), resource: resource)}
     end
   end
 
-  defp validate_expression_refs(_resource, _field), do: :ok
+  @doc false
+  def validate_expression_refs(resource, expression) do
+    expression
+    |> Ash.Filter.list_refs(false, false, true)
+    |> Enum.reduce_while(:ok, fn ref, :ok ->
+      case validate_expression_ref(resource, ref) do
+        :ok -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
 
   defp validate_expression_ref(
          resource,
