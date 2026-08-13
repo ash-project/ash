@@ -146,5 +146,15 @@ defmodule Ash.Test.PageTest do
       assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
                Keyset.filter(query, cursor, sort, :after)
     end
+
+    test "rejects a cursor whose value can't be cast to the sort field's type",
+         %{query: query, sort: sort} do
+      # `:id` is a uuid; a value that isn't a valid uuid can never be a legitimate
+      # keyset value for that field and is rejected on ingest.
+      cursor = Base.encode64(:erlang.term_to_binary([%{not: "a uuid"}]))
+
+      assert {:error, %Ash.Error.Page.InvalidKeyset{}} =
+               Keyset.filter(query, cursor, sort, :after)
+    end
   end
 end

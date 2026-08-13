@@ -122,7 +122,8 @@ defmodule Ash.Page.Keyset do
   def filter(%{resource: resource} = query, values, sort, after_or_before)
       when after_or_before in [:after, :before] do
     with {:ok, decoded} <- decode_values(values, after_or_before),
-         {:ok, zipped} <- zip_fields(sort, decoded, values) do
+         {:ok, zipped} <- zip_fields(sort, decoded, values),
+         {:ok, zipped} <- cast_values(zipped, resource, values) do
       {:ok, filters(Enum.with_index(zipped), resource, query, after_or_before)}
     else
       {:error, %Ash.Error.Page.InvalidKeyset{} = error} ->
@@ -307,6 +308,76 @@ defmodule Ash.Page.Keyset do
 
   defp zip_fields(_, _, full_value, _),
     do: {:error, Ash.Error.Page.InvalidKeyset.exception(value: full_value)}
+
+  # A keyset only ever encodes scalar sort values. On the way back in we cast each
+  # decoded value against the type of the field it sorts on, so a forged cursor
+  # whose value can't be a legitimate value of that field (e.g. an injected
+  # `%Ash.Query.Call{}` in place of an integer) is rejected here rather than being
+  # spliced into the filter and hydrated as an expression. The `expr?` guard in
+  # `decode_values/2` covers permissive types (e.g. `:any`) whose `cast_input`
+  # would otherwise pass an expression through unchanged.
+  defp cast_values(zipped, resource, full_value) do
+    zipped
+    |> Enum.reduce_while({:ok, []}, fn {field, direction, value}, {:ok, acc} ->
+      case cast_value(resource, field, value) do
+        {:ok, value} ->
+          {:cont, {:ok, [{field, direction, value} | acc]}}
+
+        :error ->
+          {:halt, {:error, Ash.Error.Page.InvalidKeyset.exception(value: full_value)}}
+      end
+    end)
+    |> case do
+      {:ok, casted} -> {:ok, Enum.reverse(casted)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # `nil` is inert and is a legitimate keyset value for a nullable sort field.
+  defp cast_value(_resource, _field, nil), do: {:ok, nil}
+
+  defp cast_value(resource, field, value) do
+    case field_type(resource, field) do
+      {type, constraints} ->
+        case Ash.Type.cast_input(type, value, constraints) do
+          {:ok, casted} -> {:ok, casted}
+          _ -> :error
+        end
+
+      :error ->
+        # Field type couldn't be determined; the `expr?` guard has already
+        # rejected expressions, so pass the (scalar) value through unchanged.
+        {:ok, value}
+    end
+  end
+
+  defp field_type(resource, field) do
+    field
+    |> resolve_field(resource)
+    |> case do
+      # Attributes and calculations carry a resolved type directly. Aggregates
+      # may too (query aggregates), so prefer it when present.
+      %{type: type, constraints: constraints} when not is_nil(type) ->
+        {type, constraints}
+
+      # Resource aggregates generally leave `type`/`constraints` nil — their type
+      # is derived from the aggregate kind and the field being aggregated, via the
+      # same resolver used everywhere else.
+      %struct{} = aggregate when struct in [Ash.Query.Aggregate, Ash.Resource.Aggregate] ->
+        case Ash.Query.Aggregate.aggregate_type(resource, aggregate) do
+          {:ok, type, constraints} -> {type, constraints}
+          _ -> :error
+        end
+
+      _ ->
+        :error
+    end
+  end
+
+  defp resolve_field(field, resource) when is_atom(field) or is_binary(field),
+    do: Ash.Resource.Info.field(resource, field)
+
+  defp resolve_field(field, _resource), do: field
 
   defp keyset(record, fields) do
     record
