@@ -217,6 +217,20 @@ defmodule Ash.Test.Sort.SortTest do
                |> Ash.Query.set_context(%{sort_field: :title})
                |> Ash.Query.sort(context_dependent: :asc)
     end
+
+    test "reads successfully when the context is set" do
+      b = Post |> Ash.Changeset.for_create(:create, %{title: "b"}) |> Ash.create!()
+      a = Post |> Ash.Changeset.for_create(:create, %{title: "a"}) |> Ash.create!()
+
+      ids =
+        Post
+        |> Ash.Query.set_context(%{sort_field: :title})
+        |> Ash.Query.sort(context_dependent: :asc)
+        |> Ash.read!()
+        |> Enum.map(& &1.id)
+
+      assert ids == [a.id, b.id]
+    end
   end
 
   describe "parse_input/2" do
@@ -363,38 +377,47 @@ defmodule Ash.Test.Sort.SortTest do
       end
     end
 
-    test "expression sorts reject references to unsortable fields and relationships" do
+    test "expression sorts reject references to unsortable fields and relationships at read time" do
       require Ash.Sort
 
-      assert %Ash.Query{
-               valid?: false,
-               errors: [
-                 %Ash.Error.Query.UnsortableField{
-                   resource: Ash.Test.Sort.SortTest.Post,
-                   field: :unsortable_title
-                 }
-               ]
-             } = Ash.Query.sort(Post, Ash.Sort.expr_sort(unsortable_title, :string))
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [
+                  %Ash.Error.Query.UnsortableField{
+                    resource: Ash.Test.Sort.SortTest.Post,
+                    field: :unsortable_title
+                  }
+                ]
+              }} =
+               Post
+               |> Ash.Query.sort(Ash.Sort.expr_sort(unsortable_title, :string))
+               |> Ash.read()
 
-      assert %Ash.Query{
-               valid?: false,
-               errors: [
-                 %Ash.Error.Query.UnsortableField{
-                   resource: Ash.Test.Sort.SortTest.Author,
-                   field: :unsortable_name
-                 }
-               ]
-             } = Ash.Query.sort(Post, Ash.Sort.expr_sort(author.unsortable_name, :string))
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [
+                  %Ash.Error.Query.UnsortableField{
+                    resource: Ash.Test.Sort.SortTest.Author,
+                    field: :unsortable_name
+                  }
+                ]
+              }} =
+               Post
+               |> Ash.Query.sort(Ash.Sort.expr_sort(author.unsortable_name, :string))
+               |> Ash.read()
 
-      assert %Ash.Query{
-               valid?: false,
-               errors: [
-                 %Ash.Error.Query.UnsortableField{
-                   resource: Ash.Test.Sort.SortTest.Post,
-                   field: :unsortable_author
-                 }
-               ]
-             } = Ash.Query.sort(Post, Ash.Sort.expr_sort(unsortable_author.name, :string))
+      assert {:error,
+              %Ash.Error.Invalid{
+                errors: [
+                  %Ash.Error.Query.UnsortableField{
+                    resource: Ash.Test.Sort.SortTest.Post,
+                    field: :unsortable_author
+                  }
+                ]
+              }} =
+               Post
+               |> Ash.Query.sort(Ash.Sort.expr_sort(unsortable_author.name, :string))
+               |> Ash.read()
     end
 
     test "nested sorts enforce field and relationship flags" do

@@ -598,7 +598,7 @@ defmodule Ash.Query do
         else
           last_index = Enum.count(List.wrap(query.sort))
 
-          case Ash.Sort.parse_input(query.resource, sorts, nil, query.context) do
+          case Ash.Sort.parse_input(query.resource, sorts) do
             {:ok, sorts} ->
               sorts
               |> List.wrap()
@@ -4238,7 +4238,7 @@ defmodule Ash.Query do
     if sorts == [] || sorts == nil do
       query
     else
-      case Ash.Actions.Sort.process(query.resource, sorts, query.context) do
+      case Ash.Actions.Sort.process(query.resource, sorts) do
         {:ok, sorts} ->
           if Ash.DataLayer.data_layer_can?(query.resource, :sort) do
             if opts[:prepend?] && query.sort != [] do

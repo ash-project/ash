@@ -91,28 +91,28 @@ defmodule Ash.Sort do
           nil | (String.t() -> nil | atom | {atom, map})
         ) ::
           {:ok, Ash.Sort.t()} | {:error, term}
-  def parse_input(resource, sort, handler \\ nil, source_context \\ %{})
+  def parse_input(resource, sort, handler \\ nil)
 
-  def parse_input(_, "", _, _), do: {:ok, []}
+  def parse_input(_, "", _), do: {:ok, []}
 
-  def parse_input(_, [], _, _), do: {:ok, []}
+  def parse_input(_, [], _), do: {:ok, []}
 
-  def parse_input(resource, sort, handler, source_context) when is_binary(sort) do
+  def parse_input(resource, sort, handler) when is_binary(sort) do
     sort = String.split(sort, ",")
-    parse_input(resource, sort, handler, source_context)
+    parse_input(resource, sort, handler)
   end
 
-  def parse_input(resource, field, handler, source_context) when is_atom(field) do
-    case parse_sort(resource, field, handler, true, source_context) do
+  def parse_input(resource, field, handler) when is_atom(field) do
+    case parse_sort(resource, field, handler) do
       {:ok, value} -> {:ok, [value]}
       {:error, error} -> {:error, error}
     end
   end
 
-  def parse_input(resource, sort, handler, source_context) when is_list(sort) do
+  def parse_input(resource, sort, handler) when is_list(sort) do
     sort
     |> Enum.reduce_while({:ok, []}, fn field, {:ok, sort} ->
-      case parse_sort(resource, field, handler, true, source_context) do
+      case parse_sort(resource, field, handler) do
         {:ok, value} -> {:cont, {:ok, [value | sort]}}
         {:error, error} -> {:halt, {:error, error}}
       end
@@ -123,7 +123,7 @@ defmodule Ash.Sort do
     end
   end
 
-  def parse_input(_resource, nil, _, _), do: {:ok, nil}
+  def parse_input(_resource, nil, _), do: {:ok, nil}
 
   @doc """
   Same as `parse_input/2` except raises any errors
@@ -140,9 +140,9 @@ defmodule Ash.Sort do
     end
   end
 
-  def parse_sort(resource, sort, handler \\ nil, public_only? \\ true, source_context \\ %{})
+  def parse_sort(resource, sort, handler \\ nil, public_only? \\ true)
 
-  def parse_sort(resource, {field, {input, direction}}, handler, public_only?, source_context)
+  def parse_sort(resource, {field, {input, direction}}, handler, public_only?)
       when direction in [
              :asc,
              :desc,
@@ -151,13 +151,13 @@ defmodule Ash.Sort do
              :desc_nils_first,
              :desc_nils_last
            ] do
-    case get_field(resource, field, handler, public_only?, input, source_context) do
+    case get_field(resource, field, handler, public_only?, input) do
       {:error, error} -> {:error, error}
       {:ok, field} -> {:ok, add_order(field, direction)}
     end
   end
 
-  def parse_sort(resource, {field, direction}, handler, public_only?, source_context)
+  def parse_sort(resource, {field, direction}, handler, public_only?)
       when direction in [
              :asc,
              :desc,
@@ -166,54 +166,53 @@ defmodule Ash.Sort do
              :desc_nils_first,
              :desc_nils_last
            ] do
-    case get_field(resource, field, handler, public_only?, %{}, source_context) do
+    case get_field(resource, field, handler, public_only?) do
       {:error, error} -> {:error, error}
       {:ok, field} -> {:ok, add_order(field, direction)}
     end
   end
 
-  def parse_sort(resource, {field, input}, handler, public_only?, source_context)
-      when not is_atom(input) do
-    case get_field(resource, field, handler, public_only?, input, source_context) do
+  def parse_sort(resource, {field, input}, handler, public_only?) when not is_atom(input) do
+    case get_field(resource, field, handler, public_only?, input) do
       {:error, error} -> {:error, error}
       {:ok, field} -> {:ok, add_order(field, :asc)}
     end
   end
 
-  def parse_sort(_resource, {_field, order}, _, _, _) do
+  def parse_sort(_resource, {_field, order}, _, _) do
     {:error, InvalidSortOrder.exception(order: order)}
   end
 
-  def parse_sort(resource, "++" <> field, handler, public_only?, source_context) do
-    case get_field(resource, field, handler, public_only?, %{}, source_context) do
+  def parse_sort(resource, "++" <> field, handler, public_only?) do
+    case get_field(resource, field, handler, public_only?) do
       {:error, error} -> {:error, error}
       {:ok, field} -> {:ok, add_order(field, :asc_nils_first)}
     end
   end
 
-  def parse_sort(resource, "--" <> field, handler, public_only?, source_context) do
-    case get_field(resource, field, handler, public_only?, %{}, source_context) do
+  def parse_sort(resource, "--" <> field, handler, public_only?) do
+    case get_field(resource, field, handler, public_only?) do
       {:error, error} -> {:error, error}
       {:ok, field} -> {:ok, add_order(field, :desc_nils_last)}
     end
   end
 
-  def parse_sort(resource, "+" <> field, handler, public_only?, source_context) do
-    case get_field(resource, field, handler, public_only?, %{}, source_context) do
+  def parse_sort(resource, "+" <> field, handler, public_only?) do
+    case get_field(resource, field, handler, public_only?) do
       {:error, error} -> {:error, error}
       {:ok, field} -> {:ok, add_order(field, :asc)}
     end
   end
 
-  def parse_sort(resource, "-" <> field, handler, public_only?, source_context) do
-    case get_field(resource, field, handler, public_only?, %{}, source_context) do
+  def parse_sort(resource, "-" <> field, handler, public_only?) do
+    case get_field(resource, field, handler, public_only?) do
       {:error, error} -> {:error, error}
       {:ok, field} -> {:ok, add_order(field, :desc)}
     end
   end
 
-  def parse_sort(resource, field, handler, public_only?, source_context) do
-    case get_field(resource, field, handler, public_only?, %{}, source_context) do
+  def parse_sort(resource, field, handler, public_only?) do
+    case get_field(resource, field, handler, public_only?) do
       {:error, error} -> {:error, error}
       {:ok, field} -> {:ok, add_order(field, :asc)}
     end
@@ -227,7 +226,7 @@ defmodule Ash.Sort do
     {field, order}
   end
 
-  defp get_field(resource, field, handler, only_public?, input, source_context) do
+  defp get_field(resource, field, handler, only_public?, input \\ %{}) do
     case call_handler(field, handler) do
       nil ->
         {path, field} =
@@ -251,7 +250,7 @@ defmodule Ash.Sort do
 
         case path do
           [] ->
-            case do_get_field(resource, field, only_public?, input, source_context) do
+            case do_get_field(resource, field, only_public?, input) do
               {:ok, field} ->
                 with :ok <- validate_sortable(resource, field) do
                   case field do
@@ -266,7 +265,7 @@ defmodule Ash.Sort do
             end
 
           path ->
-            case related_field(resource, path, field, only_public?, input, source_context) do
+            case related_field(resource, path, field, only_public?, input) do
               {:ok, path, field, type, constraints} ->
                 case field do
                   %struct{} = thing when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
@@ -316,14 +315,11 @@ defmodule Ash.Sort do
     end
   end
 
-  defp do_get_field(resource, field, true, input, source_context) do
+  defp do_get_field(resource, field, true, input) do
     case Ash.Resource.Info.public_field(resource, field) do
       %Ash.Resource.Calculation{} = calc ->
         with {:ok, calc} <-
-               Ash.Query.Calculation.from_resource_calculation(resource, calc,
-                 args: input,
-                 source_context: source_context
-               ) do
+               Ash.Query.Calculation.from_resource_calculation(resource, calc, args: input) do
           {:ok, %{calc | name: :__calc__}}
         end
 
@@ -335,22 +331,19 @@ defmodule Ash.Sort do
     end
   end
 
-  defp do_get_field(_resource, %Ash.Query.Calculation{} = calc, _, _input, _source_context) do
+  defp do_get_field(_resource, %Ash.Query.Calculation{} = calc, _, _input) do
     {:ok, calc}
   end
 
-  defp do_get_field(_resource, %Ash.Query.Aggregate{} = agg, _, _input, _source_context) do
+  defp do_get_field(_resource, %Ash.Query.Aggregate{} = agg, _, _input) do
     {:ok, agg}
   end
 
-  defp do_get_field(resource, field, _, input, source_context) do
+  defp do_get_field(resource, field, _, input) do
     case Ash.Resource.Info.field(resource, field) do
       %Ash.Resource.Calculation{} = calc ->
         with {:ok, calc} <-
-               Ash.Query.Calculation.from_resource_calculation(resource, calc,
-                 args: input,
-                 source_context: source_context
-               ) do
+               Ash.Query.Calculation.from_resource_calculation(resource, calc, args: input) do
           {:ok, %{calc | name: :__calc__}}
         end
 
@@ -392,53 +385,24 @@ defmodule Ash.Sort do
   end
 
   defp validate_sortable(resource, field) do
-    with :ok <- validate_expression_refs(resource, field) do
-      if type_sortable?(resource, field) do
-        :ok
-      else
-        {:error, UnsortableField.exception(field: field_name(field), resource: resource)}
-      end
-    end
-  end
-
-  defp validate_expression_refs(
-         resource,
-         %Ash.Query.Calculation{module: module, opts: opts, context: context}
-       ) do
-    if Ash.Resource.Calculation.has_expression?(module) do
-      try do
-        module
-        |> Ash.Resource.Calculation.expression(opts, context)
-        |> Ash.Filter.hydrate_refs(%{resource: resource, public?: false})
-        |> case do
-          {:ok, expression} ->
-            expression
-            |> Ash.Filter.list_refs(false, false, true)
-            |> Enum.reduce_while(:ok, fn ref, :ok ->
-              case validate_expression_ref(resource, ref) do
-                :ok -> {:cont, :ok}
-                {:error, error} -> {:halt, {:error, error}}
-              end
-            end)
-
-          {:error, error} ->
-            {:error, error}
-        end
-      rescue
-        _ ->
-          # `expression/2` is being invoked here speculatively, only to check that any
-          # fields it references are themselves sortable. The calculation may raise if it
-          # relies on context (e.g. `context.source_context`) that isn't available yet
-          # (or ever will be, outside of the actual query evaluation), so we can't treat a
-          # raise here as a real error: just skip this best-effort check in that case.
-          :ok
-      end
-    else
+    if type_sortable?(resource, field) do
       :ok
+    else
+      {:error, UnsortableField.exception(field: field_name(field), resource: resource)}
     end
   end
 
-  defp validate_expression_refs(_resource, _field), do: :ok
+  @doc false
+  def validate_expression_refs(resource, expression) do
+    expression
+    |> Ash.Filter.list_refs(false, false, true)
+    |> Enum.reduce_while(:ok, fn ref, :ok ->
+      case validate_expression_ref(resource, ref) do
+        :ok -> {:cont, :ok}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
 
   defp validate_expression_ref(
          resource,
@@ -552,10 +516,10 @@ defmodule Ash.Sort do
 
   defp call_handler(_, _), do: nil
 
-  defp related_field(resource, path, field, only_public?, input, source_context, acc \\ [])
+  defp related_field(resource, path, field, only_public?, input, acc \\ [])
 
-  defp related_field(resource, [], field, only_public?, input, source_context, acc) do
-    case do_get_field(resource, field, only_public?, input, source_context) do
+  defp related_field(resource, [], field, only_public?, input, acc) do
+    case do_get_field(resource, field, only_public?, input) do
       {:error, error} ->
         {:error, error}
 
@@ -567,15 +531,13 @@ defmodule Ash.Sort do
     end
   end
 
-  defp related_field(resource, [first | rest], field, only_public?, input, source_context, acc) do
+  defp related_field(resource, [first | rest], field, only_public?, input, acc) do
     case do_get_relationship(resource, first, only_public?) do
       %{sortable?: false, name: name} ->
         {:error, UnsortableField.exception(field: name, resource: resource)}
 
       %{sortable?: true, destination: destination, name: name} ->
-        related_field(destination, rest, field, only_public?, input, source_context, [
-          name | acc
-        ])
+        related_field(destination, rest, field, only_public?, input, [name | acc])
 
       _ ->
         {:error, NoSuchField.exception(field: field, resource: resource)}
