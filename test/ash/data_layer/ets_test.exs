@@ -63,6 +63,34 @@ defmodule Ash.DataLayer.EtsTest do
     end
   end
 
+  defmodule EtsPosition do
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    import Ash.Expr
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults [:read]
+
+      create :create, accept: [:unrealized_pnl]
+
+      update :add_pnl do
+        change atomic_update(
+                 :unrealized_pnl,
+                 expr(unrealized_pnl + ^Decimal.new("0.0816"))
+               )
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :unrealized_pnl, :decimal, allow_nil?: false, public?: true
+    end
+  end
+
   test "won't compile with identities that don't precheck" do
     output =
       ExUnit.CaptureIO.capture_io(:stderr, fn ->
@@ -83,6 +111,27 @@ defmodule Ash.DataLayer.EtsTest do
       end)
 
     assert String.contains?(output, "pre_check_with")
+  end
+
+  test "debug logging formats structs without Enumerable in atomics (e.g. Decimal)" do
+    previous_level = Logger.level()
+    Logger.configure(level: :debug)
+    on_exit(fn -> Logger.configure(level: previous_level) end)
+
+    position =
+      EtsPosition
+      |> Ash.Changeset.for_create(:create, %{unrealized_pnl: Decimal.new("1.0")})
+      |> Ash.create!()
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        position
+        |> Ash.Changeset.for_update(:add_pnl, %{})
+        |> Ash.update!()
+      end)
+
+    refute log =~ "Failed to format changes"
+    assert log =~ "0.0816"
   end
 
   test "resource_to_query" do

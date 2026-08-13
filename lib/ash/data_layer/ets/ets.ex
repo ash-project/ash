@@ -2357,7 +2357,14 @@ defmodule Ash.DataLayer.Ets do
           v =
             if Ash.Expr.expr?(v) do
               Ash.Filter.map(v, fn nested ->
-                truncate_unless_expr(nested, inspect_opts)
+                if Ash.Expr.expr?(nested) do
+                  nested
+                else
+                  # halt so `Ash.Filter.map` doesn't descend into non-expression
+                  # values (it enumerates structs, which may not be Enumerable);
+                  # `truncate_unless_expr` recurses into containers itself
+                  {:halt, truncate_unless_expr(nested, inspect_opts)}
+                end
               end)
               |> inspect(
                 limit: inspect_opts.limit,
@@ -2394,6 +2401,9 @@ defmodule Ash.DataLayer.Ets do
 
         is_binary(nested) ->
           truncate(nested, inspect_opts)
+
+        is_struct(nested) ->
+          nested
 
         is_map(nested) ->
           Map.new(nested, fn {k, v} -> {k, truncate_unless_expr(v, inspect_opts)} end)
