@@ -121,10 +121,10 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 
 - `now/0` | Evaluates to the current time when the expression is evaluated
 - `today/0` | Evaluates to the current date when the expression is evaluated
-- `ago/2` | i.e `deleted_at > ago(7, :day)`. The available time intervals are documented in `Ash.Type.DurationName`
-- `from_now/2` | Same as `ago` but adds instead of subtracting
-- `datetime_add/3` | add an interval to a datetime, i.e `datetime_add(^datetime, 10, :hour)`
-- `date_add/3` | add an interval to a date, i.e `date_add(^date, 3, :day)`
+- `ago/1-2` | i.e `deleted_at > ago(7, :day)`, or a `Duration`: `deleted_at > ago(^Duration.new!(day: 7))`. The available time intervals are documented in `Ash.Type.DurationName`
+- `from_now/1-2` | Same as `ago` but adds instead of subtracting
+- `datetime_add/2-3` | add an interval to a datetime, i.e `datetime_add(^datetime, 10, :hour)`, or a `Duration`: `datetime_add(^datetime, ^Duration.new!(hour: 10))`
+- `date_add/2-3` | add an interval to a date, i.e `date_add(^date, 3, :day)`, or a `Duration`: `date_add(^date, ^Duration.new!(day: 3))`
 - `start_of_day/1-2` | Converts a date or a datetime to the correspond start of its day (at 00:00 time).
 
 ## Primitives
