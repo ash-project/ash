@@ -4086,10 +4086,13 @@ defmodule Ash.Filter do
     end
   end
 
-  defp maybe_operator_expression(operator, context) when is_struct(operator) do
+  # Over two literals the operator is evaluated on construction, so the result arrives here.
+  defp maybe_operator_expression(
+         %{__operator__?: true, left: left, right: right} = operator,
+         context
+       ) do
     case Ash.Query.Operator.operator_expression(operator) do
       {:ok, expr_module} ->
-        %{left: left, right: right} = operator
         arguments = [left, right]
         resource = context[:resource]
 
