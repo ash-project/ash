@@ -135,7 +135,7 @@ defmodule Ash.Type.Duration do
   def dump_to_embedded(nil, _), do: {:ok, nil}
 
   def dump_to_embedded(value, _) do
-    Duration.to_iso8601(value)
+    {:ok, Duration.to_iso8601(value)}
   end
 
   @impl true
