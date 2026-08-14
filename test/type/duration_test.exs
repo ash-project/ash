@@ -107,6 +107,63 @@ defmodule Ash.Test.Type.DurationTest do
     end
   end
 
+  defmodule Embedded do
+    @moduledoc false
+    use Ash.Resource, data_layer: :embedded
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      attribute :duration, :duration, public?: true
+    end
+  end
+
+  defmodule Holder do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :embedded, Embedded, public?: true
+    end
+  end
+
+  describe "embedded resources" do
+    test "a duration is written and read back" do
+      duration = Duration.new!(week: 1)
+
+      holder =
+        Holder
+        |> Ash.Changeset.for_create(:create, %{embedded: %{duration: duration}})
+        |> Ash.create!()
+
+      assert holder.embedded.duration == duration
+
+      assert [%{embedded: %{duration: ^duration}}] = Ash.read!(Holder)
+    end
+
+    test "a nil duration is written and read back" do
+      holder =
+        Holder
+        |> Ash.Changeset.for_create(:create, %{embedded: %{duration: nil}})
+        |> Ash.create!()
+
+      assert holder.embedded.duration == nil
+    end
+  end
+
   describe "units constraint" do
     @calendar_free [:week, :day, :hour, :minute, :second, :microsecond]
 
