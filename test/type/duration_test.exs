@@ -537,6 +537,156 @@ defmodule Ash.Test.Type.DurationTest do
     end
   end
 
+  describe "normalization preserves what a duration means" do
+    # Elixir's own shift is the oracle here rather than compare/2: if normalizing
+    # changed a magnitude, the two would land on different instants.
+    test "a normalized duration shifts a datetime to the same instant" do
+      anchors = [~U[2024-01-01 00:00:00Z], ~U[2024-02-29 00:00:00Z], ~U[2025-03-01 00:00:00Z]]
+
+      inputs = [
+        Duration.new!(hour: 36),
+        Duration.new!(minute: 90),
+        Duration.new!(day: 365),
+        Duration.new!(month: 18),
+        Duration.new!(year: 1),
+        Duration.new!(year: 1, day: 5),
+        Duration.new!(week: 1, day: 1, hour: 5),
+        Duration.new!(second: 129_600),
+        Duration.new!(day: -10),
+        Duration.new!(month: -18),
+        Duration.new!(day: 1, hour: -5),
+        Duration.new!(year: 1, day: -5)
+      ]
+
+      for input <- inputs, anchor <- anchors do
+        assert {:ok, normalized} = Ash.Type.Duration.cast_stored(input, [])
+
+        assert DateTime.shift(anchor, input) == DateTime.shift(anchor, normalized),
+               "#{inspect(input)} normalized to #{inspect(normalized)}, " <>
+                 "which shifts #{anchor} differently"
+      end
+    end
+
+    test "a year still lands a year later, across a leap day" do
+      assert {:ok, normalized} = Ash.Type.Duration.cast_stored(Duration.new!(year: 1), [])
+
+      assert Date.shift(~D[2024-02-29], normalized) ==
+               Date.shift(~D[2024-02-29], Duration.new!(year: 1))
+
+      assert Date.shift(~D[2024-02-29], normalized) == ~D[2025-02-28]
+    end
+
+    test "365 days is not a year, before or after normalizing" do
+      assert {:ok, normalized} = Ash.Type.Duration.cast_stored(Duration.new!(day: 365), [])
+
+      # 2024 is a leap year, so 365 days from its start is a day short of a year
+      assert Date.shift(~D[2024-01-01], normalized) == ~D[2024-12-31]
+
+      refute Date.shift(~D[2024-01-01], normalized) ==
+               Date.shift(~D[2024-01-01], Duration.new!(year: 1))
+    end
+  end
+
+  describe "negative durations" do
+    test "a negative duration normalizes with a consistent sign" do
+      assert {:ok, Duration.new!(week: -1, day: -3)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(day: -10), [])
+
+      assert {:ok, Duration.new!(year: -1, month: -6)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(month: -18), [])
+    end
+
+    test "mixed signs within a side collapse to one representation" do
+      # a day less five hours is nineteen hours
+      assert {:ok, Duration.new!(hour: 19)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(day: 1, hour: -5), [])
+
+      assert {:ok, Duration.new!(week: -1, day: -4)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(week: -2, day: 3), [])
+    end
+
+    test "the net sign wins, even against the largest unit" do
+      # a week less ten days is three days short, not a week and a bit
+      assert {:ok, Duration.new!(day: -3)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(week: 1, day: -10), [])
+
+      assert {:ok, Duration.new!(hour: 6)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(day: -1, hour: 30), [])
+
+      assert {:ok, Duration.new!(month: -6)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(year: 1, month: -18), [])
+    end
+
+    test "the two sides keep their own signs, independently" do
+      assert {:ok, Duration.new!(year: 1, day: -5)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(year: 1, day: -5), [])
+
+      # one side positive, the other negative, each normalized on its own
+      assert {:ok, Duration.new!(year: 1, week: -57, day: -1)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(year: 1, day: -400), [])
+    end
+
+    test "a duration that nets to zero normalizes to zero" do
+      assert {:ok, zero} = Ash.Type.Duration.cast_stored(Duration.new!(day: 1, hour: -24), [])
+      assert Ash.Type.Duration.compare(zero, Duration.new!([])) == :eq
+    end
+
+    test "a negative microsecond borrows from seconds" do
+      assert {:ok, %Duration{second: -1, microsecond: {-500_000, 6}}} =
+               Ash.Type.Duration.cast_stored(Duration.new!(microsecond: {-1_500_000, 6}), [])
+    end
+  end
+
+  describe "the year/month to week/day divide" do
+    test "a year is never expressed in days, whatever units are permitted" do
+      assert {:ok, Duration.new!(year: 1)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(year: 1), [])
+
+      assert {:ok, Duration.new!(year: 1)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(year: 1), units: :year_month)
+    end
+
+    test "days are never expressed in years, whatever units are permitted" do
+      # 365 days is 52 weeks and a day, not a year — the divide holds even though
+      # :year is permitted here
+      assert {:ok, Duration.new!(week: 52, day: 1)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(day: 365), [])
+    end
+
+    test "the two sides normalize independently, keeping both" do
+      assert {:ok, Duration.new!(year: 1, day: 5)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(year: 1, day: 5), [])
+    end
+
+    test "a read across the divide loses the side it cannot speak for" do
+      # [:day] can say nothing about years, so a stored year has nowhere to go
+      assert {:ok, Duration.new!([])} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(year: 1), units: [:day])
+    end
+
+    test "a write across the divide is refused rather than lost" do
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(year: 1), units: [:day])
+    end
+
+    test "within a side, a remainder truncates on read and refuses on write" do
+      assert {:ok, Duration.new!(week: 52)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(day: 365), units: [:week])
+
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(day: 365), units: [:week])
+    end
+
+    test "comparison still crosses the divide, by the documented convention" do
+      # compare/2 is unchanged: it converts a month to 30 days so durations stay
+      # totally ordered. Normalization makes no such conversion.
+      assert Ash.Type.Duration.compare(Duration.new!(year: 1), Duration.new!(day: 360)) == :eq
+
+      assert {:ok, Duration.new!(year: 1)} ==
+               Ash.Type.Duration.cast_stored(Duration.new!(year: 1), [])
+    end
+  end
+
   describe "atomic updates" do
     defmodule AtomicSpan do
       @moduledoc false
