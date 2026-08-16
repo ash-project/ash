@@ -11,7 +11,7 @@ defmodule Ash.Type.Duration do
     units: [
       type: {:or, [{:in, [:year_month, :day_time]}, {:list, {:in, @duration_units}}]},
       doc: """
-      The units the value may be expressed in. A duration is always re-expressed in the largest of these units that will hold it, on the way in and on the way out, so `[:week, :hour]` turns `1 week 1 day 5 hours` into `1 week 29 hours`. A value being written that no combination of the permitted units expresses exactly is rejected — including anything that would have to cross the year/month to week/day boundary, which no conversion can. A value being *read* is truncated to what the permitted units can say instead of being refused, so a store holding `1 day 5 hours 3 minutes` in a `[:day]` attribute reads back as `1 day`: lossy, but readable and writable again. Either an explicit list of units, or a shorthand for one side of that boundary: `:year_month` (`[:year, :month]`) or `:day_time` (`[:week, :day, :hour, :minute, :second, :microsecond]`). Confining an attribute to a single side keeps its values comparable (see `Ash.Type.Duration.compare/2`). With no constraint every unit is permitted, so the same normalization applies and nothing is ever lost.
+      The units the value may be expressed in. A duration is always re-expressed in the largest of these units that will hold it, on the way in and on the way out, so `[:week, :hour]` turns `1 week 1 day 5 hours` into `1 week 29 hours`. A value that no combination of the permitted units expresses exactly is rejected — including anything that would have to cross the year/month to week/day boundary, which no conversion can. This applies on the way out as well as in: a stored duration the permitted units cannot express is refused rather than quietly rewritten. Either an explicit list of units, or a shorthand for one side of that boundary: `:year_month` (`[:year, :month]`) or `:day_time` (`[:week, :day, :hour, :minute, :second, :microsecond]`). Confining an attribute to a single side keeps its values comparable (see `Ash.Type.Duration.compare/2`). With no constraint every unit is permitted, so the same normalization applies and nothing is ever lost.
       """
     ]
   ]
@@ -75,7 +75,7 @@ defmodule Ash.Type.Duration do
 
   def apply_constraints(%Duration{} = value, constraints) do
     allowed = permitted_units(constraints[:units])
-    normalized = normalize_units(value, allowed, :reject)
+    normalized = normalize_units(value, allowed)
 
     case disallowed_units(normalized, allowed) do
       [] ->
@@ -125,15 +125,17 @@ defmodule Ash.Type.Duration do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
+  # A stored value gets the same treatment as one being written: a duration the
+  # permitted units cannot express is refused, not quietly rewritten into one they can.
   def cast_stored(value, constraints) when is_binary(value) do
     with {:ok, duration} <- cast_input(value, constraints) do
-      {:ok, normalize_units(duration, permitted_units(constraints[:units]), :truncate)}
+      apply_constraints(duration, constraints)
     end
   end
 
   def cast_stored(value, constraints) do
     with {:ok, duration} <- Ecto.Type.load(:duration, value) do
-      {:ok, normalize_units(duration, permitted_units(constraints[:units]), :truncate)}
+      apply_constraints(duration, constraints)
     end
   end
 
@@ -159,28 +161,25 @@ defmodule Ash.Type.Duration do
   @days_per_month 30
   @months_per_year 12
 
-  # One canonical form on both sides of storage, whatever units a data layer kept it
-  # in. A write (`:reject`) must not lose part of what was asked for; a read
-  # (`:truncate`) must answer with something the attribute can hold.
-  defp normalize_units(%Duration{} = duration, allowed, on_remainder) do
+  # One canonical form on both sides of storage, whatever units a data layer kept it in.
+  defp normalize_units(%Duration{} = duration, allowed) do
     duration
-    |> redistribute(@year_month_units, allowed, on_remainder, &total_months/1, &from_months/4)
+    |> redistribute(@year_month_units, allowed, &total_months/1, &from_months/3)
     |> redistribute(
       @day_time_units,
       allowed,
-      on_remainder,
       &total_microseconds_in_bucket/1,
-      &from_microseconds/4
+      &from_microseconds/3
     )
   end
 
   # Within a bucket only — months and microseconds are not interconvertible. A bucket
-  # with no permitted unit has nowhere to put its value, so it goes the way of any
-  # other remainder: refused on a write, dropped on a read.
-  defp redistribute(duration, bucket, allowed, on_remainder, total, build) do
+  # with no permitted unit has nowhere to put its value, so it is left for
+  # `apply_constraints/2` to report, like any other remainder.
+  defp redistribute(duration, bucket, allowed, total, build) do
     targets = Enum.filter(bucket, &(&1 in allowed))
 
-    case build.(total.(duration), targets, duration, on_remainder) do
+    case build.(total.(duration), targets, duration) do
       {:ok, normalized} -> normalized
       :inexact -> duration
     end
@@ -202,8 +201,8 @@ defmodule Ash.Type.Duration do
     (minutes * @seconds_per_minute + second) * @usec_per_second + microsecond
   end
 
-  defp from_months(total, targets, duration, on_remainder) do
-    with {:ok, assigned} <- assign(total, targets, &months_per_unit/1, on_remainder) do
+  defp from_months(total, targets, duration) do
+    with {:ok, assigned} <- assign(total, targets, &months_per_unit/1) do
       {:ok, struct!(duration, Map.merge(%{year: 0, month: 0}, assigned))}
     end
   end
@@ -211,10 +210,9 @@ defmodule Ash.Type.Duration do
   defp from_microseconds(
          total,
          targets,
-         %Duration{microsecond: {_, precision}} = duration,
-         on_remainder
+         %Duration{microsecond: {_, precision}} = duration
        ) do
-    with {:ok, assigned} <- assign(total, targets, &microseconds_per_unit/1, on_remainder) do
+    with {:ok, assigned} <- assign(total, targets, &microseconds_per_unit/1) do
       zeroed = %{week: 0, day: 0, hour: 0, minute: 0, second: 0}
 
       assigned =
@@ -228,7 +226,7 @@ defmodule Ash.Type.Duration do
   end
 
   # Largest permitted unit first, so the smallest permitted one carries the rest.
-  defp assign(total, targets, size, on_remainder) do
+  defp assign(total, targets, size) do
     {assigned, remainder} =
       targets
       |> Enum.sort_by(size, :desc)
@@ -237,7 +235,7 @@ defmodule Ash.Type.Duration do
         {{unit, div(left, per)}, rem(left, per)}
       end)
 
-    if remainder == 0 or on_remainder == :truncate do
+    if remainder == 0 do
       {:ok, Map.new(assigned)}
     else
       :inexact

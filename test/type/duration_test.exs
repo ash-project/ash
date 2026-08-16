@@ -328,68 +328,39 @@ defmodule Ash.Test.Type.DurationTest do
                )
     end
 
-    test "a read is tolerant and lossy where a write is strict" do
-      # 10_801 seconds is not a whole number of hours
-      inexact = Duration.new!(second: 10_801)
+    test "a stored value the permitted units cannot express is refused, not rewritten" do
+      # 10801 seconds is not a whole number of hours
+      assert {:error, _} =
+               Ash.Type.Duration.cast_stored(Duration.new!(second: 10_801), units: [:hour])
 
-      # a write must not silently lose the odd second
-      assert {:error, _} = Ash.Type.Duration.apply_constraints(inexact, units: [:hour])
-
-      # a read must still answer with something the attribute can hold
-      assert {:ok, Duration.new!(hour: 3)} ==
-               Ash.Type.Duration.cast_stored(inexact, units: [:hour])
-    end
-
-    test "a lossy read keeps what it can say and drops what it cannot" do
       # under [:day] the 5h 3min has nowhere to go
-      assert {:ok, Duration.new!(day: 1)} ==
+      assert {:error, _} =
                Ash.Type.Duration.cast_stored(Duration.new!(day: 1, hour: 5, minute: 3),
                  units: [:day]
                )
-
-      # and what comes back is writable, which is the point
-      assert {:ok, _} =
-               Ash.Type.Duration.apply_constraints(Duration.new!(day: 1), units: [:day])
     end
 
-    test "a lossy read drops a bucket the permitted units cannot speak for at all" do
+    test "a read refuses a bucket the permitted units cannot speak for at all" do
       # [:week] can say nothing about months
-      assert {:ok, Duration.new!([])} ==
+      assert {:error, _} =
                Ash.Type.Duration.cast_stored(Duration.new!(month: 18), units: [:week])
-
-      # and nothing smaller than the smallest permitted unit survives either
-      assert {:ok, Duration.new!([])} ==
-               Ash.Type.Duration.cast_stored(Duration.new!(second: 129_600), units: [:week])
     end
 
-    test "every read is writable, however coarse the permitted units" do
+    test "a read applies the constraint exactly as a write does" do
       for {units, stored} <- [
+            {[:hour], Duration.new!(second: 10_801)},
             {[:week], Duration.new!(month: 18)},
             {[:week], Duration.new!(second: 129_600)},
             {[:year], Duration.new!(month: 6)},
-            {[:hour], Duration.new!(second: 10_801)},
             {[:day], Duration.new!(day: 1, hour: 5, minute: 3)}
           ] do
-        assert {:ok, loaded} = Ash.Type.Duration.cast_stored(stored, units: units)
+        write = Ash.Type.Duration.apply_constraints(stored, units: units)
+        read = Ash.Type.Duration.cast_stored(stored, units: units)
 
-        assert {:ok, ^loaded} = Ash.Type.Duration.apply_constraints(loaded, units: units),
-               "#{inspect(stored)} under #{inspect(units)} read back as #{inspect(loaded)}, " <>
-                 "which the attribute rejects"
+        assert match?({:error, _}, write) and match?({:error, _}, read),
+               "#{inspect(stored)} under #{inspect(units)}: " <>
+                 "write #{inspect(write)}, read #{inspect(read)}"
       end
-    end
-
-    test "a write still refuses what a read would drop" do
-      # a read must answer; a write must not lose data
-      assert {:error, _} =
-               Ash.Type.Duration.apply_constraints(Duration.new!(month: 18), units: [:week])
-
-      assert {:error, _} =
-               Ash.Type.Duration.apply_constraints(Duration.new!(second: 129_600), units: [:week])
-    end
-
-    test "a lossy read truncates towards zero, so it never overstates a duration" do
-      assert {:ok, Duration.new!(hour: -3)} ==
-               Ash.Type.Duration.cast_stored(Duration.new!(second: -10_801), units: [:hour])
     end
 
     test "a read never loses anything when every unit is permitted" do
@@ -408,9 +379,9 @@ defmodule Ash.Test.Type.DurationTest do
                )
     end
 
-    test "a lossy read only loses in the bucket that cannot express its value" do
-      # the year/month side is exact and survives
-      assert {:ok, Duration.new!(year: 1, hour: 3)} ==
+    test "one inexpressible side refuses the whole value on read" do
+      # the year/month side is exact, but the day/time side is not, so the read fails
+      assert {:error, _} =
                Ash.Type.Duration.cast_stored(Duration.new!(month: 12, second: 10_801),
                  units: [:year, :hour]
                )
@@ -658,9 +629,9 @@ defmodule Ash.Test.Type.DurationTest do
                Ash.Type.Duration.cast_stored(Duration.new!(year: 1, day: 5), [])
     end
 
-    test "a read across the divide loses the side it cannot speak for" do
+    test "a read across the divide is refused, like a write" do
       # [:day] can say nothing about years, so a stored year has nowhere to go
-      assert {:ok, Duration.new!([])} ==
+      assert {:error, _} =
                Ash.Type.Duration.cast_stored(Duration.new!(year: 1), units: [:day])
     end
 
@@ -669,8 +640,9 @@ defmodule Ash.Test.Type.DurationTest do
                Ash.Type.Duration.apply_constraints(Duration.new!(year: 1), units: [:day])
     end
 
-    test "within a side, a remainder truncates on read and refuses on write" do
-      assert {:ok, Duration.new!(week: 52)} ==
+    test "within a side, a remainder is refused on both paths" do
+      # 365 days is 52 weeks and a day; [:week] cannot say the odd day
+      assert {:error, _} =
                Ash.Type.Duration.cast_stored(Duration.new!(day: 365), units: [:week])
 
       assert {:error, _} =
