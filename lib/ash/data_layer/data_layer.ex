@@ -354,7 +354,8 @@ defmodule Ash.DataLayer do
   This lets a data layer take charge of dumping/loading a stored value for a core type
   whose native form it needs to translate (e.g. `ash_postgres` rendering
   `Ash.Type.Range` to/from a `Postgrex.Range`). It is consulted at compile time while
-  building the schema, so the returned value must be a valid Ecto type.
+  building the schema, so the returned value must be a valid Ecto type that accepts
+  the attribute's constraints as its parameters.
   """
   @callback attribute_ecto_type(Ash.Resource.t(), Ash.Resource.Attribute.t()) :: nil | term()
 
