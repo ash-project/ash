@@ -112,6 +112,90 @@ defmodule Ash.Range do
     end
   end
 
+  @allen [
+    :precedes,
+    :meets,
+    :overlaps,
+    :finished_by,
+    :contains,
+    :starts,
+    :equals,
+    :started_by,
+    :during,
+    :finishes,
+    :overlapped_by,
+    :met_by,
+    :preceded_by
+  ]
+
+  @typedoc "One of Allen's thirteen interval relations."
+  @type allen :: unquote(Enum.reduce(Enum.reverse(@allen), &{:|, [], [&1, &2]}))
+
+  @doc """
+  Every relation `relation/2` can answer, in Allen's canonical order.
+
+  Sorted by how far `left` begins before `right`, then by how far it ends before, with
+  `equals` at the centre and each relation the converse of its mirror. A set of
+  relations is conventionally a thirteen-bit mask, so these are the bit positions.
+  """
+  @spec relations() :: [allen()]
+  def relations, do: @allen
+
+  @doc """
+  Which of Allen's thirteen relations `left` bears to `right`, or `nil` if either is empty.
+
+  Exactly one holds for any pair of non-empty ranges, so the answer classifies rather
+  than tests. An empty range has no relation to anything: it precedes nothing and is
+  during nothing, having no points to be positioned by.
+
+  Two ranges *meet* when one ends where the other begins and exactly one of them
+  includes that point — `[1,5)` meets `[5,9)`, where `[1,5]` overlaps it and `(5,9)`
+  merely follows it. Matches Postgres `-|-`.
+  """
+  @spec relation(t(), t()) :: allen() | nil
+  def relation(%__MODULE__{} = left, %__MODULE__{} = right) do
+    if empty?(left) or empty?(right) do
+      nil
+    else
+      allen(
+        compare_lower(left, right),
+        compare_upper(left, right),
+        seam(left, right),
+        seam(right, left)
+      )
+    end
+  end
+
+  # Seam clauses first, holding whatever the bounds compare to; then canonical order.
+  defp allen(_lower, _upper, :lt, _), do: :precedes
+  defp allen(_lower, _upper, :eq, _), do: :meets
+  defp allen(_lower, _upper, _, :eq), do: :met_by
+  defp allen(_lower, _upper, _, :lt), do: :preceded_by
+  defp allen(:lt, :lt, _, _), do: :overlaps
+  defp allen(:lt, :eq, _, _), do: :finished_by
+  defp allen(:lt, :gt, _, _), do: :contains
+  defp allen(:eq, :lt, _, _), do: :starts
+  defp allen(:eq, :eq, _, _), do: :equals
+  defp allen(:eq, :gt, _, _), do: :started_by
+  defp allen(:gt, :lt, _, _), do: :during
+  defp allen(:gt, :eq, _, _), do: :finishes
+  defp allen(:gt, :gt, _, _), do: :overlapped_by
+
+  # Where `left` ends against where `right` begins: `:lt` a gap, `:eq` meets, `:gt` shares
+  # a point. An unbounded end reaches past every bound, so it always shares.
+  defp seam(%__MODULE__{upper: nil}, _right), do: :gt
+  defp seam(_left, %__MODULE__{lower: nil}), do: :gt
+
+  defp seam(left, right) do
+    cond do
+      Comp.less_than?(left.upper, right.lower) -> :lt
+      Comp.greater_than?(left.upper, right.lower) -> :gt
+      upper_inclusive?(left.bounds) and lower_inclusive?(right.bounds) -> :gt
+      upper_inclusive?(left.bounds) or lower_inclusive?(right.bounds) -> :eq
+      true -> :lt
+    end
+  end
+
   # The boundary sitting earlier on the line sorts first.
   defp earlier(same, same), do: :eq
   defp earlier(true, false), do: :lt

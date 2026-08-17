@@ -153,6 +153,66 @@ defmodule Ash.Type.RangeTest do
     end
   end
 
+  describe "Allen relations" do
+    defp ar(lower, upper, bounds \\ :"[)"),
+      do: %Range{lower: lower, upper: upper, bounds: bounds}
+
+    defp pairs do
+      [
+        precedes: {ar(1, 3), ar(5, 7)},
+        meets: {ar(1, 5), ar(5, 7)},
+        overlaps: {ar(1, 5), ar(3, 7)},
+        finished_by: {ar(1, 7), ar(3, 7)},
+        contains: {ar(1, 9), ar(3, 7)},
+        starts: {ar(1, 5), ar(1, 7)},
+        equals: {ar(1, 5), ar(1, 5)},
+        started_by: {ar(1, 7), ar(1, 5)},
+        during: {ar(3, 5), ar(1, 7)},
+        finishes: {ar(3, 7), ar(1, 7)},
+        overlapped_by: {ar(3, 7), ar(1, 5)},
+        met_by: {ar(5, 7), ar(1, 5)},
+        preceded_by: {ar(5, 7), ar(1, 3)}
+      ]
+    end
+
+    test "each of the thirteen" do
+      for {expected, {left, right}} <- pairs() do
+        assert Range.relation(left, right) == expected
+      end
+    end
+
+    test "the pairs cover every relation, in canonical order" do
+      assert Keyword.keys(pairs()) == Range.relations()
+    end
+
+    test "converses mirror: swapping the operands walks the order inward" do
+      for {expected, {left, right}} <- pairs() do
+        converse =
+          Enum.at(Range.relations(), 12 - Enum.find_index(Range.relations(), &(&1 == expected)))
+
+        assert Range.relation(right, left) == converse
+      end
+    end
+
+    test "meets needs exactly one side to include the point" do
+      assert Range.relation(ar(1, 5, :"[)"), ar(5, 9, :"[)")) == :meets
+      assert Range.relation(ar(1, 5, :"[]"), ar(5, 9, :"[)")) == :overlaps
+      assert Range.relation(ar(1, 5, :"[)"), ar(5, 9, :"()")) == :precedes
+    end
+
+    test "an unbounded end reaches past every bound" do
+      assert Range.relation(ar(nil, nil, :"()"), ar(1, 5)) == :contains
+      assert Range.relation(ar(1, nil), ar(1, 5)) == :started_by
+      assert Range.relation(ar(nil, 5, :"()"), ar(1, 5)) == :finished_by
+    end
+
+    test "an empty range has no relation" do
+      assert Range.relation(Range.empty(), ar(1, 5)) == nil
+      assert Range.relation(ar(1, 5), Range.empty()) == nil
+      assert Range.relation(Range.empty(), Range.empty()) == nil
+    end
+  end
+
   describe "ordering" do
     # Expectations are Postgres's own answers, on `numrange` so canonicalization
     # doesn't rewrite the bounds first.
