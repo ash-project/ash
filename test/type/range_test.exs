@@ -79,6 +79,64 @@ defmodule Ash.Type.RangeTest do
     assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, range, @constraints)
   end
 
+  describe "ordering" do
+    # Expectations are Postgres's own answers, on `numrange` so canonicalization
+    # doesn't rewrite the bounds first.
+    defp r(lower, upper, bounds \\ :"[)"), do: %Range{lower: lower, upper: upper, bounds: bounds}
+
+    test "orders by lower bound first" do
+      assert Ash.Range.compare(r(1, 9), r(5, 9)) == :lt
+      assert Ash.Range.compare(r(5, 9), r(1, 9)) == :gt
+    end
+
+    test "orders by upper bound where lowers are equal" do
+      assert Ash.Range.compare(r(1, 3), r(1, 9)) == :lt
+    end
+
+    test "identical ranges are equal" do
+      assert Ash.Range.compare(r(1, 9), r(1, 9)) == :eq
+    end
+
+    test "an inclusive lower starts before an exclusive one at the same value" do
+      assert Ash.Range.compare(r(1, 5, :"[)"), r(1, 5, :"()")) == :lt
+    end
+
+    test "an exclusive upper ends before an inclusive one at the same value" do
+      assert Ash.Range.compare(r(1, 5, :"[)"), r(1, 5, :"[]")) == :lt
+    end
+
+    test "an unbounded lower is minus infinity" do
+      assert Ash.Range.compare(r(nil, 5, :"()"), r(1, 5)) == :lt
+    end
+
+    test "an unbounded upper is plus infinity" do
+      assert Ash.Range.compare(r(1, nil), r(1, 5)) == :gt
+    end
+
+    test "the empty range sorts first" do
+      assert Ash.Range.compare(Range.empty(), r(nil, nil, :"()")) == :lt
+      assert Ash.Range.compare(Range.empty(), Range.empty()) == :eq
+    end
+
+    test "Comp uses the comparator rather than term order" do
+      assert Comp.compare(r(1, 9, :"()"), r(1, 3, :"[)")) == :gt
+    end
+
+    test "sorting agrees with Postgres" do
+      sorted =
+        [r(1, 5), r(nil, nil, :"()"), r(1, 3), Range.empty(), r(5, 9)]
+        |> Enum.sort(Ash.Range)
+
+      assert [
+               %Range{empty?: true},
+               %Range{lower: nil, upper: nil},
+               %Range{lower: 1, upper: 3},
+               %Range{lower: 1, upper: 5},
+               %Range{lower: 5, upper: 9}
+             ] = sorted
+    end
+  end
+
   describe "discrete ranges" do
     # Every expectation here is what Postgres renders for the same range, e.g.
     # `'[1,5]'::int4range` is `[1,6)` and `'(1,2)'::int4range` is `empty`.
