@@ -7,7 +7,9 @@ defmodule Ash.Query.Function.RangeOverlapsTest do
 
   alias Ash.Query.Function.RangeOverlaps
 
-  defp r(lower, upper, bounds \\ :"[)"), do: %Ash.Range{lower: lower, upper: upper, bounds: bounds}
+  defp r(lower, upper, bounds \\ :"[)"),
+    do: %Ash.Range{lower: lower, upper: upper, bounds: bounds}
+
   defp overlap?(a, b), do: RangeOverlaps.evaluate(%{arguments: [a, b]})
 
   test "nil argument is unknown/nil" do
