@@ -11,7 +11,7 @@ defmodule Ash.Type.Duration do
     units: [
       type: {:or, [{:in, [:year_month, :day_time]}, {:list, {:in, @duration_units}}]},
       doc: """
-      The units permitted to be non-zero; any unit outside the set must be zero, otherwise casting fails. Either an explicit list of units, or a shorthand for one side of the comparability boundary: `:year_month` (`[:year, :month]`) or `:day_time` (`[:week, :day, :hour, :minute, :second, :microsecond]`). Confining an attribute to a single side keeps its values comparable (see `Ash.Type.Duration.compare/2`).
+      The units the value may be expressed in. A duration is always re-expressed in the largest of these units that will hold it, on the way in and on the way out, so `[:week, :hour]` turns `1 week 1 day 5 hours` into `1 week 29 hours`. A value that no combination of the permitted units expresses exactly is rejected — including anything that would have to cross the year/month to week/day boundary, which no conversion can. This applies on the way out as well as in: a stored duration the permitted units cannot express is refused rather than quietly rewritten. Either an explicit list of units, or a shorthand for one side of that boundary: `:year_month` (`[:year, :month]`) or `:day_time` (`[:week, :day, :hour, :minute, :second, :microsecond]`). Confining an attribute to a single side keeps its values comparable (see `Ash.Type.Duration.compare/2`). With no constraint every unit is permitted, so the same normalization applies and nothing is ever lost.
       """
     ]
   ]
@@ -74,33 +74,35 @@ defmodule Ash.Type.Duration do
   def apply_constraints(nil, _), do: {:ok, nil}
 
   def apply_constraints(%Duration{} = value, constraints) do
-    case constraints[:units] do
-      nil ->
-        {:ok, value}
+    allowed = permitted_units(constraints[:units])
+    normalized = normalize_units(value, allowed)
 
-      units ->
-        allowed = expand_units(units)
+    case disallowed_units(normalized, allowed) do
+      [] ->
+        {:ok, normalized}
 
-        case Enum.reject(@duration_units, &(&1 in allowed or unit_zero?(value, &1))) do
-          [] ->
-            {:ok, value}
-
-          disallowed ->
-            {:error,
-             [
-               [
-                 message: "must only use the units %{units}",
-                 units: Enum.map_join(allowed, ", ", &to_string/1),
-                 disallowed: Enum.map_join(disallowed, ", ", &to_string/1)
-               ]
-             ]}
-        end
+      disallowed ->
+        {:error,
+         [
+           [
+             message: "must only use the units %{units}",
+             units: Enum.map_join(allowed, ", ", &to_string/1),
+             disallowed: Enum.map_join(disallowed, ", ", &to_string/1)
+           ]
+         ]}
     end
   end
+
+  # No `units` constraint permits every unit.
+  defp permitted_units(nil), do: @duration_units
+  defp permitted_units(units), do: expand_units(units)
 
   defp expand_units(:year_month), do: @year_month_units
   defp expand_units(:day_time), do: @day_time_units
   defp expand_units(units) when is_list(units), do: units
+
+  defp disallowed_units(%Duration{} = value, allowed),
+    do: Enum.reject(@duration_units, &(&1 in allowed or unit_zero?(value, &1)))
 
   defp unit_zero?(%Duration{microsecond: {value, _precision}}, :microsecond), do: value == 0
   defp unit_zero?(%Duration{} = duration, unit), do: Map.fetch!(duration, unit) == 0
@@ -123,12 +125,18 @@ defmodule Ash.Type.Duration do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
+  # A stored value gets the same treatment as one being written: a duration the
+  # permitted units cannot express is refused, not quietly rewritten into one they can.
   def cast_stored(value, constraints) when is_binary(value) do
-    cast_input(value, constraints)
+    with {:ok, duration} <- cast_input(value, constraints) do
+      apply_constraints(duration, constraints)
+    end
   end
 
-  def cast_stored(value, _) do
-    Ecto.Type.load(:duration, value)
+  def cast_stored(value, constraints) do
+    with {:ok, duration} <- Ecto.Type.load(:duration, value) do
+      apply_constraints(duration, constraints)
+    end
   end
 
   @impl true
@@ -152,6 +160,97 @@ defmodule Ash.Type.Duration do
   @days_per_week 7
   @days_per_month 30
   @months_per_year 12
+
+  # One canonical form on both sides of storage, whatever units a data layer kept it in.
+  defp normalize_units(%Duration{} = duration, allowed) do
+    duration
+    |> redistribute(@year_month_units, allowed, &total_months/1, &from_months/3)
+    |> redistribute(
+      @day_time_units,
+      allowed,
+      &total_microseconds_in_bucket/1,
+      &from_microseconds/3
+    )
+  end
+
+  # Within a bucket only — months and microseconds are not interconvertible. A bucket
+  # with no permitted unit has nowhere to put its value, so it is left for
+  # `apply_constraints/2` to report, like any other remainder.
+  defp redistribute(duration, bucket, allowed, total, build) do
+    targets = Enum.filter(bucket, &(&1 in allowed))
+
+    case build.(total.(duration), targets, duration) do
+      {:ok, normalized} -> normalized
+      :inexact -> duration
+    end
+  end
+
+  defp total_months(%Duration{year: year, month: month}),
+    do: year * @months_per_year + month
+
+  defp total_microseconds_in_bucket(%Duration{
+         week: week,
+         day: day,
+         hour: hour,
+         minute: minute,
+         second: second,
+         microsecond: {microsecond, _precision}
+       }) do
+    hours = (week * @days_per_week + day) * @hours_per_day + hour
+    minutes = hours * @minutes_per_hour + minute
+    (minutes * @seconds_per_minute + second) * @usec_per_second + microsecond
+  end
+
+  defp from_months(total, targets, duration) do
+    with {:ok, assigned} <- assign(total, targets, &months_per_unit/1) do
+      {:ok, struct!(duration, Map.merge(%{year: 0, month: 0}, assigned))}
+    end
+  end
+
+  defp from_microseconds(
+         total,
+         targets,
+         %Duration{microsecond: {_, precision}} = duration
+       ) do
+    with {:ok, assigned} <- assign(total, targets, &microseconds_per_unit/1) do
+      zeroed = %{week: 0, day: 0, hour: 0, minute: 0, second: 0}
+
+      assigned =
+        case Map.pop(assigned, :microsecond) do
+          {nil, rest} -> Map.put(rest, :microsecond, {0, precision})
+          {value, rest} -> Map.put(rest, :microsecond, {value, precision})
+        end
+
+      {:ok, struct!(duration, Map.merge(zeroed, assigned))}
+    end
+  end
+
+  # Largest permitted unit first, so the smallest permitted one carries the rest.
+  defp assign(total, targets, size) do
+    {assigned, remainder} =
+      targets
+      |> Enum.sort_by(size, :desc)
+      |> Enum.map_reduce(total, fn unit, left ->
+        per = size.(unit)
+        {{unit, div(left, per)}, rem(left, per)}
+      end)
+
+    if remainder == 0 do
+      {:ok, Map.new(assigned)}
+    else
+      :inexact
+    end
+  end
+
+  defp months_per_unit(:year), do: @months_per_year
+  defp months_per_unit(:month), do: 1
+
+  defp microseconds_per_unit(:week), do: @days_per_week * microseconds_per_unit(:day)
+  defp microseconds_per_unit(:day), do: @hours_per_day * microseconds_per_unit(:hour)
+  defp microseconds_per_unit(:hour), do: @minutes_per_hour * microseconds_per_unit(:minute)
+  defp microseconds_per_unit(:minute), do: @seconds_per_minute * @usec_per_second
+  defp microseconds_per_unit(:second), do: @usec_per_second
+  defp microseconds_per_unit(:microsecond), do: 1
 
   @doc """
   Compares two durations as a total order, matching how the AshPostgres data
