@@ -78,4 +78,72 @@ defmodule Ash.Type.RangeTest do
 
     assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, range, @constraints)
   end
+
+  describe "empty ranges" do
+    test "a range admitting no points casts to the empty range" do
+      assert {:ok, %Range{empty?: true, lower: nil, upper: nil}} =
+               Ash.Type.cast_input(
+                 Ash.Type.Range,
+                 %Range{lower: @lower, upper: @lower},
+                 @constraints
+               )
+    end
+
+    test "every empty range casts to the same value" do
+      {:ok, at_lower} =
+        Ash.Type.cast_input(Ash.Type.Range, %Range{lower: @lower, upper: @lower}, @constraints)
+
+      {:ok, at_upper} =
+        Ash.Type.cast_input(Ash.Type.Range, %Range{lower: @upper, upper: @upper}, @constraints)
+
+      assert at_lower == at_upper
+      assert at_lower == Range.empty()
+    end
+
+    test "a range with both bounds inclusive is the single point, not empty" do
+      assert {:ok, %Range{empty?: false, lower: @lower, upper: @lower}} =
+               Ash.Type.cast_input(
+                 Ash.Type.Range,
+                 %Range{lower: @lower, upper: @lower, bounds: :"[]"},
+                 @constraints
+               )
+    end
+
+    test "an unbounded range is not empty" do
+      assert {:ok, %Range{empty?: false}} =
+               Ash.Type.cast_input(Ash.Type.Range, %Range{lower: nil, upper: nil}, @constraints)
+    end
+
+    test "the empty range survives a round trip through a data layer" do
+      {:ok, range} =
+        Ash.Type.cast_input(Ash.Type.Range, %Range{lower: @lower, upper: @lower}, @constraints)
+
+      {:ok, native} = Ash.Type.dump_to_native(Ash.Type.Range, range, @constraints)
+
+      assert {:ok, %Range{empty?: true}} =
+               Ash.Type.cast_stored(Ash.Type.Range, native, @constraints)
+    end
+
+    test "a lower bound above the upper is rejected, not emptied" do
+      {:ok, range} =
+        Ash.Type.cast_input(Ash.Type.Range, %Range{lower: @upper, upper: @lower}, @constraints)
+
+      refute range.empty?
+      assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, range, @constraints)
+    end
+
+    test "apply_constraints accepts the empty range, which has no bounds to check" do
+      assert {:ok, %Range{empty?: true}} =
+               Ash.Type.apply_constraints(Ash.Type.Range, Range.empty(), @constraints)
+    end
+
+    test "empty?/1 reports emptiness whether canonical or implied by the bounds" do
+      assert Range.empty?(Range.empty())
+      assert Range.empty?(%Range{lower: 5, upper: 5, bounds: :"[)"})
+      assert Range.empty?(%Range{lower: 6, upper: 5, bounds: :"[]"})
+      refute Range.empty?(%Range{lower: 5, upper: 5, bounds: :"[]"})
+      refute Range.empty?(%Range{lower: 5, upper: 6, bounds: :"[)"})
+      refute Range.empty?(%Range{lower: nil, upper: nil})
+    end
+  end
 end

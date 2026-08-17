@@ -99,10 +99,10 @@ defmodule Ash.Type.Range do
   def cast_input(nil, _constraints), do: {:ok, nil}
 
   def cast_input(value, constraints) do
-    with {:ok, lower, upper, bounds} <- extract(value),
+    with {:ok, lower, upper, bounds, empty?} <- extract(value),
          {:ok, lower} <- cast_bound(lower, :cast_input, constraints),
          {:ok, upper} <- cast_bound(upper, :cast_input, constraints) do
-      {:ok, %Range{lower: lower, upper: upper, bounds: bounds}}
+      {:ok, canonicalize(%Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?})}
     end
   end
 
@@ -110,15 +110,16 @@ defmodule Ash.Type.Range do
   def cast_stored(nil, _constraints), do: {:ok, nil}
 
   def cast_stored(value, constraints) do
-    with {:ok, lower, upper, bounds} <- extract(value),
+    with {:ok, lower, upper, bounds, empty?} <- extract(value),
          {:ok, lower} <- cast_bound(lower, :cast_stored, constraints),
          {:ok, upper} <- cast_bound(upper, :cast_stored, constraints) do
-      {:ok, %Range{lower: lower, upper: upper, bounds: bounds}}
+      {:ok, canonicalize(%Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?})}
     end
   end
 
   @impl true
   def dump_to_native(nil, _constraints), do: {:ok, nil}
+  def dump_to_native(%Range{empty?: true}, _constraints), do: {:ok, Range.empty()}
 
   def dump_to_native(%Range{lower: lower, upper: upper, bounds: bounds}, constraints) do
     with {:ok, lower} <- dump_bound(lower, constraints),
@@ -131,6 +132,7 @@ defmodule Ash.Type.Range do
 
   @impl true
   def apply_constraints(nil, _constraints), do: {:ok, nil}
+  def apply_constraints(%Range{empty?: true} = range, _constraints), do: {:ok, range}
 
   def apply_constraints(%Range{lower: lower, upper: upper} = range, constraints) do
     type = constraints[:inner_type]
@@ -142,6 +144,23 @@ defmodule Ash.Type.Range do
       {:ok, %{range | lower: lower, upper: upper}}
     end
   end
+
+  # Every range containing no points is the same range, so they cast to one value with
+  # no bounds, as Postgres does, letting a data layer that keeps no bounds for an empty
+  # range read one back. An inverted range is invalid rather than empty, so it is left.
+  defp canonicalize(%Range{empty?: true}), do: Range.empty()
+
+  defp canonicalize(%Range{lower: lower, upper: upper, bounds: bounds} = range)
+       when not is_nil(lower) and not is_nil(upper) do
+    if Comp.equal?(lower, upper) and
+         not (Range.lower_inclusive?(bounds) and Range.upper_inclusive?(bounds)) do
+      Range.empty()
+    else
+      range
+    end
+  end
+
+  defp canonicalize(%Range{} = range), do: range
 
   defp check_order(nil, _), do: :ok
   defp check_order(_, nil), do: :ok
@@ -173,17 +192,18 @@ defmodule Ash.Type.Range do
     end
   end
 
-  defp extract(%Range{lower: lower, upper: upper, bounds: bounds}) do
-    {:ok, lower, upper, normalize_bounds(bounds)}
+  defp extract(%Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?}) do
+    {:ok, lower, upper, normalize_bounds(bounds), empty?}
   end
 
-  defp extract({lower, upper}), do: {:ok, lower, upper, :"[)"}
+  defp extract({lower, upper}), do: {:ok, lower, upper, :"[)", false}
 
   defp extract(%{} = map) do
     lower = map[:lower] || map["lower"]
     upper = map[:upper] || map["upper"]
     bounds = map[:bounds] || map["bounds"] || :"[)"
-    {:ok, lower, upper, normalize_bounds(bounds)}
+    empty? = map[:empty?] || map["empty?"] || false
+    {:ok, lower, upper, normalize_bounds(bounds), empty?}
   end
 
   defp extract(_), do: {:error, "is not a valid range"}
