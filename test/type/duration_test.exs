@@ -717,6 +717,52 @@ defmodule Ash.Test.Type.DurationTest do
     end
   end
 
+  describe "operand types" do
+    # Without these declarations a duration is typed as whatever it is added to.
+    @temporal_fields [
+      {:datetime, Ash.Type.DateTime},
+      {:utc_datetime, Ash.Type.UtcDatetime},
+      {:utc_datetime_usec, Ash.Type.UtcDatetimeUsec},
+      {:naive_datetime, Ash.Type.NaiveDatetime},
+      {:date, Ash.Type.Date},
+      {:time, Ash.Type.Time},
+      {:time_usec, Ash.Type.TimeUsec}
+    ]
+
+    defp operand_types(expression) do
+      {:ok, %op{} = hydrated} = Ash.Filter.hydrate_refs(expression, %{resource: Post})
+
+      {[{left, _}, {right, _}], {returns, _}} =
+        Ash.Expr.determine_types(op, [hydrated.left, hydrated.right])
+
+      {left, right, returns}
+    end
+
+    test "adding a duration keeps it a duration, and returns the temporal type" do
+      for {field, type} <- @temporal_fields do
+        assert {^type, Ash.Type.Duration, ^type} =
+                 operand_types(expr(^ref(field) + ^Duration.new!(day: 1)))
+      end
+    end
+
+    test "subtracting a duration does the same" do
+      for {field, type} <- @temporal_fields do
+        assert {^type, Ash.Type.Duration, ^type} =
+                 operand_types(expr(^ref(field) - ^Duration.new!(day: 1)))
+      end
+    end
+
+    test "a duration on the left of an addition is kept too" do
+      assert {Ash.Type.Duration, Ash.Type.UtcDatetime, Ash.Type.UtcDatetime} =
+               operand_types(expr(^Duration.new!(day: 1) + ^ref(:utc_datetime)))
+    end
+
+    test "two durations add to a duration" do
+      assert {Ash.Type.Duration, Ash.Type.Duration, Ash.Type.Duration} =
+               operand_types(expr(^ref(:duration_a) + ^ref(:duration_b)))
+    end
+  end
+
   describe "comparison" do
     alias Ash.Query.Operator.{Eq, GreaterThan, LessThan}
 
