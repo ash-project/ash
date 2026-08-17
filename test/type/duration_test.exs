@@ -608,6 +608,85 @@ defmodule Ash.Test.Type.DurationTest do
     end
   end
 
+  describe "signs constraint" do
+    test "with no constraint, any sign is permitted" do
+      for d <- [Duration.new!(hour: 1), Duration.new!(hour: -1), Duration.new!([])] do
+        assert {:ok, _} = Ash.Type.Duration.apply_constraints(d, [])
+      end
+    end
+
+    test "a single sign permits only itself" do
+      assert {:ok, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(hour: 1), signs: [:positive])
+
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(hour: -1), signs: [:positive])
+
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!([]), signs: [:positive])
+    end
+
+    test "combinations say the useful things" do
+      non_negative = [signs: [:positive, :zero]]
+      non_zero = [signs: [:positive, :negative]]
+
+      assert {:ok, _} = Ash.Type.Duration.apply_constraints(Duration.new!(hour: 1), non_negative)
+      assert {:ok, _} = Ash.Type.Duration.apply_constraints(Duration.new!([]), non_negative)
+
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(hour: -1), non_negative)
+
+      assert {:ok, _} = Ash.Type.Duration.apply_constraints(Duration.new!(hour: 1), non_zero)
+      assert {:ok, _} = Ash.Type.Duration.apply_constraints(Duration.new!(hour: -1), non_zero)
+      assert {:error, _} = Ash.Type.Duration.apply_constraints(Duration.new!([]), non_zero)
+    end
+
+    test "the sign is the duration's, not each unit's" do
+      # a day less five hours is nineteen hours, so positive
+      assert {:ok, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(day: 1, hour: -5),
+                 signs: [:positive]
+               )
+
+      # a week less ten days is three days short, so negative
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(week: 1, day: -10),
+                 signs: [:positive]
+               )
+    end
+
+    test "it is checked on read as well as write" do
+      assert {:error, _} =
+               Ash.Type.Duration.cast_stored(Duration.new!(hour: -1), signs: [:positive])
+
+      assert {:ok, _} = Ash.Type.Duration.cast_stored(Duration.new!(hour: 1), signs: [:positive])
+    end
+
+    test "it composes with units, which cannot change a magnitude" do
+      constraints = [units: [:hour], signs: [:positive]]
+
+      # normalized to hour: 36, still positive
+      assert {:ok, Duration.new!(hour: 36)} ==
+               Ash.Type.Duration.apply_constraints(Duration.new!(second: 129_600), constraints)
+
+      # units are satisfiable but the sign is not
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(hour: -36), constraints)
+    end
+
+    test "a bare atom means the same as a one-element list" do
+      assert {:ok, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(hour: 1), signs: :positive)
+
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(hour: -1), signs: :positive)
+    end
+
+    test "nil passes regardless" do
+      assert {:ok, nil} = Ash.Type.Duration.apply_constraints(nil, signs: [:positive])
+    end
+  end
+
   describe "the year/month to week/day divide" do
     test "a year is never expressed in days, whatever units are permitted" do
       assert {:ok, Duration.new!(year: 1)} ==

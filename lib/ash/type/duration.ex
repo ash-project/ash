@@ -7,7 +7,15 @@ defmodule Ash.Type.Duration do
   @day_time_units [:week, :day, :hour, :minute, :second, :microsecond]
   @duration_units @year_month_units ++ @day_time_units
 
+  @signs [:positive, :negative, :zero]
+
   @constraints [
+    signs: [
+      type: {:wrap_list, {:one_of, @signs}},
+      doc: """
+      The signs the value may have, compared against zero by `Ash.Type.Duration.compare/2`. Any combination is permitted: `:positive` or `[:positive]` requires a positive duration, `[:positive, :zero]` a non-negative one, and `[:positive, :negative]` a non-zero one. Omit the constraint to allow any sign. This is the sign of the duration as a whole, not of each unit — `%Duration{day: 1, hour: -5}` is positive, being nineteen hours. Only where the year/month and week/day sides carry opposite signs does the comparison depend on `compare/2`'s 30-day month.
+      """
+    ],
     units: [
       type: {:or, [{:in, [:year_month, :day_time]}, {:list, {:in, @duration_units}}]},
       doc: """
@@ -79,7 +87,7 @@ defmodule Ash.Type.Duration do
 
     case disallowed_units(normalized, allowed) do
       [] ->
-        {:ok, normalized}
+        check_sign(normalized, constraints[:signs])
 
       disallowed ->
         {:error,
@@ -90,6 +98,36 @@ defmodule Ash.Type.Duration do
              disallowed: Enum.map_join(disallowed, ", ", &to_string/1)
            ]
          ]}
+    end
+  end
+
+  # A magnitude constraint, where `units` is a representation one. Normalizing preserves
+  # magnitude, so the two are independent.
+  defp check_sign(value, nil), do: {:ok, value}
+
+  defp check_sign(value, permitted) do
+    # `wrap_list` normalizes at init, but constraints also arrive here directly.
+    permitted = List.wrap(permitted)
+
+    if sign(value) in permitted do
+      {:ok, value}
+    else
+      {:error,
+       [
+         [
+           message: "must be %{signs}",
+           signs: Enum.map_join(permitted, " or ", &to_string/1),
+           sign: to_string(sign(value))
+         ]
+       ]}
+    end
+  end
+
+  defp sign(%Duration{} = value) do
+    case compare(value, %Duration{}) do
+      :gt -> :positive
+      :lt -> :negative
+      :eq -> :zero
     end
   end
 
