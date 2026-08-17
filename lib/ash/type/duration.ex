@@ -17,9 +17,10 @@ defmodule Ash.Type.Duration do
       """
     ],
     units: [
-      type: {:or, [{:in, [:year_month, :day_time]}, {:list, {:in, @duration_units}}]},
+      type:
+        {:or, [{:one_of, [:year_month, :day_time]}, {:wrap_list, {:one_of, @duration_units}}]},
       doc: """
-      The units the value may be expressed in. A duration is always re-expressed in the largest of these units that will hold it, on the way in and on the way out, so `[:week, :hour]` turns `1 week 1 day 5 hours` into `1 week 29 hours`. A value that no combination of the permitted units expresses exactly is rejected — including anything that would have to cross the year/month to week/day boundary, which no conversion can. This applies on the way out as well as in: a stored duration the permitted units cannot express is refused rather than quietly rewritten. Either an explicit list of units, or a shorthand for one side of that boundary: `:year_month` (`[:year, :month]`) or `:day_time` (`[:week, :day, :hour, :minute, :second, :microsecond]`). Confining an attribute to a single side keeps its values comparable (see `Ash.Type.Duration.compare/2`). With no constraint every unit is permitted, so the same normalization applies and nothing is ever lost.
+      The units the value may be expressed in. A duration is always re-expressed in the largest of these units that will hold it, on the way in and on the way out, so `[:week, :hour]` turns `1 week 1 day 5 hours` into `1 week 29 hours`. A value that no combination of the permitted units expresses exactly is rejected — including anything that would have to cross the year/month to week/day boundary, which no conversion can. This applies on the way out as well as in: a stored duration the permitted units cannot express is refused rather than quietly rewritten. Either a single unit, an explicit list of them, or a shorthand for one side of that boundary: `:year_month` (`[:year, :month]`) or `:day_time` (`[:week, :day, :hour, :minute, :second, :microsecond]`). Confining an attribute to a single side keeps its values comparable (see `Ash.Type.Duration.compare/2`). With no constraint every unit is permitted, so the same normalization applies and nothing is ever lost.
       """
     ]
   ]
@@ -137,6 +138,7 @@ defmodule Ash.Type.Duration do
 
   defp expand_units(:year_month), do: @year_month_units
   defp expand_units(:day_time), do: @day_time_units
+  defp expand_units(unit) when is_atom(unit), do: [unit]
   defp expand_units(units) when is_list(units), do: units
 
   defp disallowed_units(%Duration{} = value, allowed),

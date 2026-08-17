@@ -229,6 +229,14 @@ defmodule Ash.Test.Type.DurationTest do
       assert disallowed =~ "month"
     end
 
+    test "a single unit may be given without a list" do
+      assert {:ok, Duration.new!(day: 3)} ==
+               Ash.Type.Duration.apply_constraints(Duration.new!(hour: 72), units: :day)
+
+      assert {:error, _} =
+               Ash.Type.Duration.apply_constraints(Duration.new!(hour: 73), units: :day)
+    end
+
     test "the :day_time shorthand accepts day/time units and rejects year/month" do
       assert {:ok, _} =
                Ash.Type.Duration.apply_constraints(Duration.new!(day: 3, hour: 4),
