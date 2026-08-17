@@ -79,6 +79,98 @@ defmodule Ash.Type.RangeTest do
     assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, range, @constraints)
   end
 
+  describe "discrete ranges" do
+    # Every expectation here is what Postgres renders for the same range, e.g.
+    # `'[1,5]'::int4range` is `[1,6)` and `'(1,2)'::int4range` is `empty`.
+    setup do
+      {:ok, int} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
+      {:ok, date} = Ash.Type.init(Ash.Type.Range, inner_type: :date)
+      %{int: int, date: date}
+    end
+
+    defp cast!(range, constraints) do
+      {:ok, cast} = Ash.Type.cast_input(Ash.Type.Range, range, constraints)
+      cast
+    end
+
+    test "an inclusive upper moves on to the next value", %{int: int} do
+      assert %Range{lower: 1, upper: 6, bounds: :"[)"} =
+               cast!(%Range{lower: 1, upper: 5, bounds: :"[]"}, int)
+    end
+
+    test "an exclusive lower moves on to the next value", %{int: int} do
+      assert %Range{lower: 2, upper: 5, bounds: :"[)"} =
+               cast!(%Range{lower: 1, upper: 5, bounds: :"()"}, int)
+    end
+
+    test "both bounds move where both are non-canonical", %{int: int} do
+      assert %Range{lower: 2, upper: 6, bounds: :"[)"} =
+               cast!(%Range{lower: 1, upper: 5, bounds: :"(]"}, int)
+    end
+
+    test "a range already in canonical form is unchanged", %{int: int} do
+      assert %Range{lower: 1, upper: 5, bounds: :"[)"} =
+               cast!(%Range{lower: 1, upper: 5, bounds: :"[)"}, int)
+    end
+
+    test "spellings of the same set cast to one value", %{int: int} do
+      assert cast!(%Range{lower: 1, upper: 5, bounds: :"[]"}, int) ==
+               cast!(%Range{lower: 1, upper: 6, bounds: :"[)"}, int)
+    end
+
+    test "a single point keeps its point", %{int: int} do
+      assert %Range{lower: 5, upper: 6, bounds: :"[)"} =
+               cast!(%Range{lower: 5, upper: 5, bounds: :"[]"}, int)
+    end
+
+    test "bounds with no value between them are empty", %{int: int} do
+      assert %Range{empty?: true} = cast!(%Range{lower: 1, upper: 2, bounds: :"()"}, int)
+    end
+
+    test "an unbounded end is exclusive", %{int: int} do
+      assert %Range{lower: nil, upper: 6, bounds: :"()"} =
+               cast!(%Range{lower: nil, upper: 5, bounds: :"[]"}, int)
+
+      assert %Range{lower: 1, upper: nil, bounds: :"[)"} =
+               cast!(%Range{lower: 1, upper: nil, bounds: :"[]"}, int)
+    end
+
+    test "dates canonicalise by day", %{date: date} do
+      assert %Range{lower: ~D[2026-01-01], upper: ~D[2026-01-09], bounds: :"[)"} =
+               cast!(%Range{lower: ~D[2026-01-01], upper: ~D[2026-01-08], bounds: :"[]"}, date)
+    end
+
+    test "a lower bound above its upper is left for apply_constraints to reject", %{int: int} do
+      range = cast!(%Range{lower: 5, upper: 1, bounds: :"[]"}, int)
+
+      assert %Range{lower: 5, upper: 1, bounds: :"[]"} = range
+      assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, range, int)
+    end
+
+    test "a continuous inner type is left as written" do
+      assert %Range{lower: @lower, upper: @upper, bounds: :"[]"} =
+               cast!(%Range{lower: @lower, upper: @upper, bounds: :"[]"}, @constraints)
+    end
+
+    test "canonicalisation applies on the way out of storage too", %{int: int} do
+      assert {:ok, %Range{lower: 1, upper: 6, bounds: :"[)"}} =
+               Ash.Type.cast_stored(
+                 Ash.Type.Range,
+                 %Range{lower: 1, upper: 5, bounds: :"[]"},
+                 int
+               )
+    end
+
+    test "apply_constraints canonicalises a value that skipped casting", %{int: int} do
+      assert {:ok, %Range{lower: 1, upper: 6, bounds: :"[)"}} =
+               Ash.Type.apply_constraints(
+                 Ash.Type.Range,
+                 %Range{lower: 1, upper: 5, bounds: :"[]"},
+                 int
+               )
+    end
+  end
+
   describe "empty ranges" do
     test "a range admitting no points casts to the empty range" do
       assert {:ok, %Range{empty?: true, lower: nil, upper: nil}} =

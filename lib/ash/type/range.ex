@@ -102,7 +102,11 @@ defmodule Ash.Type.Range do
     with {:ok, lower, upper, bounds, empty?} <- extract(value),
          {:ok, lower} <- cast_bound(lower, :cast_input, constraints),
          {:ok, upper} <- cast_bound(upper, :cast_input, constraints) do
-      {:ok, canonicalize(%Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?})}
+      {:ok,
+       canonicalize(
+         %Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?},
+         constraints
+       )}
     end
   end
 
@@ -113,7 +117,11 @@ defmodule Ash.Type.Range do
     with {:ok, lower, upper, bounds, empty?} <- extract(value),
          {:ok, lower} <- cast_bound(lower, :cast_stored, constraints),
          {:ok, upper} <- cast_bound(upper, :cast_stored, constraints) do
-      {:ok, canonicalize(%Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?})}
+      {:ok,
+       canonicalize(
+         %Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?},
+         constraints
+       )}
     end
   end
 
@@ -141,26 +149,63 @@ defmodule Ash.Type.Range do
     with {:ok, lower} <- apply_bound(type, lower, inner),
          {:ok, upper} <- apply_bound(type, upper, inner),
          :ok <- check_order(lower, upper) do
-      {:ok, %{range | lower: lower, upper: upper}}
+      {:ok, canonicalize(%{range | lower: lower, upper: upper}, constraints)}
     end
   end
 
   # Every range containing no points is the same range, so they cast to one value with
   # no bounds, as Postgres does, letting a data layer that keeps no bounds for an empty
   # range read one back. An inverted range is invalid rather than empty, so it is left.
-  defp canonicalize(%Range{empty?: true}), do: Range.empty()
+  defp canonicalize(%Range{empty?: true}, _constraints), do: Range.empty()
 
-  defp canonicalize(%Range{lower: lower, upper: upper, bounds: bounds} = range)
-       when not is_nil(lower) and not is_nil(upper) do
-    if Comp.equal?(lower, upper) and
-         not (Range.lower_inclusive?(bounds) and Range.upper_inclusive?(bounds)) do
-      Range.empty()
-    else
-      range
-    end
+  defp canonicalize(%Range{} = range, constraints) do
+    range = discrete_bounds(range, constraints[:inner_type])
+
+    if empty_bounds?(range), do: Range.empty(), else: range
   end
 
-  defp canonicalize(%Range{} = range), do: range
+  defp empty_bounds?(%Range{lower: lower, upper: upper, bounds: bounds})
+       when not is_nil(lower) and not is_nil(upper) do
+    Comp.equal?(lower, upper) and
+      not (Range.lower_inclusive?(bounds) and Range.upper_inclusive?(bounds))
+  end
+
+  defp empty_bounds?(%Range{}), do: false
+
+  # A discrete type has a successor, so every range over it has one `[)` spelling: an
+  # exclusive lower and an inclusive upper each move on to the next value, and an
+  # unbounded end is exclusive. A continuous type has none, so is left as written.
+  defp discrete_bounds(%Range{lower: lower, upper: upper} = range, type)
+       when type in [Ash.Type.Integer, Ash.Type.Date] and not is_nil(lower) and
+              not is_nil(upper) do
+    # Shifting an inverted range would answer a cast with one it did not describe.
+    if Comp.less_than?(upper, lower), do: range, else: shift_bounds(range)
+  end
+
+  defp discrete_bounds(%Range{} = range, type) when type in [Ash.Type.Integer, Ash.Type.Date] do
+    shift_bounds(range)
+  end
+
+  defp discrete_bounds(%Range{} = range, _type), do: range
+
+  defp shift_bounds(%Range{} = range) do
+    lower =
+      if is_nil(range.lower) or Range.lower_inclusive?(range.bounds),
+        do: range.lower,
+        else: successor(range.lower)
+
+    upper =
+      if is_nil(range.upper) or not Range.upper_inclusive?(range.bounds),
+        do: range.upper,
+        else: successor(range.upper)
+
+    bounds = if is_nil(lower), do: :"()", else: :"[)"
+
+    %{range | lower: lower, upper: upper, bounds: bounds}
+  end
+
+  defp successor(value) when is_integer(value), do: value + 1
+  defp successor(%Date{} = value), do: Date.add(value, 1)
 
   defp check_order(nil, _), do: :ok
   defp check_order(_, nil), do: :ok
