@@ -36,7 +36,7 @@ defmodule Ash.Query.Function.RangeOverlaps do
   # each bound's inclusivity (`[`/`]` inclusive, `(`/`)` exclusive) and treating a `nil`
   # bound as ±∞. Empty ranges (e.g. `[5, 5)`) overlap nothing. Matches Postgres `&&`.
   defp do_overlap?(left, right) do
-    not empty?(left) and not empty?(right) and
+    not Range.empty?(left) and not Range.empty?(right) and
       not separated?(left, right) and not separated?(right, left)
   end
 
@@ -48,23 +48,8 @@ defmodule Ash.Query.Function.RangeOverlaps do
     cond do
       Comp.less_than?(xu, yl) -> true
       # Touching boundary: a shared point only if BOTH sides include it.
-      Comp.equal?(xu, yl) -> not (upper_inclusive?(xb) and lower_inclusive?(yb))
+      Comp.equal?(xu, yl) -> not (Range.upper_inclusive?(xb) and Range.lower_inclusive?(yb))
       true -> false
     end
   end
-
-  # A bounded range with no points: `lower > upper`, or `lower == upper` unless both bounds
-  # are inclusive (`[x, x]`, the single point `x`). Unbounded ends are never empty.
-  defp empty?(%Range{lower: l, upper: u, bounds: b}) when not is_nil(l) and not is_nil(u) do
-    cond do
-      Comp.less_than?(u, l) -> true
-      Comp.equal?(l, u) -> not (lower_inclusive?(b) and upper_inclusive?(b))
-      true -> false
-    end
-  end
-
-  defp empty?(_range), do: false
-
-  defp lower_inclusive?(bounds), do: bounds in [:"[)", :"[]"]
-  defp upper_inclusive?(bounds), do: bounds in [:"(]", :"[]"]
 end
