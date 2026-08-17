@@ -15,6 +15,43 @@ defmodule Ash.Type.Range do
       type: :keyword_list,
       default: [],
       doc: "Constraints applied to each bound, passed through to the inner type."
+    ],
+    lower: [
+      type: :keyword_list,
+      default: [],
+      keys: [
+        required?: [
+          type: :boolean,
+          default: false,
+          doc: "The range must have a lower bound."
+        ],
+        inclusive?: [
+          type: :boolean,
+          doc: "The lower bound, where there is one, must include its own value."
+        ]
+      ],
+      doc: "Constraints on the range's lower bound."
+    ],
+    upper: [
+      type: :keyword_list,
+      default: [],
+      keys: [
+        required?: [
+          type: :boolean,
+          default: false,
+          doc: "The range must have an upper bound."
+        ],
+        inclusive?: [
+          type: :boolean,
+          doc: "The upper bound, where there is one, must include its own value."
+        ]
+      ],
+      doc: "Constraints on the range's upper bound."
+    ],
+    allow_empty?: [
+      type: :boolean,
+      default: false,
+      doc: "If false, a range containing no points is refused."
     ]
   ]
 
@@ -140,7 +177,15 @@ defmodule Ash.Type.Range do
 
   @impl true
   def apply_constraints(nil, _constraints), do: {:ok, nil}
-  def apply_constraints(%Range{empty?: true} = range, _constraints), do: {:ok, range}
+
+  # An empty range is constructed, not mistyped, so it is refused rather than nulled.
+  def apply_constraints(%Range{empty?: true} = range, constraints) do
+    if Keyword.get(constraints, :allow_empty?, false) do
+      {:ok, range}
+    else
+      {:error, message: "range must not be empty"}
+    end
+  end
 
   def apply_constraints(%Range{lower: lower, upper: upper} = range, constraints) do
     type = constraints[:inner_type]
@@ -148,10 +193,46 @@ defmodule Ash.Type.Range do
 
     with {:ok, lower} <- apply_bound(type, lower, inner),
          {:ok, upper} <- apply_bound(type, upper, inner),
-         :ok <- check_order(lower, upper) do
-      {:ok, canonicalize(%{range | lower: lower, upper: upper}, constraints)}
+         :ok <- check_order(lower, upper),
+         range = canonicalize(%{range | lower: lower, upper: upper}, constraints),
+         :ok <- check_bound(:lower, range, constraints[:lower] || []),
+         :ok <- check_bound(:upper, range, constraints[:upper] || []) do
+      # Canonicalizing can empty a range, so the empty rule is applied to the result.
+      if range.empty?, do: apply_constraints(range, constraints), else: {:ok, range}
     end
   end
+
+  # Each end on its own terms: there if required, and of the asked-for inclusivity if
+  # there. An absent end includes nothing, so only its presence can be constrained.
+  defp check_bound(end_name, range, bound_constraints) do
+    value = Map.fetch!(range, end_name)
+    inclusive? = inclusive?(end_name, range.bounds)
+
+    cond do
+      is_nil(value) and Keyword.get(bound_constraints, :required?, false) ->
+        {:error, message: "range must have a %{bound} bound", vars: [bound: end_name]}
+
+      is_nil(value) ->
+        :ok
+
+      matches_inclusivity?(inclusive?, bound_constraints[:inclusive?]) ->
+        :ok
+
+      true ->
+        {:error,
+         message: "range %{bound} bound must be %{required}",
+         vars: [bound: end_name, required: inclusivity_name(bound_constraints[:inclusive?])]}
+    end
+  end
+
+  defp inclusive?(:lower, bounds), do: Range.lower_inclusive?(bounds)
+  defp inclusive?(:upper, bounds), do: Range.upper_inclusive?(bounds)
+
+  defp matches_inclusivity?(_actual, nil), do: true
+  defp matches_inclusivity?(actual, required), do: actual == required
+
+  defp inclusivity_name(true), do: "inclusive"
+  defp inclusivity_name(false), do: "exclusive"
 
   # Every range containing no points is the same range, so they cast to one value with
   # no bounds, as Postgres does, letting a data layer that keeps no bounds for an empty
