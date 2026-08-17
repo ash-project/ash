@@ -67,4 +67,59 @@ defmodule Ash.Range do
   @doc "Whether the range's upper bound includes the point it names."
   @spec upper_inclusive?(bounds()) :: boolean()
   def upper_inclusive?(bounds), do: bounds in [:"(]", :"[]"]
+
+  @doc """
+  Compares two ranges as Postgres orders them: empty first, then by lower bound, then
+  by upper, an unbounded end as `-∞`/`+∞`, and the earlier boundary first where two
+  bounds name the same value (`[1` before `(1`, `5)` before `5]`).
+
+  A sort order rather than containment: `[1,10)` sorting before `[3,5)` says nothing
+  about one holding the other.
+  """
+  @spec compare(t(), t()) :: :lt | :eq | :gt
+  def compare(%__MODULE__{} = left, %__MODULE__{} = right) do
+    case {empty?(left), empty?(right)} do
+      {true, true} -> :eq
+      {true, false} -> :lt
+      {false, true} -> :gt
+      {false, false} -> compare_bounds(left, right)
+    end
+  end
+
+  defp compare_bounds(left, right) do
+    with :eq <- compare_lower(left, right) do
+      compare_upper(left, right)
+    end
+  end
+
+  defp compare_lower(%{lower: nil}, %{lower: nil}), do: :eq
+  defp compare_lower(%{lower: nil}, _right), do: :lt
+  defp compare_lower(_left, %{lower: nil}), do: :gt
+
+  defp compare_lower(left, right) do
+    with :eq <- Comp.compare(left.lower, right.lower) do
+      earlier(lower_inclusive?(left.bounds), lower_inclusive?(right.bounds))
+    end
+  end
+
+  defp compare_upper(%{upper: nil}, %{upper: nil}), do: :eq
+  defp compare_upper(%{upper: nil}, _right), do: :gt
+  defp compare_upper(_left, %{upper: nil}), do: :lt
+
+  defp compare_upper(left, right) do
+    with :eq <- Comp.compare(left.upper, right.upper) do
+      earlier(not upper_inclusive?(left.bounds), not upper_inclusive?(right.bounds))
+    end
+  end
+
+  # The boundary sitting earlier on the line sorts first.
+  defp earlier(same, same), do: :eq
+  defp earlier(true, false), do: :lt
+  defp earlier(false, true), do: :gt
+end
+
+import Ash.Type.Comparable
+
+defcomparable left :: Ash.Range, right :: Ash.Range do
+  Ash.Range.compare(left, right)
 end

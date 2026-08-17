@@ -79,6 +79,230 @@ defmodule Ash.Type.RangeTest do
     assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, range, @constraints)
   end
 
+  describe "bound constraints" do
+    defp init!(constraints), do: Ash.Type.init(Ash.Type.Range, constraints) |> elem(1)
+
+    defp apply!(range, constraints),
+      do: Ash.Type.apply_constraints(Ash.Type.Range, range, constraints)
+
+    test "a required bound must be there" do
+      constraints = init!(inner_type: :integer, lower: [required?: true])
+
+      assert {:error, _} = apply!(%Range{lower: nil, upper: 5, bounds: :"()"}, constraints)
+      assert {:ok, %Range{lower: 1}} = apply!(%Range{lower: 1, upper: 5}, constraints)
+    end
+
+    test "each end is required independently" do
+      constraints = init!(inner_type: :integer, upper: [required?: true])
+
+      assert {:error, _} = apply!(%Range{lower: 1, upper: nil}, constraints)
+      assert {:ok, _} = apply!(%Range{lower: nil, upper: 5, bounds: :"()"}, constraints)
+    end
+
+    test "a bound must carry the inclusivity asked for" do
+      constraints = init!(inner_type: :datetime, upper: [inclusive?: false])
+
+      assert {:ok, _} = apply!(%Range{lower: @lower, upper: @upper, bounds: :"[)"}, constraints)
+
+      assert {:error, _} =
+               apply!(%Range{lower: @lower, upper: @upper, bounds: :"[]"}, constraints)
+    end
+
+    test "inclusivity is not checked on an end that is not there" do
+      constraints = init!(inner_type: :datetime, lower: [inclusive?: true])
+
+      assert {:ok, _} = apply!(%Range{lower: nil, upper: @upper, bounds: :"()"}, constraints)
+    end
+
+    test "a discrete range canonicalized to an exclusive lower still satisfies inclusive?" do
+      # `(,5]` canonicalizes to `(,6)`, so the lower is exclusive only because it is absent.
+      constraints = init!(inner_type: :integer, lower: [inclusive?: true])
+
+      {:ok, range} =
+        Ash.Type.cast_input(
+          Ash.Type.Range,
+          %Range{lower: nil, upper: 5, bounds: :"(]"},
+          constraints
+        )
+
+      assert {:ok, _} = apply!(range, constraints)
+    end
+
+    test "unconstrained by default" do
+      constraints = init!(inner_type: :integer)
+
+      assert {:ok, _} = apply!(%Range{lower: nil, upper: nil, bounds: :"()"}, constraints)
+    end
+
+    test "a period is the three constraints together" do
+      constraints =
+        init!(
+          inner_type: :datetime,
+          inner_constraints: [precision: :microsecond],
+          lower: [required?: true, inclusive?: true],
+          upper: [inclusive?: false]
+        )
+
+      assert {:ok, _} = apply!(%Range{lower: @lower, upper: nil, bounds: :"[)"}, constraints)
+      assert {:error, _} = apply!(%Range{lower: nil, upper: @upper, bounds: :"()"}, constraints)
+
+      assert {:error, _} =
+               apply!(%Range{lower: @lower, upper: @upper, bounds: :"[]"}, constraints)
+
+      assert {:error, _} = apply!(Range.empty(), constraints)
+    end
+  end
+
+  describe "ordering" do
+    # Expectations are Postgres's own answers, on `numrange` so canonicalization
+    # doesn't rewrite the bounds first.
+    defp r(lower, upper, bounds \\ :"[)"), do: %Range{lower: lower, upper: upper, bounds: bounds}
+
+    test "orders by lower bound first" do
+      assert Ash.Range.compare(r(1, 9), r(5, 9)) == :lt
+      assert Ash.Range.compare(r(5, 9), r(1, 9)) == :gt
+    end
+
+    test "orders by upper bound where lowers are equal" do
+      assert Ash.Range.compare(r(1, 3), r(1, 9)) == :lt
+    end
+
+    test "identical ranges are equal" do
+      assert Ash.Range.compare(r(1, 9), r(1, 9)) == :eq
+    end
+
+    test "an inclusive lower starts before an exclusive one at the same value" do
+      assert Ash.Range.compare(r(1, 5, :"[)"), r(1, 5, :"()")) == :lt
+    end
+
+    test "an exclusive upper ends before an inclusive one at the same value" do
+      assert Ash.Range.compare(r(1, 5, :"[)"), r(1, 5, :"[]")) == :lt
+    end
+
+    test "an unbounded lower is minus infinity" do
+      assert Ash.Range.compare(r(nil, 5, :"()"), r(1, 5)) == :lt
+    end
+
+    test "an unbounded upper is plus infinity" do
+      assert Ash.Range.compare(r(1, nil), r(1, 5)) == :gt
+    end
+
+    test "the empty range sorts first" do
+      assert Ash.Range.compare(Range.empty(), r(nil, nil, :"()")) == :lt
+      assert Ash.Range.compare(Range.empty(), Range.empty()) == :eq
+    end
+
+    test "Comp uses the comparator rather than term order" do
+      assert Comp.compare(r(1, 9, :"()"), r(1, 3, :"[)")) == :gt
+    end
+
+    test "sorting agrees with Postgres" do
+      sorted =
+        [r(1, 5), r(nil, nil, :"()"), r(1, 3), Range.empty(), r(5, 9)]
+        |> Enum.sort(Ash.Range)
+
+      assert [
+               %Range{empty?: true},
+               %Range{lower: nil, upper: nil},
+               %Range{lower: 1, upper: 3},
+               %Range{lower: 1, upper: 5},
+               %Range{lower: 5, upper: 9}
+             ] = sorted
+    end
+  end
+
+  describe "discrete ranges" do
+    # Every expectation here is what Postgres renders for the same range, e.g.
+    # `'[1,5]'::int4range` is `[1,6)` and `'(1,2)'::int4range` is `empty`.
+    setup do
+      {:ok, int} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
+      {:ok, date} = Ash.Type.init(Ash.Type.Range, inner_type: :date)
+      %{int: int, date: date}
+    end
+
+    defp cast!(range, constraints) do
+      {:ok, cast} = Ash.Type.cast_input(Ash.Type.Range, range, constraints)
+      cast
+    end
+
+    test "an inclusive upper moves on to the next value", %{int: int} do
+      assert %Range{lower: 1, upper: 6, bounds: :"[)"} =
+               cast!(%Range{lower: 1, upper: 5, bounds: :"[]"}, int)
+    end
+
+    test "an exclusive lower moves on to the next value", %{int: int} do
+      assert %Range{lower: 2, upper: 5, bounds: :"[)"} =
+               cast!(%Range{lower: 1, upper: 5, bounds: :"()"}, int)
+    end
+
+    test "both bounds move where both are non-canonical", %{int: int} do
+      assert %Range{lower: 2, upper: 6, bounds: :"[)"} =
+               cast!(%Range{lower: 1, upper: 5, bounds: :"(]"}, int)
+    end
+
+    test "a range already in canonical form is unchanged", %{int: int} do
+      assert %Range{lower: 1, upper: 5, bounds: :"[)"} =
+               cast!(%Range{lower: 1, upper: 5, bounds: :"[)"}, int)
+    end
+
+    test "spellings of the same set cast to one value", %{int: int} do
+      assert cast!(%Range{lower: 1, upper: 5, bounds: :"[]"}, int) ==
+               cast!(%Range{lower: 1, upper: 6, bounds: :"[)"}, int)
+    end
+
+    test "a single point keeps its point", %{int: int} do
+      assert %Range{lower: 5, upper: 6, bounds: :"[)"} =
+               cast!(%Range{lower: 5, upper: 5, bounds: :"[]"}, int)
+    end
+
+    test "bounds with no value between them are empty", %{int: int} do
+      assert %Range{empty?: true} = cast!(%Range{lower: 1, upper: 2, bounds: :"()"}, int)
+    end
+
+    test "an unbounded end is exclusive", %{int: int} do
+      assert %Range{lower: nil, upper: 6, bounds: :"()"} =
+               cast!(%Range{lower: nil, upper: 5, bounds: :"[]"}, int)
+
+      assert %Range{lower: 1, upper: nil, bounds: :"[)"} =
+               cast!(%Range{lower: 1, upper: nil, bounds: :"[]"}, int)
+    end
+
+    test "dates canonicalise by day", %{date: date} do
+      assert %Range{lower: ~D[2026-01-01], upper: ~D[2026-01-09], bounds: :"[)"} =
+               cast!(%Range{lower: ~D[2026-01-01], upper: ~D[2026-01-08], bounds: :"[]"}, date)
+    end
+
+    test "a lower bound above its upper is left for apply_constraints to reject", %{int: int} do
+      range = cast!(%Range{lower: 5, upper: 1, bounds: :"[]"}, int)
+
+      assert %Range{lower: 5, upper: 1, bounds: :"[]"} = range
+      assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, range, int)
+    end
+
+    test "a continuous inner type is left as written" do
+      assert %Range{lower: @lower, upper: @upper, bounds: :"[]"} =
+               cast!(%Range{lower: @lower, upper: @upper, bounds: :"[]"}, @constraints)
+    end
+
+    test "canonicalisation applies on the way out of storage too", %{int: int} do
+      assert {:ok, %Range{lower: 1, upper: 6, bounds: :"[)"}} =
+               Ash.Type.cast_stored(
+                 Ash.Type.Range,
+                 %Range{lower: 1, upper: 5, bounds: :"[]"},
+                 int
+               )
+    end
+
+    test "apply_constraints canonicalises a value that skipped casting", %{int: int} do
+      assert {:ok, %Range{lower: 1, upper: 6, bounds: :"[)"}} =
+               Ash.Type.apply_constraints(
+                 Ash.Type.Range,
+                 %Range{lower: 1, upper: 5, bounds: :"[]"},
+                 int
+               )
+    end
+  end
+
   describe "empty ranges" do
     test "a range admitting no points casts to the empty range" do
       assert {:ok, %Range{empty?: true, lower: nil, upper: nil}} =
@@ -132,9 +356,17 @@ defmodule Ash.Type.RangeTest do
       assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, range, @constraints)
     end
 
-    test "apply_constraints accepts the empty range, which has no bounds to check" do
-      assert {:ok, %Range{empty?: true}} =
+    test "an empty range is refused unless the attribute allows it" do
+      assert {:error, _} =
                Ash.Type.apply_constraints(Ash.Type.Range, Range.empty(), @constraints)
+    end
+
+    test "allow_empty? keeps the empty range" do
+      {:ok, constraints} =
+        Ash.Type.init(Ash.Type.Range, inner_type: :integer, allow_empty?: true)
+
+      assert {:ok, %Range{empty?: true}} =
+               Ash.Type.apply_constraints(Ash.Type.Range, Range.empty(), constraints)
     end
 
     test "empty?/1 reports emptiness whether canonical or implied by the bounds" do
