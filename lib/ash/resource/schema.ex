@@ -50,7 +50,7 @@ defmodule Ash.Schema do
 
               field(
                 attribute.name,
-                Ash.Type.ecto_type(Ash.Schema.not_a_resource!(attribute.type)),
+                Ash.Schema.ecto_type(__MODULE__, attribute),
                 Keyword.merge(constraint_opts,
                   primary_key: attribute.primary_key?,
                   read_after_writes: read_after_writes?,
@@ -197,7 +197,7 @@ defmodule Ash.Schema do
 
               field(
                 attribute.name,
-                Ash.Type.ecto_type(Ash.Schema.not_a_resource!(attribute.type)),
+                Ash.Schema.ecto_type(__MODULE__, attribute),
                 Keyword.merge(constraint_opts,
                   primary_key: attribute.primary_key?,
                   read_after_writes: read_after_writes?,
@@ -403,6 +403,15 @@ defmodule Ash.Schema do
   def attribute_default(fun) when is_function(fun), do: nil
   def attribute_default({_mod, _func, _args}), do: nil
   def attribute_default(value), do: value
+
+  @doc false
+  # The Ecto type for an attribute's schema field. The data layer may override it
+  # (e.g. to take charge of dumping/loading a core type's stored form); otherwise we
+  # fall back to the type's own Ecto type.
+  def ecto_type(resource, attribute) do
+    Ash.DataLayer.attribute_ecto_type(resource, attribute) ||
+      Ash.Type.ecto_type(not_a_resource!(attribute.type))
+  end
 
   @doc false
   # Called at compile time from within the `schema do ... end` block to wire
