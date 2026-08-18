@@ -166,6 +166,26 @@ defmodule Ash.Range do
     end
   end
 
+  @doc """
+  Whether two ranges are adjacent: one ends exactly where the other begins, with no
+  point between them and none shared.
+
+  The seam counts only when exactly one side includes it, so `[1,5)` is adjacent to
+  `[5,9)`, where `[1,5]` overlaps it and `(5,9)` leaves a gap. Symmetric, unlike
+  Allen's *meets*, which is directional. An empty range is adjacent to nothing.
+
+  Adjacency is what lets a series of ranges tile: each meets the next, covering
+  everything between the first lower bound and the last upper without overlapping.
+
+  For a discrete inner type this is a question about the canonical form — `[1,4]` and
+  `[5,9)` are adjacent as integers but not as decimals — so compare values that have
+  been through `Ash.Type.Range`, which canonicalises them. Matches Postgres `-|-`.
+  """
+  @spec adjacent?(t(), t()) :: boolean()
+  def adjacent?(%__MODULE__{} = left, %__MODULE__{} = right) do
+    relation(left, right) in [:meets, :met_by]
+  end
+
   # Seam clauses first, holding whatever the bounds compare to; then canonical order.
   defp allen(_lower, _upper, :lt, _), do: :precedes
   defp allen(_lower, _upper, :eq, _), do: :meets

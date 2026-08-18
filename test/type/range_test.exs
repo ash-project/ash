@@ -213,6 +213,60 @@ defmodule Ash.Type.RangeTest do
     end
   end
 
+  describe "adjacent?/2" do
+    # Cross-checked against Postgres 19: `-|-` on numrange and int4range agrees case
+    # for case, canonical form included.
+    defp adj(lower, upper, bounds), do: %Range{lower: lower, upper: upper, bounds: bounds}
+
+    test "one ends where the other begins, with exactly one side including the seam" do
+      assert Range.adjacent?(adj(1, 5, :"[)"), adj(5, 9, :"[)"))
+      assert Range.adjacent?(adj(1, 5, :"()"), adj(5, 9, :"[)"))
+      assert Range.adjacent?(adj(1, 5, :"[)"), adj(5, 9, :"[]"))
+    end
+
+    test "sharing the seam is overlap, and excluding it from both leaves a gap" do
+      refute Range.adjacent?(adj(1, 5, :"[]"), adj(5, 9, :"[)"))
+      refute Range.adjacent?(adj(1, 5, :"()"), adj(5, 9, :"()"))
+      refute Range.adjacent?(adj(1, 5, :"[)"), adj(6, 9, :"[)"))
+    end
+
+    test "is symmetric, where Allen's meets is directional" do
+      left = adj(1, 5, :"[)")
+      right = adj(5, 9, :"[)")
+
+      assert Range.relation(left, right) == :meets
+      assert Range.relation(right, left) == :met_by
+      assert Range.adjacent?(left, right)
+      assert Range.adjacent?(right, left)
+    end
+
+    test "an empty range is adjacent to nothing, not even itself" do
+      refute Range.adjacent?(Range.empty(), adj(1, 9, :"[)"))
+      refute Range.adjacent?(adj(1, 9, :"[)"), Range.empty())
+      refute Range.adjacent?(Range.empty(), Range.empty())
+    end
+
+    test "a discrete inner type answers on the canonical form" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
+      {:ok, left} = Ash.Type.cast_input(Ash.Type.Range, adj(1, 4, :"[]"), constraints)
+      {:ok, right} = Ash.Type.cast_input(Ash.Type.Range, adj(5, 9, :"[)"), constraints)
+
+      assert {left.lower, left.upper, left.bounds} == {1, 5, :"[)"}
+      assert Range.adjacent?(left, right)
+      refute Range.adjacent?(adj(1, 4, :"[]"), adj(5, 9, :"[)"))
+    end
+
+    test "adjacent ranges tile, covering everything between without overlapping" do
+      tiles = [adj(1, 5, :"[)"), adj(5, 9, :"[)"), adj(9, 13, :"[)")]
+
+      assert tiles
+             |> Enum.chunk_every(2, 1, :discard)
+             |> Enum.all?(fn [a, b] ->
+               Range.adjacent?(a, b)
+             end)
+    end
+  end
+
   describe "ordering" do
     # Expectations are Postgres's own answers, on `numrange` so canonicalization
     # doesn't rewrite the bounds first.
