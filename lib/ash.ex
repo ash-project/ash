@@ -2692,13 +2692,13 @@ defmodule Ash do
           |> Ash.Query.set_tenant(
             opts[:tenant] || query.tenant || Map.get(record.__metadata__, :tenant)
           )
-          |> Ash.Query.as_of(opts[:as_of] || query.as_of || Map.get(record.__metadata__, :as_of))
+          |> maybe_set_as_of(opts[:as_of] || query.as_of || Map.get(record.__metadata__, :as_of))
 
         keyword ->
           resource
           |> Ash.Query.new()
           |> Ash.Query.set_tenant(opts[:tenant] || Map.get(record.__metadata__, :tenant))
-          |> Ash.Query.as_of(opts[:as_of] || Map.get(record.__metadata__, :as_of))
+          |> maybe_set_as_of(opts[:as_of] || Map.get(record.__metadata__, :as_of))
           |> Ash.Query.load(keyword, opts)
       end
 
@@ -2725,6 +2725,11 @@ defmodule Ash do
   end
 
   stream_opts = @stream_opts
+
+  # Setting `as_of` writes it into the shared context, which is user-visible; a load
+  # with no time travel must leave the caller's shared context alone.
+  defp maybe_set_as_of(query, nil), do: query
+  defp maybe_set_as_of(query, as_of), do: Ash.Query.as_of(query, as_of)
 
   defmodule StreamOpts do
     @moduledoc false
