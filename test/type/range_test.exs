@@ -438,4 +438,146 @@ defmodule Ash.Type.RangeTest do
       refute Range.empty?(%Range{lower: nil, upper: nil})
     end
   end
+
+  describe "contains?/2" do
+    test "a bounded range holds values between its bounds" do
+      range = %Ash.Range{lower: 1, upper: 5, bounds: :"[)"}
+
+      refute Ash.Range.contains?(range, 0)
+      assert Ash.Range.contains?(range, 1)
+      assert Ash.Range.contains?(range, 4)
+      refute Ash.Range.contains?(range, 5)
+    end
+
+    test "a bound holds its own value only when inclusive" do
+      assert Ash.Range.contains?(%Ash.Range{lower: 1, upper: 5, bounds: :"[]"}, 5)
+      refute Ash.Range.contains?(%Ash.Range{lower: 1, upper: 5, bounds: :"()"}, 1)
+      assert Ash.Range.contains?(%Ash.Range{lower: 1, upper: 5, bounds: :"(]"}, 5)
+      refute Ash.Range.contains?(%Ash.Range{lower: 1, upper: 5, bounds: :"(]"}, 1)
+    end
+
+    test "an unbounded end holds everything beyond it" do
+      assert Ash.Range.contains?(%Ash.Range{lower: nil, upper: 5}, -1_000)
+      assert Ash.Range.contains?(%Ash.Range{lower: 1, upper: nil}, 1_000)
+      assert Ash.Range.contains?(%Ash.Range{lower: nil, upper: nil}, 0)
+    end
+
+    test "an empty range holds nothing" do
+      refute Ash.Range.contains?(%Ash.Range{lower: 5, upper: 5, bounds: :"[)"}, 5)
+      refute Ash.Range.contains?(%Ash.Range{lower: 9, upper: 5}, 7)
+    end
+
+    test "holds datetimes by Comp, not by term order" do
+      range = %Ash.Range{
+        lower: ~U[2026-01-31 00:00:00Z],
+        upper: ~U[2026-03-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert Ash.Range.contains?(range, ~U[2026-02-01 00:00:00Z])
+      refute Ash.Range.contains?(range, ~U[2026-03-02 00:00:00Z])
+    end
+  end
+
+  describe "contains?/2 with a range" do
+    # Cross-checked against Postgres 19: `@>` on int4range agrees case for case.
+    test "a range holds one that lies within it, sharing an endpoint or equal included" do
+      outer = %Range{lower: 1, upper: 10, bounds: :"[)"}
+
+      assert Range.contains?(outer, %Range{lower: 3, upper: 5, bounds: :"[)"})
+      assert Range.contains?(outer, %Range{lower: 1, upper: 5, bounds: :"[)"})
+      assert Range.contains?(outer, %Range{lower: 5, upper: 10, bounds: :"[)"})
+      assert Range.contains?(outer, outer)
+      refute Range.contains?(outer, %Range{lower: 5, upper: 20, bounds: :"[)"})
+    end
+
+    test "every range holds the empty range, and the empty range holds nothing else" do
+      empty = Range.empty()
+      range = %Range{lower: 1, upper: 10, bounds: :"[)"}
+
+      assert Range.contains?(range, empty)
+      assert Range.contains?(empty, empty)
+      refute Range.contains?(empty, range)
+      refute Range.contains?(empty, 5)
+    end
+
+    test "an unbounded end holds everything beyond it" do
+      assert Range.contains?(
+               %Range{lower: nil, upper: nil, bounds: :"[)"},
+               %Range{lower: 1, upper: 10, bounds: :"[)"}
+             )
+
+      refute Range.contains?(
+               %Range{lower: 1, upper: 10, bounds: :"[)"},
+               %Range{lower: nil, upper: 10, bounds: :"[)"}
+             )
+    end
+  end
+
+  describe "intersects?/2" do
+    test "two ranges sharing points intersect, in either order" do
+      left = %Range{lower: 1, upper: 5, bounds: :"[)"}
+      right = %Range{lower: 4, upper: 9, bounds: :"[)"}
+
+      assert Range.intersects?(left, right)
+      assert Range.intersects?(right, left)
+    end
+
+    test "a range contained in another intersects it" do
+      assert Range.intersects?(
+               %Range{lower: 1, upper: 9, bounds: :"[)"},
+               %Range{lower: 3, upper: 4, bounds: :"[)"}
+             )
+    end
+
+    test "adjacent ranges do not intersect, which is what lets them tile" do
+      refute Range.intersects?(
+               %Range{lower: 1, upper: 3, bounds: :"[)"},
+               %Range{lower: 3, upper: 5, bounds: :"[)"}
+             )
+    end
+
+    test "a shared boundary is a shared point only when both sides include it" do
+      assert Range.intersects?(
+               %Range{lower: 1, upper: 3, bounds: :"[]"},
+               %Range{lower: 3, upper: 5, bounds: :"[)"}
+             )
+
+      refute Range.intersects?(
+               %Range{lower: 1, upper: 3, bounds: :"[]"},
+               %Range{lower: 3, upper: 5, bounds: :"()"}
+             )
+    end
+
+    test "an unbounded end intersects everything beyond it" do
+      assert Range.intersects?(
+               %Range{lower: 1, upper: nil, bounds: :"[)"},
+               %Range{lower: 1_000, upper: nil, bounds: :"[)"}
+             )
+
+      assert Range.intersects?(
+               %Range{lower: nil, upper: nil, bounds: :"[)"},
+               %Range{lower: 3, upper: 4, bounds: :"[)"}
+             )
+    end
+
+    test "an empty range intersects nothing, not even itself" do
+      empty = %Range{lower: 5, upper: 5, bounds: :"[)"}
+
+      refute Range.intersects?(empty, empty)
+      refute Range.intersects?(empty, %Range{lower: nil, upper: nil, bounds: :"[)"})
+    end
+
+    test "compares datetimes by Comp, not by term order" do
+      assert Range.intersects?(
+               %Range{lower: ~U[2026-01-31 00:00:00Z], upper: nil, bounds: :"[)"},
+               %Range{lower: ~U[2026-02-01 00:00:00Z], upper: nil, bounds: :"[)"}
+             )
+
+      refute Range.intersects?(
+               %Range{lower: ~U[2026-01-31 00:00:00Z], upper: ~U[2026-02-01 00:00:00Z]},
+               %Range{lower: ~U[2026-02-01 00:00:00Z], upper: ~U[2026-03-01 00:00:00Z]}
+             )
+    end
+  end
 end
