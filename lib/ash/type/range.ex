@@ -239,10 +239,16 @@ defmodule Ash.Type.Range do
   # range read one back. An inverted range is invalid rather than empty, so it is left.
   defp canonicalize(%Range{empty?: true}, _constraints), do: Range.empty()
 
+  # The discrete shift can both hide and create emptiness, so both sides are tested. An
+  # inverted range is empty by neither, and falls through to check_order/2.
   defp canonicalize(%Range{} = range, constraints) do
-    range = discrete_bounds(range, constraints[:inner_type])
+    if empty_bounds?(range) do
+      Range.empty()
+    else
+      shifted = discrete_bounds(range, constraints[:inner_type])
 
-    if empty_bounds?(range), do: Range.empty(), else: range
+      if empty_bounds?(shifted), do: Range.empty(), else: shifted
+    end
   end
 
   defp empty_bounds?(%Range{lower: lower, upper: upper, bounds: bounds})
