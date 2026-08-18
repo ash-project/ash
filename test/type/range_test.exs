@@ -364,6 +364,44 @@ defmodule Ash.Type.RangeTest do
   end
 
   describe "empty ranges" do
+    test "a discrete range on one point is empty unless both bounds include it" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
+
+      cast = fn bounds ->
+        {:ok, cast} =
+          Ash.Type.cast_input(
+            Ash.Type.Range,
+            %Range{lower: 5, upper: 5, bounds: bounds},
+            constraints
+          )
+
+        cast
+      end
+
+      # Excluding either end leaves no points. Canonicalizing must see that before the
+      # discrete shift, which would otherwise turn `(5, 5)` into `[6, 5)` and lose the
+      # equality the rule tests. Postgres agrees on all four.
+      assert cast.(:"[)") == Range.empty()
+      assert cast.(:"(]") == Range.empty()
+      assert cast.(:"()") == Range.empty()
+
+      # Including both ends holds the point, so it is the single-point range.
+      assert cast.(:"[]") == %Range{lower: 5, upper: 6, bounds: :"[)"}
+    end
+
+    test "an inverted range is still refused, as Postgres refuses it" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
+
+      {:ok, cast} =
+        Ash.Type.cast_input(
+          Ash.Type.Range,
+          %Range{lower: 9, upper: 2, bounds: :"[)"},
+          constraints
+        )
+
+      assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, cast, constraints)
+    end
+
     test "a range admitting no points casts to the empty range" do
       assert {:ok, %Range{empty?: true, lower: nil, upper: nil}} =
                Ash.Type.cast_input(
