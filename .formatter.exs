@@ -263,6 +263,7 @@ spark_locals_without_parens = [
   read: 3,
   read: 4,
   read_action: 1,
+  read_action_arguments: 1,
   read_one: 2,
   read_one: 3,
   read_one: 4,

@@ -6,6 +6,7 @@ defmodule Ash.Test.Actions.AggregateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Expr
   require Ash.Query
 
   alias Ash.Test.Domain, as: Domain
@@ -48,6 +49,10 @@ defmodule Ash.Test.Actions.AggregateTest do
       end
 
       attribute :thing3, :integer do
+        public?(true)
+      end
+
+      attribute :thing4, :utc_datetime_usec do
         public?(true)
       end
 
@@ -185,6 +190,15 @@ defmodule Ash.Test.Actions.AggregateTest do
         join_filter(:comments, expr(parent(thing) == thing))
       end
 
+      count :count_of_posts_of_commented_replies, [:comments, :post] do
+        public? false
+
+        join_filter(
+          :comments,
+          expr(exists(children, public == true and exists(post, not is_nil(id))))
+        )
+      end
+
       count :count_of_comments_unauthorized, :comments do
         public? true
         authorize? false
@@ -221,6 +235,16 @@ defmodule Ash.Test.Actions.AggregateTest do
       end
 
       avg :average_of_thing3, :comments, :thing3 do
+        public? true
+        authorize? false
+      end
+
+      min :min_of_thing4, :comments, :thing4 do
+        public? true
+        authorize? false
+      end
+
+      max :max_of_thing4, :comments, :thing4 do
         public? true
         authorize? false
       end
@@ -277,6 +301,87 @@ defmodule Ash.Test.Actions.AggregateTest do
       |> Ash.create!(authorize?: false)
 
       assert %{count: 2} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
+    end
+
+    test "min, max and sum over no records at all return the default" do
+      mine = Ash.Query.filter(Comment, thing == "no-such-comment")
+
+      for kind <- [:min, :max, :sum] do
+        assert %{v: nil} =
+                 Ash.aggregate!(mine, {:v, kind, field: :thing3}, authorize?: false)
+
+        assert %{v: :none} =
+                 Ash.aggregate!(mine, {:v, kind, field: :thing3, default: :none},
+                   authorize?: false
+                 )
+      end
+    end
+
+    test "min, max and sum over records whose values are all nil return the default" do
+      for _ <- 1..2 do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{public: true, thing: "all-nil", thing3: nil})
+        |> Ash.create!(authorize?: false)
+      end
+
+      mine = Ash.Query.filter(Comment, thing == "all-nil")
+
+      for kind <- [:min, :max, :sum] do
+        assert %{v: nil} =
+                 Ash.aggregate!(mine, {:v, kind, field: :thing3}, authorize?: false)
+
+        assert %{v: :none} =
+                 Ash.aggregate!(mine, {:v, kind, field: :thing3, default: :none},
+                   authorize?: false
+                 )
+      end
+    end
+
+    test "a datetime field sorts and firsts by chronology" do
+      # Erlang term order compares a struct's fields in alphabetical key order,
+      # so for a DateTime :day (31 vs 1) decides before :year is ever reached.
+      # These two instants therefore order one way by term order and the
+      # opposite way by chronology.
+      early = ~U[2020-12-31 23:00:00.000000Z]
+      late = ~U[2026-01-01 00:00:00.000000Z]
+
+      for at <- [early, late] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{public: true, thing: "chrono", thing4: at})
+        |> Ash.create!(authorize?: false)
+      end
+
+      mine = Ash.Query.filter(Comment, thing == "chrono")
+
+      assert [^late, ^early] =
+               mine
+               |> Ash.Query.sort(thing4: :desc)
+               |> Ash.read!(authorize?: false)
+               |> Enum.map(& &1.thing4)
+
+      assert %{first: ^late} =
+               mine
+               |> Ash.Query.sort(thing4: :desc)
+               |> Ash.aggregate!({:first, :first, field: :thing4}, authorize?: false)
+    end
+
+    test "min and max of a datetime field agree with that ordering" do
+      early = ~U[2020-12-31 23:00:00.000000Z]
+      late = ~U[2026-01-01 00:00:00.000000Z]
+
+      for at <- [early, late] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{public: true, thing: "extremes", thing4: at})
+        |> Ash.create!(authorize?: false)
+      end
+
+      mine = Ash.Query.filter(Comment, thing == "extremes")
+
+      assert %{max: ^late} =
+               Ash.aggregate!(mine, {:max, :max, field: :thing4}, authorize?: false)
+
+      assert %{min: ^early} =
+               Ash.aggregate!(mine, {:min, :min, field: :thing4}, authorize?: false)
     end
 
     test "honors tenant" do
@@ -513,6 +618,73 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       assert Ash.load!(post, :count_of_comment_posts_with_matching_things, authorize?: false).count_of_comment_posts_with_matching_things ==
                1
+    end
+
+    test "multi-step aggregate join filters resolve exists paths against the resource at their subpath" do
+      # regression test for https://github.com/ash-project/ash/issues/2801
+      # the join filter at [:comments] is a filter on Comment, so exists paths
+      # inside it must resolve against Comment, not the aggregate's destination
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
+        |> Ash.create!(authorize?: false)
+
+      comment =
+        Comment
+        |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: true})
+        |> Ash.create!(authorize?: false)
+
+      assert Ash.load!(post, :count_of_posts_of_commented_replies, authorize?: false).count_of_posts_of_commented_replies ==
+               0
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{
+        post_id: post.id,
+        parent_id: comment.id,
+        public: true
+      })
+      |> Ash.create!(authorize?: false)
+
+      assert Ash.load!(post, :count_of_posts_of_commented_replies, authorize?: false).count_of_posts_of_commented_replies ==
+               1
+    end
+
+    test "add_calc_context resolves multi-step aggregate join filters against the resource at their subpath" do
+      # mimics how SQL data layers re-add calc context to aggregates whose
+      # join_filters were populated from policy filters on intermediate
+      # resources: https://github.com/ash-project/ash/issues/2801
+      {:ok, aggregate} =
+        Ash.Query.Aggregate.new(Post, :count_of_posts_of_commented_replies, :count,
+          path: [:comments, :post],
+          join_filters: %{
+            [:comments] =>
+              Ash.Expr.expr(exists(children, public == true and exists(post, not is_nil(id))))
+          }
+        )
+
+      assert %Ash.Query.Aggregate{} =
+               Ash.Actions.Read.add_calc_context(aggregate, nil, true, nil, nil, Domain, Post,
+                 parent_stack: []
+               )
+    end
+
+    test "min and max aggregates over a relationship order a datetime chronologically" do
+      early = ~U[2020-12-31 23:00:00.000000Z]
+      late = ~U[2026-01-01 00:00:00.000000Z]
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
+        |> Ash.create!(authorize?: false)
+
+      for at <- [early, late] do
+        Comment
+        |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: true, thing4: at})
+        |> Ash.create!(authorize?: false)
+      end
+
+      assert Ash.load!(post, :min_of_thing4, authorize?: false).min_of_thing4 == early
+      assert Ash.load!(post, :max_of_thing4, authorize?: false).max_of_thing4 == late
     end
 
     test "aggregations on decimal fields succeed" do

@@ -202,6 +202,14 @@ defmodule Ash.Test.Actions.ReadTest do
         prepare(build(load: [:author1, :author2]))
       end
 
+      read :read_with_authors_before_action do
+        prepare(
+          before_action(fn query, _context ->
+            Ash.Query.load(query, [:author1, :author2])
+          end)
+        )
+      end
+
       read :read_with_unknown_intpus do
         skip_unknown_inputs :*
       end
@@ -318,6 +326,8 @@ defmodule Ash.Test.Actions.ReadTest do
   end
 
   describe "Ash.get! with action" do
+    import ExUnit.CaptureLog
+
     setup do
       author1 =
         Author
@@ -337,6 +347,15 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it uses the action provided", %{post: post, author1: author1} do
       fetched_post = Ash.get!(Post, post.id, action: :read_with_authors)
       assert ^author1 = strip_metadata(fetched_post.author1)
+    end
+
+    test "before_action cannot add load statements and logs a warning", %{post: post} do
+      log =
+        capture_log(fn ->
+          assert Ash.get!(Post, post.id, action: :read_with_authors_before_action)
+        end)
+
+      assert log =~ "Cannot add load statements in before_action hooks on read actions"
     end
   end
 

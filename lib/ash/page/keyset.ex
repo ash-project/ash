@@ -10,6 +10,13 @@ defmodule Ash.Page.Keyset do
   which can be used to fetch the next/previous pages.
   """
 
+  # Upper bound on the size (in bytes) of the term a client-supplied cursor is
+  # allowed to deserialize into. Cursors legitimately encode only the sort
+  # values of a single record, so this is generous; it exists purely to prevent
+  # a hostile cursor (e.g. a compressed term that inflates to tens of MB) from
+  # exhausting memory. Configurable via `config :ash, max_keyset_byte_size: ...`.
+  @default_max_keyset_byte_size 10_240
+
   @derive {Inspect, only: [:results, :count, :before, :after, :more?]}
   defstruct [:results, :count, :before, :after, :limit, :rerun, :more?]
 
@@ -115,19 +122,77 @@ defmodule Ash.Page.Keyset do
   def filter(%{resource: resource} = query, values, sort, after_or_before)
       when after_or_before in [:after, :before] do
     with {:ok, decoded} <- decode_values(values, after_or_before),
-         {:ok, zipped} <- zip_fields(sort, decoded, values) do
+         {:ok, zipped} <- zip_fields(sort, decoded, values),
+         {:ok, zipped} <- cast_values(zipped, resource, values) do
       {:ok, filters(Enum.with_index(zipped), resource, query, after_or_before)}
+    else
+      {:error, %Ash.Error.Page.InvalidKeyset{} = error} ->
+        {:error, maybe_redact(error, resource, sort)}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
+  # a keyset is `term_to_binary` + Base64 over the sort values of the record it
+  # was built from, so it exposes those values to anyone holding it
+  defp maybe_redact(error, resource, sort) do
+    if Application.get_env(:ash, :redact_sensitive_values_in_errors?, false) and
+         sensitive_sort?(resource, sort) do
+      %{error | value: Ash.Helpers.redact(error.value)}
+    else
+      error
+    end
+  end
+
+  defp sensitive_sort?(resource, sort) do
+    Enum.any?(sort, fn
+      {%{sensitive?: sensitive?}, _} ->
+        sensitive?
+
+      {field, _} ->
+        match?(%{sensitive?: true}, Ash.Resource.Info.field(resource, field))
+    end)
+  end
+
   defp decode_values(values, key) do
-    {:ok,
-     values
-     |> Base.decode64!()
-     |> non_executable_binary_to_term([:safe])}
+    max_byte_size =
+      Application.get_env(:ash, :max_keyset_byte_size, @default_max_keyset_byte_size)
+
+    with {:ok, decoded} <- Base.decode64(values),
+         :ok <- check_keyset_size(decoded, max_byte_size),
+         term <- non_executable_binary_to_term(decoded, [:safe]),
+         :ok <- check_no_expression(term) do
+      {:ok, term}
+    else
+      _ ->
+        {:error, Ash.Error.Page.InvalidKeyset.exception(value: values, key: key)}
+    end
   rescue
     _e ->
       {:error, Ash.Error.Page.InvalidKeyset.exception(value: values, key: key)}
+  end
+
+  # Ash only ever encodes cursors with uncompressed `:erlang.term_to_binary/1`,
+  # so a compressed payload (external term format tag `80`) is never a legitimate
+  # keyset. Rejecting it outright removes the decompression-bomb vector entirely,
+  # without relying on the header's self-declared uncompressed size. Uncompressed
+  # payloads are then bounded directly by their own byte size.
+  defp check_keyset_size(<<131, 80, _::binary>>, _max), do: :error
+  defp check_keyset_size(binary, max) when byte_size(binary) > max, do: :error
+  defp check_keyset_size(_binary, _max), do: :ok
+
+  # A legitimate cursor only ever contains scalar sort values. A decoded term
+  # that is or contains an Ash expression (e.g. `%Ash.Query.Call{}`) is a forged
+  # cursor attempting to inject a filter expression — which would be spliced into
+  # the query as a value and evaluated (SQL injection / RCE depending on the data
+  # layer). Reject any such term outright.
+  defp check_no_expression(term) do
+    if Ash.Expr.expr?(term) do
+      :error
+    else
+      :ok
+    end
   end
 
   defp filters(keyset, resource, query, after_or_before) do
@@ -244,6 +309,76 @@ defmodule Ash.Page.Keyset do
   defp zip_fields(_, _, full_value, _),
     do: {:error, Ash.Error.Page.InvalidKeyset.exception(value: full_value)}
 
+  # A keyset only ever encodes scalar sort values. On the way back in we cast each
+  # decoded value against the type of the field it sorts on, so a forged cursor
+  # whose value can't be a legitimate value of that field (e.g. an injected
+  # `%Ash.Query.Call{}` in place of an integer) is rejected here rather than being
+  # spliced into the filter and hydrated as an expression. The `expr?` guard in
+  # `decode_values/2` covers permissive types (e.g. `:any`) whose `cast_input`
+  # would otherwise pass an expression through unchanged.
+  defp cast_values(zipped, resource, full_value) do
+    zipped
+    |> Enum.reduce_while({:ok, []}, fn {field, direction, value}, {:ok, acc} ->
+      case cast_value(resource, field, value) do
+        {:ok, value} ->
+          {:cont, {:ok, [{field, direction, value} | acc]}}
+
+        :error ->
+          {:halt, {:error, Ash.Error.Page.InvalidKeyset.exception(value: full_value)}}
+      end
+    end)
+    |> case do
+      {:ok, casted} -> {:ok, Enum.reverse(casted)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # `nil` is inert and is a legitimate keyset value for a nullable sort field.
+  defp cast_value(_resource, _field, nil), do: {:ok, nil}
+
+  defp cast_value(resource, field, value) do
+    case field_type(resource, field) do
+      {type, constraints} ->
+        case Ash.Type.cast_input(type, value, constraints) do
+          {:ok, casted} -> {:ok, casted}
+          _ -> :error
+        end
+
+      :error ->
+        # Field type couldn't be determined; the `expr?` guard has already
+        # rejected expressions, so pass the (scalar) value through unchanged.
+        {:ok, value}
+    end
+  end
+
+  defp field_type(resource, field) do
+    field
+    |> resolve_field(resource)
+    |> case do
+      # Attributes and calculations carry a resolved type directly. Aggregates
+      # may too (query aggregates), so prefer it when present.
+      %{type: type, constraints: constraints} when not is_nil(type) ->
+        {type, constraints}
+
+      # Resource aggregates generally leave `type`/`constraints` nil — their type
+      # is derived from the aggregate kind and the field being aggregated, via the
+      # same resolver used everywhere else.
+      %struct{} = aggregate when struct in [Ash.Query.Aggregate, Ash.Resource.Aggregate] ->
+        case Ash.Query.Aggregate.aggregate_type(resource, aggregate) do
+          {:ok, type, constraints} -> {type, constraints}
+          _ -> :error
+        end
+
+      _ ->
+        :error
+    end
+  end
+
+  defp resolve_field(field, resource) when is_atom(field) or is_binary(field),
+    do: Ash.Resource.Info.field(resource, field)
+
+  defp resolve_field(field, _resource), do: field
+
   defp keyset(record, fields) do
     record
     |> field_values(fields)
@@ -252,22 +387,32 @@ defmodule Ash.Page.Keyset do
   end
 
   defp field_values(record, sort) do
-    Enum.map(sort, fn
-      {%{__struct__: Ash.Query.Calculation, load: load, name: name}, _} ->
+    sort
+    |> Enum.with_index()
+    |> Enum.map(fn
+      {{%{__struct__: Ash.Query.Calculation, load: load, name: name}, _}, index} ->
         if load do
           Map.get(record, load)
         else
-          Map.get(record.calculations, name)
+          # anonymous sort calculations are renamed to `{:__ash_runtime_sort__, index}`
+          # when they are computed by `Ash.Actions.Sort.runtime_sort/3`
+          case Map.fetch(record.calculations, name) do
+            {:ok, value} -> value
+            :error -> Map.get(record.calculations, {:__ash_runtime_sort__, index})
+          end
         end
 
-      {%{__struct__: Ash.Query.Aggregate, load: load, name: name}, _} ->
+      {{%{__struct__: Ash.Query.Aggregate, load: load, name: name}, _}, index} ->
         if load do
           Map.get(record, load)
         else
-          Map.get(record.aggregates, name)
+          case Map.fetch(record.aggregates, name) do
+            {:ok, value} -> value
+            :error -> Map.get(record.aggregates, {:__ash_runtime_sort__, index})
+          end
         end
 
-      {field, _} ->
+      {{field, _}, _index} ->
         Map.get(record, field)
     end)
   end

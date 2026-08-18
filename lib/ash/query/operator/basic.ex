@@ -9,7 +9,43 @@ defmodule Ash.Query.Operator.Basic do
     plus: [
       symbol: :+,
       no_nils: true,
-      evaluate_types: :numbers
+      evaluate_types: :numbers,
+      types: [
+        [:same, :any],
+        [:duration, :duration],
+        [:date, :duration],
+        [:duration, :date],
+        [:datetime, :duration],
+        [:duration, :datetime],
+        [:utc_datetime, :duration],
+        [:duration, :utc_datetime],
+        [:utc_datetime_usec, :duration],
+        [:duration, :utc_datetime_usec],
+        [:naive_datetime, :duration],
+        [:duration, :naive_datetime],
+        [:time, :duration],
+        [:duration, :time],
+        [:time_usec, :duration],
+        [:duration, :time_usec]
+      ],
+      returns: [
+        :same,
+        :duration,
+        :date,
+        :date,
+        :datetime,
+        :datetime,
+        :utc_datetime,
+        :utc_datetime,
+        :utc_datetime_usec,
+        :utc_datetime_usec,
+        :naive_datetime,
+        :naive_datetime,
+        :time,
+        :time,
+        :time_usec,
+        :time_usec
+      ]
     ],
     times: [
       symbol: :*,
@@ -25,7 +61,29 @@ defmodule Ash.Query.Operator.Basic do
     minus: [
       symbol: :-,
       no_nils: true,
-      evaluate_types: :numbers
+      evaluate_types: :numbers,
+      types: [
+        [:same, :any],
+        [:duration, :duration],
+        [:date, :duration],
+        [:datetime, :duration],
+        [:utc_datetime, :duration],
+        [:utc_datetime_usec, :duration],
+        [:naive_datetime, :duration],
+        [:time, :duration],
+        [:time_usec, :duration]
+      ],
+      returns: [
+        :same,
+        :duration,
+        :date,
+        :datetime,
+        :utc_datetime,
+        :utc_datetime_usec,
+        :naive_datetime,
+        :time,
+        :time_usec
+      ]
     ],
     div: [
       symbol: :/,

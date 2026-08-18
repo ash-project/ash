@@ -175,7 +175,8 @@ defmodule Ash.Seed do
 
     %{
       result
-      | __metadata__: Ash.Actions.Helpers.put_write_as_of(result.__metadata__, resource, opts[:as_of])
+      | __metadata__:
+          Ash.Actions.Helpers.put_write_as_of(result.__metadata__, resource, opts[:as_of])
     }
   end
 

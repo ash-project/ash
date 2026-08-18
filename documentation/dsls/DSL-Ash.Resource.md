@@ -460,6 +460,7 @@ end
 | [`not_found_message`](#relationships-has_one-not_found_message){: #relationships-has_one-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-has_one-writable?){: #relationships-has_one-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-has_one-read_action){: #relationships-has_one-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
+| [`read_action_arguments`](#relationships-has_one-read_action_arguments){: #relationships-has_one-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-has_one-domain){: #relationships-has_one-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-has_one-filterable?){: #relationships-has_one-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-has_one-sortable?){: #relationships-has_one-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -572,6 +573,7 @@ end
 | [`not_found_message`](#relationships-has_many-not_found_message){: #relationships-has_many-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-has_many-writable?){: #relationships-has_many-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-has_many-read_action){: #relationships-has_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
+| [`read_action_arguments`](#relationships-has_many-read_action_arguments){: #relationships-has_many-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-has_many-domain){: #relationships-has_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-has_many-filterable?){: #relationships-has_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-has_many-sortable?){: #relationships-has_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -684,6 +686,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`not_found_message`](#relationships-many_to_many-not_found_message){: #relationships-many_to_many-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-many_to_many-writable?){: #relationships-many_to_many-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-many_to_many-read_action){: #relationships-many_to_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
+| [`read_action_arguments`](#relationships-many_to_many-read_action_arguments){: #relationships-many_to_many-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-many_to_many-domain){: #relationships-many_to_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-many_to_many-filterable?){: #relationships-many_to_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-many_to_many-sortable?){: #relationships-many_to_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -792,6 +795,7 @@ end
 | [`not_found_message`](#relationships-belongs_to-not_found_message){: #relationships-belongs_to-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-belongs_to-writable?){: #relationships-belongs_to-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-belongs_to-read_action){: #relationships-belongs_to-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
+| [`read_action_arguments`](#relationships-belongs_to-read_action_arguments){: #relationships-belongs_to-read_action_arguments } | `map` | `%{}` | Arguments to pass to the configured `read_action` when loading data and filtering. Arguments provided explicitly when loading the relationship take precedence over these arguments. |
 | [`domain`](#relationships-belongs_to-domain){: #relationships-belongs_to-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filterable?`](#relationships-belongs_to-filterable?){: #relationships-belongs_to-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sortable?`](#relationships-belongs_to-sortable?){: #relationships-belongs_to-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in sorts. |
@@ -981,6 +985,7 @@ end
 | [`constraints`](#actions-action-constraints){: #actions-action-constraints } | `keyword` |  | Constraints for the return type. See `Ash.Type` for more. |
 | [`allow_nil?`](#actions-action-allow_nil?){: #actions-action-allow_nil? } | `boolean` | `false` | Whether or not the action can return nil. Unlike attributes & arguments, this defaults to `false`. |
 | [`run`](#actions-action-run){: #actions-action-run } | `(any, any -> any) \| module \| module` |  | Module may be an `Ash.Resource.Actions.Implementation` or `Reactor`. |
+| [`error_handler`](#actions-action-error_handler){: #actions-action-error_handler } | `mfa \| (any, any -> any)` |  | Sets the error handler on the action input. See `Ash.ActionInput.handle_errors/2` for more |
 | [`primary?`](#actions-action-primary?){: #actions-action-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-action-description){: #actions-action-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-action-transaction?){: #actions-action-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
@@ -1060,7 +1065,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#actions-action-prepare-on){: #actions-action-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`on`](#actions-action-prepare-on){: #actions-action-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#actions-action-prepare-where){: #actions-action-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#actions-action-prepare-only_when_valid?){: #actions-action-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
@@ -1587,7 +1592,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#actions-read-prepare-on){: #actions-read-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`on`](#actions-read-prepare-on){: #actions-read-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#actions-read-prepare-where){: #actions-read-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#actions-read-prepare-only_when_valid?){: #actions-read-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
@@ -2953,7 +2958,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#preparations-prepare-on){: #preparations-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`on`](#preparations-prepare-on){: #preparations-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#preparations-prepare-where){: #preparations-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#preparations-prepare-only_when_valid?){: #preparations-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 
@@ -3223,7 +3228,7 @@ prepare build(sort: [:foo, :bar])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#pipelines-pipeline-prepare-on){: #pipelines-pipeline-prepare-on } | `:read \| :action \| :create \| :update \| :destroy \| list(:read \| :action \| :create \| :update \| :destroy)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
+| [`on`](#pipelines-pipeline-prepare-on){: #pipelines-pipeline-prepare-on } | `:read \| :action \| list(:read \| :action)` | `[:read]` | The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions. |
 | [`where`](#pipelines-pipeline-prepare-where){: #pipelines-pipeline-prepare-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this preparation to apply. Any of these validations failing will result in this preparation being ignored. |
 | [`only_when_valid?`](#pipelines-pipeline-prepare-only_when_valid?){: #pipelines-pipeline-prepare-only_when_valid? } | `boolean` | `false` | If the preparation should only run on valid queries. |
 

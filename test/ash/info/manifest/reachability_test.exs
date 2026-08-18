@@ -67,5 +67,18 @@ defmodule Ash.Test.Info.Manifest.Generator.ReachabilityTest do
       # Todo has :metadata attribute of type TodoMetadata (embedded resource)
       assert MapSet.member?(resource_set, Ash.Test.Manifest.TodoMetadata)
     end
+
+    test "traverses explicit action roots for already structurally visited resources" do
+      {_resources, types} =
+        Reachability.find_reachable([
+          Ash.Test.Manifest.User,
+          {Ash.Test.Manifest.Post, [:get_custom_metadata, :update_internal_code]}
+        ])
+
+      assert Ash.Test.Manifest.Types.EmailString in types
+      assert Ash.Test.Manifest.CustomMetadata in types
+      assert Ash.Test.Manifest.InputParsing.Options in types
+      assert Ash.Test.Manifest.InputParsing.PreferencesKeyword in types
+    end
   end
 end

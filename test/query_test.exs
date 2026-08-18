@@ -185,6 +185,135 @@ defmodule Ash.Test.QueryTest do
                |> Ash.read!()
     end
 
+    test "a union of parts that select only a shared field still returns both records" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "fred", email: "b@bar.com"})
+
+      assert [_, _] =
+               User
+               |> Ash.Query.combination_of([
+                 Ash.Query.Combination.base(
+                   filter: expr(email == "a@bar.com"),
+                   select: [:name]
+                 ),
+                 Ash.Query.Combination.union(
+                   filter: expr(email == "b@bar.com"),
+                   select: [:name]
+                 )
+               ])
+               |> Ash.read!()
+    end
+
+    test "the combination fieldset reports the primary key even when the parts do not select it" do
+      {:ok, query} =
+        User
+        |> Ash.Query.combination_of([
+          Ash.Query.Combination.base(filter: expr(name == "fred"), select: [:name]),
+          Ash.Query.Combination.union(filter: expr(name == "alice"), select: [:name])
+        ])
+        |> Ash.Query.data_layer_query()
+
+      fieldset = query.context[:data_layer][:combination_fieldset]
+
+      for field <- Ash.Resource.Info.primary_key(User) do
+        assert field in fieldset
+      end
+    end
+
+    test "a combination calculation naming no resource field stays in :calculations" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+
+      assert [%User{calculations: %{sort_order: 1}}] =
+               User
+               |> Ash.Query.combination_of([
+                 Ash.Query.Combination.base(
+                   filter: expr(name == "fred"),
+                   calculations: %{sort_order: calc(1, type: :integer)}
+                 )
+               ])
+               |> Ash.read!()
+    end
+
+    test "a combination calculation shadowing a resource field is promoted onto the record" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+
+      assert [%User{name: "from-combination", calculations: calculations}] =
+               User
+               |> Ash.Query.combination_of([
+                 Ash.Query.Combination.base(
+                   filter: expr(name == "fred"),
+                   calculations: %{name: calc("from-combination", type: :string)}
+                 )
+               ])
+               |> Ash.read!()
+
+      refute Map.has_key?(calculations, :name)
+    end
+
+    test "a combination calculation can be sorted on from the outer query" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "alice", email: "a@baz.com"})
+
+      ranked = [
+        Ash.Query.Combination.base(
+          filter: expr(name == "fred"),
+          calculations: %{sort_order: calc(1, type: :integer)}
+        ),
+        Ash.Query.Combination.union(
+          filter: expr(name == "alice"),
+          calculations: %{sort_order: calc(2, type: :integer)}
+        )
+      ]
+
+      assert [2, 1] =
+               User
+               |> Ash.Query.combination_of(ranked)
+               |> Ash.Query.sort([{calc(^combinations(:sort_order)), :desc}])
+               |> Ash.read!()
+               |> Enum.map(& &1.calculations[:sort_order])
+    end
+
+    test "a combination calculation can be filtered on from the outer query" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "alice", email: "a@baz.com"})
+
+      ranked = [
+        Ash.Query.Combination.base(
+          filter: expr(name == "fred"),
+          calculations: %{sort_order: calc(1, type: :integer)}
+        ),
+        Ash.Query.Combination.union(
+          filter: expr(name == "alice"),
+          calculations: %{sort_order: calc(2, type: :integer)}
+        )
+      ]
+
+      # a predicate that excludes nothing must not exclude everything
+      assert [1, 2] =
+               User
+               |> Ash.Query.combination_of(ranked)
+               |> Ash.Query.filter(^combinations(:sort_order) > 0)
+               |> Ash.read!()
+               |> Enum.map(& &1.calculations[:sort_order])
+               |> Enum.sort()
+
+      # and one that discriminates must discriminate
+      assert [%User{name: "alice"}] =
+               User
+               |> Ash.Query.combination_of(ranked)
+               |> Ash.Query.filter(^combinations(:sort_order) == 2)
+               |> Ash.read!()
+
+      # the reference resolves whichever order the query is built in
+      assert [1, 2] =
+               User
+               |> Ash.Query.filter(^combinations(:sort_order) > 0)
+               |> Ash.Query.combination_of(ranked)
+               |> Ash.read!()
+               |> Enum.map(& &1.calculations[:sort_order])
+               |> Enum.sort()
+    end
+
     test "it handles combinations with intersect" do
       Ash.create!(User, %{name: "fred", email: "a@bar.com"})
       Ash.create!(User, %{name: "john", email: "j@bar.com"})
@@ -217,6 +346,43 @@ defmodule Ash.Test.QueryTest do
       assert hd(result).email == "a@bar.com"
     end
 
+    test "a union following an except sees only the records the except left" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "fred", email: "b@baz.com"})
+      Ash.create!(User, %{name: "john", email: "j@bar.com"})
+
+      result =
+        User
+        |> Ash.Query.combination_of([
+          Ash.Query.Combination.base([]),
+          Ash.Query.Combination.except(filter: expr(name == "fred")),
+          Ash.Query.Combination.union(filter: expr(contains(email, "bar.com")))
+        ])
+        |> Ash.read!()
+
+      # the except leaves john, and the union adds back the fred the except removed
+      assert ["a@bar.com", "j@bar.com"] = result |> Enum.map(& &1.email) |> Enum.sort()
+    end
+
+    test "a union following an intersect sees only the records the intersect left" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+      Ash.create!(User, %{name: "fred", email: "b@baz.com"})
+      Ash.create!(User, %{name: "john", email: "j@bar.com"})
+
+      result =
+        User
+        |> Ash.Query.combination_of([
+          Ash.Query.Combination.base([]),
+          Ash.Query.Combination.intersect(filter: expr(name == "fred")),
+          Ash.Query.Combination.union(filter: expr(contains(email, "bar.com")))
+        ])
+        |> Ash.read!()
+
+      # the intersect leaves the two freds, and the union adds back the john it removed
+      assert ["a@bar.com", "b@baz.com", "j@bar.com"] =
+               result |> Enum.map(& &1.email) |> Enum.sort()
+    end
+
     test "combinations with multiple union_all" do
       Ash.create!(User, %{name: "fred", email: "a@bar.com"})
       Ash.create!(User, %{name: "alice", email: "a@baz.com"})
@@ -235,6 +401,39 @@ defmodule Ash.Test.QueryTest do
       assert Enum.any?(result, &(&1.name == "fred"))
       assert Enum.any?(result, &(&1.name == "alice"))
       assert Enum.any?(result, &(&1.name == "john"))
+    end
+
+    test "a ranked union_all sorts by its combination calculation" do
+      Ash.create!(User, %{name: "fred", email: "a@bar.com"})
+
+      # One record, reached by three parts that each rank it differently.
+      ranked = fn type ->
+        User
+        |> Ash.Query.combination_of([
+          Ash.Query.Combination.base(
+            filter: expr(name == "fred"),
+            calculations: %{sort_order: calc(1, type: :integer)}
+          ),
+          apply(Ash.Query.Combination, type, [
+            [
+              filter: expr(name == "fred"),
+              calculations: %{sort_order: calc(2, type: :integer)}
+            ]
+          ]),
+          apply(Ash.Query.Combination, type, [
+            [
+              filter: expr(name == "fred"),
+              calculations: %{sort_order: calc(3, type: :integer)}
+            ]
+          ])
+        ])
+        |> Ash.Query.sort([{calc(^combinations(:sort_order)), :desc}])
+        |> Ash.read!()
+        |> Enum.map(& &1.calculations[:sort_order])
+      end
+
+      assert [3, 2, 1] = ranked.(:union_all)
+      assert [3, 2, 1] = ranked.(:union)
     end
 
     test "combination with offset" do

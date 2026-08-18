@@ -7,6 +7,7 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
   use ExUnit.Case, async: false
 
   alias Ash.Test.Actions.BulkDestroyManualTest.Helpers
+  alias Ash.Test.BulkTestChanges.SoftDestroyManual
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -268,6 +269,13 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
         manual DestroyManualOk
       end
 
+      destroy :soft_destroy_manual do
+        soft? true
+        require_atomic? false
+        change set_attribute(:deleted, true)
+        manual SoftDestroyManual
+      end
+
       create :create do
         accept [:name]
       end
@@ -279,6 +287,12 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
       attribute :name, :string do
         public? true
         allow_nil? false
+      end
+
+      attribute :deleted, :boolean do
+        public? true
+        allow_nil? false
+        default false
       end
     end
   end
@@ -655,5 +669,27 @@ defmodule Ash.Test.Actions.BulkDestroyManualTest do
     assert result.notifications == []
     assert result.error_count == 0
     assert result.errors == nil
+  end
+
+  # A soft destroy is run as a bulk update. The update bulk runner picks the
+  # manual bulk_update/3 callback via function_exported?/3, which returns false
+  # for a module that isn't loaded yet. Without a Code.ensure_loaded?/1 guard the
+  # callback is skipped and the per-record path runs with a :bulk_destroy context
+  # it doesn't expect. Unloading the module forces the runtime to reload it.
+  test "bulk_destroy with a manual soft destroy works when the manual module isn't loaded" do
+    [author] = create_authors() |> Enum.take(1)
+
+    :code.purge(SoftDestroyManual)
+    :code.delete(SoftDestroyManual)
+    refute :erlang.function_exported(SoftDestroyManual, :bulk_update, 3)
+
+    result =
+      Ash.bulk_destroy([author], :soft_destroy_manual, %{},
+        return_records?: true,
+        return_errors?: true,
+        strategy: :stream
+      )
+
+    assert result.status == :success
   end
 end

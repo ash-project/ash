@@ -110,6 +110,27 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
+  Validates that all of the provided validations pass
+
+  Primarily useful when composed with other validations, like `any/1` or `negate/1`.
+  At the top level, listing multiple `validate` statements already requires all of them to pass.
+
+  ## Examples
+
+      validate any([
+                 all([
+                   one_of(:status, [:valid]),
+                   match(:title, "^[a-z]+$")
+                 ]),
+                 attribute_equals(:priority, 1)
+               ])
+  """
+  @spec all(validations :: list(Validation.ref())) :: Validation.ref()
+  def all(validations) do
+    {Validation.All, validations: validations}
+  end
+
+  @doc """
   Validates that the action name matches the provided action name or names. Primarily meant for use in `where`.
 
   ## Examples

@@ -259,6 +259,15 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
         change filter(expr(title == "foo"))
       end
 
+      destroy :destroy_with_context do
+        require_atomic? false
+
+        change fn changeset, _ ->
+          send(self(), {:changeset_context, changeset.context})
+          changeset
+        end
+      end
+
       destroy :soft do
         require_atomic? false
         soft? true
@@ -591,6 +600,24 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
              end)
+
+    assert [] = Ash.read!(Post)
+  end
+
+  test "context provided in opts is set on changesets, query context is not" do
+    Ash.bulk_create!([%{title: "title1"}], Post, :create)
+
+    Post
+    |> Ash.Query.set_context(%{from_query: true})
+    |> Ash.bulk_destroy!(:destroy_with_context, %{},
+      context: %{from_opts: true},
+      strategy: [:stream],
+      return_errors?: true
+    )
+
+    assert_received {:changeset_context, context}
+    assert context[:from_opts]
+    refute context[:from_query]
 
     assert [] = Ash.read!(Post)
   end

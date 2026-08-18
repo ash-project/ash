@@ -28,9 +28,7 @@ defmodule Ash.Query.Function.Intersects do
   def evaluate(%{arguments: [_, nil]}), do: {:known, nil}
 
   def evaluate(%{arguments: [right, left]}) when is_list(right) and is_list(left) do
-    right = MapSet.new(right)
-    left = MapSet.new(left)
-    {:known, not MapSet.disjoint?(right, left)}
+    {:known, Enum.any?(left, fn item -> Enum.any?(right, &Comp.equal?(&1, item)) end)}
   end
 
   def evaluate(_other) do

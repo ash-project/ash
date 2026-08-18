@@ -39,7 +39,7 @@ Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, (doma
 - `[:ash, :calculation]` - A calculation being computed in the app. Use `resource_short_name` and `calculation` metadata to break down measurements.
 - `[:ash, :before_action]` - A before_action being run on a changeset. Use `resource_short_name` to break down measurements.
 - `[:ash, :after_action]` - An after_action being run on a changeset. Use `resource_short_name` to break down measurements.
-- `[:ash, :preparation]` - A preparation being run on a changeset. Use `resource_short_name` and `preparation` metadata to break down measurements.
+- `[:ash, :preparation]` - A preparation being run on a query or action input. Use `resource_short_name` and `preparation` metadata to break down measurements.
 - `[:ash, :notifier]` - A notifier being run with a notification. Use `resource_short_name` and `notifier` metadata to break down measurements.
 - `[:ash, :request_step]` - The resolution of an internal request. Ash breaks up its operations internally into multiple requests, this can give you a high resolution insight onto the execution of those internal requests resolution. Use `name` metadata to break down measurements.
 

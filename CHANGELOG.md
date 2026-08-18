@@ -8,6 +8,162 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.31.3](https://github.com/ash-project/ash/compare/v3.31.2...v3.31.3) (2026-08-12)
+
+
+
+
+### Bug Fixes:
+
+* do not accept any `%Ash.Expr{}` terms via keysets by [@zachdaniel](https://github.com/zachdaniel)
+
+fix for CVE-2026-67579
+
+* switch docs & installer to use actual name for config by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.31.2](https://github.com/ash-project/ash/compare/v3.31.1...v3.31.2) (2026-08-09)
+
+
+
+
+### Bug Fixes:
+
+* undo breaking change where we started honoring `:allow_forbidden_field_for_relationships_by_default?` by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.31.1](https://github.com/ash-project/ash/compare/v3.31.0...v3.31.1) (2026-08-09)
+
+
+
+
+### Bug Fixes:
+
+* limit keyset binary size by [@zachdaniel](https://github.com/zachdaniel)
+
+  Patches CVE-2026-69659 https://github.com/ash-project/ash/security/advisories/GHSA-j35q-v8h8-7mwq
+
+* sanitize managed relationship lookup filters by [@zachdaniel](https://github.com/zachdaniel)
+
+  Patches CVE-2026-69659 https://github.com/ash-project/ash/security/advisories/GHSA-j35q-v8h8-7mwq
+
+* resolve bulk index from changeset in after_batch filter (#2842) by [@emadshaaban92](https://github.com/emadshaaban92) [(#2842)](https://github.com/ash-project/ash/pull/2842)
+
+* ci: pass --all to `mix igniter.upgrade` (#2841) by [@jimsynz](https://github.com/jimsynz) [(#2841)](https://github.com/ash-project/ash/pull/2841)
+
+* report the primary key in the combination fieldset (#2836) by [@matt-beanland](https://github.com/matt-beanland) [(#2836)](https://github.com/ash-project/ash/pull/2836)
+
+* resolve a combinations reference in the outer filter (#2838) by [@matt-beanland](https://github.com/matt-beanland) [(#2838)](https://github.com/ash-project/ash/pull/2838)
+
+* dispatch on whether a comparator is implemented (#2840) by [@matt-beanland](https://github.com/matt-beanland) [(#2840)](https://github.com/ash-project/ash/pull/2840)
+
+* decide an ETS aggregate is empty after rejecting nil values (#2833) by [@matt-beanland](https://github.com/matt-beanland) [(#2833)](https://github.com/ash-project/ash/pull/2833)
+
+* compare the combination fieldset by name so shadowing calcs are applied (#2830) by [@matt-beanland](https://github.com/matt-beanland) [(#2830)](https://github.com/ash-project/ash/pull/2830)
+
+* sort a ranked union in ETS, not only a ranked union_all (#2828) by [@matt-beanland](https://github.com/matt-beanland) [(#2828)](https://github.com/ash-project/ash/pull/2828)
+
+* order ETS min/max aggregates with Comp instead of Erlang term order (#2824) by [@matt-beanland](https://github.com/matt-beanland) [(#2824)](https://github.com/ash-project/ash/pull/2824)
+
+* reset the combinations accumulator after an intersect in ETS (#2822) by [@matt-beanland](https://github.com/matt-beanland) [(#2822)](https://github.com/ash-project/ash/pull/2822)
+
+* ci: reference the unused-deps input by its declared name by [@joshprice](https://github.com/joshprice) [(#2813)](https://github.com/ash-project/ash/pull/2813)
+
+* allow_forbidden_field_for_relationships_by_default? missing the ? (#2812) by [@frankdugan3](https://github.com/frankdugan3) [(#2812)](https://github.com/ash-project/ash/pull/2812)
+
+### Improvements:
+
+* memoize Comparable's type-pair dispatch in a release (#2819) by [@matt-beanland](https://github.com/matt-beanland) [(#2819)](https://github.com/ash-project/ash/pull/2819)
+
+* index runtime_sort rekey by primary key instead of scanning by [@matt-beanland](https://github.com/matt-beanland) [(#2818)](https://github.com/ash-project/ash/pull/2818)
+
+## [v3.31.0](https://github.com/ash-project/ash/compare/v3.30.1...v3.31.0) (2026-07-28)
+
+
+
+
+### Features:
+
+* add units constraint to Ash.Type.Duration (#2811) by [@matt-beanland](https://github.com/matt-beanland) [(#2811)](https://github.com/ash-project/ash/pull/2811)
+
+* add mfa constraint to Ash.Type.Function for portable persistence (#2807) by [@matt-beanland](https://github.com/matt-beanland) [(#2807)](https://github.com/ash-project/ash/pull/2807)
+
+* add all/1 builtin validation as the complement to any/1 (#2800) by [@barnabasJ](https://github.com/barnabasJ) [(#2800)](https://github.com/ash-project/ash/pull/2800)
+
+### Bug Fixes:
+
+* order durations semantically instead of by struct field layout (#2809) by [@matt-beanland](https://github.com/matt-beanland) [(#2809)](https://github.com/ash-project/ash/pull/2809)
+
+* compare with `Comp` in `intersects` function by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure related aggregates set the proper resource by [@zachdaniel](https://github.com/zachdaniel)
+
+* enforce sortable fasle consistently (#2793) by Dominik [(#2793)](https://github.com/ash-project/ash/pull/2793)
+
+### Improvements:
+
+* avoid quadratic cost evaluating in-list filters at runtime (#2802) by [@matt-beanland](https://github.com/matt-beanland) [(#2802)](https://github.com/ash-project/ash/pull/2802)
+
+* add strict? constraint to Ash.Type.UUIDv7 (#2795) by olivermt [(#2795)](https://github.com/ash-project/ash/pull/2795)
+
+## [v3.30.1](https://github.com/ash-project/ash/compare/v3.30.0...v3.30.1) (2026-07-21)
+
+
+
+
+### Bug Fixes:
+
+* fix `Ash.Type.load` on array returns by [@zachdaniel](https://github.com/zachdaniel)
+
+## [v3.30.0](https://github.com/ash-project/ash/compare/v3.29.3...v3.30.0) (2026-07-21)
+
+
+
+
+### Features:
+
+* pass relationship read action arguments (#2775) by [@jechol](https://github.com/jechol) [(#2775)](https://github.com/ash-project/ash/pull/2775)
+
+* support for aggregated Policy evaluation (#2778) by CyanideDragon [(#2778)](https://github.com/ash-project/ash/pull/2778)
+
+* add action_changes function to combine global and action-specific changes by Aaron Heiner [(#2776)](https://github.com/ash-project/ash/pull/2776)
+
+* mix: add `mix ash.set.domains` configuration task via Igniter (#2762) by Okoye (Nature) Andrew [(#2762)](https://github.com/ash-project/ash/pull/2762)
+
+### Bug Fixes:
+
+* expand calculations no matter where they appear by [@zachdaniel](https://github.com/zachdaniel)
+
+* use final relationship read action for aggregates (#2792) by [@jechol](https://github.com/jechol) [(#2792)](https://github.com/ash-project/ash/pull/2792)
+
+* fix negate atomic validation field interpolation (#2787) by [@stevebrambilla](https://github.com/stevebrambilla) [(#2787)](https://github.com/ash-project/ash/pull/2787)
+
+* propagate shared context when loading bulk create results (#2783) by [@nallwhy](https://github.com/nallwhy) [(#2783)](https://github.com/ash-project/ash/pull/2783)
+
+* don't clobber bulk destroy context by [@zachdaniel](https://github.com/zachdaniel)
+
+* don't carry over query context to changesets by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure manual action module is loaded before bulk dispatch (#2768) by diogomrts [(#2768)](https://github.com/ash-project/ash/pull/2768)
+
+* on_match :destroy for many_to_many now destroys both join and destination (#2638) by [@nallwhy](https://github.com/nallwhy) [(#2638)](https://github.com/ash-project/ash/pull/2638)
+
+* manifest reachability for repeated action roots (#2766) by olivermt [(#2766)](https://github.com/ash-project/ash/pull/2766)
+
+* pass NotLoaded/ForbiddenField through Ash.Type.rewrite/4 for array types (#2765) by Oshoma Momoh [(#2765)](https://github.com/ash-project/ash/pull/2765)
+
+* load and rewrite array-member union types correctly (#2763) by skanderm [(#2763)](https://github.com/ash-project/ash/pull/2763)
+
+### Improvements:
+
+* redact keyset values in `InvalidKeyset` messages (#2788) by nseaSeb [(#2788)](https://github.com/ash-project/ash/pull/2788)
+
+* add `error_handler` to generic actions (#2782) by [@jimsynz](https://github.com/jimsynz) [(#2782)](https://github.com/ash-project/ash/pull/2782)
+
+* add default_bulk_batch_size data layer callback(#2780) by alfieV [(#2780)](https://github.com/ash-project/ash/pull/2780)
+
+* Syntax Error for Exists improved #2274 (#2767) by torazar [(#2767)](https://github.com/ash-project/ash/pull/2767)
+
+* support predicate (question mark endings) in code interfaces (#2761) by colenelson0 [(#2761)](https://github.com/ash-project/ash/pull/2761)
+
 ## [v3.29.3](https://github.com/ash-project/ash/compare/v3.29.2...v3.29.3) (2026-06-23)
 
 

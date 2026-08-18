@@ -98,55 +98,59 @@ defmodule Ash.Policy.FilterCheck do
             context: context
           )
 
-        {:ok, filter} = Ash.Filter.hydrate_refs(filter, %{resource: authorizer.resource})
-
-        filter
-        |> Ash.Actions.Read.add_calc_context_to_filter(
-          actor,
-          true,
-          authorizer.subject.tenant,
-          context[:private][:tracer],
-          authorizer.domain,
-          authorizer.resource,
-          source_context: context
-        )
-        |> then(fn expr ->
-          no_filter_static_forbidden_reads? =
-            Keyword.get(
-              Application.get_env(:ash, :policies, []),
-              :no_filter_static_forbidden_reads?,
-              true
+        case Ash.Filter.hydrate_refs(filter, %{resource: authorizer.resource}) do
+          {:ok, hydrated_filter} ->
+            hydrated_filter
+            |> Ash.Actions.Read.add_calc_context_to_filter(
+              actor,
+              true,
+              authorizer.subject.tenant,
+              context[:private][:tracer],
+              authorizer.domain,
+              authorizer.resource,
+              source_context: context
             )
+            |> then(fn expr ->
+              no_filter_static_forbidden_reads? =
+                Keyword.get(
+                  Application.get_env(:ash, :policies, []),
+                  :no_filter_static_forbidden_reads?,
+                  true
+                )
 
-          cond do
-            # Time-travel read (`as_of` set on the query): a check that depends on
-            # `now()`/`ago()`/`from_now()` must be applied as a data-layer filter — where it
-            # gets anchored to `as_of` (see `Ash.Actions.Read.add_calc_context_to_query`) —
-            # never eagerly evaluated here. Eager evaluation would resolve relative time
-            # against the wall clock, ignoring `as_of` (and re-evaluating `now()`). Defer it.
-            # Only reads have a data-layer filter to defer to; other action types still eval.
-            authorizer.action.type == :read and as_of_set?(authorizer) and
-                references_relative_time?(expr) ->
-              defer_to_filter(expr)
+              cond do
+                # Time-travel read (`as_of` set on the query): a check that depends on
+                # `now()`/`ago()`/`from_now()` must be applied as a data-layer filter — where it
+                # gets anchored to `as_of` (see `Ash.Actions.Read.add_calc_context_to_query`) —
+                # never eagerly evaluated here. Eager evaluation would resolve relative time
+                # against the wall clock, ignoring `as_of` (and re-evaluating `now()`). Defer it.
+                # Only reads have a data-layer filter to defer to; other action types still eval.
+                authorizer.action.type == :read and as_of_set?(authorizer) and
+                    references_relative_time?(expr) ->
+                  defer_to_filter(expr)
 
-            no_filter_static_forbidden_reads? || authorizer.for_fields ||
-                authorizer.action.type != :read ||
-                context[:private][:pre_flight_authorization?] ->
-              try_eval(expr, authorizer)
+                no_filter_static_forbidden_reads? || authorizer.for_fields ||
+                  authorizer.action.type != :read ||
+                    context[:private][:pre_flight_authorization?] ->
+                  try_eval(expr, authorizer)
 
-            true ->
-              defer_to_filter(expr)
-          end
-        end)
-        |> case do
-          {:ok, v} when v in [true, false] ->
-            {:ok, v}
+                true ->
+                  defer_to_filter(expr)
+              end
+            end)
+            |> case do
+              {:ok, v} when v in [true, false] ->
+                {:ok, v}
 
-          {:ok, nil} ->
-            {:ok, false}
+              {:ok, nil} ->
+                {:ok, false}
 
-          _ ->
-            {:ok, :unknown}
+              _ ->
+                {:ok, :unknown}
+            end
+
+          {:error, error} ->
+            {:error, error}
         end
       end
 

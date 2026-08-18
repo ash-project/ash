@@ -251,6 +251,15 @@ defmodule Ash.Test.Actions.GenericActionsTest do
           {:error, %Ash.Error.Unknown{}}
         end
       end
+
+      action :return_union_post, :union do
+        constraints types: [post: [type: :struct, constraints: [instance_of: __MODULE__]]]
+
+        run fn _input, _ ->
+          post = Ash.create!(__MODULE__, %{title: "Post1"}, authorize?: false)
+          {:ok, %Ash.Union{type: :post, value: post}}
+        end
+      end
     end
 
     attributes do
@@ -385,6 +394,10 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
 
       policy action(:errors_out) do
+        authorize_if always()
+      end
+
+      policy action(:return_union_post) do
         authorize_if always()
       end
     end
@@ -1210,6 +1223,13 @@ defmodule Ash.Test.Actions.GenericActionsTest do
   end
 
   describe "load option on generic actions" do
+    test "it loads single loadable non-array return values, like unions" do
+      assert %Ash.Union{type: :post, value: %Post{title: "Post1"}} =
+               Post
+               |> Ash.ActionInput.for_action(:return_union_post, %{})
+               |> Ash.run_action!()
+    end
+
     test "it loads related attributes via for_action" do
       result =
         Post

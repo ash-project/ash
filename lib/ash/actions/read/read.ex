@@ -1472,8 +1472,31 @@ defmodule Ash.Actions.Read do
   end
 
   defp agg_refs(query, calculations_in_query) do
-    calculations_in_query
-    |> Enum.flat_map(fn {_, expr} ->
+    sort_expressions =
+      query.sort
+      |> List.wrap()
+      |> Enum.flat_map(fn
+        {%Ash.Query.Calculation{} = calc, _direction} ->
+          if Ash.Resource.Calculation.has_expression?(calc.module) do
+            [{calc, Ash.Resource.Calculation.expression(calc.module, calc.opts, calc.context)}]
+          else
+            []
+          end
+
+        _ ->
+          []
+      end)
+
+    sort_aggregates =
+      query.sort
+      |> List.wrap()
+      |> Enum.flat_map(fn
+        {%Ash.Query.Aggregate{} = agg, _direction} -> [agg]
+        _ -> []
+      end)
+
+    (calculations_in_query ++ sort_expressions)
+    |> Enum.flat_map(fn {_calc, expr} ->
       expr
       |> Ash.Filter.hydrate_refs(%{
         resource: query.resource,
@@ -1501,6 +1524,7 @@ defmodule Ash.Actions.Read do
           []
       end
     end)
+    |> Enum.concat(sort_aggregates)
     |> Enum.concat(Map.values(query.aggregates))
   end
 
@@ -1920,49 +1944,22 @@ defmodule Ash.Actions.Read do
       end)
       |> Enum.reduce_while({:ok, []}, fn
         {%Ash.Resource.Calculation{} = resource_calculation, direction}, {:ok, sort} ->
-          case Ash.Query.Calculation.from_resource_calculation(
-                 query.resource,
-                 resource_calculation,
-                 source_context: query.context
-               ) do
-            {:ok, calc} ->
-              case hydrate_calculations(query, [calc]) do
-                {:ok, [{calc, expression}]} ->
-                  {:cont,
-                   {:ok,
-                    [
-                      {%{
-                         calc
-                         | module: Ash.Resource.Calculation.Expression,
-                           opts: [expr: expression]
-                       }, direction}
-                      | sort
-                    ]}}
-
-                {:error, error} ->
-                  {:halt, {:error, error}}
-              end
-
-            {:error, error} ->
-              {:halt, {:error, error}}
+          with {:ok, calc} <-
+                 Ash.Query.Calculation.from_resource_calculation(
+                   query.resource,
+                   resource_calculation,
+                   source_context: query.context
+                 ),
+               {:ok, entry} <- hydrate_sort_calculation(query, calc, direction) do
+            {:cont, {:ok, [entry | sort]}}
+          else
+            {:error, error} -> {:halt, {:error, error}}
           end
 
         {%Ash.Query.Calculation{} = calc, direction}, {:ok, sort} ->
-          case hydrate_calculations(query, [calc]) do
-            {:ok, [{calc, expression}]} ->
-              {:cont,
-               {:ok,
-                [
-                  {%{
-                     calc
-                     | module: Ash.Resource.Calculation.Expression,
-                       opts: [expr: expression]
-                   }, direction}
-                  | sort
-                ]}}
-
-            {:error, error} ->
-              {:halt, {:error, error}}
+          case hydrate_sort_calculation(query, calc, direction) do
+            {:ok, entry} -> {:cont, {:ok, [entry | sort]}}
+            {:error, error} -> {:halt, {:error, error}}
           end
 
         {%Ash.Resource.Aggregate{} = agg, direction}, {:ok, sort} ->
@@ -2009,6 +2006,15 @@ defmodule Ash.Actions.Read do
           {:error, error}
       end
     end)
+  end
+
+  defp hydrate_sort_calculation(query, calc, direction) do
+    with {:ok, [{calc, expression}]} <- hydrate_calculations(query, [calc]),
+         :ok <- Ash.Sort.validate_expression_refs(query.resource, expression) do
+      {:ok,
+       {%{calc | module: Ash.Resource.Calculation.Expression, opts: [expr: expression]},
+        direction}}
+    end
   end
 
   defp hydrate_aggregates(query) do
@@ -3403,7 +3409,7 @@ defmodule Ash.Actions.Read do
         agg.query
         |> Ash.Query.set_context(%{private: %{require_actor?: false}})
         |> Ash.Query.set_context(%{shared: opts[:source_context][:shared]})
-        |> Ash.Query.for_read(read_action, %{},
+        |> Ash.Query.for_read(read_action, agg.read_action_arguments || %{},
           domain: domain,
           actor: actor,
           tenant: tenant,
@@ -3491,7 +3497,7 @@ defmodule Ash.Actions.Read do
                tenant,
                tracer,
                domain,
-               query.resource,
+               Ash.Resource.Info.related(agg.resource, key),
                opts
              )}
           end)
@@ -3763,6 +3769,26 @@ defmodule Ash.Actions.Read do
     end
   end
 
+  defp warn_if_before_action_load_changed(query, query_after) do
+    if query.load != query_after.load do
+      Logger.warning("""
+      Cannot add load statements in before_action hooks on read actions.
+
+      The load on resource #{inspect(query_after.resource)} was changed in a before_action hook.
+
+      Before:
+      #{inspect(query)}
+
+      After:
+      #{inspect(query_after)}
+
+      Load statements added in before_action hooks are not supported and will be ignored. Use `prepare` to add loads to read actions instead.
+      """)
+    end
+
+    query_after
+  end
+
   defp run_before_action(query) do
     query =
       query
@@ -3785,7 +3811,10 @@ defmodule Ash.Actions.Read do
           {:cont, {query, notifications}}
       end
     end)
-    |> then(fn {query, notifications} -> {set_phase(query), notifications} end)
+    |> then(fn {query_after, notifications} ->
+      query_after = warn_if_before_action_load_changed(query, query_after)
+      {set_phase(query_after), notifications}
+    end)
   end
 
   @doc false
@@ -4354,6 +4383,20 @@ defmodule Ash.Actions.Read do
                parent_stack: parent_stack_from_context(query.context)
              }) do
           {:ok, expression} ->
+            expression =
+              add_calc_context_to_filter(
+                expression,
+                calculation.context.actor,
+                calculation.context.authorize?,
+                calculation.context.tenant,
+                calculation.context.tracer,
+                query.domain,
+                query.resource,
+                expand?: true,
+                parent_stack: parent_stack_from_context(query.context),
+                source_context: query.context
+              )
+
             {:cont, {:ok, [{calculation, expression} | calculations]}}
 
           {:error, error} ->

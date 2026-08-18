@@ -47,7 +47,7 @@ defmodule Ash.Resource.Preparation do
         required: true
       ],
       on: [
-        type: {:wrap_list, {:in, [:read, :action, :create, :update, :destroy]}},
+        type: {:wrap_list, {:in, [:read, :action]}},
         default: [:read],
         doc: """
         The action types the preparation should run on. By default, preparations only run on read actions. Use `:action` to run on generic actions.
@@ -140,7 +140,7 @@ defmodule Ash.Resource.Preparation do
               context :: Context.t()
             ) ::
               Ash.Query.t() | Ash.ActionInput.t()
-  @callback supports(opts :: Keyword.t()) :: [module()]
+  @callback supports(opts :: Keyword.t()) :: [Ash.Query | Ash.ActionInput]
 
   defmacro __using__(_) do
     quote do

@@ -162,6 +162,36 @@ defmodule Ash.Test.ExprTest do
     end
   end
 
+  describe "operators over two literals" do
+    test "a result that is not a struct" do
+      assert eval!(expr(^1 + ^2)) == 3
+    end
+
+    test "a decimal result" do
+      assert eval!(expr(^Decimal.new(1) + ^Decimal.new(2))) == Decimal.new(3)
+    end
+
+    test "a datetime result" do
+      now = DateTime.utc_now()
+      duration = Duration.new!(day: 7)
+
+      assert eval!(expr(^now + ^duration)) == DateTime.shift(now, duration)
+    end
+
+    test "a date result" do
+      today = Date.utc_today()
+      duration = Duration.new!(day: 7)
+
+      assert eval!(expr(^today + ^duration)) == Date.shift(today, duration)
+    end
+
+    test "a duration result" do
+      duration = Duration.new!(day: 7)
+
+      assert eval!(expr(^duration + ^duration)) == Duration.add(duration, duration)
+    end
+  end
+
   describe "rem expressions" do
     test "evaluates" do
       expr = expr(rem(1, 2) == 0)

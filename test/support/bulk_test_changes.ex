@@ -414,4 +414,28 @@ defmodule Ash.Test.BulkTestChanges do
       end)
     end
   end
+
+  defmodule SoftDestroyManual do
+    @moduledoc """
+    Manual soft destroy. Soft deletes are run by Ash as updates, so the destroy
+    is dispatched through the update bulk pipeline and `update/3` +
+    `bulk_update/3` are the callbacks invoked.
+
+    Lives here (rather than inline in a test) so the runtime can reload it from
+    disk after a test unloads it.
+    """
+    use Ash.Resource.ManualDestroy
+    use Ash.Resource.ManualUpdate
+
+    def destroy(changeset, _opts, _ctx), do: {:ok, changeset.data}
+
+    def update(changeset, _opts, _ctx), do: Ash.Changeset.apply_attributes(changeset)
+
+    def bulk_update(changesets, _opts, _ctx) do
+      Enum.map(changesets, fn changeset ->
+        {:ok, record} = Ash.Changeset.apply_attributes(changeset)
+        {:ok, record, changeset}
+      end)
+    end
+  end
 end

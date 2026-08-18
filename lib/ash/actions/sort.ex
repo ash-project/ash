@@ -148,14 +148,41 @@ defmodule Ash.Actions.Sort do
   end
 
   defp maybe_rekey(new_results, results, resource, true) do
-    if Ash.Resource.Info.primary_key(resource) == [] do
-      new_results
-    else
-      Enum.map(new_results, fn new_result ->
-        Enum.find(results, new_result, fn result ->
-          resource.primary_key_matches?(new_result, result)
+    pkey = Ash.Resource.Info.primary_key(resource)
+
+    cond do
+      pkey == [] ->
+        new_results
+
+      Ash.Resource.Info.primary_key_simple_equality?(resource) ->
+        # The simple-equality matcher is plain term equality over `Map.take/2`,
+        # so the scan becomes one O(n) index build plus O(1) lookups. `put_new`
+        # keeps the *first* record for a duplicate key (matching `Enum.find`),
+        # and a record with a nil/false key value is skipped so it matches
+        # nothing, including itself.
+        index =
+          Enum.reduce(results, %{}, fn result, acc ->
+            taken = Map.take(result, pkey)
+
+            if Enum.all?(Map.values(taken)),
+              do: Map.put_new(acc, taken, result),
+              else: acc
+          end)
+
+        Enum.map(new_results, fn new_result ->
+          taken = Map.take(new_result, pkey)
+
+          if Enum.all?(Map.values(taken)),
+            do: Map.get(index, taken, new_result),
+            else: new_result
         end)
-      end)
+
+      true ->
+        Enum.map(new_results, fn new_result ->
+          Enum.find(results, new_result, fn result ->
+            resource.primary_key_matches?(new_result, result)
+          end)
+        end)
     end
   end
 

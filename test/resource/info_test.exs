@@ -40,6 +40,7 @@ defmodule Ash.Test.Resource.InfoTest do
       end
 
       attribute :points, :integer
+      attribute :unsortable, :string, sortable?: false
     end
 
     aggregates do
@@ -187,13 +188,15 @@ defmodule Ash.Test.Resource.InfoTest do
                :private,
                :tags,
                :tags_join_assoc,
-               :title
+               :title,
+               :unsortable
              ] = Info.fields(Post) |> Enum.map(& &1.name) |> Enum.sort()
     end
 
     test "determine if field is sortable" do
       assert true == Info.sortable?(Post, :title)
       assert true == Info.sortable?(Post, :points)
+      assert false == Info.sortable?(Post, :unsortable)
       assert false == Info.sortable?(Post, :points, include_private?: false)
       assert false == Info.sortable?(Post, :authors)
       assert false == Info.sortable?(Post, :tags)

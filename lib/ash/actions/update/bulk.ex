@@ -1379,8 +1379,11 @@ defmodule Ash.Actions.Update.Bulk do
          input,
          opts
        ) do
-    batch_size = opts[:batch_size] || 100
     resource = opts[:resource]
+
+    batch_size =
+      opts[:batch_size] || Ash.DataLayer.default_bulk_batch_size(resource, action) || 100
+
     ref = make_ref()
     pkey = Ash.Resource.Info.primary_key(resource)
 
@@ -1496,7 +1499,7 @@ defmodule Ash.Actions.Update.Bulk do
     manual_action_can_bulk? =
       case action.manual do
         {mod, _opts} ->
-          function_exported?(mod, :bulk_update, 3)
+          Code.ensure_loaded?(mod) and function_exported?(mod, :bulk_update, 3)
 
         _ ->
           false
@@ -2705,7 +2708,7 @@ defmodule Ash.Actions.Update.Bulk do
                     [] -> %{}
                   end
 
-                if function_exported?(mod, :bulk_update, 3) do
+                if Code.ensure_loaded?(mod) and function_exported?(mod, :bulk_update, 3) do
                   Ash.Resource.ManualUpdate.bulk_update(
                     mod,
                     batch,
@@ -3377,7 +3380,8 @@ defmodule Ash.Actions.Update.Bulk do
           {matches, non_matches} =
             results
             |> Enum.split_with(fn
-              {:ok, result, _changeset} ->
+              {:ok, result, changeset} ->
+                result = Ash.Actions.Helpers.Bulk.put_metadata(result, changeset)
                 result.__metadata__[metadata_key] in List.wrap(changes[index])
             end)
 
