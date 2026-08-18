@@ -7,11 +7,20 @@ defmodule Ash.Type.Duration do
   @day_time_units [:week, :day, :hour, :minute, :second, :microsecond]
   @duration_units @year_month_units ++ @day_time_units
 
+  @signs [:positive, :negative, :zero]
+
   @constraints [
-    units: [
-      type: {:or, [{:in, [:year_month, :day_time]}, {:list, {:in, @duration_units}}]},
+    signs: [
+      type: {:wrap_list, {:one_of, @signs}},
       doc: """
-      The units the value may be expressed in. A duration is always re-expressed in the largest of these units that will hold it, on the way in and on the way out, so `[:week, :hour]` turns `1 week 1 day 5 hours` into `1 week 29 hours`. A value that no combination of the permitted units expresses exactly is rejected — including anything that would have to cross the year/month to week/day boundary, which no conversion can. This applies on the way out as well as in: a stored duration the permitted units cannot express is refused rather than quietly rewritten. Either an explicit list of units, or a shorthand for one side of that boundary: `:year_month` (`[:year, :month]`) or `:day_time` (`[:week, :day, :hour, :minute, :second, :microsecond]`). Confining an attribute to a single side keeps its values comparable (see `Ash.Type.Duration.compare/2`). With no constraint every unit is permitted, so the same normalization applies and nothing is ever lost.
+      The signs the value may have, compared against zero by `Ash.Type.Duration.compare/2`. Any combination is permitted: `:positive` or `[:positive]` requires a positive duration, `[:positive, :zero]` a non-negative one, and `[:positive, :negative]` a non-zero one. Omit the constraint to allow any sign. This is the sign of the duration as a whole, not of each unit — `%Duration{day: 1, hour: -5}` is positive, being nineteen hours. Only where the year/month and week/day sides carry opposite signs does the comparison depend on `compare/2`'s 30-day month.
+      """
+    ],
+    units: [
+      type:
+        {:or, [{:one_of, [:year_month, :day_time]}, {:wrap_list, {:one_of, @duration_units}}]},
+      doc: """
+      The units the value may be expressed in. A duration is always re-expressed in the largest of these units that will hold it, on the way in and on the way out, so `[:week, :hour]` turns `1 week 1 day 5 hours` into `1 week 29 hours`. A value that no combination of the permitted units expresses exactly is rejected — including anything that would have to cross the year/month to week/day boundary, which no conversion can. This applies on the way out as well as in: a stored duration the permitted units cannot express is refused rather than quietly rewritten. Either a single unit, an explicit list of them, or a shorthand for one side of that boundary: `:year_month` (`[:year, :month]`) or `:day_time` (`[:week, :day, :hour, :minute, :second, :microsecond]`). Confining an attribute to a single side keeps its values comparable (see `Ash.Type.Duration.compare/2`). With no constraint every unit is permitted, so the same normalization applies and nothing is ever lost.
       """
     ]
   ]
@@ -79,7 +88,7 @@ defmodule Ash.Type.Duration do
 
     case disallowed_units(normalized, allowed) do
       [] ->
-        {:ok, normalized}
+        check_sign(normalized, constraints[:signs])
 
       disallowed ->
         {:error,
@@ -93,12 +102,43 @@ defmodule Ash.Type.Duration do
     end
   end
 
+  # A magnitude constraint, where `units` is a representation one. Normalizing preserves
+  # magnitude, so the two are independent.
+  defp check_sign(value, nil), do: {:ok, value}
+
+  defp check_sign(value, permitted) do
+    # `wrap_list` normalizes at init, but constraints also arrive here directly.
+    permitted = List.wrap(permitted)
+
+    if sign(value) in permitted do
+      {:ok, value}
+    else
+      {:error,
+       [
+         [
+           message: "must be %{signs}",
+           signs: Enum.map_join(permitted, " or ", &to_string/1),
+           sign: to_string(sign(value))
+         ]
+       ]}
+    end
+  end
+
+  defp sign(%Duration{} = value) do
+    case compare(value, %Duration{}) do
+      :gt -> :positive
+      :lt -> :negative
+      :eq -> :zero
+    end
+  end
+
   # No `units` constraint permits every unit.
   defp permitted_units(nil), do: @duration_units
   defp permitted_units(units), do: expand_units(units)
 
   defp expand_units(:year_month), do: @year_month_units
   defp expand_units(:day_time), do: @day_time_units
+  defp expand_units(unit) when is_atom(unit), do: [unit]
   defp expand_units(units) when is_list(units), do: units
 
   defp disallowed_units(%Duration{} = value, allowed),
