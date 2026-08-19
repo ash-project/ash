@@ -190,6 +190,8 @@ defmodule Ash.Type.Range do
     end
   end
 
+  def apply_constraints(_value, _constraints), do: {:error, message: "is not a valid range"}
+
   # An empty range is constructed, not mistyped, so it is refused rather than nulled.
   defp do_apply_constraints(%Range{empty?: true} = range, constraints) do
     if Keyword.get(constraints, :allow_empty?, false) do
@@ -344,7 +346,7 @@ defmodule Ash.Type.Range do
 
   defp extract({lower, upper}), do: {:ok, lower, upper, :"[)", false}
 
-  defp extract(%{} = map) do
+  defp extract(%{} = map) when not is_struct(map) do
     lower = map[:lower] || map["lower"]
     upper = map[:upper] || map["upper"]
     bounds = map[:bounds] || map["bounds"] || :"[)"

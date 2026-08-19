@@ -89,6 +89,26 @@ defmodule Ash.Type.RangeTest do
              )
   end
 
+  test "cast_input refuses a value that is not a range" do
+    for value <- [~U[2026-01-01 00:00:00Z], ~D[2026-01-01], Decimal.new(1), "nope", 5] do
+      assert {:error, _} = Ash.Type.cast_input(Ash.Type.Range, value, @constraints),
+             "expected #{inspect(value)} to be refused"
+    end
+  end
+
+  test "cast_stored refuses a value that is not a range" do
+    assert {:error, _} =
+             Ash.Type.cast_stored(Ash.Type.Range, ~U[2026-01-01 00:00:00Z], @constraints)
+  end
+
+  test "apply_constraints refuses a value that is not a range" do
+    assert {:error, _} =
+             Ash.Type.apply_constraints(Ash.Type.Range, ~U[2026-01-01 00:00:00Z], @constraints)
+
+    assert {:error, _} =
+             Ash.Type.apply_constraints(Ash.Type.Range, %{lower: 1, upper: 5}, @int_constraints)
+  end
+
   test "cast_stored refuses a bounds that is not a bounds specifier" do
     assert {:error, _} =
              Ash.Type.cast_stored(
