@@ -126,6 +126,13 @@ defmodule Ash.Actions.Destroy.Bulk do
 
         query = %{query | domain: domain}
 
+        query =
+          if Map.get(action, :filter) do
+            Ash.Query.do_filter(query, action.filter)
+          else
+            query
+          end
+
         fully_atomic_changeset =
           cond do
             not_atomic_reason ->
