@@ -236,7 +236,8 @@ defmodule Ash.Info.Manifest.Generator.ResourceBuilder do
       %{
         strategy: strategy,
         global?: Ash.Resource.Info.multitenancy_global?(resource),
-        attribute: Ash.Resource.Info.multitenancy_attribute(resource)
+        attribute: Ash.Resource.Info.multitenancy_attribute(resource),
+        ancestor_attributes: Ash.Resource.Info.multitenancy_ancestor_attributes(resource)
       }
     else
       nil

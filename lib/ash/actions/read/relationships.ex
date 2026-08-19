@@ -2088,8 +2088,7 @@ defmodule Ash.Actions.Read.Relationships do
     join_keys =
       if query.tenant && source_query.tenant &&
            Ash.Resource.Info.multitenancy_strategy(relationship.through) == :attribute do
-        attr = Ash.Resource.Info.multitenancy_attribute(relationship.through)
-        [attr | keys]
+        Ash.Resource.Info.multitenancy_attributes(relationship.through) ++ keys
       else
         keys
       end

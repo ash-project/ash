@@ -1704,6 +1704,13 @@ defmodule Ash.Resource.Dsl do
         If using the `attribute` strategy, the attribute to use, e.g `org_id`
         """
       ],
+      ancestor_attributes: [
+        type: {:list, :atom},
+        default: [],
+        doc: """
+        If using the `attribute` strategy with hierarchical tenants, the attributes identifying the tenant's ancestors, from broadest to narrowest, e.g `[:organization_id]` when `attribute` is `department_id` (or `[:organization_id, :department_id]` when `attribute` is `team_id`). Ancestor values are derived from the tenant via the `Ash.ToAncestorTenants` protocol, are applied to all tenant filters and creates, and data layers prefix indexes with them.
+        """
+      ],
       global?: [
         type: :boolean,
         doc: """
