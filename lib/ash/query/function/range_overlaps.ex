@@ -6,8 +6,9 @@ defmodule Ash.Query.Function.RangeOverlaps do
   @moduledoc """
   Returns true if two ranges overlap (share at least one point).
 
-  Maps to the Postgres range overlap operator `&&`. Used, among other things, to
-  relate two temporal resources (`range_overlaps(parent(valid_at), valid_at)`).
+  Maps to the Postgres range overlap operator `&&`, and answers in an expression what
+  `Ash.Range.intersects?/2` answers at runtime. Used, among other things, to relate
+  two temporal resources (`range_overlaps(parent(valid_at), valid_at)`).
 
      range_overlaps(range1, range2)
   """
