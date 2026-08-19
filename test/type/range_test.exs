@@ -14,8 +14,10 @@ defmodule Ash.Type.RangeTest do
     )
 
   {:ok, date_constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :date)
+  {:ok, int_constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
   @constraints constraints
   @date_constraints date_constraints
+  @int_constraints int_constraints
 
   @lower ~U[2026-01-01 00:00:00.000000Z]
   @upper ~U[2026-02-01 00:00:00.000000Z]
@@ -55,6 +57,70 @@ defmodule Ash.Type.RangeTest do
   test "cast_input from a {lower, upper} tuple defaults bounds to [)" do
     assert {:ok, %Range{lower: @lower, upper: @upper, bounds: :"[)"}} =
              Ash.Type.cast_input(Ash.Type.Range, {@lower, @upper}, @constraints)
+  end
+
+  test "cast_input from a bounds string resolves it to the atom" do
+    assert {:ok, %Range{lower: @lower, upper: @upper, bounds: :"[]"}} =
+             Ash.Type.cast_input(
+               Ash.Type.Range,
+               %{lower: @lower, upper: @upper, bounds: "[]"},
+               @constraints
+             )
+  end
+
+  test "cast_input refuses a bounds that is not a bounds specifier" do
+    for bounds <- [:not_a_bound, :inclusive_inclusive, :"[x", "nonsense", 5] do
+      assert {:error, _} =
+               Ash.Type.cast_input(
+                 Ash.Type.Range,
+                 %{lower: 1, upper: 9, bounds: bounds},
+                 @int_constraints
+               ),
+             "expected #{inspect(bounds)} to be refused"
+    end
+  end
+
+  test "an unrecognized bounds is refused rather than read as exclusive at both ends" do
+    assert {:error, _} =
+             Ash.Type.cast_input(
+               Ash.Type.Range,
+               %Range{lower: 1, upper: 9, bounds: :not_a_bound},
+               @int_constraints
+             )
+  end
+
+  test "cast_stored refuses a bounds that is not a bounds specifier" do
+    assert {:error, _} =
+             Ash.Type.cast_stored(
+               Ash.Type.Range,
+               %{"lower" => 1, "upper" => 9, "bounds" => "nonsense"},
+               @int_constraints
+             )
+  end
+
+  test "dump_to_native refuses a bounds that is not a bounds specifier" do
+    assert :error =
+             Ash.Type.dump_to_native(
+               Ash.Type.Range,
+               %Range{lower: 1, upper: 9, bounds: :not_a_bound},
+               @int_constraints
+             )
+
+    assert {:ok, %Range{bounds: :"[]"}} =
+             Ash.Type.dump_to_native(
+               Ash.Type.Range,
+               %Range{lower: 1, upper: 9, bounds: :"[]"},
+               @int_constraints
+             )
+  end
+
+  test "apply_constraints refuses a bounds that is not a bounds specifier" do
+    assert {:error, _} =
+             Ash.Type.apply_constraints(
+               Ash.Type.Range,
+               %Range{lower: 1, upper: 9, bounds: :not_a_bound},
+               @int_constraints
+             )
   end
 
   test "a nil bound is an unbounded end" do
