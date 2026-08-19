@@ -213,6 +213,60 @@ defmodule Ash.Type.RangeTest do
     end
   end
 
+  describe "adjacent?/2" do
+    # Cross-checked against Postgres 19: `-|-` on numrange and int4range agrees case
+    # for case, canonical form included.
+    defp adj(lower, upper, bounds), do: %Range{lower: lower, upper: upper, bounds: bounds}
+
+    test "one ends where the other begins, with exactly one side including the seam" do
+      assert Range.adjacent?(adj(1, 5, :"[)"), adj(5, 9, :"[)"))
+      assert Range.adjacent?(adj(1, 5, :"()"), adj(5, 9, :"[)"))
+      assert Range.adjacent?(adj(1, 5, :"[)"), adj(5, 9, :"[]"))
+    end
+
+    test "sharing the seam is overlap, and excluding it from both leaves a gap" do
+      refute Range.adjacent?(adj(1, 5, :"[]"), adj(5, 9, :"[)"))
+      refute Range.adjacent?(adj(1, 5, :"()"), adj(5, 9, :"()"))
+      refute Range.adjacent?(adj(1, 5, :"[)"), adj(6, 9, :"[)"))
+    end
+
+    test "is symmetric, where Allen's meets is directional" do
+      left = adj(1, 5, :"[)")
+      right = adj(5, 9, :"[)")
+
+      assert Range.relation(left, right) == :meets
+      assert Range.relation(right, left) == :met_by
+      assert Range.adjacent?(left, right)
+      assert Range.adjacent?(right, left)
+    end
+
+    test "an empty range is adjacent to nothing, not even itself" do
+      refute Range.adjacent?(Range.empty(), adj(1, 9, :"[)"))
+      refute Range.adjacent?(adj(1, 9, :"[)"), Range.empty())
+      refute Range.adjacent?(Range.empty(), Range.empty())
+    end
+
+    test "a discrete inner type answers on the canonical form" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
+      {:ok, left} = Ash.Type.cast_input(Ash.Type.Range, adj(1, 4, :"[]"), constraints)
+      {:ok, right} = Ash.Type.cast_input(Ash.Type.Range, adj(5, 9, :"[)"), constraints)
+
+      assert {left.lower, left.upper, left.bounds} == {1, 5, :"[)"}
+      assert Range.adjacent?(left, right)
+      refute Range.adjacent?(adj(1, 4, :"[]"), adj(5, 9, :"[)"))
+    end
+
+    test "adjacent ranges tile, covering everything between without overlapping" do
+      tiles = [adj(1, 5, :"[)"), adj(5, 9, :"[)"), adj(9, 13, :"[)")]
+
+      assert tiles
+             |> Enum.chunk_every(2, 1, :discard)
+             |> Enum.all?(fn [a, b] ->
+               Range.adjacent?(a, b)
+             end)
+    end
+  end
+
   describe "ordering" do
     # Expectations are Postgres's own answers, on `numrange` so canonicalization
     # doesn't rewrite the bounds first.
@@ -364,6 +418,44 @@ defmodule Ash.Type.RangeTest do
   end
 
   describe "empty ranges" do
+    test "a discrete range on one point is empty unless both bounds include it" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
+
+      cast = fn bounds ->
+        {:ok, cast} =
+          Ash.Type.cast_input(
+            Ash.Type.Range,
+            %Range{lower: 5, upper: 5, bounds: bounds},
+            constraints
+          )
+
+        cast
+      end
+
+      # Excluding either end leaves no points. Canonicalizing must see that before the
+      # discrete shift, which would otherwise turn `(5, 5)` into `[6, 5)` and lose the
+      # equality the rule tests. Postgres agrees on all four.
+      assert cast.(:"[)") == Range.empty()
+      assert cast.(:"(]") == Range.empty()
+      assert cast.(:"()") == Range.empty()
+
+      # Including both ends holds the point, so it is the single-point range.
+      assert cast.(:"[]") == %Range{lower: 5, upper: 6, bounds: :"[)"}
+    end
+
+    test "an inverted range is still refused, as Postgres refuses it" do
+      {:ok, constraints} = Ash.Type.init(Ash.Type.Range, inner_type: :integer)
+
+      {:ok, cast} =
+        Ash.Type.cast_input(
+          Ash.Type.Range,
+          %Range{lower: 9, upper: 2, bounds: :"[)"},
+          constraints
+        )
+
+      assert {:error, _} = Ash.Type.apply_constraints(Ash.Type.Range, cast, constraints)
+    end
+
     test "a range admitting no points casts to the empty range" do
       assert {:ok, %Range{empty?: true, lower: nil, upper: nil}} =
                Ash.Type.cast_input(
@@ -436,6 +528,148 @@ defmodule Ash.Type.RangeTest do
       refute Range.empty?(%Range{lower: 5, upper: 5, bounds: :"[]"})
       refute Range.empty?(%Range{lower: 5, upper: 6, bounds: :"[)"})
       refute Range.empty?(%Range{lower: nil, upper: nil})
+    end
+  end
+
+  describe "contains?/2" do
+    test "a bounded range holds values between its bounds" do
+      range = %Ash.Range{lower: 1, upper: 5, bounds: :"[)"}
+
+      refute Ash.Range.contains?(range, 0)
+      assert Ash.Range.contains?(range, 1)
+      assert Ash.Range.contains?(range, 4)
+      refute Ash.Range.contains?(range, 5)
+    end
+
+    test "a bound holds its own value only when inclusive" do
+      assert Ash.Range.contains?(%Ash.Range{lower: 1, upper: 5, bounds: :"[]"}, 5)
+      refute Ash.Range.contains?(%Ash.Range{lower: 1, upper: 5, bounds: :"()"}, 1)
+      assert Ash.Range.contains?(%Ash.Range{lower: 1, upper: 5, bounds: :"(]"}, 5)
+      refute Ash.Range.contains?(%Ash.Range{lower: 1, upper: 5, bounds: :"(]"}, 1)
+    end
+
+    test "an unbounded end holds everything beyond it" do
+      assert Ash.Range.contains?(%Ash.Range{lower: nil, upper: 5}, -1_000)
+      assert Ash.Range.contains?(%Ash.Range{lower: 1, upper: nil}, 1_000)
+      assert Ash.Range.contains?(%Ash.Range{lower: nil, upper: nil}, 0)
+    end
+
+    test "an empty range holds nothing" do
+      refute Ash.Range.contains?(%Ash.Range{lower: 5, upper: 5, bounds: :"[)"}, 5)
+      refute Ash.Range.contains?(%Ash.Range{lower: 9, upper: 5}, 7)
+    end
+
+    test "holds datetimes by Comp, not by term order" do
+      range = %Ash.Range{
+        lower: ~U[2026-01-31 00:00:00Z],
+        upper: ~U[2026-03-01 00:00:00Z],
+        bounds: :"[)"
+      }
+
+      assert Ash.Range.contains?(range, ~U[2026-02-01 00:00:00Z])
+      refute Ash.Range.contains?(range, ~U[2026-03-02 00:00:00Z])
+    end
+  end
+
+  describe "contains?/2 with a range" do
+    # Cross-checked against Postgres 19: `@>` on int4range agrees case for case.
+    test "a range holds one that lies within it, sharing an endpoint or equal included" do
+      outer = %Range{lower: 1, upper: 10, bounds: :"[)"}
+
+      assert Range.contains?(outer, %Range{lower: 3, upper: 5, bounds: :"[)"})
+      assert Range.contains?(outer, %Range{lower: 1, upper: 5, bounds: :"[)"})
+      assert Range.contains?(outer, %Range{lower: 5, upper: 10, bounds: :"[)"})
+      assert Range.contains?(outer, outer)
+      refute Range.contains?(outer, %Range{lower: 5, upper: 20, bounds: :"[)"})
+    end
+
+    test "every range holds the empty range, and the empty range holds nothing else" do
+      empty = Range.empty()
+      range = %Range{lower: 1, upper: 10, bounds: :"[)"}
+
+      assert Range.contains?(range, empty)
+      assert Range.contains?(empty, empty)
+      refute Range.contains?(empty, range)
+      refute Range.contains?(empty, 5)
+    end
+
+    test "an unbounded end holds everything beyond it" do
+      assert Range.contains?(
+               %Range{lower: nil, upper: nil, bounds: :"[)"},
+               %Range{lower: 1, upper: 10, bounds: :"[)"}
+             )
+
+      refute Range.contains?(
+               %Range{lower: 1, upper: 10, bounds: :"[)"},
+               %Range{lower: nil, upper: 10, bounds: :"[)"}
+             )
+    end
+  end
+
+  describe "intersects?/2" do
+    test "two ranges sharing points intersect, in either order" do
+      left = %Range{lower: 1, upper: 5, bounds: :"[)"}
+      right = %Range{lower: 4, upper: 9, bounds: :"[)"}
+
+      assert Range.intersects?(left, right)
+      assert Range.intersects?(right, left)
+    end
+
+    test "a range contained in another intersects it" do
+      assert Range.intersects?(
+               %Range{lower: 1, upper: 9, bounds: :"[)"},
+               %Range{lower: 3, upper: 4, bounds: :"[)"}
+             )
+    end
+
+    test "adjacent ranges do not intersect, which is what lets them tile" do
+      refute Range.intersects?(
+               %Range{lower: 1, upper: 3, bounds: :"[)"},
+               %Range{lower: 3, upper: 5, bounds: :"[)"}
+             )
+    end
+
+    test "a shared boundary is a shared point only when both sides include it" do
+      assert Range.intersects?(
+               %Range{lower: 1, upper: 3, bounds: :"[]"},
+               %Range{lower: 3, upper: 5, bounds: :"[)"}
+             )
+
+      refute Range.intersects?(
+               %Range{lower: 1, upper: 3, bounds: :"[]"},
+               %Range{lower: 3, upper: 5, bounds: :"()"}
+             )
+    end
+
+    test "an unbounded end intersects everything beyond it" do
+      assert Range.intersects?(
+               %Range{lower: 1, upper: nil, bounds: :"[)"},
+               %Range{lower: 1_000, upper: nil, bounds: :"[)"}
+             )
+
+      assert Range.intersects?(
+               %Range{lower: nil, upper: nil, bounds: :"[)"},
+               %Range{lower: 3, upper: 4, bounds: :"[)"}
+             )
+    end
+
+    test "an empty range intersects nothing, not even itself" do
+      empty = %Range{lower: 5, upper: 5, bounds: :"[)"}
+
+      refute Range.intersects?(empty, empty)
+      refute Range.intersects?(empty, %Range{lower: nil, upper: nil, bounds: :"[)"})
+    end
+
+    test "compares datetimes by Comp, not by term order" do
+      assert Range.intersects?(
+               %Range{lower: ~U[2026-01-31 00:00:00Z], upper: nil, bounds: :"[)"},
+               %Range{lower: ~U[2026-02-01 00:00:00Z], upper: nil, bounds: :"[)"}
+             )
+
+      refute Range.intersects?(
+               %Range{lower: ~U[2026-01-31 00:00:00Z], upper: ~U[2026-02-01 00:00:00Z]},
+               %Range{lower: ~U[2026-02-01 00:00:00Z], upper: ~U[2026-03-01 00:00:00Z]}
+             )
     end
   end
 end

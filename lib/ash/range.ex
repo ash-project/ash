@@ -69,6 +69,78 @@ defmodule Ash.Range do
   def upper_inclusive?(bounds), do: bounds in [:"(]", :"[]"]
 
   @doc """
+  Whether the range holds `value`, which may be a point or another range.
+
+  An unbounded end holds everything beyond it, and an empty range holds no point.
+  Each bound is compared with `Comp`, so an inner type behaves inside a range as
+  it does outside one, and a bound that excludes its own value (`(` or `)`) is
+  not held.
+
+  A range holds another when the second lies within the first, sharing an endpoint
+  or being equal included. Every range holds the empty range, as Postgres `@>` does.
+  """
+  @spec contains?(t(), term()) :: boolean()
+  def contains?(%__MODULE__{} = range, %__MODULE__{} = value) do
+    empty?(value) or
+      (not empty?(range) and
+         relation(range, value) in [:contains, :started_by, :finished_by, :equals])
+  end
+
+  def contains?(%__MODULE__{} = range, value) do
+    not empty?(range) and above_lower?(range, value) and below_upper?(range, value)
+  end
+
+  defp above_lower?(%{lower: nil}, _value), do: true
+
+  defp above_lower?(range, value) do
+    case Comp.compare(value, range.lower) do
+      :gt -> true
+      :eq -> lower_inclusive?(range.bounds)
+      :lt -> false
+    end
+  end
+
+  defp below_upper?(%{upper: nil}, _value), do: true
+
+  defp below_upper?(range, value) do
+    case Comp.compare(value, range.upper) do
+      :lt -> true
+      :eq -> upper_inclusive?(range.bounds)
+      :gt -> false
+    end
+  end
+
+  @doc """
+  Whether two ranges share any point.
+
+  An empty range intersects nothing, not even itself. Each range must start at or
+  before the other ends, and a boundary the two ranges share counts only when both
+  sides include it — so `[1,3)` and `[3,5)` do not intersect, where `[1,3]` and
+  `[3,5)` do. Bounds are compared with `Comp`, as everywhere else here.
+
+  Named for what it answers rather than for the operator it backs. Postgres calls
+  `&&` "overlap" and `range_overlaps/2` keeps that name, but Allen's *overlaps* is
+  the narrower relation where two ranges cross with neither containing the other —
+  under which `[1,10)` and `[3,5)` do **not** overlap. This returns true for them.
+  """
+  @spec intersects?(t(), t()) :: boolean()
+  def intersects?(%__MODULE__{} = left, %__MODULE__{} = right) do
+    not empty?(left) and not empty?(right) and
+      starts_before_end?(left, right) and starts_before_end?(right, left)
+  end
+
+  defp starts_before_end?(%{lower: nil}, _other), do: true
+  defp starts_before_end?(_range, %{upper: nil}), do: true
+
+  defp starts_before_end?(range, other) do
+    case Comp.compare(range.lower, other.upper) do
+      :lt -> true
+      :eq -> lower_inclusive?(range.bounds) and upper_inclusive?(other.bounds)
+      :gt -> false
+    end
+  end
+
+  @doc """
   Compares two ranges as Postgres orders them: empty first, then by lower bound, then
   by upper, an unbounded end as `-∞`/`+∞`, and the earlier boundary first where two
   bounds name the same value (`[1` before `(1`, `5)` before `5]`).
@@ -164,6 +236,26 @@ defmodule Ash.Range do
         seam(right, left)
       )
     end
+  end
+
+  @doc """
+  Whether two ranges are adjacent: one ends exactly where the other begins, with no
+  point between them and none shared.
+
+  The seam counts only when exactly one side includes it, so `[1,5)` is adjacent to
+  `[5,9)`, where `[1,5]` overlaps it and `(5,9)` leaves a gap. Symmetric, unlike
+  Allen's *meets*, which is directional. An empty range is adjacent to nothing.
+
+  Adjacency is what lets a series of ranges tile: each meets the next, covering
+  everything between the first lower bound and the last upper without overlapping.
+
+  For a discrete inner type this is a question about the canonical form — `[1,4]` and
+  `[5,9)` are adjacent as integers but not as decimals — so compare values that have
+  been through `Ash.Type.Range`, which canonicalises them. Matches Postgres `-|-`.
+  """
+  @spec adjacent?(t(), t()) :: boolean()
+  def adjacent?(%__MODULE__{} = left, %__MODULE__{} = right) do
+    relation(left, right) in [:meets, :met_by]
   end
 
   # Seam clauses first, holding whatever the bounds compare to; then canonical order.
