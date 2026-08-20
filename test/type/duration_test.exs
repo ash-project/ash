@@ -816,11 +816,11 @@ defmodule Ash.Test.Type.DurationTest do
       {:time_usec, Ash.Type.TimeUsec}
     ]
 
-    defp operand_types(expression) do
+    defp operand_types(expression, known_result \\ nil) do
       {:ok, %op{} = hydrated} = Ash.Filter.hydrate_refs(expression, %{resource: Post})
 
       {[{left, _}, {right, _}], {returns, _}} =
-        Ash.Expr.determine_types(op, [hydrated.left, hydrated.right])
+        Ash.Expr.determine_types(op, [hydrated.left, hydrated.right], known_result)
 
       {left, right, returns}
     end
@@ -837,6 +837,27 @@ defmodule Ash.Test.Type.DurationTest do
         assert {^type, Ash.Type.Duration, ^type} =
                  operand_types(expr(^ref(field) - ^Duration.new!(day: 1)))
       end
+    end
+
+    test "subtracting two temporal values of the same type returns an integer" do
+      for {field, type} <- @temporal_fields do
+        assert {^type, ^type, Ash.Type.Integer} =
+                 operand_types(expr(^ref(field) - ^ref(field)))
+      end
+    end
+
+    test "the known result disambiguates a lazy date from a lazy duration" do
+      assert {Ash.Type.Date, Ash.Type.Date, Ash.Type.Integer} =
+               operand_types(
+                 expr(^ref(:date) - lazy({Date, :utc_today, []})),
+                 Ash.Type.Integer
+               )
+
+      assert {Ash.Type.Date, Ash.Type.Duration, Ash.Type.Date} =
+               operand_types(
+                 expr(^ref(:date) - lazy({Duration, :new!, [[day: 1]]})),
+                 Ash.Type.Date
+               )
     end
 
     test "a duration on the left of an addition is kept too" do
