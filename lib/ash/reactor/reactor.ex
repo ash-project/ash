@@ -14,6 +14,7 @@ defmodule Ash.Reactor do
   @ash %Spark.Dsl.Section{
     name: :ash,
     describe: "Ash-related configuration for the `Ash.Reactor` extension",
+    no_depend_modules: [:default_domain],
     schema: [
       default_domain: [
         type: {:behaviour, Ash.Domain},
