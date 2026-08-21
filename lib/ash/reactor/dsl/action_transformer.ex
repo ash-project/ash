@@ -98,16 +98,27 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
   end
 
   defp validate_entity_domain(entity, dsl_state) do
-    if entity.domain.spark_is() == Domain do
-      :ok
-    else
-      {:error,
-       DslError.exception(
-         module: Transformer.get_persisted(dsl_state, :module),
-         path: [:reactor, entity.type, entity.name],
-         message:
-           "The #{entity.type} step `#{inspect(entity.name)}` has its domain set to `#{inspect(entity.domain)}` but it is not a valid `Ash.Domain`."
-       )}
+    cond do
+      is_nil(entity.domain) ->
+        {:error,
+         DslError.exception(
+           module: Transformer.get_persisted(dsl_state, :module),
+           path: [:reactor, entity.type, entity.name],
+           message:
+             "The #{entity.type} step `#{inspect(entity.name)}` has no domain. Set one on the step, on the resource, or as the `default_domain` in the `ash` section."
+         )}
+
+      entity.domain.spark_is() == Domain ->
+        :ok
+
+      true ->
+        {:error,
+         DslError.exception(
+           module: Transformer.get_persisted(dsl_state, :module),
+           path: [:reactor, entity.type, entity.name],
+           message:
+             "The #{entity.type} step `#{inspect(entity.name)}` has its domain set to `#{inspect(entity.domain)}` but it is not a valid `Ash.Domain`."
+         )}
     end
   end
 
