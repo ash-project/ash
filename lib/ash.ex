@@ -1006,7 +1006,18 @@ defmodule Ash do
       type: :boolean,
       default: true,
       doc:
-        "The result to use for fields whose visibility depends on the record they are read from, i.e their field policies resolved to a filter. The default `true` means \"the actor can see this field, though not necessarily on every record\". Set to `false` to only count fields the actor can see on every record."
+        "The result to use for fields whose visibility depends on the record they are read from, i.e their field policies resolved to a filter. The default `true` means \"the actor can see this field, though not necessarily on every record\". Set to `false` to only count fields the actor can see on every record. When `data` is provided, this only applies to fields whose filters could not be resolved against the record (only possible with `run_queries?: false`)."
+    ],
+    data: [
+      type: :struct,
+      doc:
+        "The record to evaluate record-dependent field policies against. When provided, fields whose visibility depends on the record are resolved by actually evaluating their filters against this record. For visibility across multiple records, read them and check for `%Ash.ForbiddenField{}` instead."
+    ],
+    run_queries?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "Whether or not to run queries when resolving record-dependent fields against `data`. If `false`, filters are only evaluated against the record's in-memory values, and fields that cannot be resolved that way (e.g filters over unloaded relationships) fall back to `filter_is`."
     ],
     tenant: [
       type: {:protocol, Ash.ToTenant},
@@ -1931,18 +1942,25 @@ defmodule Ash do
   Fields whose field policies are filter checks depend on the record they are
   read from, and count as visible by default: "the actor can see this field,
   though not necessarily on every record". Pass `filter_is: false` to only
-  count fields the actor can see on every record. Primary keys are always
+  count fields the actor can see on every record, or provide the record in
+  question via the `data` option (or a `{record, :action}` subject) to
+  actually evaluate those filters against it. Resolving against a record may
+  query the data layer for anything not evaluable from the record's loaded
+  values; pass `run_queries?: false` to prevent that, in which case
+  unresolvable fields fall back to `filter_is`. Primary keys are always
   visible.
 
-  When you already have records in hand, you typically don't need this:
-  forbidden fields on records read with authorization are replaced with
+  When you already have records read with authorization in hand, you
+  typically don't need this: their forbidden fields are already replaced with
   `%Ash.ForbiddenField{}`. See `Ash.Authorizer.apply_field_level_auth/3` for
   applying field policies to records built in memory.
 
   ## Accepted subjects
 
   Accepts a resource (using its primary read action), an `{Resource, :action}`
-  tuple, or a query/changeset/action input, the same as `can?/3`.
+  tuple, or a query/changeset/action input, the same as `can?/3`. A
+  `{record, :read_action}` subject evaluates against that record, as if it
+  were passed as `data`.
 
   ## Examples
 
@@ -1955,6 +1973,10 @@ defmodule Ash do
       # only count fields visible on *every* record
       iex> Ash.can_see_fields?(MyApp.Ticket, user, [:status], filter_is: false)
       false
+
+      # evaluate record-dependent fields against a specific record
+      iex> Ash.can_see_fields?({my_ticket, :read}, user, [:status])
+      true
 
   ## See also
 

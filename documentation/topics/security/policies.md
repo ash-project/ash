@@ -778,7 +778,16 @@ Ash.can_see_fields({Ticket, :read}, actor, [:name, :internal_status])
 
 Field policies are evaluated in the context of an action, so the subject can be a resource (using its primary read action), a `{Resource, :action}` tuple, or a query/changeset/action input, just like `Ash.can?/3`.
 
-Fields whose field policies are filter checks depend on the record they are read from. Those count as visible by default: "the actor can see this field, though not necessarily on every record". Pass `filter_is: false` to only count fields the actor can see on every record. When you already have records in hand, you don't need these functions — forbidden fields are replaced with `%Ash.ForbiddenField{}` in results.
+Fields whose field policies are filter checks depend on the record they are read from. Those count as visible by default: "the actor can see this field, though not necessarily on every record". Pass `filter_is: false` to only count fields the actor can see on every record.
+
+To answer the question for a specific record, provide it via the `data` option or use a `{record, :action}` subject — the filters are then actually evaluated against that record:
+
+```elixir
+Ash.can_see_fields?({ticket, :read}, actor, [:status])
+Ash.can_see_fields?(Ticket, actor, [:status], data: ticket)
+```
+
+Resolving against a record may query the data layer for anything not evaluable from the record's loaded values; pass `run_queries?: false` to prevent that, in which case unresolvable fields fall back to `filter_is`. When you already have records read with authorization in hand, you don't need these functions — forbidden fields are replaced with `%Ash.ForbiddenField{}` in results.
 
 ### Handling private fields in internal functions
 
