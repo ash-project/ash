@@ -764,6 +764,22 @@ In results, forbidden fields will be replaced with a special value: `%Ash.Forbid
 
 When these fields are referred to in filters, they will be replaced with an expression that evaluates to `nil`. To support this behavior, only simple and filter checks are allowed in field policies.
 
+### Checking field visibility without records
+
+`Ash.can_see_fields?/4` and `Ash.can_see_fields/4` answer "can this actor see these fields" without needing any records in hand, the way `Ash.can?/3` does for actions. Use them to shape a page up front, e.g deciding whether to render a column or a section at all.
+
+```elixir
+Ash.can_see_fields?(Ticket, actor, [:internal_status])
+# => false
+
+Ash.can_see_fields({Ticket, :read}, actor, [:name, :internal_status])
+# => {:ok, %{name: true, internal_status: false}}
+```
+
+Field policies are evaluated in the context of an action, so the subject can be a resource (using its primary read action), a `{Resource, :action}` tuple, or a query/changeset/action input, just like `Ash.can?/3`.
+
+Fields whose field policies are filter checks depend on the record they are read from. Those count as visible by default: "the actor can see this field, though not necessarily on every record". Pass `filter_is: false` to only count fields the actor can see on every record. When you already have records in hand, you don't need these functions — forbidden fields are replaced with `%Ash.ForbiddenField{}` in results.
+
 ### Handling private fields in internal functions
 
 When calling internal functions like `Ash.read!/1`, private fields will by default always be shown.

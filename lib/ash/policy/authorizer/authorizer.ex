@@ -1417,6 +1417,84 @@ defmodule Ash.Policy.Authorizer do
   end
 
   @impl true
+  def evaluate_field_policies(subject, fields, opts) do
+    resource = subject.resource
+
+    if Enum.empty?(Ash.Policy.Info.field_policies(resource)) do
+      # If there are no field policies, access is allowed by default
+      {:ok, Map.new(fields, &{&1, true})}
+    else
+      domain = opts[:domain] || Ash.Resource.Info.domain(resource)
+
+      authorizer =
+        opts[:actor]
+        |> initial_state(resource, subject.action, domain)
+        |> ensure_context_in_authorizer(%{
+          query: (match?(%Ash.Query{}, subject) && subject) || nil,
+          changeset: (match?(%Ash.Changeset{}, subject) && subject) || nil,
+          action_input: (match?(%Ash.ActionInput{}, subject) && subject) || nil,
+          domain: domain
+        })
+
+      pkey = Ash.Resource.Info.primary_key(resource)
+
+      fields
+      |> Enum.group_by(fn field ->
+        if field in pkey do
+          # primary keys are always accessible
+          :__primary_key__
+        else
+          Ash.Policy.Info.field_policies_for_field(resource, field)
+        end
+      end)
+      |> Enum.reduce_while({:ok, %{}, authorizer}, fn
+        {:__primary_key__, group}, {:ok, results, authorizer} ->
+          {:cont, {:ok, put_fields(results, group, true), authorizer}}
+
+        {nil, group}, {:ok, results, authorizer} ->
+          # Fields without field policies can only be private fields here,
+          # since coverage of public fields is enforced at compile time, so
+          # `private_fields` decides their visibility.
+          visible? = Ash.Policy.Info.private_fields_policy(resource) == :show
+          {:cont, {:ok, put_fields(results, group, visible?), authorizer}}
+
+        {policies, group}, {:ok, results, authorizer} ->
+          case strict_check_result(
+                 %{authorizer | policies: policies},
+                 for_fields: group,
+                 context_description: "evaluating field policies"
+               ) do
+            {:authorized, authorizer} ->
+              log_successful_policy_breakdown(authorizer)
+              {:cont, {:ok, put_fields(results, group, true), authorizer}}
+
+            {:error, _error} ->
+              {:cont, {:ok, put_fields(results, group, false), authorizer}}
+
+            {:filter, authorizer, filter} ->
+              log_successful_policy_breakdown(authorizer)
+              %{expression: expr} = Ash.Filter.parse!(resource, filter)
+              {:cont, {:ok, put_fields(results, group, {:filter, expr}), authorizer}}
+
+            {:filter_and_continue, _filter, _authorizer} ->
+              {:halt, {:error, only_simple_or_filter_error()}}
+
+            {:continue, _authorizer} ->
+              {:halt, {:error, only_simple_or_filter_error()}}
+          end
+      end)
+      |> case do
+        {:ok, results, _authorizer} -> {:ok, results}
+        {:error, error} -> {:error, error}
+      end
+    end
+  end
+
+  defp put_fields(results, fields, value) do
+    Enum.reduce(fields, results, &Map.put(&2, &1, value))
+  end
+
+  @impl true
   def protected_fields(resource) do
     resource
     |> Ash.Policy.Info.field_policies()

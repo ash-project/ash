@@ -171,16 +171,7 @@ defmodule Ash.Can do
         private: %{pre_flight_authorization?: pre_flight?}
       })
 
-    {actor, opts} =
-      if is_struct(actor_or_scope) and Ash.Scope.ToOpts.impl_for(actor_or_scope) do
-        opts
-        |> Keyword.put(:scope, actor_or_scope)
-        |> Ash.Actions.Helpers.apply_scope_to_opts()
-        |> Keyword.pop(:actor)
-      else
-        {actor_or_scope,
-         opts |> Ash.Actions.Helpers.apply_scope_to_opts() |> Keyword.delete(:actor)}
-      end
+    {actor, opts} = resolve_actor_and_opts(actor_or_scope, opts)
 
     opts = Keyword.update(opts, :context, context, &Ash.Helpers.deep_merge_maps(&1, context))
 
@@ -194,87 +185,7 @@ defmodule Ash.Can do
       end
 
     subject =
-      case action_or_query_or_changeset do
-        %Ash.ActionInput{} = action_input ->
-          action_input
-          |> Ash.ActionInput.set_tenant(opts[:tenant] || action_input.tenant)
-          |> Ash.ActionInput.set_context(%{
-            private: %{actor: actor, pre_flight_authorization?: pre_flight?}
-          })
-
-        %Ash.Query{} = query ->
-          query
-          |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
-          |> Ash.Query.set_context(%{
-            private: %{actor: actor, pre_flight_authorization?: pre_flight?}
-          })
-
-        %Ash.Changeset{} = changeset ->
-          changeset
-          |> Ash.Changeset.set_tenant(opts[:tenant] || changeset.tenant)
-          |> Ash.Changeset.set_context(%{
-            private: %{actor: actor, pre_flight_authorization?: pre_flight?}
-          })
-
-        %{type: :update, name: name} ->
-          if opts[:data] do
-            Ash.Changeset.for_update(opts[:data], name, input,
-              actor: actor,
-              tenant: opts[:tenant],
-              context: opts[:context]
-            )
-          else
-            resource
-            |> struct()
-            |> Ash.Changeset.for_update(name, input,
-              actor: actor,
-              tenant: opts[:tenant],
-              context: opts[:context]
-            )
-          end
-
-        %{type: :create, name: name} ->
-          Ash.Changeset.for_create(resource, name, input,
-            actor: actor,
-            tenant: opts[:tenant],
-            context: opts[:context]
-          )
-
-        %{type: :read, name: name} ->
-          Ash.Query.for_read(resource, name, input,
-            actor: actor,
-            tenant: opts[:tenant],
-            context: opts[:context]
-          )
-
-        %{type: :destroy, name: name} ->
-          if opts[:data] do
-            Ash.Changeset.for_destroy(opts[:data], name, input,
-              actor: actor,
-              tenant: opts[:tenant],
-              context: opts[:context]
-            )
-          else
-            resource
-            |> struct()
-            |> Ash.Changeset.for_destroy(name, input,
-              actor: actor,
-              tenant: opts[:tenant],
-              context: opts[:context]
-            )
-          end
-
-        %{type: :action, name: name} ->
-          Ash.ActionInput.for_action(resource, name, input,
-            actor: actor,
-            tenant: opts[:tenant],
-            context: opts[:context]
-          )
-
-        _ ->
-          raise ArgumentError,
-            message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
-      end
+      build_subject(action_or_query_or_changeset, resource, input, actor, pre_flight?, opts)
 
     if opts[:validate?] && !subject.valid? do
       {:ok, false, Ash.Error.to_error_class(subject.errors)}
@@ -331,6 +242,210 @@ defmodule Ash.Can do
         {:error, error} ->
           {:error, error}
       end
+    end
+  end
+
+  @doc """
+  Evaluates field policies for the given fields in the context of the given
+  action, query, or changeset, without needing any records in hand.
+
+  You should prefer to use `Ash.can_see_fields?/4` or `Ash.can_see_fields/4`
+  over this module, directly.
+
+  Returns `{:ok, results}` where each requested field maps to `true`, `false`,
+  or `{:filter, expr}` when its visibility depends on the record it is read
+  from (i.e its field policies use filter checks).
+  """
+  @spec evaluate_field_policies(
+          subject() | Ash.Resource.t(),
+          Ash.Domain.t(),
+          Ash.actor() | Ash.Scope.t(),
+          list(atom()),
+          Keyword.t()
+        ) :: {:ok, %{atom() => boolean() | {:filter, term()}}} | {:error, Ash.Error.t()}
+  def evaluate_field_policies(
+        action_or_query_or_changeset,
+        domain,
+        actor_or_scope,
+        fields,
+        opts \\ []
+      )
+
+  def evaluate_field_policies(resource, domain, actor_or_scope, fields, opts)
+      when is_atom(resource) do
+    if Ash.Resource.Info.resource?(resource) do
+      action = Ash.Resource.Info.primary_action!(resource, :read)
+      evaluate_field_policies({resource, action}, domain, actor_or_scope, fields, opts)
+    else
+      raise ArgumentError,
+        message: "Invalid resource/action/query/changeset \"#{inspect(resource)}\""
+    end
+  end
+
+  def evaluate_field_policies(action_or_query_or_changeset, domain, actor_or_scope, fields, opts) do
+    pre_flight? = Keyword.get(opts, :pre_flight?, true)
+
+    context =
+      Ash.Helpers.deep_merge_maps(opts[:context] || %{}, %{
+        private: %{pre_flight_authorization?: pre_flight?}
+      })
+
+    {actor, opts} = resolve_actor_and_opts(actor_or_scope, opts)
+
+    opts = Keyword.update(opts, :context, context, &Ash.Helpers.deep_merge_maps(&1, context))
+
+    {resource, action_or_query_or_changeset, input, opts} =
+      case resource_subject_input(action_or_query_or_changeset, domain, actor, opts) do
+        {resource, action_or_query_or_changeset, input, new_opts} ->
+          {resource, action_or_query_or_changeset, input, Keyword.merge(new_opts, opts)}
+
+        {resource, action_or_query_or_changeset, input} ->
+          {resource, action_or_query_or_changeset, input, opts}
+      end
+
+    validate_fields!(resource, fields)
+
+    subject =
+      build_subject(action_or_query_or_changeset, resource, input, actor, pre_flight?, opts)
+
+    if is_nil(subject.action) do
+      raise ArgumentError,
+        message: """
+        Cannot evaluate field policies for a #{inspect(subject.__struct__)} without an action.
+
+        Use `for_read/3` (or the equivalent for your subject) to set an action first.
+        """
+    end
+
+    subject = %{subject | domain: domain}
+
+    case Ash.Domain.Info.resource(domain, resource) do
+      {:ok, _} ->
+        Ash.Authorizer.evaluate_field_policies(subject, fields,
+          actor: actor,
+          tenant: opts[:tenant],
+          domain: domain
+        )
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp validate_fields!(resource, fields) do
+    known =
+      resource
+      |> Ash.Resource.Info.fields([:attributes, :calculations, :aggregates])
+      |> MapSet.new(& &1.name)
+
+    case Enum.reject(fields, &MapSet.member?(known, &1)) do
+      [] ->
+        :ok
+
+      invalid ->
+        raise ArgumentError,
+          message: """
+          Invalid field(s) provided when evaluating field policies: #{inspect(invalid)}
+
+          Only attributes, calculations and aggregates on #{inspect(resource)} are supported.
+          Field policies do not apply to relationships.
+          """
+    end
+  end
+
+  defp resolve_actor_and_opts(actor_or_scope, opts) do
+    if is_struct(actor_or_scope) and Ash.Scope.ToOpts.impl_for(actor_or_scope) do
+      opts
+      |> Keyword.put(:scope, actor_or_scope)
+      |> Ash.Actions.Helpers.apply_scope_to_opts()
+      |> Keyword.pop(:actor)
+    else
+      {actor_or_scope,
+       opts |> Ash.Actions.Helpers.apply_scope_to_opts() |> Keyword.delete(:actor)}
+    end
+  end
+
+  defp build_subject(action_or_query_or_changeset, resource, input, actor, pre_flight?, opts) do
+    case action_or_query_or_changeset do
+      %Ash.ActionInput{} = action_input ->
+        action_input
+        |> Ash.ActionInput.set_tenant(opts[:tenant] || action_input.tenant)
+        |> Ash.ActionInput.set_context(%{
+          private: %{actor: actor, pre_flight_authorization?: pre_flight?}
+        })
+
+      %Ash.Query{} = query ->
+        query
+        |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
+        |> Ash.Query.set_context(%{
+          private: %{actor: actor, pre_flight_authorization?: pre_flight?}
+        })
+
+      %Ash.Changeset{} = changeset ->
+        changeset
+        |> Ash.Changeset.set_tenant(opts[:tenant] || changeset.tenant)
+        |> Ash.Changeset.set_context(%{
+          private: %{actor: actor, pre_flight_authorization?: pre_flight?}
+        })
+
+      %{type: :update, name: name} ->
+        if opts[:data] do
+          Ash.Changeset.for_update(opts[:data], name, input,
+            actor: actor,
+            tenant: opts[:tenant],
+            context: opts[:context]
+          )
+        else
+          resource
+          |> struct()
+          |> Ash.Changeset.for_update(name, input,
+            actor: actor,
+            tenant: opts[:tenant],
+            context: opts[:context]
+          )
+        end
+
+      %{type: :create, name: name} ->
+        Ash.Changeset.for_create(resource, name, input,
+          actor: actor,
+          tenant: opts[:tenant],
+          context: opts[:context]
+        )
+
+      %{type: :read, name: name} ->
+        Ash.Query.for_read(resource, name, input,
+          actor: actor,
+          tenant: opts[:tenant],
+          context: opts[:context]
+        )
+
+      %{type: :destroy, name: name} ->
+        if opts[:data] do
+          Ash.Changeset.for_destroy(opts[:data], name, input,
+            actor: actor,
+            tenant: opts[:tenant],
+            context: opts[:context]
+          )
+        else
+          resource
+          |> struct()
+          |> Ash.Changeset.for_destroy(name, input,
+            actor: actor,
+            tenant: opts[:tenant],
+            context: opts[:context]
+          )
+        end
+
+      %{type: :action, name: name} ->
+        Ash.ActionInput.for_action(resource, name, input,
+          actor: actor,
+          tenant: opts[:tenant],
+          context: opts[:context]
+        )
+
+      _ ->
+        raise ArgumentError,
+          message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
     end
   end
 
