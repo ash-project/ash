@@ -124,6 +124,51 @@ defmodule Ash.Test.Type.DecimalTest do
     end
   end
 
+  describe "arithmetic" do
+    test "a decimal multiplies by an integer in either operand order" do
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") * 2)),
+               Decimal.new("21.00")
+             )
+
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(2 * ^Decimal.new("10.50"))),
+               Decimal.new("21.00")
+             )
+    end
+
+    test "a decimal adds, subtracts and divides an integer" do
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") + 1)),
+               Decimal.new("11.50")
+             )
+
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") - 1)),
+               Decimal.new("9.50")
+             )
+
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") / 2)),
+               Decimal.new("5.25")
+             )
+    end
+
+    test "a decimal multiplies by a float" do
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") * 2.0)),
+               Decimal.new("21.00")
+             )
+    end
+
+    test "a decimal multiplies by a decimal" do
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") * ^Decimal.new(2))),
+               Decimal.new("21.00")
+             )
+    end
+  end
+
   test "pass with valid precision constraint" do
     valid_attrs = @valid_attrs |> Map.put(:precise_amount, 1.23)
 
