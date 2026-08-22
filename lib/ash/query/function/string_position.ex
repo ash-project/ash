@@ -29,7 +29,7 @@ defmodule Ash.Query.Function.StringPosition do
       [:ci_string, :ci_string]
     ]
 
-  def returns, do: [:string, :ci_string, :ci_string, :ci_string]
+  def returns, do: [:integer, :integer, :integer, :integer]
 
   def evaluate(%{arguments: [nil, _]}), do: {:known, nil}
   def evaluate(%{arguments: [_, nil]}), do: {:known, nil}
