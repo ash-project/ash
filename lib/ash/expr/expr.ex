@@ -234,6 +234,20 @@ defmodule Ash.Expr do
           as_of -> Ash.Query.Function.Ago.datetime_add(as_of, factor, interval)
         end
 
+      %Ash.Query.Function.Ago{arguments: [duration]} = ago
+      when is_struct(duration, Duration) ->
+        case fill_template_as_of(opts) do
+          nil -> ago
+          as_of -> Ash.Query.Function.Ago.datetime_add(as_of, Duration.negate(duration))
+        end
+
+      # A date rather than a datetime, so it anchors by taking the date of `as_of`.
+      %Ash.Query.Function.Today{} = today ->
+        case fill_template_as_of(opts) do
+          nil -> today
+          as_of -> DateTime.to_date(as_of)
+        end
+
       {:_actor, :_primary_key} ->
         actor = opts[:actor]
 

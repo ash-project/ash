@@ -2483,6 +2483,22 @@ defmodule Ash.Actions.Read do
           from_now
         end
 
+      %Ash.Query.Function.Ago{arguments: [duration]} = ago
+      when is_struct(duration, Duration) ->
+        if as_of = opts[:as_of] do
+          Ash.Query.Function.Ago.datetime_add(as_of, Duration.negate(duration))
+        else
+          ago
+        end
+
+      # A date rather than a datetime, so it anchors by taking the date of `as_of`.
+      %Ash.Query.Function.Today{} = today ->
+        if as_of = opts[:as_of] do
+          DateTime.to_date(as_of)
+        else
+          today
+        end
+
       %Ash.Query.Parent{} = parent ->
         if List.wrap(opts[:parent_stack]) != [] do
           %{
