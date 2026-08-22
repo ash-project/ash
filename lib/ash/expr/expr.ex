@@ -1554,6 +1554,7 @@ defmodule Ash.Expr do
       end
     end)
     |> Enum.filter(& &1)
+    |> prefer_known_result(known_result)
     |> case do
       [{types, returns, _, _}] ->
         {types, returns}
@@ -1569,6 +1570,18 @@ defmodule Ash.Expr do
           end)
 
         select_matches(types, length(values), values)
+    end
+  end
+
+  defp prefer_known_result(matches, nil), do: matches
+
+  defp prefer_known_result(matches, {known_type, _}) do
+    case Enum.filter(matches, fn
+           {_, {return_type, _}, _, _} -> return_type == known_type
+           _ -> false
+         end) do
+      [] -> matches
+      matching -> matching
     end
   end
 

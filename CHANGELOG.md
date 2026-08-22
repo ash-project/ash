@@ -8,6 +8,59 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.32.0](https://github.com/ash-project/ash/compare/v3.31.3...v3.32.0) (2026-08-19)
+
+
+
+
+### Features:
+
+* ask a range about containment and adjacency in an expression (#2877) by [@matt-beanland](https://github.com/matt-beanland) [(#2877)](https://github.com/ash-project/ash/pull/2877)
+
+* ask whether a range holds a point or a range, or meets another (#2870) by [@matt-beanland](https://github.com/matt-beanland) [(#2870)](https://github.com/ash-project/ash/pull/2870)
+
+* ask whether two ranges are adjacent (#2872) by [@matt-beanland](https://github.com/matt-beanland) [(#2872)](https://github.com/ash-project/ash/pull/2872)
+
+* read a range's lower and upper endpoint in an expression (#2878) by [@matt-beanland](https://github.com/matt-beanland) [(#2878)](https://github.com/ash-project/ash/pull/2878)
+
+* constrain the sign of a duration (#2868) by [@matt-beanland](https://github.com/matt-beanland) [(#2868)](https://github.com/ash-project/ash/pull/2868)
+
+* classify the Allen relation between two ranges (#2866) by [@matt-beanland](https://github.com/matt-beanland) [(#2866)](https://github.com/ash-project/ash/pull/2866)
+
+* constrain a range's bounds and emptiness (#2864) by [@matt-beanland](https://github.com/matt-beanland) [(#2864)](https://github.com/ash-project/ash/pull/2864)
+
+* allow a data layer to override an attribute's Ecto type (#2855) by [@matt-beanland](https://github.com/matt-beanland) [(#2855)](https://github.com/ash-project/ash/pull/2855)
+
+* add Ash.Type.Range and the range_overlaps expression (#2856) by [@matt-beanland](https://github.com/matt-beanland) [(#2856)](https://github.com/ash-project/ash/pull/2856)
+
+### Bug Fixes:
+
+* refuse a value that is not a range on every path that takes one (#2883) by [@matt-beanland](https://github.com/matt-beanland) [(#2883)](https://github.com/ash-project/ash/pull/2883)
+
+* refuse an invalid range bounds on every path that accepts one (#2880) by [@matt-beanland](https://github.com/matt-beanland) [(#2880)](https://github.com/ash-project/ash/pull/2880)
+
+* canonicalize a discrete range emptied by its own bounds (#2874) by [@matt-beanland](https://github.com/matt-beanland) [(#2874)](https://github.com/ash-project/ash/pull/2874)
+
+* declare the duration overloads of the plus and minus operators (#2852) by [@matt-beanland](https://github.com/matt-beanland) [(#2852)](https://github.com/ash-project/ash/pull/2852)
+
+* canonicalize every empty range to one value (#2858) by [@matt-beanland](https://github.com/matt-beanland) [(#2858)](https://github.com/ash-project/ash/pull/2858)
+
+* don't raise when an operator on two literals yields a struct (#2847) by [@matt-beanland](https://github.com/matt-beanland) [(#2847)](https://github.com/ash-project/ash/pull/2847)
+
+* accept a Duration in from_now/1 (#2844) by [@matt-beanland](https://github.com/matt-beanland) [(#2844)](https://github.com/ash-project/ash/pull/2844)
+
+* wrap the embedded duration dump in an ok tuple (#2849) by [@matt-beanland](https://github.com/matt-beanland) [(#2849)](https://github.com/ash-project/ash/pull/2849)
+
+* Don't throw exceptions raised based on missing context while validating expr refs (#2826) by Rutgerdj [(#2826)](https://github.com/ash-project/ash/pull/2826)
+
+* don't crash ets term logger by [@zachdaniel](https://github.com/zachdaniel)
+
+### Improvements:
+
+* express a duration in the largest units it is permitted â¦ (#2851) by [@matt-beanland](https://github.com/matt-beanland) [(#2851)](https://github.com/ash-project/ash/pull/2851)
+
+* harden keyset parsing even further by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.31.3](https://github.com/ash-project/ash/compare/v3.31.2...v3.31.3) (2026-08-12)
 
 

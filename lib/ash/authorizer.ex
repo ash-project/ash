@@ -50,6 +50,23 @@ defmodule Ash.Authorizer do
               records :: list(Ash.Resource.Record.t()),
               opts :: Keyword.t()
             ) :: {:ok, list(Ash.Resource.Record.t())} | {:error, Ash.Error.t()}
+  @doc """
+  Evaluate field-level authorization for the given fields without any records
+  in hand, in the context of the given subject's action.
+
+  Implementations should return a map with an entry for every requested field,
+  where each value is:
+
+  - `true` - the actor can see the field
+  - `false` - the actor cannot see the field
+  - `{:filter, expr}` - visibility depends on the record; the actor can see
+    the field on records matching `expr`
+  """
+  @callback evaluate_field_policies(
+              subject :: Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t(),
+              fields :: list(atom()),
+              opts :: Keyword.t()
+            ) :: {:ok, %{atom() => boolean() | {:filter, term()}}} | {:error, Ash.Error.t()}
   @callback check_context(state) :: [atom]
   @callback check(state, context) ::
               :authorized
@@ -72,6 +89,7 @@ defmodule Ash.Authorizer do
     alter_results: 3,
     alter_filter: 3,
     apply_field_level_auth: 3,
+    evaluate_field_policies: 3,
     protected_fields: 1
   ]
 
@@ -348,5 +366,83 @@ defmodule Ash.Authorizer do
       {:ok, records} -> {:ok, records}
       {:error, error} -> {:error, error}
     end
+  end
+
+  @doc """
+  Evaluate field-level authorization for the given fields without any records
+  in hand, in the context of the given subject's action.
+
+  Walks each authorizer configured on the subject's resource and invokes its
+  `evaluate_field_policies/3` callback if defined, combining the results such
+  that a field is only visible if every authorizer allows it. Authorizers that
+  don't implement the callback place no restrictions on any field.
+
+  Returns a map with an entry for every requested field, where each value is:
+
+  - `true` - the actor can see the field
+  - `false` - the actor cannot see the field
+  - `{:filter, expr}` - visibility depends on the record; the actor can see
+    the field on records matching `expr`
+
+  You should typically use `Ash.can_see_fields?/4` or `Ash.can_see_fields/4`
+  instead of calling this directly.
+
+  Supported options:
+
+  - `:actor` - the actor whose visibility is being checked.
+  - `:tenant` - the tenant to evaluate against.
+  - `:domain` - the domain context.
+  """
+  @spec evaluate_field_policies(
+          Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t(),
+          list(atom()),
+          Keyword.t()
+        ) :: {:ok, %{atom() => boolean() | {:filter, term()}}} | {:error, Ash.Error.t()}
+  def evaluate_field_policies(subject, fields, opts \\ []) do
+    initial = Map.new(fields, &{&1, true})
+
+    subject.resource
+    |> Ash.Resource.Info.authorizers()
+    |> Enum.reduce_while({:ok, initial}, fn module, {:ok, results} ->
+      if function_exported?(module, :evaluate_field_policies, 3) do
+        case Ash.BehaviourHelpers.call_and_validate_return(
+               module,
+               :evaluate_field_policies,
+               [subject, fields, opts],
+               [{:ok, :_}, {:error, :_}],
+               behaviour: __MODULE__,
+               callback_name: "evaluate_field_policies/3"
+             ) do
+          {:ok, module_results} ->
+            {:cont, {:ok, merge_field_visibility(results, module_results)}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      else
+        {:cont, {:ok, results}}
+      end
+    end)
+  end
+
+  defp merge_field_visibility(left, right) do
+    Map.merge(left, right, fn _field, left_value, right_value ->
+      case {left_value, right_value} do
+        {false, _} ->
+          false
+
+        {_, false} ->
+          false
+
+        {true, right_value} ->
+          right_value
+
+        {left_value, true} ->
+          left_value
+
+        {{:filter, left_expr}, {:filter, right_expr}} ->
+          {:filter, Ash.Query.BooleanExpression.optimized_new(:and, left_expr, right_expr)}
+      end
+    end)
   end
 end

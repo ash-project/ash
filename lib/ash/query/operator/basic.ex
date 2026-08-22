@@ -66,23 +66,37 @@ defmodule Ash.Query.Operator.Basic do
         [:same, :any],
         [:duration, :duration],
         [:date, :duration],
+        [:date, :date],
         [:datetime, :duration],
+        [:datetime, :datetime],
         [:utc_datetime, :duration],
+        [:utc_datetime, :utc_datetime],
         [:utc_datetime_usec, :duration],
+        [:utc_datetime_usec, :utc_datetime_usec],
         [:naive_datetime, :duration],
+        [:naive_datetime, :naive_datetime],
         [:time, :duration],
-        [:time_usec, :duration]
+        [:time, :time],
+        [:time_usec, :duration],
+        [:time_usec, :time_usec]
       ],
       returns: [
         :same,
         :duration,
         :date,
+        :integer,
         :datetime,
+        :integer,
         :utc_datetime,
+        :integer,
         :utc_datetime_usec,
+        :integer,
         :naive_datetime,
+        :integer,
         :time,
-        :time_usec
+        :integer,
+        :time_usec,
+        :integer
       ]
     ],
     div: [

@@ -167,9 +167,13 @@ defmodule Ash.Type.Range do
   def dump_to_native(%Range{empty?: true}, _constraints), do: {:ok, Range.empty()}
 
   def dump_to_native(%Range{lower: lower, upper: upper, bounds: bounds}, constraints) do
-    with {:ok, lower} <- dump_bound(lower, constraints),
-         {:ok, upper} <- dump_bound(upper, constraints) do
-      {:ok, %Range{lower: lower, upper: upper, bounds: bounds}}
+    if Range.valid_bounds?(bounds) do
+      with {:ok, lower} <- dump_bound(lower, constraints),
+           {:ok, upper} <- dump_bound(upper, constraints) do
+        {:ok, %Range{lower: lower, upper: upper, bounds: bounds}}
+      end
+    else
+      :error
     end
   end
 
@@ -178,8 +182,18 @@ defmodule Ash.Type.Range do
   @impl true
   def apply_constraints(nil, _constraints), do: {:ok, nil}
 
+  def apply_constraints(%Range{bounds: bounds} = range, constraints) do
+    if Range.valid_bounds?(bounds) do
+      do_apply_constraints(range, constraints)
+    else
+      {:error, message: "range bounds must be a valid bounds specifier"}
+    end
+  end
+
+  def apply_constraints(_value, _constraints), do: {:error, message: "is not a valid range"}
+
   # An empty range is constructed, not mistyped, so it is refused rather than nulled.
-  def apply_constraints(%Range{empty?: true} = range, constraints) do
+  defp do_apply_constraints(%Range{empty?: true} = range, constraints) do
     if Keyword.get(constraints, :allow_empty?, false) do
       {:ok, range}
     else
@@ -187,7 +201,7 @@ defmodule Ash.Type.Range do
     end
   end
 
-  def apply_constraints(%Range{lower: lower, upper: upper} = range, constraints) do
+  defp do_apply_constraints(%Range{lower: lower, upper: upper} = range, constraints) do
     type = constraints[:inner_type]
     inner = constraints[:inner_constraints] || []
 
@@ -198,7 +212,7 @@ defmodule Ash.Type.Range do
          :ok <- check_bound(:lower, range, constraints[:lower] || []),
          :ok <- check_bound(:upper, range, constraints[:upper] || []) do
       # Canonicalizing can empty a range, so the empty rule is applied to the result.
-      if range.empty?, do: apply_constraints(range, constraints), else: {:ok, range}
+      if range.empty?, do: do_apply_constraints(range, constraints), else: {:ok, range}
     end
   end
 
@@ -239,10 +253,16 @@ defmodule Ash.Type.Range do
   # range read one back. An inverted range is invalid rather than empty, so it is left.
   defp canonicalize(%Range{empty?: true}, _constraints), do: Range.empty()
 
+  # The discrete shift can both hide and create emptiness, so both sides are tested. An
+  # inverted range is empty by neither, and falls through to check_order/2.
   defp canonicalize(%Range{} = range, constraints) do
-    range = discrete_bounds(range, constraints[:inner_type])
+    if empty_bounds?(range) do
+      Range.empty()
+    else
+      shifted = discrete_bounds(range, constraints[:inner_type])
 
-    if empty_bounds?(range), do: Range.empty(), else: range
+      if empty_bounds?(shifted), do: Range.empty(), else: shifted
+    end
   end
 
   defp empty_bounds?(%Range{lower: lower, upper: upper, bounds: bounds})
@@ -319,23 +339,39 @@ defmodule Ash.Type.Range do
   end
 
   defp extract(%Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?}) do
-    {:ok, lower, upper, normalize_bounds(bounds), empty?}
+    with {:ok, bounds} <- normalize_bounds(bounds) do
+      {:ok, lower, upper, bounds, empty?}
+    end
   end
 
   defp extract({lower, upper}), do: {:ok, lower, upper, :"[)", false}
 
-  defp extract(%{} = map) do
+  defp extract(%{} = map) when not is_struct(map) do
     lower = map[:lower] || map["lower"]
     upper = map[:upper] || map["upper"]
     bounds = map[:bounds] || map["bounds"] || :"[)"
     empty? = map[:empty?] || map["empty?"] || false
-    {:ok, lower, upper, normalize_bounds(bounds), empty?}
+
+    with {:ok, bounds} <- normalize_bounds(bounds) do
+      {:ok, lower, upper, bounds, empty?}
+    end
   end
 
   defp extract(_), do: {:error, "is not a valid range"}
 
-  defp normalize_bounds(bounds) when is_atom(bounds), do: bounds
-  defp normalize_bounds(bounds) when is_binary(bounds), do: String.to_existing_atom(bounds)
+  defp normalize_bounds(bounds) when is_atom(bounds) do
+    if Range.valid_bounds?(bounds), do: {:ok, bounds}, else: bounds_error()
+  end
+
+  defp normalize_bounds(bounds) when is_binary(bounds) do
+    normalize_bounds(String.to_existing_atom(bounds))
+  rescue
+    ArgumentError -> bounds_error()
+  end
+
+  defp normalize_bounds(_), do: bounds_error()
+
+  defp bounds_error, do: {:error, "bounds is not a valid bounds specifier"}
 
   defp cast_bound(nil, _fun, _constraints), do: {:ok, nil}
 
