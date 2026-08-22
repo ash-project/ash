@@ -2059,11 +2059,12 @@ defmodule Ash.DataLayer.Ets do
       changeset.tenant,
       filter,
       changeset.domain,
-      changeset.context[:private][:actor]
+      changeset.context[:private][:actor],
+      supersession(resource, changeset)
     )
   end
 
-  defp do_destroy(resource, record, tenant, filter, domain, actor) do
+  defp do_destroy(resource, record, tenant, filter, domain, actor, supersede) do
     with {:ok, table} <- wrap_or_create_table(resource, tenant) do
       pkey = pkey_map(resource, record)
 
@@ -2072,9 +2073,7 @@ defmodule Ash.DataLayer.Ets do
           {:ok, {_key, record}} when is_map(record) ->
             with {:ok, record} <- cast_record(record, resource),
                  {:ok, [_]} <- filter_matches([record], filter, domain, tenant, actor) do
-              with {:ok, _} <- ETS.Set.delete(table, pkey) do
-                :ok
-              end
+              retire(table, pkey, resource, supersede)
             else
               {:ok, []} ->
                 {:error,
@@ -2091,9 +2090,35 @@ defmodule Ash.DataLayer.Ets do
             {:error, error}
         end
       else
-        with {:ok, _} <- ETS.Set.delete(table, pkey) do
+        retire(table, pkey, resource, supersede)
+      end
+    end
+  end
+
+  defp retire(table, pkey, resource, supersede) do
+    case {supersede, ETS.Set.get(table, pkey)} do
+      {{period, as_of}, {:ok, {_key, stored}}} when is_map(stored) ->
+        close_version(table, pkey, stored, resource, period, as_of)
+
+      _ ->
+        with {:ok, _} <- ETS.Set.delete(table, pkey), do: :ok
+    end
+  end
+
+  # A destroy ends validity at the instant of the write. Closing a version at the
+  # instant it began leaves nothing to keep, so it goes.
+  defp close_version(table, pkey, stored, resource, period, as_of) do
+    with {:ok, closed} <- close_at(Map.get(pkey, period), as_of, resource, period),
+         {:ok, table} <- ETS.Set.delete(table, pkey) do
+      case closed do
+        nil ->
           :ok
-        end
+
+        closed ->
+          with {:ok, version} <- version(resource, pkey, period, stored, closed),
+               {:ok, _} <- ETS.Set.put(table, [version]) do
+            :ok
+          end
       end
     end
   end
@@ -2162,6 +2187,8 @@ defmodule Ash.DataLayer.Ets do
   def update(resource, changeset, pkey \\ nil, from_bulk? \\ false) do
     pkey = pkey || pkey_map(resource, changeset.data)
 
+    supersede = supersession(resource, changeset)
+
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          _ <- if(!from_bulk?, do: log_update(resource, pkey, changeset)),
          {:ok, record} <-
@@ -2171,13 +2198,15 @@ defmodule Ash.DataLayer.Ets do
              changeset.domain,
              changeset.tenant,
              resource,
-             changeset.context[:private][:actor]
+             changeset.context[:private][:actor],
+             supersede
            ),
          {:ok, record} <- cast_record(record, resource),
          record <- retain_fields(record, changeset) do
       new_pkey = pkey_map(resource, record)
 
-      if new_pkey != pkey do
+      # A supersession has already retired the old key, so it must not be destroyed.
+      if is_nil(supersede) && new_pkey != pkey do
         case destroy(resource, changeset) do
           :ok ->
             {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
@@ -2191,6 +2220,16 @@ defmodule Ash.DataLayer.Ets do
     else
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  # `nil` writes in place: no period, or a period with no now to supersede at.
+  defp supersession(resource, changeset) do
+    with period when not is_nil(period) <- Ash.Resource.Info.temporal_attribute(resource),
+         {:ok, as_of} <- write_instant(resource, changeset) do
+      {period, as_of}
+    else
+      _ -> nil
     end
   end
 
@@ -2242,7 +2281,8 @@ defmodule Ash.DataLayer.Ets do
          domain,
          tenant,
          resource,
-         actor
+         actor,
+         supersede
        ) do
     attributes = resource |> Ash.Resource.Info.attributes()
 
@@ -2257,12 +2297,12 @@ defmodule Ash.DataLayer.Ets do
                 empty when empty in [nil, []] ->
                   data = Map.merge(record, casted)
 
-                  put_data(table, pkey, data)
+                  write_version(table, pkey, record, data, resource, supersede)
 
                 atomics ->
                   with {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_record) do
                     data = record |> Map.merge(casted) |> Map.merge(atomics)
-                    put_data(table, pkey, data)
+                    write_version(table, pkey, record, data, resource, supersede)
                   end
               end
             else
@@ -2290,6 +2330,63 @@ defmodule Ash.DataLayer.Ets do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  defp write_version(table, pkey, _prior, data, _resource, nil), do: put_data(table, pkey, data)
+
+  # The new half ends where the old one did: an edit must not extend a closed version to
+  # forever. No transaction here, so the delete goes first — a reader sees the record
+  # absent, never twice.
+  defp write_version(table, pkey, prior_data, data, resource, {period, as_of}) do
+    prior = Map.get(pkey, period)
+
+    with {:ok, closed} <- close_at(prior, as_of, resource, period),
+         {:ok, {_key, opened_data} = opened} <-
+           version(resource, pkey, period, data, %{prior | lower: as_of}),
+         {:ok, retained} <- retained(resource, pkey, period, prior_data, closed),
+         {:ok, table} <- ETS.Set.delete(table, pkey),
+         {:ok, _table} <- ETS.Set.put(table, retained ++ [opened]) do
+      {:ok, opened_data}
+    end
+  end
+
+  # An instant the version does not hold cannot split it. `nil` drops a half holding none.
+  defp close_at(%Ash.Range{} = prior, as_of, resource, period) do
+    closed = %{prior | upper: as_of}
+
+    cond do
+      not Ash.Range.contains?(prior, as_of) ->
+        {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, field: period)}
+
+      Ash.Range.empty?(closed) ->
+        {:ok, nil}
+
+      true ->
+        {:ok, closed}
+    end
+  end
+
+  defp close_at(_prior, _as_of, resource, period) do
+    {:error, Ash.Error.Changes.StaleRecord.exception(resource: resource, field: period)}
+  end
+
+  defp retained(_resource, _pkey, _period, _prior_data, nil), do: {:ok, []}
+
+  defp retained(resource, pkey, period, prior_data, closed) do
+    with {:ok, version} <- version(resource, pkey, period, prior_data, closed) do
+      {:ok, [version]}
+    end
+  end
+
+  # Cast in the key, dumped in the data, as every other write leaves it.
+  defp version(resource, pkey, period, data, range) do
+    attribute = Ash.Resource.Info.temporal_period(resource)
+
+    case Ash.Type.dump_to_native(attribute.type, range, attribute.constraints) do
+      {:ok, dumped} -> {:ok, {%{pkey | period => range}, Map.put(data, period, dumped)}}
+      :error -> {:error, "could not store the period #{inspect(range)}"}
+      {:error, error} -> {:error, error}
     end
   end
 
