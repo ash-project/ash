@@ -367,6 +367,8 @@ defmodule Ash.ActionInput do
   generic action implementations can read it.
   """
   @spec set_as_of(t(), DateTime.t() | :now | nil) :: t()
+  def set_as_of(input, nil), do: input
+
   def set_as_of(input, as_of) do
     %{input | as_of: as_of}
     |> set_context(%{private: %{as_of: as_of}, shared: %{as_of: as_of}})

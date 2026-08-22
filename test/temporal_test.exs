@@ -20,6 +20,13 @@ defmodule Ash.TemporalTest do
       assert Ash.Query.new(Ash.Test.Temporal.Thing).as_of == nil
     end
 
+    test "nil leaves the shared context alone" do
+      query = Ash.Query.as_of(Ash.Test.Temporal.Thing, nil)
+
+      assert query.as_of == nil
+      refute Map.has_key?(query.context, :shared)
+    end
+
     test "set_context/2 picks up a propagated shared as_of onto the field" do
       # simulates a related query receiving the parent's shared context
       query =
@@ -40,6 +47,17 @@ defmodule Ash.TemporalTest do
 
       assert changeset.as_of == @as_of
       assert changeset.context[:private][:as_of] == @as_of
+    end
+
+    test "as_of/2 with nil leaves the context alone" do
+      changeset =
+        Ash.Test.Temporal.Thing
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.as_of(nil)
+
+      assert changeset.as_of == nil
+      refute Map.has_key?(changeset.context, :private)
+      refute Map.has_key?(changeset.context, :shared)
     end
   end
 
@@ -68,6 +86,14 @@ defmodule Ash.TemporalTest do
       input = Ash.ActionInput.for_action(Thing, :reveal_as_of, %{}, as_of: @as_of)
       assert input.as_of == @as_of
       assert input.context[:private][:as_of] == @as_of
+    end
+
+    test "Ash.ActionInput.set_as_of/2 with nil leaves the context alone" do
+      input = Ash.ActionInput.new(Thing) |> Ash.ActionInput.set_as_of(nil)
+
+      assert input.as_of == nil
+      refute Map.has_key?(input.context, :private)
+      refute Map.has_key?(input.context, :shared)
     end
 
     test ":now is accepted and carried symbolically" do

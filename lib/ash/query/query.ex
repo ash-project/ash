@@ -3115,6 +3115,8 @@ defmodule Ash.Query do
   See the `temporal` section of `Ash.Resource.Dsl`.
   """
   @spec as_of(t() | Ash.Resource.t(), DateTime.t() | :now | nil) :: t()
+  def as_of(query, nil), do: new(query)
+
   def as_of(query, as_of) do
     query
     |> new()

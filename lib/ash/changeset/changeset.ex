@@ -5535,6 +5535,8 @@ defmodule Ash.Changeset do
   layer.
   """
   @spec as_of(t(), DateTime.t() | :now | nil) :: t()
+  def as_of(changeset, nil), do: changeset
+
   def as_of(changeset, as_of) do
     %{changeset | as_of: as_of}
     |> set_context(%{private: %{as_of: as_of}, shared: %{as_of: as_of}})
