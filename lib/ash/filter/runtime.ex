@@ -45,6 +45,33 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
+  @doc """
+  Keeps the records of a temporal resource whose period holds `as_of`.
+
+  For data layers that answer a read by materialising records and filtering them in
+  the BEAM. Records are returned untouched when the resource is not temporal or there
+  is no instant to narrow to, and a record carrying no period is dropped.
+  """
+  @spec as_of_matches([Ash.Resource.record()], Ash.Resource.t(), term()) ::
+          [Ash.Resource.record()]
+  def as_of_matches(records, resource, as_of)
+  def as_of_matches(records, _resource, nil), do: records
+
+  def as_of_matches(records, resource, as_of) do
+    case Ash.Resource.Info.temporal_attribute(resource) do
+      nil ->
+        records
+
+      period_attribute ->
+        Enum.filter(records, fn record ->
+          case Map.get(record, period_attribute) do
+            %Ash.Range{} = period -> Ash.Range.contains?(period, as_of)
+            _ -> false
+          end
+        end)
+    end
+  end
+
   defp load_parent(nil, _, _, _), do: nil
   defp load_parent([], _, _, _), do: []
 
