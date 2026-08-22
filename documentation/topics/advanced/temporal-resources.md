@@ -53,10 +53,13 @@ defmodule MyApp.Subscription do
     attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
     attribute :plan, :string, public?: true
 
-    # The period. Never set directly — its value comes from `as_of` (see below).
     attribute :valid_at, Ash.Type.Range,
-      constraints: [inner_type: :datetime, inner_constraints: [precision: :microsecond]],
-      public?: true
+      allow_nil?: false,
+      constraints: [
+        inner_type: :datetime,
+        lower: [inclusive?: true],
+        upper: [inclusive?: false]
+      ]
   end
 
   actions do
@@ -65,6 +68,26 @@ defmodule MyApp.Subscription do
   end
 end
 ```
+
+The period attribute may be left out entirely — `temporal` declares it for you,
+exactly as above:
+
+```elixir
+  temporal do
+    strategy :context
+    attribute :valid_at
+  end
+
+  attributes do
+    attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
+    attribute :plan, :string, public?: true
+  end
+```
+
+Either way it is marked `generated?`: a period is never action input, its value comes
+from the instant of the write. Declare it yourself to choose the type of its bounds or
+their precision — a `:date` period for validity tracked by the day, say. It must be a
+range, must not allow nil, and must keep the `[from, to)` bounds.
 
 The migration generator emits the period column, a
 `PRIMARY KEY (id, valid_at WITHOUT OVERLAPS)` (a GiST exclusion that prevents

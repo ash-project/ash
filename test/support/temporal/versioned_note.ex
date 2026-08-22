@@ -27,15 +27,6 @@ defmodule Ash.Test.Temporal.VersionedNote do
   attributes do
     attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
     attribute :body, :string, public?: true
-
-    attribute :valid_at, Ash.Type.Range,
-      allow_nil?: false,
-      generated?: true,
-      constraints: [
-        inner_type: :datetime,
-        lower: [inclusive?: true],
-        upper: [inclusive?: false]
-      ]
   end
 
   relationships do
