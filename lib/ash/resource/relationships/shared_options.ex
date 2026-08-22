@@ -67,6 +67,15 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       The read action on the destination resource to use when loading data and filtering.
       """
     ],
+    read_action_arguments: [
+      type: :map,
+      default: %{},
+      doc: """
+      Arguments to pass to the configured `read_action` when loading data and filtering.
+
+      Arguments provided explicitly when loading the relationship take precedence over these arguments.
+      """
+    ],
     domain: [
       type: :atom,
       doc: """
@@ -118,7 +127,11 @@ defmodule Ash.Resource.Relationships.SharedOptions do
     allow_forbidden_field?: [
       type: :boolean,
       default:
-        Application.compile_env(:ash, :allow_forbidden_field_for_relationships_by_default, false),
+        Application.compile_env(
+          :ash,
+          :allow_forbidden_field_for_relationships_by_default,
+          false
+        ),
       doc: """
       If set to `true`, the relationship will be set to `%Ash.ForbiddenField{}` if its query produces a forbidden error.
       """

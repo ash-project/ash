@@ -9,7 +9,43 @@ defmodule Ash.Query.Operator.Basic do
     plus: [
       symbol: :+,
       no_nils: true,
-      evaluate_types: :numbers
+      evaluate_types: :numbers,
+      types: [
+        [:same, :any],
+        [:duration, :duration],
+        [:date, :duration],
+        [:duration, :date],
+        [:datetime, :duration],
+        [:duration, :datetime],
+        [:utc_datetime, :duration],
+        [:duration, :utc_datetime],
+        [:utc_datetime_usec, :duration],
+        [:duration, :utc_datetime_usec],
+        [:naive_datetime, :duration],
+        [:duration, :naive_datetime],
+        [:time, :duration],
+        [:duration, :time],
+        [:time_usec, :duration],
+        [:duration, :time_usec]
+      ],
+      returns: [
+        :same,
+        :duration,
+        :date,
+        :date,
+        :datetime,
+        :datetime,
+        :utc_datetime,
+        :utc_datetime,
+        :utc_datetime_usec,
+        :utc_datetime_usec,
+        :naive_datetime,
+        :naive_datetime,
+        :time,
+        :time,
+        :time_usec,
+        :time_usec
+      ]
     ],
     times: [
       symbol: :*,
@@ -25,7 +61,43 @@ defmodule Ash.Query.Operator.Basic do
     minus: [
       symbol: :-,
       no_nils: true,
-      evaluate_types: :numbers
+      evaluate_types: :numbers,
+      types: [
+        [:same, :any],
+        [:duration, :duration],
+        [:date, :duration],
+        [:date, :date],
+        [:datetime, :duration],
+        [:datetime, :datetime],
+        [:utc_datetime, :duration],
+        [:utc_datetime, :utc_datetime],
+        [:utc_datetime_usec, :duration],
+        [:utc_datetime_usec, :utc_datetime_usec],
+        [:naive_datetime, :duration],
+        [:naive_datetime, :naive_datetime],
+        [:time, :duration],
+        [:time, :time],
+        [:time_usec, :duration],
+        [:time_usec, :time_usec]
+      ],
+      returns: [
+        :same,
+        :duration,
+        :date,
+        :integer,
+        :datetime,
+        :integer,
+        :utc_datetime,
+        :integer,
+        :utc_datetime_usec,
+        :integer,
+        :naive_datetime,
+        :integer,
+        :time,
+        :integer,
+        :time_usec,
+        :integer
+      ]
     ],
     div: [
       symbol: :/,
@@ -197,7 +269,8 @@ defmodule Ash.Query.Operator.Basic do
         end
 
         defp do_evaluate(op, left, right)
-             when Decimal.is_decimal(left) and Decimal.is_decimal(right) do
+             when (Decimal.is_decimal(left) and (Decimal.is_decimal(right) or is_number(right))) or
+                    (Decimal.is_decimal(right) and is_number(left)) do
           case op do
             :+ -> {:known, Decimal.add(to_decimal(left), to_decimal(right))}
             :* -> {:known, Decimal.mult(to_decimal(left), to_decimal(right))}

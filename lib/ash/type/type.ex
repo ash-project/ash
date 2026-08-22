@@ -1737,6 +1737,8 @@ defmodule Ash.Type do
   """
   def rewrite(_type, nil, _rewrites, _constraints), do: nil
   def rewrite(_type, [], _rewrites, _constraints), do: []
+  def rewrite(_type, %Ash.NotLoaded{} = value, _rewrites, _constraints), do: value
+  def rewrite(_type, %Ash.ForbiddenField{} = value, _rewrites, _constraints), do: value
 
   def rewrite({:array, type}, value, rewrites, constraints) when is_list(value) do
     item_constraints = constraints[:items] || []

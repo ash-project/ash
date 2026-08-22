@@ -30,6 +30,10 @@ defmodule Ash.Test.Manifest.Post do
     end
 
     attribute :metadata, :map, public?: true
+
+    attribute :internal_code, Ash.Test.Manifest.Types.EmailString do
+      public? false
+    end
   end
 
   relationships do
@@ -42,5 +46,21 @@ defmodule Ash.Test.Manifest.Post do
 
   actions do
     defaults [:create, :read, :update, :destroy]
+
+    update :update_internal_code do
+      accept [:internal_code]
+
+      metadata :preferences, Ash.Test.Manifest.InputParsing.PreferencesKeyword do
+        allow_nil? false
+      end
+    end
+
+    action :get_custom_metadata, Ash.Test.Manifest.InputParsing.Options do
+      argument :metadata, Ash.Test.Manifest.CustomMetadata, allow_nil?: false
+
+      run fn _input, _context ->
+        {:ok, %{cache_enabled_1?: true, retry_limit: 3}}
+      end
+    end
   end
 end

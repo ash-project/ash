@@ -177,6 +177,40 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule CaptureSharedContext do
+    @moduledoc false
+    use Ash.Resource.Preparation
+
+    @impl true
+    def prepare(query, _opts, _context) do
+      send(self(), {:shared_context, query.context[:shared]})
+      query
+    end
+  end
+
+  defmodule PostWithSharedContextPreparation do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, create: :*]
+    end
+
+    preparations do
+      prepare CaptureSharedContext
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, public?: true
+    end
+  end
+
   defmodule Org do
     @moduledoc false
     use Ash.Resource,
@@ -730,6 +764,18 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                sorted?: true,
                tenant: org.id
              )
+  end
+
+  test "passes shared context to preparations when returning created records" do
+    shared_context = %{some_id: Ash.UUID.generate()}
+
+    assert %Ash.BulkResult{records: [%{title: "title"}]} =
+             Ash.bulk_create!([%{title: "title"}], PostWithSharedContextPreparation, :create,
+               return_records?: true,
+               context: %{shared: shared_context}
+             )
+
+    assert_receive {:shared_context, ^shared_context}
   end
 
   test "runs before action hooks" do
@@ -2202,6 +2248,92 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         refute Map.has_key?(record.__metadata__, :bulk_changeset_id)
         assert Map.has_key?(record.__metadata__, :bulk_create_index)
       end
+    end
+  end
+
+  describe "data layer that stamps only :bulk_action_ref" do
+    # Mirrors AshPostgres: since #2411 a data layer identifies returned records with
+    # `:bulk_action_ref`, and is not required to stamp the legacy `:bulk_create_index`.
+    # Core re-stamps the index later, in `process_results`.
+    defmodule RefOnlyDataLayer do
+      use Spark.Dsl.Extension, sections: []
+
+      @behaviour Ash.DataLayer
+
+      @impl true
+      def can?(_, :create), do: true
+      def can?(_, :bulk_create), do: true
+      def can?(_, :read), do: true
+      def can?(_, _), do: false
+
+      @impl true
+      def resource_to_query(_resource, _domain), do: %{}
+
+      @impl true
+      def run_query(_query, _resource), do: {:ok, []}
+
+      @impl true
+      def create(_resource, changeset) do
+        {:ok, struct(changeset.resource, changeset.attributes)}
+      end
+
+      @impl true
+      def bulk_create(resource, changesets, _opts) do
+        records =
+          Enum.map(changesets, fn changeset ->
+            resource
+            |> struct(changeset.attributes)
+            |> Ash.Resource.put_metadata(:bulk_action_ref, changeset.context.bulk_create.ref)
+          end)
+
+        {:ok, records}
+      end
+    end
+
+    defmodule RefOnlyPost do
+      use Ash.Resource, data_layer: RefOnlyDataLayer, domain: Ash.Test.Domain
+
+      attributes do
+        uuid_primary_key :id
+        attribute :title, :string, allow_nil?: false, public?: true
+      end
+
+      actions do
+        default_accept :*
+        defaults [:create]
+
+        create :create_only_when_valid do
+          change AddAfterToTitle, only_when_valid?: true
+        end
+
+        create :create_where_title_is_keep do
+          change AddAfterToTitle, where: [attribute_equals(:title, "keep")]
+        end
+      end
+    end
+
+    test "after_batch receives every record for an only_when_valid? change" do
+      assert %Ash.BulkResult{records: [%{title: "title1_after"}, %{title: "title2_after"}]} =
+               Ash.bulk_create!(
+                 [%{title: "title1"}, %{title: "title2"}],
+                 RefOnlyPost,
+                 :create_only_when_valid,
+                 return_records?: true,
+                 sorted?: true,
+                 authorize?: false
+               )
+    end
+
+    test "after_batch receives exactly the records a where clause matches" do
+      assert %Ash.BulkResult{records: [%{title: "keep_after"}, %{title: "skip"}]} =
+               Ash.bulk_create!(
+                 [%{title: "keep"}, %{title: "skip"}],
+                 RefOnlyPost,
+                 :create_where_title_is_keep,
+                 return_records?: true,
+                 sorted?: true,
+                 authorize?: false
+               )
     end
   end
 

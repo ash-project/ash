@@ -19,6 +19,96 @@ defmodule Ash.Can do
           | {Ash.Resource.Record.t(), atom | Ash.Resource.Actions.action()}
           | {Ash.Resource.Record.t(), atom | Ash.Resource.Actions.action(), input :: map}
 
+  @type check_entry :: subject() | {subject(), Keyword.t()}
+
+  @type checks ::
+          [check_entry()]
+          | [{atom(), check_entry()}]
+
+  @doc """
+  Returns whether an actor can perform all of the given actions.
+
+  You should prefer to use `Ash.can_do_all?/3` over this module, directly.
+
+  Each entry in `checks` is the same shape accepted by `can?/3`, or `{subject, opts}`
+  to provide per-check options. Per-check options are merged on top of the shared
+  options, so values like `tenant` and `context` only need to be provided once.
+
+  When `checks` is a keyword list, use `Ash.can_do_all/3` to get a map of results
+  keyed by the provided names.
+
+  Can raise an exception if `return_forbidden_error?` is truthy in opts or there's an error.
+  """
+  @spec can_do_all?(checks(), Ash.actor() | Ash.Scope.t(), Keyword.t()) ::
+          boolean() | no_return()
+  def can_do_all?(checks, actor_or_scope, opts \\ []) when is_list(checks) do
+    opts =
+      opts
+      |> Keyword.put_new(:maybe_is, true)
+      |> Keyword.put_new(:filter_with, :filter)
+      |> Keyword.put_new(:short_circuit?, true)
+
+    case can_do_all(checks, actor_or_scope, opts) do
+      {:ok, results} ->
+        results
+        |> result_values()
+        |> Enum.all?(fn
+          true -> true
+          false -> false
+          :maybe -> opts[:maybe_is] == true
+          other -> other == opts[:maybe_is]
+        end)
+
+      {:error, error} ->
+        raise Ash.Error.to_ash_error(error)
+    end
+  end
+
+  @doc """
+  Returns whether an actor can perform each of the given actions.
+
+  You should prefer to use `Ash.can_do_all/3` over this module, directly.
+
+  Returns `{:ok, results}` where `results` is a list (when `checks` is a list) or a map
+  (when `checks` is a keyword list). Each value is `true`, `false`, or `:maybe`.
+
+  Each entry in `checks` is the same shape accepted by `can/3`, or `{subject, opts}`
+  to provide per-check options. Per-check options are merged on top of the shared
+  options, so values like `tenant` and `context` only need to be provided once.
+  """
+  @spec can_do_all(checks(), Ash.actor() | Ash.Scope.t(), Keyword.t()) ::
+          {:ok, list(boolean() | :maybe) | map()}
+          | {:error, Ash.Error.t()}
+  def can_do_all(checks, actor_or_scope, opts \\ []) when is_list(checks) do
+    opts = Keyword.put_new(opts, :short_circuit?, false)
+    shared_opts = prepare_shared_opts(actor_or_scope, opts)
+    {keyed?, entries} = normalize_checks(checks)
+    short_circuit? = opts[:short_circuit?]
+
+    entries
+    |> Enum.reduce_while({:ok, []}, fn {key, subject, check_opts}, {:ok, acc} ->
+      merged_opts = Keyword.merge(shared_opts, check_opts)
+
+      with {:ok, domain} <- fetch_domain(subject, merged_opts),
+           {:ok, result} <- evaluate_can(subject, domain, actor_or_scope, merged_opts) do
+        entry = {key, result}
+        acc = acc ++ [entry]
+
+        if short_circuit? && result == false do
+          {:halt, {:ok, acc}}
+        else
+          {:cont, {:ok, acc}}
+        end
+      else
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, acc} -> {:ok, format_results(keyed?, acc)}
+      other -> other
+    end
+  end
+
   @doc """
   Returns whether an actor can perform an action, query, or changeset.
 
@@ -81,16 +171,7 @@ defmodule Ash.Can do
         private: %{pre_flight_authorization?: pre_flight?}
       })
 
-    {actor, opts} =
-      if is_struct(actor_or_scope) and Ash.Scope.ToOpts.impl_for(actor_or_scope) do
-        opts
-        |> Keyword.put(:scope, actor_or_scope)
-        |> Ash.Actions.Helpers.apply_scope_to_opts()
-        |> Keyword.pop(:actor)
-      else
-        {actor_or_scope,
-         opts |> Ash.Actions.Helpers.apply_scope_to_opts() |> Keyword.delete(:actor)}
-      end
+    {actor, opts} = resolve_actor_and_opts(actor_or_scope, opts)
 
     opts = Keyword.update(opts, :context, context, &Ash.Helpers.deep_merge_maps(&1, context))
 
@@ -106,97 +187,7 @@ defmodule Ash.Can do
     check_actor_as_of!(actor, opts[:as_of])
 
     subject =
-      case action_or_query_or_changeset do
-        %Ash.ActionInput{} = action_input ->
-          action_input
-          |> Ash.ActionInput.set_tenant(opts[:tenant] || action_input.tenant)
-          |> Ash.ActionInput.set_as_of(opts[:as_of] || action_input.as_of)
-          |> Ash.ActionInput.set_context(%{
-            private: %{actor: actor, pre_flight_authorization?: pre_flight?}
-          })
-
-        %Ash.Query{} = query ->
-          query
-          |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
-          |> Ash.Query.as_of(opts[:as_of] || query.as_of)
-          |> Ash.Query.set_context(%{
-            private: %{actor: actor, pre_flight_authorization?: pre_flight?}
-          })
-
-        %Ash.Changeset{} = changeset ->
-          changeset
-          |> Ash.Changeset.set_tenant(opts[:tenant] || changeset.tenant)
-          |> Ash.Changeset.as_of(opts[:as_of] || changeset.as_of)
-          |> Ash.Changeset.set_context(%{
-            private: %{actor: actor, pre_flight_authorization?: pre_flight?}
-          })
-
-        %{type: :update, name: name} ->
-          if opts[:data] do
-            Ash.Changeset.for_update(opts[:data], name, input,
-              actor: actor,
-              tenant: opts[:tenant],
-              as_of: opts[:as_of],
-              context: opts[:context]
-            )
-          else
-            resource
-            |> struct()
-            |> Ash.Changeset.for_update(name, input,
-              actor: actor,
-              tenant: opts[:tenant],
-              as_of: opts[:as_of],
-              context: opts[:context]
-            )
-          end
-
-        %{type: :create, name: name} ->
-          Ash.Changeset.for_create(resource, name, input,
-            actor: actor,
-            tenant: opts[:tenant],
-            as_of: opts[:as_of],
-            context: opts[:context]
-          )
-
-        %{type: :read, name: name} ->
-          Ash.Query.for_read(resource, name, input,
-            actor: actor,
-            tenant: opts[:tenant],
-            as_of: opts[:as_of],
-            context: opts[:context]
-          )
-
-        %{type: :destroy, name: name} ->
-          if opts[:data] do
-            Ash.Changeset.for_destroy(opts[:data], name, input,
-              actor: actor,
-              tenant: opts[:tenant],
-              as_of: opts[:as_of],
-              context: opts[:context]
-            )
-          else
-            resource
-            |> struct()
-            |> Ash.Changeset.for_destroy(name, input,
-              actor: actor,
-              tenant: opts[:tenant],
-              as_of: opts[:as_of],
-              context: opts[:context]
-            )
-          end
-
-        %{type: :action, name: name} ->
-          Ash.ActionInput.for_action(resource, name, input,
-            actor: actor,
-            tenant: opts[:tenant],
-            as_of: opts[:as_of],
-            context: opts[:context]
-          )
-
-        _ ->
-          raise ArgumentError,
-            message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
-      end
+      build_subject(action_or_query_or_changeset, resource, input, actor, pre_flight?, opts)
 
     if opts[:validate?] && !subject.valid? do
       {:ok, false, Ash.Error.to_error_class(subject.errors)}
@@ -288,6 +279,356 @@ defmodule Ash.Can do
   end
 
   defp check_actor_as_of!(_actor, _as_of), do: :ok
+
+  @doc """
+  Evaluates field policies for the given fields in the context of the given
+  action, query, or changeset, without needing any records in hand.
+
+  You should prefer to use `Ash.can_see_fields?/4` or `Ash.can_see_fields/4`
+  over this module, directly.
+
+  Returns `{:ok, results}` where each requested field maps to `true`, `false`,
+  or `{:filter, expr}` when its visibility depends on the record it is read
+  from (i.e its field policies use filter checks).
+
+  When a record is provided via the `:data` option (or the subject is a
+  `{record, read_action}` tuple), record-dependent fields are instead resolved
+  by evaluating their filters against that record. With `run_queries?: false`,
+  filters that cannot be resolved from the record's in-memory values remain
+  `{:filter, expr}` for the caller to collapse.
+  """
+  @spec evaluate_field_policies(
+          subject() | Ash.Resource.t(),
+          Ash.Domain.t(),
+          Ash.actor() | Ash.Scope.t(),
+          list(atom()),
+          Keyword.t()
+        ) :: {:ok, %{atom() => boolean() | {:filter, term()}}} | {:error, Ash.Error.t()}
+  def evaluate_field_policies(
+        action_or_query_or_changeset,
+        domain,
+        actor_or_scope,
+        fields,
+        opts \\ []
+      )
+
+  def evaluate_field_policies(resource, domain, actor_or_scope, fields, opts)
+      when is_atom(resource) do
+    if Ash.Resource.Info.resource?(resource) do
+      action = Ash.Resource.Info.primary_action!(resource, :read)
+      evaluate_field_policies({resource, action}, domain, actor_or_scope, fields, opts)
+    else
+      raise ArgumentError,
+        message: "Invalid resource/action/query/changeset \"#{inspect(resource)}\""
+    end
+  end
+
+  def evaluate_field_policies(action_or_query_or_changeset, domain, actor_or_scope, fields, opts) do
+    pre_flight? = Keyword.get(opts, :pre_flight?, true)
+
+    context =
+      Ash.Helpers.deep_merge_maps(opts[:context] || %{}, %{
+        private: %{pre_flight_authorization?: pre_flight?}
+      })
+
+    {actor, opts} = resolve_actor_and_opts(actor_or_scope, opts)
+
+    opts = Keyword.update(opts, :context, context, &Ash.Helpers.deep_merge_maps(&1, context))
+
+    {resource, action_or_query_or_changeset, input, opts} =
+      case resource_subject_input(action_or_query_or_changeset, domain, actor, opts) do
+        {resource, action_or_query_or_changeset, input, new_opts} ->
+          {resource, action_or_query_or_changeset, input, Keyword.merge(new_opts, opts)}
+
+        {resource, action_or_query_or_changeset, input} ->
+          {resource, action_or_query_or_changeset, input, opts}
+      end
+
+    validate_fields!(resource, fields)
+
+    subject =
+      build_subject(action_or_query_or_changeset, resource, input, actor, pre_flight?, opts)
+
+    if is_nil(subject.action) do
+      raise ArgumentError,
+        message: """
+        Cannot evaluate field policies for a #{inspect(subject.__struct__)} without an action.
+
+        Use `for_read/3` (or the equivalent for your subject) to set an action first.
+        """
+    end
+
+    subject = %{subject | domain: domain}
+
+    case Ash.Domain.Info.resource(domain, resource) do
+      {:ok, _} ->
+        with {:ok, results} <-
+               Ash.Authorizer.evaluate_field_policies(subject, fields,
+                 actor: actor,
+                 tenant: opts[:tenant],
+                 domain: domain
+               ) do
+          resolve_filters_with_data(
+            results,
+            resource,
+            opts[:data],
+            actor,
+            opts[:tenant],
+            domain,
+            Keyword.get(opts, :run_queries?, true)
+          )
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp resolve_filters_with_data(
+         results,
+         _resource,
+         nil,
+         _actor,
+         _tenant,
+         _domain,
+         _run_queries?
+       ),
+       do: {:ok, results}
+
+  defp resolve_filters_with_data(results, resource, data, actor, tenant, domain, run_queries?) do
+    # a `{record, read_action}` subject arrives as `data: [record]`
+    records = List.wrap(data)
+
+    if invalid = Enum.find(records, &(!is_struct(&1, resource))) do
+      raise ArgumentError,
+        message: """
+        Invalid record provided in the `data` option when evaluating field policies: #{inspect(invalid)}
+
+        Expected a record of #{inspect(resource)}.
+        """
+    end
+
+    # Fields that share a filter expression came from the same field policy
+    # group, so we only need to evaluate each expression once.
+    filter_groups =
+      results
+      |> Enum.filter(&match?({_field, {:filter, _expr}}, &1))
+      |> Enum.group_by(fn {_field, {:filter, expr}} -> expr end, fn {field, _value} -> field end)
+
+    cond do
+      Enum.empty?(filter_groups) ->
+        {:ok, results}
+
+      run_queries? ->
+        run_filters_with_queries(results, filter_groups, records, actor, tenant, domain)
+
+      true ->
+        {:ok, eval_filters_in_memory(results, filter_groups, records, resource, actor, tenant)}
+    end
+  end
+
+  defp run_filters_with_queries(results, filter_groups, records, actor, tenant, domain) do
+    calculations =
+      Enum.map(filter_groups, fn {expr, group_fields} ->
+        {:ok, calculation} =
+          Ash.Query.Calculation.new(
+            {:__ash_field_visibility__, group_fields},
+            Ash.Resource.Calculation.Expression,
+            [expr: expr],
+            :boolean,
+            async?: false,
+            actor: actor,
+            tenant: tenant,
+            authorize?: false
+          )
+
+        calculation
+      end)
+
+    # `reuse_values?: true` evaluates the filters eagerly against the
+    # records when possible, only dropping to the data layer for
+    # references it can't resolve in memory.
+    load_opts = [
+      actor: actor,
+      tenant: tenant,
+      domain: domain,
+      authorize?: false,
+      reuse_values?: true
+    ]
+
+    case Ash.load(records, calculations, load_opts) do
+      {:ok, loaded} ->
+        loaded = List.wrap(loaded)
+
+        resolved =
+          Enum.reduce(filter_groups, results, fn {_expr, group_fields}, results ->
+            visible? =
+              Enum.all?(
+                loaded,
+                & &1.calculations[{:__ash_field_visibility__, group_fields}]
+              )
+
+            Enum.reduce(group_fields, results, &Map.put(&2, &1, visible?))
+          end)
+
+        {:ok, resolved}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  # Evaluates each filter against the record in memory only. Evaluations
+  # that can't be resolved from the record's loaded values stay `{:filter,
+  # expr}`, for the caller to collapse (e.g via the `filter_is` option),
+  # though a definitive `false` always wins.
+  defp eval_filters_in_memory(results, filter_groups, records, resource, actor, tenant) do
+    Enum.reduce(filter_groups, results, fn {expr, group_fields}, results ->
+      expr = Ash.Expr.fill_template(expr, actor: actor, tenant: tenant)
+
+      value =
+        Enum.reduce_while(records, true, fn record, value ->
+          case Ash.Expr.eval(expr,
+                 resource: resource,
+                 record: record,
+                 unknown_on_unknown_refs?: true
+               ) do
+            {:ok, falsey} when falsey in [false, nil] -> {:halt, false}
+            {:ok, _} -> {:cont, value}
+            _unknown_or_error -> {:cont, {:filter, expr}}
+          end
+        end)
+
+      Enum.reduce(group_fields, results, &Map.put(&2, &1, value))
+    end)
+  end
+
+  defp validate_fields!(resource, fields) do
+    known =
+      resource
+      |> Ash.Resource.Info.fields([:attributes, :calculations, :aggregates])
+      |> MapSet.new(& &1.name)
+
+    case Enum.reject(fields, &MapSet.member?(known, &1)) do
+      [] ->
+        :ok
+
+      invalid ->
+        raise ArgumentError,
+          message: """
+          Invalid field(s) provided when evaluating field policies: #{inspect(invalid)}
+
+          Only attributes, calculations and aggregates on #{inspect(resource)} are supported.
+          Field policies do not apply to relationships.
+          """
+    end
+  end
+
+  defp resolve_actor_and_opts(actor_or_scope, opts) do
+    if is_struct(actor_or_scope) and Ash.Scope.ToOpts.impl_for(actor_or_scope) do
+      opts
+      |> Keyword.put(:scope, actor_or_scope)
+      |> Ash.Actions.Helpers.apply_scope_to_opts()
+      |> Keyword.pop(:actor)
+    else
+      {actor_or_scope,
+       opts |> Ash.Actions.Helpers.apply_scope_to_opts() |> Keyword.delete(:actor)}
+    end
+  end
+
+  defp build_subject(action_or_query_or_changeset, resource, input, actor, pre_flight?, opts) do
+    case action_or_query_or_changeset do
+      %Ash.ActionInput{} = action_input ->
+        action_input
+        |> Ash.ActionInput.set_tenant(opts[:tenant] || action_input.tenant)
+        |> Ash.ActionInput.set_as_of(opts[:as_of] || action_input.as_of)
+        |> Ash.ActionInput.set_context(%{
+          private: %{actor: actor, pre_flight_authorization?: pre_flight?}
+        })
+
+      %Ash.Query{} = query ->
+        query
+        |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
+        |> Ash.Query.as_of(opts[:as_of] || query.as_of)
+        |> Ash.Query.set_context(%{
+          private: %{actor: actor, pre_flight_authorization?: pre_flight?}
+        })
+
+      %Ash.Changeset{} = changeset ->
+        changeset
+        |> Ash.Changeset.set_tenant(opts[:tenant] || changeset.tenant)
+        |> Ash.Changeset.as_of(opts[:as_of] || changeset.as_of)
+        |> Ash.Changeset.set_context(%{
+          private: %{actor: actor, pre_flight_authorization?: pre_flight?}
+        })
+
+      %{type: :update, name: name} ->
+        if opts[:data] do
+          Ash.Changeset.for_update(opts[:data], name, input,
+            actor: actor,
+            tenant: opts[:tenant],
+            as_of: opts[:as_of],
+            context: opts[:context]
+          )
+        else
+          resource
+          |> struct()
+          |> Ash.Changeset.for_update(name, input,
+            actor: actor,
+            tenant: opts[:tenant],
+            as_of: opts[:as_of],
+            context: opts[:context]
+          )
+        end
+
+      %{type: :create, name: name} ->
+        Ash.Changeset.for_create(resource, name, input,
+          actor: actor,
+          tenant: opts[:tenant],
+          as_of: opts[:as_of],
+          context: opts[:context]
+        )
+
+      %{type: :read, name: name} ->
+        Ash.Query.for_read(resource, name, input,
+          actor: actor,
+          tenant: opts[:tenant],
+          as_of: opts[:as_of],
+          context: opts[:context]
+        )
+
+      %{type: :destroy, name: name} ->
+        if opts[:data] do
+          Ash.Changeset.for_destroy(opts[:data], name, input,
+            actor: actor,
+            tenant: opts[:tenant],
+            as_of: opts[:as_of],
+            context: opts[:context]
+          )
+        else
+          resource
+          |> struct()
+          |> Ash.Changeset.for_destroy(name, input,
+            actor: actor,
+            tenant: opts[:tenant],
+            as_of: opts[:as_of],
+            context: opts[:context]
+          )
+        end
+
+      %{type: :action, name: name} ->
+        Ash.ActionInput.for_action(resource, name, input,
+          actor: actor,
+          tenant: opts[:tenant],
+          as_of: opts[:as_of],
+          context: opts[:context]
+        )
+
+      _ ->
+        raise ArgumentError,
+          message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
+    end
+  end
 
   defp resource_subject_input(action_or_query_or_changeset, domain, actor, opts) do
     case action_or_query_or_changeset do
@@ -1312,5 +1653,135 @@ defmodule Ash.Can do
     authorizers
     |> Enum.map(&authorizer_exception([&1]))
     |> Ash.Error.to_error_class()
+  end
+
+  defp prepare_shared_opts(actor_or_scope, opts) do
+    opts = Keyword.put_new(opts, :maybe_is, :maybe)
+    opts = Keyword.put_new(opts, :run_queries?, true)
+    opts = Keyword.put_new(opts, :filter_with, :filter)
+    pre_flight? = Keyword.get(opts, :pre_flight?, true)
+
+    context =
+      Ash.Helpers.deep_merge_maps(opts[:context] || %{}, %{
+        private: %{pre_flight_authorization?: pre_flight?}
+      })
+
+    {_actor, opts} =
+      if is_struct(actor_or_scope) and Ash.Scope.ToOpts.impl_for(actor_or_scope) do
+        opts
+        |> Keyword.put(:scope, actor_or_scope)
+        |> Ash.Actions.Helpers.apply_scope_to_opts()
+        |> Keyword.pop(:actor)
+      else
+        {actor_or_scope,
+         opts |> Ash.Actions.Helpers.apply_scope_to_opts() |> Keyword.delete(:actor)}
+      end
+
+    Keyword.update(opts, :context, context, &Ash.Helpers.deep_merge_maps(&1, context))
+  end
+
+  defp normalize_checks(checks) do
+    if keyed_checks?(checks) do
+      {true,
+       Enum.map(checks, fn {key, entry} ->
+         {subject, opts} = normalize_check_entry(entry)
+         {key, subject, opts}
+       end)}
+    else
+      {false,
+       checks
+       |> Enum.with_index()
+       |> Enum.map(fn {entry, index} ->
+         {subject, opts} = normalize_check_entry(entry)
+         {index, subject, opts}
+       end)}
+    end
+  end
+
+  defp keyed_checks?(checks) do
+    Keyword.keyword?(checks) and
+      Enum.all?(checks, fn {key, entry} ->
+        check_entry?(entry) and not resource_key?(key, entry)
+      end)
+  end
+
+  defp resource_key?(key, {resource, _}) when key == resource, do: true
+  defp resource_key?(key, {resource, _, _}) when key == resource, do: true
+  defp resource_key?(_, _), do: false
+
+  defp check_entry?({subject, opts}) when is_list(opts) do
+    if Keyword.keyword?(opts), do: check_entry?(subject), else: false
+  end
+
+  defp check_entry?(%Ash.Query{}), do: true
+  defp check_entry?(%Ash.Changeset{}), do: true
+  defp check_entry?(%Ash.ActionInput{}), do: true
+
+  defp check_entry?({%resource{} = _record, action}) when is_atom(action) and is_atom(resource),
+    do: Ash.Resource.Info.resource?(resource)
+
+  defp check_entry?({%resource{} = _record, action, input})
+       when is_atom(action) and is_map(input) and is_atom(resource),
+       do: Ash.Resource.Info.resource?(resource)
+
+  defp check_entry?({resource, action}) when is_atom(resource) and is_atom(action),
+    do: Ash.Resource.Info.resource?(resource)
+
+  defp check_entry?({resource, action, input})
+       when is_atom(resource) and is_atom(action) and is_map(input),
+       do: Ash.Resource.Info.resource?(resource)
+
+  defp check_entry?(_), do: false
+
+  defp normalize_check_entry({subject, opts}) when is_list(opts) do
+    if Keyword.keyword?(opts) do
+      {subject, opts}
+    else
+      {{subject, opts}, []}
+    end
+  end
+
+  defp normalize_check_entry(subject), do: {subject, []}
+
+  defp format_results(true, results), do: Map.new(results)
+  defp format_results(false, results), do: Enum.map(results, fn {_, result} -> result end)
+
+  defp result_values(results) when is_map(results), do: Map.values(results)
+  defp result_values(results) when is_list(results), do: results
+
+  defp fetch_domain(subject, opts) do
+    case Ash.Helpers.get_domain(subject, opts) do
+      nil ->
+        {:error,
+         ArgumentError.exception(
+           "Could not determine domain for #{inspect(subject)}. Please specify the `:domain` option."
+         )}
+
+      domain ->
+        {:ok, domain}
+    end
+  end
+
+  defp evaluate_can(subject, domain, actor_or_scope, opts) do
+    case can(subject, domain, actor_or_scope, opts) do
+      {:ok, :maybe} ->
+        {:ok, opts[:maybe_is]}
+
+      {:ok, result} when result in [true, false, :maybe] ->
+        {:ok, result}
+
+      {:ok, true, _} ->
+        {:ok, true}
+
+      {:ok, false, error} ->
+        if opts[:return_forbidden_error?] do
+          {:error, error}
+        else
+          {:ok, false}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 end

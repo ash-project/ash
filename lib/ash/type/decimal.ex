@@ -416,7 +416,7 @@ defcomparable left :: Decimal, right :: Decimal do
 end
 
 defcomparable left :: Decimal, right :: Float do
-  Decimal.compare(Ash.Type.Decimal.new(left), right)
+  Decimal.compare(left, Decimal.from_float(right))
 end
 
 defcomparable left :: Decimal, right :: BitString do

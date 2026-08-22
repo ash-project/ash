@@ -1009,6 +1009,12 @@ defmodule Ash do
       type: :boolean,
       doc:
         "If set to `false`, suppresses policy breakdown logs, overriding the global `show_policy_breakdowns?` configuration."
+    ],
+    short_circuit?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "For `can_do_all/3` and `can_do_all?/3`, whether to stop checking after the first failing check. Defaults to `false` for `can_do_all/3` and `true` for `can_do_all?/3`."
     ]
   ]
 
@@ -1019,6 +1025,43 @@ defmodule Ash do
 
   @doc false
   def can_question_mark_opts, do: @can_question_mark_opts
+
+  @can_see_fields_opts [
+    filter_is: [
+      type: :boolean,
+      default: true,
+      doc:
+        "The result to use for fields whose visibility depends on the record they are read from, i.e their field policies resolved to a filter. The default `true` means \"the actor can see this field, though not necessarily on every record\". Set to `false` to only count fields the actor can see on every record. When `data` is provided, this only applies to fields whose filters could not be resolved against the record (only possible with `run_queries?: false`)."
+    ],
+    data: [
+      type: :struct,
+      doc:
+        "The record to evaluate record-dependent field policies against. When provided, fields whose visibility depends on the record are resolved by actually evaluating their filters against this record. For visibility across multiple records, read them and check for `%Ash.ForbiddenField{}` instead."
+    ],
+    run_queries?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "Whether or not to run queries when resolving record-dependent fields against `data`. If `false`, filters are only evaluated against the record's in-memory values, and fields that cannot be resolved that way (e.g filters over unloaded relationships) fall back to `filter_is`."
+    ],
+    tenant: [
+      type: {:protocol, Ash.ToTenant},
+      doc: "The tenant to use for authorization"
+    ],
+    context: [
+      type: :map,
+      doc:
+        "Context to set on the query/changeset/action_input the field policies are evaluated against"
+    ],
+    scope: [
+      type: :any,
+      doc:
+        "A value that implements the `Ash.Scope.ToOpts` protocol. Provides a default tenant and deep merges context (explicit opts take precedence). The actor is always taken from the second argument. See `Ash.Scope` for more."
+    ]
+  ]
+
+  @doc false
+  def can_see_fields_opts, do: @can_see_fields_opts
 
   @doc """
   Runs an aggregate or aggregates over a resource query, returning the result or raising an error.
@@ -1905,6 +1948,250 @@ defmodule Ash do
     end
   end
 
+  can_see_fields_opts = @can_see_fields_opts
+
+  defmodule CanSeeFieldsOpts do
+    @moduledoc false
+
+    use Spark.Options.Validator, schema: can_see_fields_opts
+  end
+
+  @doc """
+  Returns whether or not the actor can see all of the given fields, or raises on errors.
+
+  Evaluates the field policies of each authorizer on the resource for the given
+  fields, in the context of the given action, query or changeset, without
+  needing any records in hand. Use this to shape a page or form up front, e.g
+  deciding whether to render a column at all.
+
+  Fields whose field policies are filter checks depend on the record they are
+  read from, and count as visible by default: "the actor can see this field,
+  though not necessarily on every record". Pass `filter_is: false` to only
+  count fields the actor can see on every record, or provide the record in
+  question via the `data` option (or a `{record, :action}` subject) to
+  actually evaluate those filters against it. Resolving against a record may
+  query the data layer for anything not evaluable from the record's loaded
+  values; pass `run_queries?: false` to prevent that, in which case
+  unresolvable fields fall back to `filter_is`. Primary keys are always
+  visible.
+
+  When you already have records read with authorization in hand, you
+  typically don't need this: their forbidden fields are already replaced with
+  `%Ash.ForbiddenField{}`. See `Ash.Authorizer.apply_field_level_auth/3` for
+  applying field policies to records built in memory.
+
+  ## Accepted subjects
+
+  Accepts a resource (using its primary read action), an `{Resource, :action}`
+  tuple, or a query/changeset/action input, the same as `can?/3`. A
+  `{record, :read_action}` subject evaluates against that record, as if it
+  were passed as `data`.
+
+  ## Examples
+
+      iex> Ash.can_see_fields?(MyApp.Ticket, user, [:internal_status])
+      false
+
+      iex> Ash.can_see_fields?({MyApp.Ticket, :read}, admin, [:internal_status, :status])
+      true
+
+      # only count fields visible on *every* record
+      iex> Ash.can_see_fields?(MyApp.Ticket, user, [:status], filter_is: false)
+      false
+
+      # evaluate record-dependent fields against a specific record
+      iex> Ash.can_see_fields?({my_ticket, :read}, user, [:status])
+      true
+
+  ## See also
+
+  - `can_see_fields/4` for the non-raising version with per-field results
+  - `can?/3` for checking actions
+  - `d:Ash.Policy.Authorizer.field_policies` for defining field policies
+  - [Policies Guide](/documentation/topics/security/policies.md) for defining authorization policies
+
+  ### Options
+
+  #{Spark.Options.docs(@can_see_fields_opts)}
+  """
+  @spec can_see_fields?(
+          Ash.Can.subject() | Ash.Resource.t(),
+          actor() | Ash.Scope.t(),
+          atom() | list(atom()),
+          Keyword.t()
+        ) :: boolean() | no_return()
+  @doc spark_opts: [{3, @can_see_fields_opts}]
+  def can_see_fields?(subject, actor_or_scope, fields, opts \\ []) do
+    case can_see_fields(subject, actor_or_scope, fields, opts) do
+      {:ok, results} ->
+        Enum.all?(results, fn {_field, visible?} -> visible? end)
+
+      {:error, error} ->
+        raise Ash.Error.to_ash_error(error)
+    end
+  end
+
+  @doc """
+  Returns whether or not the actor can see each of the given fields.
+
+  Returns `{:ok, results}` where `results` maps each requested field to a
+  boolean. See `can_see_fields?/4` for the semantics, accepted subjects, and
+  options.
+
+  ## Examples
+
+      iex> Ash.can_see_fields(MyApp.Ticket, user, [:name, :internal_status])
+      {:ok, %{name: true, internal_status: false}}
+
+  ## See also
+
+  - `can_see_fields?/4` for the raising version returning a single boolean
+  - `Ash.Can.evaluate_field_policies/5` for raw results, where record-dependent fields are `{:filter, expr}` instead of collapsed via `:filter_is`
+
+  ### Options
+
+  #{Spark.Options.docs(@can_see_fields_opts)}
+  """
+  @spec can_see_fields(
+          Ash.Can.subject() | Ash.Resource.t(),
+          actor() | Ash.Scope.t(),
+          atom() | list(atom()),
+          Keyword.t()
+        ) :: {:ok, %{atom() => boolean()}} | {:error, term()}
+  @doc spark_opts: [{3, @can_see_fields_opts}]
+  def can_see_fields(subject, actor_or_scope, fields, opts \\ []) do
+    domain = Ash.Helpers.domain!(subject, opts)
+
+    case CanSeeFieldsOpts.validate(opts) do
+      {:ok, opts} ->
+        opts = CanSeeFieldsOpts.to_options(opts)
+        {filter_is, opts} = Keyword.pop(opts, :filter_is, true)
+
+        case Ash.Can.evaluate_field_policies(
+               subject,
+               domain,
+               actor_or_scope,
+               List.wrap(fields),
+               opts
+             ) do
+          {:ok, results} ->
+            {:ok,
+             Map.new(results, fn
+               {field, {:filter, _expr}} -> {field, filter_is}
+               {field, visible?} -> {field, visible?}
+             end)}
+
+          {:error, error} ->
+            {:error, Ash.Error.to_error_class(error)}
+        end
+
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
+    end
+  end
+
+  @doc """
+  Returns whether an actor can perform all of the given actions.
+
+  Calls `can_do_all/3` with `maybe_is: true` and `short_circuit?: true`. See `can_do_all/3` for more info.
+
+  Each entry in `checks` is the same shape accepted by `can?/3`, or `{subject, opts}` to provide
+  per-check options. Shared options like `tenant`, `context`, and `scope` are applied to every check.
+
+  ## Examples
+
+      iex> Ash.can_do_all?([{MyApp.Post, :read}, {MyApp.Post, :create}], actor)
+      true
+
+      iex> Ash.can_do_all?([read: {MyApp.Post, :read}, create: {MyApp.Post, :create}], actor)
+      true
+
+      iex> Ash.can_do_all?([{post, :read}, {post, :update}], user)
+      false
+
+  ## See also
+
+  - `can_do_all/3` for individual results for each check
+  - `can?/3` for checking a single action
+  - [Actors and Authorization Guide](/documentation/topics/security/actors-and-authorization.md)
+
+  ### Options
+
+  #{Spark.Options.docs(@can_question_mark_opts)}
+  """
+  @spec can_do_all?(Ash.Can.checks(), actor() | Ash.Scope.t(), Keyword.t()) ::
+          boolean() | no_return()
+  @doc spark_opts: [{2, @can_question_mark_opts}]
+  def can_do_all?(checks, actor_or_scope, opts \\ []) when is_list(checks) do
+    opts =
+      opts
+      |> Keyword.put_new(:maybe_is, true)
+      |> Keyword.put_new(:short_circuit?, true)
+
+    Ash.Can.can_do_all?(checks, actor_or_scope, opts)
+  end
+
+  @doc """
+  Returns whether an actor can perform each of the given actions.
+
+  In cases with "runtime" checks (checks after the action), we may not be able to determine
+  an answer for a given check, and so the value `:maybe` will be returned. See `can/3` for more.
+
+  Returns `{:ok, results}` where `results` is a list (when `checks` is a list) or a map keyed by
+  the provided names (when `checks` is a keyword list). Each value is `true`, `false`, or `:maybe`.
+
+  Each entry in `checks` is the same shape accepted by `can/3`, or `{subject, opts}` to provide
+  per-check options. Shared options like `tenant`, `context`, and `scope` are applied to every check.
+
+  ## Examples
+
+      iex> Ash.can_do_all([{MyApp.Post, :read}, {MyApp.Post, :create}], actor)
+      {:ok, [true, true]}
+
+      iex> Ash.can_do_all([read: {MyApp.Post, :read}, update: {post, :update}], actor)
+      {:ok, %{read: true, update: false}}
+
+  ## See also
+
+  - `can_do_all?/3` for the boolean version that requires all checks to pass
+  - `can/3` for checking a single action
+  - [Actors and Authorization Guide](/documentation/topics/security/actors-and-authorization.md)
+
+  ## Options
+
+  #{Spark.Options.docs(@can_opts)}
+  """
+  @spec can_do_all(Ash.Can.checks(), actor() | Ash.Scope.t(), Keyword.t()) ::
+          {:ok, list(boolean() | :maybe) | map()}
+          | {:error, term}
+  @doc spark_opts: [{2, @can_opts}]
+  def can_do_all(checks, actor_or_scope, opts \\ []) when is_list(checks) do
+    opts = Keyword.put_new(opts, :short_circuit?, false)
+
+    case CanOpts.validate(opts) do
+      {:ok, opts} ->
+        opts = CanOpts.to_options(opts)
+
+        case Ash.Can.can_do_all(checks, actor_or_scope, opts) do
+          {:error, %Ash.Error.Forbidden.InitialDataRequired{} = error} ->
+            if opts[:on_must_pass_strict_check] do
+              {:error, error}
+            else
+              {:error, Ash.Error.to_error_class(error)}
+            end
+
+          {:error, error} ->
+            {:error, Ash.Error.to_error_class(error)}
+
+          other ->
+            other
+        end
+
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
+    end
+  end
+
   @doc """
   Runs a generic action or raises an error. See `run_action/2` for more
 
@@ -2584,9 +2871,7 @@ defmodule Ash do
           |> Ash.Query.set_tenant(
             opts[:tenant] || query.tenant || Map.get(record.__metadata__, :tenant)
           )
-          |> Ash.Query.as_of(
-            opts[:as_of] || query.as_of || Map.get(record.__metadata__, :as_of)
-          )
+          |> Ash.Query.as_of(opts[:as_of] || query.as_of || Map.get(record.__metadata__, :as_of))
 
         keyword ->
           resource

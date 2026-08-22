@@ -101,6 +101,74 @@ defmodule Ash.Test.Type.DecimalTest do
     assert Ash.Type.Decimal.equal?(Decimal.new("1.0"), Decimal.new("1.00"))
   end
 
+  describe "comparability" do
+    test "a decimal compares equal to an integer, string and float of the same value" do
+      assert Comp.equal?(Decimal.new(1), 1)
+      assert Comp.equal?(Decimal.new(1), "1")
+      assert Comp.equal?(Decimal.new(1), 1.0)
+    end
+
+    test "a decimal compares equal to a float in either operand order" do
+      assert Comp.equal?(Decimal.new(1), 1.0)
+      assert Comp.equal?(1.0, Decimal.new(1))
+    end
+
+    test "a decimal orders against a float" do
+      assert Comp.greater_than?(Decimal.new("1.5"), 1.0)
+      assert Comp.less_than?(Decimal.new("0.5"), 1.0)
+      assert Comp.less_than?(1.0, Decimal.new("1.5"))
+    end
+
+    test "a decimal compares equal to a fractional float" do
+      assert Comp.equal?(Decimal.from_float(1.5), 1.5)
+    end
+  end
+
+  describe "arithmetic" do
+    test "a decimal multiplies by an integer in either operand order" do
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") * 2)),
+               Decimal.new("21.00")
+             )
+
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(2 * ^Decimal.new("10.50"))),
+               Decimal.new("21.00")
+             )
+    end
+
+    test "a decimal adds, subtracts and divides an integer" do
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") + 1)),
+               Decimal.new("11.50")
+             )
+
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") - 1)),
+               Decimal.new("9.50")
+             )
+
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") / 2)),
+               Decimal.new("5.25")
+             )
+    end
+
+    test "a decimal multiplies by a float" do
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") * 2.0)),
+               Decimal.new("21.00")
+             )
+    end
+
+    test "a decimal multiplies by a decimal" do
+      assert Comp.equal?(
+               Ash.Expr.eval!(Ash.Expr.expr(^Decimal.new("10.50") * ^Decimal.new(2))),
+               Decimal.new("21.00")
+             )
+    end
+  end
+
   test "pass with valid precision constraint" do
     valid_attrs = @valid_attrs |> Map.put(:precise_amount, 1.23)
 

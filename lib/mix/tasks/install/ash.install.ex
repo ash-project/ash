@@ -179,7 +179,7 @@ if Code.ensure_loaded?(Igniter) do
               :ash,
               [],
               [
-                {[:allow_forbidden_field_for_relationships_by_default?], true},
+                {[:allow_forbidden_field_for_relationships_by_default], true},
                 {[:include_embedded_source_by_default?], false},
                 {[:show_keysets_for_all_actions?], false},
                 {[:default_page_type], :keyset},
@@ -198,6 +198,12 @@ if Code.ensure_loaded?(Igniter) do
               guide for an explanation of each setting:
               https://hexdocs.pm/ash/backwards-compatibility-config.html
               """
+            )
+            |> Igniter.Project.Config.configure(
+              "config.exs",
+              :ash,
+              [:many_to_many_destroy_destination_on_match?],
+              true
             )
           end)
         end

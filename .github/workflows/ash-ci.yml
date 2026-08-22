@@ -69,6 +69,20 @@ on:
         type: string
       rustler-precompiled-module:
         type: string
+      rust-crate-dir:
+        type: string
+        default: ""
+        description: >
+          Optional path to a single Rust crate to run cargo test, fmt and clippy against,
+          and to build for rustler_precompiled releases.
+          When empty, checks discover every Cargo.toml in the repository and the release
+          builds native/<repository name>.
+      rust-project-name:
+        type: string
+        default: ""
+        description: >
+          Crate name to build for rustler_precompiled releases.
+          Defaults to the calling repository's name.
       sat-solver:
         type: string
         default: "Picosat"
@@ -121,7 +135,7 @@ jobs:
     # Only run this job for ash-project org main branches
     if: github.ref == 'refs/heads/main' && github.repository_owner == 'ash-project'
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: erlef/mix-dependency-submission@c4a36104ac7614b1b66d0da6e8a1c7d6d07bc52b # v1.3.2
     permissions:
       # Give the default GITHUB_TOKEN write permission to call the dependencies API
@@ -130,7 +144,7 @@ jobs:
     name: audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Update Elixir version in .tool-versions
         if: inputs.elixir-version != 'default'
         run: |
@@ -176,7 +190,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.changelog-lint }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Check for new Unreleased sections in CHANGELOG.md
@@ -207,7 +221,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.community-files }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check community files placement and content
         run: |
           EXIT_CODE=0
@@ -303,7 +317,7 @@ jobs:
     name: MIX_ENV=test mix.compile
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Update Elixir version in .tool-versions
         if: inputs.elixir-version != 'default'
         run: |
@@ -353,7 +367,7 @@ jobs:
       - build-test
       - spark-cheat-sheets
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -396,7 +410,7 @@ jobs:
     needs: build-test
     if: ${{inputs.conventional-commit}}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -419,7 +433,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -442,7 +456,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -467,7 +481,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -491,7 +505,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -515,7 +529,7 @@ jobs:
     needs: build-test
     if: ${{inputs.doctor}}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -538,7 +552,7 @@ jobs:
     permissions:
       security-events: write
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -559,7 +573,7 @@ jobs:
         with:
           task: credo --format sarif > results.sarif
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@0499de31b99561a6d14a36a5f662c2a54f91beee # v4.31.2
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           sarif_file: results.sarif
           category: credo
@@ -570,7 +584,7 @@ jobs:
       - build-test
     if: ${{inputs.codegen}}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -590,11 +604,11 @@ jobs:
   unused-deps:
     name: mix deps.unlock --check-unused
     runs-on: ubuntu-latest
-    if: ${{inputs.unused_deps}}
+    if: ${{inputs.unused-deps}}
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -624,7 +638,7 @@ jobs:
         id: dependabot-metadata
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
         if: github.event.pull_request.user.login == 'dependabot[bot]'
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
@@ -643,10 +657,10 @@ jobs:
           OBAN_PRO_LICENSE_KEY: ${{ secrets.OBAN_PRO_LICENSE_KEY }}
       - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
         with:
-          task: igniter.upgrade --git-ci --yes
+          task: igniter.upgrade --git-ci --yes --all
         if: github.event.pull_request.user.login == 'dependabot[bot]'
       - name: Commit Changes
-        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         with:
           commit_message: "[dependabot skip] Apply Igniter Upgrades"
@@ -678,7 +692,7 @@ jobs:
         ports:
           - 3306:3306
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -781,7 +795,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -803,7 +817,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{inputs.reuse}}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
       - name: REUSE compliance check
         uses: fsfe/reuse-action@v6
 
@@ -813,7 +827,7 @@ jobs:
     needs:
       - build-test
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{ inputs.oban-pro }}
       - name: Configure Oban Pro hex repo
@@ -829,6 +843,68 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-compile@325af91762b51931c459503300c22c057251b3cf # main
         with:
           mix-env: dev
+  rust-check:
+    name: cargo test, fmt and clippy
+    runs-on: ubuntu-latest
+    if: ${{ inputs.rustler-precompiled-module }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install clippy and rustfmt
+        run: rustup component add clippy rustfmt
+      - name: Discover Rust crates
+        id: crates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.rust-crate-dir }}" ]; then
+            dirs="${{ inputs.rust-crate-dir }}"
+          else
+            dirs=$(find . -name Cargo.toml -not -path '*/target/*' -not -path './deps/*' \
+              -exec dirname {} \; | sed 's|^\./||' | sort -u)
+          fi
+          if [ -z "$dirs" ]; then
+            echo "No Cargo.toml found; nothing to check."
+          else
+            echo "Checking:"; echo "$dirs"
+          fi
+          { echo "dirs<<EOF"; echo "$dirs"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          prefix-key: v0-rust-check
+          workspaces: ${{ steps.crates.outputs.dirs }}
+      - name: cargo fmt
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            echo "::group::cargo fmt ($dir)"
+            (cd "$dir" && cargo fmt --all --check)
+            echo "::endgroup::"
+          done <<< "${{ steps.crates.outputs.dirs }}"
+      - name: cargo clippy
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            echo "::group::cargo clippy ($dir)"
+            (cd "$dir" && cargo clippy --all-targets -- -D warnings)
+            echo "::endgroup::"
+          done <<< "${{ steps.crates.outputs.dirs }}"
+      - name: cargo test
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            echo "::group::cargo test ($dir)"
+            (cd "$dir" && cargo test)
+            echo "::endgroup::"
+          done <<< "${{ steps.crates.outputs.dirs }}"
   build-release:
     name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
@@ -847,6 +923,7 @@ jobs:
       - test
       - dialyzer
       - build-dev
+      - rust-check
     permissions:
       contents: write
     strategy:
@@ -897,7 +974,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Extract crate information
         shell: bash
@@ -913,18 +990,18 @@ jobs:
           prefix-key: v0-precomp
           shared-key: ${{ matrix.job.target }}-${{ matrix.nif }}
           workspaces: |
-            native/igniter_js
+            ${{ inputs.rust-crate-dir || format('native/{0}', github.event.repository.name) }}
       - name: Build the project
         id: build-crate
         uses: philss/rustler-precompiled-action@67ed0cc2d6a423e4c4cd9ad651dcc6c90f802cdb # v1.1.5
         with:
-          project-name: igniter_js
+          project-name: ${{ inputs.rust-project-name || github.event.repository.name }}
           project-version: ${{ env.PROJECT_VERSION }}
           target: ${{ matrix.job.target }}
           nif-version: ${{ matrix.nif }}
           use-cross: ${{ matrix.job.use-cross }}
           cross-version: ${{ matrix.job.cross-version || 'v0.2.4' }}
-          project-dir: "native/igniter_js"
+          project-dir: ${{ inputs.rust-crate-dir || format('native/{0}', github.event.repository.name) }}
           cargo-args: ${{ matrix.job.cargo-args }}
 
       - name: Artifact upload
@@ -934,7 +1011,7 @@ jobs:
           path: ${{ steps.build-crate.outputs.file-path }}
 
       - name: Publish archives and packages
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           files: |
             ${{ steps.build-crate.outputs.file-path }}
@@ -957,11 +1034,12 @@ jobs:
       - test
       - dialyzer
       - build-dev
+      - rust-check
     if: ${{ inputs.release && always() && !failure() && !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     name: Hex Publish
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/mix-task@325af91762b51931c459503300c22c057251b3cf # main
         if: ${{inputs.rustler-precompiled-module}}
         with:
@@ -979,7 +1057,7 @@ jobs:
     runs-on: ubuntu-latest
     name: GitHub Release
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: team-alembic/staple-actions/actions/install-elixir@325af91762b51931c459503300c22c057251b3cf # main
       - name: Check if version exists on Hex
         id: hex-check
@@ -1030,13 +1108,13 @@ jobs:
           fi
       - name: Create or update release with changelog notes
         if: ${{ steps.hex-check.outputs.on_hex == 'true' && steps.extract-notes.outputs.has_notes == 'true' }}
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           body_path: release_notes.md
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-pre') }}
       - name: Create or update release with generated notes
         if: ${{ steps.hex-check.outputs.on_hex == 'true' && steps.extract-notes.outputs.has_notes != 'true' }}
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           generate_release_notes: true
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-pre') }}

@@ -397,7 +397,15 @@ defmodule Ash.DataLayer.Ets do
         _resource,
         parent \\ nil
       ) do
-    maybe_not_distinct? = Enum.any?(combination_of, &(elem(&1, 0) == :union_all))
+    # A fold can return the same primary key twice in two ways: `union_all`
+    # keeps every row, and a `union` between parts carrying different
+    # combination calculations keeps both copies, because the equality basis
+    # is the combination fieldset. `runtime_sort/3` needs to know, or it
+    # batches the sort-key load and cannot tell the copies apart.
+    maybe_not_distinct? =
+      Enum.any?(combination_of, fn {type, combination} ->
+        type == :union_all or not Enum.empty?(combination.calculations)
+      end)
 
     with {:ok, records} when records != [] <-
            get_records(resource, combination_of, parent, tenant),
@@ -1019,22 +1027,25 @@ defmodule Ash.DataLayer.Ets do
         end
 
       kind when kind in [:sum, :max, :min] ->
-        records
-        |> Enum.map(&field_value(&1, field))
-        |> case do
+        values = Stream.map(records, &field_value(&1, field))
+
+        items =
+          if uniq? do
+            values |> Stream.uniq() |> Stream.reject(&is_nil/1)
+          else
+            values |> Stream.reject(&is_nil/1)
+          end
+
+        # Whether there is anything to aggregate has to be decided after the
+        # `nil`s are rejected, not before. Records that all hold `nil` leave
+        # nothing to fold, exactly as no records at all do, and both should
+        # give the aggregate's default rather than one giving `Enum.sum([])`
+        # and the other raising out of `Enum.max/2`.
+        case Enum.take(items, 1) do
           [] ->
             nil
 
-          items ->
-            items =
-              if uniq? do
-                items |> Stream.uniq() |> Stream.reject(&is_nil/1)
-              else
-                items |> Stream.reject(&is_nil/1)
-              end
-
-            first_item = List.first(Enum.to_list(Stream.take(items, 1)))
-
+          [first_item] ->
             case kind do
               :sum ->
                 if is_struct(first_item, Decimal) do
@@ -1043,19 +1054,19 @@ defmodule Ash.DataLayer.Ets do
                   Enum.sum(items)
                 end
 
+              # `Comp` is what `Ash.Actions.Sort.runtime_sort/3` orders with, so
+              # comparing with it here keeps `min`/`max` consistent with how this
+              # data layer sorts the very same field. `Enum.max/1` would fall
+              # back to Erlang term order, which compares a struct's fields in
+              # alphabetical key order — for a `DateTime` that means `:day`
+              # decides and `:year` is never reached. No field ordering would be
+              # right anyway: `DateTime.compare/2` applies the UTC offsets, so
+              # two rows with different wall clocks can be the same instant.
               :max ->
-                if is_struct(first_item, Decimal) do
-                  Enum.reduce(items, &Decimal.max(&1, &2))
-                else
-                  Enum.max(items)
-                end
+                Enum.max(items, Comp)
 
               :min ->
-                if is_struct(first_item, Decimal) do
-                  Enum.reduce(items, &Decimal.min(&1, &2))
-                else
-                  Enum.min(items)
-                end
+                Enum.min(items, Comp)
             end
         end
     end
@@ -1110,17 +1121,19 @@ defmodule Ash.DataLayer.Ets do
         & &1.name
       )
 
+    # `field_set` holds field structs while these are names, so the two have to
+    # be compared by name. A combination calculation whose name shadows a field
+    # of the resource is promoted onto the record itself below; anything else
+    # stays in `:calculations`.
+    field_set_names = Enum.map(field_set, & &1.name)
+
     fields_to_rewrite =
       resource
       |> Ash.Resource.Info.fields([:attributes, :calculations, :aggregates])
       |> Enum.map(& &1.name)
+      |> Enum.filter(&(&1 in field_set_names))
 
-    rewrite? = not Enum.empty?(field_set -- fields_to_rewrite)
-
-    fields_to_rewrite =
-      if rewrite? do
-        Enum.filter(fields_to_rewrite, &(&1 in field_set))
-      end
+    rewrite? = not Enum.empty?(fields_to_rewrite)
 
     {simple_equality, non_simple_equality} =
       Enum.split_with(field_set, fn %{type: type} ->
@@ -1244,7 +1257,7 @@ defmodule Ash.DataLayer.Ets do
                   matcher.(result, temp_results_acc)
                 end)
 
-              {:cont, {:ok, records, grouper.(records, acc)}}
+              {:cont, {:ok, records, grouper.(records, base)}}
 
             :except ->
               temp_results_acc = grouper.(results, base)
@@ -2344,7 +2357,14 @@ defmodule Ash.DataLayer.Ets do
           v =
             if Ash.Expr.expr?(v) do
               Ash.Filter.map(v, fn nested ->
-                truncate_unless_expr(nested, inspect_opts)
+                if Ash.Expr.expr?(nested) do
+                  nested
+                else
+                  # halt so `Ash.Filter.map` doesn't descend into non-expression
+                  # values (it enumerates structs, which may not be Enumerable);
+                  # `truncate_unless_expr` recurses into containers itself
+                  {:halt, truncate_unless_expr(nested, inspect_opts)}
+                end
               end)
               |> inspect(
                 limit: inspect_opts.limit,
@@ -2381,6 +2401,9 @@ defmodule Ash.DataLayer.Ets do
 
         is_binary(nested) ->
           truncate(nested, inspect_opts)
+
+        is_struct(nested) ->
+          nested
 
         is_map(nested) ->
           Map.new(nested, fn {k, v} -> {k, truncate_unless_expr(v, inspect_opts)} end)

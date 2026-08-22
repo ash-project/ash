@@ -15,6 +15,43 @@ defmodule Ash.Type.Range do
       type: :keyword_list,
       default: [],
       doc: "Constraints applied to each bound, passed through to the inner type."
+    ],
+    lower: [
+      type: :keyword_list,
+      default: [],
+      keys: [
+        required?: [
+          type: :boolean,
+          default: false,
+          doc: "The range must have a lower bound."
+        ],
+        inclusive?: [
+          type: :boolean,
+          doc: "The lower bound, where there is one, must include its own value."
+        ]
+      ],
+      doc: "Constraints on the range's lower bound."
+    ],
+    upper: [
+      type: :keyword_list,
+      default: [],
+      keys: [
+        required?: [
+          type: :boolean,
+          default: false,
+          doc: "The range must have an upper bound."
+        ],
+        inclusive?: [
+          type: :boolean,
+          doc: "The upper bound, where there is one, must include its own value."
+        ]
+      ],
+      doc: "Constraints on the range's upper bound."
+    ],
+    allow_empty?: [
+      type: :boolean,
+      default: false,
+      doc: "If false, a range containing no points is refused."
     ]
   ]
 
@@ -99,10 +136,14 @@ defmodule Ash.Type.Range do
   def cast_input(nil, _constraints), do: {:ok, nil}
 
   def cast_input(value, constraints) do
-    with {:ok, lower, upper, bounds} <- extract(value),
+    with {:ok, lower, upper, bounds, empty?} <- extract(value),
          {:ok, lower} <- cast_bound(lower, :cast_input, constraints),
          {:ok, upper} <- cast_bound(upper, :cast_input, constraints) do
-      {:ok, %Range{lower: lower, upper: upper, bounds: bounds}}
+      {:ok,
+       canonicalize(
+         %Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?},
+         constraints
+       )}
     end
   end
 
@@ -110,20 +151,29 @@ defmodule Ash.Type.Range do
   def cast_stored(nil, _constraints), do: {:ok, nil}
 
   def cast_stored(value, constraints) do
-    with {:ok, lower, upper, bounds} <- extract(value),
+    with {:ok, lower, upper, bounds, empty?} <- extract(value),
          {:ok, lower} <- cast_bound(lower, :cast_stored, constraints),
          {:ok, upper} <- cast_bound(upper, :cast_stored, constraints) do
-      {:ok, %Range{lower: lower, upper: upper, bounds: bounds}}
+      {:ok,
+       canonicalize(
+         %Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?},
+         constraints
+       )}
     end
   end
 
   @impl true
   def dump_to_native(nil, _constraints), do: {:ok, nil}
+  def dump_to_native(%Range{empty?: true}, _constraints), do: {:ok, Range.empty()}
 
   def dump_to_native(%Range{lower: lower, upper: upper, bounds: bounds}, constraints) do
-    with {:ok, lower} <- dump_bound(lower, constraints),
-         {:ok, upper} <- dump_bound(upper, constraints) do
-      {:ok, %Range{lower: lower, upper: upper, bounds: bounds}}
+    if Range.valid_bounds?(bounds) do
+      with {:ok, lower} <- dump_bound(lower, constraints),
+           {:ok, upper} <- dump_bound(upper, constraints) do
+        {:ok, %Range{lower: lower, upper: upper, bounds: bounds}}
+      end
+    else
+      :error
     end
   end
 
@@ -132,16 +182,131 @@ defmodule Ash.Type.Range do
   @impl true
   def apply_constraints(nil, _constraints), do: {:ok, nil}
 
-  def apply_constraints(%Range{lower: lower, upper: upper} = range, constraints) do
+  def apply_constraints(%Range{bounds: bounds} = range, constraints) do
+    if Range.valid_bounds?(bounds) do
+      do_apply_constraints(range, constraints)
+    else
+      {:error, message: "range bounds must be a valid bounds specifier"}
+    end
+  end
+
+  def apply_constraints(_value, _constraints), do: {:error, message: "is not a valid range"}
+
+  # An empty range is constructed, not mistyped, so it is refused rather than nulled.
+  defp do_apply_constraints(%Range{empty?: true} = range, constraints) do
+    if Keyword.get(constraints, :allow_empty?, false) do
+      {:ok, range}
+    else
+      {:error, message: "range must not be empty"}
+    end
+  end
+
+  defp do_apply_constraints(%Range{lower: lower, upper: upper} = range, constraints) do
     type = constraints[:inner_type]
     inner = constraints[:inner_constraints] || []
 
     with {:ok, lower} <- apply_bound(type, lower, inner),
          {:ok, upper} <- apply_bound(type, upper, inner),
-         :ok <- check_order(lower, upper) do
-      {:ok, %{range | lower: lower, upper: upper}}
+         :ok <- check_order(lower, upper),
+         range = canonicalize(%{range | lower: lower, upper: upper}, constraints),
+         :ok <- check_bound(:lower, range, constraints[:lower] || []),
+         :ok <- check_bound(:upper, range, constraints[:upper] || []) do
+      # Canonicalizing can empty a range, so the empty rule is applied to the result.
+      if range.empty?, do: do_apply_constraints(range, constraints), else: {:ok, range}
     end
   end
+
+  # Each end on its own terms: there if required, and of the asked-for inclusivity if
+  # there. An absent end includes nothing, so only its presence can be constrained.
+  defp check_bound(end_name, range, bound_constraints) do
+    value = Map.fetch!(range, end_name)
+    inclusive? = inclusive?(end_name, range.bounds)
+
+    cond do
+      is_nil(value) and Keyword.get(bound_constraints, :required?, false) ->
+        {:error, message: "range must have a %{bound} bound", vars: [bound: end_name]}
+
+      is_nil(value) ->
+        :ok
+
+      matches_inclusivity?(inclusive?, bound_constraints[:inclusive?]) ->
+        :ok
+
+      true ->
+        {:error,
+         message: "range %{bound} bound must be %{required}",
+         vars: [bound: end_name, required: inclusivity_name(bound_constraints[:inclusive?])]}
+    end
+  end
+
+  defp inclusive?(:lower, bounds), do: Range.lower_inclusive?(bounds)
+  defp inclusive?(:upper, bounds), do: Range.upper_inclusive?(bounds)
+
+  defp matches_inclusivity?(_actual, nil), do: true
+  defp matches_inclusivity?(actual, required), do: actual == required
+
+  defp inclusivity_name(true), do: "inclusive"
+  defp inclusivity_name(false), do: "exclusive"
+
+  # Every range containing no points is the same range, so they cast to one value with
+  # no bounds, as Postgres does, letting a data layer that keeps no bounds for an empty
+  # range read one back. An inverted range is invalid rather than empty, so it is left.
+  defp canonicalize(%Range{empty?: true}, _constraints), do: Range.empty()
+
+  # The discrete shift can both hide and create emptiness, so both sides are tested. An
+  # inverted range is empty by neither, and falls through to check_order/2.
+  defp canonicalize(%Range{} = range, constraints) do
+    if empty_bounds?(range) do
+      Range.empty()
+    else
+      shifted = discrete_bounds(range, constraints[:inner_type])
+
+      if empty_bounds?(shifted), do: Range.empty(), else: shifted
+    end
+  end
+
+  defp empty_bounds?(%Range{lower: lower, upper: upper, bounds: bounds})
+       when not is_nil(lower) and not is_nil(upper) do
+    Comp.equal?(lower, upper) and
+      not (Range.lower_inclusive?(bounds) and Range.upper_inclusive?(bounds))
+  end
+
+  defp empty_bounds?(%Range{}), do: false
+
+  # A discrete type has a successor, so every range over it has one `[)` spelling: an
+  # exclusive lower and an inclusive upper each move on to the next value, and an
+  # unbounded end is exclusive. A continuous type has none, so is left as written.
+  defp discrete_bounds(%Range{lower: lower, upper: upper} = range, type)
+       when type in [Ash.Type.Integer, Ash.Type.Date] and not is_nil(lower) and
+              not is_nil(upper) do
+    # Shifting an inverted range would answer a cast with one it did not describe.
+    if Comp.less_than?(upper, lower), do: range, else: shift_bounds(range)
+  end
+
+  defp discrete_bounds(%Range{} = range, type) when type in [Ash.Type.Integer, Ash.Type.Date] do
+    shift_bounds(range)
+  end
+
+  defp discrete_bounds(%Range{} = range, _type), do: range
+
+  defp shift_bounds(%Range{} = range) do
+    lower =
+      if is_nil(range.lower) or Range.lower_inclusive?(range.bounds),
+        do: range.lower,
+        else: successor(range.lower)
+
+    upper =
+      if is_nil(range.upper) or not Range.upper_inclusive?(range.bounds),
+        do: range.upper,
+        else: successor(range.upper)
+
+    bounds = if is_nil(lower), do: :"()", else: :"[)"
+
+    %{range | lower: lower, upper: upper, bounds: bounds}
+  end
+
+  defp successor(value) when is_integer(value), do: value + 1
+  defp successor(%Date{} = value), do: Date.add(value, 1)
 
   defp check_order(nil, _), do: :ok
   defp check_order(_, nil), do: :ok
@@ -173,23 +338,40 @@ defmodule Ash.Type.Range do
     end
   end
 
-  defp extract(%Range{lower: lower, upper: upper, bounds: bounds}) do
-    {:ok, lower, upper, normalize_bounds(bounds)}
+  defp extract(%Range{lower: lower, upper: upper, bounds: bounds, empty?: empty?}) do
+    with {:ok, bounds} <- normalize_bounds(bounds) do
+      {:ok, lower, upper, bounds, empty?}
+    end
   end
 
-  defp extract({lower, upper}), do: {:ok, lower, upper, :"[)"}
+  defp extract({lower, upper}), do: {:ok, lower, upper, :"[)", false}
 
-  defp extract(%{} = map) do
+  defp extract(%{} = map) when not is_struct(map) do
     lower = map[:lower] || map["lower"]
     upper = map[:upper] || map["upper"]
     bounds = map[:bounds] || map["bounds"] || :"[)"
-    {:ok, lower, upper, normalize_bounds(bounds)}
+    empty? = map[:empty?] || map["empty?"] || false
+
+    with {:ok, bounds} <- normalize_bounds(bounds) do
+      {:ok, lower, upper, bounds, empty?}
+    end
   end
 
   defp extract(_), do: {:error, "is not a valid range"}
 
-  defp normalize_bounds(bounds) when is_atom(bounds), do: bounds
-  defp normalize_bounds(bounds) when is_binary(bounds), do: String.to_existing_atom(bounds)
+  defp normalize_bounds(bounds) when is_atom(bounds) do
+    if Range.valid_bounds?(bounds), do: {:ok, bounds}, else: bounds_error()
+  end
+
+  defp normalize_bounds(bounds) when is_binary(bounds) do
+    normalize_bounds(String.to_existing_atom(bounds))
+  rescue
+    ArgumentError -> bounds_error()
+  end
+
+  defp normalize_bounds(_), do: bounds_error()
+
+  defp bounds_error, do: {:error, "bounds is not a valid bounds specifier"}
 
   defp cast_bound(nil, _fun, _constraints), do: {:ok, nil}
 

@@ -3393,7 +3393,11 @@ defmodule Ash.Changeset do
             %{
               changeset
               | arguments:
-                  Map.put(changeset.arguments, argument.name, default(changeset, :create, argument))
+                  Map.put(
+                    changeset.arguments,
+                    argument.name,
+                    default(changeset, :create, argument)
+                  )
             }
           end
 
@@ -5531,6 +5535,8 @@ defmodule Ash.Changeset do
   layer.
   """
   @spec as_of(t(), DateTime.t() | :now | nil) :: t()
+  def as_of(changeset, nil), do: changeset
+
   def as_of(changeset, as_of) do
     %{changeset | as_of: as_of}
     |> set_context(%{private: %{as_of: as_of}, shared: %{as_of: as_of}})
@@ -5798,11 +5804,16 @@ defmodule Ash.Changeset do
       * `:update_join` - update only the join record (only valid for many to many)
       * `{:update_join, :join_table_action_name}` - use the specified update action on a join resource
       * `{:update_join, :join_table_action_name, [:list, :of, :params]}` - pass specified params from input into a join resource update action
-      * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource. The action should be:
-        * `many_to_many` - a destroy action on the join record
+      * `:destroy` - destroys the record using primary destroy actions. For `many_to_many`, destroys both the join record and the destination record.
+      * `{:destroy, :action_name}` - the record is destroyed using the specified action. The action should be:
+        * `many_to_many` - by default, a destroy action on the join resource only (the destination record is NOT destroyed).
+          When `config :ash, many_to_many_destroy_destination_on_match?: true` is set, destroys both the destination record
+          (using the given action) and the join record (using the primary destroy action).
         * `has_many` - a destroy action on the destination resource
         * `has_one` - a destroy action on the destination resource
         * `belongs_to` - a destroy action on the destination resource
+      * `{:destroy, :destination_action_name, :join_action_name}` - (many_to_many only) destroys both the destination record
+        using the first action and the join record using the second action
       * `:error`  - an error is returned indicating that a record would have been updated
       * `:no_match` - follows the `on_no_match` instructions with these records
       * `:missing` - follows the `on_missing` instructions with these records
@@ -6316,7 +6327,7 @@ defmodule Ash.Changeset do
             Ash.Resource.Info.primary_action!(relationship.destination, :read).name
 
         relationship.destination
-        |> Ash.Query.for_read(action, %{},
+        |> Ash.Query.for_read(action, relationship_read_action_arguments(relationship),
           domain: domain,
           actor: changeset.context[:private][:actor],
           authorize?: changeset.context[:private][:authorize?],
@@ -6384,6 +6395,10 @@ defmodule Ash.Changeset do
         end)
       end)
     end)
+  end
+
+  defp relationship_read_action_arguments(relationship) do
+    Map.get(relationship, :read_action_arguments, %{})
   end
 
   defp fetch_identity_field(item, data, attribute, relationship) do

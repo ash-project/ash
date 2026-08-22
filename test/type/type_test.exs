@@ -110,6 +110,18 @@ defmodule Ash.Test.Type.TypeTest do
              Ash.Type.storage_type({:array, StorageByConstraint}, [])
   end
 
+  test "rewrite/4 passes %Ash.NotLoaded{} and %Ash.ForbiddenField{} through for {:array, _} types" do
+    # Regression test for #2764. rewrite/4 only handled `{:array, _}` when the value was a
+    # list, so a NotLoaded or ForbiddenField value (for example an unselected array of an
+    # embedded resource reaching field policy cleanup) fell through to the generic clause
+    # and tried to `apply` on the `{:array, _}` type tuple, raising ArgumentError.
+    not_loaded = %Ash.NotLoaded{type: :attribute, field: :things}
+    forbidden = %Ash.ForbiddenField{type: :attribute, field: :things}
+
+    assert ^not_loaded = Ash.Type.rewrite({:array, :string}, not_loaded, [], [])
+    assert ^forbidden = Ash.Type.rewrite({:array, :string}, forbidden, [], [])
+  end
+
   test "returns error for invalid keys" do
     foo = {:foo, [type: :string]}
     bar = {:bar, [type: :integer]}

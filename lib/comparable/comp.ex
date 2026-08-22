@@ -316,17 +316,106 @@ if !Code.ensure_loaded?(Comp) do
     end
 
     defp new(left, right) do
-      lr_type =
-        try do
-          [Comparable, Type, type_of(left), To, type_of(right)]
-          |> Module.safe_concat()
-        rescue
-          ArgumentError ->
-            [Comparable, Type, Any, To, Any]
-            |> Module.safe_concat()
-        end
+      %{__struct__: dispatch(type_of(left), type_of(right)), left: left, right: right}
+    end
 
-      %{__struct__: lr_type, left: left, right: right}
+    # Elixir protocols dispatch on their first argument only. To dispatch on
+    # both operand types, `Comparable` encodes the type pair into a synthetic
+    # struct (`Comparable.Type.<L>.To.<R>`) and dispatches the protocol on that.
+    # Resolving a pair to that module is a pure function of the two type atoms,
+    # so memoize it rather than rebuilding the module name — and catching the
+    # `ArgumentError` for every pair with no specific comparator — on every
+    # single comparison.
+    #
+    # Whether it is cached at all depends on whether code can still change.
+    # Comparators only ever appear, so the one way a cached answer can go stale
+    # is a pair resolving to the `Any.To.Any` fallback before its own
+    # comparator is implemented.
+    #
+    #   * `:embedded` — a release. Every module is loaded at boot and none
+    #     arrives later, so the resolution is fixed for the life of the VM and
+    #     `:persistent_term` can hold it once for every process.
+    #
+    #   * `:interactive` — `mix`, `iex`, tests. Code is loaded lazily and
+    #     recompiled in place, so a comparator's atom can appear after a
+    #     fallback was cached. Nothing is cached, which is what this did before.
+    #
+    # `memoize_dispatch/1` turns it on or off at runtime whatever the mode, and
+    # `reset_dispatch/0` clears what has been cached. Both are needed where a
+    # comparator can appear after a fallback was cached, and turning it on is
+    # how a benchmark or a test observes the cached path at all, since both run
+    # interactively.
+    #
+    # Being off means nothing is written, so a read is a `:persistent_term`
+    # miss and the answer is resolved as it was before. The flag is therefore
+    # only consulted when a pair is first resolved, never on a cached read.
+    @memoize_flag {__MODULE__, :memoize_dispatch?}
+
+    @doc """
+    Turns memoization of the type-pair dispatch on or off, and clears it.
+
+    Defaults to on in `:embedded` mode — a release, where every module is
+    loaded at boot so a resolution cannot change — and off under `mix`, `iex`
+    and tests, where code is loaded lazily and recompiled in place.
+
+    Turn it on to measure or test the cached path, and off (or call
+    `reset_dispatch/0`) after defining a comparator at runtime.
+    """
+    @spec memoize_dispatch(boolean()) :: :ok
+    def memoize_dispatch(memoize?) when is_boolean(memoize?) do
+      reset_dispatch()
+      :persistent_term.put(@memoize_flag, memoize?)
+    end
+
+    @doc """
+    Discards every memoized type-pair dispatch.
+
+    Only needed when a comparator is defined after a pair has already been
+    resolved, which in a release cannot happen.
+    """
+    @spec reset_dispatch() :: :ok
+    def reset_dispatch do
+      for {{__MODULE__, :dispatch, _, _} = key, _} <- :persistent_term.get() do
+        :persistent_term.erase(key)
+      end
+
+      :ok
+    end
+
+    defp memoize_dispatch? do
+      :persistent_term.get(@memoize_flag, :code.get_mode() == :embedded)
+    end
+
+    defp dispatch(left_type, right_type) do
+      key = {__MODULE__, :dispatch, left_type, right_type}
+
+      case :persistent_term.get(key, nil) do
+        nil ->
+          module = resolve_dispatch(left_type, right_type)
+          if memoize_dispatch?(), do: :persistent_term.put(key, module)
+          module
+
+        module ->
+          module
+      end
+    end
+
+    defp resolve_dispatch(left_type, right_type) do
+      [Comparable, Type, left_type, To, right_type]
+      |> Module.safe_concat()
+      |> fall_back_unless_implemented()
+    rescue
+      ArgumentError ->
+        any_to_any()
+    end
+
+    defp fall_back_unless_implemented(lr_type) do
+      if Comparable.impl_for(%{__struct__: lr_type}), do: lr_type, else: any_to_any()
+    end
+
+    defp any_to_any do
+      [Comparable, Type, Any, To, Any]
+      |> Module.safe_concat()
     end
   end
 end

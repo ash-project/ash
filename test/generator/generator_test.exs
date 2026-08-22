@@ -85,6 +85,42 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  defmodule GlobalChangeAuthor do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+
+      update :new_post do
+        require_atomic? false
+        argument :posts, {:array, :map}, allow_nil?: false
+      end
+    end
+
+    changes do
+      change manage_relationship(:posts, type: :create), on: [:update]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, default: "Fred", public?: true
+    end
+
+    relationships do
+      has_many :posts, Ash.Test.GeneratorTest.Post,
+        destination_attribute: :author_id,
+        public?: true
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets, notifiers: [Notifier]
@@ -663,6 +699,18 @@ defmodule Ash.Test.GeneratorTest do
         post
         |> Ash.Changeset.for_update(:update, input)
         |> Ash.update!()
+      end
+    end
+
+    test "manage_relationship arguments declared on the action are not generated" do
+      check all(input <- Ash.Generator.action_input(Author, :new_post)) do
+        refute Map.has_key?(input, :posts)
+      end
+    end
+
+    test "manage_relationship arguments declared in a global changes block are not generated" do
+      check all(input <- Ash.Generator.action_input(GlobalChangeAuthor, :new_post)) do
+        refute Map.has_key?(input, :posts)
       end
     end
 

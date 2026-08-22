@@ -220,20 +220,65 @@ defmodule Ash.Actions.ManagedRelationships do
                           )
 
                         keys ->
-                          relationship.destination
-                          |> Ash.Query.for_read(read, %{},
-                            actor: actor,
-                            context: Map.take(changeset.context, [:shared]),
-                            authorize?: opts[:authorize?],
-                            domain: domain(changeset, relationship),
-                            tenant: changeset.tenant
-                          )
-                          |> Ash.Query.filter(^keys)
-                          |> sort_and_filter(relationship)
-                          |> Ash.Query.set_context(relationship.context)
-                          |> Ash.read_one()
-                          |> case do
-                            {:ok, nil} ->
+                          # Sanitize the lookup input to literal values (casting each
+                          # value to its attribute type) before it reaches `filter/2`, so
+                          # a nested map cannot be interpreted as a filter predicate. This
+                          # mirrors the `has_many`/`many_to_many` lookup path below.
+                          case Ash.Filter.get_filter(relationship.destination, keys) do
+                            {:ok, keys} ->
+                              relationship.destination
+                              |> Ash.Query.for_read(read, %{},
+                                actor: actor,
+                                context: Map.take(changeset.context, [:shared]),
+                                authorize?: opts[:authorize?],
+                                domain: domain(changeset, relationship),
+                                tenant: changeset.tenant
+                              )
+                              |> Ash.Query.filter(^keys)
+                              |> sort_and_filter(relationship)
+                              |> Ash.Query.set_context(relationship.context)
+                              |> Ash.Query.limit(1)
+                              |> Ash.read_one()
+                              |> case do
+                                {:ok, nil} ->
+                                  create_belongs_to_record(
+                                    changeset,
+                                    instructions,
+                                    relationship,
+                                    input,
+                                    actor,
+                                    index,
+                                    opts
+                                  )
+
+                                {:ok, found} ->
+                                  changeset =
+                                    changeset
+                                    |> Ash.Changeset.set_context(%{
+                                      private: %{
+                                        belongs_to_manage_found: %{
+                                          relationship.name => %{index => found}
+                                        }
+                                      }
+                                    })
+                                    |> maybe_force_change_attribute(
+                                      relationship,
+                                      :source_attribute,
+                                      Map.get(found, relationship.destination_attribute)
+                                    )
+
+                                  {:cont, {changeset, instructions}}
+
+                                {:error, error} ->
+                                  {:halt,
+                                   {Ash.Changeset.add_error(
+                                      changeset,
+                                      add_bread_crumb(error, relationship, :lookup),
+                                      [opts[:meta][:id] || relationship.name]
+                                    ), instructions}}
+                              end
+
+                            {:error, _error} ->
                               create_belongs_to_record(
                                 changeset,
                                 instructions,
@@ -243,32 +288,6 @@ defmodule Ash.Actions.ManagedRelationships do
                                 index,
                                 opts
                               )
-
-                            {:ok, found} ->
-                              changeset =
-                                changeset
-                                |> Ash.Changeset.set_context(%{
-                                  private: %{
-                                    belongs_to_manage_found: %{
-                                      relationship.name => %{index => found}
-                                    }
-                                  }
-                                })
-                                |> maybe_force_change_attribute(
-                                  relationship,
-                                  :source_attribute,
-                                  Map.get(found, relationship.destination_attribute)
-                                )
-
-                              {:cont, {changeset, instructions}}
-
-                            {:error, error} ->
-                              {:halt,
-                               {Ash.Changeset.add_error(
-                                  changeset,
-                                  add_bread_crumb(error, relationship, :lookup),
-                                  [opts[:meta][:id] || relationship.name]
-                                ), instructions}}
                           end
                       end
                     end
@@ -2435,6 +2454,25 @@ defmodule Ash.Actions.ManagedRelationships do
       :missing ->
         {:ok, current_value, []}
 
+      {:destroy, action_name, join_action_name} ->
+        case destroy_data_m2m(
+               source_record,
+               match,
+               domain,
+               actor,
+               opts,
+               action_name,
+               join_action_name,
+               changeset,
+               relationship
+             ) do
+          {:ok, notifications} ->
+            {:ok, current_value, notifications}
+
+          {:error, error} ->
+            {:error, add_bread_crumb(error, relationship, :destroy)}
+        end
+
       {:destroy, action_name} ->
         case destroy_data(
                source_record,
@@ -2987,7 +3025,10 @@ defmodule Ash.Actions.ManagedRelationships do
         authorize?: opts[:authorize?],
         actor: actor,
         tenant: changeset.tenant,
-        context: Map.take(changeset.context, [:shared]),
+        context:
+          %{accessing_from: %{source: join_relationship.source, name: join_relationship.name}}
+          |> Ash.Helpers.deep_merge_maps(Map.take(changeset.context, [:shared]))
+          |> Ash.Helpers.deep_merge_maps(join_relationship.context),
         domain: domain(changeset, join_relationship),
         strategy: [:atomic, :atomic_batches, :stream],
         transaction: false
@@ -3133,7 +3174,12 @@ defmodule Ash.Actions.ManagedRelationships do
             authorize?: opts[:authorize?],
             actor: actor,
             tenant: changeset.tenant,
-            context: Map.take(changeset.context, [:shared]),
+            context:
+              %{
+                accessing_from: %{source: join_relationship.source, name: join_relationship.name}
+              }
+              |> Ash.Helpers.deep_merge_maps(Map.take(changeset.context, [:shared]))
+              |> Ash.Helpers.deep_merge_maps(join_relationship.context),
             domain: domain(changeset, join_relationship),
             strategy: [:atomic, :atomic_batches, :stream],
             transaction: false
@@ -3406,6 +3452,38 @@ defmodule Ash.Actions.ManagedRelationships do
     {:ok, []}
   end
 
+  # Destroys both the join record and the destination record for a many_to_many relationship.
+  # Used by on_match: {:destroy, dest_action, join_action} (3-tuple) and on_match: :destroy shorthand.
+  defp destroy_data_m2m(
+         source_record,
+         record,
+         domain,
+         actor,
+         opts,
+         dest_action_name,
+         join_action_name,
+         changeset,
+         %{type: :many_to_many} = relationship
+       ) do
+    with {:ok, join_notifications} <-
+           destroy_m2m_join_record(
+             source_record,
+             record,
+             actor,
+             opts,
+             join_action_name,
+             changeset,
+             relationship
+           ),
+         {:ok, dest_notifications} <-
+           destroy_record(record, domain, actor, opts, dest_action_name, changeset, relationship) do
+      {:ok, join_notifications ++ dest_notifications}
+    end
+  end
+
+  # Destroys only the join record for a many_to_many relationship.
+  # Used by on_match: {:destroy, action} (2-tuple) for backward compatibility.
+  # Functionally equivalent to :unrelate — the destination record is left intact.
   defp destroy_data(
          source_record,
          record,
@@ -3415,6 +3493,50 @@ defmodule Ash.Actions.ManagedRelationships do
          action_name,
          changeset,
          %{type: :many_to_many} = relationship
+       ) do
+    destroy_m2m_join_record(
+      source_record,
+      record,
+      actor,
+      opts,
+      action_name,
+      changeset,
+      relationship
+    )
+  end
+
+  # Destroys the destination record directly. Used by non-many_to_many relationships.
+  defp destroy_data(
+         _source_record,
+         record,
+         domain,
+         actor,
+         opts,
+         action_name,
+         changeset,
+         relationship
+       ) do
+    destroy_record(
+      record,
+      domain,
+      actor,
+      opts,
+      action_name,
+      changeset,
+      relationship
+    )
+  end
+
+  # Finds and destroys a single join record for a many_to_many relationship.
+  # Looks up the join record by source and destination attribute values, then destroys it.
+  defp destroy_m2m_join_record(
+         source_record,
+         record,
+         actor,
+         opts,
+         action_name,
+         changeset,
+         relationship
        ) do
     tenant = changeset.tenant
 
@@ -3441,6 +3563,10 @@ defmodule Ash.Actions.ManagedRelationships do
       domain: domain(changeset, join_relationship)
     )
     |> case do
+      {:ok, nil} ->
+        debug_log(relationship.name, changeset, :read, :ok, opts[:debug?])
+        {:ok, []}
+
       {:ok, result} ->
         debug_log(relationship.name, changeset, :read, :ok, opts[:debug?])
 
@@ -3461,12 +3587,10 @@ defmodule Ash.Actions.ManagedRelationships do
         |> case do
           {:ok, notifications} ->
             debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
-
             {:ok, notifications}
 
           {:ok, _record, notifications} ->
             debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
-
             {:ok, notifications}
 
           {:error, error} ->
@@ -3487,16 +3611,8 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  defp destroy_data(
-         _source_record,
-         record,
-         domain,
-         actor,
-         opts,
-         action_name,
-         changeset,
-         relationship
-       ) do
+  # Destroys a single record using the given action.
+  defp destroy_record(record, domain, actor, opts, action_name, changeset, relationship) do
     tenant = changeset.tenant
 
     record
@@ -3514,18 +3630,16 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Changeset.set_tenant(tenant)
     |> Ash.destroy(return_notifications?: true)
     |> case do
-      {:ok, _record, notifications} ->
+      {:ok, notifications} ->
         debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
-
         {:ok, notifications}
 
-      {:ok, notifications} ->
+      {:ok, _record, notifications} ->
         debug_log(relationship.name, changeset, :destroy, :ok, opts[:debug?])
         {:ok, notifications}
 
       {:error, error} ->
         debug_log(relationship.name, changeset, :destroy, {:error, error}, opts[:debug?])
-
         {:error, add_bread_crumb(error, relationship, :destroy)}
     end
   end

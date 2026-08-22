@@ -70,6 +70,36 @@ defmodule Ash.Test.ManageRelationshipTest do
                )
       end
 
+      update :update_many_on_match_destroy do
+        require_atomic? false
+        argument :many_to_many_resources, {:array, :map}
+
+        change manage_relationship(:many_to_many_resources,
+                 on_no_match: :error,
+                 on_match: :destroy
+               )
+      end
+
+      update :update_many_on_match_destroy_join_only do
+        require_atomic? false
+        argument :many_to_many_resources, {:array, :map}
+
+        change manage_relationship(:many_to_many_resources,
+                 on_no_match: :error,
+                 on_match: {:destroy, :destroy_hard}
+               )
+      end
+
+      update :update_many_on_match_destroy_both do
+        require_atomic? false
+        argument :many_to_many_resources, {:array, :map}
+
+        change manage_relationship(:many_to_many_resources,
+                 on_no_match: :error,
+                 on_match: {:destroy, :destroy_hard, :destroy_hard}
+               )
+      end
+
       update :remove_other_resource do
         require_atomic? false
         argument :other_resource_id, :uuid
@@ -665,6 +695,142 @@ defmodule Ash.Test.ManageRelationshipTest do
     third = Enum.find(updated_parent.many_to_many_resources, &(&1.name == "third"))
     assert is_nil(third.archived_at)
     assert is_nil(hd(third.join_resources).archived_at)
+  end
+
+  test "on_match :destroy shorthand destroys both join and destination for many_to_many" do
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               many_to_many_resources: [%{name: "match_destroy_1"}, %{name: "match_destroy_2"}]
+             })
+             |> Ash.create!()
+             |> Ash.load([:many_to_many_resources])
+
+    first_id =
+      Enum.find(parent.many_to_many_resources, &(&1.name == "match_destroy_1")).id
+
+    join_count_before = Ash.read!(JoinResource) |> length()
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update_many_on_match_destroy, %{
+               many_to_many_resources: [%{id: first_id}]
+             })
+             |> Ash.update!()
+             |> Ash.load([:many_to_many_resources])
+
+    # matched destination record should be destroyed
+    assert Enum.find(updated_parent.many_to_many_resources, &(&1.name == "match_destroy_1")) ==
+             nil
+
+    # join record for matched item should be destroyed
+    join_count_after = Ash.read!(JoinResource) |> length()
+    assert join_count_after == join_count_before - 1
+  end
+
+  test "on_match {:destroy, action} 2-tuple only destroys join for many_to_many (backward compat)" do
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               many_to_many_resources: [%{name: "join_only_1"}, %{name: "join_only_2"}]
+             })
+             |> Ash.create!()
+             |> Ash.load([:many_to_many_resources])
+
+    first_id =
+      Enum.find(parent.many_to_many_resources, &(&1.name == "join_only_1")).id
+
+    join_count_before = Ash.read!(JoinResource) |> length()
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update_many_on_match_destroy_join_only, %{
+               many_to_many_resources: [%{id: first_id}]
+             })
+             |> Ash.update!()
+             |> Ash.load([:many_to_many_resources])
+
+    # destination record should still exist (only join destroyed)
+    assert Enum.find(updated_parent.many_to_many_resources, &(&1.name == "join_only_1")) == nil
+
+    # but the destination record itself still exists in the table
+    assert Ash.read!(ManyToManyResource) |> Enum.find(&(&1.name == "join_only_1")) != nil
+
+    # join record should be destroyed
+    join_count_after = Ash.read!(JoinResource) |> length()
+    assert join_count_after == join_count_before - 1
+  end
+
+  test "on_match {:destroy, dest_action, join_action} 3-tuple destroys both for many_to_many" do
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               many_to_many_resources: [%{name: "both_destroy_1"}, %{name: "both_destroy_2"}]
+             })
+             |> Ash.create!()
+             |> Ash.load([:many_to_many_resources])
+
+    first_id =
+      Enum.find(parent.many_to_many_resources, &(&1.name == "both_destroy_1")).id
+
+    join_count_before = Ash.read!(JoinResource) |> length()
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update_many_on_match_destroy_both, %{
+               many_to_many_resources: [%{id: first_id}]
+             })
+             |> Ash.update!()
+             |> Ash.load([:many_to_many_resources])
+
+    # matched destination record should be destroyed
+    assert Enum.find(updated_parent.many_to_many_resources, &(&1.name == "both_destroy_1")) ==
+             nil
+
+    # join record should also be destroyed
+    join_count_after = Ash.read!(JoinResource) |> length()
+    assert join_count_after == join_count_before - 1
+  end
+
+  test "on_match {:destroy, action} 2-tuple destroys both when config enabled" do
+    Application.put_env(:ash, :many_to_many_destroy_destination_on_match?, true)
+
+    on_exit(fn ->
+      Application.delete_env(:ash, :many_to_many_destroy_destination_on_match?)
+    end)
+
+    assert {:ok, parent} =
+             ParentResource
+             |> Ash.Changeset.for_create(:create, %{
+               name: "Test Parent Resource",
+               many_to_many_resources: [%{name: "config_1"}, %{name: "config_2"}]
+             })
+             |> Ash.create!()
+             |> Ash.load([:many_to_many_resources])
+
+    first_id =
+      Enum.find(parent.many_to_many_resources, &(&1.name == "config_1")).id
+
+    join_count_before = Ash.read!(JoinResource) |> length()
+
+    assert {:ok, updated_parent} =
+             parent
+             |> Ash.Changeset.for_update(:update_many_on_match_destroy_join_only, %{
+               many_to_many_resources: [%{id: first_id}]
+             })
+             |> Ash.update!()
+             |> Ash.load([:many_to_many_resources])
+
+    # destination record should be destroyed (config enabled)
+    assert Enum.find(updated_parent.many_to_many_resources, &(&1.name == "config_1")) == nil
+    assert Ash.read!(ManyToManyResource) |> Enum.find(&(&1.name == "config_1")) == nil
+
+    # join record should also be destroyed
+    join_count_after = Ash.read!(JoinResource) |> length()
+    assert join_count_after == join_count_before - 1
   end
 
   test "removing non-existent relationship returns NotFound error" do
@@ -1363,6 +1529,119 @@ defmodule Ash.Test.ManageRelationshipTest do
 
       {:ok, loaded} = Ash.load(updated, :parent_resource)
       assert loaded.parent_resource.name == "created-in-hook"
+    end
+  end
+
+  describe "belongs_to on_lookup input sanitization (GHSA-vvp6-3wv6-833j)" do
+    defmodule LookupAuthor do
+      @moduledoc false
+      use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+      actions do
+        defaults [:read, create: :*]
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, public?: true
+      end
+    end
+
+    defmodule LookupPost do
+      @moduledoc false
+      use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+      actions do
+        defaults [:read]
+
+        create :create do
+          accept [:title]
+          argument :author, :map, public?: true
+
+          change manage_relationship(:author,
+                   type: :append_and_remove,
+                   on_lookup: :relate,
+                   on_no_match: :error
+                 )
+        end
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :title, :string, public?: true
+      end
+
+      relationships do
+        belongs_to :author, LookupAuthor, public?: true
+      end
+    end
+
+    test "legitimate scalar id lookup still relates the record" do
+      alice =
+        LookupAuthor
+        |> Ash.Changeset.for_create(:create, %{name: "Alice"})
+        |> Ash.create!()
+
+      post =
+        LookupPost
+        |> Ash.Changeset.for_create(:create, %{title: "ok", author: %{"id" => alice.id}})
+        |> Ash.create!()
+
+      assert post.author_id == alice.id
+    end
+
+    test "predicate map in on_lookup value is not interpreted as a filter predicate" do
+      _alice =
+        LookupAuthor
+        |> Ash.Changeset.for_create(:create, %{name: "Alice"})
+        |> Ash.create!()
+
+      # Attacker submits a predicate map where a scalar id is expected. Before the
+      # fix this was interpreted as `WHERE id != '000...'`, forging a relationship
+      # to the real author without knowing the id.
+      result =
+        LookupPost
+        |> Ash.Changeset.for_create(:create, %{
+          title: "hijack",
+          author: %{"id" => %{"not_equals" => "00000000-0000-0000-0000-000000000000"}}
+        })
+        |> Ash.create()
+
+      case result do
+        {:ok, post} ->
+          refute post.author_id,
+                 "predicate injection forged a relationship to author_id=#{post.author_id}"
+
+        {:error, _} ->
+          :ok
+      end
+    end
+
+    test "predicate map does not leak a match-count oracle across multiple records" do
+      for name <- ["Alice", "Bob"] do
+        LookupAuthor
+        |> Ash.Changeset.for_create(:create, %{name: name})
+        |> Ash.create!()
+      end
+
+      # With two authors, the pre-fix code hit `read_one` without `limit(1)` and
+      # surfaced an "at most one result" error, distinguishing 0/1/many matches.
+      result =
+        LookupPost
+        |> Ash.Changeset.for_create(:create, %{
+          title: "oracle",
+          author: %{"id" => %{"not_equals" => "00000000-0000-0000-0000-000000000000"}}
+        })
+        |> Ash.create()
+
+      case result do
+        {:ok, post} ->
+          refute post.author_id, "predicate injection forged a relationship"
+
+        {:error, error} ->
+          refute Exception.message(error) =~ "at most one",
+                 "match-count oracle leaked via read_one error"
+      end
     end
   end
 end
