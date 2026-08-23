@@ -8,6 +8,37 @@ SPDX-License-Identifier: MIT
 
 <!-- changelog -->
 
+## [v3.32.1](https://github.com/ash-project/ash/compare/v3.32.0...v3.32.1) (2026-08-23)
+
+
+
+
+### Bug Fixes:
+
+* don't create tenants when reading in ETS by [@zachdaniel](https://github.com/zachdaniel)
+
+* ensure error & lazy are private functions by [@zachdaniel](https://github.com/zachdaniel)
+
+* fix various small transformer/aggregate issues by [@zachdaniel](https://github.com/zachdaniel)
+
+* evaluate decimal arithmetic with an integer (#2893) by [@matt-beanland](https://github.com/matt-beanland) [(#2893)](https://github.com/ash-project/ash/pull/2893)
+
+* string_position returns an integer position (#2892) by [@matt-beanland](https://github.com/matt-beanland) [(#2892)](https://github.com/ash-project/ash/pull/2892)
+
+* restore temporal subtraction type inference (#2887) by Jechol Lee [(#2887)](https://github.com/ash-project/ash/pull/2887)
+
+* retain compile dependencies for policy check modules (#2886) by Jechol Lee [(#2886)](https://github.com/ash-project/ash/pull/2886)
+
+### Improvements:
+
+* only set `transaction? true` when the data layer supports it (#2895) by [@C-Sinclair](https://github.com/C-Sinclair) [(#2895)](https://github.com/ash-project/ash/pull/2895)
+
+* add `can_see_fields` and `can_see_fields?` by [@zachdaniel](https://github.com/zachdaniel) [(#2894)](https://github.com/ash-project/ash/pull/2894)
+
+### Performance Improvements:
+
+* make boolean filter parsing faster by [@zachdaniel](https://github.com/zachdaniel)
+
 ## [v3.32.0](https://github.com/ash-project/ash/compare/v3.31.3...v3.32.0) (2026-08-19)
 
 
