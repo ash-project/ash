@@ -248,4 +248,51 @@ defmodule Ash.TemporalTest do
       assert DateTime.compare(thing.inserted_at, before) in [:eq, :gt]
     end
   end
+
+  describe "Ash.Filter.Runtime.as_of_matches/3" do
+    alias Ash.Filter.Runtime
+    alias Ash.Test.Temporal.EtsVersioned
+
+    @period %Ash.Range{
+      lower: ~U[2020-01-01 00:00:00Z],
+      upper: ~U[2021-01-01 00:00:00Z],
+      bounds: :"[)"
+    }
+
+    test "keeps a record whose period holds the instant" do
+      assert [_] = narrow(~U[2020-06-01 00:00:00Z])
+      assert [] = narrow(~U[2019-06-01 00:00:00Z])
+    end
+
+    test "holds the lower bound but not the upper" do
+      assert [_] = narrow(@period.lower)
+      assert [] = narrow(@period.upper)
+    end
+
+    test "drops a record carrying no period" do
+      assert [] =
+               Runtime.as_of_matches([%{valid_at: nil}], EtsVersioned, ~U[2020-06-01 00:00:00Z])
+    end
+
+    test "leaves a non-temporal resource untouched" do
+      records = [%{name: "a"}, %{name: "b"}]
+
+      assert ^records =
+               Runtime.as_of_matches(records, Ash.Test.Temporal.Thing, ~U[2020-06-01 00:00:00Z])
+    end
+
+    test "leaves a read with no instant untouched" do
+      records = [%{valid_at: nil}]
+
+      assert ^records = Runtime.as_of_matches(records, EtsVersioned, nil)
+    end
+  end
+
+  defp narrow(as_of) do
+    Ash.Filter.Runtime.as_of_matches(
+      [%{valid_at: @period}],
+      Ash.Test.Temporal.EtsVersioned,
+      as_of
+    )
+  end
 end

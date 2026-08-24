@@ -58,6 +58,7 @@ defmodule Ash.DataLayer.Ets do
       :filter,
       :limit,
       :tenant,
+      :as_of,
       :domain,
       :select,
       sort: [],
@@ -187,6 +188,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :combine), do: true
   def can?(_, {:combine, _type}), do: true
   def can?(_, :composite_primary_key), do: true
+  def can?(_, :temporal), do: true
   def can?(_, :expression_calculation), do: true
   def can?(_, :expression_calculation_sort), do: true
   def can?(_, :multitenancy), do: true
@@ -290,6 +292,12 @@ defmodule Ash.DataLayer.Ets do
   @impl true
   def set_tenant(_resource, query, tenant) do
     {:ok, %{query | tenant: tenant}}
+  end
+
+  @doc false
+  @impl true
+  def set_as_of(_resource, query, as_of) do
+    {:ok, %{query | as_of: as_of}}
   end
 
   @doc false
@@ -409,6 +417,7 @@ defmodule Ash.DataLayer.Ets do
 
     with {:ok, records} when records != [] <-
            get_records(resource, combination_of, parent, tenant),
+         records <- Ash.Filter.Runtime.as_of_matches(records, resource, query.as_of),
          %Query{
            filter: filter,
            offset: offset,

@@ -10,9 +10,8 @@ defmodule Ash.Test.Temporal.Gated do
   anchored to the read's instant, not the wall clock) and that policy early/eager
   evaluation does not resolve a relative-time check against the wall clock.
 
-  Not declared `temporal` (no data layer here supports it) — `as_of` is a core
-  field that anchoring keys off whenever it is set, so passing it explicitly is
-  enough to exercise the authorization path.
+  Not declared `temporal` — `as_of` is a core field that anchoring keys off whenever
+  it is set, so passing it explicitly is enough to exercise the authorization path.
   """
   use Ash.Resource,
     domain: Ash.Test.Domain,

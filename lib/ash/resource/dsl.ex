@@ -1786,6 +1786,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.ResolvePipelines,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
+    Ash.Resource.Transformers.AddPeriodAttribute,
     Ash.Resource.Transformers.AddTemporalRelationshipFilters,
     Ash.Resource.Transformers.BelongsToAttribute,
     Ash.Resource.Transformers.HasDestinationField,

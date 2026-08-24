@@ -550,6 +550,32 @@ defmodule Ash.Resource.Info do
     end
   end
 
+  @doc "The period attribute of a temporal resource, carrying its type and constraints."
+  @spec temporal_period(Spark.Dsl.t() | Ash.Resource.t()) :: Ash.Resource.Attribute.t() | nil
+  def temporal_period(resource) do
+    if name = temporal_attribute(resource) do
+      attribute(resource, name)
+    end
+  end
+
+  @doc "The resolved type of a temporal resource's period bounds."
+  @spec temporal_inner_type(Spark.Dsl.t() | Ash.Resource.t()) :: Ash.Type.t() | nil
+  def temporal_inner_type(resource) do
+    case temporal_period(resource) do
+      %{constraints: constraints} -> constraints[:inner_type]
+      _ -> nil
+    end
+  end
+
+  @doc "The constraints on a temporal resource's period bounds."
+  @spec temporal_inner_constraints(Spark.Dsl.t() | Ash.Resource.t()) :: Keyword.t() | nil
+  def temporal_inner_constraints(resource) do
+    case temporal_period(resource) do
+      %{constraints: constraints} -> constraints[:inner_constraints] || []
+      _ -> nil
+    end
+  end
+
   @doc "Returns all pipelines of a resource"
   @spec pipelines(Spark.Dsl.t() | Ash.Resource.t()) :: list(Ash.Resource.Pipeline.t())
   def pipelines(resource) do

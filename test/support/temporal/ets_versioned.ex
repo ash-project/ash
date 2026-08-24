@@ -2,14 +2,20 @@
 #
 # SPDX-License-Identifier: MIT
 
-defmodule Ash.Test.Temporal.VersionedNote do
+defmodule Ash.Test.Temporal.EtsVersioned do
   @moduledoc """
-  A temporal resource related to another one, so both sides of a relationship
-  carry a period.
+  A temporal resource on the ETS data layer.
+
+  The period is never action input, so a test that needs a particular one seeds it
+  with `Ash.Seed.seed!/2`.
   """
   use Ash.Resource,
     domain: Ash.Test.Domain,
-    data_layer: Ash.Test.Temporal.StubDataLayer
+    data_layer: Ash.DataLayer.Ets
+
+  ets do
+    private? true
+  end
 
   temporal do
     strategy :context
@@ -20,19 +26,16 @@ defmodule Ash.Test.Temporal.VersionedNote do
     defaults [:read, :destroy]
 
     create :create do
-      accept [:id, :body, :versioned_id]
+      accept [:id, :name]
+    end
+
+    update :update do
+      accept [:name]
     end
   end
 
   attributes do
     attribute :id, :integer, primary_key?: true, allow_nil?: false, public?: true
-    attribute :body, :string, public?: true
-  end
-
-  relationships do
-    belongs_to :versioned, Ash.Test.Temporal.Versioned do
-      attribute_type :integer
-      temporal_keys {:valid_at, :valid_at}
-    end
+    attribute :name, :string, public?: true
   end
 end
